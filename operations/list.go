@@ -373,7 +373,8 @@ func loadLocalConfig(filepath string) (*model.Project, error) {
 	}
 
 	project := &model.Project{}
-	if _, err = model.LoadProjectInto(configBytes, "", project); err != nil {
+	ctx := context.Background()
+	if _, err = model.LoadProjectInto(ctx, configBytes, nil, "", project); err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}
 

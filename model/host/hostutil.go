@@ -93,19 +93,15 @@ func (h *Host) CurlCommandWithDefaultRetry(settings *evergreen.Settings) (string
 }
 
 func (h *Host) curlCommands(settings *evergreen.Settings, curlArgs string) ([]string, error) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
 	var curlCmd string
-	if !flags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
+	if !settings.ServiceFlags.S3BinaryDownloadsDisabled && settings.HostInit.S3BaseURL != "" {
 		// Attempt to download the agent from S3, but fall back to downloading from
 		// the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-		curlCmd = fmt.Sprintf("(curl -fLO '%s'%s || curl -LO '%s'%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
+		curlCmd = fmt.Sprintf("(curl -fLO %s%s || curl -fLO %s%s)", h.Distro.S3ClientURL(settings), curlArgs, h.Distro.ClientURL(settings), curlArgs)
 	} else {
-		curlCmd += fmt.Sprintf("curl -LO '%s'%s", h.Distro.ClientURL(settings), curlArgs)
+		curlCmd += fmt.Sprintf("curl -fLO %s%s", h.Distro.ClientURL(settings), curlArgs)
 	}
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
@@ -317,6 +313,9 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		if numFiles := h.Distro.BootstrapSettings.ResourceLimits.NumFiles; numFiles != 0 {
 			params = append(params, fmt.Sprintf("--limit_num_files=%d", numFiles))
 		}
+		if numTasks := h.Distro.BootstrapSettings.ResourceLimits.NumTasks; numTasks != 0 {
+			params = append(params, fmt.Sprintf("--limit_num_tasks=%d", numTasks))
+		}
 		if lockedMem := h.Distro.BootstrapSettings.ResourceLimits.LockedMemoryKB; lockedMem != 0 {
 			params = append(params, fmt.Sprintf("--limit_locked_memory=%d", lockedMem))
 		}
@@ -367,7 +366,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
 		fmt.Sprintf("cd %s", h.Distro.BootstrapSettings.JasperBinaryDir),
-		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
+		fmt.Sprintf("curl -fLO %s/%s %s", config.URL, downloadedFile, curlRetryArgs(curlDefaultNumRetries, curlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
 		fmt.Sprintf("rm -f '%s'", downloadedFile),

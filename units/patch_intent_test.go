@@ -77,6 +77,18 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{Alias: "patch-alias", ChildProject: "childProj"},
+		},
+	}).Insert())
+
+	s.NoError((&model.ProjectRef{
+		Id:         "childProj",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		Enabled:    utility.TruePtr(),
+		RemotePath: "self-tests.yml",
 	}).Insert())
 
 	s.NoError((&user.DBUser{
@@ -631,4 +643,36 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	s.Equal(sourcePatch.Id.Hex(), backportPatch.BackportOf.PatchID)
 	s.Len(backportPatch.Patches, 1)
 	s.Equal(sourcePatch.Patches[0].PatchSet.Patch, backportPatch.Patches[0].PatchSet.Patch)
+}
+
+const PatchId = "58d156352cfeb61064cf08b3"
+
+func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
+	evergreen.GetEnvironment().Settings().Credentials = s.env.Settings().Credentials
+
+	p := &patch.Patch{
+		Id:      patch.NewId(PatchId),
+		Project: s.project,
+		Author:  evergreen.GithubPatchUser,
+		Githash: s.hash,
+	}
+	s.NoError(p.Insert())
+
+	u := &user.DBUser{
+		Id: evergreen.ParentPatchUser,
+	}
+	s.NoError(u.Insert())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	projectRef, err := model.FindBranchProjectRef(s.project)
+	s.NotNil(projectRef)
+	s.NoError(err)
+
+	s.Len(p.Triggers.ChildPatches, 0)
+	childPatchIds, err := ProcessTriggerAliases(ctx, p, projectRef, s.env, []string{"patch-alias"})
+	s.NoError(err)
+	s.Len(childPatchIds, 1)
+	s.Len(p.Triggers.ChildPatches, 1)
 }

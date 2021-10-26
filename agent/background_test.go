@@ -144,7 +144,8 @@ early_termination:
     script: "echo 'spot instance is being taken away'"
 `
 	p := &model.Project{}
-	_, err = model.LoadProjectInto([]byte(yml), "", p)
+	ctx := context.Background()
+	_, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", p)
 	s.NoError(err)
 	s.tc.project = p
 	s.tc.taskConfig = &internal.TaskConfig{

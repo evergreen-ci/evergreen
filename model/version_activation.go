@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DoProjectActivation(id string) (bool, error) {
-	// fetch the most recent, non-ignored version to activate
-	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id))
+func DoProjectActivation(id string, ts time.Time) (bool, error) {
+	// fetch the most recent, non-ignored version (before the given time) to activate
+	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id, ts))
 	if err != nil {
 		return false, errors.WithStack(err)
 	}

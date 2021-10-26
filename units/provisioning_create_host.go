@@ -64,7 +64,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, h.Id, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", createHostJobName, h.Id)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.BuildImageStarted = buildImageStarted
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		DispatchBy: j.host.SpawnOptions.TimeoutSetup,
@@ -218,7 +218,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
-			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.Error()); err != nil {
+			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
 				j.AddError(errors.Wrapf(err, "error adding host create error details"))
 			}
 		}

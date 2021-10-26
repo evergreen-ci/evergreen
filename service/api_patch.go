@@ -236,7 +236,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	moduleName, githash := data.Module, data.Githash
 
-	projectRef, err := model.FindOneProjectRef(p.Project)
+	projectRef, err := model.FindBranchProjectRef(p.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
 		return
@@ -439,7 +439,7 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
-	_, project := MustHaveProject(r)
+	project := MustHaveProject(r)
 
 	p, err := getPatchFromRequest(r)
 	if err != nil {

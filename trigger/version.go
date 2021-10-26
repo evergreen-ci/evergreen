@@ -110,13 +110,18 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
 	}
 	data := commonTemplateData{
-		ID:                t.version.Id,
-		EventID:           t.event.ID,
-		SubscriptionID:    sub.ID,
-		DisplayName:       t.version.Id,
-		Object:            event.ObjectVersion,
-		Project:           projectName,
-		URL:               versionLink(t.uiConfig.Url, t.version.Id, evergreen.IsPatchRequester(t.version.Requester)),
+		ID:             t.version.Id,
+		EventID:        t.event.ID,
+		SubscriptionID: sub.ID,
+		DisplayName:    t.version.Id,
+		Object:         event.ObjectVersion,
+		Project:        projectName,
+		URL: versionLink(versionLinkInput{
+			uiBase:    t.uiConfig.Url,
+			versionID: t.version.Id,
+			hasPatch:  evergreen.IsPatchRequester(t.version.Requester),
+			isChild:   false,
+		}),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
@@ -194,6 +199,22 @@ func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*n
 
 func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed {
+		return nil, nil
+	}
+	failedTasks, err := task.FindAll(task.FailedTasksByVersion(t.version.Id))
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting failed tasks in version")
+	}
+	skipNotification := false
+	for _, failedTask := range failedTasks {
+		if !failedTask.Aborted {
+			skipNotification = false
+			break
+		} else {
+			skipNotification = true
+		}
+	}
+	if skipNotification {
 		return nil, nil
 	}
 

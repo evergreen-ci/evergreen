@@ -398,6 +398,9 @@ func (u *DBUser) DeleteAllRoles() error {
 }
 
 func (u *DBUser) DeleteRoles(roles []string) error {
+	if len(roles) == 0 {
+		return nil
+	}
 	info, err := db.FindAndModify(
 		Collection,
 		bson.M{IdKey: u.Id},

@@ -19,7 +19,8 @@ func insertTestDocuments() error {
 				Id:       "debian",
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
-			RunningTask: "foo",
+			RunningTask: "baz",
+			StartedBy:   evergreen.User,
 		},
 		Host{
 			Id:     "two",
@@ -29,6 +30,7 @@ func insertTestDocuments() error {
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
 			RunningTask: "bar",
+			StartedBy:   evergreen.User,
 		},
 		Host{
 			Id:     "three",
@@ -38,6 +40,7 @@ func insertTestDocuments() error {
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
 			RunningTask: "foo-foo",
+			StartedBy:   evergreen.User,
 		},
 		Host{
 			Id:     "four",
@@ -46,6 +49,7 @@ func insertTestDocuments() error {
 				Id:       "redhat",
 				Provider: evergreen.ProviderNameEc2Spot,
 			},
+			StartedBy: evergreen.User,
 		},
 		Host{
 			Id:     "five",
@@ -54,6 +58,7 @@ func insertTestDocuments() error {
 				Id:       "foo",
 				Provider: evergreen.ProviderNameEc2Auto,
 			},
+			StartedBy: evergreen.User,
 		},
 		Host{
 			Id:     "six",
@@ -62,6 +67,16 @@ func insertTestDocuments() error {
 				Id:       "bar",
 				Provider: evergreen.ProviderNameStatic,
 			},
+			StartedBy: evergreen.User,
+		},
+		Host{
+			Id:     "seven",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:       "debian",
+				Provider: evergreen.ProviderNameStatic,
+			},
+			RunningTask: "foo",
 		},
 	}
 
@@ -71,6 +86,9 @@ func insertTestDocuments() error {
 func TestHostStatsByProvider(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(db.ClearCollections(Collection))
+	}()
 	assert.NoError(insertTestDocuments())
 
 	result := ProviderStats{}
@@ -87,13 +105,14 @@ func TestHostStatsByProvider(t *testing.T) {
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Provider < alt[j].Provider })
 	sort.Slice(result, func(i, j int) bool { return result[i].Provider < result[j].Provider })
 	assert.Equal(alt, result)
-
-	assert.NoError(db.ClearCollections(Collection))
 }
 
 func TestHostStatsByDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(db.ClearCollections(Collection))
+	}()
 	assert.NoError(insertTestDocuments())
 
 	result := DistroStats{}
@@ -118,6 +137,4 @@ func TestHostStatsByDistro(t *testing.T) {
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Distro < alt[j].Distro })
 	sort.Slice(result, func(i, j int) bool { return result[i].Distro < result[j].Distro })
 	assert.Equal(alt, result)
-
-	assert.NoError(db.ClearCollections(Collection))
 }

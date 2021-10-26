@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -215,20 +217,17 @@ func (pc *DBCommitQueueConnector) FindCommitQueueForProject(name string) (*restM
 	return apiCommitQueue, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, issue, user string) (*restModel.APICommitQueueItem, error) {
-	projectRef, err := model.FindOneProjectRef(id)
+func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommitQueueItem, error) {
+	id, err := model.GetIdForProject(identifier)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't find projectRef for '%s'", id)
+		return nil, errors.Wrapf(err, "can't find projectRef for '%s'", identifier)
 	}
-	if projectRef == nil {
-		return nil, errors.Errorf("can't find project ref for '%s'", id)
-	}
-	cq, err := commitqueue.FindOneId(projectRef.Id)
+	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+		return nil, errors.Wrapf(err, "can't get commit queue for project '%s'", identifier)
 	}
 	if cq == nil {
-		return nil, errors.Errorf("no commit queue found for '%s'", id)
+		return nil, errors.Errorf("no commit queue found for '%s'", identifier)
 	}
 	version, err := model.GetVersionForCommitQueueItem(cq, issue)
 	if err != nil {
@@ -319,7 +318,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 		return nil, errors.Errorf("no patch found for id '%s'", existingPatchID)
 	}
 
-	newPatch, err := model.MakeMergePatchFromExisting(existingPatch, commitMessage)
+	newPatch, err := model.MakeMergePatchFromExisting(ctx, existingPatch, commitMessage)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't create new patch")
 	}
@@ -339,7 +338,7 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	if requestedPatch == nil {
 		return "", errors.New("no patch found")
 	}
-	project, err := model.FindOneProjectRef(requestedPatch.Project)
+	project, err := model.FindMergedProjectRef(requestedPatch.Project)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to find project for patch")
 	}
@@ -400,14 +399,20 @@ func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 func (pc *DBCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find patch")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "unable to find patch").Error(),
+		}
 	}
 	if p == nil {
 		return nil, errors.Errorf("patch '%s' not found", patchId)
 	}
 	cq, err := commitqueue.FindOneId(p.Project)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find commit queue")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "unable to find commit queue").Error(),
+		}
 	}
 	if cq == nil {
 		return nil, errors.Errorf("no commit queue for project '%s' found", p.Project)

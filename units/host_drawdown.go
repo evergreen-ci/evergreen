@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -122,6 +123,31 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly || err != nil {
 		return err
+	}
+
+	// don't drawdown hosts that are running task groups
+	if h.RunningTaskGroup != "" {
+		t, err := task.FindOneId(h.RunningTask)
+		if err != nil {
+			return errors.Wrap(err, "error finding running task")
+		}
+		if t == nil {
+			return errors.Errorf("could not find running task '%s'", h.RunningTask)
+		}
+		if t.IsPartOfSingleHostTaskGroup() {
+			return nil
+		}
+	} else if h.LastGroup != "" && h.RunningTask == "" { // if we're currently running a task not in a group, then we already know the group is finished running.
+		t, err := task.FindOneId(h.LastTask)
+		if err != nil {
+			return errors.Wrap(err, "error finding last task")
+		}
+		if t == nil {
+			return errors.Errorf("could not find last task '%s'", h.LastTask)
+		}
+		if t.IsPartOfSingleHostTaskGroup() && t.Status == evergreen.TaskSucceeded {
+			return nil
+		}
 	}
 
 	idleTime := h.IdleTime()

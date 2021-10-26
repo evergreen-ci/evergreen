@@ -154,6 +154,34 @@ func (c *BasicSecretsManagerClient) DescribeSecret(ctx context.Context, in *secr
 		}, *c.opts.RetryOpts); err != nil {
 		return nil, err
 	}
+
+	return out, nil
+}
+
+// ListSecrets lists the metadata information for secrets matching the filters.
+func (c *BasicSecretsManagerClient) ListSecrets(ctx context.Context, in *secretsmanager.ListSecretsInput) (*secretsmanager.ListSecretsOutput, error) {
+	if err := c.setup(); err != nil {
+		return nil, errors.Wrap(err, "setting up client")
+	}
+
+	var out *secretsmanager.ListSecretsOutput
+	var err error
+	msg := awsutil.MakeAPILogMessage("ListSecrets", in)
+	if err := utility.Retry(
+		ctx,
+		func() (bool, error) {
+			out, err = c.sm.ListSecretsWithContext(ctx, in)
+			if awsErr, ok := err.(awserr.Error); ok {
+				grip.Debug(message.WrapError(awsErr, msg))
+				if c.isNonRetryableErrorCode(awsErr.Code()) {
+					return false, err
+				}
+			}
+			return true, err
+		}, *c.opts.RetryOpts); err != nil {
+		return nil, err
+	}
+
 	return out, nil
 }
 

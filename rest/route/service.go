@@ -110,6 +110,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeHostsStatuses(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetHostByID(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeHostModifyRouteManager(sc, env))
+	app.AddRoute("/hosts/{host_id}/disable").Version(2).Post().Wrap(checkHost).RouteHandler(makeDisableHostHandler(sc, env))
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStopManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/start").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostStartManager(sc, env))
 	app.AddRoute("/hosts/{host_id}/change_password").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostChangePassword(sc, env))
@@ -170,6 +171,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(checkUser, checkRepoAdmin, editProjectSettings).RouteHandler(makePatchRepoByID(sc, env.Settings()))
 	app.AddRoute("/roles").Version(2).Get().Wrap(checkUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(checkUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
+	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetUsersWithRole(sc))
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(checkUser).RouteHandler(makeCompareTasksRoute(sc))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))
@@ -202,10 +204,20 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeModifyUserPermissions(sc, evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(checkUser, editRoles).RouteHandler(makeDeleteUserPermissions(sc, evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/users/{user_id}/roles").Version(2).Post().Wrap(checkUser, editRoles).RouteHandler(makeModifyUserRoles(sc, evergreen.GetEnvironment().RoleManager()))
+	app.AddRoute("/users/permissions").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetAllUsersPermissions(sc, evergreen.GetEnvironment().RoleManager()))
 	app.AddRoute("/versions").Version(2).Put().Wrap(checkUser).RouteHandler(makeVersionCreateHandler(sc))
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionByID(sc))
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeAbortVersion(sc))
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser, editTasks).RouteHandler(makeRestartVersion(sc))
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(checkUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion(sc))
+
+	// Add an options method to every POST request to handle pre-flight Options requests.
+	// These requests must not check for credentials and just validate whether a route exists
+	// And allows requests from a origin.
+	for _, route := range app.Routes() {
+		if route.HasMethod("POST") {
+			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
+		}
+	}
 }

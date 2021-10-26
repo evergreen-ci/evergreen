@@ -400,7 +400,7 @@ func TestPodAuthMiddleware(t *testing.T) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{p.ID},
-					evergreen.PodSecretHeader: []string{p.Secret},
+					evergreen.PodSecretHeader: []string{p.Secret.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -428,7 +428,7 @@ func TestPodAuthMiddleware(t *testing.T) {
 		"FailsWithoutPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
-					evergreen.PodSecretHeader: []string{p.Secret},
+					evergreen.PodSecretHeader: []string{p.Secret.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -438,7 +438,7 @@ func TestPodAuthMiddleware(t *testing.T) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{"foo"},
-					evergreen.PodSecretHeader: []string{p.Secret},
+					evergreen.PodSecretHeader: []string{p.Secret.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -451,8 +451,13 @@ func TestPodAuthMiddleware(t *testing.T) {
 				assert.NoError(t, db.Clear(pod.Collection))
 			}()
 			p := &pod.Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: pod.Secret{
+					Name:   "name",
+					Value:  "value",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 			}
 			require.NoError(t, p.Insert())
 

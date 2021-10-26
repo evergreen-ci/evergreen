@@ -220,6 +220,16 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
 		})
 
+		Convey("We should handle invalid configuration files with merging errors gracefully by storing a stub version", func() {
+			poller.setNextError(errors.New(model.MergeProjectConfigError))
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			stubVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			So(err, ShouldBeNil)
+			So(stubVersion.Errors[0], ShouldContainSubstring, model.MergeProjectConfigError)
+			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
+		})
+
 		Convey("Project configuration files with missing distros should still create versions", func() {
 			poller.addBadDistro("Cray-Y-MP")
 			err := repoTracker.StoreRevisions(ctx, revisions)
@@ -317,7 +327,8 @@ tasks:
 	assert.NoError(t, d.Insert())
 
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(simpleYml), "testproject", p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
 	// create new version to use for activating
@@ -784,7 +795,8 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -825,7 +837,8 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -864,7 +877,8 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
@@ -900,7 +914,8 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	//force a duplicate key error with the version
@@ -946,7 +961,8 @@ tasks:
 - name: task3
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1007,7 +1023,8 @@ tasks:
 - name: task2
 `
 	p := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(configYml), s.ref.Id, p)
+	ctx := context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,

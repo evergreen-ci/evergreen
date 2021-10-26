@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -64,7 +65,7 @@ func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfB
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostTerminationJobName, h.Id)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 
 	return j
 }
@@ -180,9 +181,34 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		} else {
 			return
 		}
+	} else {
+		// Consider if the host is in between running a single-host task group
+		if j.host.LastGroup != "" {
+			lastTask, err := task.FindOneId(j.host.LastTask)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "error finding last task '%s'", j.host.LastTask))
+			}
+			// Only try to restart the task group if it was successful and should have continued executing.
+			if lastTask != nil && lastTask.IsPartOfSingleHostTaskGroup() && lastTask.Status == evergreen.TaskSucceeded {
+				tasks, err := task.FindTaskGroupFromBuild(lastTask.BuildId, lastTask.TaskGroup)
+				if err != nil {
+					j.AddError(errors.Wrapf(err, "can't get task group for task '%s'", lastTask.Id))
+					return
+				}
+				if len(tasks) == 0 {
+					j.AddError(errors.Errorf("no tasks found in task group for task '%s'", lastTask.Id))
+					return
+				}
+				if tasks[len(tasks)-1].Id != lastTask.Id {
+					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
+					// because later tasks in the group need to run on the same host as the earlier ones.
+					j.AddError(errors.Wrap(model.TryResetTask(lastTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "problem resetting task"))
+				}
+			}
+		}
+
 	}
-	// set host as decommissioned in DB so no new task will be
-	// assigned
+	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
 	if err = j.host.SetDecommissioned(evergreen.User, "host will be terminated shortly, preventing task dispatch"); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

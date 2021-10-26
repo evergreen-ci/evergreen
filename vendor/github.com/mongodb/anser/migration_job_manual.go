@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -58,51 +58,36 @@ func (j *manualMigrationJob) Run(ctx context.Context) {
 	defer j.FinishMigration(ctx, j.Definition.Migration, &j.Base)
 	env := j.Env()
 
-	if operation, ok := env.GetLegacyManualMigrationOperation(j.Definition.OperationName); ok {
-		session, err := env.GetSession()
-		if err != nil {
-			j.AddError(errors.Wrap(err, "problem getting database session"))
-			return
-		}
-		defer session.Close()
-
-		var doc bson.RawD
-		coll := session.DB(j.Definition.Namespace.DB).C(j.Definition.Namespace.Collection)
-		err = coll.FindId(j.Definition.ID).One(&doc)
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-
-		j.AddError(operation(session, doc))
-	} else if operation, ok := env.GetManualMigrationOperation(j.Definition.OperationName); ok {
-		client, err := env.GetClient()
-		if err != nil {
-			j.AddError(errors.Wrap(err, "problem getting database client"))
-			return
-		}
-
-		coll := client.Database(j.Definition.Namespace.DB).Collection(j.Definition.Namespace.Collection)
-
-		res := coll.FindOne(ctx, bson.M{"_id": j.Definition.ID})
-		if err = res.Err(); err != nil {
-			j.AddError(err)
-			return
-		}
-		payload, err := res.DecodeBytes()
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-
-		doc, err := birch.ReadDocument(payload)
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-
-		j.AddError(operation(client, doc))
-	} else {
+	operation, ok := env.GetManualMigrationOperation(j.Definition.OperationName)
+	if !ok {
 		j.AddError(errors.Errorf("could not find migration named '%s'", j.Definition.OperationName))
+		return
 	}
+
+	client, err := env.GetClient()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "problem getting database client"))
+		return
+	}
+
+	coll := client.Database(j.Definition.Namespace.DB).Collection(j.Definition.Namespace.Collection)
+
+	res := coll.FindOne(ctx, bson.M{"_id": j.Definition.ID})
+	if err = res.Err(); err != nil {
+		j.AddError(err)
+		return
+	}
+	payload, err := res.DecodeBytes()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	doc, err := birch.ReadDocument(payload)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	j.AddError(operation(client, doc))
 }

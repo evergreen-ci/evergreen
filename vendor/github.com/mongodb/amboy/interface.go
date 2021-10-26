@@ -101,10 +101,19 @@ type Job interface {
 	Scopes() []string
 	SetScopes([]string)
 
-	// ShouldApplyScopesOnEnqueue allows the scope exclusion functionality to be
-	// configured so that exclusion occurs during job dispatch or enqueue.
-	ShouldApplyScopesOnEnqueue() bool
-	SetShouldApplyScopesOnEnqueue(bool)
+	// EnqueueScopes allows the scope exclusion functionality to be configured
+	// so that exclusion occurs during either job dispatch or enqueue. Scopes
+	// can either be individually selected (with SetEnqueueScopes) or all
+	// selected (with SetEnqueueAllScopes) to be enqueued with their scopes
+	// applied.
+	EnqueueScopes() []string
+	SetEnqueueScopes(scopes ...string)
+
+	// EnqueueAllScopes is a convenience function to apply the
+	// scope exclusion behavior to all scopes. If set, all scopes will be
+	// applied on enqueue.
+	EnqueueAllScopes() bool
+	SetEnqueueAllScopes(bool)
 }
 
 // JobType contains information about the type of a job, which queues
@@ -137,14 +146,14 @@ type JobTimeInfo struct {
 	End     time.Time `bson:"end,omitempty" json:"end,omitempty" yaml:"end,omitempty"`
 	// WaitUntil defers execution of a job until a particular time has elapsed.
 	// Support for this feature in Queue implementations is optional.
-	WaitUntil time.Time `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
+	WaitUntil time.Time `bson:"wait_until,omitempty" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
 	// DispatchBy is a deadline before which the job must run. Support for this
 	// feature in Queue implementations is optional. Queues that support this
 	// feature may remove the job if the deadline has passed.
-	DispatchBy time.Time `bson:"dispatch_by" json:"dispatch_by,omitempty" yaml:"dispatch_by,omitempty"`
+	DispatchBy time.Time `bson:"dispatch_by,omitempty" json:"dispatch_by,omitempty" yaml:"dispatch_by,omitempty"`
 	// MaxTime is the maximum time that the job is allowed to run. If the
 	// runtime exceeds this duration, the Queue should abort the job.
-	MaxTime time.Duration `bson:"max_time" json:"max_time,omitempty" yaml:"max_time,omitempty"`
+	MaxTime time.Duration `bson:"max_time,omitempty" json:"max_time,omitempty" yaml:"max_time,omitempty"`
 }
 
 // JobRetryInfo stores configuration and information for a job that can retry.

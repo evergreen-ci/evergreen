@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen"
@@ -53,7 +54,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Unmarshal the project configuration into a struct
 	project := &model.Project{}
-	pp, err := model.LoadProjectInto(projectConfig, "test", project)
+	ctx := context.Background()
+	opts := &model.GetProjectOpts{
+		Ref:          modelData.ProjectRef,
+		ReadFileFrom: model.ReadFromLocal,
+	}
+	pp, err := model.LoadProjectInto(ctx, projectConfig, opts, "", project)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}

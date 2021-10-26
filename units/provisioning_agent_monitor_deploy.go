@@ -62,7 +62,7 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	j.env = env
 	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentMonitorDeployJobName, j.HostID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(agentMonitorPutRetries),
@@ -76,12 +76,12 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	disabled, err := j.agentStartDisabled()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddRetryableError(err)
+		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
 		return
 	}
-	if disabled {
+	if flags.AgentStartDisabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
 			"host_id":  j.HostID,
@@ -142,8 +142,6 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}()
 
-	settings := j.env.Settings()
-
 	var alive bool
 	alive, err = j.checkAgentMonitor(ctx)
 	if err != nil {
@@ -161,17 +159,20 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.fetchClient(ctx, settings); err != nil {
+	settings := *j.env.Settings()
+	settings.ServiceFlags = *flags
+
+	if err = j.fetchClient(ctx, &settings); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
 
-	if err = j.runSetupScript(ctx, settings); err != nil {
+	if err = j.runSetupScript(ctx, &settings); err != nil {
 		j.AddError(err)
 		return
 	}
 
-	if err := j.startAgentMonitor(ctx, settings); err != nil {
+	if err := j.startAgentMonitor(ctx, &settings); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -338,17 +339,6 @@ func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 	}
 
 	return m
-}
-
-// agentStartDisabled checks if the agent (and consequently, the agent monitor)
-// should be deployed.
-func (j *agentMonitorDeployJob) agentStartDisabled() (bool, error) {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, errors.New("could not get service flags")
-	}
-
-	return flags.AgentStartDisabled, nil
 }
 
 // populateIfUnset populates the unset job fields.

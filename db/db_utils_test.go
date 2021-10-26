@@ -38,14 +38,7 @@ func TestDBUtils(t *testing.T) {
 			So(Insert(collection, in), ShouldBeNil)
 
 			out := &insertableStruct{}
-			err := FindOne(
-				collection,
-				bson.M{},
-				NoProjection,
-				NoSort,
-				NoHint,
-				out,
-			)
+			err := FindOneQ(collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, in)
 
@@ -120,14 +113,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 1)
 
 			out := &insertableStruct{}
-			err = FindOne(
-				collection,
-				bson.M{},
-				NoProjection,
-				NoSort,
-				NoHint,
-				out,
-			)
+			err = FindOneQ(collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, inTwo)
 
@@ -167,14 +153,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 1)
 
 			out := &insertableStruct{}
-			err = FindOne(
-				collection,
-				bson.M{},
-				NoProjection,
-				NoSort,
-				NoHint,
-				out,
-			)
+			err = FindOneQ(collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, inTwo)
 		})
@@ -221,18 +200,11 @@ func TestDBUtils(t *testing.T) {
 			// one and limit to one (meaning only the second struct should be
 			// returned)
 			out := []insertableStruct{}
-			err = FindAll(
-				collection,
-				bson.M{
-					"field_two": 1,
-				},
-				bson.M{
-					"field_three": 0,
-				},
-				[]string{"-field_one"},
-				1,
-				1,
-				NoHint,
+			err = FindAllQ(collection, Query(bson.M{"field_two": 1}).
+				Project(bson.M{"field_three": 0}).
+				Sort([]string{"-field_one"}).
+				Limit(1).
+				Skip(1),
 				&out,
 			)
 			So(err, ShouldBeNil)
@@ -277,16 +249,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := &insertableStruct{}
-			err = FindOne(
-				collection,
-				bson.M{
-					"field_one": "2",
-				},
-				NoProjection,
-				NoSort,
-				NoHint,
-				out,
-			)
+			err = FindOneQ(collection, Query(bson.M{"field_one": "2"}), out)
 			So(err, ShouldBeNil)
 			So(out.FieldTwo, ShouldEqual, 3)
 
@@ -333,18 +296,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := []insertableStruct{}
-			err = FindAll(
-				collection,
-				bson.M{
-					"field_two": 3,
-				},
-				NoProjection,
-				NoSort,
-				NoSkip,
-				NoLimit,
-				NoHint,
-				&out,
-			)
+			err = FindAllQ(collection, Query(bson.M{"field_two": 3}), &out)
 			So(err, ShouldBeNil)
 			So(len(out), ShouldEqual, 2)
 
@@ -373,14 +325,7 @@ func TestDBUtils(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				out := &insertableStruct{}
-				err = FindOne(
-					collection,
-					bson.M{},
-					NoProjection,
-					NoSort,
-					NoHint,
-					out,
-				)
+				err = FindOneQ(collection, Query(bson.M{}), out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 
@@ -410,14 +355,7 @@ func TestDBUtils(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				out := &insertableStruct{}
-				err = FindOne(
-					collection,
-					bson.M{},
-					NoProjection,
-					NoSort,
-					NoHint,
-					out,
-				)
+				err = FindOneQ(collection, Query(bson.M{}), out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 			})

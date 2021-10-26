@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -33,7 +34,10 @@ type AdminDataSuite struct {
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "Error clearing collections")
+	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "clearing collections")
+	defer func() {
+		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "clearing collections")
+	}()
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,

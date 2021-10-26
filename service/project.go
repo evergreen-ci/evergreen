@@ -72,7 +72,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 	id := gimlet.GetVars(r)["project_id"]
 
-	projRef, err := model.FindOneProjectRef(id)
+	projRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -89,20 +89,24 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	if projRef.UseRepoSettings {
 		projRef, err = model.FindMergedProjectRef(projRef.Id)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			uis.LoggedError(w, r, http.StatusNotFound, err)
 			return
 		}
 	}
 
 	// Replace ChildProject IDs of PatchTriggerAliases with the ChildProject's Identifier
+	idToIdentifier := map[string]string{}
 	for i, t := range projRef.PatchTriggerAliases {
-		var childProject *model.ProjectRef
-		childProject, err = model.FindOneProjectRef(t.ChildProject)
+		if identifier, ok := idToIdentifier[t.ChildProject]; ok {
+			projRef.PatchTriggerAliases[i].ChildProject = identifier
+			continue
+		}
+		identifier, err := model.GetIdentifierForProject(t.ChildProject)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			continue
 		}
-		if childProject == nil {
+		if identifier == "" {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound,
 				gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
@@ -110,7 +114,29 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 				})
 			continue
 		}
-		projRef.PatchTriggerAliases[i].ChildProject = childProject.Identifier
+		idToIdentifier[t.ChildProject] = identifier // store for future references
+		projRef.PatchTriggerAliases[i].ChildProject = identifier
+	}
+	for i, t := range projRef.Triggers {
+		if identifier, ok := idToIdentifier[t.Project]; ok {
+			projRef.Triggers[i].Project = identifier
+			continue
+		}
+		identifier, err := model.GetIdentifierForProject(t.Project)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			continue
+		}
+		if identifier == "" {
+			gimlet.WriteJSONResponse(w, http.StatusNotFound,
+				gimlet.ErrorResponse{
+					StatusCode: http.StatusNotFound,
+					Message:    fmt.Sprintf("child project '%s' of patch trigger alias cannot be found", t.Project),
+				})
+			continue
+		}
+		idToIdentifier[t.Project] = identifier // store for future references
+		projRef.Triggers[i].Project = identifier
 	}
 
 	var projVars *model.ProjectVars
@@ -129,13 +155,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	projVars = projVars.RedactPrivateVars()
 
-	projectAliases, err := model.FindAliasesForProject(projRef.Id)
+	projectAliases, err := model.FindAliasesForProjectFromDb(projRef.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if len(projectAliases) == 0 && projRef.UseRepoSettings {
-		projectAliases, err = model.FindAliasesForProject(projRef.RepoRefId)
+		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -161,12 +187,10 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var hook *model.GithubHook
-	if projRef.Owner != "" && projRef.Repo != "" {
-		hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+	hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Id, event.OwnerTypeProject)
 	if err != nil {
@@ -227,7 +251,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -284,17 +308,20 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
-		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription      `json:"subscriptions,omitempty"`
-		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition        `json:"triggers,omitempty"`
-		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases,omitempty"`
-		GithubTriggerAliases  []string                         `json:"github_trigger_aliases,omitempty"`
-		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache,omitempty"`
-		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
-		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds,omitempty"`
-		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_config"`
+		NotifyOnBuildFailure   bool                                `json:"notify_on_failure"`
+		ForceRepotrackerRun    bool                                `json:"force_repotracker_run"`
+		Subscriptions          []restModel.APISubscription         `json:"subscriptions,omitempty"`
+		DeleteSubscriptions    []string                            `json:"delete_subscriptions"`
+		Triggers               []model.TriggerDefinition           `json:"triggers,omitempty"`
+		PatchTriggerAliases    []patch.PatchTriggerDefinition      `json:"patch_trigger_aliases,omitempty"`
+		GithubTriggerAliases   []string                            `json:"github_trigger_aliases,omitempty"`
+		FilesIgnoredFromCache  []string                            `json:"files_ignored_from_cache,omitempty"`
+		DisabledStatsCache     bool                                `json:"disabled_stats_cache"`
+		PeriodicBuilds         []*model.PeriodicBuildDefinition    `json:"periodic_builds,omitempty"`
+		WorkstationConfig      restModel.APIWorkstationConfig      `json:"workstation_config"`
+		PerfEnabled            bool                                `json:"perf_enabled"`
+		BuildBaronSettings     restModel.APIBuildBaronSettings     `json:"build_baron_settings"`
+		TaskAnnotationSettings restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
 	}{}
 
 	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
@@ -316,7 +343,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if responseRef.Identifier != origProjectRef.Identifier {
-		conflictingRef, err := model.FindOneProjectRef(responseRef.Identifier)
+		conflictingRef, err := model.FindBranchProjectRef(responseRef.Identifier)
 		if err != nil {
 			http.Error(w, "error checking for conflicting project ref", http.StatusInternalServerError)
 			return
@@ -529,12 +556,31 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	i, err = responseRef.BuildBaronSettings.ToService()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API build baron config to service representation"))
+		return
+	}
+	buildbaronConfig, ok := i.(evergreen.BuildBaronSettings)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
+		return
+	}
+
+	i, err = responseRef.TaskAnnotationSettings.ToService()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API task annotations config to service representation"))
+		return
+	}
+	taskannotationsConfig, ok := i.(evergreen.AnnotationsSettings)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task annotations config but was actually '%T'", i))
+		return
+	}
+
 	catcher := grip.NewSimpleCatcher()
-	for i, t := range responseRef.Triggers {
-		catcher.Add(t.Validate(id))
-		if t.DefinitionID == "" {
-			responseRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range responseRef.Triggers {
+		catcher.Add(responseRef.Triggers[i].Validate(id))
 	}
 	for i := range responseRef.PatchTriggerAliases {
 		responseRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(responseRef.PatchTriggerAliases[i], id)
@@ -573,6 +619,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
+	projectRef.BuildBaronSettings = buildbaronConfig
+	projectRef.TaskAnnotationSettings = taskannotationsConfig
 	projectRef.PatchingDisabled = &responseRef.PatchingDisabled
 	projectRef.DispatchingDisabled = &responseRef.DispatchingDisabled
 	projectRef.RepotrackerDisabled = &responseRef.RepotrackerDisabled
@@ -583,6 +631,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
+	projectRef.PerfEnabled = &responseRef.PerfEnabled
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
 	}
@@ -709,7 +758,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origProjectAliases, _ := model.FindAliasesForProject(id)
+	origProjectAliases, _ := model.FindAliasesForProjectFromDb(id)
 	var projectAliases []model.ProjectAlias
 	projectAliases = append(projectAliases, responseRef.GitHubPRAliases...)
 	projectAliases = append(projectAliases, responseRef.GithubChecksAliases...)
@@ -729,7 +778,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	username := dbUser.DisplayName()
 
-	before := &model.ProjectSettingsEvent{
+	before := &model.ProjectSettings{
 		ProjectRef:         origProjectRef,
 		GitHubHooksEnabled: origGithubWebhookEnabled,
 		Vars:               origProjectVars,
@@ -737,9 +786,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions:      origSubscriptions,
 	}
 
-	currentAliases, _ := model.FindAliasesForProject(id)
+	currentAliases, _ := model.FindAliasesForProjectFromDb(id)
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
-	after := &model.ProjectSettingsEvent{
+	after := &model.ProjectSettings{
 		ProjectRef:         *projectRef,
 		GitHubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
@@ -785,9 +834,9 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
 
-	id := gimlet.GetVars(r)["project_id"]
+	identifier := gimlet.GetVars(r)["project_id"]
 
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -796,8 +845,29 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Project already exists", http.StatusBadRequest)
 		return
 	}
+	newProject := model.ProjectRef{Identifier: identifier}
 
-	newProject := model.ProjectRef{Identifier: id}
+	// the immutable ID may have optionally been passed in
+	projectWithId := struct {
+		Id string `json:"id"`
+	}{}
+
+	if err = utility.ReadJSON(util.NewRequestReader(r), &projectWithId); err != nil {
+		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
+		return
+	}
+	newProject.Id = projectWithId.Id
+	if newProject.Id != "" { // verify that this is a unique ID
+		conflictingRef, err := model.FindBranchProjectRef(newProject.Id)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error checking for conflicting project ref: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if conflictingRef != nil {
+			http.Error(w, "ID already being used as ID or identifier for another project", http.StatusBadRequest)
+			return
+		}
+	}
 
 	err = newProject.Add(dbUser)
 	if err != nil {
@@ -820,8 +890,8 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := dbUser.DisplayName()
-	if err = model.LogProjectAdded(id, username); err != nil {
-		grip.Infof("Could not log new project %s", id)
+	if err = model.LogProjectAdded(identifier, username); err != nil {
+		grip.Infof("Could not log new project %s", identifier)
 	}
 
 	allProjects, err := uis.filterViewableProjects(dbUser)
@@ -835,7 +905,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Available   bool
 		ProjectId   string
 		AllProjects []model.ProjectRef
-	}{true, id, allProjects}
+	}{true, identifier, allProjects}
 
 	gimlet.WriteJSON(w, data)
 }
@@ -862,7 +932,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(project)
+	projectRef, err := model.FindBranchProjectRef(project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -897,7 +967,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	// Validate the project exists
 	id := gimlet.GetVars(r)["project_id"]
-	projectRef, err := model.FindOneProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -926,7 +996,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepo(projectId, alias)
+	existingAliasDefinitions, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

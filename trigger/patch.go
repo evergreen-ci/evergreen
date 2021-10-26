@@ -167,21 +167,21 @@ func checkPatchStatus(p *patch.Patch) (bool, *patch.Patch, bool, error) {
 	isReady := false
 	childrenOrSiblings, parentPatch, err := p.GetPatchFamily()
 	if err != nil {
-		return isReady, nil, false, errors.Wrap(err, "error getting child or sibling patches")
+		return isReady, parentPatch, false, errors.Wrap(err, "error getting child or sibling patches")
 	}
 
 	// make sure the parent is done, if not, wait for the parent
 	if p.IsChild() {
 		if !evergreen.IsFinishedPatchStatus(parentPatch.Status) {
-			return isReady, nil, false, nil
+			return isReady, parentPatch, false, nil
 		}
 	}
 	childrenStatus, err := getChildrenOrSiblingsReadiness(childrenOrSiblings)
 	if err != nil {
-		return isReady, nil, false, errors.Wrap(err, "error getting child or sibling information")
+		return isReady, parentPatch, false, errors.Wrap(err, "error getting child or sibling information")
 	}
 	if !evergreen.IsFinishedPatchStatus(childrenStatus) {
-		return isReady, nil, false, nil
+		return isReady, parentPatch, false, nil
 	}
 	isReady = true
 
@@ -296,7 +296,6 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		Description:       t.patch.Description,
 		Object:            event.ObjectPatch,
 		Project:           projectName,
-		URL:               versionLink(t.uiConfig.Url, t.patch.Version, true),
 		PastTenseStatus:   t.data.Status,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
@@ -309,8 +308,24 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			return nil, errors.Wrapf(err, "failed to get githubContext for '%s'", t.patch.Id)
 		}
 		data.githubContext = githubContext
+		data.URL = versionLink(
+			versionLinkInput{
+				uiBase:    t.uiConfig.UIv2Url,
+				versionID: t.patch.Triggers.ParentPatch,
+				hasPatch:  false,
+				isChild:   true,
+			},
+		)
 	} else {
 		data.githubContext = "evergreen"
+		data.URL = versionLink(
+			versionLinkInput{
+				uiBase:    t.uiConfig.Url,
+				versionID: t.patch.Version,
+				hasPatch:  true,
+				isChild:   false,
+			},
+		)
 	}
 
 	slackColor := evergreenFailColor

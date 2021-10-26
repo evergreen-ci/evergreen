@@ -578,6 +578,28 @@ func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	return err
 }
 
+// SetTriggerAliases appends the names of invoked trigger aliases to the DB
+func (p *Patch) SetTriggerAliases() error {
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoAliasesKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.Aliases}},
+		},
+	)
+}
+
+// SetChildPatches appends the IDs of downstream patches to the db
+func (p *Patch) SetChildPatches() error {
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
+		},
+	)
+}
+
 // SetActivation sets the patch to the desired activation state without
 // modifying the activation status of the possibly corresponding version.
 func (p *Patch) SetActivation(activated bool) error {
@@ -860,6 +882,10 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		if err != nil {
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
+		if IsMailboxDiff(diff) {
+			newModulePatches = append(newModulePatches, modulePatch)
+			continue
+		}
 		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't convert diff to mbox format")
@@ -877,6 +903,7 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 				Summary:        modulePatch.PatchSet.Summary,
 			},
 		})
+
 	}
 
 	return newModulePatches, nil

@@ -4,6 +4,7 @@
       version {
         id
         author
+        order
         buildVariants(options: {}) {
           variant
           displayName
@@ -17,8 +18,11 @@
       rolledUpVersions {
         id
         activated
+        order
       }
     }
+    nextPageOrderNumber
+    prevPageOrderNumber
   }
   page2: mainlineCommits(
     options: { projectID: "evergreen", limit: 1, skipOrderNumber: 5 }
@@ -27,6 +31,7 @@
       version {
         id
         author
+        order
         buildVariants(options: {}) {
           variant
           displayName
@@ -40,7 +45,37 @@
       rolledUpVersions {
         id
         activated
+        order
       }
     }
+  nextPageOrderNumber
+  prevPageOrderNumber
+  }
+    prevPage: mainlineCommits(
+    options: { projectID: "evergreen", limit: 1, skipOrderNumber: 6 }
+  ) {
+    versions {
+      version {
+        id
+        author
+        order
+        buildVariants(options: {}) {
+          variant
+          displayName
+          tasks {
+            id
+            displayName
+            status
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        activated
+        order
+      }
+    }
+  nextPageOrderNumber
+  prevPageOrderNumber
   }
 }

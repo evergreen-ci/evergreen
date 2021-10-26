@@ -1022,8 +1022,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:   aws.String("public_dns_name_2"),
-						PublicIpAddress: aws.String("2.2.2.2"),
+						PublicDnsName:    aws.String("public_dns_name_2"),
+						PrivateIpAddress: aws.String("2.2.2.2"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1045,8 +1045,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:   aws.String("public_dns_name_1"),
-						PublicIpAddress: aws.String("1.1.1.1"),
+						PublicDnsName:    aws.String("public_dns_name_1"),
+						PrivateIpAddress: aws.String("1.1.1.1"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1078,8 +1078,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:   aws.String("public_dns_name_3"),
-						PublicIpAddress: aws.String("3.3.3.3"),
+						PublicDnsName:    aws.String("public_dns_name_3"),
+						PrivateIpAddress: aws.String("3.3.3.3"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1169,8 +1169,8 @@ func (s *EC2Suite) TestGetInstanceStatusesTerminate() {
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName:   aws.String("public_dns_name_2"),
-						PublicIpAddress: aws.String("2.2.2.2"),
+						PublicDnsName:    aws.String("public_dns_name_2"),
+						PrivateIpAddress: aws.String("2.2.2.2"),
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
 						},
@@ -1256,7 +1256,7 @@ func (s *EC2Suite) TestCacheHostData() {
 		},
 	}
 	instance.PublicDnsName = aws.String("public_dns_name")
-	instance.PublicIpAddress = aws.String("12.34.56.78")
+	instance.PrivateIpAddress = aws.String("12.34.56.78")
 
 	s.NoError(cacheHostData(s.ctx, s.h, instance, ec2m.client))
 

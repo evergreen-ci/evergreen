@@ -49,6 +49,7 @@ type Dependency struct {
 	MetStatus      MetStatus      `json:"metStatus"`
 	RequiredStatus RequiredStatus `json:"requiredStatus"`
 	BuildVariant   string         `json:"buildVariant"`
+	TaskID         string         `json:"taskId"`
 	UILink         string         `json:"uiLink"`
 }
 
@@ -105,6 +106,7 @@ type MainlineCommitVersion struct {
 
 type MainlineCommits struct {
 	NextPageOrderNumber *int                     `json:"nextPageOrderNumber"`
+	PrevPageOrderNumber *int                     `json:"prevPageOrderNumber"`
 	Versions            []*MainlineCommitVersion `json:"versions"`
 }
 
@@ -112,6 +114,7 @@ type MainlineCommitsOptions struct {
 	ProjectID       string `json:"projectID"`
 	Limit           *int   `json:"limit"`
 	SkipOrderNumber *int   `json:"skipOrderNumber"`
+	ShouldCollapse  *bool  `json:"shouldCollapse"`
 }
 
 type Manifest struct {
@@ -125,9 +128,10 @@ type Manifest struct {
 }
 
 type PatchConfigure struct {
-	Description   string                `json:"description"`
-	VariantsTasks []*VariantTasks       `json:"variantsTasks"`
-	Parameters    []*model.APIParameter `json:"parameters"`
+	Description         string                `json:"description"`
+	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
+	Parameters          []*model.APIParameter `json:"parameters"`
+	PatchTriggerAliases []string              `json:"patchTriggerAliases"`
 }
 
 type PatchDuration struct {
@@ -156,11 +160,6 @@ type PatchTime struct {
 	SubmittedAt string  `json:"submittedAt"`
 }
 
-type PatchTriggerAlias struct {
-	Alias        string `json:"alias"`
-	ChildProject string `json:"childProject"`
-}
-
 type Patches struct {
 	Patches            []*model.APIPatch `json:"patches"`
 	FilteredPatchCount int               `json:"filteredPatchCount"`
@@ -183,13 +182,6 @@ type ProjectBuildVariant struct {
 type PublicKeyInput struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`
-}
-
-type RecentTaskLogs struct {
-	EventLogs  []*model.TaskAPIEventLogEntry `json:"eventLogs"`
-	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
-	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
-	AgentLogs  []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type SortOrder struct {
@@ -225,14 +217,29 @@ type SpawnVolumeInput struct {
 	Host             *string    `json:"host"`
 }
 
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
+type Subscriber struct {
+	GithubPRSubscriber    *model.APIGithubPRSubscriber    `json:"githubPRSubscriber"`
+	GithubCheckSubscriber *model.APIGithubCheckSubscriber `json:"githubCheckSubscriber"`
+	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber"`
+	JiraIssueSubscriber   *model.APIJIRAIssueSubscriber   `json:"jiraIssueSubscriber"`
+	JiraCommentSubscriber *string                         `json:"jiraCommentSubscriber"`
+	EmailSubscriber       *string                         `json:"emailSubscriber"`
+	SlackSubscriber       *string                         `json:"slackSubscriber"`
 }
 
 type TaskFiles struct {
 	FileCount    int             `json:"fileCount"`
 	GroupedFiles []*GroupedFiles `json:"groupedFiles"`
+}
+
+type TaskLogs struct {
+	TaskID        string                        `json:"taskId"`
+	Execution     int                           `json:"execution"`
+	DefaultLogger string                        `json:"defaultLogger"`
+	EventLogs     []*model.TaskAPIEventLogEntry `json:"eventLogs"`
+	TaskLogs      []*apimodels.LogMessage       `json:"taskLogs"`
+	SystemLogs    []*apimodels.LogMessage       `json:"systemLogs"`
+	AgentLogs     []*apimodels.LogMessage       `json:"agentLogs"`
 }
 
 type TaskQueueDistro struct {

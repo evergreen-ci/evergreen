@@ -188,7 +188,7 @@ func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Proje
 		grip.Error(err)
 	}
 	proj := &serviceModel.Project{}
-	_, err = serviceModel.LoadProjectInto(data, "", proj)
+	_, err = serviceModel.LoadProjectInto(ctx, data, nil, "", proj)
 	return proj, err
 }
 
@@ -390,6 +390,11 @@ func (c *Mock) SetHasCedarResults(ctx context.Context, td TaskData, failed bool)
 	return nil
 }
 
+// DisableHost signals to the app server that the host should be disabled.
+func (c *Mock) DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error {
+	return nil
+}
+
 // SendFiles attaches task files.
 func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifact.File) error {
 	c.mu.Lock()
@@ -401,7 +406,7 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
-func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error {
+func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	c.DownstreamParams = downstreamParams
 	return nil
 }

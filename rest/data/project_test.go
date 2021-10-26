@@ -33,8 +33,8 @@ const (
 	projEventCount = 10
 )
 
-func getMockProjectSettings() model.ProjectSettingsEvent {
-	return model.ProjectSettingsEvent{
+func getMockProjectSettings() model.ProjectSettings {
+	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
 			Enabled: utility.TruePtr(),
@@ -348,7 +348,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	s.NotNil(projRef)
 }
 
-func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
+func (s *ProjectConnectorGetSuite) TestGetProjectSettings() {
 	projRef := &model.ProjectRef{
 		Owner:   "admin",
 		Enabled: utility.TruePtr(),
@@ -357,12 +357,12 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEvent() {
 		Admins:  []string{},
 		Repo:    "SomeRepo",
 	}
-	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
+	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 }
 
-func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
+func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &model.ProjectRef{
 		Owner:   "admin",
 		Enabled: utility.TruePtr(),
@@ -370,9 +370,10 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsEventNoRepo() {
 		Id:      projectId,
 		Admins:  []string{},
 	}
-	projectSettingsEvent, err := s.ctx.GetProjectSettingsEvent(projRef)
-	s.NotNil(err)
-	s.Nil(projectSettingsEvent)
+	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
+	s.Nil(err)
+	s.NotNil(projectSettingsEvent)
+	s.False(projectSettingsEvent.GitHubHooksEnabled)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
@@ -456,7 +457,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	resp, err := dc.UpdateProjectVarsByValue("1", "11", "user", true)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, "a", resp[projectId])
+	assert.Equal(t, []string{"a"}, resp[projectId])
 
 	res, err := dc.FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)
@@ -466,7 +467,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	resp, err = dc.UpdateProjectVarsByValue("1", "11", username, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, "a", resp[projectId])
+	assert.Equal(t, []string{"a"}, resp[projectId])
 
 	res, err = dc.FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)

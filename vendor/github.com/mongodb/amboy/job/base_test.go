@@ -41,6 +41,7 @@ func (s *BaseCheckSuite) TestAddErrorWithNilObjectDoesNotChangeErrorState() {
 		s.base.AddError(nil)
 		s.NoError(s.base.Error())
 		s.Len(s.base.status.Errors, 0)
+		s.Zero(s.base.status.ErrorCount)
 		s.False(s.base.HasErrors())
 	}
 }
@@ -60,6 +61,7 @@ func (s *BaseCheckSuite) TestAddErrorsPersistsErrorsInJob() {
 		s.base.AddError(errors.New("foo"))
 		s.Error(s.base.Error())
 		s.Len(s.base.status.Errors, i)
+		s.Equal(i, s.base.status.ErrorCount)
 		s.True(s.base.HasErrors())
 		s.Len(strings.Split(s.base.Error().Error(), "\n"), i)
 	}
@@ -195,4 +197,32 @@ func (s *BaseCheckSuite) TestUpdateRetryInfoSetsNonzeroFields() {
 		CurrentAttempt: attempt,
 		MaxAttempts:    maxAttempt,
 	}, s.base.RetryInfo())
+}
+
+func (s *BaseCheckSuite) TestSetEnqueueAllScopes() {
+	scopes := []string{"foo", "bar"}
+	s.base.SetScopes(scopes)
+	s.base.SetEnqueueAllScopes(true)
+	s.True(s.base.EnqueueAllScopes())
+	s.Equal(scopes, s.base.EnqueueScopes())
+
+	updatedScopes := []string{"bat", "baz"}
+	s.base.SetScopes(updatedScopes)
+	s.Equal(updatedScopes, s.base.EnqueueScopes())
+}
+
+func (s *BaseCheckSuite) TestSetEnqueueScopes() {
+	scopes := []string{"foo", "bar", "baz"}
+	s.base.SetScopes(scopes)
+	s.base.SetEnqueueScopes(scopes[:2]...)
+	s.False(s.base.EnqueueAllScopes())
+	s.Equal(scopes[:2], s.base.EnqueueScopes())
+
+	s.base.SetEnqueueScopes(scopes[0], "quux")
+	s.False(s.base.EnqueueAllScopes())
+	s.Equal(scopes[:1], s.base.EnqueueScopes())
+
+	s.base.SetEnqueueScopes(scopes...)
+	s.False(s.base.EnqueueAllScopes())
+	s.Equal(scopes, s.base.EnqueueScopes())
 }

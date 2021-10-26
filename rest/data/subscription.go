@@ -17,7 +17,7 @@ import (
 
 type DBSubscriptionConnector struct{}
 
-func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription) error {
+func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
 	for _, subscription := range subscriptions {
 		subscriptionInterface, err := subscription.ToService()
@@ -33,6 +33,10 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 				StatusCode: http.StatusInternalServerError,
 				Message:    "Error parsing subscription interface",
 			}
+		}
+		if isProjectOwner {
+			dbSubscription.OwnerType = event.OwnerTypeProject
+			dbSubscription.Owner = owner
 		}
 
 		if !trigger.ValidateTrigger(dbSubscription.ResourceType, dbSubscription.Trigger) {
@@ -218,7 +222,7 @@ func (mc *MockSubscriptionConnector) GetSubscriptions(owner string, ownerType ev
 	return mc.MockSubscriptions, nil
 }
 
-func (mc *MockSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription) error {
+func (mc *MockSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	for _, sub := range subscriptions {
 		mc.MockSubscriptions = append(mc.MockSubscriptions, sub)
 	}

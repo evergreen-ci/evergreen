@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"syscall"
@@ -155,7 +156,7 @@ func TrackProcess(taskId string, pid int, logger grip.Journaler) {
 // cleanup() has a windows-specific implementation which finds the job object associated with the
 // given task key, and if it exists, terminates it. This will guarantee that any shell processes
 // started throughout the task run are destroyed, as long as they were captured in trackProcess.
-func cleanup(key, workingDir string, logger grip.Journaler) error {
+func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
 	job, err := processMapping.getJob(key)
 	if err != nil {
 		return nil

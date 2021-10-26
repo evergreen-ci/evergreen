@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -634,7 +635,8 @@ tasks:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(validYml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -667,7 +669,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(nonexistentTaskYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -699,7 +701,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(duplicateTaskYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "execution task execTask3 is listed in more than 1 display task")
@@ -725,7 +727,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(conflictYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "display task execTask1 cannot have the same name as an execution task")
@@ -755,7 +757,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(wildcardYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -789,7 +791,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(tagYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
@@ -899,7 +901,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(validYml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -932,7 +935,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(wrongTaskYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
@@ -968,7 +971,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(orderedYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	for i, t := range proj.TaskGroups[0].Tasks {
@@ -1002,7 +1005,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto([]byte(tagYml), "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 2)
@@ -1039,7 +1042,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(validYml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1075,7 +1079,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(validYml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1111,7 +1116,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(validYml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1146,7 +1152,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(validYml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1189,7 +1196,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1240,7 +1248,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1284,7 +1293,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
 	assert.Len(t, proj.Tasks, 2)
@@ -1330,7 +1340,8 @@ buildvariants:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
 	assert.Len(t, proj.BuildVariants, 3)
@@ -1365,7 +1376,8 @@ tasks:
 `
 
 	proj := &Project{}
-	_, err := LoadProjectInto([]byte(yml), "id", proj)
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Equal("something", proj.Loggers.Agent[0].Type)

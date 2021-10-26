@@ -27,6 +27,65 @@
       }
     },
     {
+      "query_file": "create-project.graphql",
+      "result": {
+        "data": {
+          "createProject": {
+            "id": "grumpyCat",
+            "identifier": "catVideos",
+            "repo": "catGenerator"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "copy-project.graphql",
+      "result": {
+        "data": {
+          "copyProject": {
+            "id": "newAndImproved",
+            "identifier": "spruce",
+            "owner": "evergreen-ci",
+            "enabled": false
+          }
+        }
+      }
+    },
+    {
+      "query_file": "copy-project-dup-identifier.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot reuse 'logkeeper' for project",
+            "path": [
+              "copyProject"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "copy-project-dup-id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot reuse 'keeperOfLogs' for project",
+            "path": [
+              "copyProject"
+            ],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "patches-default-params.graphql",
       "result": {
         "data": {
@@ -97,7 +156,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error finding project by id not a real project: project ref 'not a real project' does not exist",
+            "message": "Error finding project by id not a real project: 404 (Not Found): project with id 'not a real project' not found",
             "path": ["project"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"

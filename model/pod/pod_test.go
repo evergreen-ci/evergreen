@@ -26,13 +26,21 @@ func TestInsertAndFindOneByID(t *testing.T) {
 		},
 		"InsertSucceedsAndIsFoundByID": func(t *testing.T) {
 			p := Pod{
-				ID:     "id",
-				Secret: "secret",
+				ID: "id",
+				Secret: Secret{
+					Name:   "name",
+					Value:  "value",
+					Exists: utility.FalsePtr(),
+					Owned:  utility.TruePtr(),
+				},
 				Status: StatusRunning,
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:    "alpine",
-					MemoryMB: 128,
-					CPU:      128,
+					Image:          "alpine",
+					MemoryMB:       128,
+					CPU:            128,
+					OS:             OSWindows,
+					Arch:           ArchAMD64,
+					WindowsVersion: WindowsVersionServer2019,
 				},
 				TimeInfo: TimeInfo{
 					Initializing:     utility.BSONTime(time.Now()),

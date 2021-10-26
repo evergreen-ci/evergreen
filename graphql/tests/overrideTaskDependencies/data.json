@@ -1,0 +1,72 @@
+{
+  "tasks": [
+    {
+      "_id": "t1",
+      "display_name": "cq merge",
+      "branch": "p1",
+      "status": "undispatched",
+      "build_id": "b1",
+      "r": "merge_test",
+      "commit_queue_merge": true,
+      "activated": true,
+      "version": "123456789012345678901234",
+        "depends_on": [
+        {
+          "_id": "dep1",
+          "status": "success",
+          "unattainable": true
+        }
+      ]
+    },
+    {
+        "_id": "dep1",
+        "status": "failed",
+        "display_name": "a dep",
+        "build_id": "b1",
+        "version": "123456789012345678901234"
+    }
+  ],
+  "builds": [
+    {
+      "_id": "b1",
+      "status": "started",
+      "build_variant": "commit-queue",
+      "display_name": "~ Commit Queue",
+      "tasks": [{ "id": "t1" }]
+    }
+  ],
+  "versions": [
+    {
+      "_id": "123456789012345678901234"
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "123456789012345678901234"
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "p1",
+      "identifier": "p1",
+      "commit_queue": {
+        "enabled": true
+      }
+    }
+  ],
+  "commit_queue": [
+    {
+      "_id": "p1",
+      "processing": true,
+      "queue": [
+        {
+          "version": "123456789012345678901234",
+          "issue": "123456789012345678901234",
+          "source": "diff"
+        }
+      ]
+    }
+  ]
+}

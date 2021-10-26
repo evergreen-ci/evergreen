@@ -199,6 +199,26 @@ mciModule.controller(
       return !isNaN(Number(t)) && Number(t) >= 0;
     };
 
+    $scope.shouldDisableWebhook = function () {
+      return $scope.settingsFormData.build_baron_settings && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
+          || $scope.settingsFormData.build_baron_settings.ticket_create_project
+          || $scope.ticket_search_project);
+    };
+
+    $scope.shouldDisableBB = function () {
+      return $scope.settingsFormData.task_annotation_settings && ($scope.settingsFormData.task_annotation_settings.web_hook.endpoint
+          || $scope.settingsFormData.task_annotation_settings.web_hook.secret);
+    };
+
+    $scope.bbConfigIsValid = function () {
+      if ($scope.settingsFormData.build_baron_settings.ticket_create_project){
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
+      }
+      else {
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
+      }
+    };
+
     $scope.findProject = function (identifier) {
       return _.find($scope.trackedProjects, function (project) {
         return project.identifier == identifier;
@@ -222,6 +242,37 @@ mciModule.controller(
           $scope.modalOpen = false;
         });
       }
+    };
+
+    // addJiraField adds a jira field to the task annotation settings
+    $scope.addJiraField = function () {
+      if(!$scope.settingsFormData.task_annotation_settings.jira_custom_fields){
+          $scope.settingsFormData.task_annotation_settings.jira_custom_fields = []
+      }
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.push({"field" : $scope.jira_field, "display_text" : $scope.jira_display_text});
+      $scope.jira_display_text = "";
+      $scope.jira_field = "";
+    };
+
+    // removeJiraField removes a jira field to the task annotation settings located at index
+    $scope.removeJiraField = function (index) {
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.splice(index, 1);
+      $scope.isDirty = true;
+    };
+
+    // addTicketSearchProject adds an ticket search project name to the build baron settings
+    $scope.addTicketSearchProject = function () {
+      if(!$scope.settingsFormData.build_baron_settings.ticket_search_projects){
+          $scope.settingsFormData.build_baron_settings.ticket_search_projects = []
+      }
+      $scope.settingsFormData.build_baron_settings.ticket_search_projects.push($scope.ticket_search_project);
+      $scope.ticket_search_project = "";
+    };
+
+    // removeTicketSearchProject removes the ticket search project name from the build baron settings located at index
+    $scope.removeTicketSearchProject = function (index) {
+      $scope.settingsFormData.build_baron_settings.ticket_search_projects.splice(index, 1);
+      $scope.isDirty = true;
     };
 
     // addAdmin adds an admin name to the settingsFormData's list of admins
@@ -418,7 +469,7 @@ mciModule.controller(
             batch_time: parseInt($scope.projectRef.batch_time),
             deactivate_previous: $scope.projectRef.deactivate_previous,
             relative_url: $scope.projectRef.relative_url,
-            branch_name: $scope.projectRef.branch_name || "master",
+            branch_name: $scope.projectRef.branch_name || "main",
             owner_name: $scope.projectRef.owner_name,
             repo_name: $scope.projectRef.repo_name,
             enabled: $scope.projectRef.enabled,
@@ -448,8 +499,10 @@ mciModule.controller(
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
             use_repo_settings: $scope.projectRef.use_repo_settings,
+            build_baron_settings: data.ProjectRef.build_baron_settings || {},
+            task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
+            perf_enabled: data.ProjectRef.perf_enabled || false,
           };
-
           // Divide aliases into categories
           $scope.settingsFormData.github_aliases = $scope.aliases.filter(
             function (d) {
@@ -597,6 +650,10 @@ mciModule.controller(
         $scope.addAdmin();
       }
 
+      if ($scope.ticket_search_project) {
+        $scope.addTicketSearchProject();
+      }
+
       if ($scope.git_tag_user_name) {
         $scope.addGitTagUser();
       }
@@ -618,7 +675,8 @@ mciModule.controller(
             $scope.isDirty = false;
           },
           function (resp) {
-            $scope.saveMessage = "Couldn't save project: " + resp.data.error;
+            const message = (resp.data.error ? resp.data.error : resp.data);
+            $scope.saveMessage = "Couldn't save project: " + message;
           }
         );
     };
@@ -1378,16 +1436,34 @@ mciModule.controller(
 mciModule.directive("adminNewProject", function () {
   return {
     restrict: "E",
-    template: '<div class="row">' +
-      '<div class="col-lg-12">' +
-      "Enter project name " +
-      '<form style="display: inline" ng-submit="addProject()">' +
-      '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
-      ' <input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
-      " Duplicate current project" +
-      "</form>" +
-      '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-click="addProject()">Create Project</button>' +
-      "</div>" +
-      "</div>",
+    template: '' +
+      '<div class="row">' +
+        '<div class="col-lg-12">' +
+         "Enter project identifier " +
+          '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
+        "</div>" +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="col-lg-12">' +
+          "Optionally enter immutable project ID " +
+          '<div class="muted small">' +
+            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason. Cannot be changed!)" +
+          '</div>' +
+          '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
+        '</div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="col-lg-12">' +
+        '<form style="display: inline">' +
+          '<input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
+          " Duplicate current project " +
+        "</form>" +
+        '</div>' +
+      '</div>' +
+      '<div class="row">'  +
+        '<div class="col-lg-12">' +
+          '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-disabled="!newProject.identifier" ng-click="addProject()">Create Project</button>' +
+        '</div>' +
+      '</div>',
   };
 });

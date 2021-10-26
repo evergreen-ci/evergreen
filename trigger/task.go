@@ -25,6 +25,7 @@ import (
 )
 
 func init() {
+	registry.registerEventHandler(event.ResourceTypeTask, event.TaskStarted, makeTaskTriggers)
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskFinished, makeTaskTriggers)
 	registry.registerEventHandler(event.ResourceTypeTask, event.TaskBlocked, makeTaskTriggers)
 }
@@ -50,6 +51,7 @@ func makeTaskTriggers() eventHandler {
 		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
 		event.TriggerRegression:                  t.taskRegression,
 		event.TriggerTaskFirstFailureInVersion:   t.taskFirstFailureInVersion,
+		event.TriggerTaskStarted:                 t.taskStarted,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
@@ -253,7 +255,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	}
 	hasPatch := evergreen.IsPatchRequester(buildDoc.Requester)
 
-	projectRef, err := model.FindOneProjectRef(t.task.Project)
+	projectRef, err := model.FindMergedProjectRef(t.task.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch project ref while building email payload")
 	}
@@ -293,6 +295,8 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	} else if data.PastTenseStatus == evergreen.TaskSucceeded {
 		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
+	} else if data.PastTenseStatus == evergreen.TaskStarted {
+		slackColor = evergreenRunningColor
 	}
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
@@ -310,7 +314,14 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 				},
 				{
 					Title: "Version",
-					Value: fmt.Sprintf("<%s|%s>", versionLink(t.uiConfig.Url, t.task.Version, hasPatch), t.task.Version),
+					Value: fmt.Sprintf("<%s|%s>", versionLink(
+						versionLinkInput{
+							uiBase:    t.uiConfig.Url,
+							versionID: t.task.Version,
+							hasPatch:  hasPatch,
+							isChild:   false,
+						},
+					), t.task.Version),
 				},
 				{
 					Title: "Duration",
@@ -334,11 +345,11 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 		// If task is display, we skip ticket creation if all execution task failures are only 'stranded'
 		shouldSkipTicket := false
 		if t.task.DisplayOnly {
-			execTasks, err := task.Find(task.ByIds(t.task.ExecutionTasks).WithFields(task.DetailsKey))
-			if err != nil {
-				return nil, errors.Wrapf(err, "error getting execution tasks")
-			}
-			for _, executionTask := range execTasks {
+			for _, exec := range t.task.ExecutionTasks {
+				executionTask, err := task.FindByIdExecution(exec, utility.ToIntPtr(t.task.Execution))
+				if err != nil {
+					return nil, errors.Wrapf(err, "error getting execution task")
+				}
 				if executionTask.Details.Status == evergreen.TaskFailed {
 					if executionTask.Details.Description == evergreen.TaskDescriptionStranded {
 						shouldSkipTicket = true
@@ -461,6 +472,10 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
+	if t.task.Aborted {
+		return nil, nil
+	}
+
 	return t.generate(sub, "", "")
 }
 
@@ -470,6 +485,18 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 	}
 
 	if t.data.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
+
+	return t.generate(sub, "", "")
+}
+
+func (t *taskTriggers) taskStarted(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.IsPartOfDisplay() {
+		return nil, nil
+	}
+
+	if t.data.Status != evergreen.TaskStarted {
 		return nil, nil
 	}
 
@@ -756,7 +783,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		return false, nil
 	}
 
-	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, currentTask.Id)
+	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, currentTask.Id)
 	if err != nil {
 		return false, errors.Wrap(err, "can't find alerts for task test")
 	}
@@ -770,7 +797,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		return true, nil
 	}
 
-	oldTestResult, ok := t.oldTestResults[test.TestFile]
+	oldTestResult, ok := t.oldTestResults[test.GetDisplayTestName()]
 	// a new test in an existing task is defined as a regression
 	if !ok {
 		return true, nil
@@ -778,7 +805,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 
 	if isTestStatusRegression(oldTestResult.Status, test.Status) {
 		// try to find a stepback alert
-		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, previousTask.RevisionOrderNumber)
+		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, previousTask.RevisionOrderNumber)
 		if err != nil {
 			return false, errors.Wrap(err, "can't get alert for stepback")
 		}
@@ -787,7 +814,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 			return true, nil
 		}
 	} else {
-		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project)
+		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project)
 		if err != nil {
 			return false, errors.Wrap(err, "can't get most recent alert")
 		}
@@ -837,7 +864,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		if err = previousCompleteTask.PopulateTestResults(); err != nil {
 			return nil, errors.Wrapf(err, "populating test results for previous task '%s'", previousCompleteTask.Id)
 		}
-		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask.LocalTestResults)
+		t.oldTestResults = mapTestResultsByTestName(previousCompleteTask.LocalTestResults)
 	}
 
 	testsToAlert := []task.TestResult{}
@@ -848,7 +875,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		}
 		hasFailingTest = true
 		var match bool
-		match, err = testMatchesRegex(test.TestFile, sub)
+		match, err = testMatchesRegex(test.GetDisplayTestName(), sub)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
@@ -872,7 +899,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.GetDisplayTestName(), t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}
@@ -887,7 +914,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 	testNames := ""
 	for i, test := range testsToAlert {
-		testNames += test.TestFile
+		testNames += test.GetDisplayTestName()
 		if i != len(testsToAlert)-1 {
 			testNames += ", "
 		}
@@ -937,12 +964,12 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		return nil, errors.New("could not find version while building jira task payload")
 	}
 
-	projectRef, err := model.FindOneProjectRef(t.Project)
+	projectRef, err := model.FindMergedProjectRef(t.Project)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
+		return nil, errors.Wrap(err, "error fetching project ref while building jira task payload")
 	}
 	if projectRef == nil {
-		return nil, errors.New("could not find project ref while building jira task payload")
+		return nil, errors.Errorf("project ref '%s' not found", t.Project)
 	}
 
 	data := jiraTemplateData{
@@ -976,20 +1003,20 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	return builder.build()
 }
 
-// mapTestResultsByTestFile creates map of test file to TestResult struct. If
-// multiple tests of the same name exist, this function will return a
-// failing test if one existed, otherwise it may return any test with
-// the same name
-func mapTestResultsByTestFile(results []task.TestResult) map[string]*task.TestResult {
+// mapTestResultsByTestName creates map of display test name to TestResult
+// struct. If multiple tests of the same name exist, this function will return
+// a failing test if one existed, otherwise it may return any test with the
+// same name.
+func mapTestResultsByTestName(results []task.TestResult) map[string]*task.TestResult {
 	m := map[string]*task.TestResult{}
 
 	for i, result := range results {
-		if testResult, ok := m[result.TestFile]; ok {
+		if testResult, ok := m[result.GetDisplayTestName()]; ok {
 			if !isTestStatusRegression(testResult.Status, result.Status) {
 				continue
 			}
 		}
-		m[result.TestFile] = &results[i]
+		m[result.GetDisplayTestName()] = &results[i]
 	}
 
 	return m

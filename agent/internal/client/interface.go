@@ -64,6 +64,9 @@ type Communicator interface {
 	// task and sets CedarResultsFailed if there are failed results.
 	SetHasCedarResults(context.Context, TaskData, bool) error
 
+	// DisableHost signals to the app server that the host should be disabled.
+	DisableHost(context.Context, string, apimodels.DisableInfo) error
+
 	// GetAgentSetupData populates an agent with the necessary data, including
 	// secrets.
 	GetAgentSetupData(context.Context) (*apimodels.AgentSetupData, error)
@@ -111,7 +114,7 @@ type Communicator interface {
 	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
 	GetAdditionalPatches(ctx context.Context, patchId string, td TaskData) ([]string, error)
 
-	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskId string) error
+	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 }
 
 type LoggerMetadata struct {

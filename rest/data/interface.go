@@ -98,7 +98,7 @@ type Connector interface {
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
-	UpdateProjectVarsByValue(string, string, string, bool) (map[string]string, error)
+	UpdateProjectVarsByValue(string, string, string, bool) (map[string][]string, error)
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
@@ -107,6 +107,10 @@ type Connector interface {
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
+	// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
+	VerifyUniqueProject(string) error
+	// CopyProject copies the passed in project with the given project identifier, and returns the new project.
+	CopyProject(context.Context, CopyProjectOpts) (*restModel.APIProjectRef, error)
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
 	UpdateRepo(*model.RepoRef) error
@@ -182,8 +186,8 @@ type Connector interface {
 	// GetRunningHosts gets paginated running hosts and applies any filters
 	GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error)
 
-	// Find a host by ID and queries for full running task
-	GetHostByIdWithTask(hostID string) (*host.Host, error)
+	// Find a host by ID or Tag and queries for full running task
+	GetHostByIdOrTagWithTask(hostID string) (*host.Host, error)
 
 	// GenerateHostProvisioningScript generates and returns the script to
 	// provision the host given by host ID.
@@ -236,6 +240,8 @@ type Connector interface {
 	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
+	// FindPatchById fetches the patch corresponding to the input patch ID.
+	GetChildPatchIds(string) ([]string, error)
 	//FindPatchesByIds fetches an array of patches that corresponding to the input patch IDs
 	FindPatchesByIds([]string) ([]restModel.APIPatch, error)
 	// GetPatchRawPatches fetches the raw patches for a patch
@@ -295,12 +301,20 @@ type Connector interface {
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
 
+	// DisableHost disables the host, notifies it's been disabled,
+	// and clears and resets its running task.
+	DisableHost(context.Context, evergreen.Environment, *host.Host, string) error
+
 	CheckHostSecret(string, *http.Request) (int, error)
 
 	// CreatePod creates a new pod and returns the result of creating the pod.
 	CreatePod(restModel.APICreatePod) (*restModel.APICreatePodResponse, error)
 	// FindPodByID finds a pod by the given ID.
 	FindPodByID(id string) (*restModel.APIPod, error)
+	// FindPodByExternalID finds a pod by the given external identifier.
+	FindPodByExternalID(id string) (*restModel.APIPod, error)
+	// UpdatePodStatus updates a pod's status by ID.
+	UpdatePodStatus(id string, current, updated restModel.APIPodStatus) error
 	// CheckPodSecret checks that the ID and secret match the server's
 	// stored credentials for the pod.
 	CheckPodSecret(id, secret string) error
@@ -312,6 +326,10 @@ type Connector interface {
 	CopyProjectAliases(string, string) error
 	// UpdateProjectAliases upserts/deletes aliases for the given project
 	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
+	// UpdateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
+	// upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
+	// considers the aliases that are relevant for the section). Returns if any aliases have been modified.
+	UpdateAliasesForSection(string, []restModel.APIProjectAlias, []model.ProjectAlias, model.ProjectPageSection) (bool, error)
 	// HasMatchingGitTagAliasAndRemotePath returns true if the project has aliases defined that match the given tag, and
 	// returns the remote path if applicable
 	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
@@ -328,8 +346,10 @@ type Connector interface {
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
 	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
-	// SaveSubscriptions saves a set of notification subscriptions
-	SaveSubscriptions(string, []restModel.APISubscription) error
+	// SaveSubscriptions, given an owner, a list of current subscriptions and an isProject boolean and
+	// upserts the given set of API subscriptions (if the owner is a project type, verify that all current subscriptions have
+	// the right owner and owner type).
+	SaveSubscriptions(string, []restModel.APISubscription, bool) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
 	DeleteSubscriptions(string, []string) error
@@ -375,8 +395,11 @@ type Connector interface {
 	// GetDockerStatus returns the status of the given docker container
 	GetDockerStatus(context.Context, string, *host.Host, *evergreen.Settings) (*cloud.ContainerStatus, error)
 
-	//GetProjectSettingsEvent returns the ProjectSettingsEvents of the given identifier and ProjectRef
-	GetProjectSettingsEvent(p *model.ProjectRef) (*model.ProjectSettingsEvent, error)
+	//GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
+	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
+	// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
+	// RepoRef related functions and collection instead of ProjectRef.
+	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) (*restModel.APIProjectSettings, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)

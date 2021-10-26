@@ -194,7 +194,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(t.Project)
+	projectRef, err := model.FindMergedProjectRef(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
@@ -223,7 +223,14 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.ShouldDeactivatePrevious())
+	err = projectRef.MergeWithParserProject(t.Version)
+	if err != nil {
+		err = errors.Wrapf(err, "Unable to merge parser project with project ref %s", t.Project)
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -495,17 +502,22 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		projectRef, err := model.FindMergedProjectRef(nextTask.Project)
+		errMsg := message.Fields{
+			"task_id":            nextTask.Id,
+			"message":            "could not find project ref for next task, skipping",
+			"project":            nextTask.Project,
+			"host_id":            currentHost.Id,
+			"task_group":         nextTask.TaskGroup,
+			"task_build_variant": nextTask.BuildVariant,
+			"task_version":       nextTask.Version,
+		}
 		if err != nil {
-			grip.Alert(message.Fields{
-				"task_id":            nextTask.Id,
-				"message":            "could not find project ref for next task, skipping",
-				"project":            nextTask.Project,
-				"host_id":            currentHost.Id,
-				"task_group":         nextTask.TaskGroup,
-				"task_build_variant": nextTask.BuildVariant,
-				"task_version":       nextTask.Version,
-			})
-			return nil, false, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
+			grip.Alert(message.WrapError(err, errMsg))
+			return nil, false, errors.Wrapf(err, "could not find project ref for next task '%s'", nextTask.Id)
+		}
+		if projectRef == nil {
+			grip.Alert(errMsg)
+			return nil, false, errors.Errorf("project ref for next task '%s' doesn't exist", nextTask.Id)
 		}
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",

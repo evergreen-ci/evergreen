@@ -19,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -31,6 +30,8 @@ const (
 	// this regex either matches against the exact 'test' string, or
 	// against the 'test' string at the end of some kind of filepath.
 	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
+
+	taskHistoryMaxTime = 90 * time.Second
 )
 
 type taskHistoryIterator struct {
@@ -179,7 +180,7 @@ func (t TestHistoryParameters) QueryString() string {
 
 type TaskHistoryIterator interface {
 	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-	GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error)
+	GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -263,8 +264,6 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	}
 	defer session.Close()
 
-	session.SetSocketTimeout(time.Minute)
-
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
 		return chunk, errors.WithStack(err)
@@ -337,7 +336,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
-	agg := database.C(task.Collection).Pipe(pipeline)
+	agg := database.C(task.Collection).Pipe(pipeline).MaxTime(taskHistoryMaxTime)
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
@@ -353,9 +352,14 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	return chunk, nil
 }
 
-func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env evergreen.Environment, numCommits int) ([]string, error) {
-	opts := options.Aggregate().SetBatchSize(0).SetMaxTime(time.Second * 90)
-	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx,
+func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error) {
+	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting database session")
+	}
+	defer session.Close()
+
+	pipeline := mdb.C(task.Collection).Pipe(
 		[]bson.M{
 			{
 				"$match": bson.M{
@@ -389,35 +393,23 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, env e
 			{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
 			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
-		opts,
 	)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting cursor")
-	}
-	if cursor == nil {
-		return nil, errors.New("nil cursor returned")
-	}
-	defer cursor.Close(ctx)
+	pipeline.MaxTime(taskHistoryMaxTime)
 
-	names := []string{}
-	for cursor.Next(ctx) {
-		select {
-		case <-ctx.Done():
-			return nil, errors.New("context cancelled")
-		default:
-			res := bson.M{}
-			if err := cursor.Decode(&res); err != nil {
-				return nil, errors.Wrapf(err, "error decoding result")
-			}
-			// remove quotes from value
-			val := strings.Replace(res["_id"].(string), "\"", "", -1)
-			names = append(names, val)
+	var names []string
+	res := bson.M{}
+	iter := pipeline.Iter()
+	for iter.Next(&res) {
+		names = append(names, res["_id"].(string))
+		if ctx.Err() != nil {
+			catcher := grip.NewBasicCatcher()
+			catcher.Add(errors.Wrap(ctx.Err(), "iterating results"))
+			catcher.Add(iter.Close())
+			return nil, catcher.Resolve()
 		}
 	}
-	if err := cursor.Err(); err != nil {
-		return nil, errors.Wrap(err, "error reading cursor")
-	}
 	sort.Strings(names)
+
 	return names, nil
 }
 

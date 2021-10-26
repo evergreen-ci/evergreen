@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -51,7 +52,8 @@ func TestPythonMatrixIntegration(t *testing.T) {
 			"testdata", "matrix_python.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
-			_, err := LoadProjectInto(bytes, "python", &p)
+			ctx := context.Background()
+			_, err := LoadProjectInto(ctx, bytes, nil, "python", &p)
 			So(err, ShouldBeNil)
 			Convey("and contain the correct variants", func() {
 				So(len(p.BuildVariants), ShouldEqual, (2*2*4 - 4))
@@ -108,7 +110,8 @@ func TestDepsMatrixIntegration(t *testing.T) {
 			"testdata", "matrix_deps.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
-			_, err := LoadProjectInto(bytes, "deps", &p)
+			ctx := context.Background()
+			_, err := LoadProjectInto(ctx, bytes, nil, "deps", &p)
 			So(err, ShouldBeNil)
 			Convey("and contain the correct variants", func() {
 				So(len(p.BuildVariants), ShouldEqual, (1 + 3*3))

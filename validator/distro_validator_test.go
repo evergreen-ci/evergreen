@@ -609,13 +609,15 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 				"PositiveValues": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = 1
 					s.ResourceLimits.NumProcesses = 2
-					s.ResourceLimits.LockedMemoryKB = 3
-					s.ResourceLimits.VirtualMemoryKB = 4
+					s.ResourceLimits.NumTasks = 3
+					s.ResourceLimits.LockedMemoryKB = 4
+					s.ResourceLimits.VirtualMemoryKB = 5
 					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
 				},
 				"ZeroValues": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = 0
 					s.ResourceLimits.NumProcesses = 0
+					s.ResourceLimits.NumTasks = 0
 					s.ResourceLimits.LockedMemoryKB = 0
 					s.ResourceLimits.VirtualMemoryKB = 0
 					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
@@ -623,6 +625,7 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 				"UnlimitedResources": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = -1
 					s.ResourceLimits.NumProcesses = -1
+					s.ResourceLimits.NumTasks = -1
 					s.ResourceLimits.LockedMemoryKB = -1
 					s.ResourceLimits.VirtualMemoryKB = -1
 					assert.Nil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))
@@ -630,6 +633,7 @@ func TestEnsureValidBootstrapSettings(t *testing.T) {
 				"InvalidResourceLimits": func(t *testing.T, s distro.BootstrapSettings) {
 					s.ResourceLimits.NumFiles = -50
 					s.ResourceLimits.NumProcesses = -50
+					s.ResourceLimits.NumTasks = -50
 					s.ResourceLimits.LockedMemoryKB = -50
 					s.ResourceLimits.VirtualMemoryKB = -50
 					assert.NotNil(t, ensureValidBootstrapSettings(ctx, &distro.Distro{Arch: evergreen.ArchLinuxAmd64, BootstrapSettings: s}, &evergreen.Settings{}))

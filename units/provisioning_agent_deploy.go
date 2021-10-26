@@ -59,7 +59,7 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 	j.env = env
 	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentDeployJobName, j.HostID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(agentPutRetries),
@@ -117,8 +117,6 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
-
 	if err = j.host.UpdateLastCommunicated(); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
 	}
@@ -146,7 +144,11 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if err := j.startAgentOnHost(ctx, settings); err != nil {
+	settings := *j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	settings.ServiceFlags = *flags
+
+	if err := j.startAgentOnHost(ctx, &settings); err != nil {
 		if j.host.Status == evergreen.HostRunning {
 			j.AddRetryableError(err)
 		} else {

@@ -66,7 +66,7 @@ func NewPodTerminationJob(podID, reason string, ts time.Time) amboy.Job {
 	j.PodID = podID
 	j.Reason = reason
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", podTerminationJobName, podID), podLifecycleScope(podID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.SetID(fmt.Sprintf("%s.%s.%s", podTerminationJobName, podID, ts.Format(TSFormat)))
 
 	return j
@@ -96,11 +96,12 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 			"termination_attempt_reason": j.Reason,
 			"job":                        j.ID(),
 		})
-	case pod.StatusStarting, pod.StatusRunning:
-		// TODO (EVG-15034): ensure deletion is idempotent.
-		if err := j.ecsPod.Delete(ctx); err != nil {
-			j.AddError(errors.Wrap(err, "deleting pod resources"))
-			return
+	case pod.StatusStarting, pod.StatusRunning, pod.StatusDecommissioned:
+		if j.ecsPod != nil {
+			if err := j.ecsPod.Delete(ctx); err != nil {
+				j.AddError(errors.Wrap(err, "deleting pod resources"))
+				return
+			}
 		}
 	case pod.StatusTerminated:
 		grip.Info(message.Fields{
@@ -110,6 +111,14 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 			"job":                        j.ID(),
 		})
 		return
+	default:
+		grip.Error(message.Fields{
+			"message":                    "could not terminate pod with unrecognized status",
+			"pod":                        j.PodID,
+			"status":                     j.pod.Status,
+			"termination_attempt_reason": j.Reason,
+			"job":                        j.ID(),
+		})
 	}
 
 	if err := j.pod.UpdateStatus(pod.StatusTerminated); err != nil {
@@ -144,7 +153,10 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 		j.pod = p
 	}
 
-	if j.pod.Status == pod.StatusInitializing || j.pod.Status == pod.StatusTerminated {
+	// The pod does not exist in the cloud if's already deleted (i.e. it's
+	// already terminated) or it never created any external resources (i.e. the
+	// pod resources is empty).
+	if j.pod.Status == pod.StatusTerminated || j.pod.Resources.IsZero() {
 		return nil
 	}
 
@@ -169,7 +181,7 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 		j.ecsClient = client
 	}
 
-	ecsPod, err := cloud.ExportPod(j.pod, j.ecsClient, j.vault)
+	ecsPod, err := cloud.ExportECSPod(j.pod, j.ecsClient, j.vault)
 	if err != nil {
 		return errors.Wrap(err, "exporting pod")
 	}

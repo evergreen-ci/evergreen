@@ -1,3 +1,0 @@
-{
-    taskHistory(projectId:"evergreen", taskName:"test-agent")
-}

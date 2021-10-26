@@ -27,6 +27,7 @@ const (
 	evergreenSuccessColor    = "#4ead4a"
 	evergreenFailColor       = "#ce3c3e"
 	evergreenSystemFailColor = "#ce3c3e"
+	evergreenRunningColor    = "#ffdd49"
 
 	// slackAttachmentsLimit is a limit to the number of extra entries to
 	// attach to a Slack message. It does not count the link to Evergreen,
@@ -107,7 +108,7 @@ const emailTaskFailTemplate = `
         <tr>
           <td width="90%">
             <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
-              {{ .TestFile }}
+	      {{ .GetDisplayTestName }}
             </span>
           </td>
           {{ if eq $.Task.Details.Type "system" }}
@@ -425,29 +426,11 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 }
 
 func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem getting evergreen config")
-	}
-
 	result := []task.TestResult{}
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			testResult := t.LocalTestResults[i]
-			if testResult.URL != "" {
-				logURL, err := url.Parse(testResult.URL)
-				if err != nil {
-					return nil, errors.Wrapf(err, "unable to parse URL %s", testResult.URL)
-				}
-				if logURL.Host == "" {
-					testResult.URL = settings.Ui.Url + testResult.URL
-				} else {
-					testResult.URL = logURL.String()
-				}
-			} else if testResult.LogId != "" {
-				testResult.URL = logURL(testResult, settings.Ui.Url)
-			}
-
+			testResult.URL = testResult.GetLogURL(evergreen.LogViewerHTML)
 			result = append(result, testResult)
 		}
 	}
@@ -470,9 +453,19 @@ func buildLink(uiBase string, buildID string, hasPatch bool) string {
 	return url
 }
 
-func versionLink(uiBase string, versionID string, hasPatch bool) string {
-	url := fmt.Sprintf("%s/version/%s", uiBase, url.PathEscape(versionID))
-	if hasPatch {
+type versionLinkInput struct {
+	uiBase    string
+	versionID string
+	hasPatch  bool
+	isChild   bool
+}
+
+func versionLink(i versionLinkInput) string {
+	url := fmt.Sprintf("%s/version/%s", i.uiBase, url.PathEscape(i.versionID))
+	if i.isChild {
+		url += "/downstream-tasks"
+	}
+	if i.hasPatch {
 		url += "?redirect_spruce_users=true"
 	}
 	return url

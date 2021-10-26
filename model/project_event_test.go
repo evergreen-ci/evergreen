@@ -28,8 +28,8 @@ const (
 	username  = "me"
 )
 
-func getMockProjectSettings() ProjectSettingsEvent {
-	return ProjectSettingsEvent{
+func getMockProjectSettings() ProjectSettings {
+	return ProjectSettings{
 		ProjectRef: ProjectRef{
 			Owner:   "admin",
 			Enabled: utility.TruePtr(),

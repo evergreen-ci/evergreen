@@ -76,6 +76,12 @@ type APITask struct {
 	Ami                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
+	// These fields are used by graphql gen, but do not need to be exposed
+	// via Evergreen's user-facing API.
+	OverrideDependencies bool `json:"-"`
+	Archived             bool `json:"archived"`
+	HasCedarResults      bool `json:"-"`
+	CedarResultsFailed   bool `json:"-"`
 }
 
 type APIAbortInfo struct {
@@ -234,7 +240,10 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Requester:               utility.ToStringPtr(v.Requester),
 			Aborted:                 v.Aborted,
 			CanSync:                 v.CanSync,
+			HasCedarResults:         v.HasCedarResults,
+			CedarResultsFailed:      v.CedarResultsFailed,
 			MustHaveResults:         v.MustHaveResults,
+			ParentTaskId:            utility.FromStringPtr(v.DisplayTaskId),
 			SyncAtEndOpts: APISyncAtEndOptions{
 				Enabled:  v.SyncAtEndOpts.Enabled,
 				Statuses: v.SyncAtEndOpts.Statuses,
@@ -312,6 +321,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				at.ProjectIdentifier = utility.ToStringPtr(identifier)
 			}
 		}
+		at.OverrideDependencies = v.OverrideDependencies
+		at.Archived = v.Archived
 	case string:
 		ll := LogLinks{
 			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
@@ -355,6 +366,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 		DisplayOnly:         ad.DisplayOnly,
 		Requester:           utility.FromStringPtr(ad.Requester),
 		CanSync:             ad.CanSync,
+		HasCedarResults:     ad.HasCedarResults,
+		CedarResultsFailed:  ad.CedarResultsFailed,
 		MustHaveResults:     ad.MustHaveResults,
 		SyncAtEndOpts: task.SyncAtEndOptions{
 			Enabled:  ad.SyncAtEndOpts.Enabled,
@@ -422,6 +435,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 	}
 
 	st.DependsOn = dependsOn
+	st.OverrideDependencies = ad.OverrideDependencies
+	st.Archived = ad.Archived
 	return interface{}(st), nil
 }
 

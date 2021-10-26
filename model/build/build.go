@@ -142,7 +142,7 @@ func (b *Build) PreviousSuccessful() (*Build, error) {
 func UpdateActivation(buildIds []string, active bool, caller string) error {
 	query := bson.M{IdKey: bson.M{"$in": buildIds}}
 	if !active && evergreen.IsSystemActivator(caller) {
-		query[ActivatedByKey] = caller
+		query[ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 	}
 
 	_, err := UpdateAllBuilds(

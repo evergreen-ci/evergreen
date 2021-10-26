@@ -130,6 +130,9 @@ type uiTestResult struct {
 	TestResult task.TestResult `json:"test_result"`
 	TaskId     string          `json:"task_id"`
 	TaskName   string          `json:"task_name"`
+	URL        string          `json:"url"`
+	URLRaw     string          `json:"url_raw"`
+	URLLobster string          `json:"url_lobster"`
 }
 
 type logData struct {
@@ -543,7 +546,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
-		Execution:     execution,
+		Execution:     utility.ToIntPtr(execution),
 		PrintPriority: true,
 		Tail:          DefaultLogMessages,
 		LogType:       logType,
@@ -603,7 +606,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:       uis.Settings.Cedar.BaseURL,
 		TaskID:        projCtx.Task.Id,
-		Execution:     execution,
+		Execution:     utility.ToIntPtr(execution),
 		PrintPriority: !raw,
 		LogType:       logType,
 	}
@@ -812,46 +815,12 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		testLog   *model.TestLog
 	)
 
-	// Check buildlogger logs first.
-	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:       uis.Settings.Cedar.BaseURL,
-		TaskID:        taskID,
-		TestName:      testName,
-		GroupID:       vals.Get("group_id"),
-		Execution:     taskExec,
-		PrintPriority: !raw,
-	}
-	logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
-	if err == nil {
-		defer func() {
-			grip.Warning(message.WrapError(logReader.Close(), message.Fields{
-				"task_id":   taskID,
-				"test_name": testName,
-				"message":   "failed to close buildlogger log ReadCloser",
-			}))
-		}()
-	} else {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"task_id":   taskID,
-			"test_name": testName,
-			"message":   "problem getting buildlogger logs",
-		}))
-	}
-
-	// If buildlogger fails, fall back to db.
-	if logReader == nil {
-		if logId != "" { // direct link to a log document by its ID
-			testLog, err = model.FindOneTestLogById(logId)
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-		} else {
-			testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
+	if logId != "" {
+		// Direct link to a log document in the database.
+		testLog, err = model.FindOneTestLogById(logId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 
 		if testLog == nil {
@@ -877,6 +846,32 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}()
+	} else {
+		// Search for logs in cedar.
+		opts := apimodels.GetBuildloggerLogsOptions{
+			BaseURL:       uis.Settings.Cedar.BaseURL,
+			TaskID:        taskID,
+			TestName:      testName,
+			GroupID:       vals.Get("group_id"),
+			Execution:     utility.ToIntPtr(taskExec),
+			PrintPriority: !raw,
+		}
+		logReader, err = apimodels.GetBuildloggerLogs(r.Context(), opts)
+		if err == nil {
+			defer func() {
+				grip.Warning(message.WrapError(logReader.Close(), message.Fields{
+					"task_id":   taskID,
+					"test_name": testName,
+					"message":   "failed to close buildlogger log ReadCloser",
+				}))
+			}()
+		} else {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"task_id":   taskID,
+				"test_name": testName,
+				"message":   "problem getting buildlogger logs",
+			}))
+		}
 	}
 
 	if raw {
@@ -938,6 +933,9 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 				TestResult: tr,
 				TaskId:     tr.TaskID,
 				TaskName:   execTaskDisplayNameMap[tr.TaskID],
+				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
+				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
+				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
 			})
 		}
 	} else {
@@ -945,6 +943,9 @@ func (uis *UIServer) getTestResults(w http.ResponseWriter, r *http.Request, proj
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{
 				TestResult: tr,
 				TaskId:     tr.TaskID,
+				URL:        tr.GetLogURL(evergreen.LogViewerHTML),
+				URLRaw:     tr.GetLogURL(evergreen.LogViewerRaw),
+				URLLobster: tr.GetLogURL(evergreen.LogViewerLobster),
 			})
 		}
 

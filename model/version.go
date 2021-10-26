@@ -91,6 +91,7 @@ func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, 
 const (
 	defaultVersionLimit               = 20
 	DefaultMainlineCommitVersionLimit = 7
+	MaxMainlineCommitVersionLimit     = 300
 )
 
 type GetVersionsOptions struct {
@@ -373,10 +374,73 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
+func getMostRecentMainlineCommit(projectId string) (*Version, error) {
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+	}
+	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: -1}}, {"$limit": 1}}
+	res := []Version{}
+
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions")
+	}
+
+	if len(res) == 0 {
+		return nil, errors.Errorf("no mainline commit found for project '%v'", projectId)
+	}
+	return &res[0], nil
+}
+
+// GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
+func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*int, error) {
+	// First check if we are already looking at the most recent commit.
+	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	// Check that the ORDER number we want to check is less the the ORDER number of the most recent commit.
+	// So we don't need to check for newer commits than the most recent commit.
+	if mostRecentCommit.RevisionOrderNumber <= order {
+		return nil, nil
+	}
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionActivatedKey:           true,
+		VersionRevisionOrderNumberKey: bson.M{"$gt": order},
+	}
+
+	// We want to get the commits that are newer than the specified ORDER number, then take only the LIMIT newer activated versions then that ORDER number.
+	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: 1}}, {"$limit": limit}, {"$project": bson.M{"_id": 0, VersionRevisionOrderNumberKey: 1}}}
+
+	res := []Version{}
+
+	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating versions")
+	}
+
+	// If there are no newer mainline commits, return nil to indicate that we are already on the first page.
+	if len(res) == 0 {
+		return nil, nil
+	}
+	// If the previous page does not contain enough active commits to populate the project health view we return 0 to indicate that the previous page has the latest commits.
+	// GetMainlineCommitVersionsWithOptions returns the latest commits when 0 is passed in as the order number.
+	if len(res) < limit {
+		return utility.ToIntPtr(0), nil
+	}
+
+	// Return the
+	return &res[len(res)-1].RevisionOrderNumber, nil
+}
+
 type MainlineCommitVersionOptions struct {
 	Limit           int
 	SkipOrderNumber int
-	Activated       bool
 }
 
 func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
@@ -387,16 +451,10 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 	}
-	if opts.Activated {
-		match[VersionActivatedKey] = opts.Activated
-	} else {
-		match[VersionActivatedKey] = bson.M{"$in": bson.A{false, nil}}
-	}
-
 	if opts.SkipOrderNumber != 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.SkipOrderNumber}
 	}
-	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	limit := defaultVersionLimit
 	if opts.Limit != 0 {

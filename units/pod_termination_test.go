@@ -78,20 +78,9 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.NotEqual(t, pod.StatusTerminated, dbPod.Status)
 		},
-		"FailsWhenPodStatusUpdateErrors": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			require.NoError(t, j.pod.Insert())
+		"TerminatesWithoutDeletingResourcesForIntentPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
-
-			j.Run(ctx)
-			require.Error(t, j.Error())
-
-			dbPod, err := pod.FindOneByID(j.PodID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.NotEqual(t, pod.StatusTerminated, j.pod.Status)
-		},
-		"TerminatesWithoutDeletingResourcesForInitializingPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			j.pod.Status = pod.StatusInitializing
+			j.pod.Resources = pod.ResourceInfo{}
 			require.NoError(t, j.pod.Insert())
 
 			j.Run(ctx)
@@ -143,9 +132,13 @@ func TestPodTerminationJob(t *testing.T) {
 					CPU:      128,
 					OS:       pod.OSLinux,
 					Arch:     pod.ArchAMD64,
-					EnvSecrets: map[string]string{
-						"secret0": utility.RandomString(),
-						"secret1": utility.RandomString(),
+					EnvSecrets: map[string]pod.Secret{
+						"SECRET_ENV_VAR0": {
+							Value: utility.RandomString(),
+						},
+						"SECRET_ENV_VAR1": {
+							Value: utility.RandomString(),
+						},
 					},
 				},
 			}
@@ -167,12 +160,12 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, err)
 
 			var envVars []cocoa.EnvironmentVariable
-			for name, val := range p.TaskContainerCreationOpts.EnvSecrets {
+			for name, secret := range p.TaskContainerCreationOpts.EnvSecrets {
 				envVars = append(envVars, *cocoa.NewEnvironmentVariable().
 					SetName(name).
 					SetSecretOptions(*cocoa.NewSecretOptions().
 						SetName(name).
-						SetValue(val).
+						SetNewValue(secret.Value).
 						SetOwned(true)))
 			}
 
@@ -182,7 +175,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			execOpts := cocoa.NewECSPodExecutionOptions().SetCluster(cluster)
 
-			ecsPod, err := pc.CreatePod(ctx, cocoa.NewECSPodCreationOptions().
+			ecsPod, err := pc.CreatePod(ctx, *cocoa.NewECSPodCreationOptions().
 				AddContainerDefinitions(*containerDef).
 				SetMemoryMB(p.TaskContainerCreationOpts.MemoryMB).
 				SetCPU(p.TaskContainerCreationOpts.CPU).
@@ -193,7 +186,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.ecsPod = ecsPod
 
 			res := j.ecsPod.Resources()
-			j.pod.Resources = cloud.ImportPodResources(res)
+			j.pod.Resources = cloud.ImportECSPodResources(res)
 
 			tCase(ctx, t, j)
 		})

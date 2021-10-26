@@ -48,6 +48,11 @@ type RestartResults struct {
 	ItemsErrored   []string
 }
 
+type VersionToRestart struct {
+	VersionId *string  `json:"version_id"`
+	TaskIds   []string `json:"task_ids"`
+}
+
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
@@ -115,7 +120,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		}
 		// if the caller is the default task activator only deactivate tasks that have not been activated by a user
 		if evergreen.IsSystemActivator(caller) {
-			query[task.ActivatedByKey] = caller
+			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
 		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
@@ -271,10 +276,12 @@ func RestartTasksInVersion(versionId string, abortInProgress bool, caller string
 	for _, task := range tasks {
 		taskIds = append(taskIds, task.Id)
 	}
-	return RestartVersion(versionId, taskIds, abortInProgress, caller)
+
+	toRestart := VersionToRestart{VersionId: &versionId, TaskIds: taskIds}
+	return RestartVersions([]*VersionToRestart{&toRestart}, abortInProgress, caller)
 }
 
-// RestartVersion restarts completed tasks associated with a given versionId.
+// RestartVersion restarts completed tasks associated with a versionId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	if abortInProgress {
@@ -373,6 +380,18 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		return errors.Wrap(err, "unable to find version")
 	}
 	return errors.Wrap(version.UpdateStatus(evergreen.VersionStarted), "unable to change version status")
+
+}
+
+// RestartVersions restarts selected tasks for a set of versions.
+// If abortInProgress is true for any version, it also sets the abort flag on any in-progress tasks.
+func RestartVersions(versionsToRestart []*VersionToRestart, abortInProgress bool, caller string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, t := range versionsToRestart {
+		err := RestartVersion(*t.VersionId, t.TaskIds, abortInProgress, caller)
+		catcher.Add(errors.Wrapf(err, "error restarting tasks for version '%s'", *t.VersionId))
+	}
+	return errors.Wrap(catcher.Resolve(), "error restarting tasks")
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.
@@ -516,7 +535,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	var pRef *ProjectRef
 	var githubCheckAliases ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester {
-		pRef, err = FindOneProjectRef(project.Identifier)
+		pRef, err = FindMergedProjectRef(project.Identifier)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
 		}
@@ -560,7 +579,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 	tasksWithActivationTime := activationInfo.getActivationTasks(b.BuildVariant)
 	if len(tasksWithActivationTime) > 0 && pRef == nil {
-		pRef, err = FindOneProjectRef(project.Identifier)
+		pRef, err = FindMergedProjectRef(project.Identifier)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
 		}
@@ -604,6 +623,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
 type BuildCreateArgs struct {
 	Project             Project                 // project to create the build for
+	ProjectIdentifier   string                  // the readable project identifier, used to create new IDs
 	Version             Version                 // the version the build belong to
 	TaskIDs             TaskIdConfig            // pre-generated IDs for the tasks to be created
 	BuildName           string                  // name of the buildvariant
@@ -648,7 +668,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 
 	// create a new build id
 	buildId := fmt.Sprintf("%s_%s_%s_%s",
-		args.Project.Identifier,
+		args.ProjectIdentifier,
 		args.BuildName,
 		rev,
 		args.Version.CreateTime.Format(build.IdTimeLayout))
@@ -705,7 +725,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
 	for _, taskP := range tasksForBuild {
-		if taskP.DisplayTask != nil {
+		if taskP.IsPartOfDisplay() {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
 		tasks = append(tasks, *taskP)
@@ -859,51 +879,19 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		taskMap[newTask.Id] = newTask
 	}
 
-	// Create display tasks
+	// Create and update display tasks
 	tasks := task.Tasks{}
 	for _, dt := range buildVariant.DisplayTasks {
 		id := displayTable.GetId(b.BuildVariant, dt.Name)
 		if id == "" {
 			continue
 		}
-		if !createAll && !utility.StringSliceContains(displayNames, dt.Name) {
-			// this display task already exists, but may need to be updated
-			execTaskIds := []string{}
-			displayTaskActivated := false
-			for _, et := range dt.ExecTasks {
-				execTaskId := execTable.GetId(b.BuildVariant, et)
-				if execTaskId == "" {
-					grip.Error(message.Fields{
-						"message":                     "execution task not found",
-						"variant":                     b.BuildVariant,
-						"exec_task":                   et,
-						"available_tasks":             execTable,
-						"project":                     project.Identifier,
-						"display_task":                id,
-						"display_task_already_exists": true,
-					})
-					continue
-				}
-				execTaskIds = append(execTaskIds, execTaskId)
-				if execTask, ok := taskMap[execTaskId]; ok && execTask.Activated {
-					displayTaskActivated = true
-				}
-
-				// add display task ID to any new execution task
-				if _, ok := taskMap[execTaskId]; ok {
-					taskMap[execTaskId].DisplayTaskId = utility.ToStringPtr(id)
-				}
-			}
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
-				"message":      "problem adding exec tasks to display tasks",
-				"exec_tasks":   execTaskIds,
-				"display_task": dt.Name,
-				"build_id":     b.Id,
-			}))
-			continue
-		}
+		execTasksThatNeedParentId := []string{}
 		execTaskIds := []string{}
 		displayTaskActivated := false
+		displayTaskAlreadyExists := !createAll && !utility.StringSliceContains(displayNames, dt.Name)
+
+		// get display task activations status and update exec tasks
 		for _, et := range dt.ExecTasks {
 			execTaskId := execTable.GetId(b.BuildVariant, et)
 			if execTaskId == "" {
@@ -914,33 +902,52 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 					"available_tasks":             execTable,
 					"project":                     project.Identifier,
 					"display_task":                id,
-					"display_task_already_exists": false,
+					"display_task_already_exists": displayTaskAlreadyExists,
 				})
 				continue
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
-			if execTask, ok := taskMap[execTaskId]; ok && execTask.Activated {
-				displayTaskActivated = true
+			if execTask, ok := taskMap[execTaskId]; ok {
+				if execTask.Activated {
+					displayTaskActivated = true
+				}
+				taskMap[execTaskId].DisplayTaskId = utility.ToStringPtr(id)
+			} else {
+				// exec task already exists so update its parent ID in the database
+				execTasksThatNeedParentId = append(execTasksThatNeedParentId, execTaskId)
 			}
 		}
-		newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime, displayTaskActivated)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to create display task %s", id)
-		}
-		newDisplayTask.GeneratedBy = generatedBy
 
-		for _, etID := range newDisplayTask.ExecutionTasks {
-			if _, ok := taskMap[etID]; ok {
-				taskMap[etID].DisplayTask = newDisplayTask
-				taskMap[etID].DisplayTaskId = utility.ToStringPtr(id)
+		// update existing exec tasks
+		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(id, execTasksThatNeedParentId), message.Fields{
+			"message":              "problem adding display task ID to exec tasks",
+			"exec_tasks_to_update": execTasksThatNeedParentId,
+			"display_task_id":      id,
+			"display_task":         dt.Name,
+			"build_id":             b.Id,
+		}))
+
+		// existing display task may need to be updated
+		if displayTaskAlreadyExists {
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
+				"message":      "problem adding exec tasks to display tasks",
+				"exec_tasks":   execTaskIds,
+				"display_task": dt.Name,
+				"build_id":     b.Id,
+			}))
+		} else { // need to create display task
+			newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime, displayTaskActivated)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Failed to create display task %s", id)
 			}
-		}
-		newDisplayTask.DependsOn, err = task.GetAllDependencies(newDisplayTask.ExecutionTasks, taskMap)
-		if err != nil {
-			return nil, errors.Wrapf(err, "can't get dependencies for display task '%s'", newDisplayTask.Id)
-		}
+			newDisplayTask.GeneratedBy = generatedBy
+			newDisplayTask.DependsOn, err = task.GetAllDependencies(newDisplayTask.ExecutionTasks, taskMap)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get dependencies for display task '%s'", newDisplayTask.Id)
+			}
 
-		tasks = append(tasks, newDisplayTask)
+			tasks = append(tasks, newDisplayTask)
+		}
 	}
 
 	for _, t := range taskMap {
@@ -1499,17 +1506,18 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !activationInfo.variantHasSpecificActivation(pair.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:        *p,
-			Version:        *v,
-			TaskIDs:        taskIdTables,
-			BuildName:      pair.Variant,
-			ActivateBuild:  activateVariant,
-			TaskNames:      taskNames,
-			DisplayNames:   displayNames,
-			ActivationInfo: activationInfo,
-			GeneratedBy:    generatedBy,
-			TaskCreateTime: createTime,
-			SyncAtEndOpts:  syncAtEndOpts,
+			Project:           *p,
+			Version:           *v,
+			TaskIDs:           taskIdTables,
+			BuildName:         pair.Variant,
+			ActivateBuild:     activateVariant,
+			TaskNames:         taskNames,
+			DisplayNames:      displayNames,
+			ActivationInfo:    activationInfo,
+			GeneratedBy:       generatedBy,
+			TaskCreateTime:    createTime,
+			SyncAtEndOpts:     syncAtEndOpts,
+			ProjectIdentifier: projectRef.Identifier,
 		}
 
 		grip.Info(message.Fields{

@@ -75,7 +75,7 @@ func NewSetupHostJob(env evergreen.Environment, h *host.Host, id string) amboy.J
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(provisionRetryLimit),
@@ -113,9 +113,16 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
+	settings := *j.env.Settings()
+	// Use the latest service flags instead of those cached in the environment.
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
+		return
+	}
+	settings.ServiceFlags = *flags
 
-	j.AddError(j.setupHost(ctx, settings))
+	j.AddError(j.setupHost(ctx, &settings))
 }
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {

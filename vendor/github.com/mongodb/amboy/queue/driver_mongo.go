@@ -607,9 +607,7 @@ func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
 		return errors.Wrap(err, "converting in-memory job to interchange job")
 	}
 
-	if j.ShouldApplyScopesOnEnqueue() {
-		ji.Scopes = j.Scopes()
-	}
+	ji.Scopes = j.EnqueueScopes()
 
 	d.addMetadata(ji)
 
@@ -819,10 +817,12 @@ func (d *mongoDriver) Complete(ctx context.Context, j amboy.Job) error {
 	}
 
 	// It is safe to drop the scopes now in all cases except for one - if the
-	// job still needs to retry and applies its scopes immediately to the retry
-	// job, we cannot let go of the scopes yet because they will need to be
-	// safely transferred to the retry job.
-	if !ji.RetryInfo.ShouldRetry() || !ji.ApplyScopesOnEnqueue {
+	// job still needs to retry, any scopes that are applied immediately on
+	// enqueue must still be held because they will need to be safely
+	// transferred to the retry job.
+	if ji.RetryInfo.ShouldRetry() {
+		ji.Scopes = j.EnqueueScopes()
+	} else {
 		ji.Scopes = nil
 	}
 
@@ -831,7 +831,6 @@ func (d *mongoDriver) Complete(ctx context.Context, j amboy.Job) error {
 
 func (d *mongoDriver) prepareInterchange(j amboy.Job) (*registry.JobInterchange, error) {
 	stat := j.Status()
-	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
@@ -1132,19 +1131,30 @@ func (d *mongoDriver) getNextQuery() bson.M {
 
 	d.modifyQueryForGroup(qd)
 
-	timeLimits := bson.M{}
+	var timeLimits []bson.M
 	if d.opts.CheckWaitUntil {
-		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
+		checkWaitUntil := bson.M{"$or": []bson.M{
+			{"time_info.wait_until": bson.M{"$lte": now}},
+			{"time_info.wait_until": bson.M{"$exists": false}},
+		}}
+		timeLimits = append(timeLimits, checkWaitUntil)
 	}
+
 	if d.opts.CheckDispatchBy {
-		timeLimits["$or"] = []bson.M{
+		checkDispatchBy := bson.M{"$or": []bson.M{
 			{"time_info.dispatch_by": bson.M{"$gt": now}},
+			{"time_info.dispatch_by": bson.M{"$exists": false}},
+			// TODO (EVG-15581): remove zero value case after 90 day TTL
+			// (2022-02-01) since the field will be omitted.
 			{"time_info.dispatch_by": time.Time{}},
-		}
+		}}
+		timeLimits = append(timeLimits, checkDispatchBy)
 	}
+
 	if len(timeLimits) > 0 {
-		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
+		qd = bson.M{"$and": append(timeLimits, qd)}
 	}
+
 	return qd
 }
 
