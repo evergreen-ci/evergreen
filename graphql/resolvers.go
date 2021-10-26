@@ -2220,7 +2220,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
 	if err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, j); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
 	}
 	return true, nil
 }
