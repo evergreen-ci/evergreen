@@ -237,6 +237,10 @@ func (p *Patch) SetMergePatch(newPatchID string) error {
 	)
 }
 
+func (p *Patch) GetCommitQueueURL(uiHost string) string {
+	return uiHost + "/commit-queue/" + p.Project
+}
+
 func (p *Patch) GetURL(uiHost string) string {
 	var url string
 	if p.Activated {
