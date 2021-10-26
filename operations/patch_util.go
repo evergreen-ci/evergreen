@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -151,8 +152,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 	return nil
 }
 
-func (p *patchParams) displayPatch(newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
+func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
+	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
 		return err
 	}
@@ -166,11 +167,8 @@ func (p *patchParams) displayPatch(newPatch *patch.Patch, uiHost string, isCommi
 			grip.Warningf("cannot find browser command: %s", err)
 			return nil
 		}
-		url := newPatch.GetURL(uiHost)
-		if isCommitQueuePatch {
-			url = newPatch.GetCommitQueueURL(uiHost)
-		}
-		browserCmd = append(browserCmd, url)
+
+		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
 		return cmd.Run()
 	}
@@ -433,14 +431,8 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
+func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
 	var out bytes.Buffer
-	var link string
-	if isCommitQueuePatch {
-		link = p.GetCommitQueueURL(uiHost)
-	} else {
-		link = p.GetURL(uiHost)
-	}
 
 	err := patchDisplayTemplate.Execute(&out, struct {
 		Patch         *patch.Patch
@@ -451,12 +443,25 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueu
 		Patch:         p,
 		ShowSummary:   summarize,
 		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          link,
+		Link:          p.GetURL(uiHost),
 	})
 	if err != nil {
 		return "", err
 	}
 	return out.String(), nil
+}
+
+func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost string) (string, error) {
+	servicePatchIface, err := apiPatch.ToService()
+	if err != nil {
+		return "", errors.Wrap(err, "can't convert patch to service")
+	}
+	servicePatch, ok := servicePatchIface.(patch.Patch)
+	if !ok {
+		return "", errors.New("service patch is not a Patch")
+	}
+
+	return getPatchDisplay(&servicePatch, summarize, uiHost)
 }
 
 func isCommitRange(commits string) bool {
