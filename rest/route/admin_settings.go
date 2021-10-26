@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/utility"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -71,15 +72,9 @@ func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
-	settingsModel := model.NewConfigModel()
-
-	err = settingsModel.BuildFromService(settings)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
 
 	return gimlet.NewJSONResponse(&model.APIUiV2URL{
-		UIv2Url: settingsModel.Ui.UIv2Url,
+		UIv2Url: utility.ToStringPtr(settings.Ui.UIv2Url),
 	})
 }
 
