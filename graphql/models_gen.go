@@ -170,7 +170,8 @@ type PatchesInput struct {
 	Page               int      `json:"page"`
 	PatchName          string   `json:"patchName"`
 	Statuses           []string `json:"statuses"`
-	IncludeCommitQueue bool     `json:"includeCommitQueue"`
+	IncludeCommitQueue *bool    `json:"includeCommitQueue"`
+	OnlyCommitQueue    *bool    `json:"onlyCommitQueue"`
 }
 
 type ProjectBuildVariant struct {
