@@ -1569,15 +1569,24 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+
+	v, _ := r.sc.FindVersionById(patchID)
+	includeInactiveTasks := false
+	// Query inactive tasks for inactive versions
+	if v != nil {
+		includeInactiveTasks = !utility.FromBoolPtr(v.Activated)
+	}
+
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
-		BaseStatuses:     baseStatuses,
-		Variants:         []string{variantParam},
-		TaskNames:        []string{taskNameParam},
-		Page:             pageParam,
-		Limit:            limitParam,
-		Sorts:            taskSorts,
-		IncludeBaseTasks: true,
+		Statuses:             statuses,
+		BaseStatuses:         baseStatuses,
+		Variants:             []string{variantParam},
+		TaskNames:            []string{taskNameParam},
+		Page:                 pageParam,
+		Limit:                limitParam,
+		Sorts:                taskSorts,
+		IncludeBaseTasks:     true,
+		IncludeInactiveTasks: includeInactiveTasks,
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {

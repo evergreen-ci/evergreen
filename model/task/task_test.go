@@ -2684,6 +2684,29 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, t4.Id, tasks[2].Id)
 }
 
+func TestGetTasksByVersionIncludeInactiveTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	inactiveTask := Task{
+		Id:            "inactiveTask",
+		Version:       "v1",
+		ActivatedTime: utility.ZeroTime,
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, inactiveTask))
+
+	// inactive tasks should be included
+	opts := GetTasksByVersionOptions{IncludeInactiveTasks: true}
+	_, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 1)
+	// inactive tasks should be excluded
+	opts = GetTasksByVersionOptions{IncludeInactiveTasks: false}
+	_, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 0)
+}
+
 func TestGetTasksByVersionAnnotations(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
