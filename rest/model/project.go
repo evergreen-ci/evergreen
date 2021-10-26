@@ -175,9 +175,10 @@ type APIPeriodicBuildDefinition struct {
 }
 
 type APICommitQueueParams struct {
-	Enabled     *bool   `json:"enabled"`
-	MergeMethod *string `json:"merge_method"`
-	Message     *string `json:"message"`
+	Enabled       *bool   `json:"enabled"`
+	RequireSigned *bool   `json:"require_signed"`
+	MergeMethod   *string `json:"merge_method"`
+	Message       *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() (interface{}, error) {
@@ -222,6 +223,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 	}
 
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
+	cqParams.RequireSigned = utility.BoolPtrCopy(params.RequireSigned)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
 
@@ -231,6 +233,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
+	serviceParams.RequireSigned = utility.BoolPtrCopy(cqParams.RequireSigned)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
