@@ -161,6 +161,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	j.AddError(ctxError)
 	if j.HasErrors() {
 		errorMsg := ctxError.Error()
+		// The following errors are known to recur. In these cases we continue to update syncToTime to prevent re-processing of the same error
 		if !strings.Contains(errorMsg, evergreen.KeyTooLargeToIndexError) && !strings.Contains(errorMsg, evergreen.InvalidDivideInputError) {
 			return
 		}
