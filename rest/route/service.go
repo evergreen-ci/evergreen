@@ -59,6 +59,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchAdminBanner(sc))
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetAdminBanner(sc))
+	app.AddRoute("/admin/uiv2_url").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchAdminUIV2Url(sc))
 	app.AddRoute("/admin/events").Version(2).Get().Wrap(adminSettings).RouteHandler(makeFetchAdminEvents(sc))
 	app.AddRoute("/admin/spawn_hosts").Version(2).Get().Wrap(adminSettings).RouteHandler(makeFetchSpawnHostUsage(sc))
 	app.AddRoute("/admin/restart/versions").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRestartRoute(sc, evergreen.RestartVersions, nil))
