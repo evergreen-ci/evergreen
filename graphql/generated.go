@@ -397,6 +397,7 @@ type ComplexityRoot struct {
 		EditAnnotationNote            func(childComplexity int, taskID string, execution int, originalMessage string, newMessage string) int
 		EditSpawnHost                 func(childComplexity int, spawnHost *EditSpawnHostInput) int
 		EnqueuePatch                  func(childComplexity int, patchID string, commitMessage *string) int
+		ForceRepotrackerRun           func(childComplexity int, projectID string) int
 		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
@@ -1079,6 +1080,7 @@ type MutationResolver interface {
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
 	SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*model.APIPatch, error)
 	SchedulePatchTasks(ctx context.Context, patchID string) (*string, error)
 	UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error)
@@ -2737,6 +2739,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.EnqueuePatch(childComplexity, args["patchId"].(string), args["commitMessage"].(*string)), true
+
+	case "Mutation.forceRepotrackerRun":
+		if e.complexity.Mutation.ForceRepotrackerRun == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_forceRepotrackerRun_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ForceRepotrackerRun(childComplexity, args["projectId"].(string)), true
 
 	case "Mutation.moveAnnotationIssue":
 		if e.complexity.Mutation.MoveAnnotationIssue == nil {
@@ -6476,6 +6490,7 @@ type Mutation {
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
+  forceRepotrackerRun(projectId: String!): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -6620,6 +6635,7 @@ input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
+  # shouldCollapse is used to determine if unmatching active versions should be collapsed
   shouldCollapse: Boolean = false
 }
 
@@ -8078,6 +8094,20 @@ func (ec *executionContext) field_Mutation_enqueuePatch_args(ctx context.Context
 		}
 	}
 	args["commitMessage"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_forceRepotrackerRun_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -15649,6 +15679,47 @@ func (ec *executionContext) _Mutation_detachProjectFromRepo(ctx context.Context,
 	res := resTmp.(*model.APIProjectRef)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_forceRepotrackerRun(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_forceRepotrackerRun_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ForceRepotrackerRun(rctx, args["projectId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_schedulePatch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -36352,6 +36423,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "detachProjectFromRepo":
 			out.Values[i] = ec._Mutation_detachProjectFromRepo(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "forceRepotrackerRun":
+			out.Values[i] = ec._Mutation_forceRepotrackerRun(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

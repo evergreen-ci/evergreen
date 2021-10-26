@@ -168,7 +168,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if err = params.displayPatch(newPatch, conf.UIServerHost, false); err != nil {
+			if err = params.displayPatch(conf, newPatch); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
@@ -267,7 +267,7 @@ func PatchFile() cli.Command {
 			if err != nil {
 				return err
 			}
-			return params.displayPatch(newPatch, conf.UIServerHost, false)
+			return params.displayPatch(conf, newPatch)
 		},
 	}
 }
