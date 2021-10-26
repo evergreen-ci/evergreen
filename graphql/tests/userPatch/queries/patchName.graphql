@@ -1,9 +1,0 @@
-{
-  userPatches(patchName: "22", includeCommitQueue: true) {
-    patches {
-      id
-      description
-    }
-    filteredPatchCount
-  }
-}

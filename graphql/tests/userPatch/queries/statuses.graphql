@@ -1,9 +1,0 @@
-{
-  userPatches(includeCommitQueue: true, statuses: ["failed"]) {
-    patches {
-      id
-      status
-    }
-    filteredPatchCount
-  }
-}
