@@ -7765,16 +7765,16 @@ type ProjectSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
-  aliases: [ProjectAlias]
-  subscriptions: [ProjectSubscription]
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
 }
 
 type RepoSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
-  aliases: [ProjectAlias]
-  subscriptions: [ProjectSubscription]
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
 }
 
 type ProjectVars {
@@ -7987,12 +7987,12 @@ type RepoTaskSyncOptions {
 }
 
 type WorkstationConfig {
-  setupCommands: [WorkstationSetupCommand]
+  setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean
 }
 
 type RepoWorkstationConfig {
-  setupCommands: [WorkstationSetupCommand]
+  setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean!
 }
 
@@ -21683,7 +21683,7 @@ func (ec *executionContext) _ProjectSettings_aliases(ctx context.Context, field 
 	}
 	res := resTmp.([]*model.APIProjectAlias)
 	fc.Result = res
-	return ec.marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx, field.Selections, res)
+	return ec.marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSettings_subscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
@@ -21714,7 +21714,7 @@ func (ec *executionContext) _ProjectSettings_subscriptions(ctx context.Context, 
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, field.Selections, res)
+	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSubscriber_type(ctx context.Context, field graphql.CollectedField, obj *model.APISubscriber) (ret graphql.Marshaler) {
@@ -24983,7 +24983,7 @@ func (ec *executionContext) _RepoSettings_aliases(ctx context.Context, field gra
 	}
 	res := resTmp.([]*model.APIProjectAlias)
 	fc.Result = res
-	return ec.marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx, field.Selections, res)
+	return ec.marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoSettings_subscriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
@@ -25014,7 +25014,7 @@ func (ec *executionContext) _RepoSettings_subscriptions(ctx context.Context, fie
 	}
 	res := resTmp.([]*model.APISubscription)
 	fc.Result = res
-	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, field.Selections, res)
+	return ec.marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoTaskSyncOptions_configEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
@@ -25113,7 +25113,7 @@ func (ec *executionContext) _RepoWorkstationConfig_setupCommands(ctx context.Con
 	}
 	res := resTmp.([]model.APIWorkstationSetupCommand)
 	fc.Result = res
-	return ec.marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, field.Selections, res)
+	return ec.marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommandᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoWorkstationConfig_gitClone(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationConfig) (ret graphql.Marshaler) {
@@ -33827,7 +33827,7 @@ func (ec *executionContext) _WorkstationConfig_setupCommands(ctx context.Context
 	}
 	res := resTmp.([]model.APIWorkstationSetupCommand)
 	fc.Result = res
-	return ec.marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, field.Selections, res)
+	return ec.marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommandᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _WorkstationConfig_gitClone(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationConfig) (ret graphql.Marshaler) {
@@ -44407,6 +44407,20 @@ func (ec *executionContext) marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 	return ec._Project(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNProjectAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, sel ast.SelectionSet, v model.APIProjectAlias) graphql.Marshaler {
+	return ec._ProjectAlias(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProjectAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, sel ast.SelectionSet, v *model.APIProjectAlias) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectAlias(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNProjectBuildVariant2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectBuildVariant(ctx context.Context, sel ast.SelectionSet, v ProjectBuildVariant) graphql.Marshaler {
 	return ec._ProjectBuildVariant(ctx, sel, &v)
 }
@@ -44470,6 +44484,20 @@ func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._ProjectSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
+	return ec._ProjectSubscription(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectSubscription(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPublicKey2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKey(ctx context.Context, sel ast.SelectionSet, v model.APIPubKey) graphql.Marshaler {
@@ -45535,6 +45563,10 @@ func (ec *executionContext) marshalNWebhookHeader2ᚕgithubᚗcomᚋevergreenᚑ
 
 func (ec *executionContext) marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationConfig) graphql.Marshaler {
 	return ec._WorkstationConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkstationSetupCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationSetupCommand) graphql.Marshaler {
+	return ec._WorkstationSetupCommand(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋevergreenᚑciᚋevergreenᚋvendorᚋgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -46878,11 +46910,7 @@ func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 	return ec._Project(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOProjectAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, sel ast.SelectionSet, v model.APIProjectAlias) graphql.Marshaler {
-	return ec._ProjectAlias(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, sel ast.SelectionSet, v []*model.APIProjectAlias) graphql.Marshaler {
+func (ec *executionContext) marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIProjectAlias) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46909,7 +46937,7 @@ func (ec *executionContext) marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreen�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOProjectAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx, sel, v[i])
+			ret[i] = ec.marshalNProjectAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46920,13 +46948,6 @@ func (ec *executionContext) marshalOProjectAlias2ᚕᚖgithubᚗcomᚋevergreen�
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalOProjectAlias2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, sel ast.SelectionSet, v *model.APIProjectAlias) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ProjectAlias(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOProjectAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectAlias(ctx context.Context, v interface{}) (model.APIProjectAlias, error) {
@@ -46973,11 +46994,7 @@ func (ec *executionContext) marshalOProjectSubscriber2githubᚗcomᚋevergreen�
 	return ec._ProjectSubscriber(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOProjectSubscription2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v model.APISubscription) graphql.Marshaler {
-	return ec._ProjectSubscription(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
+func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscriptionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APISubscription) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -47004,7 +47021,7 @@ func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋeve
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
+			ret[i] = ec.marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -47015,13 +47032,6 @@ func (ec *executionContext) marshalOProjectSubscription2ᚕᚖgithubᚗcomᚋeve
 	}
 	wg.Wait()
 	return ret
-}
-
-func (ec *executionContext) marshalOProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ProjectSubscription(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOProjectVars2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, sel ast.SelectionSet, v model.APIProjectVars) graphql.Marshaler {
@@ -47863,11 +47873,7 @@ func (ec *executionContext) unmarshalOWorkstationConfigInput2githubᚗcomᚋever
 	return ec.unmarshalInputWorkstationConfigInput(ctx, v)
 }
 
-func (ec *executionContext) marshalOWorkstationSetupCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationSetupCommand) graphql.Marshaler {
-	return ec._WorkstationSetupCommand(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, sel ast.SelectionSet, v []model.APIWorkstationSetupCommand) graphql.Marshaler {
+func (ec *executionContext) marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommandᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIWorkstationSetupCommand) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -47894,7 +47900,7 @@ func (ec *executionContext) marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋev
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOWorkstationSetupCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, sel, v[i])
+			ret[i] = ec.marshalNWorkstationSetupCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

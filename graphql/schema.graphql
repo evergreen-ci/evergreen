@@ -980,16 +980,16 @@ type ProjectSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
-  aliases: [ProjectAlias]
-  subscriptions: [ProjectSubscription]
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
 }
 
 type RepoSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
-  aliases: [ProjectAlias]
-  subscriptions: [ProjectSubscription]
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
 }
 
 type ProjectVars {
@@ -1202,12 +1202,12 @@ type RepoTaskSyncOptions {
 }
 
 type WorkstationConfig {
-  setupCommands: [WorkstationSetupCommand]
+  setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean
 }
 
 type RepoWorkstationConfig {
-  setupCommands: [WorkstationSetupCommand]
+  setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean!
 }
 

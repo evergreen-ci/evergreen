@@ -12,7 +12,7 @@ import (
 
 func TestRepoBuildFromService(t *testing.T) {
 
-	repoRef := model.RepoRef{model.ProjectRef{
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id:                  "project",
 		Owner:               "my_owner",
 		Repo:                "my_repo",
