@@ -99,7 +99,7 @@ type ProjectRef struct {
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
-	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
