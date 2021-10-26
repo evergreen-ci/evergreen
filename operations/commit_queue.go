@@ -291,11 +291,7 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem creating a commit queue patch")
 			}
-			settings, err := client.GetSettings(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem retrieving admin settings")
-			}
-			patchDisp, err := getAPICommitQueuePatchDisplay(mergePatch, false, settings.Ui.UIv2Url)
+			patchDisp, err := getAPIPatchDisplay(mergePatch, false, conf.UIServerHost)
 			if err != nil {
 				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
 			}
@@ -396,10 +392,6 @@ func backport() cli.Command {
 				}
 			}
 
-			settings, err := client.GetSettings(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem retrieving admin settings")
-			}
 			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)
 			if err != nil {
 				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", patchParams.Project)
@@ -413,7 +405,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "can't upload backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, settings.Ui.UIv2Url, true); err != nil {
+			if err = patchParams.displayPatch(conf, backportPatch); err != nil {
 				return errors.Wrap(err, "problem getting result display")
 			}
 
@@ -478,7 +470,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(p, false, uiServerHost, false)
+	disp, err := getPatchDisplay(p, false, uiServerHost)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
 		return
@@ -522,11 +514,7 @@ type mergeParams struct {
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
 	if p.id == "" {
 		showCQMessageForProject(ac, p.project)
-		settings, err := client.GetSettings(ctx)
-		if err != nil {
-			return errors.Wrap(err, "problem retrieving admin settings")
-		}
-		if err := p.uploadMergePatch(conf, ac, settings.Ui.UIv2Url); err != nil {
+		if err := p.uploadMergePatch(conf, ac); err != nil {
 			return err
 		}
 	} else {
@@ -544,7 +532,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	return nil
 }
 
-func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, uiV2Url string) error {
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
 	patchParams := &patchParams{
 		Project:     p.project,
 		SkipConfirm: p.skipConfirm,
@@ -603,7 +591,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayPatch(patch, uiV2Url, true); err != nil {
+	if err = patchParams.displayPatch(conf, patch); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
@@ -712,17 +700,4 @@ func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchI
 	if message != "" {
 		grip.Info(message)
 	}
-}
-
-func getAPICommitQueuePatchDisplay(apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
-	servicePatchIface, err := apiPatch.ToService()
-	if err != nil {
-		return "", errors.Wrap(err, "can't convert patch to service")
-	}
-	servicePatch, ok := servicePatchIface.(patch.Patch)
-	if !ok {
-		return "", errors.New("service patch is not a Patch")
-	}
-
-	return getPatchDisplay(&servicePatch, summarize, uiHost, true)
 }
