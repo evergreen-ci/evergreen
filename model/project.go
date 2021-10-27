@@ -1041,12 +1041,12 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj, _, err := LoadProjectForVersion(v, t.Project, false)
+
+	bvExpansions, err := FindExpansionsForVariant(v, t.BuildVariant)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling project")
+		return nil, errors.Wrap(err, "error getting expansions for variant")
 	}
-	bv := proj.FindBuildVariant(t.BuildVariant)
-	expansions.Update(bv.Expansions)
+	expansions.Update(bvExpansions)
 	return expansions, nil
 }
 
