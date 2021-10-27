@@ -580,8 +580,9 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	commit, err := thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
 		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
-		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
-			patchDoc.Githash, projectRef.Id)
+		grip.Warning(
+			errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
+				patchDoc.Githash, projectRef.Id).Error())
 	}
 	// With `evergreen patch-file`, a user can pass a branch name or tag instead of a hash. We
 	// must normalize this to a hash before storing the patch doc.
