@@ -1,6 +1,6 @@
 {
   project(projectId: "evergreen") {
-    patches(patchesInput: { includeCommitQueue: true, page: 0, limit: 3 }) {
+    patches(patchesInput: { onlyCommitQueue: true }) {
       patches {
         id
       }

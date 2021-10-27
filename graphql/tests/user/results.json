@@ -117,10 +117,10 @@
       }
     },
     {
-      "query_file": "patches-page-0-limit-3.graphql",
+      "query_file": "patches-pagination.graphql",
       "result": {
         "data": {
-          "user": {
+          "page0": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
@@ -129,15 +129,8 @@
               ],
               "filteredPatchCount": 6
             }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patches-page-1-limit-3.graphql",
-      "result": {
-        "data": {
-          "user": {
+        },
+        "page1": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e5" },
@@ -146,7 +139,7 @@
               ],
               "filteredPatchCount": 6
             }
-          }
+        }
         }
       }
     },
