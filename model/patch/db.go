@@ -135,13 +135,15 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	}
 	pipeline := []bson.M{}
 	match := bson.M{}
-	// Conditionally add the commit queue filter if the user is explicitly filtering on it
-	// This is only used on the project patches page when we want to conditionally only show the commit queue patches
+	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
+	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
 	if opts.OnlyCommitQueue != nil {
 		if utility.FromBoolPtr(opts.OnlyCommitQueue) {
 			match[AliasKey] = evergreen.CommitQueueAlias
 		}
-	} else {
+	}
+
+	if opts.IncludeCommitQueue != nil {
 		// This is only used on the user patches page when we want to filter out the commit queue
 		if !utility.FromBoolPtr(opts.IncludeCommitQueue) {
 			match[AliasKey] = commitQueueFilter
@@ -192,12 +194,8 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	if err != nil {
 		return nil, 0, err
 	}
-	err = cursor.All(ctx, &results)
-	if err != nil {
+	if err = cursor.All(ctx, &results); err != nil {
 		return nil, 0, err
-	}
-	if len(results) == 0 {
-		return nil, 0, errors.New("no patches found")
 	}
 
 	type countResult struct {
@@ -208,12 +206,8 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	if err != nil {
 		return nil, 0, err
 	}
-	err = cursor.All(ctx, &countResults)
-	if err != nil {
+	if err = cursor.All(ctx, &countResults); err != nil {
 		return nil, 0, err
-	}
-	if len(results) == 0 {
-		return nil, 0, errors.New("no patches found")
 	}
 	return results, countResults[0].Count, nil
 }

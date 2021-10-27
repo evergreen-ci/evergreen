@@ -2816,8 +2816,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
-		if err != nil {
+		if err = apiPatch.BuildFromService(p); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting patch to APIPatch for patch %s : %s", p.Id, err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)

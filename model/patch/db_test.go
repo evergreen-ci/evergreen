@@ -134,7 +134,9 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
 	assert.Equal(t, 5, len(patches))
-
+	for _, patch := range patches {
+		assert.NotEqual(t, evergreen.CommitQueueAlias, patch.Alias)
+	}
 	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
 		Project:         utility.ToStringPtr("evergreen"),
 		OnlyCommitQueue: utility.TruePtr(),
@@ -143,4 +145,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
 	assert.Equal(t, 5, len(patches))
+	for _, patch := range patches {
+		assert.Equal(t, evergreen.CommitQueueAlias, patch.Alias)
+	}
 }
