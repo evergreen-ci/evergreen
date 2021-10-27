@@ -22,3 +22,10 @@ func IsDuplicateKey(err error) bool {
 
 	return false
 }
+
+func IsDocumentLimit(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(errors.Cause(err).Error(), "an inserted document is too large")
+}
