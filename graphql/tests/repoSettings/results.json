@@ -1,20 +1,19 @@
 {
   "tests": [
     {
-      "query_file": "project-settings-project.graphql",
+      "query_file": "repo-settings-project.graphql",
       "result": {
         "data": {
-          "projectSettings": {
+          "repoSettings": {
             "githubWebhooksEnabled": false,
             "projectRef": {
               "id": "1234",
-              "identifier": "sandbox",
               "commitQueue": {
                 "enabled": true,
                 "mergeMethod": "squash"
               },
               "periodicBuilds": null,
-              "githubChecksEnabled": null,
+              "githubChecksEnabled": false,
               "patchingDisabled": false,
               "prTestingEnabled": true,
               "batchTime": 2,
@@ -38,21 +37,17 @@
               "taskSync" : {
                 "configEnabled" : false,
                 "patchEnabled" : true
-              },
-              "validDefaultLoggers": [
-                "evergreen",
-                "buildlogger"
-              ]
+              }
             }
           }
         }
       }
     },
     {
-      "query_file": "project-settings-aliases.graphql",
+      "query_file": "repo-settings-aliases.graphql",
       "result": {
         "data": {
-          "projectSettings": {
+          "repoSettings": {
             "aliases": [
               {
                 "id" : "5ffe393097b1d3759dd3c1aa",
@@ -90,10 +85,10 @@
       }
     },
     {
-      "query_file": "project-settings-vars.graphql",
+      "query_file": "repo-settings-vars.graphql",
       "result": {
         "data": {
-          "projectSettings": {
+          "repoSettings": {
             "vars": {
               "vars": {"hello": "world", "foo":  "bar"},
               "privateVars": ["hello"]
@@ -103,10 +98,10 @@
       }
     },
     {
-      "query_file": "project-settings-subscriptions.graphql",
+      "query_file": "repo-settings-subscriptions.graphql",
       "result": {
         "data": {
-          "projectSettings": {
+          "repoSettings": {
             "subscriptions": [
               {
                 "id": "61326406a620e4737f57003e",
@@ -231,9 +226,9 @@
         "data": null,
         "errors": [
           {
-            "message": "project doesn't exist",
+            "message": "repo doesn't exist",
             "path": [
-              "projectSettings"
+              "repoSettings"
             ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

@@ -1,9 +1,8 @@
 {
-    projectSettings(identifier: "sandbox") {
+    repoSettings(id: "1234") {
         githubWebhooksEnabled
         projectRef {
             id
-            identifier
             commitQueue {
                 enabled
                 mergeMethod
@@ -37,8 +36,6 @@
                 configEnabled
                 patchEnabled
             }
-
-            validDefaultLoggers
         }
     }
 }

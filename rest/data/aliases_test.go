@@ -190,7 +190,7 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 }
 
 func (a *AliasSuite) TestUpdateAliasesForSection() {
-	originalAliases, err := model.FindAliasesForProject("project_id")
+	originalAliases, err := model.FindAllAliasesForProject("project_id")
 	a.NoError(err)
 	a.Len(originalAliases, 3)
 
@@ -219,7 +219,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	a.NoError(err)
 	a.True(modified)
 
-	aliasesFromDb, err := model.FindAliasesForProject("project_id")
+	aliasesFromDb, err := model.FindAllAliasesForProject("project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 3)
 	for _, alias := range aliasesFromDb {
@@ -233,7 +233,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	modified, err = a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
-	aliasesFromDb, err = model.FindAliasesForProject("project_id")
+	aliasesFromDb, err = model.FindAllAliasesForProject("project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4) // adds internal alias
 }

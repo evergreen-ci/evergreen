@@ -78,6 +78,7 @@ type Query {
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
+  repoSettings(id: String!): RepoSettings!
 }
 
 type Mutation {
@@ -88,6 +89,7 @@ type Mutation {
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
+  forceRepotrackerRun(projectId: String!): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -232,6 +234,8 @@ input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
+  # shouldCollapse is used to determine if unmatching active versions should be collapsed
+  shouldCollapse: Boolean = false
 }
 
 type BuildVariantTuple {
@@ -977,8 +981,16 @@ type ProjectSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
-  aliases: [ProjectAlias]
-  subscriptions: [ProjectSubscription]
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
+}
+
+type RepoSettings {
+  githubWebhooksEnabled: Boolean!
+  projectRef: RepoRef ## use the repo ref here in order to have stronger types
+  vars: ProjectVars
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
 }
 
 type ProjectVars {
@@ -1073,34 +1085,75 @@ type Project {
   dispatchingDisabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
-  batchTime: Int
+  batchTime: Int!
   deactivatePrevious: Boolean
-  defaultLogger: String
+  defaultLogger: String!
   notifyOnBuildFailure: Boolean
-  triggers: [TriggerAlias]
-  patchTriggerAliases: [PatchTriggerAlias]
-  githubTriggerAliases: [String]
-  periodicBuilds: [PeriodicBuild]
+  triggers: [TriggerAlias!]
+  patchTriggerAliases: [PatchTriggerAlias!]
+  githubTriggerAliases: [String!]
+  periodicBuilds: [PeriodicBuild!]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
-  taskSync: TaskSyncOptions
-  gitTagAuthorizedUsers: [String]
-  gitTagAuthorizedTeams: [String]
+  taskSync: TaskSyncOptions!
+  gitTagAuthorizedUsers: [String!]
+  gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean
 
-  filesIgnoredFromCache: [String]
+  filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
-  workstationConfig: WorkstationConfig
+  workstationConfig: WorkstationConfig!
 
   hidden: Boolean
   useRepoSettings: Boolean!
-  repoRefId: String
+  repoRefId: String!
 
   isFavorite: Boolean!
+  validDefaultLoggers: [String!]!
   patches(patchesInput: PatchesInput!): Patches!
+}
+
+## repo types have booleans defaulted, and so these are required.
+
+type RepoRef {
+  id: String!
+
+  displayName: String!
+  enabled: Boolean!
+  private: Boolean!
+  owner: String!
+  repo: String!
+  branch: String!
+  remotePath: String!
+  patchingDisabled: Boolean!
+  repotrackerDisabled: Boolean!
+  dispatchingDisabled: Boolean!
+  prTestingEnabled: Boolean!
+  githubChecksEnabled: Boolean!
+  batchTime: Int!
+  deactivatePrevious: Boolean!
+  defaultLogger: String!
+  notifyOnBuildFailure: Boolean!
+  triggers: [TriggerAlias!]!
+  patchTriggerAliases: [PatchTriggerAlias!]
+  githubTriggerAliases: [String!]
+  periodicBuilds: [PeriodicBuild!]
+  cedarTestResultsEnabled: Boolean!
+  commitQueue: RepoCommitQueueParams!
+  admins: [String!]!
+  spawnHostScriptPath: String!
+  tracksPushEvents: Boolean!
+  taskSync: RepoTaskSyncOptions!
+  gitTagAuthorizedUsers: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagVersionsEnabled: Boolean!
+
+  filesIgnoredFromCache: [String!]
+  disabledStatsCache: Boolean!
+  workstationConfig: RepoWorkstationConfig!
 }
 
 type TriggerAlias {
@@ -1129,23 +1182,39 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
-  mergeMethod: String
-  message: String
+  mergeMethod: String!
+  message: String!
+}
+
+type RepoCommitQueueParams {
+  enabled: Boolean!
+  mergeMethod: String!
+  message: String!
 }
 
 type TaskSyncOptions {
+  configEnabled: Boolean
+  patchEnabled: Boolean
+}
+
+type RepoTaskSyncOptions {
   configEnabled: Boolean!
   patchEnabled: Boolean!
 }
 
 type WorkstationConfig {
-  setupCommands: [WorkstationSetupCommand]
+  setupCommands: [WorkstationSetupCommand!]
+  gitClone: Boolean
+}
+
+type RepoWorkstationConfig {
+  setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean!
 }
 
 type WorkstationSetupCommand {
   Command: String!
-  Directory: String
+  Directory: String!
 }
 
 type TaskSpecifier {

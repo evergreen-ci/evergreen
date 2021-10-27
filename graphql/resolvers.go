@@ -30,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -71,6 +72,7 @@ func (r *Resolver) User() UserResolver {
 func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
+
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
@@ -80,6 +82,10 @@ func (r *Resolver) TaskLogs() TaskLogsResolver {
 
 func (r *Resolver) ProjectSettings() ProjectSettingsResolver {
 	return &projectSettingsResolver{r}
+}
+
+func (r *Resolver) RepoSettings() RepoSettingsResolver {
+	return &repoSettingsResolver{r}
 }
 
 func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
@@ -104,6 +110,7 @@ type projectResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
 type projectSettingsResolver struct{ *Resolver }
+type repoSettingsResolver struct{ *Resolver }
 type projectSubscriberResolver struct{ *Resolver }
 type projectVarsResolver struct{ *Resolver }
 type taskLogsResolver struct{ *Resolver }
@@ -399,49 +406,52 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 	return false, nil
 }
 
-func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, a *restModel.APIProjectSettings) (bool, error) {
-	hook, err := model.FindGithubHook(utility.FromStringPtr(a.ProjectRef.Owner), utility.FromStringPtr(a.ProjectRef.Repo))
+func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
+	return model.ValidDefaultLoggers, nil
+}
+
+func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
+	hook, err := model.FindGithubHook(utility.FromStringPtr(obj.ProjectRef.Owner), utility.FromStringPtr(obj.ProjectRef.Repo))
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *a.ProjectRef.Id, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *obj.ProjectRef.Id, err.Error()))
 	}
 	return hook != nil, nil
 }
 
-func (r *projectSettingsResolver) Vars(ctx context.Context, a *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	vars, err := model.FindOneProjectVars(utility.FromStringPtr(a.ProjectRef.Id))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", *a.ProjectRef.Id, err.Error()))
-	}
-	if vars == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", *a.ProjectRef.Id))
-	}
-	res := &restModel.APIProjectVars{}
-	if err = res.BuildFromService(vars); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))
-	}
-	return res, nil
+func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
+	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
-func (r *projectSettingsResolver) Aliases(ctx context.Context, a *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProject(utility.FromStringPtr(a.ProjectRef.Id))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
-	}
-	res := []*restModel.APIProjectAlias{}
-	for _, alias := range aliases {
-		apiAlias := restModel.APIProjectAlias{}
-		if err = apiAlias.BuildFromService(alias); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
-				alias.Alias, err.Error()))
-		}
-		res = append(res, &apiAlias)
-	}
-	return res, nil
+func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
+	return getAPIAliasesForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+}
+func (r *projectSettingsResolver) Subscriptions(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
+	return getAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
-func (r *projectVarsResolver) PrivateVars(ctx context.Context, a *restModel.APIProjectVars) ([]*string, error) {
+func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
+	hook, err := model.FindGithubHook(utility.FromStringPtr(obj.ProjectRef.Owner), utility.FromStringPtr(obj.ProjectRef.Repo))
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Database error finding github hook for project '%s': %s", *obj.ProjectRef.Id, err.Error()))
+	}
+	return hook != nil, nil
+}
+
+func (r *repoSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
+	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+}
+
+func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
+	return getAPIAliasesForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+}
+
+func (r *repoSettingsResolver) Subscriptions(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
+	return getAPISubscriptionsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+}
+
+func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
 	res := []*string{}
-	for privateAlias, isPrivate := range a.PrivateVars {
+	for privateAlias, isPrivate := range obj.PrivateVars {
 		if isPrivate {
 			res = append(res, utility.ToStringPtr(privateAlias))
 		}
@@ -449,39 +459,21 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, a *restModel.APIP
 	return res, nil
 }
 
-func (r *projectSettingsResolver) Subscriptions(ctx context.Context, a *restModel.APIProjectSettings) ([]*restModel.APISubscription, error) {
-	subscriptions, err := event.FindSubscriptionsByOwner(utility.FromStringPtr(a.ProjectRef.Id), event.OwnerTypeProject)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding subscription for project: %s", err.Error()))
-	}
-
-	res := []*restModel.APISubscription{}
-	for _, sub := range subscriptions {
-		apiSubscription := restModel.APISubscription{}
-		if err = apiSubscription.BuildFromService(sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectSubscription %s from service: %s",
-				sub.ID, err.Error()))
-		}
-		res = append(res, &apiSubscription)
-	}
-	return res, nil
-}
-
-func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel.APISubscriber) (*Subscriber, error) {
+func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
-	subscriberType := utility.FromStringPtr(a.Type)
+	subscriberType := utility.FromStringPtr(obj.Type)
 
 	switch subscriberType {
 	case event.GithubPullRequestSubscriberType:
 		sub := restModel.APIGithubPRSubscriber{}
-		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem converting %s subscriber: %s",
 				event.GithubPullRequestSubscriberType, err.Error()))
 		}
 		res.GithubPRSubscriber = &sub
 	case event.GithubCheckSubscriberType:
 		sub := restModel.APIGithubCheckSubscriber{}
-		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.GithubCheckSubscriberType, err.Error()))
 		}
@@ -489,7 +481,7 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel
 
 	case event.EvergreenWebhookSubscriberType:
 		sub := restModel.APIWebhookSubscriber{}
-		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.EvergreenWebhookSubscriberType, err.Error()))
 		}
@@ -497,17 +489,17 @@ func (r *projectSubscriberResolver) Subscriber(ctx context.Context, a *restModel
 
 	case event.JIRAIssueSubscriberType:
 		sub := &restModel.APIJIRAIssueSubscriber{}
-		if err := mapstructure.Decode(a.Target, &sub); err != nil {
+		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
 				event.JIRAIssueSubscriberType, err.Error()))
 		}
 		res.JiraIssueSubscriber = sub
 	case event.JIRACommentSubscriberType:
-		res.JiraCommentSubscriber = a.Target.(*string)
+		res.JiraCommentSubscriber = obj.Target.(*string)
 	case event.EmailSubscriberType:
-		res.EmailSubscriber = a.Target.(*string)
+		res.EmailSubscriber = obj.Target.(*string)
 	case event.SlackSubscriberType:
-		res.SlackSubscriber = a.Target.(*string)
+		res.SlackSubscriber = obj.Target.(*string)
 	case event.EnqueuePatchSubscriberType:
 		// We don't store information in target for this case, so do nothing.
 	default:
@@ -1041,6 +1033,26 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
+	return res, nil
+}
+
+func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel.APIProjectSettings, error) {
+	repoRef, err := model.FindOneRepoRef(id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
+	}
+	if repoRef == nil {
+		return nil, ResourceNotFound.Send(ctx, "repo doesn't exist")
+	}
+
+	res := &restModel.APIProjectSettings{
+		ProjectRef: restModel.APIProjectRef{},
+	}
+	if err = res.ProjectRef.BuildFromService(repoRef.ProjectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+	}
+
+	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
 }
 
@@ -2211,6 +2223,15 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 	return res, nil
 }
 
+func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error) {
+	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
+	if err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, j); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
+	}
+	return true, nil
+}
+
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := r.sc.FindTaskById(taskID)
 	if err != nil {
@@ -2649,7 +2670,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if t == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
 		}
-		break
 	case "build":
 		b, buildErr := r.sc.FindBuildById(id)
 		if buildErr != nil {
@@ -2658,7 +2678,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if b == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
 		}
-		break
 	case "version":
 		v, versionErr := r.sc.FindVersionById(id)
 		if versionErr != nil {
@@ -2667,7 +2686,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if v == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
 		}
-		break
 	case "project":
 		p, projectErr := r.sc.FindProjectById(id, false)
 		if projectErr != nil {
@@ -2676,7 +2694,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
 		}
-		break
 	default:
 		return false, InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
 	}
@@ -3297,7 +3314,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		shouldCollapse := false
 		if !utility.FromBoolPtr(v.Activated) {
 			shouldCollapse = true
-		} else if buildVariantOptions.isPopulated() {
+		} else if buildVariantOptions.isPopulated() && utility.FromBoolPtr(options.ShouldCollapse) {
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,

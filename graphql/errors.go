@@ -33,13 +33,13 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 	case InputValidationError:
 		return formError(ctx, message, InputValidationError)
 	default:
-		return gqlerror.ErrorPathf(graphql.GetResolverContext(ctx).Path(), message)
+		return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), message)
 	}
 }
 
-func formError(ctx context.Context, message string, code GqlError) *gqlerror.Error {
+func formError(ctx context.Context, msg string, code GqlError) *gqlerror.Error {
 	return &gqlerror.Error{
-		Message: message,
+		Message: msg,
 		Extensions: map[string]interface{}{
 			"code": code,
 		},

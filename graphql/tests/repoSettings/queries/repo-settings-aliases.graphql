@@ -1,0 +1,14 @@
+{
+    repoSettings(id: "1234") {
+        aliases {
+            id
+            alias
+            gitTag
+            variant
+            task
+            remotePath
+            variantTags
+            taskTags
+        }
+    }
+}

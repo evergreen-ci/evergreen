@@ -114,6 +114,7 @@ type MainlineCommitsOptions struct {
 	ProjectID       string `json:"projectID"`
 	Limit           *int   `json:"limit"`
 	SkipOrderNumber *int   `json:"skipOrderNumber"`
+	ShouldCollapse  *bool  `json:"shouldCollapse"`
 }
 
 type Manifest struct {
