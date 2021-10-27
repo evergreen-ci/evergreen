@@ -1,7 +1,6 @@
 package patch
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -136,12 +135,9 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	}
 	pipeline := []bson.M{}
 	match := bson.M{}
-	fmt.Println("ran this query")
-	fmt.Println(opts)
 	// Conditionally add the commit queue filter if the user is explicitly filtering on it
 	// This is only used on the project patches page when we want to conditionally only show the commit queue patches
 	if opts.OnlyCommitQueue != nil {
-		fmt.Println("Checking for this commit queue value")
 		if utility.FromBoolPtr(opts.OnlyCommitQueue) {
 			match[AliasKey] = evergreen.CommitQueueAlias
 		}
@@ -164,14 +160,14 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 		match[ProjectKey] = utility.FromStringPtr(opts.Project)
 	}
 	pipeline = append(pipeline, bson.M{"$match": match})
+
 	sort := bson.M{
 		"$sort": bson.M{
 			CreateTimeKey: -1,
 		},
 	}
-	pipeline = append(pipeline, sort)
-	paginatePipeline := []bson.M{}
-
+	// paginatePipeline will be used for the results
+	paginatePipeline := append(pipeline, sort)
 	if opts.Page > 0 {
 		skipStage := bson.M{
 			"$skip": opts.Page * opts.Limit,
@@ -185,27 +181,14 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 		paginatePipeline = append(paginatePipeline, limitStage)
 	}
 
-	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
-	patchesAndCountPipeline := bson.M{
-		"$facet": bson.M{
-			"count": []bson.M{
-				{"$count": "count"},
-			},
-			"patches": paginatePipeline,
-		},
-	}
+	// Will be used to get the total count of the filtered patches
+	countPipeline := append(pipeline, bson.M{"$count": "count"})
 
-	pipeline = append(pipeline, patchesAndCountPipeline)
-
-	type PatchesAndCount struct {
-		Patches []Patch          `bson:"patches"`
-		Count   []map[string]int `bson:"count"`
-	}
-	results := []PatchesAndCount{}
+	results := []Patch{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, paginatePipeline)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -216,7 +199,23 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	if len(results) == 0 {
 		return nil, 0, errors.New("no patches found")
 	}
-	return results[0].Patches, results[0].Count[0]["count"], nil
+
+	type countResult struct {
+		Count int `bson:"count"`
+	}
+	countResults := []countResult{}
+	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	err = cursor.All(ctx, &countResults)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(results) == 0 {
+		return nil, 0, errors.New("no patches found")
+	}
+	return results, countResults[0].Count, nil
 }
 
 // ByUserPaginated produces a query that returns patches by the given user

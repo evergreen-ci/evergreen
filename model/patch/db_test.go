@@ -78,11 +78,12 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	now := time.Now()
 	for i := 0; i < 10; i++ {
 		isCommitQueue := i%2 == 0
+		createTime := time.Duration(i) * time.Minute
 
 		patch := Patch{
 			Id:          bson.NewObjectId(),
 			Project:     "evergreen",
-			CreateTime:  now.Add(time.Minute),
+			CreateTime:  now.Add(-createTime),
 			Description: fmt.Sprintf("patch %d", i),
 		}
 		if isCommitQueue {
