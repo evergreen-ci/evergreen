@@ -200,7 +200,10 @@ mciModule.controller(
     };
 
     $scope.shouldDisableWebhook = function () {
-      return $scope.settingsFormData.build_baron_settings && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
+      return $scope.settingsFormData.build_baron_settings
+          && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
           || $scope.settingsFormData.build_baron_settings.ticket_create_project
           || $scope.ticket_search_project);
     };
@@ -212,10 +215,14 @@ mciModule.controller(
 
     $scope.bbConfigIsValid = function () {
       if ($scope.settingsFormData.build_baron_settings.ticket_create_project){
-          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
       }
       else {
-          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === null
+              || $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined
+              || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
       }
     };
 
