@@ -684,7 +684,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 
 	buildbaronConfig := APIBuildBaronSettings{}
 	if err := buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings); err != nil {
-		return errors.Wrap(err, "cannot convert buildbaron config")
+		return errors.Wrap(err, "cannot convert build baron config")
 	}
 	p.BuildBaronSettings = buildbaronConfig
 
