@@ -2481,7 +2481,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	for _, taskId := range taskIds {
 		task, err := SetScheduled(ctx, r.sc, taskId, true)
 		if err != nil {
-			return scheduledTasks, InternalServerError.Send(ctx, errors.Wrapf(err, "Failed to schedule %d", len(taskIds)-count).Error())
+			return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule %d task : %s", len(taskIds)-count, err.Error()))
 		}
 		count++
 		scheduledTasks = append(scheduledTasks, task)
