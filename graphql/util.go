@@ -66,7 +66,7 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task %s not found", taskID).Error())
 	}
 	if t.Requester == evergreen.MergeTestRequester && isActive {
 		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
