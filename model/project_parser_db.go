@@ -71,7 +71,7 @@ func ParserProjectById(id string) db.Q {
 	return db.Query(bson.M{ParserProjectIdKey: id})
 }
 
-// UpdateOne updates one project
+// ParserProjectUpsertOne updates one project
 func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	_, err := db.Upsert(
 		ParserProjectCollection,
@@ -132,7 +132,7 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 			return bv.Expansions, nil
 		}
 	}
-	return nil, nil
+	return nil, errors.Errorf("error finding variant")
 }
 
 func checkConfigNumberQuery(id string, configNum int) bson.M {

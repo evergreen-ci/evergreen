@@ -214,7 +214,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 			// we want to treat this as an error for better usability
 			return nil, errors.Errorf("nothing named '%v'", sc.name)
 		}
-		names := make([]string, len(tse.items))
+		names := []string{}
 		for _, item := range tse.items {
 			if item.name() != sc.name {
 				names = append(names, item.name())
@@ -232,7 +232,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 		for _, item := range items {
 			illegalItems[item.name()] = true
 		}
-		names := make([]string, len(tse.items))
+		names := []string{}
 		// build slice of all items that aren't in the tag
 		for _, item := range tse.items {
 			if !illegalItems[item.name()] {
