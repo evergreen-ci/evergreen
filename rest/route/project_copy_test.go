@@ -103,10 +103,10 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Len(newProject.Admins, 1)
 	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
-	res, err := s.route.sc.FindProjectById("projectC", false)
+	res, err := s.route.sc.FindProjectById("projectC", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	res, err = s.route.sc.FindProjectById("projectA", false)
+	res, err = s.route.sc.FindProjectById("projectA", false, false)
 	s.NoError(err)
 	s.NotNil(res)
 	vars, err := s.route.sc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)

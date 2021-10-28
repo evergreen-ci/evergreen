@@ -102,8 +102,8 @@ type Connector interface {
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
-	// Find the project matching the given ProjectId. Includes repo settings if set.
-	FindProjectById(string, bool) (*model.ProjectRef, error)
+	// Find the project matching the given ProjectId. Includes repo settings and parser project settings if set.
+	FindProjectById(string, bool, bool) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error

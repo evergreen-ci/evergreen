@@ -91,7 +91,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// stop if project is disabled
-	projectRef, err := model.FindMergedProjectRef(j.QueueID, "")
+	projectRef, err := model.FindMergedProjectRef(j.QueueID, nil)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find project for queue id %s", j.QueueID))
 		return

@@ -499,7 +499,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	p.UseRepoSettings = false
 	p.RepoRefId = ""
 
-	mergedProject, err := FindMergedProjectRef(p.Id, "")
+	mergedProject, err := FindMergedProjectRef(p.Id, nil)
 	if err != nil {
 		return errors.Wrap(err, "error finding merged project ref")
 	}
@@ -707,7 +707,9 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
-func FindMergedProjectRef(identifier string, version string) (*ProjectRef, error) {
+// Relevant fields will also be merged from the parser project with a specified version.
+// If no version is specified, the most recent valid parser project version will be used for merge.
+func FindMergedProjectRef(identifier string, version *string) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
@@ -728,9 +730,11 @@ func FindMergedProjectRef(identifier string, version string) (*ProjectRef, error
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	err = pRef.MergeWithParserProject(version)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+	if version != nil {
+		err = pRef.MergeWithParserProject(*version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+		}
 	}
 	return pRef, nil
 }
@@ -1401,7 +1405,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 }
 
 func IsPerfEnabledForProject(projectId string) bool {
-	projectRef, err := FindMergedProjectRef(projectId, "")
+	projectRef, err := FindMergedProjectRef(projectId, utility.ToStringPtr(""))
 	if err != nil || projectRef == nil {
 		return false
 	}
@@ -2125,11 +2129,15 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 }
 
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task")
+	}
 	projectId, err := task.FindProjectForTask(taskId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project")
 	}
-	pRef, err := FindMergedProjectRef(projectId, "")
+	pRef, err := FindMergedProjectRef(projectId, &t.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
 	}

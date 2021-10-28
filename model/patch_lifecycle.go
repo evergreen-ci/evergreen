@@ -456,7 +456,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 }
 
 func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*ProjectRef, *GetProjectOpts, error) {
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version)
+	projectRef, err := FindMergedProjectRef(p.Project, &p.Version)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -678,7 +678,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	// verify the commit queue is on
-	projectRef, err := FindMergedProjectRef(existingPatch.Project, existingPatch.Version)
+	projectRef, err := FindMergedProjectRef(existingPatch.Project, &existingPatch.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
 	}
@@ -858,7 +858,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 	if p.GithubPatchData.PRNumber == 0 {
 		return nil
 	}
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version)
+	projectRef, err := FindMergedProjectRef(p.Project, &p.Version)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project")
 	}

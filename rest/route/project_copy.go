@@ -103,12 +103,12 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo, false) // ensure project is existing
+	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	copyFromProject, err := p.sc.FindProjectById(p.copyFrom, false) // ensure project is existing
+	copyFromProject, err := p.sc.FindProjectById(p.copyFrom, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
 	}
