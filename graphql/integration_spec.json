@@ -1907,44 +1907,6 @@
   },
   "tests": [
     {
-      "query_file": "user-patches.graphql",
-      "result": {
-        "data": {
-          "userPatches": {
-            "patches": [
-              {
-                "id": "5e1f8ab8834b87d7b5d251a5",
-                "description": "mydesc",
-                "projectID": "mci",
-                "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
-                "patchNumber": 1,
-                "author": "testuser",
-                "version": "",
-                "status": "created",
-                "tasks": [
-                  "test-auth"
-                ],
-                "activated": false,
-                "alias": "",
-                "variants": [
-                  "rhel62"
-                ],
-                "variantsTasks": [
-                  {
-                    "name": "rhel62",
-                    "tasks": [
-                      "test-model-host"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "filteredPatchCount": 1
-          }
-        }
-      }
-    },
-    {
       "query_file": "patch.graphql",
       "result": {
         "data": {
