@@ -34,20 +34,16 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	return nil
 }
 
-func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
+func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, string, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
+		return false, "", errors.Wrapf(err, "problem finding task %s", taskID)
 	}
 	if t == nil {
-		return false, nil, errors.Errorf("could not find task %s", taskID)
+		return false, "", errors.Errorf("could not find task %s", taskID)
 	}
 
-	var errs []string
-	if t.GenerateTasksError != "" {
-		errs = []string{t.GenerateTasksError}
-	}
-	return t.GeneratedTasks, errs, nil
+	return t.GeneratedTasks, t.GenerateTasksError, nil
 }
 
 type MockGenerateConnector struct{}
@@ -56,15 +52,15 @@ func (gc *MockGenerateConnector) GenerateTasks(ctx context.Context, taskID strin
 	return nil
 }
 
-func (gc *MockGenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.QueueGroup) (bool, []string, error) {
+func (gc *MockGenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.QueueGroup) (bool, string, error) {
 	// no task
 	if taskID == "0" {
-		return false, nil, errors.New("No task called '0'")
+		return false, "", errors.New("No task called '0'")
 	}
 	// finished
 	if taskID == "1" {
-		return true, nil, nil
+		return true, "", nil
 	}
 	// not yet finished
-	return false, nil, nil
+	return false, "", nil
 }
