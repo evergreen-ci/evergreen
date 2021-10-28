@@ -185,9 +185,9 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 		return nil, errors.Errorf("criterion '%v' is invalid: %v", sc, sc.Validate())
 
 	case sc.name == SelectAll: // special * case
-		names := []string{}
-		for _, item := range tse.items {
-			names = append(names, item.name())
+		names := make([]string, len(tse.items))
+		for i, item := range tse.items {
+			names[i] = item.name()
 		}
 		return names, nil
 
@@ -203,9 +203,9 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 		if len(taggedItems) == 0 {
 			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
 		}
-		names := []string{}
-		for _, item := range taggedItems {
-			names = append(names, item.name())
+		names := make([]string, len(taggedItems))
+		for i, item := range taggedItems {
+			names[i] = item.name()
 		}
 		return names, nil
 
