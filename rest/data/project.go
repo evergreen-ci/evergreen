@@ -28,9 +28,9 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool, inclu
 	var p *model.ProjectRef
 	var err error
 	if includeRepo && includeParserProject {
-		p, err = model.FindMergedProjectRef(id, utility.ToStringPtr(""))
+		p, err = model.FindMergedProjectRef(id, "", true)
 	} else if includeRepo {
-		p, err = model.FindMergedProjectRef(id, nil)
+		p, err = model.FindMergedProjectRef(id, "", false)
 	} else {
 		p, err = model.FindBranchProjectRef(id)
 	}

@@ -48,11 +48,38 @@ var (
 	ParserProjectTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ParserProject{}, "TaskAnnotationSettings")
 	ParserProjectBuildBaronSettingsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildBaronSettings")
 	ParserProjectPerfEnabledKey            = bsonutil.MustHaveTag(ParserProject{}, "PerfEnabled")
+	ParserProjectCommitQueueAliasesKey     = bsonutil.MustHaveTag(ParserProject{}, "CommitQueueAliases")
+	ParserProjectGitHubPRAliasesKey        = bsonutil.MustHaveTag(ParserProject{}, "GitHubPRAliases")
+	ParserProjectGitTagAliasesKey          = bsonutil.MustHaveTag(ParserProject{}, "GitTagAliases")
+	ParserProjectGitHubChecksAliasesKey    = bsonutil.MustHaveTag(ParserProject{}, "GitHubChecksAliases")
+	ParserProjectPatchAliasesKey           = bsonutil.MustHaveTag(ParserProject{}, "PatchAliases")
 )
 
 // ParserProjectFindOneById returns the parser project for the version
 func ParserProjectFindOneById(id string) (*ParserProject, error) {
 	return ParserProjectFindOne(ParserProjectById(id))
+}
+
+// ParserProjectFindOneIdWithFields returns a parser project with the given ID, projecting only
+// the given fields.
+func ParserProjectFindOneIdWithFields(id string, projected ...string) (*ParserProject, error) {
+	pp := &ParserProject{}
+	query := db.Query(bson.M{ParserProjectIdKey: id})
+
+	if len(projected) > 0 {
+		query = query.WithFields(projected...)
+	}
+
+	err := db.FindOneQ(ParserProjectCollection, query, pp)
+
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "")
+	}
+
+	return pp, nil
 }
 
 // ParserProjectFindOne finds a parser project with a given query.
@@ -82,7 +109,10 @@ func ParserProjectByVersion(projectId string, version string) (*ParserProject, e
 		version = lastGoodVersion.Id
 		lookupVersion = true
 	}
-	parserProject, err := ParserProjectFindOneById(version)
+	parserProject, err := ParserProjectFindOneIdWithFields(version,
+		ParserProjectPerfEnabledKey, ProjectRefDeactivatePreviousKey, ParserProjectTaskAnnotationSettingsKey, ParserProjectBuildBaronSettingsKey,
+		ParserProjectCommitQueueAliasesKey, ParserProjectPatchAliasesKey, ParserProjectGitHubChecksAliasesKey, ParserProjectGitTagAliasesKey,
+		ParserProjectGitHubPRAliasesKey)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message":        "Error retrieving parser project for version",

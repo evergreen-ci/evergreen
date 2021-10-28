@@ -3,8 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/utility"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
@@ -91,7 +89,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 
-	ref, err := model.FindMergedProjectRef(j.ProjectID, utility.ToStringPtr(""))
+	ref, err := model.FindMergedProjectRef(j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(err)
 		return

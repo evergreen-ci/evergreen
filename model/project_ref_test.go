@@ -115,7 +115,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	}}
 	assert.NoError(t, repoRef.Upsert())
 
-	mergedProject, err := FindMergedProjectRef("ident", utility.ToStringPtr("ident"))
+	mergedProject, err := FindMergedProjectRef("ident", "ident", true)
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)

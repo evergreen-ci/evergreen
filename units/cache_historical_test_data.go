@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/utility"
 	"regexp"
 	"strings"
 	"time"
@@ -189,7 +188,7 @@ func reportTiming(fn func()) time.Duration {
 }
 
 func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
-	ref, err := model.FindMergedProjectRef(projectId, utility.ToStringPtr(""))
+	ref, err := model.FindMergedProjectRef(projectId, "", true)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not get project ref")
 	}
