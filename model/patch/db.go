@@ -137,17 +137,14 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	match := bson.M{}
 	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
 	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
-	if opts.OnlyCommitQueue != nil {
-		if utility.FromBoolPtr(opts.OnlyCommitQueue) {
-			match[AliasKey] = evergreen.CommitQueueAlias
-		}
+	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
+		match[AliasKey] = evergreen.CommitQueueAlias
 	}
 
-	if opts.IncludeCommitQueue != nil {
-		// This is only used on the user patches page when we want to filter out the commit queue
-		if !utility.FromBoolPtr(opts.IncludeCommitQueue) {
-			match[AliasKey] = commitQueueFilter
-		}
+	// This is only used on the user patches page when we want to filter out the commit queue
+	if opts.IncludeCommitQueue != nil && !utility.FromBoolPtr(opts.IncludeCommitQueue) {
+		match[AliasKey] = commitQueueFilter
+
 	}
 	if opts.PatchName != "" {
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
@@ -208,6 +205,9 @@ func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueue
 	}
 	if err = cursor.All(ctx, &countResults); err != nil {
 		return nil, 0, err
+	}
+	if len(countResults) == 0 {
+		return results, 0, nil
 	}
 	return results, countResults[0].Count, nil
 }
