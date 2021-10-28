@@ -304,9 +304,8 @@ func (ch *CreateHost) Expand(exp *util.Expansions) error {
 }
 
 type GeneratePollResponse struct {
-	Finished    bool   `json:"finished"`
-	ShouldRetry bool   `json:"should_retry"`
-	Error       string `json:"error"`
+	Finished bool     `json:"finished"`
+	Errors   []string `json:"errors"`
 }
 
 // DistroView represents the view of data that the agent uses from the distro

@@ -344,7 +344,7 @@ type Connector interface {
 	GenerateTasks(context.Context, string, []json.RawMessage, amboy.QueueGroup) error
 
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
-	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, string, error)
+	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
 	// SaveSubscriptions, given an owner, a list of current subscriptions and an isProject boolean and
 	// upserts the given set of API subscriptions (if the owner is a project type, verify that all current subscriptions have

@@ -114,20 +114,16 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			if err != nil {
 				return true, err
 			}
+			if len(generateStatus.Errors) > 0 {
+				fullErr := errors.New(strings.Join(generateStatus.Errors, ", "))
+				// if the error isn't related to saving the generated task, log it but still retry in case of race condition
+				if !strings.Contains(fullErr.Error(), evergreen.SaveGenerateTasksError) {
+					logger.Task().Infof("Problem polling for generate tasks job, retrying (%s)", fullErr)
+				}
+				return true, fullErr
+			}
 			if generateStatus.Finished {
 				return false, nil
-			}
-			generateErr := errors.New(generateStatus.Error)
-			if !generateStatus.ShouldRetry {
-				return false, generateErr
-			}
-
-			if generateStatus.Error != "" {
-				// if the error isn't related to saving the generated task, log it but still retry in case of race condition
-				if !strings.Contains(generateStatus.Error, evergreen.SaveGenerateTasksError) {
-					logger.Task().Infof("Problem polling for generate tasks job, retrying (%s)", generateStatus.Error)
-				}
-				return true, generateErr
 			}
 			return true, errors.New("task generation unfinished")
 		}, utility.RetryOptions{
