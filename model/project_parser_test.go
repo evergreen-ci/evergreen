@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	mgobson "gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
@@ -13,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -21,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v3"
 )
 
