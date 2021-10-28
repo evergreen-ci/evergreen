@@ -124,7 +124,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 
 			if generateStatus.Error != "" {
 				// if the error isn't related to saving the generated task, log it but still retry in case of race condition
-				if generateStatus.ShouldRetry && !strings.Contains(generateStatus.Error, evergreen.SaveGenerateTasksError) {
+				if !strings.Contains(generateStatus.Error, evergreen.SaveGenerateTasksError) {
 					logger.Task().Infof("Problem polling for generate tasks job, retrying (%s)", generateStatus.Error)
 				}
 				return true, generateErr
