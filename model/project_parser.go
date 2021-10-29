@@ -24,6 +24,7 @@ import (
 
 const LoadProjectError = "load project error(s)"
 const TranslateProjectError = "error translating project"
+const EmptyConfigurationError = "received empty configuration file"
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
