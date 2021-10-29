@@ -748,7 +748,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 }
 
 func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, PRNumber int) ([]*github.RepositoryCommit, error) {
-	httpClient := getGithubClientRetryWith404s(token, "GetPullRequestMergeBase")
+	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
 	defer utility.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)

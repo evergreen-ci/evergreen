@@ -116,7 +116,7 @@ type ProjectRef struct {
 
 type CommitQueueParams struct {
 	Enabled       *bool  `bson:"enabled" json:"enabled"`
-	RequireSigned *bool  `json:"require_signed"`
+	RequireSigned *bool  `bson:"require_signed" json:"require_signed"`
 	MergeMethod   string `bson:"merge_method" json:"merge_method"`
 	Message       string `bson:"message,omitempty" json:"message,omitempty"`
 }

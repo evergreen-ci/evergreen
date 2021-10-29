@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -592,7 +591,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 
-	if *projectRef.CommitQueue.RequireSigned {
+	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
 		err = gh.requireSigned(ctx, userRepo, *pr.Head.Ref, pr, prNum)
 		if err != nil {
 			sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
@@ -667,9 +666,13 @@ func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRe
 
 	for _, c := range commits {
 		commit := c.GetCommit()
-		if !*commit.Verification.Verified && *commit.Verification.Reason == commitUnsigned {
-			return errors.New(fmt.Sprintf("can't enqueue patch, the commits '%s' is not signed.", *commit.Message))
+		if commit.Verification != nil {
+			if !utility.FromBoolPtr(commit.Verification.Verified) &&
+				(utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned) {
+				return errors.Errorf("the commit '%s' is not signed", utility.FromStringPtr(commit.Message))
+			}
 		}
+
 	}
 	return nil
 }
