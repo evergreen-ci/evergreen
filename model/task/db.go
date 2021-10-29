@@ -956,10 +956,13 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]string, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			ProjectKey:       projectId,
-			BuildVariantKey:  buildVariant,
-			RequesterKey:     bson.M{"$in": evergreen.SystemVersionRequesterTypes},
-			DisplayTaskIdKey: "", // ignore execution tasks
+			ProjectKey:      projectId,
+			BuildVariantKey: buildVariant,
+			RequesterKey:    bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+			"$or": []bson.M{
+				{DisplayTaskIdKey: bson.M{"$exists": false}},
+				{DisplayTaskIdKey: ""},
+			},
 		},
 		},
 	}
