@@ -869,7 +869,7 @@ type BuildVariantTuple struct {
 	DisplayName  string `bson:"display_name"`
 }
 
-const VERSION_LIMIT = 50
+const VersionLimit = 50
 
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
@@ -881,7 +881,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 			DisplayNameKey: taskName,
 			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
 			"$and": []bson.M{
-				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VERSION_LIMIT}},
+				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 			},
 		},
