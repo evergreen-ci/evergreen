@@ -23,9 +23,9 @@ func TestGeneratePoll(t *testing.T) {
 	require.NotNil(t, q)
 
 	gc := &GenerateConnector{}
-	finished, generateErr, err := gc.GeneratePoll(context.Background(), "task-0", q)
+	finished, generateErrs, err := gc.GeneratePoll(context.Background(), "task-0", q)
 	assert.False(t, finished)
-	assert.Empty(t, generateErr)
+	assert.Empty(t, generateErrs)
 	assert.Error(t, err)
 
 	require.NoError(t, (&task.Task{
@@ -35,9 +35,9 @@ func TestGeneratePoll(t *testing.T) {
 		GeneratedTasks: false,
 	}).Insert())
 
-	finished, generateErr, err = gc.GeneratePoll(context.Background(), "task-1", q)
+	finished, generateErrs, err = gc.GeneratePoll(context.Background(), "task-1", q)
 	assert.False(t, finished)
-	assert.Empty(t, generateErr)
+	assert.Empty(t, generateErrs)
 	assert.NoError(t, err)
 
 	require.NoError(t, (&task.Task{
@@ -47,9 +47,9 @@ func TestGeneratePoll(t *testing.T) {
 		GeneratedTasks: true,
 	}).Insert())
 
-	finished, generateErr, err = gc.GeneratePoll(context.Background(), "task-2", q)
+	finished, generateErrs, err = gc.GeneratePoll(context.Background(), "task-2", q)
 	assert.True(t, finished)
-	assert.Empty(t, generateErr)
+	assert.Empty(t, generateErrs)
 	assert.NoError(t, err)
 
 	require.NoError(t, (&task.Task{
@@ -60,9 +60,9 @@ func TestGeneratePoll(t *testing.T) {
 		GenerateTasksError: "this is an error",
 	}).Insert())
 
-	finished, generateErr, err = gc.GeneratePoll(context.Background(), "task-3", q)
+	finished, generateErrs, err = gc.GeneratePoll(context.Background(), "task-3", q)
 	assert.True(t, finished)
-	assert.Equal(t, "this is an error", generateErr)
+	assert.Equal(t, []string{"this is an error"}, generateErrs)
 	assert.NoError(t, err)
 }
 
