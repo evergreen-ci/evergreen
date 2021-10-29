@@ -556,6 +556,7 @@ type VersionModifications struct {
 }
 
 func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
+	projId := ""
 	switch modifications.Action {
 	case Restart:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
@@ -582,16 +583,17 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
 			if proj == nil {
-				projRef, err := model.FindMergedProjectRef(version.Identifier, version.Id, true)
+				projId, err := model.GetIdForProject(version.Identifier)
 				if err != nil {
 					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
 				}
-				if projRef == nil {
+				if projId == "" {
 					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
 				}
-				proj = projRef
+			} else {
+				projId = proj.Id
 			}
-			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Id, version.Id, user.DisplayName())
+			_, err := commitqueue.RemoveCommitQueueItemForVersion(projId, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
@@ -607,25 +609,26 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				"message": "unable to send github status",
 				"patch":   version.Id,
 			}))
-			err = model.RestartItemsAfterVersion(nil, proj.Id, version.Id, user.Id)
+			err = model.RestartItemsAfterVersion(nil, projId, version.Id, user.Id)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
 			}
 		}
 	case SetPriority:
 		if proj == nil {
-			projRef, err := model.FindMergedProjectRef(version.Identifier, version.Id, true)
+			projId, err := model.GetIdForProject(version.Identifier)
 			if err != nil {
 				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 			}
-			if projRef == nil {
+			if projId == "" {
 				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 			}
-			proj = projRef
+		} else {
+			projId = proj.Id
 		}
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{
-				Resource:      proj.Id,
+				Resource:      projId,
 				ResourceType:  "project",
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
