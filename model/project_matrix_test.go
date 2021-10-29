@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -112,6 +113,7 @@ buildvariants:
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
 			m1 := *p.BuildVariants[0].Matrix
+			pp.Println(p)
 			So(m1.Id, ShouldEqual, "test")
 			So(p.BuildVariants[1].Name, ShouldEqual, "single_variant")
 			So(p.BuildVariants[1].Tasks, ShouldResemble, parserBVTaskUnits{parserBVTaskUnit{Name: "*"}})
