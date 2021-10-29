@@ -113,7 +113,8 @@ func ParserProjectByVersion(projectId, version string) (*ParserProject, error) {
 }
 
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
-	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey, ParserProjectBuildVariantsKey))
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
+		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding parser project")
 	}
@@ -127,7 +128,14 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 			return nil, errors.Wrap(err, "error parsing legacy config")
 		}
 	}
-	for _, bv := range pp.BuildVariants {
+
+	bvs, errs := GetVariantsWithMatrices(nil, pp.Axes, pp.BuildVariants)
+	if len(errs) > 0 {
+		catcher := grip.NewBasicCatcher()
+		catcher.Extend(errs)
+		return nil, catcher.Resolve()
+	}
+	for _, bv := range bvs {
 		if bv.Name == variant {
 			return bv.Expansions, nil
 		}
