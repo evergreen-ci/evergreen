@@ -17,17 +17,18 @@ type APIPodEnvVar struct {
 
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
-	Name         *string         `json:"name"`
-	Memory       *int            `json:"memory"`
-	CPU          *int            `json:"cpu"`
-	Image        *string         `json:"image"`
-	RepoUsername *string         `json:"repo_username"`
-	RepoPassword *string         `json:"repo_password"`
-	EnvVars      []*APIPodEnvVar `json:"env_vars"`
-	OS           *string         `json:"os"`
-	Arch         *string         `json:"arch"`
-	Secret       *string         `json:"secret"`
-	WorkingDir   *string         `json:"working_dir"`
+	Name           *string              `json:"name"`
+	Memory         *int                 `json:"memory"`
+	CPU            *int                 `json:"cpu"`
+	Image          *string              `json:"image"`
+	RepoUsername   *string              `json:"repo_username"`
+	RepoPassword   *string              `json:"repo_password"`
+	EnvVars        []*APIPodEnvVar      `json:"env_vars"`
+	OS             APIPodOS             `json:"os"`
+	Arch           APIPodArch           `json:"arch"`
+	WindowsVersion APIPodWindowsVersion `json:"windows_version"`
+	Secret         *string              `json:"secret"`
+	WorkingDir     *string              `json:"working_dir"`
 }
 
 type APICreatePodResponse struct {
@@ -37,13 +38,18 @@ type APICreatePodResponse struct {
 // ToService returns a service layer pod.Pod using the data from APIPod.
 func (p *APICreatePod) ToService() (interface{}, error) {
 	envVars, secrets := p.splitEnvVars()
-	os := pod.OS(utility.FromStringPtr(p.OS))
-	if err := os.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid OS")
+
+	os, err := p.OS.ToService()
+	if err != nil {
+		return nil, err
 	}
-	arch := pod.Arch(utility.FromStringPtr(p.Arch))
-	if err := arch.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid architecture")
+	arch, err := p.Arch.ToService()
+	if err != nil {
+		return nil, err
+	}
+	winVer, err := p.WindowsVersion.ToService()
+	if err != nil {
+		return nil, err
 	}
 
 	return pod.Pod{
@@ -58,16 +64,17 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 			Initializing: time.Now(),
 		},
 		TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-			Image:        utility.FromStringPtr(p.Image),
-			RepoUsername: utility.FromStringPtr(p.RepoUsername),
-			RepoPassword: utility.FromStringPtr(p.RepoPassword),
-			MemoryMB:     utility.FromIntPtr(p.Memory),
-			CPU:          utility.FromIntPtr(p.CPU),
-			OS:           os,
-			Arch:         arch,
-			EnvVars:      envVars,
-			EnvSecrets:   secrets,
-			WorkingDir:   utility.FromStringPtr(p.WorkingDir),
+			Image:          utility.FromStringPtr(p.Image),
+			RepoUsername:   utility.FromStringPtr(p.RepoUsername),
+			RepoPassword:   utility.FromStringPtr(p.RepoPassword),
+			MemoryMB:       utility.FromIntPtr(p.Memory),
+			CPU:            utility.FromIntPtr(p.CPU),
+			OS:             *os,
+			Arch:           *arch,
+			WindowsVersion: *winVer,
+			EnvVars:        envVars,
+			EnvSecrets:     secrets,
+			WorkingDir:     utility.FromStringPtr(p.WorkingDir),
 		},
 	}, nil
 }
@@ -201,16 +208,17 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 // APIPodTaskContainerCreationOptions represents options to apply to the task's
 // container when creating a pod.
 type APIPodTaskContainerCreationOptions struct {
-	Image        *string                 `json:"image,omitempty"`
-	RepoUsername *string                 `json:"repo_username,omitempty"`
-	RepoPassword *string                 `json:"repo_password,omitempty"`
-	MemoryMB     *int                    `json:"memory_mb,omitempty"`
-	CPU          *int                    `json:"cpu,omitempty"`
-	OS           *string                 `json:"os,omitempty"`
-	Arch         *string                 `json:"arch,omitempty"`
-	EnvVars      map[string]string       `json:"env_vars,omitempty"`
-	EnvSecrets   map[string]APIPodSecret `json:"env_secrets,omitempty"`
-	WorkingDir   *string                 `json:"working_dir,omitempty"`
+	Image          *string                 `json:"image,omitempty"`
+	RepoUsername   *string                 `json:"repo_username,omitempty"`
+	RepoPassword   *string                 `json:"repo_password,omitempty"`
+	MemoryMB       *int                    `json:"memory_mb,omitempty"`
+	CPU            *int                    `json:"cpu,omitempty"`
+	OS             APIPodOS                `json:"os,omitempty"`
+	Arch           APIPodArch              `json:"arch,omitempty"`
+	WindowsVersion APIPodWindowsVersion    `json:"windows_version,omitempty"`
+	EnvVars        map[string]string       `json:"env_vars,omitempty"`
+	EnvSecrets     map[string]APIPodSecret `json:"env_secrets,omitempty"`
+	WorkingDir     *string                 `json:"working_dir,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
@@ -221,8 +229,9 @@ func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskConta
 	o.RepoPassword = utility.ToStringPtr(opts.RepoPassword)
 	o.MemoryMB = utility.ToIntPtr(opts.MemoryMB)
 	o.CPU = utility.ToIntPtr(opts.CPU)
-	o.OS = utility.ToStringPtr(string(opts.OS))
-	o.Arch = utility.ToStringPtr(string(opts.Arch))
+	o.OS.BuildFromService(&opts.OS)
+	o.Arch.BuildFromService(&opts.Arch)
+	o.WindowsVersion.BuildFromService(&opts.WindowsVersion)
 	o.EnvVars = opts.EnvVars
 	envSecrets := map[string]APIPodSecret{}
 	for name, secret := range opts.EnvSecrets {
@@ -237,30 +246,99 @@ func (o *APIPodTaskContainerCreationOptions) BuildFromService(opts pod.TaskConta
 // ToService converts REST API task container creation options into
 // service-layer task container creation options.
 func (o *APIPodTaskContainerCreationOptions) ToService() (*pod.TaskContainerCreationOptions, error) {
-	os := pod.OS(utility.FromStringPtr(o.OS))
-	if err := os.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid OS")
+	os, err := o.OS.ToService()
+	if err != nil {
+		return nil, err
 	}
-	arch := pod.Arch(utility.FromStringPtr(o.Arch))
-	if err := arch.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid architecture")
+	arch, err := o.Arch.ToService()
+	if err != nil {
+		return nil, err
+	}
+	winVer, err := o.WindowsVersion.ToService()
+	if err != nil {
+		return nil, err
 	}
 	envSecrets := map[string]pod.Secret{}
 	for name, secret := range o.EnvSecrets {
 		envSecrets[name] = secret.ToService()
 	}
 	return &pod.TaskContainerCreationOptions{
-		Image:        utility.FromStringPtr(o.Image),
-		RepoUsername: utility.FromStringPtr(o.RepoUsername),
-		RepoPassword: utility.FromStringPtr(o.RepoPassword),
-		MemoryMB:     utility.FromIntPtr(o.MemoryMB),
-		CPU:          utility.FromIntPtr(o.CPU),
-		OS:           os,
-		Arch:         arch,
-		EnvVars:      o.EnvVars,
-		EnvSecrets:   envSecrets,
-		WorkingDir:   utility.FromStringPtr(o.WorkingDir),
+		Image:          utility.FromStringPtr(o.Image),
+		RepoUsername:   utility.FromStringPtr(o.RepoUsername),
+		RepoPassword:   utility.FromStringPtr(o.RepoPassword),
+		MemoryMB:       utility.FromIntPtr(o.MemoryMB),
+		CPU:            utility.FromIntPtr(o.CPU),
+		OS:             *os,
+		Arch:           *arch,
+		WindowsVersion: *winVer,
+		EnvVars:        o.EnvVars,
+		EnvSecrets:     envSecrets,
+		WorkingDir:     utility.FromStringPtr(o.WorkingDir),
 	}, nil
+}
+
+type APIPodOS string
+
+func (os *APIPodOS) BuildFromService(dbOS *pod.OS) {
+	if os == nil || dbOS == nil {
+		return
+	}
+	*os = APIPodOS(string(*dbOS))
+}
+
+func (os *APIPodOS) ToService() (*pod.OS, error) {
+	if os == nil {
+		return nil, nil
+	}
+	dbOS := pod.OS(*os)
+	if err := dbOS.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid OS")
+	}
+	return &dbOS, nil
+}
+
+type APIPodArch string
+
+func (a *APIPodArch) BuildFromService(dbArch *pod.Arch) {
+	if a == nil || dbArch == nil {
+		return
+	}
+	*a = APIPodArch(*dbArch)
+}
+
+func (a *APIPodArch) ToService() (*pod.Arch, error) {
+	if a == nil {
+		return nil, nil
+	}
+	dbArch := pod.Arch(*a)
+	if err := dbArch.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid architecture")
+	}
+	return &dbArch, nil
+}
+
+type APIPodWindowsVersion string
+
+func (v *APIPodWindowsVersion) BuildFromService(dbWinVer *pod.WindowsVersion) {
+	if v == nil || dbWinVer == nil {
+		return
+	}
+	*v = APIPodWindowsVersion(*dbWinVer)
+}
+
+func (v *APIPodWindowsVersion) ToService() (*pod.WindowsVersion, error) {
+	if v == nil {
+		return nil, nil
+	}
+	dbWinVer := pod.WindowsVersion(*v)
+	// Empty Windows version is allowed since it's optional.
+	if dbWinVer == "" {
+		return &dbWinVer, nil
+	}
+	if err := dbWinVer.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid Windows version")
+	}
+	return &dbWinVer, nil
 }
 
 // APIPodResourceInfo represents timing information about the pod lifecycle.

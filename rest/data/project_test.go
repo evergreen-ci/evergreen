@@ -457,7 +457,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	resp, err := dc.UpdateProjectVarsByValue("1", "11", "user", true)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, "a", resp[projectId])
+	assert.Equal(t, []string{"a"}, resp[projectId])
 
 	res, err := dc.FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)
@@ -467,7 +467,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	resp, err = dc.UpdateProjectVarsByValue("1", "11", username, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, "a", resp[projectId])
+	assert.Equal(t, []string{"a"}, resp[projectId])
 
 	res, err = dc.FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)

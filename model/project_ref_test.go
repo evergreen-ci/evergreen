@@ -391,7 +391,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, repoAlias.Upsert())
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			aliases, err := FindAliasesForProject(pRef.Id)
+			aliases, err := FindAllAliasesForProject(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
@@ -403,7 +403,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			aliases, err = FindAliasesForProject(pRef.Id)
+			aliases, err = FindAllAliasesForProject(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
@@ -422,7 +422,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(repoAliases, pRef.RepoRefId))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			aliases, err := FindAliasesForProject(pRef.Id)
+			aliases, err := FindAllAliasesForProject(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
 			gitTagCount := 0
@@ -602,7 +602,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProject(id)
+			aliases, err := FindAllAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAndCQSection, "me"))
@@ -613,7 +613,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAliasesForProject(id)
+			aliases, err = FindAllAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			// assert that only patch aliases are left
@@ -629,7 +629,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
 		ProjectPagePatchAliasSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProject(id)
+			aliases, err := FindAllAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
@@ -639,7 +639,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
 
-			aliases, err = FindAliasesForProject(id)
+			aliases, err = FindAllAliasesForProject(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 4)
 			// assert that no patch aliases are left
@@ -763,6 +763,29 @@ func TestDefaultRepoBySection(t *testing.T) {
 			test(t, pRef.Id)
 		})
 	}
+}
+
+func TestGroupProjectsByRepo(t *testing.T) {
+	assert := assert.New(t)
+	groupedProjects := GroupProjectsByRepo(
+		[]ProjectRef{
+			{Id: "projectB", RepoRefId: "mongo"},
+			{Id: "projectC", RepoRefId: "mongo"},
+			{Id: "projectD", RepoRefId: "mongo"},
+			{Id: "projectE", RepoRefId: "gimlet"},
+			{Id: "projectF", RepoRefId: "gimlet"},
+		},
+	)
+
+	assert.Equal(2, len(groupedProjects["gimlet"]))
+	assert.Equal(3, len(groupedProjects["mongo"]))
+
+	assert.Equal("projectB", groupedProjects["mongo"][0].Id)
+	assert.Equal("projectC", groupedProjects["mongo"][1].Id)
+	assert.Equal("projectD", groupedProjects["mongo"][2].Id)
+
+	assert.Equal("projectE", groupedProjects["gimlet"][0].Id)
+	assert.Equal("projectF", groupedProjects["gimlet"][1].Id)
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
@@ -999,7 +1022,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.True(t, projectVars.PrivateVars["sdc"])
 	assert.True(t, projectVars.RestrictedVars["ever"])
 
-	projectAliases, err = FindAliasesForProject(repoRef.Id)
+	projectAliases, err = FindAliasesForRepo(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectAliases, 2)
 	for _, a := range projectAliases {

@@ -855,6 +855,11 @@ type APIBanner struct {
 	Theme *string `json:"theme"`
 }
 
+// APIUiV2URL is a public structure representing the new UI url (e.g. Spruce)
+type APIUiV2URL struct {
+	UIv2Url *string `json:"uiv2_url"`
+}
+
 type APIHostInitConfig struct {
 	HostThrottle         int     `json:"host_throttle"`
 	ProvisioningThrottle int     `json:"provisioning_throttle"`

@@ -1440,8 +1440,9 @@ func hostFindBy() cli.Command {
 		ipAddressFlagName = "ip-address"
 	)
 	return cli.Command{
-		Name:  "get-host",
-		Usage: "get link to existing hosts",
+		Name:    "get",
+		Aliases: []string{"get-host"},
+		Usage:   "get link to existing hosts",
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(ipAddressFlagName, "ip"),

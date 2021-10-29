@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -31,8 +32,9 @@ func TestPostPod(t *testing.T) {
 					"value": "env_val",
 					"secret": false
 				}],
-				"os": "linux",
+				"os": "windows",
 				"arch": "arm64",
+				"windows_version": "SERVER_2022",
 				"secret": "secret"
 			}`)
 			req, err := http.NewRequest(http.MethodPost, "https://example.com/rest/v2/pods", bytes.NewBuffer(json))
@@ -41,8 +43,9 @@ func TestPostPod(t *testing.T) {
 			assert.Equal(t, 128, utility.FromIntPtr(ph.p.Memory))
 			assert.Equal(t, 128, utility.FromIntPtr(ph.p.CPU))
 			assert.Equal(t, "image", utility.FromStringPtr(ph.p.Image))
-			assert.Equal(t, "linux", utility.FromStringPtr(ph.p.OS))
-			assert.Equal(t, "arm64", utility.FromStringPtr(ph.p.Arch))
+			assert.EqualValues(t, pod.OSWindows, ph.p.OS)
+			assert.EqualValues(t, pod.ArchARM64, ph.p.Arch)
+			assert.EqualValues(t, pod.WindowsVersionServer2022, ph.p.WindowsVersion)
 			assert.Equal(t, "secret", utility.FromStringPtr(ph.p.Secret))
 			assert.Equal(t, "env_name", utility.FromStringPtr(ph.p.EnvVars[0].Name))
 			assert.Equal(t, "env_val", utility.FromStringPtr(ph.p.EnvVars[0].Value))
@@ -68,8 +71,8 @@ func TestPostPod(t *testing.T) {
 			assert.Equal(t, 128, utility.FromIntPtr(ph.p.Memory))
 			assert.Equal(t, 128, utility.FromIntPtr(ph.p.CPU))
 			assert.Equal(t, "image", utility.FromStringPtr(ph.p.Image))
-			assert.Equal(t, "linux", utility.FromStringPtr(ph.p.OS))
-			assert.Equal(t, "arm64", utility.FromStringPtr(ph.p.Arch))
+			assert.EqualValues(t, "linux", ph.p.OS)
+			assert.EqualValues(t, "arm64", ph.p.Arch)
 			assert.Equal(t, "secret", utility.FromStringPtr(ph.p.Secret))
 			assert.Equal(t, "secret_name", utility.FromStringPtr(ph.p.EnvVars[0].Name))
 			assert.Equal(t, "secret_val", utility.FromStringPtr(ph.p.EnvVars[0].Value))

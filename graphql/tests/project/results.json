@@ -94,9 +94,12 @@
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
                 { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" },
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
                 { "id": "5e4ff3abe3c3317e352062e9" }
               ],
-              "filteredPatchCount": 3
+              "filteredPatchCount": 6
             }
           }
         }
@@ -113,39 +116,26 @@
                   "id": "5e4ff3abe3c3317e352062e8",
                   "author": "testuser",
                   "authorDisplayName": "testuser"
-                },
-                {
-                  "id": "5e4ff3abe3c3317e352062e7",
-                  "author": "testuser",
-                  "authorDisplayName": "testuser"
-                },
-                {
-                  "id": "5e4ff3abe3c3317e352062e9",
-                  "author": "testuser",
-                  "authorDisplayName": "testuser"
                 }
               ],
-              "filteredPatchCount": 3
+              "filteredPatchCount": 6
             }
           }
         }
       }
     },
     {
-      "query_file": "patches-include-commit-queue.graphql",
+      "query_file": "patches-onlyCommitQueue.graphql",
       "result": {
         "data": {
           "project": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e8" },
-                { "id": "5e4ff3abe3c3317e352062e7" },
                 { "id": "5e4ff3abe3c3317e352062e6" },
                 { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" },
-                { "id": "5e4ff3abe3c3317e352062e9" }
+                { "id": "5e4ff3abe3c3317e352062e4" }
               ],
-              "filteredPatchCount": 6
+              "filteredPatchCount": 3
             }
           }
         }
@@ -167,10 +157,10 @@
       }
     },
     {
-      "query_file": "patches-page-0-limit-3.graphql",
+      "query_file": "patches-pagination.graphql",
       "result": {
         "data": {
-          "project": {
+          "page0": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
@@ -179,15 +169,8 @@
               ],
               "filteredPatchCount": 6
             }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patches-page-1-limit-3.graphql",
-      "result": {
-        "data": {
-          "project": {
+          },
+          "page1": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e5" },

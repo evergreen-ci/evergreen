@@ -201,7 +201,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.Contains(t, repoVars.Vars, "a")
 	assert.Contains(t, repoVars.PrivateVars, "a")
 
-	aliases, err := dbModel.FindAliasesForProject(repoRef.Id)
+	aliases, err := dbModel.FindAliasesForRepo(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, aliases, 2)
 
