@@ -2693,7 +2693,7 @@ func TestGetTasksByVersionIncludeInactiveTasks(t *testing.T) {
 		ActivatedTime: utility.ZeroTime,
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, inactiveTask))
+assert.NoError(t, inactiveTask.Insert())
 
 	// inactive tasks should be included
 	opts := GetTasksByVersionOptions{IncludeInactiveTasks: true}
