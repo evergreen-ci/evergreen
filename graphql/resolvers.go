@@ -1403,16 +1403,29 @@ func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIP
 }
 
 func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	patches, count, err := r.sc.FindPatchesByProjectPatchNameStatusesCommitQueue(*obj.Id, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	patchPointers := []*restModel.APIPatch{}
-	for i := range patches {
-		patchPointers = append(patchPointers, &patches[i])
+	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
+		Project:         obj.Id,
+		PatchName:       patchesInput.PatchName,
+		Statuses:        patchesInput.Statuses,
+		Page:            patchesInput.Page,
+		Limit:           patchesInput.Limit,
+		OnlyCommitQueue: patchesInput.OnlyCommitQueue,
 	}
 
-	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
+	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching patches for this project : %s", err.Error()))
+	}
+	apiPatches := []*restModel.APIPatch{}
+	for _, p := range patches {
+		apiPatch := restModel.APIPatch{}
+		err = apiPatch.BuildFromService(p)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
+		}
+		apiPatches = append(apiPatches, &apiPatch)
+	}
+	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
@@ -1423,27 +1436,6 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return &userSettings, nil
-}
-
-func (r *queryResolver) UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error) {
-	usr := MustHaveUser(ctx)
-	userIdParam := usr.Username()
-	if userID != nil {
-		userIdParam = *userID
-	}
-	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(userIdParam, *patchName, statuses, *includeCommitQueue, *page, *limit)
-	patchPointers := []*restModel.APIPatch{}
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	for i := range patches {
-		patchPointers = append(patchPointers, &patches[i])
-	}
-	userPatches := UserPatches{
-		Patches:            patchPointers,
-		FilteredPatchCount: *count,
-	}
-	return &userPatches, nil
 }
 
 func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int) (*restModel.APITask, error) {
@@ -2823,7 +2815,7 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
 		}
 		if usr == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find user from user ID"))
+			return nil, ResourceNotFound.Send(ctx, "Could not find user from user ID")
 		}
 	}
 	displayName := usr.DisplayName()
@@ -2838,16 +2830,28 @@ func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restMod
 }
 
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
-	patches, count, err := r.sc.FindPatchesByUserPatchNameStatusesCommitQueue(*obj.UserID, patchesInput.PatchName, patchesInput.Statuses, patchesInput.IncludeCommitQueue, patchesInput.Page, patchesInput.Limit)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
+		Author:             obj.UserID,
+		PatchName:          patchesInput.PatchName,
+		Statuses:           patchesInput.Statuses,
+		Page:               patchesInput.Page,
+		Limit:              patchesInput.Limit,
+		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
 	}
-	patchPointers := []*restModel.APIPatch{}
-	for i := range patches {
-		patchPointers = append(patchPointers, &patches[i])
+	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patches for user %s: %s", utility.FromStringPtr(obj.UserID), err.Error()))
 	}
 
-	return &Patches{Patches: patchPointers, FilteredPatchCount: *count}, nil
+	apiPatches := []*restModel.APIPatch{}
+	for _, p := range patches {
+		apiPatch := restModel.APIPatch{}
+		if err = apiPatch.BuildFromService(p); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting patch to APIPatch for patch %s : %s", p.Id, err.Error()))
+		}
+		apiPatches = append(apiPatches, &apiPatch)
+	}
+	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {

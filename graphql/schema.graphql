@@ -1,14 +1,6 @@
 directive @requireSuperUser on FIELD_DEFINITION 
 
 type Query {
-  userPatches(
-    limit: Int = 0
-    page: Int = 0
-    patchName: String = ""
-    statuses: [String!] = []
-    userId: String
-    includeCommitQueue: Boolean = false
-  ): UserPatches!
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
@@ -357,7 +349,8 @@ input PatchesInput {
   page: Int! = 0
   patchName: String! = ""
   statuses: [String!]! = []
-  includeCommitQueue: Boolean! = false
+  includeCommitQueue: Boolean = false
+  onlyCommitQueue: Boolean = false
 }
 
 input CreateProjectInput {

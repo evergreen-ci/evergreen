@@ -1,6 +1,6 @@
 {
   project(projectId: "evergreen") {
-    patches(patchesInput: { patchName: "22", includeCommitQueue: true }) {
+    patches(patchesInput: { patchName: "22", onlyCommitQueue: false }) {
       patches {
         id
         description

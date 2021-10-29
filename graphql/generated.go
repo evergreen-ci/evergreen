@@ -668,7 +668,6 @@ type ComplexityRoot struct {
 		TaskTests                func(childComplexity int, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) int
 		User                     func(childComplexity int, userID *string) int
 		UserConfig               func(childComplexity int) int
-		UserPatches              func(childComplexity int, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) int
 		UserSettings             func(childComplexity int) int
 		Version                  func(childComplexity int, id string) int
 	}
@@ -1217,7 +1216,6 @@ type ProjectVarsResolver interface {
 	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
 }
 type QueryResolver interface {
-	UserPatches(ctx context.Context, limit *int, page *int, patchName *string, statuses []string, userID *string, includeCommitQueue *bool) (*UserPatches, error)
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
@@ -4510,18 +4508,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.UserConfig(childComplexity), true
 
-	case "Query.userPatches":
-		if e.complexity.Query.UserPatches == nil {
-			break
-		}
-
-		args, err := ec.field_Query_userPatches_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.UserPatches(childComplexity, args["limit"].(*int), args["page"].(*int), args["patchName"].(*string), args["statuses"].([]string), args["userId"].(*string), args["includeCommitQueue"].(*bool)), true
-
 	case "Query.userSettings":
 		if e.complexity.Query.UserSettings == nil {
 			break
@@ -6814,14 +6800,6 @@ var sources = []*ast.Source{
 	&ast.Source{Name: "graphql/schema.graphql", Input: `directive @requireSuperUser on FIELD_DEFINITION 
 
 type Query {
-  userPatches(
-    limit: Int = 0
-    page: Int = 0
-    patchName: String = ""
-    statuses: [String!] = []
-    userId: String
-    includeCommitQueue: Boolean = false
-  ): UserPatches!
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
@@ -7170,7 +7148,8 @@ input PatchesInput {
   page: Int! = 0
   patchName: String! = ""
   statuses: [String!]! = []
-  includeCommitQueue: Boolean! = false
+  includeCommitQueue: Boolean = false
+  onlyCommitQueue: Boolean = false
 }
 
 input CreateProjectInput {
@@ -9751,60 +9730,6 @@ func (ec *executionContext) field_Query_task_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["execution"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_userPatches_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["page"]; ok {
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg1
-	var arg2 *string
-	if tmp, ok := rawArgs["patchName"]; ok {
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["patchName"] = arg2
-	var arg3 []string
-	if tmp, ok := rawArgs["statuses"]; ok {
-		arg3, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["statuses"] = arg3
-	var arg4 *string
-	if tmp, ok := rawArgs["userId"]; ok {
-		arg4, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["userId"] = arg4
-	var arg5 *bool
-	if tmp, ok := rawArgs["includeCommitQueue"]; ok {
-		arg5, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["includeCommitQueue"] = arg5
 	return args, nil
 }
 
@@ -22319,47 +22244,6 @@ func (ec *executionContext) _PublicKey_key(ctx context.Context, field graphql.Co
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_userPatches(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Query",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_userPatches_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().UserPatches(rctx, args["limit"].(*int), args["page"].(*int), args["patchName"].(*string), args["statuses"].([]string), args["userId"].(*string), args["includeCommitQueue"].(*bool))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*UserPatches)
-	fc.Result = res
-	return ec.marshalNUserPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserPatches(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_task(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -35652,7 +35536,13 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 			}
 		case "includeCommitQueue":
 			var err error
-			it.IncludeCommitQueue, err = ec.unmarshalNBoolean2bool(ctx, v)
+			it.IncludeCommitQueue, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "onlyCommitQueue":
+			var err error
+			it.OnlyCommitQueue, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39903,20 +39793,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "userPatches":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_userPatches(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "task":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -45468,20 +45344,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNUserPatches2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserPatches(ctx context.Context, sel ast.SelectionSet, v UserPatches) graphql.Marshaler {
-	return ec._UserPatches(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNUserPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserPatches(ctx context.Context, sel ast.SelectionSet, v *UserPatches) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._UserPatches(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v []model.VariantTask) graphql.Marshaler {
