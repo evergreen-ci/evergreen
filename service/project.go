@@ -308,17 +308,20 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
-		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription      `json:"subscriptions,omitempty"`
-		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition        `json:"triggers,omitempty"`
-		PatchTriggerAliases   []patch.PatchTriggerDefinition   `json:"patch_trigger_aliases,omitempty"`
-		GithubTriggerAliases  []string                         `json:"github_trigger_aliases,omitempty"`
-		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache,omitempty"`
-		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
-		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds,omitempty"`
-		WorkstationConfig     restModel.APIWorkstationConfig   `json:"workstation_config"`
+		NotifyOnBuildFailure   bool                                `json:"notify_on_failure"`
+		ForceRepotrackerRun    bool                                `json:"force_repotracker_run"`
+		Subscriptions          []restModel.APISubscription         `json:"subscriptions,omitempty"`
+		DeleteSubscriptions    []string                            `json:"delete_subscriptions"`
+		Triggers               []model.TriggerDefinition           `json:"triggers,omitempty"`
+		PatchTriggerAliases    []patch.PatchTriggerDefinition      `json:"patch_trigger_aliases,omitempty"`
+		GithubTriggerAliases   []string                            `json:"github_trigger_aliases,omitempty"`
+		FilesIgnoredFromCache  []string                            `json:"files_ignored_from_cache,omitempty"`
+		DisabledStatsCache     bool                                `json:"disabled_stats_cache"`
+		PeriodicBuilds         []*model.PeriodicBuildDefinition    `json:"periodic_builds,omitempty"`
+		WorkstationConfig      restModel.APIWorkstationConfig      `json:"workstation_config"`
+		PerfEnabled            bool                                `json:"perf_enabled"`
+		BuildBaronSettings     restModel.APIBuildBaronSettings     `json:"build_baron_settings"`
+		TaskAnnotationSettings restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
 	}{}
 
 	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
@@ -553,6 +556,28 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	i, err = responseRef.BuildBaronSettings.ToService()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API build baron config to service representation"))
+		return
+	}
+	buildbaronConfig, ok := i.(evergreen.BuildBaronSettings)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
+		return
+	}
+
+	i, err = responseRef.TaskAnnotationSettings.ToService()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "cannot convert API task annotations config to service representation"))
+		return
+	}
+	taskannotationsConfig, ok := i.(evergreen.AnnotationsSettings)
+	if !ok {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task annotations config but was actually '%T'", i))
+		return
+	}
+
 	catcher := grip.NewSimpleCatcher()
 	for i := range responseRef.Triggers {
 		catcher.Add(responseRef.Triggers[i].Validate(id))
@@ -594,6 +619,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
+	projectRef.BuildBaronSettings = buildbaronConfig
+	projectRef.TaskAnnotationSettings = taskannotationsConfig
 	projectRef.PatchingDisabled = &responseRef.PatchingDisabled
 	projectRef.DispatchingDisabled = &responseRef.DispatchingDisabled
 	projectRef.RepotrackerDisabled = &responseRef.RepotrackerDisabled
@@ -604,6 +631,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
+	projectRef.PerfEnabled = &responseRef.PerfEnabled
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
 	}
