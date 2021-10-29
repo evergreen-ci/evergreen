@@ -1,6 +1,6 @@
 mutation {
     saveRepoSettingsForSection(
-        projectSettings: {
+        repoSettings: {
             projectRef: {
                 id: "myRepo"
             }
