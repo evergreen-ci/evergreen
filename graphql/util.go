@@ -556,7 +556,6 @@ type VersionModifications struct {
 }
 
 func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
-	projId := ""
 	switch modifications.Action {
 	case Restart:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
@@ -582,14 +581,16 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
+			var projId string
 			if proj == nil {
-				projId, err := model.GetIdForProject(version.Identifier)
+				id, err := model.GetIdForProject(version.Identifier)
 				if err != nil {
 					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
 				}
-				if projId == "" {
+				if id == "" {
 					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
 				}
+				projId = id
 			} else {
 				projId = proj.Id
 			}
@@ -615,6 +616,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 	case SetPriority:
+		var projId string
 		if proj == nil {
 			projId, err := model.GetIdForProject(version.Identifier)
 			if err != nil {
