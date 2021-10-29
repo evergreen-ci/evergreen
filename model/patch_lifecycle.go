@@ -159,11 +159,11 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		opts.ReadFileFrom = ReadFromPatchDiff
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
-			return nil, "", errors.Wrapf(err, EmptyConfigurationError)
+			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
 	if string(projectFileBytes) == "" {
-		return nil, "", errors.New("")
+		return nil, "", errors.New(EmptyConfigurationError)
 	}
 	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
