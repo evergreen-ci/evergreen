@@ -576,9 +576,16 @@ func (s *Settings) GetGithubOauthStrings() ([]string, error) {
 	return tokens, nil
 }
 
+const (
+	Localhost = "localhost"
+)
+
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	if s == nil {
 		return "", errors.New("not defined")
+	}
+	if s.DomainName == Localhost {
+		return Localhost, nil
 	}
 
 	oauthStrings, err := s.GetGithubOauthStrings()

@@ -149,9 +149,18 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	opts.RemotePath = path
 	opts.PatchOpts.env = env
-	projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
-	if err != nil {
-		return nil, "", errors.Wrapf(err, "could not fetch remote configuration file")
+
+	if githubOauthToken == evergreen.Localhost {
+		opts.ReadFileFrom = ReadFromLocal
+		projectFileBytes, err = ioutil.ReadFile(path)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "error reading local project config")
+		}
+	} else {
+		projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
+		if err != nil {
+			return nil, "", errors.Wrapf(err, "could not fetch remote configuration file")
+		}
 	}
 
 	// apply remote configuration patch if needed
@@ -291,7 +300,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	_, err = thirdparty.GetCommitEvent(githubCtx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
-		return nil, errors.Wrap(err, "Couldn't fetch commit information")
+		grip.Warning(errors.Wrap(err, "Couldn't fetch commit information").Error())
 	}
 
 	var parentPatchNumber int
