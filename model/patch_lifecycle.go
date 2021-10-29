@@ -462,7 +462,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			"message":             "version has large number of activated tasks",
 			"op":                  "finalize patch",
 			"num_tasks_activated": numTasksActivated,
-			"total_tasks":         tasksToInsert,
+			"total_tasks":         len(tasksToInsert),
 			"version":             patchVersion.Id,
 		})
 	}
