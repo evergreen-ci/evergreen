@@ -147,7 +147,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 		}
 		if p == nil {
 			as.LoggedError(w, r, http.StatusNotFound,
-				errors.Errorf("can't find project: %s", p.Identifier))
+				errors.Errorf("can't find config for : %s", projectRef.Id))
 			return
 		}
 
