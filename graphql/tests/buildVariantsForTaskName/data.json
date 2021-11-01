@@ -6,7 +6,8 @@
             "build_variant": "ubuntu1604",
             "branch": "evergreen",
             "r": "gitter_request",
-            "build_id": "b1"
+            "build_id": "b1",
+            "order": 1
         },
         {
             "_id": "t2",
@@ -14,7 +15,8 @@
             "build_variant": "ubuntu1604",
             "branch": "evergreen",
             "r": "gitter_request",
-            "build_id": "b1"
+            "build_id": "b1",
+            "order": 1
         },
         {
             "_id": "t3",
@@ -22,7 +24,8 @@
             "build_variant": "ubuntu1604",
             "branch": "evergreen",
             "r": "gitter_request",
-            "build_id": "b1"
+            "build_id": "b1",
+            "order": 1
             
         },
         {
@@ -31,7 +34,8 @@
             "build_variant": "osx",
             "branch": "evergreen",
             "r": "gitter_request",
-            "build_id": "b2"
+            "build_id": "b2",
+            "order": 1
         }
     ],
     "builds": [
@@ -42,6 +46,20 @@
         {
             "_id": "b2",
             "display_name": "OSX"
+        }
+    ],
+    "project_ref": [
+        {
+            "_id": "evergreen",
+            "identifier": "evergreen",
+            "branch": "main",
+            "display_name": "Evergreen"
+        }
+    ],
+    "repo_revisions": [
+        {
+            "_id": "evergreen",
+            "last_commit_number": 1
         }
     ]
 }

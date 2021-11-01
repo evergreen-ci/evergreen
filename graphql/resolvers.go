@@ -3241,7 +3241,18 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId 
 }
 
 func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId string, taskName string) ([]*task.BuildVariantTuple, error) {
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName)
+	pid, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectId))
+	}
+	repo, err := model.FindRepository(pid)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectId, err.Error()))
+	}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectId))
+	}
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}
