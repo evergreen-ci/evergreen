@@ -747,6 +747,23 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	return pr, nil
 }
 
+func GetGithubPullRequestCommits(ctx context.Context, token, owner, repo string, PRNumber int) ([]*github.RepositoryCommit, error) {
+	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestCommits")
+	defer utility.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, PRNumber, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(commits) == 0 {
+		return nil, errors.New("No commits received from github")
+	}
+
+	return commits, nil
+}
+
 // GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string, []Summary, error) {
 	httpClient := getGithubClientRetryWith404s(token, "GetGithubPullRequestDiff")

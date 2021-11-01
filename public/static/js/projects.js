@@ -374,6 +374,7 @@ mciModule.controller(
               item.identifier = $scope.newProject.identifier;
               item.pr_testing_enabled = false;
               item.commit_queue.enabled = false;
+              item.commit_queue.require_signed = false;
               item.git_tag_versions_enabled = false;
               item.github_checks_enabled = false;
               item.enabled = false;
