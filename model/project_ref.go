@@ -2275,9 +2275,6 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	if d.ConfigFile == "" {
 		catcher.New("A config file must be specified")
 	}
-	if d.Alias == "" {
-		catcher.New("Alias must be specified")
-	}
 
 	if d.ID == "" {
 		d.ID = utility.RandomString()
