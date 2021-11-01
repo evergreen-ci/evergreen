@@ -42,6 +42,7 @@ const (
 	NoSyncTasksOrVariants  = "no tasks/variants were configured for sync"
 	GitHubInternalError    = "GitHub returned an error"
 	InvalidConfig          = "config file was invalid"
+	EmptyConfig            = "config file was empty"
 	ProjectFailsValidation = "Project fails validation"
 	OtherErrors            = "Evergreen error"
 )
