@@ -468,6 +468,9 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, m := range p.Patches {
+		if m.ModuleName == "" {
+			continue
+		}
 		mods[m.ModuleName] = struct{}{}
 	}
 
