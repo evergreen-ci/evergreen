@@ -1,14 +1,6 @@
 directive @requireSuperUser on FIELD_DEFINITION 
 
 type Query {
-  userPatches(
-    limit: Int = 0
-    page: Int = 0
-    patchName: String = ""
-    statuses: [String!] = []
-    userId: String
-    includeCommitQueue: Boolean = false
-  ): UserPatches!
   task(taskId: String!, execution: Int): Task
   taskAllExecutions(taskId: String!): [Task!]!
   patch(id: String!): Patch!
@@ -39,7 +31,7 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
-  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]! @deprecated(reason: "Use version.buildVariants instead")
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
@@ -74,18 +66,22 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
+  repoSettings(id: String!): RepoSettings!
 }
 
 type Mutation {
   addFavoriteProject(identifier: String!): Project!
   removeFavoriteProject(identifier: String!): Project!
-  createProject(project: ProjectInput!): Project! @requireSuperUser
+  createProject(project: CreateProjectInput!): Project! @requireSuperUser
+  copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
+  forceRepotrackerRun(projectId: String!): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -94,7 +90,8 @@ type Mutation {
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
-  scheduleTask(taskId: String!): Task!
+  scheduleTask(taskId: String!): Task! @deprecated(reason: "scheduleTask deprecated, Use scheduleTasks instead")
+  scheduleTasks(taskIds: [String!]!): [Task!]!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
   setTaskPriority(taskId: String!, priority: Int!): Task!
@@ -230,6 +227,8 @@ input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
   skipOrderNumber: Int = 0
+  # shouldCollapse is used to determine if unmatching active versions should be collapsed
+  shouldCollapse: Boolean = false
 }
 
 type BuildVariantTuple {
@@ -310,13 +309,8 @@ input DisplayTask {
   ExecTasks: [String!]!
 }
 
-input ProjectInput {
-  identifier: String!
-  owner: String!
-  repo: String!
-}
-
 input SubscriptionInput {
+  id: String
   resource_type: String
   trigger: String
   selectors: [SelectorInput!]!
@@ -355,7 +349,151 @@ input PatchesInput {
   page: Int! = 0
   patchName: String! = ""
   statuses: [String!]! = []
-  includeCommitQueue: Boolean! = false
+  includeCommitQueue: Boolean = false
+  onlyCommitQueue: Boolean = false
+}
+
+input CreateProjectInput {
+  identifier: String!
+  owner: String!
+  repo: String!
+  id: String
+}
+
+input CopyProjectInput {
+  projectIdToCopy: String!
+  newProjectIdentifier: String!
+  newProjectId: String
+}
+
+input ProjectSettingsInput {
+  githubWebhooksEnabled: Boolean
+  projectRef: ProjectInput
+  vars: ProjectVarsInput
+  aliases: [ProjectAliasInput]
+  subscriptions: [SubscriptionInput]
+}
+
+input ProjectInput {
+  id: String!
+  identifier: String
+  displayName: String
+  enabled: Boolean
+  private: Boolean
+  owner: String
+  repo: String
+  branch: String
+  remotePath: String
+  patchingDisabled: Boolean
+  repotrackerDisabled: Boolean
+  dispatchingDisabled: Boolean
+  prTestingEnabled: Boolean
+  githubChecksEnabled: Boolean
+  batchTime: Int
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  notifyOnBuildFailure: Boolean
+  triggers: [TriggerAliasInput]
+  patchTriggerAliases: [PatchTriggerAliasInput]
+  githubTriggerAliases: [String]
+  periodicBuilds: [PeriodicBuildInput]
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  admins: [String]
+  spawnHostScriptPath: String
+  tracksPushEvents: Boolean
+  taskSync: TaskSyncOptionsInput
+  gitTagAuthorizedUsers: [String]
+  gitTagAuthorizedTeams: [String]
+  gitTagVersionsEnabled: Boolean
+
+  filesIgnoredFromCache: [String]
+  disabledStatsCache: Boolean
+  workstationConfig: WorkstationConfigInput
+
+  hidden: Boolean
+  useRepoSettings: Boolean
+}
+
+input TriggerAliasInput {
+  project: String
+  level: String!
+  definitionID: String!
+  buildVariantRegex: String!
+  taskRegex: String!
+  status: String!
+  dateCutoff: Int!
+  configFile: String!
+  generateFile: String!
+  command: String!
+  alias: String!
+}
+
+input PeriodicBuildInput {
+  id: String!
+  configFile: String!
+  intervalHours: Int!
+  alias: String!
+  message: String!
+  nextRunTime: Time!
+}
+
+input CommitQueueParamsInput {
+  enabled: Boolean
+  mergeMethod: String
+  message: String
+}
+
+input TaskSyncOptionsInput {
+  configEnabled: Boolean!
+  patchEnabled: Boolean!
+}
+
+input WorkstationConfigInput {
+  setupCommands: [WorkstationSetupCommandInput]
+  gitClone: Boolean!
+}
+
+input WorkstationSetupCommandInput {
+  Command: String!
+  Directory: String
+}
+
+input PatchTriggerAliasInput {
+  alias: String!
+  childProjectId: String!
+  childProjectIdentifier: String!
+  taskSpecifiers: [TaskSpecifierInput]
+  status: String
+  parentAsModule: String
+  variantsTasks: [VariantTaskInput]!
+}
+
+input TaskSpecifierInput {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+input ProjectVarsInput {
+  vars: StringMap
+  privateVarsList: [String]
+}
+
+input VariantTaskInput {
+  name: String!
+  tasks: [String!]!
+}
+
+input ProjectAliasInput {
+  id: String!
+  alias: String!
+  gitTag: String!
+  variant: String!
+  task: String!
+  remotePath: String!
+  variantTags: [String!]!
+  taskTags: [String!]!
 }
 
 input SpawnHostInput {
@@ -804,6 +942,7 @@ type Task {
   priority: Int
   project: Project
   projectId: String!
+  projectIdentifier: String
   reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
@@ -836,8 +975,16 @@ type ProjectSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
-  aliases: [ProjectAlias]
-  subscriptions: [ProjectSubscription]
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
+}
+
+type RepoSettings {
+  githubWebhooksEnabled: Boolean!
+  projectRef: RepoRef ## use the repo ref here in order to have stronger types
+  vars: ProjectVars
+  aliases: [ProjectAlias!]
+  subscriptions: [ProjectSubscription!]
 }
 
 type ProjectVars {
@@ -932,34 +1079,75 @@ type Project {
   dispatchingDisabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
-  batchTime: Int
+  batchTime: Int!
   deactivatePrevious: Boolean
-  defaultLogger: String
+  defaultLogger: String!
   notifyOnBuildFailure: Boolean
-  triggers: [TriggerAlias]
-  patchTriggerAliases: [PatchTriggerAlias]
-  githubTriggerAliases: [String]
-  periodicBuilds: [PeriodicBuild]
+  triggers: [TriggerAlias!]
+  patchTriggerAliases: [PatchTriggerAlias!]
+  githubTriggerAliases: [String!]
+  periodicBuilds: [PeriodicBuild!]
   cedarTestResultsEnabled: Boolean
-  commitQueue: CommitQueueParams
+  commitQueue: CommitQueueParams!
   admins: [String]
   spawnHostScriptPath: String!
   tracksPushEvents: Boolean
-  taskSync: TaskSyncOptions
-  gitTagAuthorizedUsers: [String]
-  gitTagAuthorizedTeams: [String]
+  taskSync: TaskSyncOptions!
+  gitTagAuthorizedUsers: [String!]
+  gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean
 
-  filesIgnoredFromCache: [String]
+  filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
-  workstationConfig: WorkstationConfig
+  workstationConfig: WorkstationConfig!
 
   hidden: Boolean
   useRepoSettings: Boolean!
-  repoRefId: String
+  repoRefId: String!
 
   isFavorite: Boolean!
+  validDefaultLoggers: [String!]!
   patches(patchesInput: PatchesInput!): Patches!
+}
+
+## repo types have booleans defaulted, and so these are required.
+
+type RepoRef {
+  id: String!
+
+  displayName: String!
+  enabled: Boolean!
+  private: Boolean!
+  owner: String!
+  repo: String!
+  branch: String!
+  remotePath: String!
+  patchingDisabled: Boolean!
+  repotrackerDisabled: Boolean!
+  dispatchingDisabled: Boolean!
+  prTestingEnabled: Boolean!
+  githubChecksEnabled: Boolean!
+  batchTime: Int!
+  deactivatePrevious: Boolean!
+  defaultLogger: String!
+  notifyOnBuildFailure: Boolean!
+  triggers: [TriggerAlias!]!
+  patchTriggerAliases: [PatchTriggerAlias!]
+  githubTriggerAliases: [String!]
+  periodicBuilds: [PeriodicBuild!]
+  cedarTestResultsEnabled: Boolean!
+  commitQueue: RepoCommitQueueParams!
+  admins: [String!]!
+  spawnHostScriptPath: String!
+  tracksPushEvents: Boolean!
+  taskSync: RepoTaskSyncOptions!
+  gitTagAuthorizedUsers: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagVersionsEnabled: Boolean!
+
+  filesIgnoredFromCache: [String!]
+  disabledStatsCache: Boolean!
+  workstationConfig: RepoWorkstationConfig!
 }
 
 type TriggerAlias {
@@ -988,23 +1176,39 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
-  mergeMethod: String
-  message: String
+  mergeMethod: String!
+  message: String!
+}
+
+type RepoCommitQueueParams {
+  enabled: Boolean!
+  mergeMethod: String!
+  message: String!
 }
 
 type TaskSyncOptions {
+  configEnabled: Boolean
+  patchEnabled: Boolean
+}
+
+type RepoTaskSyncOptions {
   configEnabled: Boolean!
   patchEnabled: Boolean!
 }
 
 type WorkstationConfig {
-  setupCommands: [WorkstationSetupCommand]
+  setupCommands: [WorkstationSetupCommand!]
+  gitClone: Boolean
+}
+
+type RepoWorkstationConfig {
+  setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean!
 }
 
 type WorkstationSetupCommand {
   Command: String!
-  Directory: String
+  Directory: String!
 }
 
 type TaskSpecifier {

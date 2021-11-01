@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/shrub"
@@ -90,9 +91,9 @@ func makeTarget(target string) string {
 func getAllTargets() ([]string, error) {
 	var targets []string
 
-	gobin := os.Getenv("GO_BIN_PATH")
-	if gobin == "" {
-		gobin = "go"
+	gobin := "go"
+	if goroot := os.Getenv("GOROOT"); goroot != "" {
+		gobin = filepath.Join(goroot, "bin", "go")
 	}
 	args, _ := shlex.Split(fmt.Sprintf("%s list -f '{{ join .Deps  \"\\n\"}}' cmd/evergreen/evergreen.go", gobin))
 	cmd := exec.Command(args[0], args[1:]...)

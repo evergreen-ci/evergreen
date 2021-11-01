@@ -1,0 +1,11 @@
+mutation {
+    copyProject(
+        project: {
+            projectIdToCopy: "evergreen",
+            newProjectIdentifier: "somethingUnique",
+            newProjectId: "keeperOfLogs",
+        }
+    ){
+        id
+    }
+}

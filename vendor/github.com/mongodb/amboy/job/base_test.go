@@ -198,3 +198,31 @@ func (s *BaseCheckSuite) TestUpdateRetryInfoSetsNonzeroFields() {
 		MaxAttempts:    maxAttempt,
 	}, s.base.RetryInfo())
 }
+
+func (s *BaseCheckSuite) TestSetEnqueueAllScopes() {
+	scopes := []string{"foo", "bar"}
+	s.base.SetScopes(scopes)
+	s.base.SetEnqueueAllScopes(true)
+	s.True(s.base.EnqueueAllScopes())
+	s.Equal(scopes, s.base.EnqueueScopes())
+
+	updatedScopes := []string{"bat", "baz"}
+	s.base.SetScopes(updatedScopes)
+	s.Equal(updatedScopes, s.base.EnqueueScopes())
+}
+
+func (s *BaseCheckSuite) TestSetEnqueueScopes() {
+	scopes := []string{"foo", "bar", "baz"}
+	s.base.SetScopes(scopes)
+	s.base.SetEnqueueScopes(scopes[:2]...)
+	s.False(s.base.EnqueueAllScopes())
+	s.Equal(scopes[:2], s.base.EnqueueScopes())
+
+	s.base.SetEnqueueScopes(scopes[0], "quux")
+	s.False(s.base.EnqueueAllScopes())
+	s.Equal(scopes[:1], s.base.EnqueueScopes())
+
+	s.base.SetEnqueueScopes(scopes...)
+	s.False(s.base.EnqueueAllScopes())
+	s.Equal(scopes, s.base.EnqueueScopes())
+}

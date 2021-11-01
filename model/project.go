@@ -62,6 +62,11 @@ type Project struct {
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            bool                           `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
+	CommitQueueAliases     []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
+	GitHubPRAliases        []ProjectAlias                 `yaml:"github_pr_aliases,omitempty" bson:"github_pr_aliases,omitempty"`
+	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
+	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
+	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
 
 	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on this struct when TranslateProject is called for the project parser will
@@ -313,6 +318,16 @@ func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
 	}
 
 	return reflect.DeepEqual(manifestModules, projectModules)
+}
+
+func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) {
+	for _, module := range moduleList {
+		if module.Name == moduleName {
+			return &module, nil
+		}
+	}
+
+	return nil, errors.Errorf("Module '%s' doesn't exist", moduleName)
 }
 
 type TestSuite struct {
@@ -616,12 +631,17 @@ const (
 // configured globally or not require configuration and must be valid for use
 // with system logs.
 func IsValidDefaultLogger(logger string) bool {
-	switch logger {
-	case EvergreenLogSender, BuildloggerLogSender:
-		return true
-	default:
-		return false
+	for _, validLogger := range ValidDefaultLoggers {
+		if logger == validLogger {
+			return true
+		}
 	}
+	return false
+}
+
+var ValidDefaultLoggers = []string{
+	EvergreenLogSender,
+	BuildloggerLogSender,
 }
 
 var ValidLogSenders = []string{

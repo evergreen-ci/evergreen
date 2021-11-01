@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type ProjectAliasSuite struct {
@@ -122,7 +124,7 @@ func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 	}
 	s.NoError(a1.Upsert())
 
-	out, err := FindAliasesForProject("project-1")
+	out, err := FindAllAliasesForProject("project-1")
 	s.NoError(err)
 	s.Len(out, 2)
 }
@@ -156,6 +158,63 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	found, err := findAliasInProject("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
+}
+
+func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
+	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ParserProjectCollection, VersionCollection))
+	v1 := Version{
+		Id:         "project-1",
+		Identifier: "project-1",
+		Requester:  evergreen.GitTagRequester,
+	}
+	a1 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     evergreen.CommitQueueAlias,
+	}
+	a2 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     evergreen.CommitQueueAlias,
+	}
+	a3 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     evergreen.GithubPRAlias,
+	}
+	s.NoError(a1.Upsert())
+	s.NoError(a2.Upsert())
+	s.NoError(a3.Upsert())
+	s.NoError(v1.Insert())
+
+	parserProject := &ParserProject{
+		Id: "project-1",
+		PatchAliases: []ProjectAlias{
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+				Alias:     "alias-2",
+			},
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+				Alias:     "alias-1",
+			},
+		},
+		CommitQueueAliases: []ProjectAlias{
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+			},
+		},
+	}
+	s.NoError(parserProject.TryUpsert())
+
+	projectAliases, err := FindAllAliasesForProject("project-1")
+	s.NoError(err)
+	s.Len(projectAliases, 4)
+	aliasMap := aliasesToMap(projectAliases)
+	s.Len(aliasMap[evergreen.CommitQueueAlias], 1)
+	s.Len(aliasMap[evergreen.GithubPRAlias], 1)
+	s.Len(aliasMap["alias-1"], 1)
+	s.Len(aliasMap["alias-2"], 1)
 }
 
 func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
@@ -234,12 +293,12 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	}
 	s.NoError(UpsertAliasesForProject(s.aliases, "new-project"))
 
-	found, err := FindAliasesForProject("new-project")
+	found, err := FindAllAliasesForProject("new-project")
 	s.NoError(err)
 	s.Len(found, 10)
 
 	// verify old aliases not overwritten
-	found, err = FindAliasesForProject("old-project")
+	found, err = FindAllAliasesForProject("old-project")
 	s.NoError(err)
 	s.Len(found, 10)
 }

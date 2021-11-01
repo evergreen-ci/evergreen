@@ -95,7 +95,7 @@ func PatchList() cli.Command {
 			}
 
 			for _, p := range patches {
-				disp, err := getPatchDisplay(&p, showSummary, conf.UIServerHost)
+				disp, err := getPatchDisplay(&p, showSummary, conf.UIServerHost, false)
 				if err != nil {
 					return err
 				}

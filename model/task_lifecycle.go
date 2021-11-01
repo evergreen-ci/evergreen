@@ -1553,9 +1553,12 @@ func checkResetDisplayTask(t *task.Task) error {
 			return nil // all tasks not finished
 		}
 	}
-	details := &apimodels.TaskEndDetail{
-		Type:   evergreen.CommandTypeSystem,
-		Status: evergreen.TaskFailed,
+	details := &t.Details
+	if details == nil {
+		details = &apimodels.TaskEndDetail{
+			Type:   evergreen.CommandTypeSystem,
+			Status: evergreen.TaskFailed,
+		}
 	}
 	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
 }

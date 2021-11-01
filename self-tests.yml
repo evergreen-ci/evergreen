@@ -212,7 +212,6 @@ functions:
         DOCKER_HOST: ${docker_host}
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
-        GO_BIN_PATH: ${gobin}
         GOOS: ${goos}
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
@@ -324,7 +323,6 @@ functions:
         command: make parse-host-file
         env:
           HOST_FILE: spawned_hosts.json
-          GO_BIN_PATH: ${gobin}
           GOROOT: ${goroot}
     - command: expansions.update
       params:
@@ -538,9 +536,6 @@ tasks:
         vars:
           target: revendor
       - func: run-make
-        vars:
-          target: build
-      - func: run-make
         vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
@@ -594,7 +589,6 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
-            GO_BIN_PATH: ${gobin}
             GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
   - name: verify-agent-version-update
@@ -644,7 +638,6 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      gobin: /opt/golang/go1.16/bin/go
       goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
@@ -664,7 +657,6 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      gobin: /opt/golang/go1.16/bin/go
       goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
@@ -679,7 +671,6 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      gobin: /opt/golang/go1.16/bin/go
       goroot: /opt/golang/go1.16
     tasks:
       - name: generate-lint
@@ -691,7 +682,6 @@ buildvariants:
       - windows-64-vs2017-large
     expansions:
       disable_coverage: yes
-      gobin: /cygdrive/c/golang/go1.16/bin/go
       goroot: c:/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
@@ -710,7 +700,6 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      gobin: /opt/golang/go1.16/bin/go
       goroot: /opt/golang/go1.16
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
@@ -723,7 +712,6 @@ buildvariants:
       - macos-1014
     expansions:
       disable_coverage: yes
-      gobin: /opt/golang/go1.16/bin/go
       goroot: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:

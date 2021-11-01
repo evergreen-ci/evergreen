@@ -45,8 +45,10 @@ type Database struct {
 	Collections map[string]*Collection
 }
 
-func (d *Database) Name() string          { return d.DBName }
+func (d *Database) Name() string { return d.DBName }
+
 func (d *Database) Client() client.Client { return nil }
+
 func (d *Database) Collection(name string) client.Collection {
 	if coll, ok := d.Collections[name]; ok {
 		return coll
@@ -55,9 +57,11 @@ func (d *Database) Collection(name string) client.Collection {
 	d.Collections[name] = &Collection{CollName: name, SingleResult: NewSingleResult()}
 	return d.Collections[name]
 }
+
 func (d *Database) RunCommand(ctx context.Context, cmd interface{}) client.SingleResult { return nil }
+
 func (d *Database) RunCommandCursor(ctx context.Context, cmd interface{}) (client.Cursor, error) {
-	return nil, nil
+	return &Cursor{}, nil
 }
 
 type Collection struct {
@@ -71,17 +75,21 @@ type Collection struct {
 
 func (c *Collection) Name() string { return c.CollName }
 func (c *Collection) Aggregate(ctx context.Context, pipe interface{}, opts ...*options.AggregateOptions) (client.Cursor, error) {
-	return nil, nil
+	return &Cursor{}, nil
 }
+
 func (c *Collection) Find(ctx context.Context, query interface{}, opts ...*options.FindOptions) (client.Cursor, error) {
-	return nil, c.FindError
+	return &Cursor{}, c.FindError
 }
+
 func (c *Collection) FindOne(ctx context.Context, query interface{}, opts ...*options.FindOneOptions) client.SingleResult {
 	return c.SingleResult
 }
+
 func (c *Collection) InsertOne(ctx context.Context, doc interface{}) (*client.InsertOneResult, error) {
 	return &c.InsertOneResult, nil
 }
+
 func (c *Collection) InsertMany(ctx context.Context, docs []interface{}) (*client.InsertManyResult, error) {
 	return &c.InsertManyResult, nil
 }
@@ -89,9 +97,11 @@ func (c *Collection) InsertMany(ctx context.Context, docs []interface{}) (*clien
 func (c *Collection) ReplaceOne(ctx context.Context, query, update interface{}, opts ...*options.ReplaceOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
+
 func (c *Collection) UpdateOne(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }
+
 func (c *Collection) UpdateMany(ctx context.Context, query, update interface{}, opts ...*options.UpdateOptions) (*client.UpdateResult, error) {
 	return &c.UpdateResult, nil
 }

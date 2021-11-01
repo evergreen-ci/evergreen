@@ -67,8 +67,7 @@ func (opts GetOptions) parse() string {
 		urlString += "/stats"
 	}
 
-	// TODO: (EVG-15263) Remove once Evergreen is using new API formats.
-	params := []string{"stats=true"}
+	var params []string
 	if opts.Execution != nil {
 		params = append(params, fmt.Sprintf("execution=%d", *opts.Execution))
 	}

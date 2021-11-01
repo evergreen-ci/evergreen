@@ -63,7 +63,7 @@ func NewUserDataDoneJob(env evergreen.Environment, hostID string, ts time.Time) 
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", userDataDoneJobName, j.HostID, ts.Format(TSFormat)))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", userDataDoneJobName, hostID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(50),

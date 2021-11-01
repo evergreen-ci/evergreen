@@ -17,28 +17,20 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type MigrationHelperSuite struct {
-	env          *mock.Environment
-	mh           *migrationBase
-	session      db.Session
-	client       client.Client
-	queue        amboy.Queue
-	cancel       context.CancelFunc
-	preferClient bool
+	env     *mock.Environment
+	mh      *migrationBase
+	session db.Session
+	client  client.Client
+	queue   amboy.Queue
+	cancel  context.CancelFunc
 	suite.Suite
-}
-
-func TestLegacyMigrationHelperSuite(t *testing.T) {
-	s := new(MigrationHelperSuite)
-	suite.Run(t, s)
 }
 
 func TestClientMigrationHelperSuite(t *testing.T) {
 	s := new(MigrationHelperSuite)
-	s.preferClient = true
 	suite.Run(t, s)
 }
 
@@ -48,14 +40,12 @@ func (s *MigrationHelperSuite) SetupSuite() {
 	s.queue = queue.NewLocalLimitedSize(4, 256)
 	s.NoError(s.queue.Start(ctx))
 
-	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
-	s.Require().NoError(err)
-	s.session = db.WrapSession(ses)
 	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(100 * time.Millisecond))
 	s.Require().NoError(err)
 	err = cl.Connect(ctx)
 	s.Require().NoError(err)
 	s.client = client.WrapClient(cl)
+	s.session = db.WrapClient(ctx, cl)
 }
 
 func (s *MigrationHelperSuite) TearDownSuite() {
@@ -66,7 +56,6 @@ func (s *MigrationHelperSuite) SetupTest() {
 	s.env = mock.NewEnvironment()
 	s.env.MetaNS = model.Namespace{DB: "anserDB", Collection: "anserMeta"}
 	s.env.Queue = s.queue
-	s.env.ShouldPreferClient = s.preferClient
 	s.mh = NewMigrationHelper(s.env).(*migrationBase)
 
 	s.NoError(s.env.Setup(s.queue, s.client, s.session))

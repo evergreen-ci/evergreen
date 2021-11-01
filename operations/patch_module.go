@@ -58,7 +58,7 @@ func PatchSetModule() cli.Command {
 
 			existingPatch, err := ac.GetPatch(patchID)
 			if err != nil {
-				return errors.Wrapf(err, "problem getting patch '%s'", existingPatch.Id)
+				return errors.Wrapf(err, "problem getting patch '%s'", patchID)
 			}
 			if existingPatch.IsCommitQueuePatch() {
 				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit queue patches")

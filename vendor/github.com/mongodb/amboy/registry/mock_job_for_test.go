@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 )
@@ -27,7 +28,8 @@ type JobTest struct {
 	Stat                 amboy.JobStatusInfo `bson:"status" json:"status" yaml:"status"`
 	TimingInfo           amboy.JobTimeInfo   `bson:"time_info" json:"time_info" yaml:"time_info"`
 	LockScopes           []string            `bson:"scopes" json:"scopes" yaml:"scopes"`
-	ApplyScopesOnEnqueue bool                `bson:"apply_scopes_on_enqueue" json:"apply_scopes_on_enqueue" yaml:"apply_scopes_on_enqueue"`
+	EnqueueWithScopes    []string            `bson:"enqueue_with_scopes" json:"enqueue_with_scopes" yaml:"enqueue_with_scopes"`
+	EnqueueWithAllScopes bool                `bson:"enqueue_with_all_scopes" json:"enqueue_with_all_scopes" yaml:"enqueue_with_all_scopes"`
 
 	Retry amboy.JobRetryInfo
 
@@ -157,19 +159,43 @@ func (j *JobTest) SetTimeInfo(i amboy.JobTimeInfo) {
 }
 
 func (j *JobTest) SetScopes(in []string) {
+	if len(in) == 0 {
+		j.LockScopes = nil
+	}
 	j.LockScopes = in
 }
 
 func (j *JobTest) Scopes() []string {
+	if len(j.LockScopes) == 0 {
+		return nil
+	}
 	return j.LockScopes
 }
 
-func (j *JobTest) SetShouldApplyScopesOnEnqueue(val bool) {
-	j.ApplyScopesOnEnqueue = val
+func (j *JobTest) SetEnqueueScopes(scopes ...string) {
+	j.EnqueueWithScopes = scopes
 }
 
-func (j *JobTest) ShouldApplyScopesOnEnqueue() bool {
-	return j.ApplyScopesOnEnqueue
+func (j *JobTest) EnqueueScopes() []string {
+	if j.EnqueueAllScopes() {
+		return j.LockScopes
+	}
+	scopes := utility.StringSliceIntersection(j.LockScopes, j.EnqueueWithScopes)
+	if len(scopes) == 0 {
+		return nil
+	}
+	return scopes
+}
+
+func (j *JobTest) SetEnqueueAllScopes(val bool) {
+	j.EnqueueWithAllScopes = val
+}
+
+func (j *JobTest) EnqueueAllScopes() bool {
+	if j.EnqueueWithAllScopes {
+		return true
+	}
+	return false
 }
 
 func (j *JobTest) RetryInfo() amboy.JobRetryInfo {

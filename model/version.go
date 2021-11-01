@@ -91,6 +91,7 @@ func (v *Version) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, 
 const (
 	defaultVersionLimit               = 20
 	DefaultMainlineCommitVersionLimit = 7
+	MaxMainlineCommitVersionLimit     = 300
 )
 
 type GetVersionsOptions struct {
@@ -440,7 +441,6 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*
 type MainlineCommitVersionOptions struct {
 	Limit           int
 	SkipOrderNumber int
-	Activated       bool
 }
 
 func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
@@ -451,16 +451,10 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 	}
-	if opts.Activated {
-		match[VersionActivatedKey] = opts.Activated
-	} else {
-		match[VersionActivatedKey] = bson.M{"$in": bson.A{false, nil}}
-	}
-
 	if opts.SkipOrderNumber != 0 {
 		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.SkipOrderNumber}
 	}
-	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	limit := defaultVersionLimit
 	if opts.Limit != 0 {

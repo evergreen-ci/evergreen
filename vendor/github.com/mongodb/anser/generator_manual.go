@@ -9,12 +9,11 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/client"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -68,47 +67,24 @@ func (j *manualMigrationGenerator) Run(ctx context.Context) {
 		return
 	}
 
-	if env.PreferClient() {
-		client, err := env.GetClient()
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-
-		findOpts := options.Find().SetProjection(bson.M{"_id": 1})
-		if j.Limit > 0 {
-			findOpts.SetLimit(int64(j.Limit))
-		}
-
-		cursor, err := client.Database(j.NS.DB).Collection(j.NS.Collection).Find(ctx, j.Query, findOpts) // findOpts
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-
-		network.AddGroup(j.ID(), j.generateJobs(ctx, env, cursor))
-	} else {
-		session, err := env.GetSession()
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-		defer session.Close()
-
-		coll := session.DB(j.NS.DB).C(j.NS.Collection)
-		query := coll.Find(j.Query).Select(bson.M{"_id": 1})
-		if j.Limit > 0 {
-			query = query.Limit(j.Limit)
-		}
-		iter := query.Iter()
-
-		network.AddGroup(j.ID(), j.generateLegacyJobs(env, iter))
-
-		if err := iter.Close(); err != nil {
-			j.AddError(err)
-			return
-		}
+	client, err := env.GetClient()
+	if err != nil {
+		j.AddError(err)
+		return
 	}
+
+	findOpts := options.Find().SetProjection(bson.M{"_id": 1})
+	if j.Limit > 0 {
+		findOpts.SetLimit(int64(j.Limit))
+	}
+
+	cursor, err := client.Database(j.NS.DB).Collection(j.NS.Collection).Find(ctx, j.Query, findOpts) // findOpts
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	network.AddGroup(j.ID(), j.generateJobs(ctx, env, cursor))
 }
 
 func (j *manualMigrationGenerator) generateJobs(ctx context.Context, env Environment, iter client.Cursor) []string {
@@ -129,44 +105,6 @@ func (j *manualMigrationGenerator) generateJobs(ctx context.Context, env Environ
 			break
 		}
 
-		m := NewManualMigration(env, model.Manual{
-			ID:            doc.ID,
-			OperationName: j.OperationName,
-			Migration:     j.ID(),
-			Namespace:     j.NS,
-		}).(*manualMigrationJob)
-
-		m.SetDependency(env.NewDependencyManager(j.ID()))
-		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
-		ids = append(ids, m.ID())
-		j.Migrations = append(j.Migrations, m)
-
-		grip.Debug(message.Fields{
-			"ns":  j.NS,
-			"id":  m.ID(),
-			"doc": doc.ID,
-			"num": count,
-		})
-
-		if j.Limit > 0 && count >= j.Limit {
-			break
-		}
-	}
-
-	return ids
-}
-
-func (j *manualMigrationGenerator) generateLegacyJobs(env Environment, iter db.Iterator) []string {
-	ids := []string{}
-	doc := struct {
-		ID interface{} `bson:"_id"`
-	}{}
-
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	count := 0
-	for iter.Next(&doc) {
-		count++
 		m := NewManualMigration(env, model.Manual{
 			ID:            doc.ID,
 			OperationName: j.OperationName,

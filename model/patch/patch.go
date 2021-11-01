@@ -237,6 +237,10 @@ func (p *Patch) SetMergePatch(newPatchID string) error {
 	)
 }
 
+func (p *Patch) GetCommitQueueURL(uiHost string) string {
+	return uiHost + "/commit-queue/" + p.Project
+}
+
 func (p *Patch) GetURL(uiHost string) string {
 	var url string
 	if p.Activated {
@@ -882,6 +886,10 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		if err != nil {
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
+		if IsMailboxDiff(diff) {
+			newModulePatches = append(newModulePatches, modulePatch)
+			continue
+		}
 		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't convert diff to mbox format")
@@ -899,6 +907,7 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 				Summary:        modulePatch.PatchSet.Summary,
 			},
 		})
+
 	}
 
 	return newModulePatches, nil

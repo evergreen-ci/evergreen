@@ -52,99 +52,11 @@ func TestSimpleMigrationGenerator(t *testing.T) {
 		assert.Contains(t, err.Error(), "injected network error")
 		env.NetworkError = nil
 	})
-	t.Run("Legacy", func(t *testing.T) {
-		require.False(t, env.PreferClient())
-		t.Run("SessionError", func(t *testing.T) {
-			// make sure that session acquisition errors propagate
-			job = factory().(*simpleMigrationGenerator)
-			env.SessionError = errors.New("injected session error")
-			job.MigrationHelper = mh
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-			if assert.True(t, job.HasErrors()) {
-				err = job.Error()
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "injected session error")
-			}
-			env.SessionError = nil
-		})
-		t.Run("IteratorError", func(t *testing.T) {
-			// make sure errors closing the iterator propagate
-			job = factory().(*simpleMigrationGenerator)
-			job.NS = ns
-			job.MigrationHelper = mh
-			env.Session = mock.NewSession()
-			env.Session.DB("foo").C("bar").(*mock.LegacyCollection).QueryError = errors.New("query error")
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-			if assert.True(t, job.HasErrors()) {
-				err = job.Error()
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "query error")
-			}
-			env.Session.DB("foo").C("bar").(*mock.LegacyCollection).QueryError = nil // reset
-		})
-		t.Run("JobProduction", func(t *testing.T) {
-			// check job production
-			job.Migrations = []*simpleMigrationJob{
-				NewSimpleMigration(env, model.Simple{}).(*simpleMigrationJob),
-				NewSimpleMigration(env, model.Simple{}).(*simpleMigrationJob),
-				NewSimpleMigration(env, model.Simple{}).(*simpleMigrationJob),
-			}
-			counter := 0
-			for migration := range job.Jobs() {
-				require.NotNil(t, migration)
-				counter++
-			}
-			require.Equal(t, 3, counter)
-		})
-		t.Run("Generation", func(t *testing.T) {
-			// make sure that we generate the jobs we would expect to:
-			job = factory().(*simpleMigrationGenerator)
-			job.NS = ns
-			job.MigrationHelper = mh
-			job.Limit = 3
-			job.SetID("simple")
-			iter := &mock.Iterator{
-				ShouldIter: true,
-				Results: []interface{}{
-					&doc{"one"}, &doc{"two"}, &doc{"three"}, &doc{"four"},
-				},
-			}
-
-			ids := job.generateLegacyJobs(env, iter)
-			for idx, id := range ids {
-				require.True(t, strings.HasPrefix(id, "simple."))
-				require.True(t, strings.HasSuffix(id, fmt.Sprintf(".%d", idx)))
-				switch idx {
-				case 0:
-					assert.Contains(t, id, ".one.")
-				case 1:
-					assert.Contains(t, id, ".two.")
-				case 2:
-					assert.Contains(t, id, ".three.")
-				}
-			}
-
-			assert.Len(t, ids, 3)
-			assert.Len(t, job.Migrations, 3)
-
-			var network model.DependencyNetworker
-			network, err = env.GetDependencyNetwork()
-			require.NoError(t, err)
-			network.AddGroup(job.ID(), ids)
-			networkMap := network.Network()
-			assert.Len(t, networkMap[job.ID()], 3)
-		})
-	})
 	t.Run("Client", func(t *testing.T) {
 		env.Client = mock.NewClient()
-		env.ShouldPreferClient = true
 		defer func() {
-			env.ShouldPreferClient = false
 			env.Client = nil
 		}()
-		require.True(t, env.PreferClient())
 		t.Run("ClientError", func(t *testing.T) {
 			// make sure that client acquisition errors propagate
 			job = factory().(*simpleMigrationGenerator)

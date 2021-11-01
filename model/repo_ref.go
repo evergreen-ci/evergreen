@@ -242,14 +242,17 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			r.removeFromAdminsList(addedUser)
 			continue
 		}
 		if adminUser == nil {
 			catcher.Errorf("no user '%s' found", addedUser)
+			r.removeFromAdminsList(addedUser)
 			continue
 		}
 		if err = adminUser.AddRole(adminRole); err != nil {
 			catcher.Wrapf(err, "error adding role %s to user %s", adminRole, addedUser)
+			r.removeFromAdminsList(addedUser)
 			continue
 		}
 
@@ -266,6 +269,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 
 		if err = adminUser.RemoveRole(adminRole); err != nil {
 			catcher.Wrapf(err, "error removing role %s from user %s", adminRole, removedUser)
+			r.Admins = append(r.Admins, removedUser)
 			continue
 		}
 	}

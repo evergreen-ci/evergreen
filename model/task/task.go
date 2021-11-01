@@ -1949,6 +1949,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
+		// if the aborting task is part of a display task, we also don't want to mark it as aborted
+		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
@@ -2949,204 +2951,15 @@ type GetTasksByVersionOptions struct {
 	FieldsToProject       []string
 	Sorts                 []TasksSortOrder
 	IncludeExecutionTasks bool
+	IncludeBaseTasks      bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
-	var match bson.M = bson.M{}
 
-	// Allow searching by either variant name or variant display
-	if len(opts.Variants) > 0 {
-		variantsAsRegex := strings.Join(opts.Variants, "|")
+	pipeline := getTasksByVersionPipeline(versionID, opts)
 
-		match = bson.M{
-			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			},
-		}
-	}
-	if len(opts.TaskNames) > 0 {
-		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
-		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
-	}
-	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
-	match[VersionKey] = versionID
-	const tempParentKey = "_parent"
-	pipeline := []bson.M{}
-	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
-	// This is an expensive operation so we only want to do it if we have to
-	if len(opts.Variants) > 0 {
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	}
-	pipeline = append(pipeline,
-		bson.M{"$match": match},
-	)
-
-	if !opts.IncludeExecutionTasks {
-		// Split tasks so that we only look up if the task is an execution task if display task ID is unset and
-		// display only is false (i.e. we don't know if it's a display task or not).
-		facet := bson.M{
-			"$facet": bson.M{
-				// We skip lookup for anything we already know is not part of a display task
-				"id_empty": []bson.M{
-					{
-						"$match": bson.M{
-							"$or": []bson.M{
-								{DisplayTaskIdKey: ""},
-								{DisplayOnlyKey: true},
-							},
-						},
-					},
-				},
-				// No ID and not display task: lookup if it's an execution task for some task, and then filter it out if it is
-				"no_id": []bson.M{
-					{
-						"$match": bson.M{
-							DisplayTaskIdKey: nil,
-							DisplayOnlyKey:   bson.M{"$ne": true},
-						},
-					},
-					{"$lookup": bson.M{
-						"from":         Collection,
-						"localField":   IdKey,
-						"foreignField": ExecutionTasksKey,
-						"as":           tempParentKey,
-					}},
-					{
-						"$match": bson.M{
-							tempParentKey: []interface{}{},
-						},
-					},
-				},
-			},
-		}
-		pipeline = append(pipeline, facet)
-
-		// Recombine the tasks so that we can continue the pipeline on the joined tasks
-		recombineTasks := []bson.M{
-			{"$project": bson.M{
-				"tasks": bson.M{
-					"$setUnion": []string{"$no_id", "$id_empty"},
-				}},
-			},
-			{"$unwind": "$tasks"},
-			{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
-		}
-
-		pipeline = append(pipeline, recombineTasks...)
-	}
-
-	statusFacet := bson.M{
-		"$facet": bson.M{
-			// We skip annotation lookup for non-failed tasks, because these can't have annotations
-			"not_failed": []bson.M{
-				{
-					"$match": bson.M{
-						StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
-					},
-				},
-			},
-			// for failed tasks, get any annotation that has at least one issue
-			"failed": []bson.M{
-				{
-					"$match": bson.M{
-						StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
-					},
-				},
-				{
-					"$lookup": bson.M{
-						"from": annotations.Collection,
-						"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
-						"pipeline": []bson.M{
-							{
-								"$match": bson.M{
-									"$expr": bson.M{
-										"$and": []bson.M{
-											{
-												"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
-											},
-											{
-												"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
-											},
-											{
-												"$ne": []interface{}{
-													bson.M{
-														"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
-													}, 0,
-												},
-											},
-										},
-									},
-								}}},
-						"as": "annotation_docs",
-					},
-				},
-			},
-		},
-	}
-	pipeline = append(pipeline, statusFacet)
-	recombineStatusFacet := []bson.M{
-		{"$project": bson.M{
-			"tasks": bson.M{
-				"$setUnion": []string{"$not_failed", "$failed"},
-			}},
-		},
-		{"$unwind": "$tasks"},
-		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
-	}
-	pipeline = append(pipeline, recombineStatusFacet...)
-	pipeline = append(pipeline, []bson.M{
-		// Add a field for the display status of each task
-		addDisplayStatus,
-		// Add data about the base task
-		{"$lookup": bson.M{
-			"from": Collection,
-			"let": bson.M{
-				RevisionKey:     "$" + RevisionKey,
-				BuildVariantKey: "$" + BuildVariantKey,
-				DisplayNameKey:  "$" + DisplayNameKey,
-			},
-			"as": BaseTaskKey,
-			"pipeline": []bson.M{
-				{"$match": bson.M{
-					RequesterKey: evergreen.RepotrackerVersionRequester,
-					"$expr": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-						},
-					},
-				}},
-				{"$project": bson.M{
-					IdKey:     1,
-					StatusKey: displayStatusExpression,
-				}},
-				{"$limit": 1},
-			},
-		}},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + BaseTaskKey,
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}...,
-	)
-	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(opts.Variants) == 0 {
-		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	}
-	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
-	}
 	if len(opts.BaseStatuses) > 0 {
 		pipeline = append(pipeline, bson.M{
 			"$match": bson.M{
@@ -3229,6 +3042,278 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		count = result.Count[0]["count"]
 	}
 	return result.Tasks, count, nil
+}
+
+type StatusCount struct {
+	Status string `bson:"status"`
+	Count  int    `bson:"count"`
+}
+
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*StatusCount, error) {
+	StatusCount := []*StatusCount{}
+	pipeline := getTasksByVersionPipeline(versionID, opts)
+	groupPipeline := []bson.M{
+		{"$group": bson.M{
+			"_id":   "$" + DisplayStatusKey,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$sort": bson.M{"_id": 1}},
+		{"$project": bson.M{
+			"status": "$_id",
+			"count":  1,
+		}},
+	}
+	pipeline = append(pipeline, groupPipeline...)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+	err = cursor.All(ctx, &StatusCount)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+
+	return StatusCount, nil
+}
+
+type HasMatchingTasksOptions struct {
+	TaskNames []string
+	Variants  []string
+	Statuses  []string
+}
+
+// HasMatchingTasks returns true if the version has tasks with the given statuses
+func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	options := GetTasksByVersionOptions{
+		TaskNames: opts.TaskNames,
+		Variants:  opts.Variants,
+		Statuses:  opts.Statuses,
+	}
+	pipeline := getTasksByVersionPipeline(versionID, options)
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return false, err
+	}
+	type Count struct {
+		Count int `bson:"count"`
+	}
+	count := []*Count{}
+	err = cursor.All(ctx, &count)
+	if err != nil {
+		return false, err
+	}
+	if len(count) == 0 {
+		return false, nil
+	}
+	return count[0].Count > 0, nil
+}
+
+func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
+	var match bson.M = bson.M{}
+
+	// Allow searching by either variant name or variant display
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+
+		match = bson.M{
+			"$or": []bson.M{
+				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			},
+		}
+	}
+	if len(opts.TaskNames) > 0 {
+		taskNamesAsRegex := strings.Join(opts.TaskNames, "|")
+		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
+	}
+	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
+	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	match[VersionKey] = versionID
+	pipeline := []bson.M{}
+	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
+	// This is an expensive operation so we only want to do it if we have to
+	if len(opts.Variants) > 0 {
+		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+	}
+	pipeline = append(pipeline,
+		bson.M{"$match": match},
+	)
+
+	if !opts.IncludeExecutionTasks {
+		const tempParentKey = "_parent"
+		// Split tasks so that we only look up if the task is an execution task if display task ID is unset and
+		// display only is false (i.e. we don't know if it's a display task or not).
+		facet := bson.M{
+			"$facet": bson.M{
+				// We skip lookup for anything we already know is not part of a display task
+				"id_empty": []bson.M{
+					{
+						"$match": bson.M{
+							"$or": []bson.M{
+								{DisplayTaskIdKey: ""},
+								{DisplayOnlyKey: true},
+							},
+						},
+					},
+				},
+				// No ID and not display task: lookup if it's an execution task for some task, and then filter it out if it is
+				"no_id": []bson.M{
+					{
+						"$match": bson.M{
+							DisplayTaskIdKey: nil,
+							DisplayOnlyKey:   bson.M{"$ne": true},
+						},
+					},
+					{"$lookup": bson.M{
+						"from":         Collection,
+						"localField":   IdKey,
+						"foreignField": ExecutionTasksKey,
+						"as":           tempParentKey,
+					}},
+					{
+						"$match": bson.M{
+							tempParentKey: []interface{}{},
+						},
+					},
+				},
+			},
+		}
+		pipeline = append(pipeline, facet)
+
+		// Recombine the tasks so that we can continue the pipeline on the joined tasks
+		recombineTasks := []bson.M{
+			{"$project": bson.M{
+				"tasks": bson.M{
+					"$setUnion": []string{"$no_id", "$id_empty"},
+				}},
+			},
+			{"$unwind": "$tasks"},
+			{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+		}
+
+		pipeline = append(pipeline, recombineTasks...)
+	}
+
+	annotationFacet := bson.M{
+		"$facet": bson.M{
+			// We skip annotation lookup for non-failed tasks, because these can't have annotations
+			"not_failed": []bson.M{
+				{
+					"$match": bson.M{
+						StatusKey: bson.M{"$nin": evergreen.TaskFailureStatuses},
+					},
+				},
+			},
+			// for failed tasks, get any annotation that has at least one issue
+			"failed": []bson.M{
+				{
+					"$match": bson.M{
+						StatusKey: bson.M{"$in": evergreen.TaskFailureStatuses},
+					},
+				},
+				{
+					"$lookup": bson.M{
+						"from": annotations.Collection,
+						"let":  bson.M{"task_annotation_id": "$" + IdKey, "task_annotation_execution": "$" + ExecutionKey},
+						"pipeline": []bson.M{
+							{
+								"$match": bson.M{
+									"$expr": bson.M{
+										"$and": []bson.M{
+											{
+												"$eq": []string{"$" + annotations.TaskIdKey, "$$task_annotation_id"},
+											},
+											{
+												"$eq": []string{"$" + annotations.TaskExecutionKey, "$$task_annotation_execution"},
+											},
+											{
+												"$ne": []interface{}{
+													bson.M{
+														"$size": bson.M{"$ifNull": []interface{}{"$" + annotations.IssuesKey, []bson.M{}}},
+													}, 0,
+												},
+											},
+										},
+									},
+								}}},
+						"as": "annotation_docs",
+					},
+				},
+			},
+		},
+	}
+	pipeline = append(pipeline, annotationFacet)
+	recombineAnnotationFacet := []bson.M{
+		{"$project": bson.M{
+			"tasks": bson.M{
+				"$setUnion": []string{"$not_failed", "$failed"},
+			}},
+		},
+		{"$unwind": "$tasks"},
+		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
+	}
+	pipeline = append(pipeline, recombineAnnotationFacet...)
+	pipeline = append(pipeline,
+		// Add a field for the display status of each task
+		addDisplayStatus,
+	)
+	if opts.IncludeBaseTasks {
+		pipeline = append(pipeline, []bson.M{
+			// Add data about the base task
+			{"$lookup": bson.M{
+				"from": Collection,
+				"let": bson.M{
+					RevisionKey:     "$" + RevisionKey,
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
+				"as": BaseTaskKey,
+				"pipeline": []bson.M{
+					{"$match": bson.M{
+						RequesterKey: evergreen.RepotrackerVersionRequester,
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+							},
+						},
+					}},
+					{"$project": bson.M{
+						IdKey:     1,
+						StatusKey: displayStatusExpression,
+					}},
+					{"$limit": 1},
+				},
+			}},
+			{
+				"$unwind": bson.M{
+					"path":                       "$" + BaseTaskKey,
+					"preserveNullAndEmptyArrays": true,
+				},
+			},
+		}...,
+		)
+	}
+	// Add the build variant display name to the returned subset of results if it wasn't added earlier
+	if len(opts.Variants) == 0 {
+		pipeline = append(pipeline, AddBuildVariantDisplayName...)
+	}
+	if len(opts.Statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
+			},
+		})
+	}
+	return pipeline
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer

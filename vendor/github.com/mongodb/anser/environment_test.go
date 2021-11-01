@@ -15,8 +15,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -43,15 +41,12 @@ func (s *EnvImplSuite) SetupTest() {
 	s.cancel = cancel
 	s.NoError(s.q.Start(ctx))
 
-	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/", 10*time.Millisecond)
-	s.Require().NoError(err)
-	s.session = db.WrapSession(mgoses)
-
 	s.Require().Equal(globalEnv, GetEnvironment())
 
 	cl, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(10 * time.Millisecond))
 	s.Require().NoError(err)
 	s.client = client.WrapClient(cl)
+	s.session = db.WrapClient(ctx, cl)
 
 	s.env = &envState{
 		migrations: make(map[string]migrationOp),
@@ -94,18 +89,6 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.False(s.env.isSetup)
 }
 
-func (s *EnvImplSuite) TestDatabaseNameOverrideFromURI() {
-	s.env.isSetup = false
-	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/mci", 10*time.Millisecond)
-	s.Require().NoError(err)
-	session := db.WrapSession(mgoses)
-	defer session.Close()
-
-	s.NoError(s.env.Setup(s.q, s.client, session))
-	s.True(s.env.isSetup)
-	s.Equal("mci", s.env.metadataNS.DB)
-}
-
 func (s *EnvImplSuite) TestSessionAccessor() {
 	session, err := s.env.GetSession()
 	s.NoError(err)
@@ -124,43 +107,6 @@ func (s *EnvImplSuite) TestDepNetworkAccessor() {
 	s.NotNil(network)
 	s.NotEqual(globalEnv.deps, network)
 	s.Equal(s.env.deps, network)
-}
-
-func (s *EnvImplSuite) TestLegacyManualMigrationOperationRegistry() {
-	count := 0
-
-	op := func(_ db.Session, _ bson.RawD) error { count++; return nil }
-	s.Len(s.env.migrations, 0)
-	s.NoError(s.env.RegisterLegacyManualMigrationOperation("foo", op))
-	s.Len(s.env.migrations, 1)
-	s.Error(s.env.RegisterLegacyManualMigrationOperation("foo", op))
-	s.Len(s.env.migrations, 1)
-
-	fun, ok := s.env.GetLegacyManualMigrationOperation("foo")
-	s.True(ok)
-	s.Equal(0, count)
-	s.NoError(fun(nil, bson.RawD{}))
-	s.Equal(1, count)
-
-	fun, ok = s.env.GetLegacyManualMigrationOperation("bar")
-	s.False(ok)
-	s.Zero(fun)
-}
-
-func (s *EnvImplSuite) TestLegacyDocumentProcessor() {
-	s.Len(s.env.processor, 0)
-	s.NoError(s.env.RegisterLegacyDocumentProcessor("foo", nil))
-	s.Len(s.env.processor, 1)
-	s.Error(s.env.RegisterLegacyDocumentProcessor("foo", nil))
-	s.Len(s.env.processor, 1)
-
-	dp, ok := s.env.GetLegacyDocumentProcessor("foo")
-	s.True(ok)
-	s.Nil(dp)
-
-	dp, ok = s.env.GetLegacyDocumentProcessor("bar")
-	s.False(ok)
-	s.Nil(dp)
 }
 
 func (s *EnvImplSuite) TestDependencyNetworkConstructor() {

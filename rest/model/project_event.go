@@ -31,6 +31,9 @@ type APIProjectVars struct {
 	PrivateVars    map[string]bool   `json:"private_vars"`
 	RestrictedVars map[string]bool   `json:"restricted_vars"`
 	VarsToDelete   []string          `json:"vars_to_delete,omitempty"`
+
+	// to use for the UI
+	PrivateVarsList []string `json:"-"`
 }
 
 type APIProjectAlias struct {
@@ -110,6 +113,10 @@ func (p *APIProjectVars) ToService() (interface{}, error) {
 		if val {
 			privateVars[key] = val
 		}
+	}
+	// handle UI list
+	for _, each := range p.PrivateVarsList {
+		privateVars[each] = true
 	}
 	return &model.ProjectVars{
 		Vars:           p.Vars,

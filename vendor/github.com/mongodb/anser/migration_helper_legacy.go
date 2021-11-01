@@ -34,9 +34,9 @@ func (l *legacyMigrationMetadataIterator) Next(ctx context.Context) bool {
 }
 func (l *legacyMigrationMetadataIterator) Item() *model.MigrationMetadata { return l.item }
 
-// NewLegacyMigrationHelper constructs a new migration helper instance. Use
-// this to inject environment instances into tasks.
-func NewLegacyMigrationHelper(e Environment) MigrationHelper { return &legacyMigrationBase{env: e} }
+// newLegacyMigrationHelper constructs a new legacy migration helper instance
+// for internal testing. Use this to inject environment instances into tasks.
+func newLegacyMigrationHelper(e Environment) MigrationHelper { return &legacyMigrationBase{env: e} }
 
 type legacyMigrationBase struct {
 	env Environment

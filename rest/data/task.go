@@ -250,6 +250,7 @@ type TaskFilterOptions struct {
 	FieldsToProject       []string
 	Sorts                 []task.TasksSortOrder
 	IncludeExecutionTasks bool
+	IncludeBaseTasks      bool
 }
 
 // FindTasksByVersion gets all tasks for a specific version
@@ -265,6 +266,7 @@ func (tc *DBTaskConnector) FindTasksByVersion(versionID string, opts TaskFilterO
 		FieldsToProject:       opts.FieldsToProject,
 		Sorts:                 opts.Sorts,
 		IncludeExecutionTasks: opts.IncludeExecutionTasks,
+		IncludeBaseTasks:      opts.IncludeBaseTasks,
 	}
 	tasks, total, err := task.GetTasksByVersion(versionID, getTaskByVersionOpts)
 	if err != nil {

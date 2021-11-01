@@ -812,20 +812,81 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	return result, nil
 }
 
+// FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the passed in taskIds and execution,
+// or the most recent executions of those tasks if they do not have a matching execution
+func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Task, error) {
+	pipeline := []bson.M{}
+	match := bson.M{
+		"$match": bson.M{
+			IdKey: bson.M{
+				"$in": taskIds,
+			},
+			ExecutionKey: bson.M{
+				"$lte": execution,
+			},
+		},
+	}
+	pipeline = append(pipeline, match)
+	result := []Task{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "Error finding tasks in task collection")
+	}
+	// Get the taskIds that were not found in the previous match stage
+	foundIds := []string{}
+	for _, t := range result {
+		foundIds = append(foundIds, t.Id)
+	}
+
+	missingTasks, _ := utility.StringSliceSymmetricDifference(utility.FromStringPtrSlice(taskIds), foundIds)
+	if len(missingTasks) > 0 {
+		oldTasks := []Task{}
+		oldTaskPipeline := []bson.M{}
+		match = bson.M{
+			"$match": bson.M{
+				OldTaskIdKey: bson.M{
+					"$in": missingTasks,
+				},
+				ExecutionKey: bson.M{
+					"$lte": execution,
+				},
+			},
+		}
+		oldTaskPipeline = append(oldTaskPipeline, match)
+		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
+			return nil, errors.Wrap(err, "error finding tasks in old tasks collection")
+		}
+
+		result = append(result, oldTasks...)
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result, nil
+}
+
 type BuildVariantTuple struct {
 	BuildVariant string `bson:"build_variant"`
 	DisplayName  string `bson:"display_name"`
 }
 
-// FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name,
-// it tries to return the most recent display name for each build variant to avoid duplicates from display names changing
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string) ([]*BuildVariantTuple, error) {
+const VersionLimit = 50
+
+// FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
+// It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
+// It only checks the last 50 versions that ran for a given task name.
+func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:     projectId,
 			DisplayNameKey: taskName,
-			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes}},
-		}}
+			RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+			"$and": []bson.M{
+				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
+				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
+			},
+		},
+		},
+	}
 
 	// sort by most recent version to get the most recent display names for the build variants first
 	sortByOrderNumber := bson.M{
@@ -897,8 +958,14 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]strin
 		{"$match": bson.M{
 			ProjectKey:      projectId,
 			BuildVariantKey: buildVariant,
-			RequesterKey:    bson.M{"$in": evergreen.SystemVersionRequesterTypes}},
-		}}
+			RequesterKey:    bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+			"$or": []bson.M{
+				{DisplayTaskIdKey: bson.M{"$exists": false}},
+				{DisplayTaskIdKey: ""},
+			},
+		},
+		},
+	}
 
 	group := bson.M{
 		"$group": bson.M{

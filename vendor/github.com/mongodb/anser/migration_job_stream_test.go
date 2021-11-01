@@ -47,62 +47,6 @@ func TestStreamMigrationJob(t *testing.T) {
 		assert.Contains(t, err.Error(), job.Definition.ProcessorName)
 	})
 
-	t.Run("LegacyProcessor", func(t *testing.T) {
-		processor := &mock.LegacyProcessor{}
-		env.LegacyProcessorRegistry[processorTypeName] = processor
-		defer func() { delete(env.LegacyProcessorRegistry, processorTypeName) }()
-		t.Run("BadIterator", func(t *testing.T) {
-			// now we find a poorly configured/implemented processor
-			job := factory().(*streamMigrationJob)
-			job.Definition.ProcessorName = processorTypeName
-			job.MigrationHelper = mh
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-			require.True(t, job.HasErrors())
-			err := job.Error()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "could not return iterator")
-		})
-		t.Run("GoodIterator", func(t *testing.T) {
-			// reset for next case.
-			// now we have a properly configured job iterator
-			job := factory().(*streamMigrationJob)
-			job.MigrationHelper = mh
-			job.Definition.ProcessorName = processorTypeName
-			processor.Iter = &mock.Iterator{}
-			job.Run(ctx)
-			assert.False(t, job.HasErrors())
-			assert.True(t, job.Status().Completed)
-		})
-		t.Run("IteratorError", func(t *testing.T) {
-			// reset for the next case:
-			// we have an iterator that returns an error.
-			job := factory().(*streamMigrationJob)
-			job.MigrationHelper = mh
-			job.Definition.ProcessorName = processorTypeName
-			processor.MigrateError = errors.New("has error 123")
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-			require.True(t, job.HasErrors())
-			err := job.Error()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "has error 123")
-		})
-		t.Run("NoSession", func(t *testing.T) {
-			env.SessionError = errors.New("no session")
-
-			job := factory().(*streamMigrationJob)
-			job.MigrationHelper = mh
-			job.Definition.ProcessorName = processorTypeName
-			job.Run(ctx)
-			assert.True(t, job.Status().Completed)
-			require.True(t, job.HasErrors())
-			err := job.Error()
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "no session")
-		})
-
-	})
 	t.Run("Processor", func(t *testing.T) {
 		processor := &mock.Processor{}
 		env.ProcessorRegistry[processorTypeName] = processor

@@ -3,11 +3,9 @@ package anser
 import (
 	"testing"
 
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestApplicationConstructor(t *testing.T) {
@@ -56,32 +54,10 @@ func TestApplicationConstructor(t *testing.T) {
 		},
 	}
 
-	env.LegacyMigrationRegistry["manualOne"] = func(s db.Session, d bson.RawD) error { return nil }
-	conf.ManualMigrations = []model.ConfigurationManualMigration{
-		{
-			Options: model.GeneratorOptions{
-				JobID: "foo-1",
-				NS:    model.Namespace{DB: "db", Collection: "coll"},
-				Query: map[string]interface{}{"_id": "1"}},
-			Name: "manualOne",
-		},
-	}
-
-	env.LegacyProcessorRegistry["streamOne"] = &mock.LegacyProcessor{}
-	conf.StreamMigrations = []model.ConfigurationManualMigration{
-		{
-			Options: model.GeneratorOptions{
-				JobID: "foo-2",
-				NS:    model.Namespace{DB: "db", Collection: "coll"},
-				Query: map[string]interface{}{"_id": "1"}},
-			Name: "streamOne",
-		},
-	}
-
 	app, err = NewApplication(env, conf)
 	require.NoError(err)
 	require.NotNil(app)
-	require.Len(app.Generators, 3)
+	require.Len(app.Generators, 1)
 
 	///////////////////////////////////
 	//

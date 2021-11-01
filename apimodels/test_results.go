@@ -128,7 +128,7 @@ func GetMultiPageCedarTestResults(ctx context.Context, opts GetCedarTestResultsO
 func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResultsStats, error) {
 	timberOpts := opts.convert()
 	timberOpts.Stats = true
-	data, err := testresults.Get(ctx, opts.convert())
+	data, err := testresults.Get(ctx, timberOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results stats from Cedar")
 	}
@@ -147,7 +147,7 @@ func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptio
 func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResultsOptions) ([]string, error) {
 	timberOpts := opts.convert()
 	timberOpts.FailedSample = true
-	data, err := testresults.Get(ctx, opts.convert())
+	data, err := testresults.Get(ctx, timberOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting failed test result sample from Cedar")
 	}

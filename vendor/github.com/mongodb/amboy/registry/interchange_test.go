@@ -51,6 +51,8 @@ func (s *JobInterchangeSuite) TestRoundTripHighLevel() {
 	outJob, err := i.Resolve(s.format)
 	s.NoError(err)
 
+	// Decoding the job from BSON sets the scopes to the empty slice instead of
+	// a nil slice.
 	outJob.SetScopes(nil)
 	if s.format == amboy.BSON || s.format == amboy.BSON2 {
 		// mgo/bson seems to unset/nil the private map in the
@@ -169,15 +171,28 @@ func (s *JobInterchangeSuite) TestTimeInfoPersists() {
 	}
 }
 
-func (s *JobInterchangeSuite) TestApplyScopesOnEnqueuePersists() {
-	s.job.SetShouldApplyScopesOnEnqueue(true)
+func (s *JobInterchangeSuite) TestEnqueueScopesPersists() {
+	scopes := []string{"foo", "bar"}
+	s.job.SetScopes(scopes)
+	s.job.SetEnqueueScopes(scopes...)
 
 	i, err := MakeJobInterchange(s.job, s.format)
 	s.Require().NoError(err)
 
 	j, err := i.Resolve(s.format)
 	s.Require().NoError(err)
-	s.True(j.ShouldApplyScopesOnEnqueue())
+	s.Equal(scopes, j.EnqueueScopes())
+}
+
+func (s *JobInterchangeSuite) TestEnqueueAllScopesPersists() {
+	s.job.SetEnqueueAllScopes(true)
+
+	i, err := MakeJobInterchange(s.job, s.format)
+	s.Require().NoError(err)
+
+	j, err := i.Resolve(s.format)
+	s.Require().NoError(err)
+	s.True(j.EnqueueAllScopes())
 }
 
 func (s *JobInterchangeSuite) TestRetryInfoPersists() {

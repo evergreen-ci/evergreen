@@ -1,0 +1,21 @@
+mutation {
+    saveProjectSettingsForSection(
+        projectSettings: {
+            projectRef: {
+                id: "1234"
+                enabled: true,
+                remotePath: "my_path_is_new"
+            }
+        },
+        section: "general"
+    ) {
+        projectRef {
+            enabled
+            remotePath
+            spawnHostScriptPath ## overwritten
+        }
+        vars {
+            vars ## should be unchanged
+        }
+    }
+}

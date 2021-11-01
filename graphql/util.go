@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/event"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -64,7 +66,7 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task %s not found", taskID).Error())
 	}
 	if t.Requester == evergreen.MergeTestRequester && isActive {
 		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
@@ -469,22 +471,23 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(ctx context.Context, sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:  statuses,
-		Variants:  searchVariants,
-		TaskNames: searchTasks,
-		Sorts:     defaultSort,
+		Statuses:         statuses,
+		Variants:         searchVariants,
+		TaskNames:        searchTasks,
+		Sorts:            defaultSort,
+		IncludeBaseTasks: true,
 	}
 	start := time.Now()
 	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting tasks for patch `%s`: %s", versionId, err.Error()))
+		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
 	}
 	timeToFindTasks := time.Since(start)
 	buildTaskStartTime := time.Now()
@@ -492,7 +495,7 @@ func generateBuildVariants(ctx context.Context, sc data.Connector, versionId str
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(&t)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
+			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}
 		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
@@ -1225,4 +1228,60 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 	} else {
 		return errors.Wrapf(version.SetActivated(), "Error updating version activated status for `%s`", version.Id)
 	}
+}
+func (buildVariantOptions *BuildVariantOptions) isPopulated() bool {
+	if buildVariantOptions == nil {
+		return false
+	}
+	return len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0
+}
+
+func getAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
+	vars, err := model.FindOneProjectVars(projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", projectId, err.Error()))
+	}
+	if vars == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", projectId))
+	}
+	res := &restModel.APIProjectVars{}
+	if err = res.BuildFromService(vars); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
+func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
+	aliases, err := model.FindAliasesForProjectFromDb(projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
+	}
+	res := []*restModel.APIProjectAlias{}
+	for _, alias := range aliases {
+		apiAlias := restModel.APIProjectAlias{}
+		if err = apiAlias.BuildFromService(alias); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
+				alias.Alias, err.Error()))
+		}
+		res = append(res, &apiAlias)
+	}
+	return res, nil
+}
+
+func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*restModel.APISubscription, error) {
+	subscriptions, err := event.FindSubscriptionsByOwner(projectId, event.OwnerTypeProject)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding subscription for project: %s", err.Error()))
+	}
+
+	res := []*restModel.APISubscription{}
+	for _, sub := range subscriptions {
+		apiSubscription := restModel.APISubscription{}
+		if err = apiSubscription.BuildFromService(sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectSubscription %s from service: %s",
+				sub.ID, err.Error()))
+		}
+		res = append(res, &apiSubscription)
+	}
+	return res, nil
 }

@@ -303,7 +303,7 @@ func TestGetUserPermissions(t *testing.T) {
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1"},
+		SystemRoles: []string{"role1", evergreen.BasicProjectAccessRole, evergreen.BasicDistroAccessRole},
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
@@ -465,5 +465,150 @@ func TestGetUsersForRole(t *testing.T) {
 	assert.Len(t, usersWithRole.Users, 2)
 	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[0]), u1.Id)
 	assert.Contains(t, utility.FromStringPtr(usersWithRole.Users[1]), u2.Id)
+}
+
+func TestGetUsersForResourceId(t *testing.T) {
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	rm := evergreen.GetEnvironment().RoleManager()
+
+	u1 := user.DBUser{
+		Id: "me",
+		SystemRoles: []string{
+			"basic_project_access",
+			"super_project_access",
+		},
+	}
+	u2 := user.DBUser{
+		Id: "you",
+		SystemRoles: []string{
+			"basic_project_access",
+			"other_project_access",
+		},
+	}
+	u3 := user.DBUser{
+		Id: "nobody",
+		SystemRoles: []string{
+			"other_project_access",
+		},
+	}
+	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3))
+	basicRole := gimlet.Role{
+		ID:    "basic_project_access",
+		Scope: "some_projects",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionTasks:       evergreen.TasksView.Value,
+			evergreen.PermissionAnnotations: evergreen.AnnotationsView.Value,
+			evergreen.PermissionLogs:        evergreen.LogsView.Value,
+		},
+	}
+	superRole := gimlet.Role{
+		ID:    "super_project_access",
+		Scope: "all_projects",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}
+	otherRole := gimlet.Role{
+		ID:    "other_project_access",
+		Scope: "one_project",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionTasks: evergreen.TasksView.Value,
+		},
+	}
+	assert.NoError(t, rm.UpdateRole(basicRole))
+	assert.NoError(t, rm.UpdateRole(superRole))
+	assert.NoError(t, rm.UpdateRole(otherRole))
+	someScope := gimlet.Scope{
+		ID:        "some_projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"p1", "p2"},
+	}
+	superScope := gimlet.Scope{
+		ID:        "all_projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"p1", "p2", "p3"},
+	}
+	oneScope := gimlet.Scope{
+		ID:        "one_project",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"p2"},
+	}
+
+	assert.NoError(t, rm.AddScope(someScope))
+	assert.NoError(t, rm.AddScope(superScope))
+	assert.NoError(t, rm.AddScope(oneScope))
+
+	for testName, testCase := range map[string]func(t *testing.T){
+		"p1": func(t *testing.T) {
+			body := []byte(`{"resource_type": "project", "resource_id":"p1"}`)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			handler := makeGetAllUsersPermissions(&data.DBConnector{}, rm)
+			assert.NoError(t, handler.Parse(context.TODO(), req))
+			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p1")
+			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
+			resp := handler.Run(context.TODO())
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			userPermissions, ok := resp.Data().(UsersPermissionsResult)
+			assert.True(t, ok)
+			assert.Len(t, userPermissions, 1) // only user1 should be included; user2 only has basic access
+			u1Permissions := userPermissions[u1.Username()]
+			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], 0) // only relevant to basic project access
+			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
+		},
+		"p2": func(t *testing.T) {
+			body := []byte(`{"resource_type": "project", "resource_id":"p2"}`)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			handler := makeGetAllUsersPermissions(&data.DBConnector{}, rm)
+			assert.NoError(t, handler.Parse(context.TODO(), req))
+			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p2")
+			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
+			resp := handler.Run(context.TODO())
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			userPermissions, ok := resp.Data().(UsersPermissionsResult)
+			assert.True(t, ok)
+			assert.Len(t, userPermissions, 3)
+			u1Permissions := userPermissions[u1.Username()]
+			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], 0) // only relevant to basic project access
+			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
+			u2Permissions := userPermissions[u2.Username()]
+			assert.Equal(t, u2Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
+			assert.Equal(t, u2Permissions[evergreen.PermissionLogs], 0)            // only relevant to basic project access
+			assert.Equal(t, u2Permissions[evergreen.PermissionProjectSettings], 0) // wasn't given admin
+			u3Permissions := userPermissions[u3.Username()]
+			assert.Len(t, u3Permissions, 1)
+			assert.Equal(t, u3Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
+		},
+		"p3": func(t *testing.T) {
+			body := []byte(`{"resource_type": "project", "resource_id":"p3"}`)
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			handler := makeGetAllUsersPermissions(&data.DBConnector{}, rm)
+			assert.NoError(t, handler.Parse(context.TODO(), req))
+			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p3")
+			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
+			resp := handler.Run(context.TODO())
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			userPermissions, ok := resp.Data().(UsersPermissionsResult)
+			assert.True(t, ok)
+			assert.Len(t, userPermissions, 1) // only user1 has permissions for p3
+			u1Permissions := userPermissions[u1.Username()]
+			assert.Len(t, u1Permissions, 3)
+			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
+			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
 
 }

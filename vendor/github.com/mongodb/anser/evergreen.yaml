@@ -32,7 +32,7 @@ functions:
       working_dir: gopath/src/github.com/mongodb/anser/
       binary: make
       args: ["${make_args|}", "${target}"]
-      add_expansions_to_env: true
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
       env:
         GOPATH: ${workdir}/gopath
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
@@ -41,7 +41,7 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        add_expansions_to_env: true
+        include_expansions_in_env: ["MONGODB_URL"]
         env:
           DECOMPRESS: ${decompress}
         working_dir: gopath/src/github.com/mongodb/anser/
@@ -49,20 +49,20 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
+        include_expansions_in_env: ["MONGODB_URL"]
         background: true
         working_dir: gopath/src/github.com/mongodb/anser/
-        add_expansions_to_env: true
         command: make start-mongod
     - command: subprocess.exec
       type: setup
       params:
+        include_expansions_in_env: ["MONGODB_URL"]
         working_dir: gopath/src/github.com/mongodb/anser/
-        add_expansions_to_env: true
         command: make check-mongod
     - command: subprocess.exec
       type: setup
       params:
-        add_expansions_to_env: true
+        include_expansions_in_env: ["MONGODB_URL"]
         working_dir: gopath/src/github.com/mongodb/anser/
         command: make init-rs
 
@@ -144,7 +144,6 @@ buildvariants:
       RACE_DETECTOR: true
       DISABLE_COVERAGE: true
       MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
     run_on:
       - archlinux-new-small
@@ -153,7 +152,6 @@ buildvariants:
   - name: lint
     display_name: Lint (Arch Linux)
     expansions:
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
     run_on:
       - archlinux-new-small
@@ -162,7 +160,6 @@ buildvariants:
   - name: ubuntu
     display_name: Ubuntu 18.04
     expansions:
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
       MONGODB_URL: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
     run_on:
@@ -173,7 +170,6 @@ buildvariants:
     display_name: macOS
     expansions:
       DISABLE_COVERAGE: yes
-      GO_BIN_PATH: /opt/golang/go1.16/bin/go
       GOROOT: /opt/golang/go1.16
       MONGODB_URL: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     run_on:

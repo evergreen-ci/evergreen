@@ -114,6 +114,7 @@ type MainlineCommitsOptions struct {
 	ProjectID       string `json:"projectID"`
 	Limit           *int   `json:"limit"`
 	SkipOrderNumber *int   `json:"skipOrderNumber"`
+	ShouldCollapse  *bool  `json:"shouldCollapse"`
 }
 
 type Manifest struct {
@@ -169,7 +170,8 @@ type PatchesInput struct {
 	Page               int      `json:"page"`
 	PatchName          string   `json:"patchName"`
 	Statuses           []string `json:"statuses"`
-	IncludeCommitQueue bool     `json:"includeCommitQueue"`
+	IncludeCommitQueue *bool    `json:"includeCommitQueue"`
+	OnlyCommitQueue    *bool    `json:"onlyCommitQueue"`
 }
 
 type ProjectBuildVariant struct {
@@ -214,11 +216,6 @@ type SpawnVolumeInput struct {
 	Expiration       *time.Time `json:"expiration"`
 	NoExpiration     *bool      `json:"noExpiration"`
 	Host             *string    `json:"host"`
-}
-
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
 }
 
 type Subscriber struct {

@@ -29,7 +29,9 @@ func (s *ApplicationSuite) TearDownSuite() {}
 func (s *ApplicationSuite) SetupTest() {
 	s.app = &Application{}
 	s.env = mock.NewEnvironment()
+	s.env.Queue = queue.NewLocalLimitedSize(2, 128)
 }
+
 func (s *ApplicationSuite) TearDownTest() {}
 
 func (s *ApplicationSuite) TestSetupErrorsWhenHasSetupRuns() {
@@ -69,7 +71,7 @@ func (s *ApplicationSuite) TestRunMethodErrorsIfQueueHasError() {
 }
 
 func (s *ApplicationSuite) TestRunErrorsWithCanceledContext() {
-	s.NoError(s.app.Setup(s.env))
+	s.Require().NoError(s.app.Setup(s.env))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -79,8 +81,6 @@ func (s *ApplicationSuite) TestRunErrorsWithCanceledContext() {
 }
 
 func (s *ApplicationSuite) TestRunDoesNotErrorWithDryRun() {
-	s.env.Queue = queue.NewLocalLimitedSize(2, 128)
-
 	s.NoError(s.app.Setup(s.env))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -108,17 +108,16 @@ func (s *ApplicationSuite) TestLimitIsRespected() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.env.Queue = queue.NewLocalLimitedSize(2, 128)
 	s.env.Network = mock.NewDependencyNetwork()
 
 	s.NoError(s.env.Queue.Start(ctx))
 	s.NoError(s.env.Queue.Put(ctx, job))
 	s.Equal(1, s.env.Queue.Stats(ctx).Total)
-	amboy.WaitInterval(ctx, s.env.Queue, 10*time.Millisecond)
+	s.Require().True(amboy.WaitInterval(ctx, s.env.Queue, 10*time.Millisecond))
 
 	num, err := addMigrationJobs(ctx, s.env.Queue, false, 2)
-	s.NoError(err)
-	amboy.WaitInterval(ctx, s.env.Queue, 100*time.Millisecond)
+	s.Require().NoError(err)
+	s.Require().True(amboy.WaitInterval(ctx, s.env.Queue, 100*time.Millisecond))
 
 	// two is the limit:
 	s.Equal(2, num)
