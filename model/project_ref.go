@@ -1350,17 +1350,17 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		if repoRef == nil {
 			return nil, errors.Wrap(err, "couldn't find repo ref")
 		}
-		pRef = &repoRef.ProjectRef
-	} else {
-		pRef, err = FindBranchProjectRef(projectId)
-
+		return GetProjectSettings(&repoRef.ProjectRef)
 	}
+
+	pRef, err = FindBranchProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref")
 	}
 	if pRef == nil {
 		return nil, errors.Errorf("couldn't find project ref")
 	}
+
 	return GetProjectSettings(pRef)
 }
 

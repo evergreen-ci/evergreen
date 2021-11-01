@@ -79,6 +79,7 @@ type Mutation {
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: String!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   forceRepotrackerRun(projectId: String!): Boolean!
@@ -370,8 +371,8 @@ input ProjectSettingsInput {
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
   vars: ProjectVarsInput
-  aliases: [ProjectAliasInput]
-  subscriptions: [SubscriptionInput]
+  aliases: [ProjectAliasInput!]
+  subscriptions: [SubscriptionInput!]
 }
 
 input ProjectInput {
@@ -393,26 +394,72 @@ input ProjectInput {
   deactivatePrevious: Boolean
   defaultLogger: String
   notifyOnBuildFailure: Boolean
-  triggers: [TriggerAliasInput]
-  patchTriggerAliases: [PatchTriggerAliasInput]
+  triggers: [TriggerAliasInput!]
+  patchTriggerAliases: [PatchTriggerAliasInput!]
   githubTriggerAliases: [String]
-  periodicBuilds: [PeriodicBuildInput]
+  periodicBuilds: [PeriodicBuildInput!]
   cedarTestResultsEnabled: Boolean
   commitQueue: CommitQueueParamsInput
-  admins: [String]
+  admins: [String!]
   spawnHostScriptPath: String
   tracksPushEvents: Boolean
   taskSync: TaskSyncOptionsInput
-  gitTagAuthorizedUsers: [String]
-  gitTagAuthorizedTeams: [String]
+  gitTagAuthorizedUsers: [String!]
+  gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean
 
-  filesIgnoredFromCache: [String]
+  filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
 
   hidden: Boolean
   useRepoSettings: Boolean
+}
+
+
+input RepoSettingsInput {
+  githubWebhooksEnabled: Boolean
+  projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
+  vars: ProjectVarsInput
+  aliases: [ProjectAliasInput!]
+  subscriptions: [SubscriptionInput!]
+}
+
+input RepoRefInput {
+  id: String!
+  displayName: String
+  enabled: Boolean
+  private: Boolean
+  owner: String
+  repo: String
+  branch: String
+  remotePath: String
+  patchingDisabled: Boolean
+  repotrackerDisabled: Boolean
+  dispatchingDisabled: Boolean
+  prTestingEnabled: Boolean
+  githubChecksEnabled: Boolean
+  batchTime: Int
+  deactivatePrevious: Boolean
+  defaultLogger: String
+  notifyOnBuildFailure: Boolean
+  triggers: [TriggerAliasInput!]
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  githubTriggerAliases: [String!]
+  periodicBuilds: [PeriodicBuildInput!]
+  cedarTestResultsEnabled: Boolean
+  commitQueue: CommitQueueParamsInput
+  admins: [String!]
+  spawnHostScriptPath: String
+  tracksPushEvents: Boolean
+  taskSync: TaskSyncOptionsInput
+  gitTagAuthorizedUsers: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagVersionsEnabled: Boolean
+
+  filesIgnoredFromCache: [String!]
+  disabledStatsCache: Boolean
+  workstationConfig: WorkstationConfigInput
 }
 
 input TriggerAliasInput {

@@ -126,6 +126,8 @@ models:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepoSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
@@ -136,6 +138,8 @@ models:
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  RepoRefInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
