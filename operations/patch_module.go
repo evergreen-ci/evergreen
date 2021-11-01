@@ -89,12 +89,12 @@ func PatchSetModule() cli.Command {
 					return errors.Wrap(merr, "errors fetching list of available modules")
 				}
 				if len(mods) == 0 {
-					return errors.Errorf("Project '%s' has no configured modules. "+
-						"See the evergreen configuration file for module configuration.",
+					return errors.Errorf("Project '%s' has no configured modules. Specify different project or "+
+						"see the evergreen configuration file for module configuration.",
 						projectIdentifier)
 				}
 				if len(mods) != 0 {
-					return errors.Errorf("Could not find module named '%s' for project '%s', select correct module from:\n\t%s",
+					return errors.Errorf("Could not find module named '%s' for project '%s'; specify different project or select correct module from:\n\t%s",
 						module, projectIdentifier, strings.Join(mods, "\n\t"))
 				}
 
@@ -140,11 +140,11 @@ func PatchSetModule() cli.Command {
 					msg = fmt.Sprintf("Could not find module named '%s' for this project",
 						module)
 				} else if len(mods) == 0 {
-					msg = fmt.Sprintf("Project '%s' has no configured modules. "+
-						"See the evergreen configuration file for module configuration.",
+					msg = fmt.Sprintf("Project '%s' has no configured modules. Specify different project or "+
+						"see the evergreen configuration file for module configuration.",
 						projectIdentifier)
 				} else {
-					msg = fmt.Sprintf("Could not find module named '%s' for project '%s', select correct module from:\n\t%s",
+					msg = fmt.Sprintf("Could not find module named '%s' for project '%s'. Specify different project or select correct module from:\n\t%s",
 						module, projectIdentifier, strings.Join(mods, "\n\t"))
 				}
 				grip.Error(msg)
