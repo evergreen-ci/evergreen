@@ -666,11 +666,9 @@ func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRe
 
 	for _, c := range commits {
 		commit := c.GetCommit()
-		if commit.Verification != nil {
-			if !utility.FromBoolPtr(commit.Verification.Verified) &&
-				(utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned) {
-				return errors.Errorf("the commit '%s' is not signed", utility.FromStringPtr(commit.Message))
-			}
+		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
+			(utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned) {
+			return errors.Errorf("the commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
 		}
 
 	}
