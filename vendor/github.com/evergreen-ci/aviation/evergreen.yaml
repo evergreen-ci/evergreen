@@ -1,0 +1,94 @@
+command_type: test
+stepback: false
+ignore:
+  - "*.md"
+  - "*.rst"
+  - ".github/*"
+
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operation. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - func: get-project-and-modules
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  get-project-and-modules:
+    - command: git.get_project
+      type: system
+      params:
+        directory: ${workdir}/aviation
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: ${workdir}/aviation
+        binary: make
+        args: ["mod-tidy"]
+        include_expansions_in_env: ["GOROOT"]
+  run-make:
+    command: subprocess.exec
+    type: test
+    params:
+      working_dir: ${workdir}/aviation
+      binary: make
+      args: ["${target}"]
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
+  parse-results:
+    command: gotest.parse_files
+    type: setup
+    params:
+      files:
+        - "aviation/build/output.*"
+
+#######################################
+#                Post                 #
+#######################################
+post:
+  - func: parse-results
+
+#######################################
+#                Tasks                #
+#######################################
+tasks:
+  - <<: *run-build
+    tags: ["test"]
+    name: test-aviation
+
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-aviation
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: lint
+    display_name: Lint (Arch Linux)
+    expansions:
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.16
+    run_on:
+      - archlinux-new-small
+      - archlinux-new-large
+    tasks: 
+      - name: ".report"
+
+  - name: ubuntu
+    display_name: Ubuntu 18.04
+    expansions:
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.16
+    run_on:
+      - ubuntu1804-small
+      - ubuntu1804-large
+    tasks:
+      - name: ".test"
