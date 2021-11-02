@@ -653,7 +653,7 @@ type ComplexityRoot struct {
 		MyVolumes                func(childComplexity int) int
 		Patch                    func(childComplexity int, id string) int
 		PatchBuildVariants       func(childComplexity int, patchID string) int
-		PatchTasks               func(childComplexity int, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeNeverActivatedTasks *bool) int
+		PatchTasks               func(childComplexity int, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) int
 		Project                  func(childComplexity int, projectID string) int
 		ProjectSettings          func(childComplexity int, identifier string) int
 		Projects                 func(childComplexity int) int
@@ -1224,7 +1224,7 @@ type QueryResolver interface {
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
-	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeNeverActivatedTasks *bool) (*PatchTasks, error)
+	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
 	TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error)
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
@@ -4365,7 +4365,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeNeverActivatedTasks"].(*bool)), true
+		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeEmptyActivation"].(*bool)), true
 
 	case "Query.project":
 		if e.complexity.Query.Project == nil {
@@ -6829,7 +6829,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
-    includeNeverActivatedTasks: Boolean = false
+    includeEmptyActivation: Boolean = false
   ): PatchTasks!
   taskTests(
     taskId: String!
@@ -9579,13 +9579,13 @@ func (ec *executionContext) field_Query_patchTasks_args(ctx context.Context, raw
 	}
 	args["taskName"] = arg7
 	var arg8 *bool
-	if tmp, ok := rawArgs["includeNeverActivatedTasks"]; ok {
+	if tmp, ok := rawArgs["includeEmptyActivation"]; ok {
 		arg8, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["includeNeverActivatedTasks"] = arg8
+	args["includeEmptyActivation"] = arg8
 	return args, nil
 }
 
@@ -22639,7 +22639,7 @@ func (ec *executionContext) _Query_patchTasks(ctx context.Context, field graphql
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeNeverActivatedTasks"].(*bool))
+		return ec.resolvers.Query().PatchTasks(rctx, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeEmptyActivation"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
