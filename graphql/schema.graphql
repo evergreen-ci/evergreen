@@ -1195,6 +1195,8 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+
+  validDefaultLoggers: [String!]!
 }
 
 type TriggerAlias {

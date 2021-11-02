@@ -73,6 +73,10 @@ func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
 
+func (r *Resolver) RepoRef() RepoRefResolver {
+	return &repoRefResolver{r}
+}
+
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
@@ -107,6 +111,7 @@ type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
+type repoRefResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
 type projectSettingsResolver struct{ *Resolver }
@@ -407,6 +412,10 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 }
 
 func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
+	return model.ValidDefaultLoggers, nil
+}
+
+func (r *repoRefResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
 	return model.ValidDefaultLoggers, nil
 }
 
