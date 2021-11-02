@@ -1,3 +1,0 @@
-directive @interfaceLogging on INTERFACE
-
-extend interface Node @interfaceLogging

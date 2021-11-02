@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
+	ignore "github.com/sabhiram/go-gitignore"
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v3"
 )
@@ -1386,7 +1386,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 		return false
 	}
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
-	ignorer, _ := ignore.CompileIgnoreLines(p.Ignore...)
+	ignorer := ignore.CompileIgnoreLines(p.Ignore...)
 	for _, f := range files {
 		if !ignorer.MatchesPath(f) {
 			return false

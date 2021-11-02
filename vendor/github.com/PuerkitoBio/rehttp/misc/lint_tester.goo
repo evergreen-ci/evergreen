@@ -1,9 +1,0 @@
-package misc
-
-import "fmt"
-
-// golint error
-func Exported(s string) {
-	fmt.Printf("%d", s) // go vet error
-return // gofmt error
-}

@@ -184,6 +184,8 @@ imports:
 
   - name: github.com/vektah/gqlparser
     version: d7ac1ee3e4535f7c6040c59dbf429da51e00eb4b
+  - name: golang.org/x/tools/imports
+    version: 727c06e3f111405bd52063f6120c7d72c3ba896e
   - name: github.com/gorilla/websocket
     version: c3e18be99d19e6b3e8f1559eea2c161a665c4b6b
   - name: github.com/agnivade/levenshtein
