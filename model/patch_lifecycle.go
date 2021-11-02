@@ -300,7 +300,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 
 	_, err = thirdparty.GetCommitEvent(githubCtx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "Couldn't fetch commit information").Error())
+		grip.Warning(message.Fields{
+			"error":    err,
+			"message":  "Couldn't fetch commit information",
+			"patch id": p.Id,
+			"project":  projectRef.DisplayName,
+			"owner":    projectRef.Owner,
+			"repo":     projectRef.Repo,
+		})
 	}
 
 	var parentPatchNumber int
