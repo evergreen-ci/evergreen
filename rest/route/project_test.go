@@ -154,7 +154,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	// verify that the repo fields weren't saved with the branch
-	p, err := s.sc.FindProjectById("dimoxinil", false)
+	p, err := s.sc.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.Empty(p.GitTagAuthorizedUsers)
@@ -183,7 +183,7 @@ func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err := s.sc.FindProjectById("dimoxinil", true)
+	p, err := s.sc.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.True(p.UseRepoSettings)
 	s.NotEmpty(p.RepoRefId)
@@ -218,7 +218,7 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err := s.sc.FindProjectById("dimoxinil", true)
+	p, err := s.sc.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.False(p.FilesIgnoredFromCache == nil)
 	s.Len(p.FilesIgnoredFromCache, 0)
@@ -252,7 +252,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err := s.sc.FindProjectById("dimoxinil", true)
+	p, err := s.sc.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.False(p.PatchTriggerAliases == nil)
 	s.Len(p.PatchTriggerAliases, 1)
@@ -269,7 +269,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err = s.sc.FindProjectById("dimoxinil", true)
+	p, err = s.sc.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.NotNil(p.PatchTriggerAliases)
 	s.Len(p.PatchTriggerAliases, 0)
@@ -284,7 +284,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err = s.sc.FindProjectById("dimoxinil", true)
+	p, err = s.sc.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.Nil(p.PatchTriggerAliases)
 }
@@ -370,7 +370,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusCreated)
 
-	p, err := h.sc.FindProjectById("nutsandgum", false)
+	p, err := h.sc.FindProjectById("nutsandgum", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.NotEqual("nutsandgum", p.Id)
@@ -729,7 +729,7 @@ func TestDeleteProject(t *testing.T) {
 		resp := pdh.Run(ctx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
-		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id)
+		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
 			Id:              projects[i].Id,

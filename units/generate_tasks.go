@@ -154,7 +154,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
-	pref, err := model.FindMergedProjectRef(t.Project)
+	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}

@@ -48,6 +48,11 @@ var (
 	ParserProjectTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ParserProject{}, "TaskAnnotationSettings")
 	ParserProjectBuildBaronSettingsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildBaronSettings")
 	ParserProjectPerfEnabledKey            = bsonutil.MustHaveTag(ParserProject{}, "PerfEnabled")
+	ParserProjectCommitQueueAliasesKey     = bsonutil.MustHaveTag(ParserProject{}, "CommitQueueAliases")
+	ParserProjectGitHubPRAliasesKey        = bsonutil.MustHaveTag(ParserProject{}, "GitHubPRAliases")
+	ParserProjectGitTagAliasesKey          = bsonutil.MustHaveTag(ParserProject{}, "GitTagAliases")
+	ParserProjectGitHubChecksAliasesKey    = bsonutil.MustHaveTag(ParserProject{}, "GitHubChecksAliases")
+	ParserProjectPatchAliasesKey           = bsonutil.MustHaveTag(ParserProject{}, "PatchAliases")
 )
 
 // ParserProjectFindOneById returns the parser project for the version
@@ -82,7 +87,10 @@ func ParserProjectByVersion(projectId string, version string) (*ParserProject, e
 		version = lastGoodVersion.Id
 		lookupVersion = true
 	}
-	parserProject, err := ParserProjectFindOneById(version)
+	parserProject, err := ParserProjectFindOne(ParserProjectById(version).WithFields(
+		ParserProjectPerfEnabledKey, ProjectRefDeactivatePreviousKey, ParserProjectTaskAnnotationSettingsKey, ParserProjectBuildBaronSettingsKey,
+		ParserProjectCommitQueueAliasesKey, ParserProjectPatchAliasesKey, ParserProjectGitHubChecksAliasesKey, ParserProjectGitTagAliasesKey,
+		ParserProjectGitHubPRAliasesKey))
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message":        "Error retrieving parser project for version",

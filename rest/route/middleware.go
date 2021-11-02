@@ -629,7 +629,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return []string{repoID}, http.StatusOK, nil
 	}
 
-	projectRef, err := model.FindMergedProjectRef(projectID)
+	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
 		return nil, http.StatusNotFound, errors.WithStack(err)
 	}
