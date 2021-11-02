@@ -136,8 +136,14 @@ imports:
     version: e1b4e69149355a7a0373f3ec351bef76b22e1c4f
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
+
   - name: github.com/evergreen-ci/timber
-    version: 22d8da04d3414baa6bc37f831ade0b9638695f92
+    version: ac9bb558d2cce7ec22476c711bf977cb24f41f8a
+  - name: github.com/evergreen-ci/aviation
+    version: 41a4410c650f6e1f8a7808d03ab2c8477a139171
+  - name: github.com/peterhellberg/link
+    version: 7d8125c3085c14bd320d898c73b78ef2c5320f31
+
   - name: github.com/evergreen-ci/poplar
     version: b7f63602780c1918f467faba6a04037d533c2fd2
   - name: github.com/evergreen-ci/juniper

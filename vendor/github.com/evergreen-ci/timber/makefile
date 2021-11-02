@@ -1,8 +1,8 @@
 # start project configuration
 name := timber
 buildDir := build
-packages := $(name) buildlogger systemmetrics testresults testutil perf
-testPackages := timber buildlogger systemmetrics testresults perf
+packages := $(name) buildlogger perf systemmetrics testresults testutil
+testPackages := $(name) buildlogger perf systemmetrics testresults
 compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
 projectPath := github.com/evergreen-ci/timber
 # end project configuration
@@ -13,15 +13,43 @@ ifneq (,$(GOROOT))
 gobin := $(GOROOT)/bin/go
 endif
 
+goCache := $(GOCACHE)
+ifeq (,$(goCache))
+goCache := $(abspath $(buildDir)/.cache)
+endif
+goModCache := $(GOMODCACHE)
+ifeq (,$(goModCache))
+goModCache := $(abspath $(buildDir)/.mod-cache)
+endif
+lintCache := $(GOLANGCI_LINT_CACHE)
+ifeq (,$(lintCache))
+lintCache := $(abspath $(buildDir)/.lint-cache)
+endif
+
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
-export GOCACHE := $(shell cygpath -m $(abspath $(buildDir)/.cache))
-export GOLANGCI_LINT_CACHE := $(shell cygpath -m $(abspath $(buildDir)/.lint-cache))
-export GOPATH := $(shell cygpath -m $(GOPATH))
+goCache := $(shell cygpath -m $(goCache))
+goModCache := $(shell cygpath -m $(goModCache))
+lintCache := $(shell cygpath -m $(lintCache))
 export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
-export GO111MODULE := off
+ifneq ($(goCache),$(GOCACHE))
+export GOCACHE := $(goCache)
+endif
+ifneq ($(goModCache),$(GOMODCACHE))
+export GOMODCACHE := $(goModCache)
+endif
+ifneq ($(lintCache),$(GOLANGCI_LINT_CACHE))
+export GOLANGCI_LINT_CACHE := $(lintCache)
+endif
+
+ifneq (,$(RACE_DETECTOR))
+# cgo is required for using the race detector.
+export CGO_ENABLED := 1
+else
+export CGO_ENABLED := 0
+endif
 # end environment setup
 
 # Ensure the build directory exists, since most targets require it.
@@ -30,7 +58,6 @@ $(shell mkdir -p $(buildDir))
 .DEFAULT_GOAL := compile
 
 # start lint setup targets
-lintDeps := $(buildDir)/run-linter $(buildDir)/golangci-lint
 $(buildDir)/golangci-lint:
 	@curl --retry 10 --retry-max-time 60 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.40.0 >/dev/null 2>&1
 $(buildDir)/run-linter:  cmd/run-linter/run-linter.go $(buildDir)/golangci-lint
@@ -63,11 +90,11 @@ phony += compile lint test coverage coverage-html
 test-%:$(buildDir)/output.%.test
 	
 coverage-%:$(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $(buildDir)/output.$*.test
+	
 html-coverage-%:$(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $(buildDir)/output.$*.test
+	
 lint-%:$(buildDir)/output.%.lint
-	@grep -v -s -q "^--- FAIL" $<
+	
 # end convenience targets
 # end basic development operations
 
@@ -90,11 +117,11 @@ ifneq (,$(SKIP_LONG))
 endif
 $(buildDir)/output.%.test: .FORCE
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) | tee $@
-	@!( grep -s -q "^FAIL" $@ && grep -s -q "^WARNING: DATA RACE" $@)
-	@(grep -s -q "^PASS" $@ || grep -s -q "no test files" $@)
+	@grep -s -q -e "^PASS" $@
 $(buildDir)/output.%.coverage: .FORCE
 	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	@grep -s -q -e "^PASS" $(subst coverage,test,$@)
 $(buildDir)/output.%.coverage.html: $(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 
@@ -107,36 +134,11 @@ $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
 	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 # end test and coverage artifacts
 
-# start vendoring configuration
-vendor:
-	glide install -s
-vendor-clean:
-	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
-	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/evergreen-ci/gimlet/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/jpillora/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/google.golang.org/grpc/
-	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/google.golang.org/genproto/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/go.mongodb.org/mongo-driver/
-	rm -rf vendor/github.com/evergreen-ci/utility/gitignore.go
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/stretchr/
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/pkg/errors/
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/net/
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/sys/
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/text/
-	rm -rf vendor/go.mongodb.org/mongo-driver/data/
-	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
-	find vendor/ -name .git | xargs rm -rf
-phony += vendor-clean
-# end vendoring configuration
+# start module management targets
+mod-tidy:
+	$(gobin) mod tidy
+phony += mod-tidy
+# end module management targets
 
 # start cleanup targets
 clean:

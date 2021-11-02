@@ -1,4 +1,4 @@
-package testresults
+package perf
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
@@ -13,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GetOptions specify the required and optional information to create the test
-// results HTTP GET request to Cedar.
+// GetOptions specifies the required and optional information to create the
+// perf HTTP GET request to Cedar.
 type GetOptions struct {
 	Cedar timber.GetOptions
 
@@ -23,9 +24,10 @@ type GetOptions struct {
 	// `https://github.com/evergreen-ci/cedar/wiki/Rest-V1-Usage`.
 	TaskID    string
 	Execution *int
+	Count     bool
 }
 
-// Validate ensures TestResultsGetOptions is configured correctly.
+// Validate ensures GetOptions is configured correctly.
 func (opts GetOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
@@ -37,7 +39,19 @@ func (opts GetOptions) Validate() error {
 }
 
 func (opts GetOptions) parse() string {
-	urlString := fmt.Sprintf("%s/rest/v1/test_results/task_id/%s/%d/count", opts.Cedar.BaseURL, url.PathEscape(opts.TaskID), utility.FromIntPtr(opts.Execution))
+	urlString := fmt.Sprintf("%s/rest/v1/perf/task_id/%s", opts.Cedar.BaseURL, url.PathEscape(opts.TaskID))
+
+	var params []string
+	if opts.Count {
+		urlString += fmt.Sprintf("/count")
+	}
+	if opts.Execution != nil {
+		params = append(params, fmt.Sprintf("execution=%d", utility.FromIntPtr(opts.Execution)))
+	}
+	if len(params) > 0 {
+		urlString += "?" + strings.Join(params, "&")
+	}
+
 	return urlString
 }
 

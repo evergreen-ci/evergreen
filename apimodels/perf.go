@@ -26,6 +26,7 @@ func (opts GetCedarPerfCountOptions) convert() perf.GetOptions {
 		},
 		TaskID:    opts.TaskID,
 		Execution: utility.ToIntPtr(opts.Execution),
+		Count:     true,
 	}
 }
 

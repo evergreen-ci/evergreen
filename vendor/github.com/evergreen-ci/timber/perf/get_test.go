@@ -1,4 +1,4 @@
-package testresults
+package perf
 
 import (
 	"testing"
@@ -19,6 +19,7 @@ func TestGetOptionsValidate(t *testing.T) {
 			opts: GetOptions{
 				TaskID:    "task",
 				Execution: utility.ToIntPtr(0),
+				Count:     true,
 			},
 			hasErr: true,
 		},
@@ -29,6 +30,7 @@ func TestGetOptionsValidate(t *testing.T) {
 					BaseURL: "https://url.com",
 				},
 				Execution: utility.ToIntPtr(0),
+				Count:     true,
 			},
 			hasErr: true,
 		},
@@ -39,6 +41,7 @@ func TestGetOptionsValidate(t *testing.T) {
 					BaseURL: "https://url.com",
 				},
 				TaskID: "task",
+				Count:  true,
 			},
 			hasErr: true,
 		},
@@ -51,6 +54,7 @@ func TestGetOptionsValidate(t *testing.T) {
 				},
 				TaskID:    "task",
 				Execution: utility.ToIntPtr(0),
+				Count:     true,
 			},
 		},
 	} {
@@ -67,7 +71,7 @@ func TestGetOptionsValidate(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	cedarOpts := timber.GetOptions{BaseURL: "https://url.com"}
-	baseURL := cedarOpts.BaseURL + "/rest/v1/test_results"
+	baseURL := cedarOpts.BaseURL + "/rest/v1/perf"
 	for _, test := range []struct {
 		name        string
 		opts        GetOptions
@@ -79,8 +83,9 @@ func TestParse(t *testing.T) {
 				Cedar:     cedarOpts,
 				TaskID:    "task",
 				Execution: utility.ToIntPtr(0),
+				Count:     true,
 			},
-			expectedURL: baseURL + "/task_id/task/0/count",
+			expectedURL: baseURL + "/task_id/task/count?execution=0",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

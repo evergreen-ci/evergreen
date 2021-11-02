@@ -11,34 +11,7 @@ variables:
     # correspond to a make target for the build operation.
     name: test
     commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/timber
-      - func: run-make
-        vars: { target: "${task_name}" }
-      - command: s3.put
-        type: system
-        params:
-          optional: true
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: gopath/src/github.com/evergreen-ci/timber/build/${task_name}.tar.gz
-          remote_file: timber/${build_id}-${build_variant}/timber-${task_name}-${revision}.tar.gz
-          bucket: mciuploads
-          content_type: application/x-gzip
-          permissions: public-read
-          display_name: dist.tar.gz
-
-  - &run-build-with-mongodb
-    # runs a make target above, but only on systems that have a
-    # running mongod started for testing.
-    name: test
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/timber
+      - func: get-project-and-modules
       - func: run-make
         vars: { target: "${task_name}" }
 
@@ -46,16 +19,28 @@ variables:
 #              Functions              #
 #######################################
 functions:
+  get-project-and-modules:
+    - command: git.get_project
+      type: system
+      params:
+        directory: timber
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: timber
+        binary: make
+        args: ["mod-tidy"]
+        include_expansions_in_env: ["GOROOT"]
+
   run-make:
     command: subprocess.exec
     type: test
     params:
-      working_dir: gopath/src/github.com/evergreen-ci/timber
+      working_dir: timber
       binary: make
       args: ["${target}"]
       include_expansions_in_env: ["DISABLE_COVERAGE", "GOROOT", "RACE_DETECTOR"]
       env:
-        GOPATH: ${workdir}/gopath
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
  
@@ -67,13 +52,13 @@ post:
     type: setup
     params:
       files:
-        - "gopath/src/github.com/evergreen-ci/timber/build/output.*"
+        - "timber/build/output.*"
   - command: s3.put
     type: system
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/timber/build/output.*.coverage.html"]
+      local_files_include_filter: ["timber/build/output.*.coverage.html"]
       remote_file: timber/${task_id}/
       bucket: mciuploads
       content_type: text/html
@@ -84,7 +69,7 @@ post:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/timber/build/output.*.coverage"]
+      local_files_include_filter: ["timber/build/output.*.coverage"]
       remote_file: timber/${task_id}/
       bucket: mciuploads
       content_type: text/plain
@@ -92,32 +77,44 @@ post:
       display_name: "(txt) coverage:"
 
 tasks:
-  # the build (with and without the race detector) and lint tasks use
-  # a template that does not include test result parsing.
-  - name: lint
+  - <<: *run-build
     tags: ["report"]
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/timber
-      - func: run-make
-        vars: { target: "lint" }
+    name: lint-timber
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-buildlogger
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-perf
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-systemmetrics
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-testresults
+  - <<: *run-build
+    tags: ["report"]
+    name: lint-testutil
 
-  - name: coverage
+  - <<: *run-build
     tags: [ "report" ]
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/timber
-      - func: run-make
-        vars:
-          target: "coverage-html"
+    name: coverage-html
 
-  - <<: *run-build-with-mongodb
+  - <<: *run-build
     tags: ["test"]
-    name: test
+    name: test-timber
+  - <<: *run-build
+    tags: ["test"]
+    name: test-buildlogger
+  - <<: *run-build
+    tags: ["test"]
+    name: test-perf
+  - <<: *run-build
+    tags: ["test"]
+    name: test-systemmetrics
+  - <<: *run-build
+    tags: ["test"]
+    name: test-testresults
 
 #######################################
 #           Buildvariants             #
@@ -129,7 +126,6 @@ buildvariants:
       DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.16
       RACE_DETECTOR: true
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
     run_on:
       - archlinux-new-small
     tasks:
@@ -139,7 +135,6 @@ buildvariants:
     display_name: Coverage (Arch Linux)
     expansions:
       GOROOT: /opt/golang/go1.16
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
     run_on:
       - archlinux-new-small
     tasks:
@@ -150,7 +145,6 @@ buildvariants:
     expansions:
       DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.16
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.1.tgz
     run_on:
       - ubuntu1804-small
     tasks:
@@ -161,7 +155,6 @@ buildvariants:
     expansions:
       DISABLE_COVERAGE: true
       GOROOT: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.1.tgz
     run_on:
       - macos-1014
     tasks:
@@ -177,6 +170,5 @@ buildvariants:
     expansions:
       DISABLE_COVERAGE: true
       GOROOT: C:/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.1.zip
     tasks:
       - name: ".test"
