@@ -115,9 +115,10 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty"`
+	Enabled       *bool  `bson:"enabled" json:"enabled"`
+	RequireSigned *bool  `bson:"require_signed" json:"require_signed"`
+	MergeMethod   string `bson:"merge_method" json:"merge_method"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
@@ -1349,17 +1350,17 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		if repoRef == nil {
 			return nil, errors.Wrap(err, "couldn't find repo ref")
 		}
-		pRef = &repoRef.ProjectRef
-	} else {
-		pRef, err = FindBranchProjectRef(projectId)
-
+		return GetProjectSettings(&repoRef.ProjectRef)
 	}
+
+	pRef, err = FindBranchProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref")
 	}
 	if pRef == nil {
 		return nil, errors.Errorf("couldn't find project ref")
 	}
+
 	return GetProjectSettings(pRef)
 }
 

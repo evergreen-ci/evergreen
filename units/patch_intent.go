@@ -239,6 +239,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
+		if strings.Contains(err.Error(), model.EmptyConfigurationError) {
+			j.gitHubError = EmptyConfig
+		}
 		if strings.Contains(err.Error(), thirdparty.Github502Error) {
 			j.gitHubError = GitHubInternalError
 		}

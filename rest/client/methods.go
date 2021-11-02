@@ -512,6 +512,26 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	return utility.FromStringPtr(banner.Text), nil
 }
 
+func (c *communicatorImpl) GetUiV2URL(ctx context.Context) (string, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "admin/uiv2_url",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting current UI v2 URL")
+	}
+	defer resp.Body.Close()
+
+	uiV2 := model.APIUiV2URL{}
+	if err = utility.ReadJSON(resp.Body, &uiV2); err != nil {
+		return "", errors.Wrap(err, "problem parsing response from server")
+	}
+
+	return utility.FromStringPtr(uiV2.UIv2Url), nil
+}
+
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
 	info := requestInfo{
 		method: http.MethodPost,

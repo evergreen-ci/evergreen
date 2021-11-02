@@ -157,9 +157,14 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 			timingMsg[k] = v.Seconds()
 		}
 	}).Seconds()
-	j.AddError(jobContext.catcher.Resolve())
+	ctxError := jobContext.catcher.Resolve()
+	j.AddError(ctxError)
 	if j.HasErrors() {
-		return
+		errorMsg := j.Error().Error()
+		// The following errors are known to recur. In these cases we continue to update syncToTime to prevent re-processing of the same error
+		if !strings.Contains(errorMsg, evergreen.KeyTooLargeToIndexError) && !strings.Contains(errorMsg, evergreen.InvalidDivideInputError) {
+			return
+		}
 	}
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
@@ -227,10 +232,7 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message":    "error iterating over hourly stats",
-				"project_id": c.ProjectID,
-			}))
+			c.catcher.Wrap(err, "error iterating over hourly stats")
 		}
 	}
 
@@ -242,10 +244,7 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Contex
 			c.catcher.Add(err)
 		})
 		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message":    "serror iterating over daily stats",
-				"project_id": c.ProjectID,
-			}))
+			c.catcher.Wrap(err, "error iterating over daily stats")
 		}
 	}
 

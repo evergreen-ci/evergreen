@@ -254,9 +254,12 @@ Evergreen Projects
       <div class="form-group">
         <div class="col-lg-4">
           <input ng-model="admin_name" class="form-control" type="text" placeholder="username">
+          <div class="muted small" ng-show="!isValidAdmin(admin_name)">
+            Can't duplicate.
+          </div>
         </div>
         <div class="col-lg-2">
-          <button class="plus-button btn btn-primary" ng-disabled="!(admin_name)" type="button" ng-click="addAdmin()">
+          <button class="plus-button btn btn-primary" ng-disabled="!(admin_name) || !isValidAdmin(admin_name)" type="button" ng-click="addAdmin()">
           <i class="fa fa-plus"></i>
           </button>
         </div>
@@ -604,9 +607,12 @@ Evergreen Projects
           <div class="form-group">
             <div class="col-lg-4">
               <input ng-model="git_tag_user_name" class="form-control" type="text" placeholder="username">
+              <div class="muted small" ng-show="!isValidGitTagUser(git_tag_user_name)">
+                Can't duplicate.
+              </div>
             </div>
             <div class="col-lg-2">
-              <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_user_name)" type="button" ng-click="addGitTagUser()">
+              <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_user_name) || !isValidGitTagUser(git_tag_user_name)" type="button" ng-click="addGitTagUser()">
               <i class="fa fa-plus"></i>
               </button>
             </div>
@@ -631,9 +637,12 @@ Evergreen Projects
           <div class="form-group">
             <div class="col-lg-4">
               <input ng-model="git_tag_team" class="form-control" type="text" placeholder="team name">
+              <div class="muted small" ng-show="!isValidGitTagTeam(git_tag_team)">
+                Can't duplicate.
+              </div>
             </div>
             <div class="col-lg-2">
-              <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_team)" type="button" ng-click="addGitTagTeam()">
+              <button class="plus-button btn btn-primary" ng-disabled="!(git_tag_team) || !isValidGitTagTeam(git_tag_team)" type="button" ng-click="addGitTagTeam()">
               <i class="fa fa-plus"></i>
               </button>
             </div>
@@ -723,9 +732,13 @@ Evergreen Projects
           </div>
         </div>
         <div id="patch-variants-list-header" class="form-group" ng-show="commitQueueConflicts.length === 0">
-          <div class="col-lg-6">
+          <div class="col-lg-3">
             <input type="checkbox" id="cq-merging-checkbox" ng-model="settingsFormData.commit_queue.enabled" />
             <label for="cq-merging-checkbox">Enable Commit Queue</label>
+          </div>
+          <div class="col-lg-5" ng-show="settingsFormData.commit_queue.enabled" >
+            <input type="checkbox" id="cq-merging-checkbox" ng-model="settingsFormData.commit_queue.require_signed" />
+            <label for="cq-merging-checkbox">Require Signed Commits On Pull Request Merges</label>
           </div>
         </div>
         <div class="form-group" ng-show="commitQueueConflicts.length === 0">

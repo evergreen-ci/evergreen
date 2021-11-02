@@ -200,7 +200,10 @@ mciModule.controller(
     };
 
     $scope.shouldDisableWebhook = function () {
-      return $scope.settingsFormData.build_baron_settings && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
+      return $scope.settingsFormData.build_baron_settings
+          && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
           || $scope.settingsFormData.build_baron_settings.ticket_create_project
           || $scope.ticket_search_project);
     };
@@ -212,10 +215,14 @@ mciModule.controller(
 
     $scope.bbConfigIsValid = function () {
       if ($scope.settingsFormData.build_baron_settings.ticket_create_project){
-          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
       }
       else {
-          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === null
+              || $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined
+              || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
       }
     };
 
@@ -301,6 +308,25 @@ mciModule.controller(
       $scope.isDirty = true;
     };
 
+    $scope.isValidGitTagUser = function(user) {
+        if ($scope.settingsFormData.git_tag_authorized_users === undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.git_tag_authorized_users.includes(user);
+    }
+    $scope.isValidGitTagTeam = function(team) {
+        if ($scope.settingsFormData.git_tag_authorized_teams === undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.git_tag_authorized_teams.includes(team);
+    }
+    $scope.isValidAdmin = function(admin) {
+        if ($scope.settingsFormData.admins == undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.admins.includes(admin);
+    }
+
     $scope.addGitTagTeam = function () {
       $scope.settingsFormData.git_tag_authorized_teams.push(
         $scope.git_tag_team
@@ -367,6 +393,7 @@ mciModule.controller(
               item.identifier = $scope.newProject.identifier;
               item.pr_testing_enabled = false;
               item.commit_queue.enabled = false;
+              item.commit_queue.require_signed = false;
               item.git_tag_versions_enabled = false;
               item.github_checks_enabled = false;
               item.enabled = false;

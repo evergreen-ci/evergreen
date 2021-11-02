@@ -291,11 +291,11 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem creating a commit queue patch")
 			}
-			settings, err := client.GetSettings(ctx)
+			uiV2, err := client.GetUiV2URL(ctx)
 			if err != nil {
 				return errors.Wrap(err, "problem retrieving admin settings")
 			}
-			patchDisp, err := getAPICommitQueuePatchDisplay(mergePatch, false, settings.Ui.UIv2Url)
+			patchDisp, err := getAPICommitQueuePatchDisplay(mergePatch, false, uiV2)
 			if err != nil {
 				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
 			}
@@ -396,7 +396,7 @@ func backport() cli.Command {
 				}
 			}
 
-			settings, err := client.GetSettings(ctx)
+			uiV2, err := client.GetUiV2URL(ctx)
 			if err != nil {
 				return errors.Wrap(err, "problem retrieving admin settings")
 			}
@@ -413,7 +413,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "can't upload backport patch")
 			}
 
-			if err = patchParams.displayPatch(backportPatch, settings.Ui.UIv2Url, true); err != nil {
+			if err = patchParams.displayPatch(backportPatch, uiV2, true); err != nil {
 				return errors.Wrap(err, "problem getting result display")
 			}
 
@@ -522,11 +522,11 @@ type mergeParams struct {
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
 	if p.id == "" {
 		showCQMessageForProject(ac, p.project)
-		settings, err := client.GetSettings(ctx)
+		uiV2, err := client.GetUiV2URL(ctx)
 		if err != nil {
 			return errors.Wrap(err, "problem retrieving admin settings")
 		}
-		if err := p.uploadMergePatch(conf, ac, settings.Ui.UIv2Url); err != nil {
+		if err := p.uploadMergePatch(conf, ac, uiV2); err != nil {
 			return err
 		}
 	} else {
