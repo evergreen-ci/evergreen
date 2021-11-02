@@ -214,10 +214,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if pref == nil {
 		return errors.Errorf("no project ref '%s' found", patchDoc.Project)
 	}
-	err = pref.MergeWithParserProject(patchDoc.Version)
-	if err != nil {
-		return errors.Wrap(err, "can't merge parser project with project ref")
-	}
 
 	// hidden projects can only run PR patches
 	if !pref.IsEnabled() && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {

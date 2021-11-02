@@ -345,10 +345,6 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	if project == nil {
 		return "", errors.New("patch has nonexistent project")
 	}
-	err = project.MergeWithParserProject(requestedPatch.Version)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to merge parser project with project ref")
-	}
 
 	return project.CommitQueue.Message, nil
 }

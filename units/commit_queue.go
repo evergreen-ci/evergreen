@@ -100,11 +100,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("no project found for queue id %s", j.QueueID))
 		return
 	}
-	err = projectRef.MergeWithParserProject("")
-	if err != nil {
-		j.AddError(errors.Wrap(err, "can't merge parser project with project ref"))
-		return
-	}
 	if !projectRef.CommitQueue.IsEnabled() {
 		grip.Info(message.Fields{
 			"source":  "commit queue",
