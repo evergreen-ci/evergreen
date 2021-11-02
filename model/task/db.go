@@ -953,7 +953,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 }
 
 // FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
-func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]string, error) {
+func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrderNumber int) ([]string, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:      projectId,
@@ -962,6 +962,10 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string) ([]strin
 			"$or": []bson.M{
 				{DisplayTaskIdKey: bson.M{"$exists": false}},
 				{DisplayTaskIdKey: ""},
+			},
+			"$and": []bson.M{
+				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
+				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 			},
 		},
 		},

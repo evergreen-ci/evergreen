@@ -3240,7 +3240,18 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 }
 
 func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
+	pid, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectId))
+	}
+	repo, err := model.FindRepository(pid)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectId, err.Error()))
+	}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectId))
+	}
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
