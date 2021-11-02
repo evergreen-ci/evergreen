@@ -163,16 +163,16 @@ func TestGetPatchCommands(t *testing.T) {
 
 	cmds := getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
 
-	assert.Len(cmds, 5)
-	assert.Equal("cd '/teapot'", cmds[3])
-	assert.Equal("git reset --hard 'a4aa03d0472d8503380479b76aef96c044182822'", cmds[4])
+	assert.Len(cmds, 4)
+	assert.Equal("cd '/teapot'", cmds[2])
+	assert.Equal("git reset --hard 'a4aa03d0472d8503380479b76aef96c044182822'", cmds[3])
 
 	modulePatch.PatchSet.Patch = "bestest code"
 	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{}}, "/teapot", "/tmp/bestest.patch")
-	assert.Len(cmds, 6)
-	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[5])
-
-	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
 	assert.Len(cmds, 5)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[4])
+
+	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: &task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
+	assert.Len(cmds, 4)
+	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[3])
 }

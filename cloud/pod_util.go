@@ -261,7 +261,8 @@ func exportECSPodArch(arch pod.Arch) string {
 }
 
 const (
-	ecsCPUArchConstraint = "attribute:ecs.cpu-architecture"
+	ecsCPUArchConstraint           = "attribute:ecs.cpu-architecture"
+	ecsWindowsVersionTagConstraint = "attribute:WindowsVersion"
 )
 
 // exportECSPodExecutionOptions exports the ECS configuration into
@@ -275,10 +276,16 @@ func exportECSPodExecutionOptions(ecsConfig evergreen.ECSConfig, containerOpts p
 			SetSecurityGroups(ecsConfig.AWSVPC.SecurityGroups))
 	}
 
+	placementOpts := cocoa.NewECSPodPlacementOptions()
+	if containerOpts.WindowsVersion != "" {
+		windowsVersionConstraint := fmt.Sprintf("%s == %s", ecsWindowsVersionTagConstraint, containerOpts.WindowsVersion)
+		placementOpts.AddInstanceFilters(windowsVersionConstraint)
+	}
 	if arch := exportECSPodArch(containerOpts.Arch); arch != "" {
 		archConstraint := fmt.Sprintf("%s == %s", ecsCPUArchConstraint, arch)
-		opts.SetPlacementOptions(*cocoa.NewECSPodPlacementOptions().AddInstanceFilters(archConstraint))
+		placementOpts.AddInstanceFilters(archConstraint)
 	}
+	opts.SetPlacementOptions(*placementOpts)
 
 	for _, cluster := range ecsConfig.Clusters {
 		if string(containerOpts.OS) == string(cluster.Platform) {

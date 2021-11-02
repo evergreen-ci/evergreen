@@ -591,7 +591,7 @@ func getMockProjectsConnector() *data.MockConnector {
 			CachedVars: []*serviceModel.ProjectVars{
 				{
 					Id:   "dimoxinil",
-					Vars: map[string]string{"apple": "green", "banana": "yellow"},
+					Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
 				},
 			},
 		},
@@ -743,7 +743,7 @@ func TestDeleteProject(t *testing.T) {
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
-		projAliases, err := serviceModel.FindAliasesForProject(projects[i].Id)
+		projAliases, err := serviceModel.FindAllAliasesForProject(projects[i].Id)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(projAliases))
 
@@ -820,6 +820,11 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
+	respMap := resp.Data().(map[string][]string)
+	s.NotNil(respMap["dimoxinil"])
+	s.Equal(len(respMap["dimoxinil"]), 2)
+	s.Contains(respMap["dimoxinil"], "banana")
+	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 	s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
 
@@ -829,6 +834,11 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
+	respMap = resp.Data().(map[string][]string)
+	s.NotNil(respMap["dimoxinil"])
+	s.Equal(len(respMap["dimoxinil"]), 2)
+	s.Contains(respMap["dimoxinil"], "banana")
+	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
 	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }

@@ -113,20 +113,39 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  RepoSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+    fields:
+      githubWebhooksEnabled:
+        resolver: true
+      vars:
+        resolver: true
+      aliases:
+        resolver: true
+      subscriptions:
+        resolver: true
   ProjectSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
       patches:
         resolver: true
+  RepoRef:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  RepoRefInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
   CommitQueueParams:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  RepoCommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
@@ -148,9 +167,13 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPeriodicBuildDefinition
   TaskSyncOptions:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
+  RepoTaskSyncOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
   TaskSyncOptionsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
   WorkstationConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
+  RepoWorkstationConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig
   WorkstationConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWorkstationConfig

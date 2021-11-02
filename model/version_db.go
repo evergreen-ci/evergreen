@@ -64,7 +64,7 @@ func VersionByIds(ids []string) db.Q {
 // All is a query for all versions.
 var VersionAll = db.Query(bson.D{})
 
-// ByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given
+// FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given
 // project. Does not apply a limit, so should generally be used with a findOneRepoRefQ.
 func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
 	q := bson.M{

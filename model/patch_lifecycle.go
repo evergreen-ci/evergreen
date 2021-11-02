@@ -257,6 +257,9 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read patched config file")
 		}
+		if string(data) == "" {
+			return nil, errors.New(EmptyConfigurationError)
+		}
 		return data, nil
 	}
 	return nil, errors.New("no patch on project")

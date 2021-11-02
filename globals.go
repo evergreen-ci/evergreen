@@ -255,6 +255,8 @@ const (
 
 	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
+	KeyTooLargeToIndexError    = "key too large to index"
+	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
 var InternalAliases []string = []string{

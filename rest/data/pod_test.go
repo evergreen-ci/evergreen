@@ -32,9 +32,10 @@ func TestPodConnector(t *testing.T) {
 						Secret: utility.ToBoolPtr(true),
 					},
 				},
-				OS:     utility.ToStringPtr("linux"),
-				Arch:   utility.ToStringPtr("amd64"),
-				Secret: utility.ToStringPtr("secret"),
+				OS:             model.APIPodOS(pod.OSWindows),
+				Arch:           model.APIPodArch(pod.ArchAMD64),
+				WindowsVersion: model.APIPodWindowsVersion(pod.WindowsVersionServer2019),
+				Secret:         utility.ToStringPtr("secret"),
 			}
 			res, err := conn.CreatePod(p)
 			require.NoError(t, err)

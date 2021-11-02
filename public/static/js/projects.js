@@ -199,6 +199,33 @@ mciModule.controller(
       return !isNaN(Number(t)) && Number(t) >= 0;
     };
 
+    $scope.shouldDisableWebhook = function () {
+      return $scope.settingsFormData.build_baron_settings
+          && (($scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0)
+          || $scope.settingsFormData.build_baron_settings.ticket_create_project
+          || $scope.ticket_search_project);
+    };
+
+    $scope.shouldDisableBB = function () {
+      return $scope.settingsFormData.task_annotation_settings && ($scope.settingsFormData.task_annotation_settings.web_hook.endpoint
+          || $scope.settingsFormData.task_annotation_settings.web_hook.secret);
+    };
+
+    $scope.bbConfigIsValid = function () {
+      if ($scope.settingsFormData.build_baron_settings.ticket_create_project){
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects !== null
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects !== undefined
+              && $scope.settingsFormData.build_baron_settings.ticket_search_projects.length > 0
+      }
+      else {
+          return $scope.settingsFormData.build_baron_settings.ticket_search_projects === null
+              || $scope.settingsFormData.build_baron_settings.ticket_search_projects === undefined
+              || $scope.settingsFormData.build_baron_settings.ticket_search_projects.length <= 0
+      }
+    };
+
     $scope.findProject = function (identifier) {
       return _.find($scope.trackedProjects, function (project) {
         return project.identifier == identifier;
@@ -222,6 +249,37 @@ mciModule.controller(
           $scope.modalOpen = false;
         });
       }
+    };
+
+    // addJiraField adds a jira field to the task annotation settings
+    $scope.addJiraField = function () {
+      if(!$scope.settingsFormData.task_annotation_settings.jira_custom_fields){
+          $scope.settingsFormData.task_annotation_settings.jira_custom_fields = []
+      }
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.push({"field" : $scope.jira_field, "display_text" : $scope.jira_display_text});
+      $scope.jira_display_text = "";
+      $scope.jira_field = "";
+    };
+
+    // removeJiraField removes a jira field to the task annotation settings located at index
+    $scope.removeJiraField = function (index) {
+      $scope.settingsFormData.task_annotation_settings.jira_custom_fields.splice(index, 1);
+      $scope.isDirty = true;
+    };
+
+    // addTicketSearchProject adds an ticket search project name to the build baron settings
+    $scope.addTicketSearchProject = function () {
+      if(!$scope.settingsFormData.build_baron_settings.ticket_search_projects){
+          $scope.settingsFormData.build_baron_settings.ticket_search_projects = []
+      }
+      $scope.settingsFormData.build_baron_settings.ticket_search_projects.push($scope.ticket_search_project);
+      $scope.ticket_search_project = "";
+    };
+
+    // removeTicketSearchProject removes the ticket search project name from the build baron settings located at index
+    $scope.removeTicketSearchProject = function (index) {
+      $scope.settingsFormData.build_baron_settings.ticket_search_projects.splice(index, 1);
+      $scope.isDirty = true;
     };
 
     // addAdmin adds an admin name to the settingsFormData's list of admins
@@ -249,6 +307,25 @@ mciModule.controller(
       $scope.settingsFormData.git_tag_authorized_users.splice(index, 1);
       $scope.isDirty = true;
     };
+
+    $scope.isValidGitTagUser = function(user) {
+        if ($scope.settingsFormData.git_tag_authorized_users === undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.git_tag_authorized_users.includes(user);
+    }
+    $scope.isValidGitTagTeam = function(team) {
+        if ($scope.settingsFormData.git_tag_authorized_teams === undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.git_tag_authorized_teams.includes(team);
+    }
+    $scope.isValidAdmin = function(admin) {
+        if ($scope.settingsFormData.admins == undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.admins.includes(admin);
+    }
 
     $scope.addGitTagTeam = function () {
       $scope.settingsFormData.git_tag_authorized_teams.push(
@@ -316,6 +393,7 @@ mciModule.controller(
               item.identifier = $scope.newProject.identifier;
               item.pr_testing_enabled = false;
               item.commit_queue.enabled = false;
+              item.commit_queue.require_signed = false;
               item.git_tag_versions_enabled = false;
               item.github_checks_enabled = false;
               item.enabled = false;
@@ -448,8 +526,10 @@ mciModule.controller(
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
             use_repo_settings: $scope.projectRef.use_repo_settings,
+            build_baron_settings: data.ProjectRef.build_baron_settings || {},
+            task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
+            perf_enabled: data.ProjectRef.perf_enabled || false,
           };
-
           // Divide aliases into categories
           $scope.settingsFormData.github_aliases = $scope.aliases.filter(
             function (d) {
@@ -595,6 +675,10 @@ mciModule.controller(
 
       if ($scope.admin_name) {
         $scope.addAdmin();
+      }
+
+      if ($scope.ticket_search_project) {
+        $scope.addTicketSearchProject();
       }
 
       if ($scope.git_tag_user_name) {
