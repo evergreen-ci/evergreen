@@ -154,7 +154,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
-	pref, err := model.FindMergedProjectRef(t.Project)
+	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
@@ -182,6 +182,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
+		return err
+	}
+	// If the document hit the size limit, retrying won't help.
+	if db.IsDocumentLimit(err) {
 		return err
 	}
 	if err != nil {

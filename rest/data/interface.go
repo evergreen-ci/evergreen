@@ -98,12 +98,12 @@ type Connector interface {
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
-	UpdateProjectVarsByValue(string, string, string, bool) (map[string]string, error)
+	UpdateProjectVarsByValue(string, string, string, bool) (map[string][]string, error)
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
-	// Find the project matching the given ProjectId. Includes repo settings if set.
-	FindProjectById(string, bool) (*model.ProjectRef, error)
+	// Find the project matching the given ProjectId. Includes repo settings and parser project settings if set.
+	FindProjectById(string, bool, bool) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
@@ -232,12 +232,6 @@ type Connector interface {
 	FindPatchesByProject(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
 	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
-	// FindPatchesByUserPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input user ID
-	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
-	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
-	// FindPatchesByProjectPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input project ID
-	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
-	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.

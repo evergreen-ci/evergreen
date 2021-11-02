@@ -1,0 +1,43 @@
+{
+    repoSettings(id: "1234") {
+        githubWebhooksEnabled
+        projectRef {
+            id
+            commitQueue {
+                enabled
+                mergeMethod
+            }
+            periodicBuilds {
+                alias
+                message
+            }
+            githubChecksEnabled
+            patchingDisabled
+            prTestingEnabled
+            batchTime
+
+            gitTagAuthorizedUsers
+            gitTagAuthorizedTeams
+
+            triggers {
+                project
+                taskRegex
+            }
+            patchTriggerAliases {
+                alias
+                childProject
+                taskSpecifiers {
+                    taskRegex
+                    variantRegex
+                }
+            }
+
+            taskSync {
+                configEnabled
+                patchEnabled
+            }
+
+            validDefaultLoggers
+        }
+    }
+}

@@ -141,6 +141,9 @@ type TaskContainerCreationOptions struct {
 	// Arch indicates the particular architecture that the pod's containers run
 	// on.
 	Arch Arch `bson:"arch" json:"arch"`
+	// WindowsVersion specifies the particular version of Windows the container
+	// should run in. This only applies if OS is OSWindows.
+	WindowsVersion WindowsVersion `bson:"windows_version,omitempty" json:"windows_version,omitempty"`
 	// EnvVars is a mapping of the non-secret environment variables to expose in
 	// the task's container environment.
 	EnvVars map[string]string `bson:"env_vars,omitempty" json:"env_vars,omitempty"`
@@ -187,6 +190,32 @@ func (a Arch) Validate() error {
 		return nil
 	default:
 		return errors.Errorf("unrecognized pod architecture '%s'", a)
+	}
+}
+
+// WindowsVersion represents specific version of Windows that a pod is allowed
+// to run on.
+type WindowsVersion string
+
+const (
+	// WindowsVersionServer2016 indicates that a pod is compatible to run on an
+	// instance that is running Windows Server 2016.
+	WindowsVersionServer2016 WindowsVersion = "SERVER_2016"
+	// WindowsVersionServer2016 indicates that a pod is compatible to run on an
+	// instance that is running Windows Server 2019.
+	WindowsVersionServer2019 WindowsVersion = "SERVER_2019"
+	// WindowsVersionServer2016 indicates that a pod is compatible to run on an
+	// instance that is running Windows Server 2022.
+	WindowsVersionServer2022 WindowsVersion = "SERVER_2022"
+)
+
+// Validate checks that the pod Windows version is recognized.
+func (v WindowsVersion) Validate() error {
+	switch v {
+	case WindowsVersionServer2016, WindowsVersionServer2019, WindowsVersionServer2022:
+		return nil
+	default:
+		return errors.Errorf("unrecognized Windows version '%s'", v)
 	}
 }
 

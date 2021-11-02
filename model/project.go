@@ -632,12 +632,17 @@ const (
 // configured globally or not require configuration and must be valid for use
 // with system logs.
 func IsValidDefaultLogger(logger string) bool {
-	switch logger {
-	case EvergreenLogSender, BuildloggerLogSender:
-		return true
-	default:
-		return false
+	for _, validLogger := range ValidDefaultLoggers {
+		if logger == validLogger {
+			return true
+		}
 	}
+	return false
+}
+
+var ValidDefaultLoggers = []string{
+	EvergreenLogSender,
+	BuildloggerLogSender,
 }
 
 var ValidLogSenders = []string{

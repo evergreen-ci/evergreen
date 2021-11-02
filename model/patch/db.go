@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -114,32 +115,101 @@ func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
 	return db.Query(q)
 }
 
-func ByUserPatchNameStatusesCommitQueuePaginated(user, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
-	return byPatchNameStatusesCommitQueuePaginated(bson.M{AuthorKey: user}, patchName, statuses, includeCommitQueue, page, limit)
+type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
+	Author             *string
+	Project            *string
+	PatchName          string
+	Statuses           []string
+	Page               int
+	Limit              int
+	IncludeCommitQueue *bool
+	OnlyCommitQueue    *bool
 }
 
-func ByProjectPatchNameStatusesCommitQueuePaginated(projectId, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
-	return byPatchNameStatusesCommitQueuePaginated(bson.M{ProjectKey: projectId}, patchName, statuses, includeCommitQueue, page, limit)
-}
+func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
+	if opts.OnlyCommitQueue != nil && opts.IncludeCommitQueue != nil {
+		return nil, 0, errors.New("can't set both includeCommitQueue and onlyCommitQueue")
+	}
+	if opts.Project != nil && opts.Author != nil {
+		return nil, 0, errors.New("can't set both project and author")
+	}
+	pipeline := []bson.M{}
+	match := bson.M{}
+	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
+	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
+	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
+		match[AliasKey] = evergreen.CommitQueueAlias
+	}
 
-func byPatchNameStatusesCommitQueuePaginated(queryInterface map[string]interface{}, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) db.Q {
-	if patchName != "" {
-		queryInterface[DescriptionKey] = bson.M{"$regex": patchName, "$options": "i"}
+	// This is only used on the user patches page when we want to filter out the commit queue
+	if opts.IncludeCommitQueue != nil && !utility.FromBoolPtr(opts.IncludeCommitQueue) {
+		match[AliasKey] = commitQueueFilter
+
 	}
-	if len(statuses) > 0 {
-		queryInterface[StatusKey] = bson.M{"$in": statuses}
+	if opts.PatchName != "" {
+		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
 	}
-	if includeCommitQueue == false {
-		queryInterface[AliasKey] = commitQueueFilter
+	if len(opts.Statuses) > 0 {
+		match[StatusKey] = bson.M{"$in": opts.Statuses}
 	}
-	q := db.Query(queryInterface).Sort([]string{"-" + CreateTimeKey})
-	if page > 0 {
-		q = q.Skip(page * limit)
+	if opts.Author != nil {
+		match[AuthorKey] = utility.FromStringPtr(opts.Author)
 	}
-	if limit > 0 {
-		q = q.Limit(limit)
+	if opts.Project != nil {
+		match[ProjectKey] = utility.FromStringPtr(opts.Project)
 	}
-	return q
+	pipeline = append(pipeline, bson.M{"$match": match})
+
+	sort := bson.M{
+		"$sort": bson.M{
+			CreateTimeKey: -1,
+		},
+	}
+	// paginatePipeline will be used for the results
+	paginatePipeline := append(pipeline, sort)
+	if opts.Page > 0 {
+		skipStage := bson.M{
+			"$skip": opts.Page * opts.Limit,
+		}
+		paginatePipeline = append(paginatePipeline, skipStage)
+	}
+	if opts.Limit > 0 {
+		limitStage := bson.M{
+			"$limit": opts.Limit,
+		}
+		paginatePipeline = append(paginatePipeline, limitStage)
+	}
+
+	// Will be used to get the total count of the filtered patches
+	countPipeline := append(pipeline, bson.M{"$count": "count"})
+
+	results := []Patch{}
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, paginatePipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, 0, err
+	}
+
+	type countResult struct {
+		Count int `bson:"count"`
+	}
+	countResults := []countResult{}
+	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	if err = cursor.All(ctx, &countResults); err != nil {
+		return nil, 0, err
+	}
+	if len(countResults) == 0 {
+		return results, 0, nil
+	}
+	return results, countResults[0].Count, nil
 }
 
 // ByUserPaginated produces a query that returns patches by the given user

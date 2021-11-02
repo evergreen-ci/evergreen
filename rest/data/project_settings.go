@@ -24,7 +24,7 @@ type CopyProjectOpts struct {
 }
 
 func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
-	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false)
+	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
 	}
@@ -204,7 +204,7 @@ func (sc *MockConnector) SaveProjectSettingsForSection(ctx context.Context, proj
 }
 
 func (sc *MockConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
-	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false)
+	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
 	}

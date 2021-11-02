@@ -257,6 +257,9 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read patched config file")
 		}
+		if string(data) == "" {
+			return nil, errors.New(EmptyConfigurationError)
+		}
 		return data, nil
 	}
 	return nil, errors.New("no patch on project")
@@ -456,7 +459,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 }
 
 func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*ProjectRef, *GetProjectOpts, error) {
-	projectRef, err := FindMergedProjectRef(p.Project)
+	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -678,7 +681,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	// verify the commit queue is on
-	projectRef, err := FindMergedProjectRef(existingPatch.Project)
+	projectRef, err := FindMergedProjectRef(existingPatch.Project, existingPatch.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
 	}
@@ -858,7 +861,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 	if p.GithubPatchData.PRNumber == 0 {
 		return nil
 	}
-	projectRef, err := FindMergedProjectRef(p.Project)
+	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project")
 	}

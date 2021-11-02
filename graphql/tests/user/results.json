@@ -73,9 +73,12 @@
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
                 { "id": "5e4ff3abe3c3317e352062e7" },
+                { "id": "5e4ff3abe3c3317e352062e6" },
+                { "id": "5e4ff3abe3c3317e352062e5" },
+                { "id": "5e4ff3abe3c3317e352062e4" },
                 { "id": "5e4ff3abe3c3317e352062e9" }
               ],
-              "filteredPatchCount": 3
+              "filteredPatchCount": 6
             }
           }
         }
@@ -117,10 +120,10 @@
       }
     },
     {
-      "query_file": "patches-page-0-limit-3.graphql",
+      "query_file": "patches-pagination.graphql",
       "result": {
         "data": {
-          "user": {
+          "page0": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e8" },
@@ -129,15 +132,8 @@
               ],
               "filteredPatchCount": 6
             }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patches-page-1-limit-3.graphql",
-      "result": {
-        "data": {
-          "user": {
+        },
+        "page1": {
             "patches": {
               "patches": [
                 { "id": "5e4ff3abe3c3317e352062e5" },
@@ -146,7 +142,7 @@
               ],
               "filteredPatchCount": 6
             }
-          }
+        }
         }
       }
     },

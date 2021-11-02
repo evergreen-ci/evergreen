@@ -1,0 +1,19 @@
+mutation {
+    saveRepoSettingsForSection(
+        repoSettings: {
+            projectRef: {
+                id: "myRepo"
+            }
+            vars: {
+                vars: {goodbye: "now"},
+                privateVarsList: ["goodbye"]
+            }
+        }
+        section: "variables",
+    ) {
+        vars {
+            vars
+            privateVars
+        }
+    }
+}

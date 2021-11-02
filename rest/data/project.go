@@ -24,11 +24,13 @@ import (
 type DBProjectConnector struct{}
 
 // FindProjectById queries the database for the project matching the projectRef.Id.
-func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*model.ProjectRef, error) {
+func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
-	if includeRepo {
-		p, err = model.FindMergedProjectRef(id)
+	if includeRepo && includeParserProject {
+		p, err = model.FindMergedProjectRef(id, "", true)
+	} else if includeRepo {
+		p, err = model.FindMergedProjectRef(id, "", false)
 	} else {
 		p, err = model.FindBranchProjectRef(id)
 	}
@@ -79,7 +81,7 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 }
 
 func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
-	_, err := sc.FindProjectById(name, false)
+	_, err := sc.FindProjectById(name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -286,7 +288,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
@@ -295,7 +297,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 	if matchingProjects == nil {
 		catcher.New("no projects with matching value found")
 	}
-	changes := map[string]string{}
+	changes := map[string][]string{}
 	for _, project := range matchingProjects {
 		for key, val := range project.Vars {
 			if val == toReplace {
@@ -328,7 +330,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
-				changes[project.Id] = key
+				changes[project.Id] = append(changes[project.Id], key)
 			}
 		}
 	}
@@ -434,7 +436,7 @@ type MockProjectConnector struct {
 	CachedEvents   []restModel.APIProjectEvent
 }
 
-func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {
+func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectId || p.Identifier == projectId {
 			return &p, nil
@@ -513,7 +515,7 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 }
 
 func (sc *MockProjectConnector) VerifyUniqueProject(name string) error {
-	_, err := sc.FindProjectById(name, false)
+	_, err := sc.FindProjectById(name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -653,15 +655,15 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
-	changes := map[string]string{}
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+	changes := map[string][]string{}
 	for _, cachedVars := range pc.CachedVars {
 		for key, val := range cachedVars.Vars {
 			if toReplace == val {
 				if !dryRun {
 					cachedVars.Vars[key] = replacement
 				}
-				changes[cachedVars.Id] = key
+				changes[cachedVars.Id] = append(changes[cachedVars.Id], key)
 			}
 		}
 	}

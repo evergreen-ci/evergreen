@@ -29,6 +29,7 @@ const (
 	githubActionOpened      = "opened"
 	githubActionSynchronize = "synchronize"
 	githubActionReopened    = "reopened"
+	commitUnsigned          = "unsigned"
 
 	retryComment = "evergreen retry"
 	refTags      = "refs/tags/"
@@ -590,6 +591,20 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 
+	if utility.FromBoolPtr(projectRef.CommitQueue.RequireSigned) {
+		err = gh.requireSigned(ctx, userRepo, *pr.Head.Ref, pr, prNum)
+		if err != nil {
+			sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "can't enqueue with unsigned commits", "")
+			grip.Error(message.WrapError(sendErr, message.Fields{
+				"message": "error sending patch creation failure to github",
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"pr":      prNum,
+			}))
+			return errors.Wrapf(err, "can't enqueue patch")
+		}
+	}
+
 	patchId, err := gh.sc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
 		sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "failed to create patch", "")
@@ -630,6 +645,33 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		"message": "failed to queue notification for commit queue push",
 	}))
 
+	return nil
+}
+
+func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, baseBranch string, pr *github.PullRequest, prNum int) error {
+	settings, err := gh.sc.GetEvergreenSettings()
+	if err != nil {
+		return errors.Wrap(err, "can't get Evergreen settings")
+	}
+
+	githubToken, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "can't get GitHub token from settings")
+	}
+
+	commits, err := thirdparty.GetGithubPullRequestCommits(ctx, githubToken, userRepo.Owner, userRepo.Repo, prNum)
+	if err != nil {
+		return errors.Wrap(err, "can't get GitHub commits")
+	}
+
+	for _, c := range commits {
+		commit := c.GetCommit()
+		if commit.Verification != nil && !utility.FromBoolPtr(commit.Verification.Verified) &&
+			(utility.FromStringPtr(commit.Verification.Reason) == commitUnsigned) {
+			return errors.Errorf("the commit '%s' is not signed", utility.FromStringPtr(commit.SHA))
+		}
+
+	}
 	return nil
 }
 

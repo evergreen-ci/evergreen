@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/event"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -64,7 +66,7 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task %s not found", taskID).Error())
 	}
 	if t.Requester == evergreen.MergeTestRequester && isActive {
 		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
@@ -240,7 +242,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	// can't interrupt the db operations here
 	newCxt := context.Background()
 
-	projectRef, err := model.FindMergedProjectRef(project.Identifier)
+	projectRef, err := model.FindMergedProjectRef(project.Identifier, p.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project ref"), http.StatusInternalServerError, "", ""
 	}
@@ -581,17 +583,20 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
+			var projId string
 			if proj == nil {
-				projRef, err := model.FindMergedProjectRef(version.Identifier)
+				id, err := model.GetIdForProject(version.Identifier)
 				if err != nil {
 					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
 				}
-				if projRef == nil {
+				if id == "" {
 					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
 				}
-				proj = projRef
+				projId = id
+			} else {
+				projId = proj.Id
 			}
-			_, err := commitqueue.RemoveCommitQueueItemForVersion(proj.Id, version.Id, user.DisplayName())
+			_, err := commitqueue.RemoveCommitQueueItemForVersion(projId, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
@@ -607,25 +612,27 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				"message": "unable to send github status",
 				"patch":   version.Id,
 			}))
-			err = model.RestartItemsAfterVersion(nil, proj.Id, version.Id, user.Id)
+			err = model.RestartItemsAfterVersion(nil, projId, version.Id, user.Id)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
 			}
 		}
 	case SetPriority:
+		var projId string
 		if proj == nil {
-			projRef, err := model.FindMergedProjectRef(version.Identifier)
+			projId, err := model.GetIdForProject(version.Identifier)
 			if err != nil {
 				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 			}
-			if projRef == nil {
+			if projId == "" {
 				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 			}
-			proj = projRef
+		} else {
+			projId = proj.Id
 		}
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{
-				Resource:      proj.Id,
+				Resource:      projId,
 				ResourceType:  "project",
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
@@ -1232,4 +1239,54 @@ func (buildVariantOptions *BuildVariantOptions) isPopulated() bool {
 		return false
 	}
 	return len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0
+}
+
+func getAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
+	vars, err := model.FindOneProjectVars(projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", projectId, err.Error()))
+	}
+	if vars == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", projectId))
+	}
+	res := &restModel.APIProjectVars{}
+	if err = res.BuildFromService(vars); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))
+	}
+	return res, nil
+}
+
+func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
+	aliases, err := model.FindAliasesForProjectFromDb(projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
+	}
+	res := []*restModel.APIProjectAlias{}
+	for _, alias := range aliases {
+		apiAlias := restModel.APIProjectAlias{}
+		if err = apiAlias.BuildFromService(alias); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectAlias %s from service: %s",
+				alias.Alias, err.Error()))
+		}
+		res = append(res, &apiAlias)
+	}
+	return res, nil
+}
+
+func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*restModel.APISubscription, error) {
+	subscriptions, err := event.FindSubscriptionsByOwner(projectId, event.OwnerTypeProject)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding subscription for project: %s", err.Error()))
+	}
+
+	res := []*restModel.APISubscription{}
+	for _, sub := range subscriptions {
+		apiSubscription := restModel.APISubscription{}
+		if err = apiSubscription.BuildFromService(sub); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPProjectSubscription %s from service: %s",
+				sub.ID, err.Error()))
+		}
+		res = append(res, &apiSubscription)
+	}
+	return res, nil
 }

@@ -99,7 +99,7 @@ type ProjectRef struct {
 	WorkstationConfig WorkstationConfig `bson:"workstation_config,omitempty" json:"workstation_config,omitempty"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
-	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
@@ -115,9 +115,10 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled     *bool  `bson:"enabled" json:"enabled"`
-	MergeMethod string `bson:"merge_method" json:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message,omitempty"`
+	Enabled       *bool  `bson:"enabled" json:"enabled"`
+	RequireSigned *bool  `bson:"require_signed" json:"require_signed"`
+	MergeMethod   string `bson:"merge_method" json:"merge_method"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
@@ -502,7 +503,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	p.UseRepoSettings = false
 	p.RepoRefId = ""
 
-	mergedProject, err := FindMergedProjectRef(p.Id)
+	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
 	if err != nil {
 		return errors.Wrap(err, "error finding merged project ref")
 	}
@@ -710,7 +711,9 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
-func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
+// Relevant fields will also be merged from the parser project with a specified version.
+// If no version is specified, the most recent valid parser project version will be used for merge.
+func FindMergedProjectRef(identifier string, version string, includeParserProject bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
@@ -726,7 +729,16 @@ func FindMergedProjectRef(identifier string) (*ProjectRef, error) {
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		return mergeBranchAndRepoSettings(pRef, repoRef)
+		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
+		}
+	}
+	if includeParserProject {
+		err = pRef.MergeWithParserProject(version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+		}
 	}
 	return pRef, nil
 }
@@ -1356,17 +1368,17 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		if repoRef == nil {
 			return nil, errors.Wrap(err, "couldn't find repo ref")
 		}
-		pRef = &repoRef.ProjectRef
-	} else {
-		pRef, err = FindBranchProjectRef(projectId)
-
+		return GetProjectSettings(&repoRef.ProjectRef)
 	}
+
+	pRef, err = FindBranchProjectRef(projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref")
 	}
 	if pRef == nil {
 		return nil, errors.Errorf("couldn't find project ref")
 	}
+
 	return GetProjectSettings(pRef)
 }
 
@@ -1401,12 +1413,8 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 }
 
 func IsPerfEnabledForProject(projectId string) bool {
-	projectRef, err := FindMergedProjectRef(projectId)
+	projectRef, err := FindMergedProjectRef(projectId, "", true)
 	if err != nil || projectRef == nil {
-		return false
-	}
-	err = projectRef.MergeWithParserProject("")
-	if err != nil {
 		return false
 	}
 	return projectRef.IsPerfEnabled()
@@ -1850,6 +1858,16 @@ func RemoveAdminFromProjects(toDelete string) error {
 	return catcher.Resolve()
 }
 
+// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
+func GroupProjectsByRepo(projects []ProjectRef) map[string][]ProjectRef {
+	groupedProject := make(map[string][]ProjectRef)
+	for _, project := range projects {
+		repoProjects := groupedProject[project.RepoRefId]
+		groupedProject[project.RepoRefId] = append(repoProjects, project)
+	}
+	return groupedProject
+}
+
 func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
@@ -2132,16 +2150,16 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 }
 
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
-	projectId, err := task.FindProjectForTask(taskId)
+	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project")
+		return nil, errors.Wrap(err, "error finding task")
 	}
-	pRef, err := FindMergedProjectRef(projectId)
+	pRef, err := FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting project '%s'", projectId)
+		return nil, errors.Wrapf(err, "error getting project '%s'", t.Project)
 	}
 	if pRef == nil {
-		return nil, errors.Errorf("project ref '%s' doesn't exist", projectId)
+		return nil, errors.Errorf("project ref '%s' doesn't exist", t.Project)
 	}
 	return pRef, nil
 }
@@ -2175,7 +2193,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t TriggerDefinition) Validate(parentProject string) error {
+func (t *TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
@@ -2186,6 +2204,8 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	if upstreamProject.Id == parentProject {
 		return errors.New("a project cannot trigger itself")
 	}
+	// should be saved using its ID, in case the user used the project's identifier
+	t.Project = upstreamProject.Id
 	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
 		return errors.Errorf("invalid level: %s", t.Level)
 	}
@@ -2202,6 +2222,9 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	}
 	if t.ConfigFile == "" && t.GenerateFile == "" {
 		return errors.New("must provide a config file or generated tasks file")
+	}
+	if t.DefinitionID == "" {
+		t.DefinitionID = utility.RandomString()
 	}
 	return nil
 }

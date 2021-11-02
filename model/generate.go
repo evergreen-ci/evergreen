@@ -256,7 +256,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
-	projectRef, err := FindMergedProjectRef(p.Identifier)
+	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project ref")
 	}
