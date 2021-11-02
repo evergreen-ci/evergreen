@@ -24,6 +24,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
+    includeNeverActivatedTasks: Boolean = false
   ): PatchTasks!
   taskTests(
     taskId: String!

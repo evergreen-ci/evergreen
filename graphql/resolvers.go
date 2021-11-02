@@ -1527,7 +1527,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	return groupsArr, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeNeverActivatedTasks *bool) (*PatchTasks, error) {
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
@@ -1570,23 +1570,16 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		}
 	}
 
-	v, _ := r.sc.FindVersionById(patchID)
-	includeInactiveTasks := false
-	// Query inactive tasks for inactive versions
-	if v != nil {
-		includeInactiveTasks = !utility.FromBoolPtr(v.Activated)
-	}
-
 	opts := data.TaskFilterOptions{
-		Statuses:             statuses,
-		BaseStatuses:         baseStatuses,
-		Variants:             []string{variantParam},
-		TaskNames:            []string{taskNameParam},
-		Page:                 pageParam,
-		Limit:                limitParam,
-		Sorts:                taskSorts,
-		IncludeBaseTasks:     true,
-		IncludeInactiveTasks: includeInactiveTasks,
+		Statuses:                   statuses,
+		BaseStatuses:               baseStatuses,
+		Variants:                   []string{variantParam},
+		TaskNames:                  []string{taskNameParam},
+		Page:                       pageParam,
+		Limit:                      limitParam,
+		Sorts:                      taskSorts,
+		IncludeBaseTasks:           true,
+		IncludeNeverActivatedTasks: utility.FromBoolPtr(includeNeverActivatedTasks),
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {

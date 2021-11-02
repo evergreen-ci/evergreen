@@ -2684,7 +2684,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, t4.Id, tasks[2].Id)
 }
 
-func TestGetTasksByVersionIncludeInactiveTasks(t *testing.T) {
+func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 
 	inactiveTask := Task{
@@ -2693,15 +2693,15 @@ func TestGetTasksByVersionIncludeInactiveTasks(t *testing.T) {
 		ActivatedTime: utility.ZeroTime,
 	}
 
-assert.NoError(t, inactiveTask.Insert())
+	assert.NoError(t, inactiveTask.Insert())
 
 	// inactive tasks should be included
-	opts := GetTasksByVersionOptions{IncludeInactiveTasks: true}
+	opts := GetTasksByVersionOptions{IncludeNeverActivatedTasks: true}
 	_, count, err := GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
 	// inactive tasks should be excluded
-	opts = GetTasksByVersionOptions{IncludeInactiveTasks: false}
+	opts = GetTasksByVersionOptions{IncludeNeverActivatedTasks: false}
 	_, count, err = GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 0)

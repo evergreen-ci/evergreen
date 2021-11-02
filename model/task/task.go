@@ -2942,17 +2942,17 @@ type TasksSortOrder struct {
 }
 
 type GetTasksByVersionOptions struct {
-	Statuses              []string
-	BaseStatuses          []string
-	Variants              []string
-	TaskNames             []string
-	Page                  int
-	Limit                 int
-	FieldsToProject       []string
-	Sorts                 []TasksSortOrder
-	IncludeExecutionTasks bool
-	IncludeBaseTasks      bool
-	IncludeInactiveTasks  bool
+	Statuses                   []string
+	BaseStatuses               []string
+	Variants                   []string
+	TaskNames                  []string
+	Page                       int
+	Limit                      int
+	FieldsToProject            []string
+	Sorts                      []TasksSortOrder
+	IncludeExecutionTasks      bool
+	IncludeBaseTasks           bool
+	IncludeNeverActivatedTasks bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3135,7 +3135,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeInactiveTasks {
+	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	match[VersionKey] = versionID
