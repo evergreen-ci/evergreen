@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/trigger"
@@ -138,7 +139,8 @@ func (j *eventNotifierJob) dispatchLoop(ctx context.Context, events []event.Even
 				catcher.Add(logger.MarkProcessed(&e))
 
 				if err = notification.InsertMany(n...); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
+					// consider that duplicate key errors are expected
+					grip.ErrorWhen(!db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
 						"job_id":        j.ID(),
 						"job_type":      j.Type().Name,
 						"source":        "events-processing",
