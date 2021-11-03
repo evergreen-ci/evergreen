@@ -93,12 +93,8 @@ func PatchSetModule() cli.Command {
 						"see the evergreen configuration file for module configuration.",
 						projectIdentifier)
 				}
-				if len(mods) != 0 {
-					return errors.Errorf("Could not find module named '%s' for project '%s'; specify different project or select correct module from:\n\t%s",
-						module, projectIdentifier, strings.Join(mods, "\n\t"))
-				}
-
-				return errors.Errorf("could not set specified module: \"%s\"", module)
+				return errors.Errorf("Could not find module named '%s' for project '%s'; specify different project or select correct module from:\n\t%s",
+					module, projectIdentifier, strings.Join(mods, "\n\t"))
 			}
 
 			if uncommittedOk || conf.UncommittedChanges {
