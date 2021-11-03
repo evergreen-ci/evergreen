@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
@@ -120,6 +123,11 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
 		return nil, errors.New("unexpected data from github")
 	}
+	grip.Debug(message.Fields{
+		"setup new webhook": respHook,
+		"owner":             owner,
+		"repo":              repo,
+	})
 	hook := &GithubHook{
 		HookID: int(respHook.GetID()),
 		Owner:  owner,
