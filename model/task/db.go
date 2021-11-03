@@ -1224,6 +1224,13 @@ func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey))
 }
 
+func CountActivatedTasksForVersion(versionId string) (int, error) {
+	return Count(db.Query(bson.M{
+		VersionKey:   versionId,
+		ActivatedKey: true,
+	}))
+}
+
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	tasks, err := Find(db.Query(bson.M{
 		BuildIdKey:   buildId,

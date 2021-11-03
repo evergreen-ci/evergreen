@@ -454,6 +454,21 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			}
 		}
 	}
+	if len(tasksToInsert) > evergreen.NumTasksForLargePatch {
+		numTasksActivated := 0
+		for _, t := range tasksToInsert {
+			if t.Activated {
+				numTasksActivated++
+			}
+		}
+		grip.Info(message.Fields{
+			"message":             "version has large number of activated tasks",
+			"op":                  "finalize patch",
+			"num_tasks_activated": numTasksActivated,
+			"total_tasks":         len(tasksToInsert),
+			"version":             patchVersion.Id,
+		})
+	}
 
 	return patchVersion, nil
 }

@@ -117,7 +117,7 @@ func PatchSetModule() cli.Command {
 					fmt.Println(diffData.patchSummary)
 				}
 
-				if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+				if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
 					return nil
 				}
 			}
