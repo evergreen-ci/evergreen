@@ -140,14 +140,15 @@ func (j *eventNotifierJob) dispatchLoop(ctx context.Context, events []event.Even
 
 				if err = notification.InsertMany(n...); err != nil {
 					// consider that duplicate key errors are expected
-					grip.ErrorWhen(!db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
+					shouldLogError := !db.IsDuplicateKey(err)
+					grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{
 						"job_id":        j.ID(),
 						"job_type":      j.Type().Name,
 						"source":        "events-processing",
 						"notifications": n,
 						"message":       "can't insert notifications",
 					}))
-					catcher.Add(err)
+					catcher.AddWhen(shouldLogError, err)
 				}
 
 				catcher.Add(dispatchNotifications(ctx, n, j.q, j.flags))
