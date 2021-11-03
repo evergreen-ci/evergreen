@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/timber"
-	perf "github.com/evergreen-ci/timber/perf"
+	"github.com/evergreen-ci/timber/perf"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
