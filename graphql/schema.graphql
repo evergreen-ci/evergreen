@@ -16,6 +16,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
+    includeEmptyActivation: Boolean = false
   ): PatchTasks!
   taskTests(
     taskId: String!

@@ -2952,6 +2952,7 @@ type GetTasksByVersionOptions struct {
 	Sorts                 []TasksSortOrder
 	IncludeExecutionTasks bool
 	IncludeBaseTasks      bool
+	IncludeEmptyActivaton bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3134,7 +3135,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	if !opts.IncludeEmptyActivaton {
+		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	}
 	match[VersionKey] = versionID
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results

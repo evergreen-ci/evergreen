@@ -1535,7 +1535,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	return groupsArr, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
@@ -1577,15 +1577,17 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
-		BaseStatuses:     baseStatuses,
-		Variants:         []string{variantParam},
-		TaskNames:        []string{taskNameParam},
-		Page:             pageParam,
-		Limit:            limitParam,
-		Sorts:            taskSorts,
-		IncludeBaseTasks: true,
+		Statuses:               statuses,
+		BaseStatuses:           baseStatuses,
+		Variants:               []string{variantParam},
+		TaskNames:              []string{taskNameParam},
+		Page:                   pageParam,
+		Limit:                  limitParam,
+		Sorts:                  taskSorts,
+		IncludeBaseTasks:       true,
+		IncludeEmptyActivation: utility.FromBoolPtr(includeEmptyActivation),
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
