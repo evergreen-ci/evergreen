@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/mongodb/grip"
 )
 
 type result struct {
@@ -57,10 +59,14 @@ func main() {
 		packages          []string
 		results           []*result
 		hasFailingTest    bool
+
+		gopath = os.Getenv("GOPATH")
 	)
 
+	gopath, _ = filepath.Abs(gopath)
+
 	flag.StringVar(&lintArgs, "lintArgs", "", "args to pass to golangci-lint")
-	flag.StringVar(&lintBin, "lintBin", "", "path to golangci-lint")
+	flag.StringVar(&lintBin, "lintBin", filepath.Join(gopath, "bin", "golangci-lint"), "path to golangci-lint")
 	flag.StringVar(&packageList, "packages", "", "list of space separated packages")
 	flag.StringVar(&customLintersFlag, "customLinters", "", "list of comma-separated custom linter commands")
 	flag.StringVar(&output, "output", "", "output file for to write results.")
@@ -129,7 +135,7 @@ func main() {
 
 		for _, r := range results {
 			if _, err = f.WriteString(r.String() + "\n"); err != nil {
-				fmt.Fprintf(os.Stderr, "%s", err)
+				grip.Error(err)
 				os.Exit(1)
 			}
 		}

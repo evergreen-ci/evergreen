@@ -1,8 +1,8 @@
 # start project configuration
 name := timber
 buildDir := build
-packages := $(name) buildlogger perf systemmetrics testresults testutil
-testPackages := $(name) buildlogger perf systemmetrics testresults
+packages := $(name) buildlogger systemmetrics testresults testutil perf
+testPackages := timber buildlogger systemmetrics testresults perf
 compilePackages := $(subst $(name),,$(subst -,/,$(foreach target,$(packages),./$(target))))
 projectPath := github.com/evergreen-ci/timber
 # end project configuration
@@ -13,13 +13,9 @@ ifneq (,$(GOROOT))
 gobin := $(GOROOT)/bin/go
 endif
 
-goCache := $(GOCACHE)
-ifeq (,$(goCache))
-goCache := $(abspath $(buildDir)/.cache)
-endif
-goModCache := $(GOMODCACHE)
-ifeq (,$(goModCache))
-goModCache := $(abspath $(buildDir)/.mod-cache)
+gocache := $(GOCACHE)
+ifeq (,$(gocache))
+gocache := $(abspath $(buildDir)/.cache)
 endif
 lintCache := $(GOLANGCI_LINT_CACHE)
 ifeq (,$(lintCache))
@@ -28,27 +24,25 @@ endif
 
 ifeq ($(OS),Windows_NT)
 gobin := $(shell cygpath $(gobin))
-goCache := $(shell cygpath -m $(goCache))
-goModCache := $(shell cygpath -m $(goModCache))
+gocache := $(shell cygpath -m $(gocache))
 lintCache := $(shell cygpath -m $(lintCache))
+export GOPATH := $(shell cygpath -m $(GOPATH))
 export GOROOT := $(shell cygpath -m $(GOROOT))
 endif
 
-ifneq ($(goCache),$(GOCACHE))
-export GOCACHE := $(goCache)
-endif
-ifneq ($(goModCache),$(GOMODCACHE))
-export GOMODCACHE := $(goModCache)
+ifneq ($(gocache),$(GOCACHE))
+export GOCACHE := $(gocache)
 endif
 ifneq ($(lintCache),$(GOLANGCI_LINT_CACHE))
 export GOLANGCI_LINT_CACHE := $(lintCache)
 endif
 
+export GO111MODULE := off
 ifneq (,$(RACE_DETECTOR))
 # cgo is required for using the race detector.
-export CGO_ENABLED := 1
+export CGO_ENABLED=1
 else
-export CGO_ENABLED := 0
+export CGO_ENABLED=0
 endif
 # end environment setup
 
@@ -134,11 +128,36 @@ $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
 	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --packages='$*'
 # end test and coverage artifacts
 
-# start module management targets
-mod-tidy:
-	$(gobin) mod tidy
-phony += mod-tidy
-# end module management targets
+# start vendoring configuration
+vendor:
+	glide install -s
+vendor-clean:
+	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
+	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/evergreen-ci/gimlet/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/jpillora/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/google.golang.org/grpc/
+	rm -rf vendor/github.com/evergreen-ci/aviation/vendor/google.golang.org/genproto/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/utility/gitignore.go
+	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/stretchr/
+	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/pkg/errors/
+	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/net/
+	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/sys/
+	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/golang.org/x/text/
+	rm -rf vendor/go.mongodb.org/mongo-driver/data/
+	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
+	find vendor/ -name .git | xargs rm -rf
+phony += vendor-clean
+# end vendoring configuration
 
 # start cleanup targets
 clean:
