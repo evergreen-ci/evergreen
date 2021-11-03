@@ -1,8 +1,8 @@
 mutation {
   createProject(
     project: {
-      identifier: "catVideos",
-      id: "grumpyCat",
+      identifier: "abyssinianVideos",
+      id: "happyAbyssinian",
       owner: "theCat", 
       repo: "catGenerator"
       repoRefId: "animals"
