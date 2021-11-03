@@ -44,10 +44,6 @@ variables:
     name: test
     commands:
       - func: get-project-and-modules
-      # kim: TODO: remove
-      # - func: run-make
-      #   vars:
-      #     target: get-go-imports
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
@@ -70,10 +66,6 @@ variables:
     must_have_test_results: true
     commands:
       - func: get-project-and-modules
-      # kim: TODO: remove
-      # - func: run-make
-      #   vars:
-      #     target: get-go-imports
       - func: setup-credentials
       - func: run-make
         vars:
@@ -85,10 +77,6 @@ variables:
     must_have_test_results: true
     commands:
       - func: get-project-and-modules
-      # kim: TODO: remove
-      # - func: run-make
-      #   vars:
-      #     target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: setup-docker-host
@@ -223,8 +211,6 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GOOS: ${goos}
-        # kim: TODO: remove
-        # GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
@@ -600,8 +586,6 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
-            # kim: TODO: remove
-            # GOPATH: ${workdir}/gopath
             GOROOT: ${goroot}
   - name: verify-agent-version-update
     tags: ["linter"]
