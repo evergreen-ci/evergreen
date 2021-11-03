@@ -1445,7 +1445,7 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "",
-		}: false,
+		}: true,
 	}
 
 	for testCase, shouldPass := range testCases {
