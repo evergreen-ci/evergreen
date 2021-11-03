@@ -119,6 +119,7 @@ require (
 	github.com/mattn/go-xmpp v0.0.0-20211029151415-912ba614897a // indirect
 	github.com/mholt/archiver v2.0.1-0.20180417220235-e4ef56d48eb0+incompatible
 	github.com/mholt/archiver/v3 v3.5.0 // indirect
+	github.com/mongodb/jasper v0.0.0-20211103140906-f5e338d1959b
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/okta/okta-jwt-verifier-golang v1.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
@@ -161,7 +162,4 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 )
 
-require (
-	github.com/evergreen-ci/bond v0.0.0-20211101153628-3fabd9ffaead // indirect
-	github.com/mongodb/jasper v0.0.0-20211103140906-f5e338d1959b // indirect
-)
+require github.com/evergreen-ci/bond v0.0.0-20211101153628-3fabd9ffaead // indirect
