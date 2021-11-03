@@ -215,6 +215,32 @@
           }
         }
       }
+    },
+       {
+      "query_file": "viewableProjects.graphql",
+      "result":  {
+        "data": {
+          "viewableProjects": [
+            {
+              "name": "",
+              "projects": [
+                {
+                  "identifier": "catVideos",
+                  "repo": "catGenerator",
+                  "owner": "theCat",
+                  "repoRefId": ""
+                },
+                {
+                  "identifier": "spruce",
+                  "repo": "evergreen",
+                  "owner": "evergreen-ci",
+                  "repoRefId": ""
+                }
+              ]
+            }
+          ]
+        }
+   }
     }
   ]
 }

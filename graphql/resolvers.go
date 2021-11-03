@@ -1499,11 +1499,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
 	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
 	groupedProjects, err := GroupProjects(allProjs, false)
-
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
 	return groupedProjects, nil
 }
 
@@ -1521,7 +1523,9 @@ func (r *queryResolver) ViewableProjects(ctx context.Context) ([]*GroupedProject
 	}
 
 	groupedProjects, err := GroupProjects(projects, true)
-
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
 	return groupedProjects, nil
 }
 

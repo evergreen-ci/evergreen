@@ -5,7 +5,16 @@
       "identifier": "evergreen",
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
-      "enabled": true
+      "enabled": true,
+      "repoRefId": "something"
+    },
+    {
+      "_id": "evergreen_2",
+      "identifier": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "enabled": true,
+      "repoRefId": "something"
     },
     {
       "_id": "logkeeper",

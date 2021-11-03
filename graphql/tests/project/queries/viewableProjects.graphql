@@ -1,0 +1,11 @@
+{
+  viewableProjects {
+    name
+    projects{
+      identifier
+      repo
+      owner 
+      repoRefId
+    }
+  } 
+}

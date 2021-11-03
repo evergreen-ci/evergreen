@@ -1317,7 +1317,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsArr := []*GroupedProjects{}
 
 	for groupName, groupedProjects := range groupsMap {
-		if onlyDefaultedToRepo {
+		if onlyDefaultedToRepo && groupName != "" {
 			groupName = strings.Join([]string{*groupedProjects[0].Owner, *groupedProjects[0].Repo}, "/")
 		}
 		gp := GroupedProjects{
