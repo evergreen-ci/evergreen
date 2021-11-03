@@ -1851,16 +1851,6 @@ func RemoveAdminFromProjects(toDelete string) error {
 	return catcher.Resolve()
 }
 
-// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
-func GroupProjectsByRepo(projects []ProjectRef) map[string][]ProjectRef {
-	groupedProject := make(map[string][]ProjectRef)
-	for _, project := range projects {
-		repoProjects := groupedProject[project.RepoRefId]
-		groupedProject[project.RepoRefId] = append(repoProjects, project)
-	}
-	return groupedProject
-}
-
 func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)

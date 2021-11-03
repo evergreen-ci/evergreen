@@ -1290,3 +1290,45 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	}
 	return res, nil
 }
+
+func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
+	groupsMap := make(map[string][]*restModel.APIProjectRef)
+
+	for _, p := range projects {
+		var groupName string
+		if onlyDefaultedToRepo {
+			groupName = p.RepoRefId
+		} else {
+			groupName = strings.Join([]string{p.Owner, p.Repo}, "/")
+		}
+
+		apiProjectRef := restModel.APIProjectRef{}
+		if err := apiProjectRef.BuildFromService(p); err != nil {
+			return nil, errors.Wrap(err, "error building APIProjectRef from service")
+		}
+
+		if projs, ok := groupsMap[groupName]; ok {
+			groupsMap[groupName] = append(projs, &apiProjectRef)
+		} else {
+			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
+		}
+	}
+
+	groupsArr := []*GroupedProjects{}
+
+	for groupName, groupedProjects := range groupsMap {
+		if onlyDefaultedToRepo {
+			groupName = strings.Join([]string{*groupedProjects[0].Owner, *groupedProjects[0].Repo}, "/")
+		}
+		gp := GroupedProjects{
+			Name:     groupName,
+			Projects: groupedProjects,
+		}
+		groupsArr = append(groupsArr, &gp)
+	}
+
+	sort.SliceStable(groupsArr, func(i, j int) bool {
+		return groupsArr[i].Name < groupsArr[j].Name
+	})
+	return groupsArr, nil
+}

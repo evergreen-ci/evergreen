@@ -1499,40 +1499,30 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
 	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
 
-	groupsMap := make(map[string][]*restModel.APIProjectRef)
+	groupedProjects, err := GroupProjects(allProjs, false)
 
-	for _, p := range allProjs {
-		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
-		apiProjectRef := restModel.APIProjectRef{}
-		if err = apiProjectRef.BuildFromService(p); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
-		}
+	return groupedProjects, nil
+}
 
-		if projs, ok := groupsMap[groupName]; ok {
-			groupsMap[groupName] = append(projs, &apiProjectRef)
-		} else {
-			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
-		}
+func (r *queryResolver) ViewableProjects(ctx context.Context) ([]*GroupedProjects, error) {
+	usr := MustHaveUser(ctx)
+	projectIds, err := usr.GetViewableProjects()
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err))
 	}
 
-	groupsArr := []*GroupedProjects{}
-
-	for groupName, groupedProjects := range groupsMap {
-		gp := GroupedProjects{
-			Name:     groupName,
-			Projects: groupedProjects,
-		}
-		groupsArr = append(groupsArr, &gp)
+	projects, err := model.FindProjectRefsByIds(projectIds)
+	if err != nil {
+		return nil, err
 	}
 
-	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return groupsArr[i].Name < groupsArr[j].Name
-	})
+	groupedProjects, err := GroupProjects(projects, true)
 
-	return groupsArr, nil
+	return groupedProjects, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
