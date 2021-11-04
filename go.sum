@@ -372,8 +372,6 @@ github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5 h1:nFR0q4RmLKb
 github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5/go.mod h1:RHBpqOlxE28M/lUgWRpxJ+WrHqCuY8a7EcXIvzqiPys=
 github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd h1:ZTiko2itvbnMVPYBuOlh2aSLjk9JgZ5UFSzjnFG/5ts=
 github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd/go.mod h1:UTWsClgKujHCHUovGzTTRW5i5HPWo5Ie/PTeODAkcjo=
-github.com/evergreen-ci/timber v0.0.0-20211102144754-ac9bb558d2cc h1:sIYJ9BFg22gWfzilFMGGWdg/JsrDTufOuAvcdVofIOM=
-github.com/evergreen-ci/timber v0.0.0-20211102144754-ac9bb558d2cc/go.mod h1:OUh+UqS4iMMCatRHjQph7RrmV7Wy6RelAMJA/+bBpr0=
 github.com/evergreen-ci/timber v0.0.0-20211102205838-842ec45e96fb h1:/xWi+86pkSMAftWqy4BWohCvTK2Abxf+MU4WnZG/xbA=
 github.com/evergreen-ci/timber v0.0.0-20211102205838-842ec45e96fb/go.mod h1:OUh+UqS4iMMCatRHjQph7RrmV7Wy6RelAMJA/+bBpr0=
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a h1:rCM80/P6uEBpRnL+OLKf0ybMyEpnqQ5UQURxHlapbAc=
@@ -705,6 +703,7 @@ github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7
 github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsIW75CHf65OeIOkyKbteujpZVXDpWK6YGZbxE=
 github.com/markbates/safe v1.0.1/go.mod h1:nAqgmRi7cY2nqMc92/bSEeQA+R4OheNU2T1kNSCBdG0=
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
+github.com/matryer/moq v0.0.0-20200106131100-75d0ddfc0007 h1:reVOUXwnhsYv/8UqjvhrMOu5CNT9UapHFLbQ2JcXsmg=
 github.com/matryer/moq v0.0.0-20200106131100-75d0ddfc0007/go.mod h1:9ELz6aaclSIGnZBoaSLZ3NAl1VTufbOrXBPvtcy6WiQ=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.4/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
@@ -990,9 +989,11 @@ github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtX
 github.com/urfave/cli v1.22.2/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/urfave/cli v1.22.5 h1:lNq9sAHXK2qfdI8W+GRItjCEkI+2oR4d+MEHy1CKXoU=
 github.com/urfave/cli v1.22.5/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
+github.com/urfave/cli/v2 v2.1.1 h1:Qt8FeAtxE/vfdrLmR3rxR6JRE0RoVmbXu8+6kZtYU4k=
 github.com/urfave/cli/v2 v2.1.1/go.mod h1:SE9GqnLQmjVa0iPEY0f1w3ygNIYcIJ0OKPMoW2caLfQ=
 github.com/urfave/negroni v1.0.0 h1:kIimOitoypq34K7TG7DUaJ9kq/N4Ofuwi1sjz0KipXc=
 github.com/urfave/negroni v1.0.0/go.mod h1:Meg73S6kFm/4PpbYdq35yYWoCZ9mS/YSx+lKnmiohz4=
+github.com/vektah/dataloaden v0.2.1-0.20190515034641-a19b9a6e7c9e h1:+w0Zm/9gaWpEAyDlU1eKOuk5twTjAjuevXqcJJw8hrg=
 github.com/vektah/dataloaden v0.2.1-0.20190515034641-a19b9a6e7c9e/go.mod h1:/HUdMve7rvxZma+2ZELQeNh88+003LL7Pf/CZ089j8U=
 github.com/vektah/gqlparser/v2 v2.2.0 h1:bAc3slekAAJW6sZTi07aGq0OrfaCjj4jxARAaC7g2EM=
 github.com/vektah/gqlparser/v2 v2.2.0/go.mod h1:i3mQIGIrbK2PD1RrCeMTlVbkF2FJ6WkU1KJlJlC+3F4=

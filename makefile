@@ -362,6 +362,9 @@ clean: clean-lobster
 	rm -rf $(buildDir) $(clientBuildDir) $(tmpDir)
 phony += clean
 
+gqlgen:
+	go run github.com/99designs/gqlgen generate
+
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
 ifneq (,$(multi))

@@ -62,6 +62,9 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 )
 
-require github.com/mongodb/jasper v0.0.0-20211103140906-f5e338d1959b
+require (
+	github.com/mongodb/jasper v0.0.0-20211103140906-f5e338d1959b
+	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
+)
 
 exclude go.mongodb.org/mongo-driver v1.7.3
