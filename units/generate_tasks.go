@@ -283,7 +283,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"version":       t.Version,
 	}))
 	if err != nil && !shouldNoop {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":       "generate.tasks finished with errors",
 			"operation":     "generate.tasks",
 			"duration_secs": time.Since(start).Seconds(),
