@@ -71,6 +71,7 @@ type Query {
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
+  isPatchOrVersion(id: String!): PatchOrVersionType!
 }
 
 type Mutation {
@@ -235,6 +236,11 @@ input MainlineCommitsOptions {
 type BuildVariantTuple {
   buildVariant: String!
   displayName: String!
+}
+
+enum PatchOrVersionType {
+  PATCH
+  VERSION
 }
 
 enum SpawnHostStatusActions {

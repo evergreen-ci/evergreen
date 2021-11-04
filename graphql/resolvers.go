@@ -184,6 +184,22 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 	return &apiHost, nil
 }
 
+func (r *queryResolver) IsPatchOrVersion(ctx context.Context, id string) (PatchOrVersionType, error) {
+	// We do not check the error here because we only want to return an error if the id is not
+	// a valid patch or version id.
+	p, _ := patch.FindOneId(id)
+	fmt.Println("got ")
+	fmt.Println(p)
+	if p != nil {
+		return PatchOrVersionTypePatch, nil
+	}
+	v, _ := r.sc.FindVersionById(id)
+	if v != nil {
+		return PatchOrVersionTypeVersion, nil
+	}
+	return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
+}
+
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
 	publicKeys := getMyPublicKeys(ctx)
 	return publicKeys, nil
@@ -3037,7 +3053,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, err
 	}
-	return *canRestart == false && !obj.Aborted, nil
+	return !utility.FromBoolPtr(canRestart) && !obj.Aborted, nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
