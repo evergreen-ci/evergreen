@@ -3,6 +3,7 @@
     baseTaskMetadata {
       baseTaskDuration
       baseTaskLink
+      baseTaskId
     }
   }
 }

@@ -7,7 +7,8 @@
           "task": {
             "baseTaskMetadata": {
               "baseTaskDuration": 30000000,
-              "baseTaskLink": "/task/base-task-1"
+              "baseTaskLink": "/task/base-task-1",
+              "baseTaskId": "base-task-1"
             }
           }
         }

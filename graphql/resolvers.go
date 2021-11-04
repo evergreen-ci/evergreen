@@ -3004,6 +3004,7 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 	baseTaskMetadata := BaseTaskMetadata{
 		BaseTaskLink:     fmt.Sprintf("%s/task/%s", config.Ui.Url, baseTask.Id),
 		BaseTaskDuration: &dur,
+		BaseTaskID:       baseTask.Id,
 	}
 	if baseTask.TimeTaken == 0 {
 		baseTaskMetadata.BaseTaskDuration = nil

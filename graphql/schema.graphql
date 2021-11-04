@@ -927,7 +927,8 @@ type PatchMetadata {
 
 type BaseTaskMetadata {
   baseTaskDuration: Duration
-  baseTaskLink: String!
+  baseTaskLink: String! @deprecated(reason: "baseTaskLink is deprecated and should not be used")
+  baseTaskId: String!
 }
 
 type AbortInfo {
