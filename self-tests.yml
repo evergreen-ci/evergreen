@@ -68,9 +68,6 @@ variables:
       - func: get-project-and-modules
       - func: setup-credentials
       - func: run-make
-        vars:
-          target: revendor
-      - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-docker
     name: test
@@ -80,9 +77,6 @@ variables:
       - func: setup-credentials
       - func: setup-mongodb
       - func: setup-docker-host
-      - func: run-make
-        vars:
-          target: revendor
       - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb
@@ -98,9 +92,6 @@ variables:
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
-        vars:
-          target: revendor
-      - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb-useast
     # runs a make target above, but only on systems that have a
@@ -114,9 +105,6 @@ variables:
           target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
-      - func: run-make
-        vars:
-          target: revendor
       - func: run-make
         vars: { target: "${task_name}", tz: "America/New_York" }
   - &run-smoke-test
@@ -530,9 +518,6 @@ tasks:
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
-        vars:
-          target: revendor
-      - func: run-make
         vars: { target: "${task_name}" }
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
@@ -544,9 +529,6 @@ tasks:
         vars:
           target: get-go-imports
       - func: setup-credentials
-      - func: run-make
-        vars:
-          target: revendor
       - func: run-make
         vars: { target: "test-thirdparty-docker" }
   - name: test-repotracker
@@ -563,9 +545,6 @@ tasks:
           target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
-      - func: run-make
-        vars:
-          target: revendor
       - func: run-make
         vars: { target: "test-repotracker" }
   - name: upload-clis
