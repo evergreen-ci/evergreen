@@ -1326,7 +1326,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		}
 
 		gp := GroupedProjects{
-			Name:     &groupName,
+			Name:     &groupName, //deprecated
 			Repo:     &apiRepoRef,
 			Projects: groupedProjects,
 		}
