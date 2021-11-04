@@ -1016,7 +1016,8 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  name: String!
+  name: String @deprecated
+  repo: RepoRef
   projects: [Project!]!
 }
 

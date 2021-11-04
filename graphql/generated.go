@@ -242,6 +242,7 @@ type ComplexityRoot struct {
 	GroupedProjects struct {
 		Name     func(childComplexity int) int
 		Projects func(childComplexity int) int
+		Repo     func(childComplexity int) int
 	}
 
 	Host struct {
@@ -2027,6 +2028,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
+
+	case "GroupedProjects.repo":
+		if e.complexity.GroupedProjects.Repo == nil {
+			break
+		}
+
+		return e.complexity.GroupedProjects.Repo(childComplexity), true
 
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
@@ -7193,6 +7201,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  repoRefId: String
   id: String
 }
 
@@ -7849,7 +7858,8 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  name: String!
+  name: String @deprecated
+  repo: RepoRef
   projects: [Project!]!
 }
 
@@ -12966,14 +12976,42 @@ func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedProjects_repo(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "GroupedProjects",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalORepoRef2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GroupedProjects_projects(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
@@ -35338,6 +35376,12 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 			if err != nil {
 				return it, err
 			}
+		case "repoRefId":
+			var err error
+			it.RepoRefId, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "id":
 			var err error
 			it.Id, err = ec.unmarshalOString2ᚖstring(ctx, v)
@@ -38060,9 +38104,8 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("GroupedProjects")
 		case "name":
 			out.Values[i] = ec._GroupedProjects_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+		case "repo":
+			out.Values[i] = ec._GroupedProjects_repo(ctx, field, obj)
 		case "projects":
 			out.Values[i] = ec._GroupedProjects_projects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -47580,6 +47623,13 @@ func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreen
 
 func (ec *executionContext) marshalORepoRef2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._RepoRef(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalORepoRef2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v *model.APIProjectRef) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RepoRef(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalORepoRefInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {

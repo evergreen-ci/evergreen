@@ -84,7 +84,8 @@ type GroupedFiles struct {
 }
 
 type GroupedProjects struct {
-	Name     string                 `json:"name"`
+	Name     *string                `json:"name"`
+	Repo     *model.APIProjectRef   `json:"repo"`
 	Projects []*model.APIProjectRef `json:"projects"`
 }
 

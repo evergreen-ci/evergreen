@@ -1296,11 +1296,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 	for _, p := range projects {
 		var groupName string
-		if onlyDefaultedToRepo {
-			groupName = p.RepoRefId
-		} else {
-			groupName = fmt.Sprintf("%s/%s", p.Owner, p.Repo)
-		}
+		groupName = fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 
 		apiProjectRef := restModel.APIProjectRef{}
 		if err := apiProjectRef.BuildFromService(p); err != nil {
@@ -1317,18 +1313,28 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsArr := []*GroupedProjects{}
 
 	for groupName, groupedProjects := range groupsMap {
-		if onlyDefaultedToRepo && groupName != "" {
-			groupName = strings.Join([]string{*groupedProjects[0].Owner, *groupedProjects[0].Repo}, "/")
+		repoRef, err := model.FindOneRepoRef(*groupedProjects[0].RepoRefId)
+		if err != nil {
+			return nil, err
 		}
+		if repoRef == nil {
+			return nil, errors.New("couldn't find repo")
+		}
+		apiRepoRef := restModel.APIProjectRef{}
+		if err := apiRepoRef.BuildFromService(repoRef); err != nil {
+			return nil, errors.Wrap(err, "error building APIProjectRef from service")
+		}
+
 		gp := GroupedProjects{
-			Name:     groupName,
+			Name:     &groupName,
+			Repo:     &apiRepoRef,
 			Projects: groupedProjects,
 		}
 		groupsArr = append(groupsArr, &gp)
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return groupsArr[i].Name < groupsArr[j].Name
+		return *groupsArr[i].Name < *groupsArr[j].Name
 	})
 	return groupsArr, nil
 }
