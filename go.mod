@@ -60,7 +60,6 @@ require (
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/mholt/archiver v2.0.1-0.20180417220235-e4ef56d48eb0+incompatible
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
 require github.com/mongodb/jasper v0.0.0-20211103140906-f5e338d1959b
