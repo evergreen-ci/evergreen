@@ -124,7 +124,7 @@ func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 	}
 	s.NoError(a1.Upsert())
 
-	out, err := FindAllAliasesForProject("project-1")
+	out, err := FindAliasesForProjectFromDb("project-1")
 	s.NoError(err)
 	s.Len(out, 2)
 }
@@ -155,8 +155,9 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
 
-	found, err := findAliasInProject("project-1", "alias-1")
+	found, shouldExit, err := findMatchingAliasForProjectRef("project-1", "alias-1")
 	s.NoError(err)
+	s.True(shouldExit)
 	s.Len(found, 2)
 }
 
@@ -207,7 +208,7 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 	}
 	s.NoError(parserProject.TryUpsert())
 
-	projectAliases, err := FindAllAliasesForProject("project-1")
+	projectAliases, err := FindAliasesForProjectFromDb("project-1")
 	s.NoError(err)
 	s.Len(projectAliases, 4)
 	aliasMap := aliasesToMap(projectAliases)
@@ -275,6 +276,11 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 	s.NoError(err)
 	s.Len(found, 2)
 
+	// Test project doesn't match alias but other patch aliases are defined so we don't continue to repo
+	found, err = FindAliasInProjectOrRepo(pRef1.Id, "alias-1")
+	s.NoError(err)
+	s.Len(found, 0)
+
 	// Test non-existent project
 	found, err = FindAliasInProjectOrRepo("bad-project", "alias-1")
 	s.Error(err)
@@ -293,12 +299,12 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	}
 	s.NoError(UpsertAliasesForProject(s.aliases, "new-project"))
 
-	found, err := FindAllAliasesForProject("new-project")
+	found, err := FindAliasesForProjectFromDb("new-project")
 	s.NoError(err)
 	s.Len(found, 10)
 
 	// verify old aliases not overwritten
-	found, err = FindAllAliasesForProject("old-project")
+	found, err = FindAliasesForProjectFromDb("old-project")
 	s.NoError(err)
 	s.Len(found, 10)
 }

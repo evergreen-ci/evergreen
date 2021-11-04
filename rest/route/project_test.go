@@ -743,7 +743,7 @@ func TestDeleteProject(t *testing.T) {
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
-		projAliases, err := serviceModel.FindAllAliasesForProject(projects[i].Id)
+		projAliases, err := serviceModel.FindAliasesForProjectFromDb(projects[i].Id)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(projAliases))
 
