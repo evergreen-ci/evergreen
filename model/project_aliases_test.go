@@ -155,7 +155,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
 
-	found, err := findMatchingAliasForProjectRef("project-1", "alias-1")
+	found, err := findAliasInProject("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 }
