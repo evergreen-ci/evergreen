@@ -68,11 +68,11 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeAdmin,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
-		})
+		}))
 		return errors.Wrap(err, "Error logging admin event")
 	}
 	return nil
