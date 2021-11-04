@@ -344,8 +344,8 @@ ifneq (go,$(gobin))
 # binary in it, the linter won't work properly.
 lintEnvVars := PATH="$(shell dirname $(gobin)):$(PATH)"
 endif
+# TODO (EVG-15453): make evg-lint compatible with golangci-lint
 $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
-	# TODO (EVG-15453): make evg-lint compatible with golangci-lint
 	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --lintArgs="--timeout=2m" --packages='$*'
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
