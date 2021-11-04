@@ -188,8 +188,6 @@ func (r *queryResolver) IsPatchOrVersion(ctx context.Context, id string) (PatchO
 	// We do not check the error here because we only want to return an error if the id is not
 	// a valid patch or version id.
 	p, _ := patch.FindOneId(id)
-	fmt.Println("got ")
-	fmt.Println(p)
 	if p != nil {
 		return PatchOrVersionTypePatch, nil
 	}
