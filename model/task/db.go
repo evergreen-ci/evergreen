@@ -964,7 +964,7 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 				{DisplayTaskIdKey: ""},
 			},
 			"$and": []bson.M{
-				{RevisionOrderNumberKey: bson.M{"$gte": repoOrderNumber - VersionLimit}},
+				{RevisionOrderNumberKey: bson.M{"$gt": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},
 			},
 		},
