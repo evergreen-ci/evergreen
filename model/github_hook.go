@@ -12,6 +12,8 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -120,6 +122,12 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
 		return nil, errors.New("unexpected data from github")
 	}
+	grip.Debug(message.Fields{
+		"ticket":            "EVG-15779",
+		"setup new webhook": respHook,
+		"owner":             owner,
+		"repo":              repo,
+	})
 	hook := &GithubHook{
 		HookID: int(respHook.GetID()),
 		Owner:  owner,
