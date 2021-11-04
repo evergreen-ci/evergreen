@@ -86,9 +86,6 @@ variables:
     must_have_test_results: true
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -100,9 +97,6 @@ variables:
     must_have_test_results: true
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -115,9 +109,6 @@ variables:
           exec_timeout_secs: 900
           timeout_secs: 900
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-mongodb
       - func: run-make
         vars: { target: "set-var" }
@@ -142,9 +133,6 @@ variables:
     name: generate-lint
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
@@ -512,9 +500,6 @@ tasks:
     name: test-cmd-codegen-core
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -525,9 +510,6 @@ tasks:
   - name: docker-cleanup
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-credentials
       - func: run-make
         vars: { target: "test-thirdparty-docker" }
@@ -540,9 +522,6 @@ tasks:
           directory: evergreen
           token: ${github_token}
           shallow_clone: false
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -581,9 +560,6 @@ tasks:
   - name: test-db-auth
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars:
-          target: get-go-imports
       - func: setup-credentials
       - func: setup-mongodb-auth
       - func: run-make
