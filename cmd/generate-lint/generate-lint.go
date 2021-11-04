@@ -64,7 +64,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 
 			// We can't run make targets on packages in the cmd directory
 			// because the packages contain dashes.
-			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") {
+			if strings.HasPrefix(dir, "cmd") {
 				continue
 			}
 
@@ -103,10 +103,6 @@ func getAllTargets() ([]string, error) {
 	}
 	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
 	for _, p := range split {
-		if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
-			continue
-		}
-
 		if !strings.HasPrefix(p, packagePrefix) {
 			continue
 		}
