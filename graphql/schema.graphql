@@ -359,6 +359,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  repoRefId: String
   id: String
 }
 
