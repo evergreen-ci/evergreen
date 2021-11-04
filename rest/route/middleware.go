@@ -599,8 +599,11 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	if projectID == "" && testLog != "" {
 		var test *model.TestLog
 		test, err = model.FindOneTestLogById(testLog)
-		if err != nil || test == nil {
+		if err != nil {
 			return nil, http.StatusNotFound, err
+		}
+		if test == nil {
+			return nil, http.StatusNotFound, errors.Errorf("test log with id '%s' not found", testLog)
 		}
 		projectID, err = task.FindProjectForTask(test.Task)
 		if err != nil {
