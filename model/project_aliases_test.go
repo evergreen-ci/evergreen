@@ -208,14 +208,23 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 	}
 	s.NoError(parserProject.TryUpsert())
 
-	projectAliases, err := FindAliasesForProjectFromDb("project-1")
+	projectAliases, err := FindAliasInProjectOrRepo("project-1", evergreen.CommitQueueAlias)
 	s.NoError(err)
-	s.Len(projectAliases, 4)
-	aliasMap := aliasesToMap(projectAliases)
-	s.Len(aliasMap[evergreen.CommitQueueAlias], 1)
-	s.Len(aliasMap[evergreen.GithubPRAlias], 1)
-	s.Len(aliasMap["alias-1"], 1)
-	s.Len(aliasMap["alias-2"], 1)
+	s.Len(projectAliases, 1)
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubPRAlias)
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-1")
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "nonexistent")
+	s.NoError(err)
+	s.Len(projectAliases, 0)
 }
 
 func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {

@@ -135,7 +135,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 		}
 		return nil, numPatchAliases > 0, nil
 	}
-	return out, true, nil
+	return out, len(out) > 0, nil
 }
 
 // Returns true if we have an alias match or the alias doesn't match but
