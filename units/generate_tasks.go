@@ -290,7 +290,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			"task":          t.Id,
 			"job":           j.ID(),
 			"version":       t.Version,
-			"is_save_error": strings.Contains(err.Error(), evergreen.SaveGenerateTasksError)
+			"is_save_error": strings.Contains(err.Error(), evergreen.SaveGenerateTasksError),
 		}))
 	}
 
