@@ -283,14 +283,14 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"version":       t.Version,
 	}))
 	if err != nil && !shouldNoop {
-		isSaveErr := strings.Contains(err.Error(), evergreen.SaveGenerateTasksError) // we already log save errors to the user
-		grip.DebugWhen(!isSaveErr, message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":       "generate.tasks finished with errors",
 			"operation":     "generate.tasks",
 			"duration_secs": time.Since(start).Seconds(),
 			"task":          t.Id,
 			"job":           j.ID(),
 			"version":       t.Version,
+			"is_save_error": strings.Contains(err.Error(), evergreen.SaveGenerateTasksError)
 		}))
 	}
 
