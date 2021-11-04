@@ -1299,7 +1299,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		if onlyDefaultedToRepo {
 			groupName = p.RepoRefId
 		} else {
-			groupName = strings.Join([]string{p.Owner, p.Repo}, "/")
+			groupName = fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 		}
 
 		apiProjectRef := restModel.APIProjectRef{}

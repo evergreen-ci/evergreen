@@ -1514,7 +1514,7 @@ func (r *queryResolver) ViewableProjects(ctx context.Context) ([]*GroupedProject
 	projectIds, err := usr.GetViewableProjects()
 
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
 
 	projects, err := model.FindProjectRefsByIds(projectIds)
