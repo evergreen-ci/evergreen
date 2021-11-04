@@ -30,7 +30,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("redirect_spruce_users") == "true" {
 		if u := gimlet.GetUser(r.Context()); u != nil {
 			usr, ok := u.(*user.DBUser)
-			if ok && usr.Settings.UseSpruceOptions.SpruceV1 {
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.SpruceV1 {
 				http.Redirect(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id), http.StatusTemporaryRedirect)
 				return
 			}
