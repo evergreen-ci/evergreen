@@ -3120,7 +3120,9 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			TaskID:    utility.FromStringPtr(obj.Id),
 			Execution: obj.Execution,
 		}
-
+		if opts.BaseURL == "" {
+			return false, nil
+		}
 		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
