@@ -1006,6 +1006,7 @@ type Task {
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
+  patch: Patch
 }
 
 type BaseTaskInfo {

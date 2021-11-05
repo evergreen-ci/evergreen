@@ -831,6 +831,7 @@ type ComplexityRoot struct {
 		LatestExecution         func(childComplexity int) int
 		Logs                    func(childComplexity int) int
 		MinQueuePosition        func(childComplexity int) int
+		Patch                   func(childComplexity int) int
 		PatchMetadata           func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		Priority                func(childComplexity int) int
@@ -1314,6 +1315,7 @@ type TaskResolver interface {
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
+	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 }
 type TaskLogsResolver interface {
 	EventLogs(ctx context.Context, obj *TaskLogs) ([]*model.TaskAPIEventLogEntry, error)
@@ -5386,6 +5388,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.MinQueuePosition(childComplexity), true
 
+	case "Task.patch":
+		if e.complexity.Task.Patch == nil {
+			break
+		}
+
+		return e.complexity.Task.Patch(childComplexity), true
+
 	case "Task.patchMetadata":
 		if e.complexity.Task.PatchMetadata == nil {
 			break
@@ -7831,6 +7840,7 @@ type Task {
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
+  patch: Patch
 }
 
 type BaseTaskInfo {
@@ -28395,6 +28405,37 @@ func (ec *executionContext) _Task_versionMetadata(ctx context.Context, field gra
 	return ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_patch(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Task",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().Patch(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIPatch)
+	fc.Result = res
+	return ec.marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -41819,6 +41860,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			})
+		case "patch":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_patch(ctx, field, obj)
 				return res
 			})
 		default:
