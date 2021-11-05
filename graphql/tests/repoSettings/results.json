@@ -37,7 +37,11 @@
               "taskSync" : {
                 "configEnabled" : false,
                 "patchEnabled" : true
-              }
+              },
+              "validDefaultLoggers": [
+                "evergreen",
+                "buildlogger"
+              ]
             }
           }
         }

@@ -16,6 +16,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
+    includeEmptyActivation: Boolean = false
   ): PatchTasks!
   taskTests(
     taskId: String!
@@ -1201,6 +1202,8 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+
+  validDefaultLoggers: [String!]!
 }
 
 type TriggerAlias {

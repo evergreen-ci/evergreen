@@ -84,16 +84,17 @@ func PatchSetModule() cli.Command {
 			moduleBranch, err := getModuleBranch(module, proj)
 			if err != nil {
 				grip.Error(err)
-				mods, merr := ac.GetPatchModules(patchID, existingPatch.Project)
+				mods, projectIdentifier, merr := ac.GetPatchModules(patchID, existingPatch.Project)
 				if merr != nil {
 					return errors.Wrap(merr, "errors fetching list of available modules")
 				}
-
-				if len(mods) != 0 {
-					grip.Noticef("known modules includes:\n\t%s", strings.Join(mods, "\n\t"))
+				if len(mods) == 0 {
+					return errors.Errorf("Project '%s' has no configured modules. Specify different project or "+
+						"see the evergreen configuration file for module configuration.",
+						projectIdentifier)
 				}
-
-				return errors.Errorf("could not set specified module: \"%s\"", module)
+				return errors.Errorf("Could not find module named '%s' for project '%s'; specify different project or select correct module from:\n\t%s",
+					module, projectIdentifier, strings.Join(mods, "\n\t"))
 			}
 
 			if uncommittedOk || conf.UncommittedChanges {
@@ -116,7 +117,7 @@ func PatchSetModule() cli.Command {
 					fmt.Println(diffData.patchSummary)
 				}
 
-				if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+				if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
 					return nil
 				}
 			}
@@ -129,18 +130,18 @@ func PatchSetModule() cli.Command {
 			}
 			err = ac.UpdatePatchModule(params)
 			if err != nil {
-				mods, err := ac.GetPatchModules(patchID, existingPatch.Project)
+				mods, projectIdentifier, err := ac.GetPatchModules(patchID, existingPatch.Project)
 				var msg string
 				if err != nil {
-					msg = fmt.Sprintf("could not find module named %s or retrieve list of modules",
+					msg = fmt.Sprintf("Could not find module named '%s' for this project",
 						module)
 				} else if len(mods) == 0 {
-					msg = fmt.Sprintf("could not find modules for this project. %s is not a module. "+
+					msg = fmt.Sprintf("Project '%s' has no configured modules. Specify different project or "+
 						"see the evergreen configuration file for module configuration.",
-						module)
+						projectIdentifier)
 				} else {
-					msg = fmt.Sprintf("could not find module named '%s', select correct module from:\n\t%s",
-						module, strings.Join(mods, "\n\t"))
+					msg = fmt.Sprintf("Could not find module named '%s' for project '%s'. Specify different project or select correct module from:\n\t%s",
+						module, projectIdentifier, strings.Join(mods, "\n\t"))
 				}
 				grip.Error(msg)
 				return err

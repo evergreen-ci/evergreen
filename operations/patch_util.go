@@ -134,7 +134,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 		return err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
+		if !confirm("Patch submission is empty. Continue? (Y/n)", true) {
 			return errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
@@ -143,7 +143,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 			grip.Info(diffData.log)
 		}
 
-		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+		if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
 			return errors.New("patch aborted")
 		}
 	}

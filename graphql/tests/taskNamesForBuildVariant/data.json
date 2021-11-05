@@ -5,28 +5,46 @@
             "display_name" : "test-agent",
             "build_variant": "ubuntu1604",
             "branch": "evergreen",
-            "r": "gitter_request"
+            "r": "gitter_request",
+            "order": 1
         },
         {
             "_id": "t2",
             "display_name" : "dist",
             "build_variant": "ubuntu1604",
             "branch": "evergreen",
-            "r": "gitter_request"
+            "r": "gitter_request",
+            "order": 1
         },
         {
             "_id": "t3",
             "display_name" : "test-graphql",
             "build_variant": "ubuntu1604",
             "branch": "evergreen",
-            "r": "gitter_request"
+            "r": "gitter_request",
+            "order": 1
         },
         {
             "_id": "t4",
             "display_name" : "test-agent",
             "build_variant": "osx",
             "branch": "evergreen",
-            "r": "gitter_request"
+            "r": "gitter_request",
+            "order": 1
+        }
+    ],
+    "project_ref": [
+        {
+            "_id": "evergreen",
+            "identifier": "evergreen",
+            "branch": "main",
+            "display_name": "Evergreen"
+        }
+    ],
+    "repo_revisions": [
+        {
+            "_id": "evergreen",
+            "last_commit_number": 1
         }
     ]
 }

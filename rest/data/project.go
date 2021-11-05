@@ -24,11 +24,13 @@ import (
 type DBProjectConnector struct{}
 
 // FindProjectById queries the database for the project matching the projectRef.Id.
-func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*model.ProjectRef, error) {
+func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
-	if includeRepo {
-		p, err = model.FindMergedProjectRef(id)
+	if includeRepo && includeParserProject {
+		p, err = model.FindMergedProjectRef(id, "", true)
+	} else if includeRepo {
+		p, err = model.FindMergedProjectRef(id, "", false)
 	} else {
 		p, err = model.FindBranchProjectRef(id)
 	}
@@ -79,7 +81,7 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 }
 
 func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
-	_, err := sc.FindProjectById(name, false)
+	_, err := sc.FindProjectById(name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -434,7 +436,7 @@ type MockProjectConnector struct {
 	CachedEvents   []restModel.APIProjectEvent
 }
 
-func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {
+func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectId || p.Identifier == projectId {
 			return &p, nil
@@ -513,7 +515,7 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 }
 
 func (sc *MockProjectConnector) VerifyUniqueProject(name string) error {
-	_, err := sc.FindProjectById(name, false)
+	_, err := sc.FindProjectById(name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

@@ -255,7 +255,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 	}
 	hasPatch := evergreen.IsPatchRequester(buildDoc.Requester)
 
-	projectRef, err := model.FindMergedProjectRef(t.task.Project)
+	projectRef, err := model.FindMergedProjectRef(t.task.Project, t.task.Version, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch project ref while building email payload")
 	}
@@ -964,7 +964,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		return nil, errors.New("could not find version while building jira task payload")
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project)
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching project ref while building jira task payload")
 	}

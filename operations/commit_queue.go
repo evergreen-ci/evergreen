@@ -160,7 +160,7 @@ func mergeCommand() cli.Command {
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
 			}
-			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/n)", false) {
+			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/N)", false) {
 				return errors.New("Merge aborted.")
 			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -276,7 +276,7 @@ func enqueuePatch() cli.Command {
 				}
 			}
 			if multipleCommits && !skipConfirm &&
-				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
+				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
 				return errors.New("enqueue aborted")
 			}
 
@@ -572,7 +572,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, u
 		return errors.Wrap(err, "can't get commit count")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
-		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
+		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
 		return errors.New("patch aborted")
 	}
 
@@ -644,7 +644,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.New("No commits for module")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
-		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
+		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
 		return errors.New("module patch aborted")
 	}
 
@@ -680,7 +680,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if !p.skipConfirm {
 		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
 		grip.InfoWhen(diffData.log != "", diffData.log)
-		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+		if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
 			return nil
 		}
 	}
