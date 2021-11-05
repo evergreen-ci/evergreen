@@ -228,13 +228,13 @@
         }
       }
     },
-       {
-      "query_file": "viewableProjects.graphql",
-      "result":  {
+    {
+      "query_file":"viewableProjects.graphql",
+      "result": {
         "data": {
           "viewableProjects": [
             {
-              "name": "",
+              "repoDisplayName": "",
               "projects": [
                 {
                   "identifier": "spruce",
@@ -245,7 +245,7 @@
               ]
             },
             {
-              "name": "theCat/catGenerator",
+              "repoDisplayName": "animals_display",
               "projects": [
                 {
                   "identifier": "catVideos",
@@ -263,7 +263,7 @@
             }
           ]
         }
-   }
+      }
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   projects {
-    name
+    repoDisplayName
     projects{
       identifier
       repo

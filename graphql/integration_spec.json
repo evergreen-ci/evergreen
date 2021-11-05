@@ -118,7 +118,7 @@
         ],
         "patches": [
           {
-            "name": "",
+             "name": "",
             "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
             "patch_set": {
               "patch_file_id": "58d05bc79dbe327e79000001",
@@ -196,7 +196,7 @@
         "build": "some_thang",
         "files": [
           {
-            "name": "awesome_test!!!",
+             "name": "awesome_test!!!",
             "link": "www.wikipedia.com",
             "visibility": "the whole world",
             "fetch_ignore": false
@@ -210,19 +210,19 @@
         "build": "some_thang",
         "files": [
           {
-            "name": "THIS IS REALLY COOL",
+             "name": "THIS IS REALLY COOL",
             "link": "www.wikipedia.com",
             "visibility": "the whole world",
             "fetch_ignore": false
           },
           {
-            "name": "really cool test file",
+             "name": "really cool test file",
             "link": "www.wikipedia.com",
             "visibility": "the whole world",
             "fetch_ignore": false
           },
           {
-            "name": "PRIVATE TEST FILEEEEEE",
+             "name": "PRIVATE TEST FILEEEEEE",
             "link": "stuffff",
             "visibility": "none",
             "fetch_ignore": false
@@ -2299,7 +2299,7 @@
         "data": {
           "projects": [
             {
-              "name": "annie.black/buildhost-configuration",
+              "repoDisplayName": "annie.black/buildhost-configuration",
               "projects": [
                 {
                   "identifier": "buildhost-test",
@@ -2311,7 +2311,7 @@
               ]
             },
             {
-              "name": "bsamek/mongo",
+              "repoDisplayName": "bsamek/mongo",
               "projects": [
                 {
                   "identifier": "sys-perf",
@@ -2323,7 +2323,7 @@
               ]
             },
             {
-              "name": "evergreen-ci/evergreen",
+              "repoDisplayName": "evergreen-ci/evergreen",
               "projects": [
                 {
                   "identifier": "mci",
@@ -2342,7 +2342,7 @@
               ]
             },
             {
-              "name": "evergreen-ci/grip",
+              "repoDisplayName": "evergreen-ci/grip",
               "projects": [
                 {
                   "identifier": "annie-copy2",
@@ -2354,7 +2354,7 @@
               ]
             },
             {
-              "name": "evergreen-ci/lobster",
+              "repoDisplayName": "evergreen-ci/lobster",
               "projects": [
                 {
                   "identifier": "lobster",
@@ -2366,7 +2366,7 @@
               ]
             },
             {
-              "name": "evergreen-ci/logkeeper",
+              "repoDisplayName": "evergreen-ci/logkeeper",
               "projects": [
                 {
                   "identifier": "logkeeper",
@@ -2378,7 +2378,7 @@
               ]
             },
             {
-              "name": "hello it's me/amboy",
+              "repoDisplayName": "hello it's me/amboy",
               "projects": [
                 {
                   "identifier": "amboy",
@@ -2390,7 +2390,7 @@
               ]
             },
             {
-              "name": "john-m-liu/evergreen",
+              "repoDisplayName": "john-m-liu/evergreen",
               "projects": [
                 {
                   "identifier": "john_test",
@@ -2402,7 +2402,7 @@
               ]
             },
             {
-              "name": "mongodb/curator",
+              "repoDisplayName": "mongodb/curator",
               "projects": [
                 {
                   "identifier": "curator",
@@ -2414,7 +2414,7 @@
               ]
             },
             {
-              "name": "mongodb/greenbay",
+              "repoDisplayName": "mongodb/greenbay",
               "projects": [
                 {
                   "identifier": "Greenbay",
@@ -2426,7 +2426,7 @@
               ]
             },
             {
-              "name": "mongodb/grip",
+              "repoDisplayName": "mongodb/grip",
               "projects": [
                 {
                   "identifier": "grip",
@@ -2529,7 +2529,7 @@
               ]
             },
             {
-              "name": "rongodb/ron_repo_1",
+              "repoDisplayName": "rongodb/ron_repo_1",
               "projects": [
                 {
                   "identifier": "ron_test_copy_1",
@@ -2576,7 +2576,7 @@
               ]
             },
             {
-              "name": "rongodb/v20380713",
+              "repoDisplayName": "rongodb/v20380713",
               "projects": [
                 {
                   "identifier": "ron_two_via_postman",
@@ -2588,7 +2588,7 @@
               ]
             },
             {
-              "name": "something crazy/grip",
+              "repoDisplayName": "something crazy/grip",
               "projects": [
                 {
                   "identifier": "annie-copy5",
@@ -2600,7 +2600,7 @@
               ]
             },
             {
-              "name": "tzembo/evergreen",
+              "repoDisplayName": "tzembo/evergreen",
               "projects": [
                 {
                   "identifier": "thomas-test",
