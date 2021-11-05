@@ -16,6 +16,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
+    includeEmptyActivation: Boolean = false
   ): PatchTasks!
   taskTests(
     taskId: String!
@@ -948,7 +949,7 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata
+  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
@@ -1195,6 +1196,8 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+
+  validDefaultLoggers: [String!]!
 }
 
 type TriggerAlias {

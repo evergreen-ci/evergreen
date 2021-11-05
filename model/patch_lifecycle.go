@@ -454,12 +454,27 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			}
 		}
 	}
+	if len(tasksToInsert) > evergreen.NumTasksForLargePatch {
+		numTasksActivated := 0
+		for _, t := range tasksToInsert {
+			if t.Activated {
+				numTasksActivated++
+			}
+		}
+		grip.Info(message.Fields{
+			"message":             "version has large number of activated tasks",
+			"op":                  "finalize patch",
+			"num_tasks_activated": numTasksActivated,
+			"total_tasks":         len(tasksToInsert),
+			"version":             patchVersion.Id,
+		})
+	}
 
 	return patchVersion, nil
 }
 
 func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*ProjectRef, *GetProjectOpts, error) {
-	projectRef, err := FindMergedProjectRef(p.Project)
+	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -681,7 +696,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	// verify the commit queue is on
-	projectRef, err := FindMergedProjectRef(existingPatch.Project)
+	projectRef, err := FindMergedProjectRef(existingPatch.Project, existingPatch.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get project ref '%s'", existingPatch.Project)
 	}
@@ -861,7 +876,7 @@ func SendCommitQueueResult(p *patch.Patch, status message.GithubState, descripti
 	if p.GithubPatchData.PRNumber == 0 {
 		return nil
 	}
-	projectRef, err := FindMergedProjectRef(p.Project)
+	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to find project")
 	}

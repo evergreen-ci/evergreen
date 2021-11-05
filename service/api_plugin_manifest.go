@@ -18,7 +18,7 @@ import (
 func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
-	projectRef, err := model.FindMergedProjectRef(task.Project)
+	projectRef, err := model.FindMergedProjectRef(task.Project, task.Version, true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "error finding project '%s'", task.Project))

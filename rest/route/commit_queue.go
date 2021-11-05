@@ -87,7 +87,7 @@ func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	projectRef, err := cq.sc.FindProjectById(cq.project, true)
+	projectRef, err := cq.sc.FindProjectById(cq.project, true, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
 	}

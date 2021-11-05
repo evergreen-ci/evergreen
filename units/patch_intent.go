@@ -207,7 +207,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchDoc.DisplayNewUI = true
 	}
 
-	pref, err := model.FindMergedProjectRef(patchDoc.Project)
+	pref, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "can't find patch project")
 	}
@@ -565,7 +565,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}))
 	}()
 
-	projectRef, err := model.FindMergedProjectRef(patchDoc.Project)
+	projectRef, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
 	}

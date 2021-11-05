@@ -1,0 +1,7 @@
+{
+  task(taskId: "1") {
+    baseTask {
+      id
+    }
+  }
+}

@@ -73,6 +73,10 @@ func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
 
+func (r *Resolver) RepoRef() RepoRefResolver {
+	return &repoRefResolver{r}
+}
+
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
@@ -107,6 +111,7 @@ type taskQueueItemResolver struct{ *Resolver }
 type volumeResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
+type repoRefResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
 type projectSettingsResolver struct{ *Resolver }
@@ -190,7 +195,7 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 }
 
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
-	pRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	pRef, err := r.sc.FindProjectById(*obj.ProjectId, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
 	}
@@ -407,6 +412,10 @@ func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProje
 }
 
 func (r *projectResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
+	return model.ValidDefaultLoggers, nil
+}
+
+func (r *repoRefResolver) ValidDefaultLoggers(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
 	return model.ValidDefaultLoggers, nil
 }
 
@@ -1285,7 +1294,7 @@ func (r *patchResolver) ID(ctx context.Context, obj *restModel.APIPatch) (string
 }
 
 func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
-	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true)
+	projectRef, err := r.sc.FindProjectById(*obj.ProjectId, true, true)
 	if err != nil || projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.ProjectId, err))
 	}
@@ -1390,7 +1399,7 @@ func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIV
 }
 
 func (r *queryResolver) Project(ctx context.Context, id string) (*restModel.APIProjectRef, error) {
-	project, err := r.sc.FindProjectById(id, true)
+	project, err := r.sc.FindProjectById(id, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", id, err.Error()))
 	}
@@ -1526,7 +1535,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	return groupsArr, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
@@ -1568,15 +1577,17 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
-		BaseStatuses:     baseStatuses,
-		Variants:         []string{variantParam},
-		TaskNames:        []string{taskNameParam},
-		Page:             pageParam,
-		Limit:            limitParam,
-		Sorts:            taskSorts,
-		IncludeBaseTasks: true,
+		Statuses:               statuses,
+		BaseStatuses:           baseStatuses,
+		Variants:               []string{variantParam},
+		TaskNames:              []string{taskNameParam},
+		Page:                   pageParam,
+		Limit:                  limitParam,
+		Sorts:                  taskSorts,
+		IncludeBaseTasks:       true,
+		IncludeEmptyActivation: utility.FromBoolPtr(includeEmptyActivation),
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -1778,7 +1789,7 @@ func (r *queryResolver) TaskLogs(ctx context.Context, taskID string, execution *
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	// need project to get default logger
-	p, err := r.sc.FindProjectById(t.Project, true)
+	p, err := r.sc.FindProjectById(t.Project, true, true)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project '%s': %s", t.Project, err.Error()))
 	}
@@ -1975,7 +1986,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", id, err.Error()))
 	}
-	project, err := r.sc.FindProjectById(id, true)
+	project, err := r.sc.FindProjectById(id, true, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", id, err.Error()))
 	}
@@ -2187,7 +2198,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *
 
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := MustHaveUser(ctx)
-	pRef, err := r.sc.FindProjectById(projectID, false)
+	pRef, err := r.sc.FindProjectById(projectID, false, false)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
 	}
@@ -2207,7 +2218,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 
 func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := MustHaveUser(ctx)
-	pRef, err := r.sc.FindProjectById(projectID, false)
+	pRef, err := r.sc.FindProjectById(projectID, false, false)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
 	}
@@ -2702,7 +2713,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
 		}
 	case "project":
-		p, projectErr := r.sc.FindProjectById(id, false)
+		p, projectErr := r.sc.FindProjectById(id, false, false)
 		if projectErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, projectErr.Error()))
 		}
@@ -3084,7 +3095,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
 	} else {
 		var perfPlugin *plugin.PerfPlugin
-		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false)
+		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false, false)
 		if err != nil {
 			return false, err
 		}
@@ -3159,14 +3170,20 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	baseTaskID := t.BaseTask.Id
-	if baseTaskID == "" {
-		return nil, nil
+	var baseTask *task.Task
+	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
+	if t.BaseTask.Id != "" {
+		baseTask, err = r.sc.FindTaskById(t.BaseTask.Id)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
+		}
+	} else {
+		baseTask, err = t.FindTaskOnBaseCommit()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+		}
 	}
-	baseTask, err := r.sc.FindTaskById(baseTaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
-	}
+
 	if baseTask == nil {
 		return nil, nil
 	}
@@ -3177,6 +3194,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	}
 	return apiTask, nil
 }
+
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
@@ -3261,7 +3279,18 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 }
 
 func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
+	pid, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectId))
+	}
+	repo, err := model.FindRepository(pid)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectId, err.Error()))
+	}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
+	}
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
