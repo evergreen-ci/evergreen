@@ -3004,7 +3004,6 @@ func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITa
 	baseTaskMetadata := BaseTaskMetadata{
 		BaseTaskLink:     fmt.Sprintf("%s/task/%s", config.Ui.Url, baseTask.Id),
 		BaseTaskDuration: &dur,
-		BaseTaskID:       baseTask.Id,
 	}
 	if baseTask.TimeTaken == 0 {
 		baseTaskMetadata.BaseTaskDuration = nil
@@ -3171,14 +3170,20 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	baseTaskID := t.BaseTask.Id
-	if baseTaskID == "" {
-		return nil, nil
+	var baseTask *task.Task
+	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
+	if t.BaseTask.Id != "" {
+		baseTask, err = r.sc.FindTaskById(t.BaseTask.Id)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
+		}
+	} else {
+		baseTask, err = t.FindTaskOnBaseCommit()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+		}
 	}
-	baseTask, err := r.sc.FindTaskById(baseTaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
-	}
+
 	if baseTask == nil {
 		return nil, nil
 	}
@@ -3189,6 +3194,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	}
 	return apiTask, nil
 }
+
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil

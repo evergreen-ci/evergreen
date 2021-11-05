@@ -1,14 +1,25 @@
 {
   "tests": [
     {
+      "query_file": "baseTask.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "baseTask": {
+              "id":"base-task-1"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "baseTaskMetadata.graphql",
       "result": {
         "data": {
           "task": {
             "baseTaskMetadata": {
               "baseTaskDuration": 30000000,
-              "baseTaskLink": "/task/base-task-1",
-              "baseTaskId": "base-task-1"
+              "baseTaskLink": "/task/base-task-1"
             }
           }
         }

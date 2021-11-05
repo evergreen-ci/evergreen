@@ -925,10 +925,9 @@ type PatchMetadata {
   patchID: String!
 }
 
-type BaseTaskMetadata {
+type BaseTaskMetadata { 
   baseTaskDuration: Duration
-  baseTaskLink: String! @deprecated(reason: "baseTaskLink is deprecated and should not be used")
-  baseTaskId: String!
+  baseTaskLink: String! 
 }
 
 type AbortInfo {
@@ -950,7 +949,7 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata
+  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
