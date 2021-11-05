@@ -3006,23 +3006,20 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		})
 	}
 
-	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
-	tasksAndCountPipeline := bson.M{
-		"$facet": bson.M{
-			"count": []bson.M{
-				{"$count": "count"},
+	// If there is a limit we should calculate the total count before we apply the limit and pagination
+	if opts.Limit > 0 {
+		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
+		tasksAndCountPipeline := bson.M{
+			"$facet": bson.M{
+				"count": []bson.M{
+					{"$count": "count"},
+				},
+				"tasks": sortAndPaginatePipeline,
 			},
-			"tasks": sortAndPaginatePipeline,
-		},
+		}
+		pipeline = append(pipeline, tasksAndCountPipeline)
 	}
 
-	pipeline = append(pipeline, tasksAndCountPipeline)
-
-	type TasksAndCount struct {
-		Tasks []Task           `bson:"tasks"`
-		Count []map[string]int `bson:"count"`
-	}
-	results := []TasksAndCount{}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -3030,19 +3027,43 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	if err != nil {
 		return nil, 0, err
 	}
-	err = cursor.All(ctx, &results)
-	if err != nil {
-		return nil, 0, err
+
+	type TasksAndCount struct {
+		Tasks []Task           `bson:"tasks"`
+		Count []map[string]int `bson:"count"`
+	}
+	TaskAndCountResults := []TasksAndCount{}
+	TaskResults := []Task{}
+	var results []Task
+	var count int
+
+	// If there is no limit applied we should just return the tasks and compute the total count in go.
+	// This avoids hitting the 16 MB limit on the aggregation pipeline in the $facet stage https://jira.mongodb.org/browse/EVG-15334
+	if opts.Limit > 0 {
+		err = cursor.All(ctx, &TaskAndCountResults)
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(TaskAndCountResults) > 0 {
+			TaskAndCountResult := TaskAndCountResults[0]
+			if len(TaskAndCountResult.Count) != 0 {
+				count = TaskAndCountResult.Count[0]["count"]
+			}
+			results = TaskAndCountResult.Tasks
+		}
+	} else {
+		err = cursor.All(ctx, &TaskResults)
+		if err != nil {
+			return nil, 0, err
+		}
+		results = TaskResults
+		count = len(results)
 	}
 	if len(results) == 0 {
 		return nil, 0, nil
 	}
-	count := 0
-	result := results[0]
-	if len(result.Count) != 0 {
-		count = result.Count[0]["count"]
-	}
-	return result.Tasks, count, nil
+
+	return results, count, nil
 }
 
 type StatusCount struct {
