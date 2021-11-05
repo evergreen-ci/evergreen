@@ -925,9 +925,9 @@ type PatchMetadata {
   patchID: String!
 }
 
-type BaseTaskMetadata { 
+type BaseTaskMetadata {
   baseTaskDuration: Duration
-  baseTaskLink: String! 
+  baseTaskLink: String!
 }
 
 type AbortInfo {
