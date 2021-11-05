@@ -3084,9 +3084,6 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
-		return false, nil
-	}
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, err
@@ -3104,32 +3101,14 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			if err != nil {
 				return false, err
 			}
-			projectMatches := false
 			for _, projectName := range perfPlugin.Projects {
 				if projectName == pRef.Id || projectName == pRef.Identifier {
-					projectMatches = true
-					break
+					return true, nil
 				}
 			}
-			if !projectMatches {
-				return false, nil
-			}
-		}
-		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:    utility.FromStringPtr(obj.Id),
-			Execution: obj.Execution,
-		}
-
-		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
-		}
-		if result.NumberOfResults == 0 {
-			return false, nil
 		}
 	}
-	return true, nil
+	return false, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
