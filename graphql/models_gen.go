@@ -26,7 +26,6 @@ type AbortInfo struct {
 type BaseTaskMetadata struct {
 	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
 	BaseTaskLink     string             `json:"baseTaskLink"`
-	BaseTaskID       string             `json:"baseTaskId"`
 }
 
 type BaseTaskResult struct {

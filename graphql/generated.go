@@ -100,7 +100,6 @@ type ComplexityRoot struct {
 
 	BaseTaskMetadata struct {
 		BaseTaskDuration func(childComplexity int) int
-		BaseTaskID       func(childComplexity int) int
 		BaseTaskLink     func(childComplexity int) int
 	}
 
@@ -1494,13 +1493,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BaseTaskMetadata.BaseTaskDuration(childComplexity), true
-
-	case "BaseTaskMetadata.baseTaskId":
-		if e.complexity.BaseTaskMetadata.BaseTaskID == nil {
-			break
-		}
-
-		return e.complexity.BaseTaskMetadata.BaseTaskID(childComplexity), true
 
 	case "BaseTaskMetadata.baseTaskLink":
 		if e.complexity.BaseTaskMetadata.BaseTaskLink == nil {
@@ -7761,7 +7753,6 @@ type PatchMetadata {
 type BaseTaskMetadata {
   baseTaskDuration: Duration
   baseTaskLink: String!
-  baseTaskId: String!
 }
 
 type AbortInfo {
@@ -7783,7 +7774,7 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata
+  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
@@ -10560,40 +10551,6 @@ func (ec *executionContext) _BaseTaskMetadata_baseTaskLink(ctx context.Context, 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BaseTaskLink, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _BaseTaskMetadata_baseTaskId(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "BaseTaskMetadata",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BaseTaskID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -37322,11 +37279,6 @@ func (ec *executionContext) _BaseTaskMetadata(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._BaseTaskMetadata_baseTaskDuration(ctx, field, obj)
 		case "baseTaskLink":
 			out.Values[i] = ec._BaseTaskMetadata_baseTaskLink(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "baseTaskId":
-			out.Values[i] = ec._BaseTaskMetadata_baseTaskId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
