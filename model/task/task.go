@@ -2969,13 +2969,13 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		})
 	}
 
-	sortAndPaginatePipeline := []bson.M{}
+	sortPipeline := []bson.M{}
 
 	sortFields := bson.D{}
 	if len(opts.Sorts) > 0 {
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortAndPaginatePipeline = append(sortAndPaginatePipeline, addStatusColorSort((singleSort.Key)))
+				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
@@ -2984,37 +2984,38 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	}
 	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
 
-	sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
+	sortPipeline = append(sortPipeline, bson.M{
 		"$sort": sortFields,
 	})
 
-	if opts.Limit > 0 {
-		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
-			"$skip": opts.Page * opts.Limit,
-		})
-		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
-			"$limit": opts.Limit,
-		})
-	}
+	pipeline = append(pipeline, sortPipeline...)
+
 	if len(opts.FieldsToProject) > 0 {
 		fieldKeys := bson.M{}
 		for _, field := range opts.FieldsToProject {
 			fieldKeys[field] = 1
 		}
-		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
+		pipeline = append(pipeline, bson.M{
 			"$project": fieldKeys,
 		})
 	}
 
 	// If there is a limit we should calculate the total count before we apply the limit and pagination
 	if opts.Limit > 0 {
+		paginatePipeline := []bson.M{}
+		paginatePipeline = append(paginatePipeline, bson.M{
+			"$skip": opts.Page * opts.Limit,
+		})
+		paginatePipeline = append(paginatePipeline, bson.M{
+			"$limit": opts.Limit,
+		})
 		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
 		tasksAndCountPipeline := bson.M{
 			"$facet": bson.M{
 				"count": []bson.M{
 					{"$count": "count"},
 				},
-				"tasks": sortAndPaginatePipeline,
+				"tasks": paginatePipeline,
 			},
 		}
 		pipeline = append(pipeline, tasksAndCountPipeline)
