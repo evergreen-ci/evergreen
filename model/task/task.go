@@ -2969,10 +2969,10 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		})
 	}
 
-	sortPipeline := []bson.M{}
-
-	sortFields := bson.D{}
 	if len(opts.Sorts) > 0 {
+		sortPipeline := []bson.M{}
+
+		sortFields := bson.D{}
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
@@ -2981,14 +2981,14 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
 		}
+		sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+
+		sortPipeline = append(sortPipeline, bson.M{
+			"$sort": sortFields,
+		})
+
+		pipeline = append(pipeline, sortPipeline...)
 	}
-	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-
-	sortPipeline = append(sortPipeline, bson.M{
-		"$sort": sortFields,
-	})
-
-	pipeline = append(pipeline, sortPipeline...)
 
 	if len(opts.FieldsToProject) > 0 {
 		fieldKeys := bson.M{}
