@@ -41,6 +41,7 @@ type MountPoint struct {
 	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
 	Size        int64  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
 	Iops        int64  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
+	Throughput  int64  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
 	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
 	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
 }
@@ -407,6 +408,18 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			}
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int64(mount.Iops)
+			}
+
+			if mount.Throughput != 0 {
+				//aws only allows values between 125 and 1000
+				if mount.Throughput > 1000 || mount.Throughput < 125 {
+					return nil, errors.New("throughput must be between 125 and 1,000")
+				}
+				// This parameter is valid only for gp3 volumes.
+				if *m.Ebs.VolumeType != ec2aws.VolumeTypeGp3 {
+					return nil, errors.New("throughput is only valid for gp3 volumes")
+				}
+				m.Ebs.Throughput = aws.Int64(mount.Throughput)
 			}
 			if mount.SnapshotID != "" {
 				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
