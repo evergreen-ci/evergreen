@@ -234,7 +234,7 @@
         "data": {
           "viewableProjects": [
             {
-              "repoDisplayName": "",
+              "groupDisplayName": "",
               "projects": [
                 {
                   "identifier": "spruce",
@@ -245,7 +245,7 @@
               ]
             },
             {
-              "repoDisplayName": "animals_display",
+              "groupDisplayName": "animals_display",
               "projects": [
                 {
                   "identifier": "catVideos",

@@ -1291,14 +1291,15 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	return res, nil
 }
 
+// GroupProjects takes a list of projects and groupes them by their repo. If onlyDefaultedToRepo is true,
+// it only groups projects that are defaulted to the repo
 func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
-		var groupName string
-		groupName = fmt.Sprintf("%s/%s", p.Owner, p.Repo)
+		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 
-		if onlyDefaultedToRepo && p.RepoRefId == "" {
+		if onlyDefaultedToRepo && p.UseRepoSettings {
 			groupName = ""
 		}
 
@@ -1317,36 +1318,39 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	groupsArr := []*GroupedProjects{}
 
 	for groupName, groupedProjects := range groupsMap {
-		repoRef, err := model.FindOneRepoRef(*groupedProjects[0].RepoRefId)
-		if err != nil {
-			return nil, err
-		}
-
-		apiRepoRef := restModel.APIProjectRef{}
-		if repoRef != nil {
-			if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
-				return nil, errors.Wrap(err, "error building APIProjectRef from service")
-			}
-		}
-
 		gp := GroupedProjects{
-			Name:            &groupName, //deprecated
-			RepoDisplayName: groupName,
-			Projects:        groupedProjects,
+			Name:             &groupName, //deprecated
+			GroupDisplayName: groupName,
+			Projects:         groupedProjects,
 		}
-		if repoRef != nil {
-			gp.Repo = &apiRepoRef
-			if repoRef.DisplayName != "" {
-				gp.RepoDisplayName = repoRef.DisplayName
+
+		if groupedProjects[0].UseRepoSettings {
+			repoRef, err := model.FindOneRepoRef(utility.FromStringPtr(groupedProjects[0].RepoRefId))
+			if err != nil {
+				return nil, err
 			}
 
+			apiRepoRef := restModel.APIProjectRef{}
+			if repoRef != nil {
+				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
+					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
+				}
+			}
+			if repoRef != nil {
+				gp.Repo = &apiRepoRef
+				if repoRef.DisplayName != "" {
+					gp.GroupDisplayName = repoRef.DisplayName
+				}
+
+			}
 		}
+
 		groupsArr = append(groupsArr, &gp)
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
 
-		return groupsArr[i].RepoDisplayName < groupsArr[j].RepoDisplayName
+		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
 	})
 	return groupsArr, nil
 }

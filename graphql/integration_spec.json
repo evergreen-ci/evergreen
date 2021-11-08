@@ -2299,7 +2299,7 @@
         "data": {
           "projects": [
             {
-              "repoDisplayName": "annie.black/buildhost-configuration",
+              "groupDisplayName": "annie.black/buildhost-configuration",
               "projects": [
                 {
                   "identifier": "buildhost-test",
@@ -2311,7 +2311,7 @@
               ]
             },
             {
-              "repoDisplayName": "bsamek/mongo",
+              "groupDisplayName": "bsamek/mongo",
               "projects": [
                 {
                   "identifier": "sys-perf",
@@ -2323,7 +2323,7 @@
               ]
             },
             {
-              "repoDisplayName": "evergreen-ci/evergreen",
+              "groupDisplayName": "evergreen-ci/evergreen",
               "projects": [
                 {
                   "identifier": "mci",
@@ -2342,7 +2342,7 @@
               ]
             },
             {
-              "repoDisplayName": "evergreen-ci/grip",
+              "groupDisplayName": "evergreen-ci/grip",
               "projects": [
                 {
                   "identifier": "annie-copy2",
@@ -2354,7 +2354,7 @@
               ]
             },
             {
-              "repoDisplayName": "evergreen-ci/lobster",
+              "groupDisplayName": "evergreen-ci/lobster",
               "projects": [
                 {
                   "identifier": "lobster",
@@ -2366,7 +2366,7 @@
               ]
             },
             {
-              "repoDisplayName": "evergreen-ci/logkeeper",
+              "groupDisplayName": "evergreen-ci/logkeeper",
               "projects": [
                 {
                   "identifier": "logkeeper",
@@ -2378,7 +2378,7 @@
               ]
             },
             {
-              "repoDisplayName": "hello it's me/amboy",
+              "groupDisplayName": "hello it's me/amboy",
               "projects": [
                 {
                   "identifier": "amboy",
@@ -2390,7 +2390,7 @@
               ]
             },
             {
-              "repoDisplayName": "john-m-liu/evergreen",
+              "groupDisplayName": "john-m-liu/evergreen",
               "projects": [
                 {
                   "identifier": "john_test",
@@ -2402,7 +2402,7 @@
               ]
             },
             {
-              "repoDisplayName": "mongodb/curator",
+              "groupDisplayName": "mongodb/curator",
               "projects": [
                 {
                   "identifier": "curator",
@@ -2414,7 +2414,7 @@
               ]
             },
             {
-              "repoDisplayName": "mongodb/greenbay",
+              "groupDisplayName": "mongodb/greenbay",
               "projects": [
                 {
                   "identifier": "Greenbay",
@@ -2426,7 +2426,7 @@
               ]
             },
             {
-              "repoDisplayName": "mongodb/grip",
+              "groupDisplayName": "mongodb/grip",
               "projects": [
                 {
                   "identifier": "grip",
@@ -2529,7 +2529,7 @@
               ]
             },
             {
-              "repoDisplayName": "rongodb/ron_repo_1",
+              "groupDisplayName": "rongodb/ron_repo_1",
               "projects": [
                 {
                   "identifier": "ron_test_copy_1",
@@ -2576,7 +2576,7 @@
               ]
             },
             {
-              "repoDisplayName": "rongodb/v20380713",
+              "groupDisplayName": "rongodb/v20380713",
               "projects": [
                 {
                   "identifier": "ron_two_via_postman",
@@ -2588,7 +2588,7 @@
               ]
             },
             {
-              "repoDisplayName": "something crazy/grip",
+              "groupDisplayName": "something crazy/grip",
               "projects": [
                 {
                   "identifier": "annie-copy5",
@@ -2600,7 +2600,7 @@
               ]
             },
             {
-              "repoDisplayName": "tzembo/evergreen",
+              "groupDisplayName": "tzembo/evergreen",
               "projects": [
                 {
                   "identifier": "thomas-test",

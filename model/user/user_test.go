@@ -768,7 +768,7 @@ func TestViewableProjects(t *testing.T) {
 	assert.NoError(t, myUser.AddRole(otherRole.ID))
 
 	// assert that viewable projects contains the edit projects and the view projects
-	projects, err := myUser.GetViewableProjects()
+	projects, err := myUser.GetViewableProjectSettings()
 	assert.NoError(t, err)
 	assert.Len(t, projects, 3)
 	assert.Contains(t, projects, "edit1")

@@ -334,7 +334,7 @@ func (u *DBUser) RemoveRole(role string) error {
 }
 
 // GetViewableProjects returns the lists of projects/repos the user can view.
-func (u *DBUser) GetViewableProjects() ([]string, error) {
+func (u *DBUser) GetViewableProjectSettings() ([]string, error) {
 	if evergreen.PermissionsDisabledForTests() {
 		return nil, nil
 	}

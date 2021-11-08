@@ -240,10 +240,10 @@ type ComplexityRoot struct {
 	}
 
 	GroupedProjects struct {
-		Name            func(childComplexity int) int
-		Projects        func(childComplexity int) int
-		Repo            func(childComplexity int) int
-		RepoDisplayName func(childComplexity int) int
+		GroupDisplayName func(childComplexity int) int
+		Name             func(childComplexity int) int
+		Projects         func(childComplexity int) int
+		Repo             func(childComplexity int) int
 	}
 
 	Host struct {
@@ -2016,6 +2016,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedFiles.TaskName(childComplexity), true
 
+	case "GroupedProjects.groupDisplayName":
+		if e.complexity.GroupedProjects.GroupDisplayName == nil {
+			break
+		}
+
+		return e.complexity.GroupedProjects.GroupDisplayName(childComplexity), true
+
 	case "GroupedProjects.name":
 		if e.complexity.GroupedProjects.Name == nil {
 			break
@@ -2036,13 +2043,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedProjects.Repo(childComplexity), true
-
-	case "GroupedProjects.repoDisplayName":
-		if e.complexity.GroupedProjects.RepoDisplayName == nil {
-			break
-		}
-
-		return e.complexity.GroupedProjects.RepoDisplayName(childComplexity), true
 
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
@@ -7866,7 +7866,7 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  repoDisplayName: String! 
+  groupDisplayName: String! 
   name: String @deprecated
   repo: RepoRef
   projects: [Project!]!
@@ -12961,7 +12961,7 @@ func (ec *executionContext) _GroupedFiles_files(ctx context.Context, field graph
 	return ec.marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _GroupedProjects_repoDisplayName(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
+func (ec *executionContext) _GroupedProjects_groupDisplayName(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -12978,7 +12978,7 @@ func (ec *executionContext) _GroupedProjects_repoDisplayName(ctx context.Context
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RepoDisplayName, nil
+		return obj.GroupDisplayName, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -38145,8 +38145,8 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GroupedProjects")
-		case "repoDisplayName":
-			out.Values[i] = ec._GroupedProjects_repoDisplayName(ctx, field, obj)
+		case "groupDisplayName":
+			out.Values[i] = ec._GroupedProjects_groupDisplayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

@@ -1,6 +1,6 @@
 {
   viewableProjects {
-    repoDisplayName
+    groupDisplayName
     projects{
       identifier
       repo

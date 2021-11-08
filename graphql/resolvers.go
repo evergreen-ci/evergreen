@@ -1511,7 +1511,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 
 func (r *queryResolver) ViewableProjects(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := MustHaveUser(ctx)
-	projectIds, err := usr.GetViewableProjects()
+	projectIds, err := usr.GetViewableProjectSettings()
 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
