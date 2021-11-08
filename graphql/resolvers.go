@@ -192,11 +192,33 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
 	// We do not check the error here because we only want to return an error if the id is not
 	// a valid patch or version id.
-	if v, _ := r.sc.FindVersionById(id); v != nil {
+	v, err := r.sc.FindVersionById(id)
+	if err != nil {
+		apiErr, ok := err.(gimlet.ErrorResponse)
+		if !ok {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+		}
+		if apiErr.StatusCode != http.StatusNotFound {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+		}
+	}
+	if v != nil {
 		return true, nil
 	}
-	if p, _ := patch.FindOneId(id); p != nil {
-		return false, nil
+	if patch.IsValidId(id) {
+		p, err := patch.FindOneId(id)
+		if err != nil {
+			apiErr, ok := err.(gimlet.ErrorResponse)
+			if !ok {
+				return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+			}
+			if apiErr.StatusCode != http.StatusNotFound {
+				return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+			}
+		}
+		if p != nil {
+			return false, nil
+		}
 	}
 	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
 }
