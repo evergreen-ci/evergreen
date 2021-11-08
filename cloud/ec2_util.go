@@ -409,7 +409,12 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int64(mount.Iops)
 			}
-
+			if mount.SnapshotID != "" {
+				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
+			}
+			if mount.VolumeType != "" {
+				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+			}
 			if mount.Throughput != 0 {
 				//aws only allows values between 125 and 1000
 				if mount.Throughput > 1000 || mount.Throughput < 125 {
@@ -420,12 +425,6 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 					return nil, errors.New("throughput is only valid for gp3 volumes")
 				}
 				m.Ebs.Throughput = aws.Int64(mount.Throughput)
-			}
-			if mount.SnapshotID != "" {
-				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
-			}
-			if mount.VolumeType != "" {
-				m.Ebs.VolumeType = aws.String(mount.VolumeType)
 			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
