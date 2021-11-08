@@ -1421,6 +1421,7 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+  DefaultProject: String!
 }
 
 type CloudProviderConfig {

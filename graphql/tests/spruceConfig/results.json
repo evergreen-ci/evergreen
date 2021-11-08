@@ -6,6 +6,18 @@
                 "data": {
                     "spruceConfig": {
                         "ui": {
+                            "defaultProject": "evergreen"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "uservoice.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "ui": {
                             "userVoice": "https://uservoice.com"
                         }
                     }
