@@ -248,6 +248,19 @@
       }
     },
     {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "patch": {
+              "commitQueuePosition": null
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "spawnHostLink.graphql",
       "result": {
         "data": {
