@@ -352,65 +352,87 @@ tasks:
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
+    disable: true
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
+    disable: true
   - <<: *run-smoke-test
     name: smoke-test-agent-monitor
     tags: ["smoke"]
+    disable: true
   - <<: *run-generate-lint
+    disable: true
   - <<: *run-go-test-suite
     name: js-test
+    disable: true
   - <<: *run-build
     name: dist
+    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-thirdparty-docker
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-auth
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-client
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     name: test-rest-model
     tags: ["db", "test"]
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent-internal
+    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-internal-client
+    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-util
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
     name: test-agent-command
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-data
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
     name: test-operations
+    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-operations-metabuild-generator
+    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-operations-metabuild-model
+    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
+    disable: true
   - <<: *run-go-test-suite-with-docker
     tags: ["db"]
     name: test-cloud
@@ -531,6 +553,7 @@ tasks:
     depends_on:
       - name: dist
         status: success
+    disable: true
     commands:
       - command: subprocess.exec
         params:

@@ -373,8 +373,10 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, p
 				}
 			}
 		}
-		variant.Tasks = tasksForVariant
-		variantMappings[variant.Name] = variant
+		if len(tasksForVariant) != 0 {
+			variant.Tasks = tasksForVariant
+			variantMappings[variant.Name] = variant
+		}
 	}
 
 	tasksList := []struct{ Name string }{}
