@@ -3029,30 +3029,27 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		return nil, 0, err
 	}
 
-	type TasksAndCount struct {
-		Tasks []Task           `bson:"tasks"`
-		Count []map[string]int `bson:"count"`
-	}
-	TaskAndCountResults := []TasksAndCount{}
-	TaskResults := []Task{}
 	var results []Task
 	var count int
 
 	// If there is no limit applied we should just return the tasks and compute the total count in go.
 	// This avoids hitting the 16 MB limit on the aggregation pipeline in the $facet stage https://jira.mongodb.org/browse/EVG-15334
 	if opts.Limit > 0 {
-		err = cursor.All(ctx, &TaskAndCountResults)
+		type TasksAndCount struct {
+			Tasks []Task           `bson:"tasks"`
+			Count []map[string]int `bson:"count"`
+		}
+		taskAndCountResults := []TasksAndCount{}
+		err = cursor.All(ctx, &taskAndCountResults)
 		if err != nil {
 			return nil, 0, err
 		}
-		if len(TaskAndCountResults) > 0 {
-			TaskAndCountResult := TaskAndCountResults[0]
-			if len(TaskAndCountResult.Count) != 0 {
-				count = TaskAndCountResult.Count[0]["count"]
-			}
-			results = TaskAndCountResult.Tasks
+		if len(taskAndCountResults) > 0 && len(taskAndCountResults[0].Count) > 0 {
+			count = taskAndCountResults[0].Count[0]["count"]
+			results = taskAndCountResults[0].Tasks
 		}
 	} else {
+		TaskResults := []Task{}
 		err = cursor.All(ctx, &TaskResults)
 		if err != nil {
 			return nil, 0, err
@@ -3060,6 +3057,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		results = TaskResults
 		count = len(results)
 	}
+
 	if len(results) == 0 {
 		return nil, 0, nil
 	}
