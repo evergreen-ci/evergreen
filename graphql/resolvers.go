@@ -190,8 +190,6 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 }
 
 func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
-	// We do not check the error here because we only want to return an error if the id is not
-	// a valid patch or version id.
 	v, err := model.VersionFindOne(model.VersionById(id))
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
