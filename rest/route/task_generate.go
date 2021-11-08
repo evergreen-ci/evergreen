@@ -106,14 +106,14 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	shouldRetry := false
-	if len(jobErrs) > 0 {
+	shouldExit := false
+	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring
 		jobErr := errors.New(strings.Join(jobErrs, ", "))
-		shouldRetry = !db.IsDocumentLimit(jobErr)
+		shouldExit = db.IsDocumentLimit(jobErr)
 	}
 	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
-		Finished:    finished,
-		ShouldRetry: shouldRetry,
-		Errors:      jobErrs,
+		Finished:   finished,
+		ShouldExit: shouldExit,
+		Errors:     jobErrs,
 	})
 }

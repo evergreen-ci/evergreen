@@ -119,7 +119,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			if len(generateStatus.Errors) > 0 {
 				generateErr = errors.New(strings.Join(generateStatus.Errors, ", "))
 			}
-			if !generateStatus.ShouldRetry {
+			if generateStatus.ShouldExit {
 				return false, generateErr
 			}
 			if generateErr != nil {
