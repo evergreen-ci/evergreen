@@ -115,7 +115,7 @@ func Get(ctx context.Context, opts GetOptions) ([]byte, error) {
 	catcher := grip.NewBasicCatcher()
 	data, err := io.ReadAll(resp.Body)
 	catcher.Wrap(err, "reading response body")
-	catcher.Wrap(resp.Body.Close(), "cloding response body")
+	catcher.Wrap(resp.Body.Close(), "closing response body")
 
 	return data, catcher.Resolve()
 }

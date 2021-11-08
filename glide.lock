@@ -137,7 +137,7 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 6760875fa58e0fa5518c992582efa6d807960d6c
   - name: github.com/evergreen-ci/timber
-    version: 5c747933b66fc28e65f4ae38ef275ccf3255f6bd
+    version: a6aaf96b59c0d62dc799565b19b84c356b743582
   - name: github.com/evergreen-ci/poplar
     version: b7f63602780c1918f467faba6a04037d533c2fd2
   - name: github.com/evergreen-ci/juniper
