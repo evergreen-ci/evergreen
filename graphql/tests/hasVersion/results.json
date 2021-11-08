@@ -4,7 +4,7 @@
             "query_file": "periodicBuild.graphql",
             "result": {
                 "data": {
-                    "isPatchOrVersion": "VERSION"
+                    "hasVersion": true
                 }
             }
         },
@@ -12,7 +12,7 @@
             "query_file": "patch.graphql",
             "result": {
                 "data": {
-                    "isPatchOrVersion": "PATCH"
+                    "hasVersion": false
                 }
             }
         },
@@ -20,7 +20,7 @@
             "query_file" : "mainlineCommit.graphql",
             "result": {
                 "data": {
-                    "isPatchOrVersion": "VERSION"
+                    "hasVersion": true
                 }
             }
         },
@@ -32,7 +32,7 @@
                     {
                         "message": "Unable to find patch or version notARealId",
                         "path": [
-                            "isPatchOrVersion"
+                            "hasVersion"
                         ],
                         "extensions": {
                             "code": "RESOURCE_NOT_FOUND"

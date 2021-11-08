@@ -17,11 +17,6 @@
             "_id": "5dd2e89cd1fe07048e43bb9c",
             "identifier":"spruce",
             "r": "ad_hoc"
-        },
-        {
-            "_id": "5dd2e89cd1fe07048e43bc8f",
-            "identifier":"spruce",
-            "r": "patch_request"
         }
     ]
 }

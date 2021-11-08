@@ -400,47 +400,6 @@ func (e MetStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type PatchOrVersionType string
-
-const (
-	PatchOrVersionTypePatch   PatchOrVersionType = "PATCH"
-	PatchOrVersionTypeVersion PatchOrVersionType = "VERSION"
-)
-
-var AllPatchOrVersionType = []PatchOrVersionType{
-	PatchOrVersionTypePatch,
-	PatchOrVersionTypeVersion,
-}
-
-func (e PatchOrVersionType) IsValid() bool {
-	switch e {
-	case PatchOrVersionTypePatch, PatchOrVersionTypeVersion:
-		return true
-	}
-	return false
-}
-
-func (e PatchOrVersionType) String() string {
-	return string(e)
-}
-
-func (e *PatchOrVersionType) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = PatchOrVersionType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid PatchOrVersionType", str)
-	}
-	return nil
-}
-
-func (e PatchOrVersionType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type RequiredStatus string
 
 const (

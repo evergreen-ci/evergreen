@@ -189,18 +189,18 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 	return &apiHost, nil
 }
 
-func (r *queryResolver) IsPatchOrVersion(ctx context.Context, id string) (PatchOrVersionType, error) {
+func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
+	v, _ := r.sc.FindVersionById(id)
+	if v != nil {
+		return true, nil
+	}
 	// We do not check the error here because we only want to return an error if the id is not
 	// a valid patch or version id.
 	p, _ := patch.FindOneId(id)
 	if p != nil {
-		return PatchOrVersionTypePatch, nil
+		return false, nil
 	}
-	v, _ := r.sc.FindVersionById(id)
-	if v != nil {
-		return PatchOrVersionTypeVersion, nil
-	}
-	return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {

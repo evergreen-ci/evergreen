@@ -644,11 +644,11 @@ type ComplexityRoot struct {
 		CommitQueue              func(childComplexity int, id string) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
+		HasVersion               func(childComplexity int, id string) int
 		Host                     func(childComplexity int, hostID string) int
 		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
 		Hosts                    func(childComplexity int, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) int
 		InstanceTypes            func(childComplexity int) int
-		IsPatchOrVersion         func(childComplexity int, id string) int
 		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
 		MyHosts                  func(childComplexity int) int
 		MyPublicKeys             func(childComplexity int) int
@@ -1257,7 +1257,7 @@ type QueryResolver interface {
 	BuildVariantsForTaskName(ctx context.Context, projectID string, taskName string) ([]*task.BuildVariantTuple, error)
 	ProjectSettings(ctx context.Context, identifier string) (*model.APIProjectSettings, error)
 	RepoSettings(ctx context.Context, id string) (*model.APIProjectSettings, error)
-	IsPatchOrVersion(ctx context.Context, id string) (PatchOrVersionType, error)
+	HasVersion(ctx context.Context, id string) (bool, error)
 }
 type RepoRefResolver interface {
 	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
@@ -4262,6 +4262,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Distros(childComplexity, args["onlySpawnable"].(bool)), true
 
+	case "Query.hasVersion":
+		if e.complexity.Query.HasVersion == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hasVersion_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HasVersion(childComplexity, args["id"].(string)), true
+
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
 			break
@@ -4304,18 +4316,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.InstanceTypes(childComplexity), true
-
-	case "Query.isPatchOrVersion":
-		if e.complexity.Query.IsPatchOrVersion == nil {
-			break
-		}
-
-		args, err := ec.field_Query_isPatchOrVersion_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.IsPatchOrVersion(childComplexity, args["id"].(string)), true
 
 	case "Query.mainlineCommits":
 		if e.complexity.Query.MainlineCommits == nil {
@@ -6911,7 +6911,7 @@ type Query {
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
-  isPatchOrVersion(id: String!): PatchOrVersionType!
+  hasVersion(id: String!): Boolean!
 }
 
 type Mutation {
@@ -7076,11 +7076,6 @@ input MainlineCommitsOptions {
 type BuildVariantTuple {
   buildVariant: String!
   displayName: String!
-}
-
-enum PatchOrVersionType {
-  PATCH
-  VERSION
 }
 
 enum SpawnHostStatusActions {
@@ -9379,6 +9374,20 @@ func (ec *executionContext) field_Query_distros_args(ctx context.Context, rawArg
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_hasVersion_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -9506,20 +9515,6 @@ func (ec *executionContext) field_Query_hosts_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["limit"] = arg8
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_isPatchOrVersion_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -23789,7 +23784,7 @@ func (ec *executionContext) _Query_repoSettings(ctx context.Context, field graph
 	return ec.marshalNRepoSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_isPatchOrVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -23805,7 +23800,7 @@ func (ec *executionContext) _Query_isPatchOrVersion(ctx context.Context, field g
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_isPatchOrVersion_args(ctx, rawArgs)
+	args, err := ec.field_Query_hasVersion_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -23813,7 +23808,7 @@ func (ec *executionContext) _Query_isPatchOrVersion(ctx context.Context, field g
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().IsPatchOrVersion(rctx, args["id"].(string))
+		return ec.resolvers.Query().HasVersion(rctx, args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23825,9 +23820,9 @@ func (ec *executionContext) _Query_isPatchOrVersion(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(PatchOrVersionType)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNPatchOrVersionType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchOrVersionType(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -40780,7 +40775,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "isPatchOrVersion":
+		case "hasVersion":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -40788,7 +40783,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_isPatchOrVersion(ctx, field)
+				res = ec._Query_hasVersion(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -44834,15 +44829,6 @@ func (ec *executionContext) marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑ
 		return graphql.Null
 	}
 	return ec._PatchMetadata(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNPatchOrVersionType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchOrVersionType(ctx context.Context, v interface{}) (PatchOrVersionType, error) {
-	var res PatchOrVersionType
-	return res, res.UnmarshalGQL(v)
-}
-
-func (ec *executionContext) marshalNPatchOrVersionType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchOrVersionType(ctx context.Context, sel ast.SelectionSet, v PatchOrVersionType) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalNPatchTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTasks(ctx context.Context, sel ast.SelectionSet, v PatchTasks) graphql.Marshaler {
