@@ -1007,7 +1007,8 @@ type ComplexityRoot struct {
 	}
 
 	UIConfig struct {
-		UserVoice func(childComplexity int) int
+		DefaultProject func(childComplexity int) int
+		UserVoice      func(childComplexity int) int
 	}
 
 	UseSpruceOptions struct {
@@ -6240,6 +6241,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TriggerAlias.TaskRegex(childComplexity), true
 
+	case "UIConfig.defaultProject":
+		if e.complexity.UIConfig.DefaultProject == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.DefaultProject(childComplexity), true
+
 	case "UIConfig.userVoice":
 		if e.complexity.UIConfig.UserVoice == nil {
 			break
@@ -8246,6 +8254,7 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+  defaultProject: String!
 }
 
 type CloudProviderConfig {
@@ -31780,6 +31789,40 @@ func (ec *executionContext) _UIConfig_userVoice(ctx context.Context, field graph
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UIConfig_defaultProject(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "UIConfig",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultProject, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -42687,6 +42730,11 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = graphql.MarshalString("UIConfig")
 		case "userVoice":
 			out.Values[i] = ec._UIConfig_userVoice(ctx, field, obj)
+		case "defaultProject":
+			out.Values[i] = ec._UIConfig_defaultProject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
