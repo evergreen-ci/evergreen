@@ -190,14 +190,12 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 }
 
 func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
-	v, _ := r.sc.FindVersionById(id)
-	if v != nil {
-		return true, nil
-	}
 	// We do not check the error here because we only want to return an error if the id is not
 	// a valid patch or version id.
-	p, _ := patch.FindOneId(id)
-	if p != nil {
+	if v, _ := r.sc.FindVersionById(id); v != nil {
+		return true, nil
+	}
+	if p, _ := patch.FindOneId(id); p != nil {
 		return false, nil
 	}
 	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
