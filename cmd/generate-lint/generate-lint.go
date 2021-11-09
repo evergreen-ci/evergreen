@@ -64,10 +64,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 
 			// We can't run make targets on packages in the cmd directory
 			// because the packages contain dashes.
-			// We also don't want to test against the special mgo copy because
-			// the code is from a different repository and exists only for
-			// backward compatibility.
-			if strings.HasPrefix(dir, "cmd") || strings.HasPrefix(dir, "mgo") {
+			if strings.HasPrefix(dir, "cmd") {
 				continue
 			}
 
