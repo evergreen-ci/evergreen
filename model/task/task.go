@@ -3049,12 +3049,12 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			results = taskAndCountResults[0].Tasks
 		}
 	} else {
-		TaskResults := []Task{}
-		err = cursor.All(ctx, &TaskResults)
+		taskResults := []Task{}
+		err = cursor.All(ctx, &taskResults)
 		if err != nil {
 			return nil, 0, err
 		}
-		results = TaskResults
+		results = taskResults
 		count = len(results)
 	}
 
