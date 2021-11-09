@@ -32585,10 +32585,11 @@ func (ec *executionContext) _UIConfig_defaultProject(ctx context.Context, field 
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "UIConfig",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
+		Object:     "UIConfig",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
