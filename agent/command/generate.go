@@ -48,10 +48,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "error expanding params")
 	}
 
-	include, err := utility.NewGitignoreFileMatcher(conf.WorkDir, c.Files...)
-	if err != nil {
-		return errors.Wrap(err, "building gitignore file matcher")
-	}
+	include := utility.NewGitIgnoreFileMatcher(conf.WorkDir, c.Files...)
 	b := utility.FileListBuilder{
 		WorkingDir: conf.WorkDir,
 		Include:    include,
