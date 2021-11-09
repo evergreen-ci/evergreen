@@ -349,203 +349,152 @@ tasks:
     name: dist-staging
     patch_only: true
     run_on: archlinux-new-small
-    disable: true
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
-    disable: true
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
-    disable: true
   - <<: *run-smoke-test
     name: smoke-test-agent-monitor
     tags: ["smoke"]
-    disable: true
   - <<: *run-generate-lint
-    disable: true
   - <<: *run-go-test-suite
     name: js-test
-    disable: true
   - <<: *run-build
     name: dist
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-thirdparty-docker
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-auth
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-client
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     name: test-rest-model
     tags: ["db", "test"]
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db"]
     name: test-units
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent-internal
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-internal-client
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-util
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
     name: test-agent-command
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-data
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
     name: test-operations
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-operations-metabuild-generator
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-operations-metabuild-model
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
-    disable: true
   - <<: *run-go-test-suite-with-docker
     tags: ["db"]
     name: test-cloud
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-cloud-userdata
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-scheduler
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-thirdparty
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-trigger
-    disable: true
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-util
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-validator
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-alertrecord
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-annotations
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-artifact
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-build
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-event
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-host
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-notification
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-patch
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-pod
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-stats
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-task
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-testresult
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-user
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-distro
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-commitqueue
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-manifest
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-plugin
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
-    disable: true
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-cmd-codegen-core
@@ -555,21 +504,17 @@ tasks:
       - func: setup-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
-    disable: true
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-    disable: true
   - name: docker-cleanup
     commands:
       - func: get-project-and-modules
       - func: setup-credentials
       - func: run-make
         vars: { target: "test-thirdparty-docker" }
-    disable: true
   - name: test-repotracker
     tags: ["db", "test"]
-    disable: true
     commands:
       - command: git.get_project
         type: setup
@@ -586,7 +531,6 @@ tasks:
     depends_on:
       - name: dist
         status: success
-    disable: true
     commands:
       - command: subprocess.exec
         params:
@@ -604,19 +548,16 @@ tasks:
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
-    disable: true
     commands:
       - func: get-project-and-modules
       - func: verify-agent-version-update
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true
-    disable: true
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: test-db-auth
-    disable: true
     commands:
       - func: get-project-and-modules
       - func: setup-credentials
