@@ -409,7 +409,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)
 
 		displayName := s3pc.ResourceDisplayName
-		if s3pc.isMulti() || displayName == "" {
+		if displayName == "" {
+			displayName = filepath.Base(fn)
+		} else if s3pc.isMulti() {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
 		var key, secret, bucket, fileKey string
