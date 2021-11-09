@@ -176,6 +176,7 @@ functions:
       binary: make
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
+        - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
       env:
@@ -187,7 +188,6 @@ functions:
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GOOS: ${goos}
-        GOROOT: ${goroot}
         KARMA_REPORTER: junit
         NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
@@ -294,9 +294,9 @@ functions:
       params:
         working_dir: evergreen
         command: make parse-host-file
+        include_expansions_in_env: ["GOROOT"]
         env:
           HOST_FILE: spawned_hosts.json
-          GOROOT: ${goroot}
     - command: expansions.update
       params:
         file: evergreen/bin/expansions.yml
@@ -537,6 +537,7 @@ tasks:
           binary: make
           args: ["upload-clis"]
           working_dir: evergreen
+          include_expansions_in_env: ["GOROOT"]
           env:
             AWS_KEY: ${aws_key}
             AWS_SECRET: ${aws_secret}
@@ -544,7 +545,6 @@ tasks:
             LOCAL_PATH: clients
             EXCLUDE_PATTERN: .cache
             REMOTE_PATH: evergreen/clients/${project}/${revision}
-            GOROOT: ${goroot}
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
@@ -589,7 +589,7 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      goroot: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist-and-upload-clis"
@@ -608,7 +608,7 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      goroot: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -622,7 +622,7 @@ buildvariants:
       - archlinux-new-small
       - archlinux-new-large
     expansions:
-      goroot: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.16
     tasks:
       - name: generate-lint
 
@@ -633,7 +633,7 @@ buildvariants:
       - windows-64-vs2017-large
     expansions:
       disable_coverage: yes
-      goroot: c:/golang/go1.16
+      GOROOT: c:/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -651,7 +651,7 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      goroot: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.16
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
@@ -663,7 +663,7 @@ buildvariants:
       - macos-1014
     expansions:
       disable_coverage: yes
-      goroot: /opt/golang/go1.16
+      GOROOT: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:
       - name: ".agent .test"
