@@ -1519,7 +1519,7 @@ func (r *queryResolver) ViewableProjects(ctx context.Context) ([]*GroupedProject
 
 	projects, err := model.FindProjectRefsByIds(projectIds)
 	if err != nil {
-		return nil, err
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
 	groupedProjects, err := GroupProjects(projects, true)

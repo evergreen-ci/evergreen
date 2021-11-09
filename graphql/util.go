@@ -1299,7 +1299,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	for _, p := range projects {
 		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
 
-		if onlyDefaultedToRepo && p.UseRepoSettings {
+		if onlyDefaultedToRepo && !p.UseRepoSettings {
 			groupName = ""
 		}
 
@@ -1324,7 +1324,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			Projects:         groupedProjects,
 		}
 
-		if groupedProjects[0].UseRepoSettings {
+		if groupedProjects[0].UseRepoSettings && groupedProjects[0].RepoRefId != nil {
 			repoRef, err := model.FindOneRepoRef(utility.FromStringPtr(groupedProjects[0].RepoRefId))
 			if err != nil {
 				return nil, err
@@ -1335,13 +1335,10 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
 					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
 				}
-			}
-			if repoRef != nil {
 				gp.Repo = &apiRepoRef
 				if repoRef.DisplayName != "" {
 					gp.GroupDisplayName = repoRef.DisplayName
 				}
-
 			}
 		}
 
