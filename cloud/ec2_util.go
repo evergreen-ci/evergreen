@@ -422,7 +422,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 				}
 				// This parameter is valid only for gp3 volumes.
 				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
-					return nil, errors.New("throughput is only valid for gp3 volumes")
+					return nil, errors.New(fmt.Sprintf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType)))
 				}
 				m.Ebs.Throughput = aws.Int64(mount.Throughput)
 			}
