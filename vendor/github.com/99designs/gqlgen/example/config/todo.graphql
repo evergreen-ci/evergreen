@@ -1,0 +1,12 @@
+type Todo {
+  id: ID! @goField(forceResolver: true)
+  databaseId: Int!
+  text: String!
+  done: Boolean!
+  user: User!
+}
+
+input NewTodo {
+  text: String!
+  userId: String!
+}

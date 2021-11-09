@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"

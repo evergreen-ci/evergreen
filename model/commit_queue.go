@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 

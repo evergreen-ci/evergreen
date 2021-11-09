@@ -1,0 +1,154 @@
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  get-project:
+    command: git.get_project
+    type: setup
+    params:
+      directory: gopath/src/github.com/mongodb/ftdc
+  parse-results:
+    command: gotest.parse_files
+    type: setup
+    params:
+      files:
+        - "gopath/src/github.com/mongodb/ftdc/build/output.*"
+  run-make:
+    command: subprocess.exec
+    type: test
+    params:
+      working_dir: gopath/src/github.com/mongodb/ftdc
+      binary: make
+      args: ["${make_args|}", "${target}"]
+      add_expansions_to_env: true
+      env:
+        GOPATH: ${workdir}/gopath
+        VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
+        VENDOR_REVISION: ${trigger_revision}
+
+#######################################
+#                Tasks                #
+#######################################
+tasks:
+  - <<: *run-build
+    tags: ["test"]
+    name: test-ftdc
+  - <<: *run-build
+    tags: ["test"]
+    name: test-events
+  - <<: *run-build
+    tags: ["test"]
+    name: test-hdrhist
+  - <<: *run-build
+    tags: ["test"]
+    name: test-metrics
+  - <<: *run-build
+    tags: ["test"]
+    name: test-util
+
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-ftdc
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-events
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-hdrhist
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-metrics
+  - <<: *run-build
+    tags: ["lint"]
+    name: lint-util
+
+task_groups:
+  - name: lintGroup
+    tasks: [ ".lint"]
+    max_hosts: 2
+    setup_group:
+      - func: get-project
+    setup_task:
+      - func: run-make
+        vars: { target: "clean-results" }
+    teardown_task:
+      - func: parse-results
+  - name: testGroup
+    tasks: [ ".test"]
+    max_hosts: 2
+    setup_group_can_fail_task: true
+    share_processes: true
+    setup_group:
+      - func: get-project
+    setup_task:
+      - func: run-make
+        vars: { target: "clean-results" }
+    teardown_task:
+      - func: parse-results
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    expansions:
+      RACE_DETECTOR: true
+      TEST_TIMEOUT: 45m
+      GO_BIN_PATH: /opt/golang/go1.10/bin/go
+      GOROOT: /opt/golang/go1.10
+    run_on:
+      - archlinux-build
+    tasks: [ "testGroup" ]
+
+  - name: lint
+    display_name: Lint (Arch Linux)
+    expansions:
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.9
+    run_on:
+      - archlinux-test
+    tasks: [ "lintGroup" ]
+
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    expansions:
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.9
+    run_on:
+      - ubuntu1604-test
+    tasks: [ "testGroup" ]
+
+  - name: macos
+    display_name: macOS
+    expansions:
+      DISABLE_COVERAGE: true
+      GO_BIN_PATH: /opt/golang/go1.9/bin/go
+      GOROOT: /opt/golang/go1.9
+    run_on:
+      - macos-1014
+    tasks: [ "testGroup" ]
+
+  - name: windows
+    display_name: Windows
+    run_on:
+      - windows-64-vs2015-small
+      - windows-64-vs2015-test
+    expansions:
+      SKIP_LONG: true 
+      DISABLE_COVERAGE: true
+      GO_BIN_PATH: "C:\\golang\\go1.9\\bin\\go"
+      GOROOT: "C:\\golang\\go1.9"
+    tasks: [ "testGroup" ]

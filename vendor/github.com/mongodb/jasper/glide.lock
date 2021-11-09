@@ -1,0 +1,88 @@
+hash: ""
+updated: 2016-10-20T16:48:42.872025812-04:00
+imports:
+  - name: github.com/google/uuid
+    version: c2e93f3ae59f2904160ceaab466009f965df46d6
+  - name: github.com/pkg/errors
+    version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
+  - name: github.com/stretchr/testify
+    version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+  - name: github.com/mongodb/grip
+    version: 6c30202c3826555dd2b2054591bbafe9b0632db2
+  - name: github.com/evergreen-ci/gimlet
+    version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
+  - name: github.com/evergreen-ci/bond
+    version: e4a29fb10c31b3651cb623b73655bc66035f83e7
+  - name: github.com/evergreen-ci/lru
+    version: d1b427740b3b78780272eb34942e4ed27e0e101d
+  - name: github.com/mholt/archiver
+    version: de0d89e255e17c8d75a40122055763e743ab0593
+  - name: github.com/mongodb/amboy
+    version: 89691c8c27abb1d0374f24fb0b645143fc043f74
+  - name: github.com/google/shlex
+    version: 6f45313302b9c56850fc17f99e40caebce98c716
+  - name: github.com/urfave/cli
+    version: 693af58b4d51b8fcc7f9d89576da170765980581
+  - name: github.com/cheynewallace/tabby
+    version: b7224f6123093cc04ce961170a360e1d22e214a5
+  - name: github.com/evergreen-ci/aviation
+    version: d74791c0d819b6f7908cced0dd37e6ab3fb9eeae
+  - name: github.com/evergreen-ci/birch
+    version: 5b054047680765b089c1e6f77d0896803d1fd73d
+  - name: github.com/evergreen-ci/certdepot
+    version: d2c7b2f7c9c7af6311d211fe7fb127d99bdc5d43
+  - name: github.com/evergreen-ci/mrpc
+    version: 0ac1b2e0d9f957ae72f731726aedd310932baece
+  - name: github.com/evergreen-ci/poplar
+    version: 3043bd036e01aa6abbad6af0df031a8315308ff9
+  - name: github.com/evergreen-ci/utility
+    version: 8a885e291da3d271f58d396ee2b313ab1aec21a8
+  - name: github.com/evergreen-ci/baobab
+    version: f927da222fd10dec811ce4f524d8da6d423cec97
+  - name: github.com/evergreen-ci/shrub
+    version: 0efab318592de79316c35c9d40512a2f696abb28
+
+  # cgroup/docker requirements
+  - name: github.com/containerd/cgroups
+    version: dbea6f2bd41658b84b00417ceefa416b979cbf10
+  - name: github.com/opencontainers/runtime-spec
+    version: ad53dcdc39f1f7f7472b10aa0a45648fe4865496
+  - name: github.com/docker/go-units
+    version: 2fb04c6466a548a03cb009c5569ee1ab1e35398e
+  - name: github.com/docker/docker
+    version: 9dc6525e6118a25fab2be322d1914740ea842495
+  - name: github.com/coreos/go-systemd
+    version: 95778dfbb74eb7e4dbaf43bf7d71809650ef8076
+  - name: github.com/godbus/dbus
+    version: f93dedc6ceb4596891d18bae4a2adf9258f0acfb
+  - name: github.com/gogo/protobuf
+    version: 382325bbbb4d1c850eec1f3ec92a1a16f502d68b
+
+  # grpc and dependencies
+  - name: google.golang.org/grpc
+    version: 39ef2aaf62df775b9c54a59957d113a0495cae73
+  - name: golang.org/x/crypto
+    version: 87dc89f01550277dc22b74ffcf4cd89fa2f40f4c
+  - name: golang.org/x/net
+    version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
+  - name: golang.org/x/sys
+    version: bd437916bb0eb726b873ee8e9b2dcf212d32e2fd
+  - name: golang.org/x/text
+    version: 6c92c7dc7f53607809182301b96e4cc1975143f1
+  - name: google.golang.org/genproto
+    version: 082222b4a5c572e33e82ee9162d1352c7cf38682
+  - name: github.com/golang/protobuf
+    version: c823c79ea1570fb5ff454033735a8e68575d1d0f
+  # vendoring because many dependencies use it
+  - name: go.mongodb.org/mongo-driver
+    version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
+  - name: gopkg.in/mgo.v2
+    version: a6b53ec6cb22a3699387a57a161566f9402ee85b
+  - name: github.com/PuerkitoBio/rehttp
+    version: 3acc8749c14f0a6368ee715d142dddf24c72d632
+  - name: github.com/sabhiram/go-git-ignore
+    version: d3107576ba9425fc1c85f4b3569c4631b805a02e
+  - name: golang.org/x/oauth2
+    version: bf48bf16ab8d622ce64ec6ce98d2c98f916b6303
+  - name: gopkg.in/yaml.v2
+    version: 53403b58ad1b561927d19068c655246f2db79d48

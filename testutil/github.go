@@ -3,7 +3,7 @@ package testutil
 import (
 	"time"
 
-	"github.com/google/go-github/v34/github"
+	"github.com/google/go-github/github"
 )
 
 func NewGithubPR(prNumber int, baseRepoName, headRepoName, headHash, user, title string) *github.PullRequest {

@@ -3,8 +3,8 @@ package db
 import (
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/db/mgo"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 func IsDuplicateKey(err error) bool {

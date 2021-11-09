@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package poplar;
+option go_package = "internal";
+
+import "poplar.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+message EventMetrics {
+  string name = 1; 
+  google.protobuf.Timestamp time = 2;
+  int64 id = 3;
+  EventMetricsCounters counters = 4;
+  EventMetricsTimers timers = 5; 
+  EventMetricsGauges gauges = 6;
+}
+
+message EventMetricsCounters {
+  int64 number = 1;
+  int64 ops = 2;
+  int64 size = 3;
+  int64 errors = 4;
+}
+
+message EventMetricsTimers {
+  google.protobuf.Duration total = 1;
+  google.protobuf.Duration duration = 2;
+}
+
+message EventMetricsGauges {
+  int64 state = 1;
+  int64 workers = 2;
+  bool failed = 3;
+}
+
+service PoplarEventCollector {
+  rpc CreateCollector(CreateOptions) returns (PoplarResponse);
+  rpc SendEvent(EventMetrics) returns (PoplarResponse);
+  rpc StreamEvents(stream EventMetrics) returns (PoplarResponse);
+  rpc CloseCollector(PoplarID) returns (PoplarResponse);
+}

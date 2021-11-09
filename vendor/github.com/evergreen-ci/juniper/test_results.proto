@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package cedar;
+
+option go_package = "gopb";
+
+import "google/protobuf/timestamp.proto";
+
+message TestResultsInfo {
+  string project = 1;
+  string version = 2;
+  string variant = 3;
+  string task_name = 4;
+  string display_task_name = 5;
+  string task_id = 6;
+  string display_task_id = 7;
+  int32 execution = 8;
+  string request_type = 9;
+  bool mainline = 10;
+  repeated string historical_data_ignore = 11;
+  bool historical_data_disabled = 12;
+}
+
+message TestResults {
+  string test_results_record_id = 1;
+  repeated TestResult results = 2;
+}
+
+message TestResult {
+  string test_name = 1;
+  string display_test_name = 2;
+  string group_id = 3;
+  int32 trial = 4;
+  string status = 5;
+  string log_test_name = 6;
+  int32 line_num = 7;
+  google.protobuf.Timestamp task_create_time = 8;
+  google.protobuf.Timestamp test_start_time = 9;
+  google.protobuf.Timestamp test_end_time = 10;
+  string log_url = 11;
+  string raw_log_url = 12;
+}
+
+message TestResultsEndInfo {
+  string test_results_record_id = 1;
+}
+
+message TestResultsResponse {
+  string test_results_record_id = 1;
+}
+
+service CedarTestResults {
+  rpc CreateTestResultsRecord(TestResultsInfo) returns (TestResultsResponse);
+  rpc AddTestResults(TestResults) returns (TestResultsResponse);
+  rpc StreamTestResults(stream TestResults) returns (TestResultsResponse);
+  rpc CloseTestResultsRecord(TestResultsEndInfo) returns (TestResultsResponse);
+}

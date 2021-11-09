@@ -1,0 +1,39 @@
+hash: ""
+imports:
+    # aws-sdk-go and its dependent libraries
+  - name: github.com/aws/aws-sdk-go
+    version: v1.38.54
+  - name: github.com/jmespath/go-jmespath
+    version: v0.4.0
+
+  - name: github.com/pkg/errors
+    version: v0.9.1
+
+    # testify and its dependent libraries
+  - name: github.com/stretchr/testify
+    version: v1.7.0
+  - name: github.com/davecgh/go-spew
+    version: v1.1.1
+  - name: github.com/pmezard/go-difflib
+    version: v1.0.0
+  - name: github.com/stretchr/objx
+    version: v0.1.0
+  - name: gopkg.in/yaml.v3
+    version: 496545a6307b2a7d7a710fd516e5e16e8ab62dbc
+
+    # utility and its dependent libraries
+  - name: github.com/evergreen-ci/utility
+    version: 05c74e17438dda266dd99e593054c0a9db6d86c1
+  - name: github.com/evergreen-ci/gimlet
+    version: ca35738ff88824eab0bbbe7950a81b30b6bfde9e
+  - name: github.com/mongodb/grip
+    version: 109220a80710164f651a5fd407aa7924e32cd1a7
+
+  - name: golang.org/x/oauth2
+    version: f6687ab2804cbebdfdeef385bee94918b1ce83de
+  - name: github.com/jpillora/backoff
+    version: v1.0.0
+  - name: github.com/PuerkitoBio/rehttp
+    version: v1.1.0
+  - name: golang.org/x/net
+    version: abc453219eb586afb3fc1742e8c685c28b9f7eea

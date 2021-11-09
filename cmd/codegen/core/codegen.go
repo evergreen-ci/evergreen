@@ -322,7 +322,9 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 	}
 }
 
-// goimports is the final step to format the generated code with goimports.
+// goimports is the final step to format the generated code with goimports. Note that evergreen does not
+// vendor goimports directly but relies on the version in the user's go toolchain, which can run into
+// problems if it does not match the go compiler version or is not "go got" at all
 func goimports(source string) ([]byte, error) {
 	return imports.Process("", []byte(source), &imports.Options{
 		AllErrors: true, Comments: true, TabIndent: true, TabWidth: 8,

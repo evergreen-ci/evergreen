@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package poplar;
+option go_package = "internal";
+
+message PoplarID {
+  string name = 1;
+}
+
+message CreateOptions {
+  string name = 1;
+  string path = 2;
+  int32 chunkSize = 3;
+  bool streaming = 4;
+  bool dynamic = 5;
+  enum RecorderType {
+    UNKNOWN_RECORDER = 0;
+    PERF = 1;
+    PERF_SINGLE = 2;
+    PERF_100MS = 3;
+    PERF_1S = 4;
+    HISTOGRAM_SINGLE = 6;
+    HISTOGRAM_100MS = 7;
+    HISTOGRAM_1S = 8;
+    INTERVAL_SUMMARIZATION = 9;
+  };
+  RecorderType recorder = 6;
+  enum EventsCollectorType {
+    UNKNOWN_COLLECTOR = 0;
+    BASIC = 1;
+    PASSTHROUGH = 2;
+    SAMPLING_100 = 3;
+    SAMPLING_1K = 4;
+    SAMPLING_10K = 5;
+    SAMPLING_100K = 6;
+    RAND_SAMPLING_50 = 7;
+    RAND_SAMPLING_25 = 8;
+    RAND_SAMPLING_10 = 9;
+    INTERVAL_100MS = 10;
+    INTERVAL_1S = 11;
+  }
+  EventsCollectorType events = 7; 
+  bool buffered = 8;
+}
+
+message PoplarResponse {
+  string name = 1;
+  bool status = 2;
+}

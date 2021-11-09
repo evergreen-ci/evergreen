@@ -1,0 +1,31 @@
+name: Static Analysis
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.15'
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Print staticcheck version
+      run: go run honnef.co/go/tools/cmd/staticcheck -version
+
+    - name: Run staticcheck
+      run: go run honnef.co/go/tools/cmd/staticcheck -- ./...
+
+    - name: Run go vet
+      run: go vet ./...

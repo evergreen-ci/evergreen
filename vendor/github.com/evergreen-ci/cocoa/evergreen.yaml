@@ -1,0 +1,169 @@
+command_type: test
+stepback: false
+ignore:
+    - "*.md" # don't schedule tests if a commit only changes markdown files
+    - "*.rst" # don't schedule tests if a commit only changes rst files
+
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-target
+    # Runs a make target. The task name should correspond to a make target.
+    name: test
+    commands:
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  get-project:
+    command: git.get_project # git clone github.com/evergreen-ci/cocoa
+    type: system
+    params:
+      directory: gopath/src/github.com/evergreen-ci/cocoa
+  run-make:
+    command: subprocess.exec
+    type: test
+    params:
+      working_dir: gopath/src/github.com/evergreen-ci/cocoa
+      binary: make
+      args: ["${target}"]
+      include_expansions_in_env: ["DISABLE_COVERAGE", "GO_BIN_PATH", "GOROOT", "RACE_DETECTOR"]
+      env:
+        AWS_ACCESS_KEY: ${aws_access_key}
+        AWS_SECRET_ACCESS_KEY: ${aws_secret_access_key}
+        AWS_ROLE: ${aws_role}
+        AWS_REGION: ${aws_region}
+        AWS_ECS_CLUSTER: ${aws_ecs_cluster}
+        AWS_SECRET_PREFIX: ${aws_secret_prefix}
+        AWS_ECS_TASK_DEFINITION_PREFIX: ${aws_ecs_task_definition_prefix}
+        AWS_ECS_TASK_ROLE: ${aws_ecs_task_role}
+        AWS_ECS_EXECUTION_ROLE: ${aws_ecs_execution_role}
+        GOPATH: ${workdir}/gopath
+  parse-results:
+    command: gotest.parse_files
+    type: setup
+    params:
+      files:
+        - "gopath/src/github.com/evergreen-ci/cocoa/build/output.*"
+
+#######################################
+#                Tasks                #
+#######################################
+tasks:
+  - <<: *run-target
+    tags: ["test"]
+    name: test-cocoa
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["test"]
+    name: test-ecs
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["test"]
+    name: test-awsutil
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["test"]
+    name: test-mock
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["test"]
+    name: test-secret
+    must_have_test_results: true
+
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-cocoa
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-ecs
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-awsutil
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-internal-testcase
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-internal-testutil
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-mock
+    must_have_test_results: true
+  - <<: *run-target
+    tags: ["lint"]
+    name: lint-secret
+    must_have_test_results: true
+
+task_groups:
+  - name: lint_group
+    tasks: [".lint"]
+    max_hosts: 4
+    setup_group:
+      - func: get-project
+    teardown_task:
+      - func: parse-results
+      - func: run-make
+        vars:
+          target: clean-results
+  - name: test_group
+    tasks: [".test"]
+    max_hosts: 4
+    setup_group:
+      - func: get-project
+    teardown_task:
+      - func: parse-results
+      - func: run-make
+        vars:
+          target: clean-results
+
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    expansions:
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+      RACE_DETECTOR: true
+    run_on:
+      - archlinux-new-small
+      - archlinux-new-large
+    tasks:
+      - name: test_group
+
+  - name: lint
+    display_name: Lint (Arch Linux)
+    expansions:
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+    run_on:
+      - archlinux-new-small
+      - archlinux-new-large
+    tasks:
+      - name: lint_group
+
+  - name: ubuntu
+    display_name: Ubuntu 18.04
+    expansions:
+      DISABLE_COVERAGE: true
+      GOROOT: /opt/golang/go1.16
+      GO_BIN_PATH: /opt/golang/go1.16/bin/go
+    run_on:
+      - ubuntu1804-small
+      - ubuntu1804-large
+    tasks:
+      - name: test_group

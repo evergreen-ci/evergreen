@@ -64,7 +64,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 
 			// We can't run make targets on packages in the cmd directory
 			// because the packages contain dashes.
-			if strings.HasPrefix(dir, "cmd") {
+			if strings.HasPrefix(dir, "vendor") || strings.HasPrefix(dir, "cmd") {
 				continue
 			}
 
@@ -103,6 +103,10 @@ func getAllTargets() ([]string, error) {
 	}
 	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
 	for _, p := range split {
+		if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
+			continue
+		}
+
 		if !strings.HasPrefix(p, packagePrefix) {
 			continue
 		}
@@ -155,14 +159,10 @@ func generateTasks() (*shrub.Configuration, error) {
 	}
 
 	group := conf.TaskGroup(lintGroup).SetMaxHosts(maxHosts)
-	group.SetupGroup.Command().Type("setup").Command("git.get_project").Param("directory", "evergreen")
-	group.SetupGroup.Command().Type("setup").Command("subprocess.exec").ExtendParams(map[string]interface{}{
-		"working_dir":               "evergreen",
-		"binary":                    "make",
-		"args":                      []string{"mod-tidy"},
-		"include_expansions_in_env": []string{"GOROOT"},
-	})
+	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
 	group.SetupGroup.Command().Function("setup-credentials")
+	cmd := group.SetupGroup.Command().Function("run-make")
+	cmd.Vars = map[string]string{"target": "get-go-imports"}
 	group.TeardownTask.Command().Function("attach-test-results")
 	group.TeardownTask.Command().Function("remove-test-results")
 	group.Task(lintTargets...)

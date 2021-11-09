@@ -1,0 +1,11 @@
+language: go
+env:
+    - GIMME_OS=linux GIMME_ARCH=amd64
+    - GIMME_OS=linux GIMME_ARCH=386
+    - GIMME_OS=darwin GIMME_ARCH=amd64
+go:
+  - 1.4
+  - 1.6
+  - 1.7
+install: []
+script: make vendor build test

@@ -1,0 +1,141 @@
+{"Time":"2018-06-25T12:05:04.016652959-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass"}
+{"Time":"2018-06-25T12:05:04.016923451-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
+{"Time":"2018-06-25T12:05:04.016937357-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
+{"Time":"2018-06-25T12:05:04.016962434-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass"}
+{"Time":"2018-06-25T12:05:04.016984664-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail"}
+{"Time":"2018-06-25T12:05:04.016991489-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
+{"Time":"2018-06-25T12:05:04.016997565-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
+{"Time":"2018-06-25T12:05:04.017002697-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail"}
+{"Time":"2018-06-25T12:05:04.017015269-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass"}
+{"Time":"2018-06-25T12:05:04.0170208-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
+{"Time":"2018-06-25T12:05:04.017026606-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
+{"Time":"2018-06-25T12:05:04.017031555-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass"}
+{"Time":"2018-06-25T12:05:04.017036781-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail"}
+{"Time":"2018-06-25T12:05:04.01705733-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
+{"Time":"2018-06-25T12:05:04.017063143-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
+{"Time":"2018-06-25T12:05:04.017068166-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail"}
+{"Time":"2018-06-25T12:05:04.01707699-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass"}
+{"Time":"2018-06-25T12:05:04.017082207-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
+{"Time":"2018-06-25T12:05:04.017088105-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
+{"Time":"2018-06-25T12:05:04.017093026-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass"}
+{"Time":"2018-06-25T12:05:04.017098154-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail"}
+{"Time":"2018-06-25T12:05:04.01710291-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
+{"Time":"2018-06-25T12:05:04.017108437-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
+{"Time":"2018-06-25T12:05:04.017113498-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail"}
+{"Time":"2018-06-25T12:05:04.0171186-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail"}
+{"Time":"2018-06-25T12:05:04.017128865-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Output":"=== RUN   TestSkippedTestFail\n"}
+{"Time":"2018-06-25T12:05:04.017139789-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Output":"=== PAUSE TestSkippedTestFail\n"}
+{"Time":"2018-06-25T12:05:04.017164252-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail"}
+{"Time":"2018-06-25T12:05:04.017169659-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail"}
+{"Time":"2018-06-25T12:05:04.017174634-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail","Output":"=== RUN   TestTestifySuiteFail\n"}
+{"Time":"2018-06-25T12:05:04.019154773-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings"}
+{"Time":"2018-06-25T12:05:04.019170993-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Output":"=== RUN   TestTestifySuiteFail/TestThings\n"}
+{"Time":"2018-06-25T12:05:14.024115554-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail","Output":"--- FAIL: TestTestifySuiteFail (10.01s)\n"}
+{"Time":"2018-06-25T12:05:14.024216546-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Output":"    --- FAIL: TestTestifySuiteFail/TestThings (10.00s)\n"}
+{"Time":"2018-06-25T12:05:14.02427001-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Output":"    \tawesome_test.go:88: start\n"}
+{"Time":"2018-06-25T12:05:14.024293207-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Output":"    \tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:89\n"}
+{"Time":"2018-06-25T12:05:14.024310613-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Output":"    \t\t\r\tError:      \tShould be true\n"}
+{"Time":"2018-06-25T12:05:14.024329946-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Output":"    \tawesome_test.go:91: end\n"}
+{"Time":"2018-06-25T12:05:14.02441206-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail/TestThings","Elapsed":10}
+{"Time":"2018-06-25T12:05:14.024456046-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuiteFail","Elapsed":10.01}
+{"Time":"2018-06-25T12:05:14.024473312-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite"}
+{"Time":"2018-06-25T12:05:14.024489003-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite","Output":"=== RUN   TestTestifySuite\n"}
+{"Time":"2018-06-25T12:05:14.027554888-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite/TestThings"}
+{"Time":"2018-06-25T12:05:14.027587509-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite/TestThings","Output":"=== RUN   TestTestifySuite/TestThings\n"}
+{"Time":"2018-06-25T12:05:24.032226552-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite","Output":"--- PASS: TestTestifySuite (10.01s)\n"}
+{"Time":"2018-06-25T12:05:24.032278352-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite/TestThings","Output":"    --- PASS: TestTestifySuite/TestThings (10.00s)\n"}
+{"Time":"2018-06-25T12:05:24.032294272-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite/TestThings","Output":"    \tawesome_test.go:88: start\n"}
+{"Time":"2018-06-25T12:05:24.032309967-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite/TestThings","Output":"    \tawesome_test.go:91: end\n"}
+{"Time":"2018-06-25T12:05:24.03234939-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite/TestThings","Elapsed":10}
+{"Time":"2018-06-25T12:05:24.032367066-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifySuite","Elapsed":10.01}
+{"Time":"2018-06-25T12:05:24.032378982-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile"}
+{"Time":"2018-06-25T12:05:24.032400359-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
+{"Time":"2018-06-25T12:05:24.032420246-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
+{"Time":"2018-06-25T12:05:24.032437638-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile"}
+{"Time":"2018-06-25T12:05:24.032450248-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile"}
+{"Time":"2018-06-25T12:05:24.032464545-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
+{"Time":"2018-06-25T12:05:24.032485601-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
+{"Time":"2018-06-25T12:05:24.032497672-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile"}
+{"Time":"2018-06-25T12:05:24.032509848-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass"}
+{"Time":"2018-06-25T12:05:24.032526382-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
+{"Time":"2018-06-25T12:05:24.032541093-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail"}
+{"Time":"2018-06-25T12:05:24.032552672-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
+{"Time":"2018-06-25T12:05:24.032569785-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile"}
+{"Time":"2018-06-25T12:05:24.03258353-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
+{"Time":"2018-06-25T12:05:24.032596159-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail"}
+{"Time":"2018-06-25T12:05:24.032607722-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
+{"Time":"2018-06-25T12:05:24.032624706-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile"}
+{"Time":"2018-06-25T12:05:24.032637672-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
+{"Time":"2018-06-25T12:05:24.032650172-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail"}
+{"Time":"2018-06-25T12:05:24.032660821-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"=== CONT  TestTestifyFail\n"}
+{"Time":"2018-06-25T12:05:24.032671806-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass"}
+{"Time":"2018-06-25T12:05:24.032682002-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
+{"Time":"2018-06-25T12:05:24.032713037-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass"}
+{"Time":"2018-06-25T12:05:24.032725805-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
+{"Time":"2018-06-25T12:05:24.032737524-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:24.032781066-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  asinine test \n"}
+{"Time":"2018-06-25T12:05:24.03282292-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  asinine test \u001b[32m✔\u001b[0m\n"}
+{"Time":"2018-06-25T12:05:24.032837974-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:24.032855277-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[32m\n"}
+{"Time":"2018-06-25T12:05:24.032874488-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"1 total assertion\u001b[0m\n"}
+{"Time":"2018-06-25T12:05:24.032887315-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:24.033177722-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\u001b[33m✘\u001b[0m\n"}
+{"Time":"2018-06-25T12:05:24.033217683-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:24.033237739-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
+{"Time":"2018-06-25T12:05:24.033249545-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"Failures:\n"}
+{"Time":"2018-06-25T12:05:24.033259866-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:24.033269972-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/go-test2json/testdata/tests/awesome_test.go \n"}
+{"Time":"2018-06-25T12:05:24.03328011-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  Line 44:\n"}
+{"Time":"2018-06-25T12:05:24.033290213-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  Expected: 'true'\n"}
+{"Time":"2018-06-25T12:05:24.033299926-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  Actual:   'false'\n"}
+{"Time":"2018-06-25T12:05:24.033309721-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"  (Should be equal)\n"}
+{"Time":"2018-06-25T12:05:24.033319501-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:24.033335165-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\u001b[0m\u001b[33m\n"}
+{"Time":"2018-06-25T12:05:24.033345651-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"2 total assertions\u001b[0m\n"}
+{"Time":"2018-06-25T12:05:24.033355563-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\n"}
+{"Time":"2018-06-25T12:05:34.034536686-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail"}
+{"Time":"2018-06-25T12:05:34.034618873-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Output":"=== CONT  TestSkippedTestFail\n"}
+{"Time":"2018-06-25T12:05:34.034648727-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.034679216-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\tawesome_test.go:52: start\n"}
+{"Time":"2018-06-25T12:05:34.034709696-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Output":"\tawesome_test.go:58: end\n"}
+{"Time":"2018-06-25T12:05:34.034725614-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestPass","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.034740636-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"--- FAIL: TestFailingButInAnotherFile (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.034751818-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"\tpitiful_test.go:20: start\n"}
+{"Time":"2018-06-25T12:05:34.034767614-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:22\n"}
+{"Time":"2018-06-25T12:05:34.034778362-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
+{"Time":"2018-06-25T12:05:34.034808034-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Output":"\tpitiful_test.go:24: end\n"}
+{"Time":"2018-06-25T12:05:34.034820373-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestFailingButInAnotherFile","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.034831295-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.034841326-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Output":"\tawesome_test.go:42: start\n"}
+{"Time":"2018-06-25T12:05:34.034851078-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Output":"\tawesome_test.go:47: end\n"}
+{"Time":"2018-06-25T12:05:34.034868188-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyFail","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.034878667-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.034888811-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"\tawesome_test.go:63: start\n"}
+{"Time":"2018-06-25T12:05:34.034898732-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"\tawesome_test.go:66: true is not equal to false\n"}
+{"Time":"2018-06-25T12:05:34.03490847-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Output":"\tawesome_test.go:70: end\n"}
+{"Time":"2018-06-25T12:05:34.034919477-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestNativeTestFail","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.034929428-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.03496135-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Output":"\tawesome_test.go:14: start\n"}
+{"Time":"2018-06-25T12:05:34.034973935-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Output":"\tawesome_test.go:18: end\n"}
+{"Time":"2018-06-25T12:05:34.034985982-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyPass","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.034996758-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.0350069-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Output":"\tawesome_test.go:32: start\n"}
+{"Time":"2018-06-25T12:05:34.035028003-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Output":"\tawesome_test.go:37: end\n"}
+{"Time":"2018-06-25T12:05:34.035040344-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestConveyPass","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.035051891-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.035063-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Output":"\tpitiful_test.go:12: start\n"}
+{"Time":"2018-06-25T12:05:34.035073545-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Output":"\tpitiful_test.go:16: end\n"}
+{"Time":"2018-06-25T12:05:34.035090616-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestPassingButInAnotherFile","Elapsed":10}
+{"Time":"2018-06-25T12:05:34.035103023-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"--- FAIL: TestTestifyFail (10.00s)\n"}
+{"Time":"2018-06-25T12:05:34.035119536-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"\tawesome_test.go:23: start\n"}
+{"Time":"2018-06-25T12:05:34.03517523-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:25\n"}
+{"Time":"2018-06-25T12:05:34.035209333-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"\t\t\r\tError:      \tShould be true\n"}
+{"Time":"2018-06-25T12:05:34.035222187-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Output":"\tawesome_test.go:27: end\n"}
+{"Time":"2018-06-25T12:05:44.034874417-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestTestifyFail","Elapsed":10}
+{"Time":"2018-06-25T12:05:44.034921676-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Output":"--- SKIP: TestSkippedTestFail (10.00s)\n"}
+{"Time":"2018-06-25T12:05:44.034939481-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Output":"\tawesome_test.go:75: start\n"}
+{"Time":"2018-06-25T12:05:44.034968129-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Output":"\tawesome_test.go:77: skipping because reasons\n"}
+{"Time":"2018-06-25T12:05:44.034981576-04:00","Action":"skip","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Test":"TestSkippedTestFail","Elapsed":10}
+{"Time":"2018-06-25T12:05:44.034996621-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Output":"FAIL\n"}
+{"Time":"2018-06-25T12:05:44.037170126-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Output":"FAIL\tgithub.com/evergreen-ci/go-test2json/testdata/tests\t40.030s\n"}
+{"Time":"2018-06-25T12:05:44.037218299-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests","Elapsed":40.031}

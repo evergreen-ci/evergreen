@@ -1,0 +1,94 @@
+type Query {
+    thisShoudlntGetGenerated: Boolean
+}
+
+type Mutation {
+    thisShoudlntGetGenerated: Boolean
+}
+
+type Subscription {
+    thisShoudlntGetGenerated: Boolean
+}
+
+type MissingTypeNotNull implements MissingInterface & ExistingInterface {
+    name: String!
+    enum: MissingEnum!
+    int: MissingInterface!
+    existing: ExistingType!
+    missing2: MissingTypeNullable!
+}
+
+type MissingTypeNullable implements MissingInterface & ExistingInterface {
+    name: String
+    enum: MissingEnum
+    int: MissingInterface
+    existing: ExistingType
+    missing2: MissingTypeNotNull
+}
+
+input MissingInput {
+    name: String
+    enum: MissingEnum
+}
+
+enum MissingEnum {
+    Hello
+    Goodbye
+}
+
+interface MissingInterface {
+    name: String
+}
+
+union MissingUnion = MissingTypeNotNull | MissingTypeNullable | ExistingType
+
+type ExistingType implements MissingInterface & ExistingInterface {
+    name: String
+    enum: ExistingEnum
+    int: ExistingInterface
+    existing: MissingTypeNullable
+}
+
+input ExistingInput {
+    name: String
+    enum: ExistingEnum
+}
+
+enum ExistingEnum {
+    Hello
+    Goodbye
+}
+
+interface ExistingInterface {
+    name: String
+}
+
+union ExistingUnion = MissingTypeNotNull | MissingTypeNullable  | ExistingType
+
+"TypeWithDescription is a type with a description"
+type TypeWithDescription {
+    name: String
+}
+
+"EnumWithDescription is an enum with a description"
+enum EnumWithDescription {
+    CAT
+    DOG
+}
+
+"InterfaceWithDescription is an interface with a description"
+interface InterfaceWithDescription {
+    name: String
+}
+
+"UnionWithDescription is an union with a description"
+union UnionWithDescription = TypeWithDescription | ExistingType
+
+
+interface Foo_Barer {
+    name: String!
+}
+
+type _Foo_Barr implements  Foo_Barer {
+    name: String!
+}

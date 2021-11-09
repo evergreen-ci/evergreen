@@ -1,0 +1,20 @@
+package: github.com/evergreen-ci/cocoa
+import:
+  - package: github.com/aws/aws-sdk-go
+  - package: github.com/jmespath/go-jmespath
+
+  - package: github.com/pkg/errors
+
+  - package: github.com/stretchr/testify
+  - package: github.com/davecgh/go-spew
+  - package: github.com/pmezard/go-difflib
+  - package: github.com/stretchr/objx
+  - package: gopkg.in/yaml.v3
+
+  - package: github.com/evergreen-ci/gimlet
+  - package: github.com/mongodb/grip
+  - package: github.com/evergreen-ci/utility
+
+  - package: github.com/jpillora/backoff
+  - package: github.com/PuerkitoBio/rehttp
+  - package: golang.org/x/oauth2

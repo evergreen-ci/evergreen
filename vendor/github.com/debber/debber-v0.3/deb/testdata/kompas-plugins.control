@@ -1,0 +1,23 @@
+Source: kompas-plugins
+Priority: optional
+Maintainer: Vladimír Vondruš <mosra@centrum.cz>
+Build-Depends: debhelper (>= 7.0.50~), cmake (>= 2.6.0), kompas-core-dev
+Standards-Version: 3.8.4
+Section: libs
+Homepage: http://mosra.cz/blog/kompas.php
+Vcs-Git: git://github.com/mosra/kompas-plugins.git
+Vcs-Browser: https://github.com/mosra/kompas-plugins
+
+Package: kompas-plugins-dev
+Section: libdevel
+Architecture: any
+Depends: kompas-core-dev (=${binary:Version}), kompas-plugins (=${binary:Version})
+Description: Kompas Plugins development files
+ Plugins headers needed for developing for Kompas.
+
+Package: kompas-plugins
+Section: libs
+Architecture: any
+Depends: kompas-core (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Plugins for Kompas navigation software
+ Additional plugins for viewing maps, measuring distances etc.

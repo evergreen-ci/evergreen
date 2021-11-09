@@ -57,7 +57,10 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	}
 
 	workDir := filepath.Join(conf.WorkDir, c.Prefix)
-	include := utility.NewGitIgnoreFileMatcher(workDir, c.Files...)
+	include, err := utility.NewGitignoreFileMatcher(workDir, c.Files...)
+	if err != nil {
+		return errors.Wrap(err, "building gitignore file matcher")
+	}
 	b := utility.FileListBuilder{
 		WorkingDir: workDir,
 		Include:    include,

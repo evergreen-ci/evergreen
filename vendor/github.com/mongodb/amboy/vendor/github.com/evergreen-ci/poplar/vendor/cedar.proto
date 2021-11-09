@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package cedar;
+
+option go_package = "internal";
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+message ResultID {
+  string project = 1;
+  string version = 2;
+  string variant = 3;
+  string task_name = 4;
+  int32 execution = 5;
+  string task_id = 6;
+  string test_name = 7;
+  string parent = 8;
+  int32 trial = 9;
+  repeated string tags = 10;
+  map<string, int32> arguments = 11;
+  bool mainline = 12;
+  google.protobuf.Timestamp created_at = 13;
+  int32 order = 14;
+}
+
+message ResultData {
+  ResultID id = 1;
+  repeated ArtifactInfo artifacts = 2;
+  repeated RollupValue rollups = 3;
+}
+
+message ArtifactInfo {
+  StorageLocation location = 1;
+  string bucket = 2;
+  string prefix = 3;
+  string path = 4;
+  DataFormat format = 5;
+  CompressionType compression = 6;
+  SchemaType schema = 7;
+  repeated string tags = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+enum StorageLocation {
+  UNKNOWN = 0;
+  CEDAR_S3 = 1;
+  PROJECT_S3 = 2;
+  GRIDFS = 3;
+  EPHEMERAL = 4;
+  LOCAL = 5;
+}
+
+enum DataFormat {
+  TEXT = 0;
+  FTDC = 1;
+  BSON = 2;
+  JSON = 3;
+  CSV = 4;
+}
+
+enum CompressionType {
+  NONE = 0;
+  TARGZ = 1;
+  ZIP = 2;
+  GZ = 3;
+  XZ = 4;
+}
+
+enum SchemaType {
+  RAW_EVENTS = 0;
+  COLLAPSED_EVENTS = 1;
+  INTERVAL_SUMMARIZATION = 2;
+  HISTOGRAM = 3;
+}
+
+message MetricsSeriesEnd {
+  string id = 1;
+  bool is_complete = 2;
+  google.protobuf.Timestamp completed_at = 3;
+}
+
+message MetricsResponse {
+  string id = 1;
+  bool success = 2;
+}
+
+message SendResponse {
+  string id = 1;
+  bool success = 2;
+  int64 count = 3;
+}
+
+message MetricsPoint {
+  google.protobuf.Timestamp Time = 1;
+  MetricsCounters counters = 2;
+  MetricsTimers timers = 3;
+  MetricsGauges gauges = 4;
+}
+
+message MetricsCounters {
+  int64 ops = 1;
+  int64 size = 2;
+  int64 errors = 3;
+}
+
+message MetricsTimers {
+  google.protobuf.Duration duration = 1;
+  google.protobuf.Duration total = 2;
+}
+
+message MetricsGauges {
+  int64 state = 1;
+  int64 workers = 2;
+  bool failed = 3;
+}
+
+message MetricsEvent {
+  string id = 1;
+  repeated MetricsPoint Event = 3;
+}
+
+enum RollupType {
+  SUM = 0;
+  MEAN = 1;
+  MEDIAN = 2;
+  MAX = 3;
+  MIN = 4;
+  STANDARD_DEVIATION = 5;
+  THROUGHPUT = 6;
+  LATENCY = 7;
+  PERCENTILE_99TH = 8;
+  PERCENTILE_95TH = 9;
+  PERCENTILE_90TH = 10;
+  PERCENTILE_80TH = 11;
+  PERCENTILE_50TH = 12;
+}
+
+message RollupValue {
+  string name = 1;
+  oneof value {
+    int64 int = 2;
+    double fl = 3;
+  }
+  RollupType type = 4;
+  int64 version = 5;
+  bool user_submitted = 6;
+}
+
+message ArtifactData {
+  string id = 1;
+  repeated ArtifactInfo artifacts = 2;
+}
+
+message RollupData {
+  string id = 1;
+  repeated RollupValue rollups = 2;
+}
+
+service CedarPerformanceMetrics {
+  rpc CreateMetricSeries(ResultData) returns (MetricsResponse);
+  rpc AttachResultData(ResultData) returns (MetricsResponse);
+  rpc AttachArtifacts(ArtifactData) returns (MetricsResponse);
+  rpc AttachRollups(RollupData) returns (MetricsResponse);
+  rpc SendMetrics(stream MetricsEvent) returns (SendResponse);
+  rpc CloseMetrics(MetricsSeriesEnd) returns (MetricsResponse);
+}

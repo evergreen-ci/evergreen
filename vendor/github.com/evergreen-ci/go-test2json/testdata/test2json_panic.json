@@ -1,0 +1,32 @@
+{"Time":"2018-06-25T14:57:29.280697961-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic"}
+{"Time":"2018-06-25T14:57:29.280993366-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"=== RUN   TestWillPanic\n"}
+{"Time":"2018-06-25T14:57:29.281007639-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"=== PAUSE TestWillPanic\n"}
+{"Time":"2018-06-25T14:57:29.281014082-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic"}
+{"Time":"2018-06-25T14:57:29.281022553-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic"}
+{"Time":"2018-06-25T14:57:29.281033889-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic","Output":"=== RUN   TestTestifySuitePanic\n"}
+{"Time":"2018-06-25T14:57:29.281040618-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic","Output":"=== PAUSE TestTestifySuitePanic\n"}
+{"Time":"2018-06-25T14:57:29.281045945-04:00","Action":"pause","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic"}
+{"Time":"2018-06-25T14:57:29.281051697-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic"}
+{"Time":"2018-06-25T14:57:29.281057043-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"=== CONT  TestWillPanic\n"}
+{"Time":"2018-06-25T14:57:29.281067769-04:00","Action":"cont","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic"}
+{"Time":"2018-06-25T14:57:29.281073606-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic","Output":"=== CONT  TestTestifySuitePanic\n"}
+{"Time":"2018-06-25T14:57:29.28261188-04:00","Action":"run","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic/TestWillPanic"}
+{"Time":"2018-06-25T14:57:29.28262775-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestTestifySuitePanic/TestWillPanic","Output":"=== RUN   TestTestifySuitePanic/TestWillPanic\n"}
+{"Time":"2018-06-25T14:57:39.281609712-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"--- FAIL: TestWillPanic (10.00s)\n"}
+{"Time":"2018-06-25T14:57:39.281717981-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\tpanic_test.go:12: This test will panic in 10 seconds\n"}
+{"Time":"2018-06-25T14:57:39.284357453-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"panic: in the disco [recovered]\n"}
+{"Time":"2018-06-25T14:57:39.284420622-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\tpanic: in the disco\n"}
+{"Time":"2018-06-25T14:57:39.284440745-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\n"}
+{"Time":"2018-06-25T14:57:39.284455972-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"goroutine 19 [running]:\n"}
+{"Time":"2018-06-25T14:57:39.28447093-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"testing.tRunner.func1(0xc42013c0f0)\n"}
+{"Time":"2018-06-25T14:57:39.284486824-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\t/usr/local/Cellar/go/1.10.3/libexec/src/testing/testing.go:742 +0x29d\n"}
+{"Time":"2018-06-25T14:57:39.284521805-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"panic(0x13057a0, 0x13bc200)\n"}
+{"Time":"2018-06-25T14:57:39.284571272-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\t/usr/local/Cellar/go/1.10.3/libexec/src/runtime/panic.go:502 +0x229\n"}
+{"Time":"2018-06-25T14:57:39.284600441-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"github.com/evergreen-ci/go-test2json/testdata/tests/panic.TestWillPanic(0xc42013c0f0)\n"}
+{"Time":"2018-06-25T14:57:39.284621625-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\t/Users/rsamuels/go/src/github.com/evergreen-ci/go-test2json/testdata/tests/panic/panic_test.go:14 +0xaa\n"}
+{"Time":"2018-06-25T14:57:39.284636518-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"testing.tRunner(0xc42013c0f0, 0x1395e30)\n"}
+{"Time":"2018-06-25T14:57:39.284650791-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\t/usr/local/Cellar/go/1.10.3/libexec/src/testing/testing.go:777 +0xd0\n"}
+{"Time":"2018-06-25T14:57:39.284664972-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"created by testing.(*T).Run\n"}
+{"Time":"2018-06-25T14:57:39.284679412-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"\t/usr/local/Cellar/go/1.10.3/libexec/src/testing/testing.go:824 +0x2e0\n"}
+{"Time":"2018-06-25T14:57:39.287046595-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Output":"FAIL\tgithub.com/evergreen-ci/go-test2json/testdata/tests/panic\t10.016s\n"}
+{"Time":"2018-06-25T14:57:39.287082569-04:00","Action":"fail","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/panic","Test":"TestWillPanic","Elapsed":10.017}

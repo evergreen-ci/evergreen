@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package cedar;
+
+option go_package = "gopb";
+
+import "formats.proto";
+
+message SystemMetrics {
+  SystemMetricsInfo info = 1;
+  SystemMetricsArtifactInfo artifact = 2;
+}
+
+message SystemMetricsInfo {
+  string project = 1;
+  string version = 2;
+  string variant = 3;
+  string task_name = 4;
+  string task_id = 5;
+  int32 execution = 6;
+  bool mainline = 7;
+}
+
+message SystemMetricsArtifactInfo {
+  CompressionType compression = 1;
+  SchemaType schema = 2;
+}
+
+message SystemMetricsData {
+  string id = 1;
+  string type = 2;
+  DataFormat format = 3;
+  bytes data = 4;
+}
+
+message SystemMetricsSeriesEnd {
+  string id = 1;
+  bool success = 2;
+}
+
+message SystemMetricsResponse {
+  string id = 1;
+}
+
+
+service CedarSystemMetrics {
+  rpc CreateSystemMetricsRecord(SystemMetrics) returns (SystemMetricsResponse);
+  rpc AddSystemMetrics(SystemMetricsData) returns (SystemMetricsResponse);
+  rpc StreamSystemMetrics(stream SystemMetricsData) returns (SystemMetricsResponse);
+  rpc CloseMetrics(SystemMetricsSeriesEnd) returns (SystemMetricsResponse);
+}

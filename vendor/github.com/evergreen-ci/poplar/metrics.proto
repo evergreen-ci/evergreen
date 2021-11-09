@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package poplar;
+option go_package = "internal";
+
+import "poplar.proto";
+
+message IntervalSummary {
+  string collector = 1;
+  oneof value {
+    SummaryInteger number = 2;
+    SummaryIntegerSlice number_values = 3;
+    SummaryDouble point = 4;
+    SummaryDoubleSlice point_values = 5;
+  }
+}
+
+message SummaryIntegerSlice {
+  string name = 1;
+  repeated int64 value = 2;
+}
+
+message SummaryInteger {
+  string name = 1;
+  int64 value = 2;
+}
+
+message SummaryDoubleSlice {
+  string name = 1;
+  repeated double value = 2;
+}
+
+message SummaryDouble {
+  string name = 1;
+  double value = 2;
+}
+
+service PoplarMetricsCollector {
+  rpc CreateCollector(CreateOptions) returns (PoplarResponse);
+  rpc CloseCollector(PoplarID) returns (PoplarResponse);
+  rpc ResetSample(PoplarID) returns (PoplarResponse);
+  rpc FlushSample(PoplarID) returns (PoplarResponse);
+  rpc Add(IntervalSummary) returns (PoplarResponse);
+}

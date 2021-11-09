@@ -1,0 +1,17 @@
+Source: debber
+Section: devel
+Priority: extra
+Maintainer: Am Laher <no-one@laher.net.nz>
+Build-Depends: debhelper (>= 9.1.0), golang-go
+Standards-Version: 3.9.4
+
+Package: debber
+Architecture: any
+Description: tools for making debs
+ debber makes and reads deb files
+
+Package: debber-dev
+Architecture: all
+Description: tools for making debs - development package
+ debber makes and reads deb files
+
