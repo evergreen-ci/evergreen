@@ -11,7 +11,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/evergreen-ci/birch v0.0.0-20211025210128-7f3409c2b515
-	github.com/evergreen-ci/certdepot v0.0.0-20211028185643-bccec0b3cb21
+	github.com/evergreen-ci/certdepot v0.0.0-20211109153348-d681ebe95b66
 	github.com/evergreen-ci/cocoa v0.0.0-20211028185655-0a7d8e6e14e7
 	github.com/evergreen-ci/gimlet v0.0.0-20211029160936-5b64c7b33753
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
@@ -19,7 +19,7 @@ require (
 	github.com/evergreen-ci/pail v0.0.0-20211028170419-8efd623fd305
 	github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
-	github.com/evergreen-ci/timber v0.0.0-20211102205838-842ec45e96fb
+	github.com/evergreen-ci/timber v0.0.0-20211109152550-dca0e0d04672
 	github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -45,7 +45,7 @@ require (
 	github.com/urfave/cli v1.22.5
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/vmware/govmomi v0.27.1
-	go.mongodb.org/mongo-driver v1.5.0
+	go.mongodb.org/mongo-driver v1.7.4
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/oauth2 v0.0.0-20211028175245-ba495a64dcb5
 	golang.org/x/tools v0.1.7
@@ -57,11 +57,8 @@ require (
 )
 
 require (
-	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/mholt/archiver v2.0.1-0.20180417220235-e4ef56d48eb0+incompatible
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 )
 
-require github.com/mongodb/jasper v0.0.0-20211103140906-f5e338d1959b
-
-exclude go.mongodb.org/mongo-driver v1.7.3
+require github.com/mongodb/jasper v0.0.0-20211109153730-344834c07b95
