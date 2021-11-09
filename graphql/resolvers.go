@@ -3212,6 +3212,9 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
+	if !evergreen.IsPatchRequester(*obj.Requester) {
+		return nil, nil
+	}
 	apiPatch, err := r.sc.FindPatchById(*obj.Version)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Version, err.Error()))
