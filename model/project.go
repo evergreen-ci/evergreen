@@ -246,6 +246,10 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
+func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
+	return utility.FromBoolPtr(bvt.Disable)
+}
+
 type BuildVariant struct {
 	Name        string            `yaml:"name,omitempty" bson:"name"`
 	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
@@ -782,7 +786,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 		}
 		for _, t := range bv.Tasks {
 			// omit tasks excluded from the version
-			if utility.FromBoolPtr(t.Disable) || t.SkipOnRequester(v.Requester) {
+			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {

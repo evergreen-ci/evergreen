@@ -803,7 +803,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	for _, task := range buildVariant.Tasks {
 		// sanity check that the config isn't malformed
 		if task.Name != "" && !task.IsGroup {
-			if utility.FromBoolPtr(task.Disable) || task.SkipOnRequester(b.Requester) {
+			if task.IsDisabled() || task.SkipOnRequester(b.Requester) {
 				continue
 			}
 			if createAll || utility.StringSliceContains(taskNames, task.Name) {
@@ -812,7 +812,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		} else if _, ok := tgMap[task.Name]; ok {
 			tasksFromVariant := CreateTasksFromGroup(task, project)
 			for _, taskFromVariant := range tasksFromVariant {
-				if utility.FromBoolPtr(task.Disable) || taskFromVariant.SkipOnRequester(b.Requester) {
+				if task.IsDisabled() || taskFromVariant.SkipOnRequester(b.Requester) {
 					continue
 				}
 				if createAll || utility.StringSliceContains(taskNames, taskFromVariant.Name) {
