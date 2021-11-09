@@ -110,7 +110,6 @@ type parserTaskGroup struct {
 	Priority                int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	Patchable               *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly               *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
-	Disable                 *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag          *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly              *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	ExecTimeoutSecs         int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
