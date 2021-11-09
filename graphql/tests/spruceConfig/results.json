@@ -1,6 +1,18 @@
 {
     "tests": [
         {
+            "query_file": "defaultProject.graphql",
+            "result": {
+                "data": {
+                    "spruceConfig": {
+                        "ui": {
+                            "defaultProject": "evergreen"
+                        }
+                    }
+                }
+            }
+        },
+        {
             "query_file": "uservoice.graphql",
             "result": {
                 "data": {

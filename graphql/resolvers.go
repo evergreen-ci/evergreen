@@ -3084,9 +3084,6 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
-		return false, nil
-	}
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, err
@@ -3104,32 +3101,14 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			if err != nil {
 				return false, err
 			}
-			projectMatches := false
 			for _, projectName := range perfPlugin.Projects {
 				if projectName == pRef.Id || projectName == pRef.Identifier {
-					projectMatches = true
-					break
+					return true, nil
 				}
 			}
-			if !projectMatches {
-				return false, nil
-			}
-		}
-		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:    utility.FromStringPtr(obj.Id),
-			Execution: obj.Execution,
-		}
-
-		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
-		}
-		if result.NumberOfResults == 0 {
-			return false, nil
 		}
 	}
-	return true, nil
+	return false, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
@@ -3170,14 +3149,20 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	baseTaskID := t.BaseTask.Id
-	if baseTaskID == "" {
-		return nil, nil
+	var baseTask *task.Task
+	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
+	if t.BaseTask.Id != "" {
+		baseTask, err = r.sc.FindTaskById(t.BaseTask.Id)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
+		}
+	} else {
+		baseTask, err = t.FindTaskOnBaseCommit()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+		}
 	}
-	baseTask, err := r.sc.FindTaskById(baseTaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
-	}
+
 	if baseTask == nil {
 		return nil, nil
 	}
@@ -3188,6 +3173,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	}
 	return apiTask, nil
 }
+
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
@@ -3272,7 +3258,18 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 }
 
 func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
+	pid, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectId))
+	}
+	repo, err := model.FindRepository(pid)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectId, err.Error()))
+	}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
+	}
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
