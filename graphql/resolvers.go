@@ -201,7 +201,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error)
 	if patch.IsValidId(id) {
 		p, err := patch.FindOneId(id)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", id, err.Error()))
 		}
 		if p != nil {
 			return false, nil
