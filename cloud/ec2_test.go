@@ -222,7 +222,7 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 		Size:       10,
 		Iops:       100,
 		SnapshotID: "snapshot-1",
-		Throughput: 100,
+		Throughput: 150,
 	}
 	b, err = makeBlockDeviceMappings([]MountPoint{ebsMount})
 	s.NoError(err)
