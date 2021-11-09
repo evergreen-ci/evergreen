@@ -418,7 +418,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			if mount.Throughput != 0 {
 				//aws only allows values between 125 and 1000
 				if mount.Throughput > 1000 || mount.Throughput < 125 {
-					return nil, errors.New("throughput must be between 125 and 1,000")
+					return nil, errors.New("throughput must be between 125 and 1000")
 				}
 				// This parameter is valid only for gp3 volumes.
 				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
