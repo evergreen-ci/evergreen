@@ -189,6 +189,27 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 	return &apiHost, nil
 }
 
+func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
+	v, err := model.VersionFindOne(model.VersionById(id))
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+	}
+	if v != nil {
+		return true, nil
+	}
+
+	if patch.IsValidId(id) {
+		p, err := patch.FindOneId(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", id, err.Error()))
+		}
+		if p != nil {
+			return false, nil
+		}
+	}
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
+}
+
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
 	publicKeys := getMyPublicKeys(ctx)
 	return publicKeys, nil
@@ -3048,7 +3069,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, err
 	}
-	return *canRestart == false && !obj.Aborted, nil
+	return !utility.FromBoolPtr(canRestart) && !obj.Aborted, nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
