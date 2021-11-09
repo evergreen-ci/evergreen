@@ -17,7 +17,7 @@
 Evergreen - Distros
 {{end}}
 {{define "content"}}
-<div class="container" ng-controller="DistrosCtrl" style="margin-bottom: 15px;">
+<div class="container" ng-controller="DistrosCtrl" style="margin-bottom: 15px; width:110%">
   <notify-box ng-init="destination='errorHeader'"></notify-box>
   {{template "flash" . }}
   <div ng-show="distroIds.length == 0">
