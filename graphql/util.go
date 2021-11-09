@@ -1291,7 +1291,7 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	return res, nil
 }
 
-// GroupProjects takes a list of projects and groupes them by their repo. If onlyDefaultedToRepo is true,
+// GroupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
 // it only groups projects that are defaulted to the repo
 func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
