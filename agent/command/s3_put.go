@@ -306,11 +306,7 @@ retryLoop:
 
 			if s3pc.isMulti() {
 				workDir := filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix)
-				var include utility.FileMatcher
-				include, err = utility.NewGitignoreFileMatcher(workDir, s3pc.LocalFilesIncludeFilter...)
-				if err != nil {
-					return errors.Wrap(err, "building gitignore file matcher")
-				}
+				include := utility.NewGitIgnoreFileMatcher(workDir, s3pc.LocalFilesIncludeFilter...)
 				b := utility.FileListBuilder{
 					WorkingDir: workDir,
 					Include:    include,
@@ -409,7 +405,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)
 
 		displayName := s3pc.ResourceDisplayName
-		if s3pc.isMulti() || displayName == "" {
+		if displayName == "" {
+			displayName = filepath.Base(fn)
+		} else if s3pc.isMulti() {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
 		var key, secret, bucket, fileKey string

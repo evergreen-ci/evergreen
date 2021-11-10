@@ -14,7 +14,7 @@ import (
 // When validating this hash, use a constant-time compare to avoid vulnerability
 // to timing attacks.
 func CalculateHMACHash(secret []byte, body []byte) (string, error) {
-	// from genMAC in github.com/google/go-github/github/messages.go
+	// from genMAC in github.com/google/go-github/v34/github/messages.go
 	mac := hmac.New(sha256.New, secret)
 	n, err := mac.Write(body)
 	if n != len(body) {

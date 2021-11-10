@@ -1,3 +1,0 @@
-directive @unionLogging on UNION
-
-extend union Data @unionLogging

@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (

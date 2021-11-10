@@ -64,28 +64,11 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		RevisionOrderNumber: 1,
 	}
 	assert.NoError(t, t3.Insert())
-	b4 := build.Build{
-		Id:          "b4",
-		DisplayName: "Ubuntu 16.04 NEW",
-	}
-	assert.NoError(t, b4.Insert())
-	t4 := task.Task{
-		Id:                  "t4",
-		Status:              evergreen.TaskFailed,
-		BuildVariant:        "ubuntu1604",
-		DisplayName:         "test-agent",
-		Project:             "evergreen",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		BuildId:             "b4",
-		CreateTime:          time.Now(),
-		RevisionOrderNumber: 1,
-	}
-	assert.NoError(t, t4.Insert())
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask("evergreen", "test-agent", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, []*task.BuildVariantTuple{
 		{DisplayName: "OSX", BuildVariant: "osx"},
-		{DisplayName: "Ubuntu 16.04 NEW", BuildVariant: "ubuntu1604"},
+		{DisplayName: "Ubuntu 16.04", BuildVariant: "ubuntu1604"},
 		{DisplayName: "Windows 64 bit", BuildVariant: "windows"},
 	}, taskBuildVariants)
 }

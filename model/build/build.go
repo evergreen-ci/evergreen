@@ -6,12 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.

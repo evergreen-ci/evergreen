@@ -1,3 +1,0 @@
-directive @objectLogging on OBJECT
-
-extend type Todo @objectLogging
