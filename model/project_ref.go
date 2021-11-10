@@ -456,6 +456,7 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
 	}
+	fmt.Println("does repoRef exist? %v", repoRef)
 	if repoRef == nil {
 		repoRef, err = p.createNewRepoRef(u)
 		if err != nil {
@@ -578,7 +579,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
-func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
@@ -586,16 +587,15 @@ func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
 	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-
+		return errors.Wrapf(err, "error validating new owner/repo")
 	}
-	if p.UseRepoSettings {
-		if err := p.RemoveFromRepoScope(); err != nil {
-			return errors.Wrapf(err, "error removing project from old repo scope")
-		}
-		p.RepoRefId = "" // will reassign this in add
-		if err := p.AddToRepoScope(u); err != nil {
-			return errors.Wrapf(err, "error addding project to new repo scope")
-		}
+
+	if err := p.RemoveFromRepoScope(); err != nil {
+		return errors.Wrapf(err, "error removing project from old repo scope")
+	}
+	p.RepoRefId = "" // will reassign this in add
+	if err := p.AddToRepoScope(u); err != nil {
+		return errors.Wrapf(err, "error adding project to new repo scope")
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -1525,24 +1525,30 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
+		setUpdate := bson.M{
+			ProjectRefEnabledKey:                 p.Enabled,
+			ProjectRefBatchTimeKey:               p.BatchTime,
+			ProjectRefRemotePathKey:              p.RemotePath,
+			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+			projectRefDefaultLoggerKey:           p.DefaultLogger,
+			projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
+			projectRefPatchingDisabledKey:        p.PatchingDisabled,
+			projectRefTaskSyncKey:                p.TaskSync,
+			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+		}
+		if !isRepo && !p.UseRepoSettings {
+			setUpdate[ProjectRefOwnerKey] = p.Owner
+			setUpdate[ProjectRefRepoKey] = p.Repo
+			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
+		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
-				"$set": bson.M{
-					ProjectRefEnabledKey:                 p.Enabled,
-					ProjectRefBatchTimeKey:               p.BatchTime,
-					ProjectRefRemotePathKey:              p.RemotePath,
-					projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
-					projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
-					ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
-					projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
-					projectRefDefaultLoggerKey:           p.DefaultLogger,
-					projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
-					projectRefPatchingDisabledKey:        p.PatchingDisabled,
-					projectRefTaskSyncKey:                p.TaskSync,
-					ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
-					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
-				},
+				"$set": setUpdate,
 			})
 	case ProjectPageAccessSection:
 		err = db.Update(coll,

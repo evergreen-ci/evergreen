@@ -1141,6 +1141,27 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 	return projectRef, nil
 }
 
+func (r *mutationResolver) AttachToNewRepo(ctx context.Context, obj restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+	i, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting APIProjectRef %s to service", *obj.Id))
+	}
+	pRef, ok := i.(*model.ProjectRef)
+	if !ok {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APIProjectRef %s to ProjectRef", *obj.Id))
+	}
+	if err = pRef.AttachToNewRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err = res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProjectRef: %s", err.Error()))
+	}
+	return res, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {

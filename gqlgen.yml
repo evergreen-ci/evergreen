@@ -143,6 +143,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
+  MoveProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   RepoCommitQueueParams:
