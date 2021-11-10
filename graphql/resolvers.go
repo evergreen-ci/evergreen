@@ -2197,20 +2197,22 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 	return TaskQueueItemTypeCommit, nil
 }
 
-func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section string) (*restModel.APIProjectSettings, error) {
+func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, sectionName ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
 	usr := MustHaveUser(ctx)
-	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), false, usr.Username())
+	section := GetProjectSettingsSection(ctx, sectionName)
+	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, section, false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
 	}
 	return changes, nil
 }
 
-func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section string) (*restModel.APIProjectSettings, error) {
+func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, sectionName ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
 	usr := MustHaveUser(ctx)
-	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), true, usr.Username())
+	section := GetProjectSettingsSection(ctx, sectionName)
+	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, section, true, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
 	}

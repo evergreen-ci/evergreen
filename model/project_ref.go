@@ -347,7 +347,7 @@ const (
 	ProjectPagePatchAliasSection     = "patch_alias"
 	ProjectPageWorkstationsSection   = "workstations"
 	ProjectPageTriggersSection       = "triggers"
-	ProjectPagePeriodicBuildsSection = "periodic-builds"
+	ProjectPagePeriodicBuildsSection = "periodic_builds"
 )
 
 var adminPermissions = gimlet.Permissions{

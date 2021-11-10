@@ -80,8 +80,8 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: String!): RepoSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, sectionName: ProjectSettingsSection!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, sectionName: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   forceRepotrackerRun(projectId: String!): Boolean!
@@ -290,6 +290,18 @@ enum HostSortBy {
 enum TaskQueueItemType {
   COMMIT
   PATCH
+}
+
+enum ProjectSettingsSection {
+  GENERAL
+  ACCESS
+  VARIABLES
+  GITHUB_AND_COMMIT_QUEUE
+  NOTIFICATIONS
+  PATCH_ALIASES
+  WORKSTATION
+  TRIGGERS
+  PERIODIC_BUILDS
 }
 
 input VolumeHost {
