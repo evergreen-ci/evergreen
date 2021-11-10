@@ -254,7 +254,7 @@
           "task": {
             "id": "taskity_task",
             "patch": {
-              "commitQueuePosition": null
+              "author": "arjun"
             }
           }
         }
