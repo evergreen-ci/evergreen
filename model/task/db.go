@@ -354,8 +354,8 @@ func DisplayTasksByVersion(version string) db.Q {
 			{VersionKey: version},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
-				{DisplayTaskIdKey: nil},                      // ...
 				{DisplayOnlyKey: true},                       // ...
+				{DisplayTaskIdKey: nil},                      // ...
 				{ExecutionTasksKey: bson.M{"$exists": true}}, // has execution tasks
 			},
 			},
