@@ -888,15 +888,6 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 		},
 	}
 
-	// sort by most recent version to get the most recent display names for the build variants first
-	sortByOrderNumber := bson.M{
-		"$sort": bson.M{
-			CreateTimeKey: -1,
-		},
-	}
-
-	pipeline = append(pipeline, sortByOrderNumber)
-
 	// group the build variants by unique build variant names and get a build id for each
 	groupByBuildVariant := bson.M{
 		"$group": bson.M{
