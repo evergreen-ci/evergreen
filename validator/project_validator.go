@@ -1213,12 +1213,6 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
 				})
 			}
-			if utility.FromBoolPtr(dependent.Disable) && !utility.FromBoolPtr(task.Disable) {
-				errs = append(errs, ValidationError{
-					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on disabled task '%s'. Neither will run", task.Name, dep.Name),
-				})
-			}
 			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
 				errs = append(errs, ValidationError{
 					Level:   Warning,
