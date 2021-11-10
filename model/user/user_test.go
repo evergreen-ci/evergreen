@@ -713,7 +713,7 @@ func TestGetOrCreateUser(t *testing.T) {
 	}
 }
 
-func TestViewableProjects(t *testing.T) {
+func TestViewableProjectSettings(t *testing.T) {
 	rm := evergreen.GetEnvironment().RoleManager()
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
 	editScope := gimlet.Scope{

@@ -1509,7 +1509,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	return groupedProjects, nil
 }
 
-func (r *queryResolver) ViewableProjects(ctx context.Context) ([]*GroupedProjects, error) {
+func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := MustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings()
 
