@@ -353,6 +353,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 
 clean-lobster:
 	rm -rf $(lobsterTempDir)
+phony += clean-lobster
 
 update-lobster: clean-lobster
 	EVGHOME=$(evghome) LOBSTER_TEMP_DIR=$(lobsterTempDir) scripts/update-lobster.sh
