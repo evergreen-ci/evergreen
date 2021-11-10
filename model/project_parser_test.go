@@ -1739,6 +1739,12 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 				Task:      "subcommand",
 			},
 		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
 	}
 	assert.NoError(t, pp.Insert())
 
@@ -1752,6 +1758,7 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 	assert.NotNil(t, ppSelectedFields.TaskAnnotationSettings)
 	assert.NotNil(t, ppSelectedFields.DeactivatePrevious)
 	assert.NotNil(t, ppSelectedFields.CommitQueueAliases)
+	assert.NotNil(t, ppSelectedFields.WorkstationConfig)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {

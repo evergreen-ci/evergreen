@@ -1836,6 +1836,12 @@ func TestMergeWithParserProject(t *testing.T) {
 				Endpoint: "random1",
 			},
 		},
+		WorkstationConfig: WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
 	}
 	parserProject := &ParserProject{
 		Id:                 "version1",
@@ -1843,6 +1849,12 @@ func TestMergeWithParserProject(t *testing.T) {
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebHook: evergreen.WebHook{
 				Endpoint: "random2",
+			},
+		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.FalsePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "overridden"},
 			},
 		},
 	}
@@ -1855,5 +1867,7 @@ func TestMergeWithParserProject(t *testing.T) {
 
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
+	assert.False(t, *projectRef.WorkstationConfig.GitClone)
 	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
 }

@@ -420,6 +420,9 @@ func (p *ProjectRef) MergeWithParserProject(version string) error {
 		if parserProject.TaskAnnotationSettings != nil {
 			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
+		if parserProject.WorkstationConfig != nil {
+			p.WorkstationConfig = *parserProject.WorkstationConfig
+		}
 	}
 	return nil
 }
