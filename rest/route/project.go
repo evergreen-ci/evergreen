@@ -314,10 +314,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error merging project ref"))
 	}
-	err = mergedProjectRef.MergeWithParserProject("")
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to merge parser project with project ref"))
-	}
 
 	if h.newProjectRef.IsEnabled() {
 		var hasHook bool

@@ -504,11 +504,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		if commitQueueParams.IsEnabled() {
 			var projRef *model.ProjectRef
 			projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-			err = projRef.MergeWithParserProject("")
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't merge parser project with project ref"))
-				return
-			}
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return

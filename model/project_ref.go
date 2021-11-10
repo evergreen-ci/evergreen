@@ -1286,10 +1286,6 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 			owner, repo, branch)
 	}
 	for _, p := range projectRefs {
-		err = p.MergeWithParserProject("")
-		if err != nil {
-			return nil, errors.Wrap(err, "can't merge parser project with project ref")
-		}
 		if p.CommitQueue.IsEnabled() {
 			p.checkDefaultLogger()
 			return &p, nil

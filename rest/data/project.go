@@ -690,10 +690,6 @@ func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, 
 
 func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
-		err := p.MergeWithParserProject("")
-		if err != nil {
-			return nil, errors.Wrap(err, "can't merge parser project with project ref")
-		}
 		if p.Owner == owner && p.Repo == repo && p.Branch == branch && p.CommitQueue.IsEnabled() {
 			return &p, nil
 		}

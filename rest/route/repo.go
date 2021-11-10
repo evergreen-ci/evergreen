@@ -265,11 +265,6 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 	if err != nil {
 		return errors.Wrapf(err, "error enabling webhooks for repo '%s'", h.repoName)
 	}
-
-	err = newRepoRef.MergeWithParserProject("")
-	if err != nil {
-		return errors.Wrap(err, "failed to merge parser project with project ref")
-	}
 	catcher := grip.NewBasicCatcher()
 
 	// If we're enabling commit queue testing PR testing, verify that only one enabled project ref per branch has true or nil set.
