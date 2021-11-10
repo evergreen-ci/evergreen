@@ -1323,15 +1323,22 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			GroupDisplayName: groupName,
 			Projects:         groupedProjects,
 		}
-
-		if groupedProjects[0].UseRepoSettings && groupedProjects[0].RepoRefId != nil {
-			repoRef, err := model.FindOneRepoRef(utility.FromStringPtr(groupedProjects[0].RepoRefId))
+		project := groupedProjects[0]
+		if project.UseRepoSettings {
+			repoRefId := utility.FromStringPtr(project.RepoRefId)
+			repoRef, err := model.FindOneRepoRef(repoRefId)
 			if err != nil {
 				return nil, err
 			}
 
 			apiRepoRef := restModel.APIProjectRef{}
-			if repoRef != nil {
+			if repoRef == nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":   "repoRef not found ",
+					"repoRefId": repoRefId,
+					"project":   project,
+				}))
+			} else {
 				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
 					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
 				}
