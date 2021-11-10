@@ -585,6 +585,7 @@ type ComplexityRoot struct {
 		PatchTriggerAliases     func(childComplexity int) int
 		Patches                 func(childComplexity int, patchesInput PatchesInput) int
 		PatchingDisabled        func(childComplexity int) int
+		PerfEnabled             func(childComplexity int) int
 		PeriodicBuilds          func(childComplexity int) int
 		Private                 func(childComplexity int) int
 		RemotePath              func(childComplexity int) int
@@ -723,6 +724,7 @@ type ComplexityRoot struct {
 		PRTestingEnabled        func(childComplexity int) int
 		PatchTriggerAliases     func(childComplexity int) int
 		PatchingDisabled        func(childComplexity int) int
+		PerfEnabled             func(childComplexity int) int
 		PeriodicBuilds          func(childComplexity int) int
 		Private                 func(childComplexity int) int
 		RemotePath              func(childComplexity int) int
@@ -3975,6 +3977,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.PatchingDisabled(childComplexity), true
 
+	case "Project.perfEnabled":
+		if e.complexity.Project.PerfEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.PerfEnabled(childComplexity), true
+
 	case "Project.periodicBuilds":
 		if e.complexity.Project.PeriodicBuilds == nil {
 			break
@@ -4855,6 +4864,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.PatchingDisabled(childComplexity), true
+
+	case "RepoRef.perfEnabled":
+		if e.complexity.RepoRef.PerfEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.PerfEnabled(childComplexity), true
 
 	case "RepoRef.periodicBuilds":
 		if e.complexity.RepoRef.PeriodicBuilds == nil {
@@ -7408,6 +7424,7 @@ input ProjectInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
 
@@ -7459,6 +7476,7 @@ input RepoRefInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
 }
@@ -8169,9 +8187,11 @@ type Project {
   gitTagAuthorizedUsers: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean
+
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
+  perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettings!
   taskAnnotationSettings: TaskAnnotationSettings!
 
@@ -8222,6 +8242,7 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  perfEnabled: Boolean!
   buildBaronSettings: BuildBaronSettings!
   taskAnnotationSettings: TaskAnnotationSettings!
 
@@ -21735,6 +21756,37 @@ func (ec *executionContext) _Project_workstationConfig(ctx context.Context, fiel
 	return ec.marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_perfEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Project",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PerfEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_buildBaronSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -25683,6 +25735,40 @@ func (ec *executionContext) _RepoRef_workstationConfig(ctx context.Context, fiel
 	res := resTmp.(model.APIWorkstationConfig)
 	fc.Result = res
 	return ec.marshalNRepoWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_perfEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RepoRef",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PerfEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -37019,6 +37105,12 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "perfEnabled":
+			var err error
+			it.PerfEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "buildBaronSettings":
 			var err error
 			it.BuildBaronSettings, err = ec.unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, v)
@@ -37340,6 +37432,12 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		case "workstationConfig":
 			var err error
 			it.WorkstationConfig, err = ec.unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "perfEnabled":
+			var err error
+			it.PerfEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40943,6 +41041,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "perfEnabled":
+			out.Values[i] = ec._Project_perfEnabled(ctx, field, obj)
 		case "buildBaronSettings":
 			out.Values[i] = ec._Project_buildBaronSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -42062,6 +42162,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "workstationConfig":
 			out.Values[i] = ec._RepoRef_workstationConfig(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "perfEnabled":
+			out.Values[i] = ec._RepoRef_perfEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

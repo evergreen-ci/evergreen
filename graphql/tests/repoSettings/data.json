@@ -40,6 +40,7 @@
         "config_enabled" : false,
         "patch_enabled" : true
       },
+      "perf_enabled" : true,
       "build_baron_settings" : {
         "ticket_create_project" : "EVG",
         "ticket_search_projects" : ["EVG"],

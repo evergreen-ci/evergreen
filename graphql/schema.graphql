@@ -413,6 +413,7 @@ input ProjectInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
 
@@ -464,6 +465,7 @@ input RepoRefInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
 }
@@ -1178,6 +1180,7 @@ type Project {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
+  perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettings!
   taskAnnotationSettings: TaskAnnotationSettings!
 
@@ -1228,6 +1231,7 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  perfEnabled: Boolean!
   buildBaronSettings: BuildBaronSettings!
   taskAnnotationSettings: TaskAnnotationSettings!
 
