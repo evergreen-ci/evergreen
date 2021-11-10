@@ -1145,8 +1145,7 @@ type Project {
   gitTagAuthorizedUsers: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean
-  buildBaronSettings: BuildBaronSettings!
-  taskAnnotationSettings: TaskAnnotationSettings!
+
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
@@ -1194,8 +1193,6 @@ type RepoRef {
   gitTagAuthorizedUsers: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean!
-  buildBaronSettings: BuildBaronSettings!
-  taskAnnotationSettings: TaskAnnotationSettings!
 
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
@@ -1253,31 +1250,6 @@ type RepoTaskSyncOptions {
 type WorkstationConfig {
   setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean
-}
-
-type BuildBaronSettings {
-  ticketCreateProject: String!
-  ticketSearchProjects: [String!]
-  bfSuggestionServer: String!
-  bfSuggestionUsername: String!
-  bfSuggestionPassword: String!
-  bfSuggestionTimeoutSecs: Int!
-  bfSuggestionFeaturesURL: String!
-}
-
-type TaskAnnotationSettings {
-  jiraCustomFields: [JiraField!]
-  webhook: Webhook!
-}
-
-type JiraField {
-  field: String!
-  displayText: String!
-}
-
-type Webhook {
-  endpoint: String!
-  secret: String!
 }
 
 type RepoWorkstationConfig {

@@ -348,7 +348,6 @@ const (
 	ProjectPageWorkstationsSection   = "workstations"
 	ProjectPageTriggersSection       = "triggers"
 	ProjectPagePeriodicBuildsSection = "periodic-builds"
-	ProjectPagePluginSection         = "plugins"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -1545,16 +1544,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 				},
 			})
-	case ProjectPagePluginSection:
-		err = db.Update(coll,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$set": bson.M{
-					projectRefTaskAnnotationSettingsKey: p.TaskAnnotationSettings,
-					projectRefBuildBaronSettingsKey:     p.BuildBaronSettings,
-					projectRefPerfEnabledKey:            p.PerfEnabled,
-				},
-			})
 	case ProjectPageAccessSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1599,6 +1588,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
+
+	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
 
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
