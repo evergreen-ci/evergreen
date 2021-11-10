@@ -667,7 +667,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
-			assert.Equal(t, pRefFromDb.TaskAnnotationSettings.FileTicketWebHook.Endpoint, "")
+			assert.Equal(t, pRefFromDb.TaskAnnotationSettings.FileTicketWebhook.Endpoint, "")
 			assert.Equal(t, pRefFromDb.BuildBaronSettings.TicketCreateProject, "")
 			assert.Nil(t, pRefFromDb.PerfEnabled)
 		},
@@ -720,7 +720,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 					},
 				},
 				TaskAnnotationSettings: evergreen.AnnotationsSettings{
-					FileTicketWebHook: evergreen.WebHook{
+					FileTicketWebhook: evergreen.WebHook{
 						Endpoint: "random1",
 					},
 				},
@@ -1830,7 +1830,7 @@ func TestMergeWithParserProject(t *testing.T) {
 		PerfEnabled:        utility.TruePtr(),
 		DeactivatePrevious: utility.FalsePtr(),
 		TaskAnnotationSettings: evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random1",
 			},
 		},
@@ -1839,7 +1839,7 @@ func TestMergeWithParserProject(t *testing.T) {
 		Id:                 "version1",
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
@@ -1853,5 +1853,5 @@ func TestMergeWithParserProject(t *testing.T) {
 
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
-	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }

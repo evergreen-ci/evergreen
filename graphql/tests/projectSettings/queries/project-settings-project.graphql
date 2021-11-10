@@ -33,6 +33,27 @@
                 }
             }
 
+            buildBaronSettings {
+                ticketCreateProject
+                ticketSearchProjects
+                bfSuggestionFeaturesURL
+                bfSuggestionPassword
+                bfSuggestionServer
+                bfSuggestionTimeoutSecs
+                bfSuggestionUsername
+            }
+
+            taskAnnotationSettings {
+                jiraCustomFields {
+                    displayText
+                    field
+                }
+                fileTicketWebhook {
+                    endpoint
+                    secret
+                }
+            }
+
             taskSync {
                 configEnabled
                 patchEnabled

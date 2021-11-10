@@ -411,6 +411,8 @@ input ProjectInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 
   hidden: Boolean
   useRepoSettings: Boolean
@@ -460,6 +462,8 @@ input RepoRefInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 }
 
 input TriggerAliasInput {
@@ -494,6 +498,31 @@ input CommitQueueParamsInput {
 input TaskSyncOptionsInput {
   configEnabled: Boolean!
   patchEnabled: Boolean!
+}
+
+input BuildBaronSettingsInput {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String!
+  bfSuggestionUsername: String!
+  bfSuggestionPassword: String!
+  bfSuggestionTimeoutSecs: Int!
+  bfSuggestionFeaturesURL: String!
+}
+
+input TaskAnnotationSettingsInput {
+  jiraCustomFields: [JiraFieldInput!]
+  fileTicketWebhook: WebhookInput!
+}
+
+input JiraFieldInput {
+  field: String!
+  displayText: String!
+}
+
+input WebhookInput {
+  endpoint: String!
+  secret: String!
 }
 
 input WorkstationConfigInput {
@@ -1143,11 +1172,11 @@ type Project {
   gitTagAuthorizedUsers: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean
-  buildBaronSettings: BuildBaronSettings!
-  taskAnnotationSettings: TaskAnnotationSettings!
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
   useRepoSettings: Boolean!
@@ -1192,12 +1221,12 @@ type RepoRef {
   gitTagAuthorizedUsers: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagVersionsEnabled: Boolean!
-  buildBaronSettings: BuildBaronSettings!
-  taskAnnotationSettings: TaskAnnotationSettings!
 
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 }
 
 type TriggerAlias {
@@ -1263,7 +1292,7 @@ type BuildBaronSettings {
 
 type TaskAnnotationSettings {
   jiraCustomFields: [JiraField!]
-  webhook: Webhook!
+  fileTicketWebhook: Webhook!
 }
 
 type JiraField {

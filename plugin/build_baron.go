@@ -40,7 +40,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 
 	for projName, proj := range bbpOptions.Projects {
 		hasValidationError := false
-		webHook := proj.TaskAnnotationSettings.FileTicketWebHook
+		webHook := proj.TaskAnnotationSettings.FileTicketWebhook
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.Wrap(err, "error getting service flags")
@@ -51,7 +51,7 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		webhookConfigured := webHook.Endpoint != ""
 		if !webhookConfigured && proj.TicketCreateProject == "" {
 			grip.Critical(message.Fields{
-				"message":      "ticket_create_project and taskAnnotationSettings.FileTicketWebHook endpoint cannot both be blank",
+				"message":      "ticket_create_project and taskAnnotationSettings.FileTicketWebhook endpoint cannot both be blank",
 				"project_name": projName,
 			})
 			hasValidationError = true
@@ -167,10 +167,10 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 		if err != nil {
 			return evergreen.WebHook{}, false, errors.Errorf("Unable to merge parser project with project ref %s", project)
 		}
-		webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+		webHook = projectRef.TaskAnnotationSettings.FileTicketWebhook
 	} else {
 		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project, "")
-		webHook = bbProject.TaskAnnotationSettings.FileTicketWebHook
+		webHook = bbProject.TaskAnnotationSettings.FileTicketWebhook
 		if webHook.Endpoint != "" && bbProject.TicketCreateProject != "" {
 			return evergreen.WebHook{}, false, errors.Errorf("The custom file ticket webhook and the build baron TicketCreateProject should not both be configured")
 		}

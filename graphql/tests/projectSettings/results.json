@@ -39,6 +39,28 @@
                 "configEnabled" : false,
                 "patchEnabled" : true
               },
+
+              "buildBaronSettings" : {
+                "ticketCreateProject" : "EVG",
+                "ticketSearchProjects" : ["EVG"],
+                "bfSuggestionFeaturesURL" : "",
+                "bfSuggestionPassword" : "",
+                "bfSuggestionServer" : "",
+                "bfSuggestionTimeoutSecs" : 0,
+                "bfSuggestionUsername" : ""
+              },
+
+              "taskAnnotationSettings" : {
+                "jiraCustomFields" : [{
+                  "displayText" : "description",
+                  "field" : "sample_field"
+                }],
+                "fileTicketWebhook" : {
+                  "endpoint" : "endpoint",
+                  "secret" : "shh"
+                }
+              },
+
               "validDefaultLoggers": [
                 "evergreen",
                 "buildlogger"

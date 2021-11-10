@@ -290,7 +290,7 @@ func (bb *APIBuildBaronSettings) ToService() (interface{}, error) {
 
 type APITaskAnnotationSettings struct {
 	JiraCustomFields  []APIJiraField `bson:"jira_custom_fields" json:"jira_custom_fields"`
-	FileTicketWebHook APIWebHook     `bson:"web_hook" json:"web_hook"`
+	FileTicketWebhook APIWebHook     `bson:"web_hook" json:"web_hook"`
 }
 
 type APIWebHook struct {
@@ -306,9 +306,9 @@ type APIJiraField struct {
 func (ta *APITaskAnnotationSettings) ToService() (interface{}, error) {
 	res := evergreen.AnnotationsSettings{}
 	webhook := evergreen.WebHook{}
-	webhook.Secret = utility.FromStringPtr(ta.FileTicketWebHook.Secret)
-	webhook.Endpoint = utility.FromStringPtr(ta.FileTicketWebHook.Endpoint)
-	res.FileTicketWebHook = webhook
+	webhook.Secret = utility.FromStringPtr(ta.FileTicketWebhook.Secret)
+	webhook.Endpoint = utility.FromStringPtr(ta.FileTicketWebhook.Endpoint)
+	res.FileTicketWebhook = webhook
 	for _, apiJiraField := range ta.JiraCustomFields {
 		jiraField := evergreen.JiraField{}
 		jiraField.Field = utility.FromStringPtr(apiJiraField.Field)
@@ -328,9 +328,9 @@ func (ta *APITaskAnnotationSettings) BuildFromService(h interface{}) error {
 	}
 
 	apiWebhook := APIWebHook{}
-	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebHook.Secret)
-	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebHook.Endpoint)
-	ta.FileTicketWebHook = apiWebhook
+	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebhook.Secret)
+	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebhook.Endpoint)
+	ta.FileTicketWebhook = apiWebhook
 	for _, jiraField := range config.JiraCustomFields {
 		apiJiraField := APIJiraField{}
 		apiJiraField.Field = utility.ToStringPtr(jiraField.Field)
