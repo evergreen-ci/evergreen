@@ -1266,7 +1266,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 }
 
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
 	}
@@ -3601,7 +3601,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 }
 
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}

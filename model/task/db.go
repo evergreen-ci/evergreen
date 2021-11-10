@@ -341,8 +341,15 @@ func ByActivation(active bool) db.Q {
 
 // ByVersion creates a query to return tasks with a certain build id
 func ByVersion(version string) db.Q {
+	return db.Query(bson.M{
+		VersionKey: version,
+	})
+}
+
+// DisplayTasksByVersion produces a query that returns all display tasks for the given version.
+func DisplayTasksByVersion(version string) db.Q {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
-	getDisplayTasksQuery := bson.M{
+	displayTasksQuery := bson.M{
 		"$and": []bson.M{
 			{VersionKey: version},
 			{"$or": []bson.M{
@@ -354,8 +361,7 @@ func ByVersion(version string) db.Q {
 			},
 		},
 	}
-
-	return db.Query(getDisplayTasksQuery)
+	return db.Query(displayTasksQuery)
 }
 
 // FailedTasksByVersion produces a query that returns all failed tasks for the given version.
