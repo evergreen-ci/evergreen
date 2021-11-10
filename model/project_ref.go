@@ -456,7 +456,6 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
 	}
-	fmt.Println("does repoRef exist? %v", repoRef)
 	if repoRef == nil {
 		repoRef, err = p.createNewRepoRef(u)
 		if err != nil {
