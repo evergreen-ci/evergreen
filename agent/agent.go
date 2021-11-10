@@ -36,6 +36,7 @@ type Agent struct {
 	jasper        jasper.Manager
 	opts          Options
 	defaultLogger send.Sender
+	endTaskResp   *TriggerEndTaskResp
 }
 
 // Options contains startup options for an Agent.
@@ -207,6 +208,7 @@ LOOP:
 			grip.Info("agent loop canceled")
 			return nil
 		case <-timer.C:
+			a.endTaskResp = nil // reset this in case a previous task used this to trigger a response
 			// Check the cedar GRPC connection so we can fail early
 			// and avoid task system failures.
 			err := utility.Retry(ctx, func() (bool, error) {
@@ -221,7 +223,6 @@ LOOP:
 				}
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
-
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,
@@ -473,6 +474,14 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
+	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
+		if !evergreen.IsFinishedTaskStatus(a.endTaskResp.Status) {
+			tc.logger.Task().Errorf("'%s' is not a valid task status", a.endTaskResp.Status)
+		} else {
+			status = a.endTaskResp.Status
+			message = a.endTaskResp.Message
+		}
+	}
 	resp, err := a.finishTask(ctx, tc, status, message)
 	if err != nil {
 		return false, errors.Wrap(err, "error marking task complete")

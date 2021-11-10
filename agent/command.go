@@ -147,6 +147,9 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			return errors.Wrap(ctx.Err(), "Agent stopped early")
 		}
 		tc.logger.Task().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
+		if a.endTaskResp != nil {
+			return errors.New("Task status has been set; triggering end task")
+		}
 	}
 	return nil
 }
