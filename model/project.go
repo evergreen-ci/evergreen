@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -20,8 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
-	mgobson "gopkg.in/mgo.v2/bson"
+	ignore "github.com/sabhiram/go-gitignore"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1386,7 +1386,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 		return false
 	}
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
-	ignorer, _ := ignore.CompileIgnoreLines(p.Ignore...)
+	ignorer := ignore.CompileIgnoreLines(p.Ignore...)
 	for _, f := range files {
 		if !ignorer.MatchesPath(f) {
 			return false
