@@ -218,11 +218,12 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	s.NoError(err)
 
 	ebsMount := MountPoint{
+		VolumeType: "gp3",
 		DeviceName: "device",
 		Size:       10,
 		Iops:       100,
-		SnapshotID: "snapshot-1",
 		Throughput: 150,
+		SnapshotID: "snapshot-1",
 	}
 	b, err = makeBlockDeviceMappings([]MountPoint{ebsMount})
 	s.NoError(err)
@@ -272,10 +273,11 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	s.NoError(err)
 
 	ebsMount := MountPoint{
+		VolumeType: "gp3",
 		DeviceName: "device",
 		Size:       10,
 		Iops:       100,
-		Throughput: 100,
+		Throughput: 150,
 		SnapshotID: "snapshot-1",
 	}
 	b, err = makeBlockDeviceMappingsTemplate([]MountPoint{ebsMount})
