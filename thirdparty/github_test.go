@@ -15,7 +15,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

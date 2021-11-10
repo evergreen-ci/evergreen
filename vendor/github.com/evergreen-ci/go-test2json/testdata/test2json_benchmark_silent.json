@@ -1,7 +1,0 @@
-{"Time":"2018-06-26T14:44:59.798808149-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Output":"goos: darwin\n"}
-{"Time":"2018-06-26T14:44:59.799175912-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Output":"goarch: amd64\n"}
-{"Time":"2018-06-26T14:44:59.799190098-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Output":"pkg: github.com/evergreen-ci/go-test2json/testdata/tests/bench\n"}
-{"Time":"2018-06-26T14:44:59.799199869-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Output":"BenchmarkSomethingSilent-8   \t       1\t10000604919 ns/op\n"}
-{"Time":"2018-06-26T14:44:59.799224587-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Output":"PASS\n"}
-{"Time":"2018-06-26T14:44:59.799722228-04:00","Action":"output","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Output":"ok  \tgithub.com/evergreen-ci/go-test2json/testdata/tests/bench\t10.007s\n"}
-{"Time":"2018-06-26T14:44:59.799746284-04:00","Action":"pass","Package":"github.com/evergreen-ci/go-test2json/testdata/tests/bench","Elapsed":10.007}

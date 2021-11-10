@@ -106,7 +106,7 @@ func TestCleanup(t *testing.T) {
 
 		info, err := dockerClient.Info(ctx)
 		require.NoError(t, err)
-		require.Equal(t, 1, info.Images)
+		require.Equal(t, 3, info.Images)
 
 		t.Run(name, test)
 	}
