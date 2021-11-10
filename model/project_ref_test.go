@@ -65,7 +65,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Id:                 "ident",
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
@@ -145,7 +145,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 	assert.True(t, *mergedProject.DeactivatePrevious)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {

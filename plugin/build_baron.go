@@ -163,7 +163,7 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 		if err != nil || projectRef == nil {
 			return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
 		}
-		webHook = projectRef.TaskAnnotationSettings.FileTicketWebHook
+		webHook = projectRef.TaskAnnotationSettings.FileTicketWebhook
 	} else {
 		bbProject, _ := BbGetProject(evergreen.GetEnvironment().Settings(), project, "")
 		webHook = bbProject.TaskAnnotationSettings.FileTicketWebhook

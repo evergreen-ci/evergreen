@@ -1725,7 +1725,7 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 			},
 		},
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
