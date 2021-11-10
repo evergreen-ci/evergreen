@@ -877,7 +877,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 // getJoinedWithDirectory joins the passed path A with c.Directory B like this:
 //   if B is relative, return A+B.
 //   if B is absolute, return B.
-// We use this because *gitFetchDirectory.Directory might be absolute.
+// We use this because *gitFetchProject.Directory might be absolute.
 func (c *gitFetchProject) getJoinedWithDirectory(path string) string {
 	if filepath.IsAbs(c.Directory) {
 		return c.Directory
