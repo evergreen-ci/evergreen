@@ -1,9 +1,0 @@
-package: github.com/evergreen-ci/certdepot
-import:
-- package: github.com/mongodb/anser
-- package: github.com/mongodb/grip
-- package: github.com/pkg/errors
-- package: github.com/square/certstrap
-- package: go.mongodb.org/mongo-driver
-- package: gopkg.in/mgo.v2
-- package: github.com/stretchr/testify

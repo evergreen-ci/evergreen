@@ -1,4 +1,0 @@
-project: "test"
-tests:
-  - info:
-      test_name: "test"

@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // DBTestConnector is a struct that implements the Test related methods

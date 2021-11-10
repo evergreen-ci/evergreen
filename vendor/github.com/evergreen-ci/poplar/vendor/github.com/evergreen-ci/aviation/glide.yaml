@@ -1,7 +1,0 @@
-package: github.com/evergreen-ci/aviation
-import:
-- package: github.com/evergreen-ci/gimlet
-- package: github.com/mongodb/grip
-- package: github.com/stretchr/testify
-- package: google.golang.org/grpc
-- package: github.com/jpillora/backoff
