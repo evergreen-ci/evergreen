@@ -590,7 +590,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	// Copy periodic builds
 	if p.PeriodicBuilds != nil {
 		builds := []model.PeriodicBuildDefinition{}
-		for _, t := range p.Triggers {
+		for _, t := range p.PeriodicBuilds {
 			i, err = t.ToService()
 			if err != nil {
 				return nil, errors.Wrap(err, "cannot convert API periodic build")

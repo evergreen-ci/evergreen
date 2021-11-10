@@ -308,6 +308,25 @@ mciModule.controller(
       $scope.isDirty = true;
     };
 
+    $scope.isValidGitTagUser = function(user) {
+        if ($scope.settingsFormData.git_tag_authorized_users === undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.git_tag_authorized_users.includes(user);
+    }
+    $scope.isValidGitTagTeam = function(team) {
+        if ($scope.settingsFormData.git_tag_authorized_teams === undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.git_tag_authorized_teams.includes(team);
+    }
+    $scope.isValidAdmin = function(admin) {
+        if ($scope.settingsFormData.admins == undefined) {
+            return true;
+        }
+        return !$scope.settingsFormData.admins.includes(admin);
+    }
+
     $scope.addGitTagTeam = function () {
       $scope.settingsFormData.git_tag_authorized_teams.push(
         $scope.git_tag_team

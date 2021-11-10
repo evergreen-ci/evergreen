@@ -62,13 +62,13 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.Equal(t, repoRefFromDb.Admins, ref.Admins)
 
 			// should be restricted
-			projectThatDefaults, err := model.FindMergedProjectRef("myId")
+			projectThatDefaults, err := model.FindMergedProjectRef("myId", "", true)
 			assert.NoError(t, err)
 			assert.NotNil(t, projectThatDefaults)
 			assert.True(t, projectThatDefaults.IsRestricted())
 
 			// should not be restricted
-			projectThatDoesNotDefault, err := model.FindMergedProjectRef("myId2")
+			projectThatDoesNotDefault, err := model.FindMergedProjectRef("myId2", "", true)
 			assert.NoError(t, err)
 			assert.NotNil(t, projectThatDoesNotDefault)
 			assert.False(t, projectThatDoesNotDefault.IsRestricted())
@@ -274,7 +274,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Nil(t, pRefFromDB.Restricted)
 			assert.Equal(t, pRefFromDB.Admins, ref.Admins)
 
-			mergedProject, err := model.FindMergedProjectRef(ref.Id)
+			mergedProject, err := model.FindMergedProjectRef(ref.Id, "", true)
 			assert.NoError(t, err)
 			assert.NotNil(t, mergedProject)
 			assert.True(t, mergedProject.IsRestricted())

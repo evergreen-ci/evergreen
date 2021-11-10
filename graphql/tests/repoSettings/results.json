@@ -57,7 +57,11 @@
                   "endpoint" : "endpoint",
                   "secret" : "shh"
                 }
-              }
+              },
+              "validDefaultLoggers": [
+                "evergreen",
+                "buildlogger"
+              ]
             }
           }
         }

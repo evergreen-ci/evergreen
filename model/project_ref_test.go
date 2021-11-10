@@ -51,8 +51,26 @@ func TestFindOneProjectRef(t *testing.T) {
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection),
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection, VersionCollection),
 		"Error clearing collection")
+
+	v1 := Version{
+		Id:         "ident",
+		Identifier: "ident",
+		Requester:  evergreen.GitTagRequester,
+	}
+	assert.NoError(t, v1.Insert())
+
+	parserProject := &ParserProject{
+		Id:                 "ident",
+		DeactivatePrevious: utility.TruePtr(),
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebHook: evergreen.WebHook{
+				Endpoint: "random2",
+			},
+		},
+	}
+	assert.NoError(t, parserProject.Insert())
 
 	projectRef := &ProjectRef{
 		Owner:                 "mongodb",
@@ -64,6 +82,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Enabled:               utility.FalsePtr(),
 		PatchingDisabled:      utility.FalsePtr(),
 		RepotrackerDisabled:   utility.TruePtr(),
+		DeactivatePrevious:    utility.FalsePtr(),
 		PRTestingEnabled:      nil,
 		GitTagVersionsEnabled: nil,
 		GitTagAuthorizedTeams: []string{},
@@ -96,7 +115,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	}}
 	assert.NoError(t, repoRef.Upsert())
 
-	mergedProject, err := FindMergedProjectRef("ident")
+	mergedProject, err := FindMergedProjectRef("ident", "ident", true)
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)
@@ -125,6 +144,8 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
+	assert.True(t, *mergedProject.DeactivatePrevious)
+	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -1443,7 +1464,7 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 			IntervalHours: 24,
 			ConfigFile:    "foo.yml",
 			Alias:         "",
-		}: false,
+		}: true,
 	}
 
 	for testCase, shouldPass := range testCases {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -19,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1676,6 +1678,80 @@ func TestMergeUnorderedUnique(t *testing.T) {
 	assert.Equal(t, len(main.Parameters), 2)
 	assert.Equal(t, len(main.Modules), 2)
 	assert.Equal(t, len(main.Functions), 4)
+}
+
+func TestParserProjectFindOneIdWithFields(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(ParserProjectCollection))
+	pp := &ParserProject{
+		Id: "version1",
+		Tasks: []parserTask{
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
+			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name:  "my_tg",
+				Tasks: []string{"tg_task"},
+			},
+		},
+		Parameters: []ParameterInfo{
+			{
+				Parameter: patch.Parameter{
+					Key:   "key",
+					Value: "val",
+				},
+			},
+		},
+		Modules: []Module{
+			{
+				Name: "my_module",
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"func1": &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{
+					Command: "single_command",
+				},
+			},
+			"func2": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "multi_command1",
+					}, {
+						Command: "multi_command2",
+					},
+				},
+			},
+		},
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebHook: evergreen.WebHook{
+				Endpoint: "random2",
+			},
+		},
+		DeactivatePrevious: utility.TruePtr(),
+		CommitQueueAliases: []ProjectAlias{
+			ProjectAlias{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: projectId,
+				Alias:     "alias1",
+				Variant:   "ubuntu",
+				Task:      "subcommand",
+			},
+		},
+	}
+	assert.NoError(t, pp.Insert())
+
+	ppSelectedFields, err := ParserProjectByVersion("", "version1")
+	assert.NoError(t, err)
+	assert.Nil(t, ppSelectedFields.Tasks)
+	assert.Nil(t, ppSelectedFields.Modules)
+	assert.Nil(t, ppSelectedFields.TaskGroups)
+	assert.Nil(t, ppSelectedFields.Parameters)
+	assert.Nil(t, ppSelectedFields.Tasks)
+	assert.NotNil(t, ppSelectedFields.TaskAnnotationSettings)
+	assert.NotNil(t, ppSelectedFields.DeactivatePrevious)
+	assert.NotNil(t, ppSelectedFields.CommitQueueAliases)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
