@@ -45,29 +45,11 @@ func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
-	projectToCopy, err := p.sc.FindProjectById(p.oldProject, false)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err,
-			"Database error finding project '%s'", p.oldProject))
+	opts := data.CopyProjectOpts{
+		ProjectIdToCopy:      p.oldProject,
+		NewProjectIdentifier: p.newProject,
 	}
-	if projectToCopy == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", p.oldProject))
-	}
-
-	// verify project with new name doesn't exist
-	_, err = p.sc.FindProjectById(p.newProject, false)
-	if err == nil {
-		return gimlet.MakeJSONErrorResponder(errors.New("provide different ID for new project"))
-	}
-	apiErr, ok := err.(gimlet.ErrorResponse)
-	if !ok {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("Type assertion failed: type %T does not hold an error", err))
-	}
-	if apiErr.StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.newProject))
-	}
-
-	apiProjectRef, err := p.sc.CopyProject(ctx, projectToCopy, p.newProject)
+	apiProjectRef, err := p.sc.CopyProject(ctx, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -121,12 +103,12 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo, false) // ensure project is existing
+	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	copyFromProject, err := p.sc.FindProjectById(p.copyFrom, false) // ensure project is existing
+	copyFromProject, err := p.sc.FindProjectById(p.copyFrom, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
 	}

@@ -1176,7 +1176,7 @@ func hostRunCommand() cli.Command {
 				}
 
 				if !skipConfirm {
-					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue? (y/n): ", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
+					if !confirm(fmt.Sprintf("The script will run on %d host(s), \n%s\nContinue? (Y/n): ", len(hostIDs), strings.Join(hostIDs, "\n")), true) {
 						return nil
 					}
 				}
@@ -1440,8 +1440,9 @@ func hostFindBy() cli.Command {
 		ipAddressFlagName = "ip-address"
 	)
 	return cli.Command{
-		Name:  "get-host",
-		Usage: "get link to existing hosts",
+		Name:    "get",
+		Aliases: []string{"get-host"},
+		Usage:   "get link to existing hosts",
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(ipAddressFlagName, "ip"),
@@ -1557,13 +1558,13 @@ func sanityCheckRsync(localPath, remotePath string, pull bool) bool {
 	remotePathIsDir := strings.HasSuffix(remotePath, "/")
 
 	if localPathIsDir && !pull {
-		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/n)", localPath, remotePath), false)
+		ok := confirm(fmt.Sprintf("The local directory '%s' will overwrite any existing contents in the remote directory '%s'. Continue? (y/N)", localPath, remotePath), false)
 		if !ok {
 			return false
 		}
 	}
 	if remotePathIsDir && pull {
-		ok := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue? (y/n)", remotePath, localPath), false)
+		ok := confirm(fmt.Sprintf("The remote directory '%s' will overwrite any existing contents in the local directory '%s'. Continue? (y/N)", remotePath, localPath), false)
 		if !ok {
 			return false
 		}

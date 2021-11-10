@@ -66,7 +66,7 @@ func NewPodTerminationJob(podID, reason string, ts time.Time) amboy.Job {
 	j.PodID = podID
 	j.Reason = reason
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", podTerminationJobName, podID), podLifecycleScope(podID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.SetID(fmt.Sprintf("%s.%s.%s", podTerminationJobName, podID, ts.Format(TSFormat)))
 
 	return j

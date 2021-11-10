@@ -16,6 +16,7 @@ const (
 	projectFlagName           = "project"
 	patchIDFlagName           = "patch"
 	moduleFlagName            = "module"
+	localModulesFlagName      = "local_modules"
 	skipConfirmFlagName       = "skip_confirm"
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"

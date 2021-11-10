@@ -49,7 +49,7 @@ func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.T
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, ts.Format(TSFormat)))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", schedulerJobName, distroID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 
 	return j
 }

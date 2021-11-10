@@ -1,11 +1,17 @@
 package model
 
 import (
+	"fmt"
+	"reflect"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -174,9 +180,10 @@ type APIPeriodicBuildDefinition struct {
 }
 
 type APICommitQueueParams struct {
-	Enabled     *bool   `json:"enabled"`
-	MergeMethod *string `json:"merge_method"`
-	Message     *string `json:"message"`
+	Enabled       *bool   `json:"enabled"`
+	RequireSigned *bool   `json:"require_signed"`
+	MergeMethod   *string `json:"merge_method"`
+	Message       *string `json:"message"`
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() (interface{}, error) {
@@ -221,6 +228,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 	}
 
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
+	cqParams.RequireSigned = utility.BoolPtrCopy(params.RequireSigned)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
 
@@ -230,10 +238,106 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
+	serviceParams.RequireSigned = utility.BoolPtrCopy(cqParams.RequireSigned)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
 	return serviceParams, nil
+}
+
+type APIBuildBaronSettings struct {
+	TicketCreateProject     *string   `bson:"ticket_create_project" json:"ticket_create_project"`
+	TicketSearchProjects    []*string `bson:"ticket_search_projects" json:"ticket_search_projects"`
+	BFSuggestionServer      *string   `bson:"bf_suggestion_server" json:"bf_suggestion_server"`
+	BFSuggestionUsername    *string   `bson:"bf_suggestion_username" json:"bf_suggestion_username"`
+	BFSuggestionPassword    *string   `bson:"bf_suggestion_password" json:"bf_suggestion_password"`
+	BFSuggestionTimeoutSecs *int      `bson:"bf_suggestion_timeout_secs" json:"bf_suggestion_timeout_secs"`
+	BFSuggestionFeaturesURL *string   `bson:"bf_suggestion_features_url" json:"bf_suggestion_features_url"`
+}
+
+func (bb *APIBuildBaronSettings) BuildFromService(h interface{}) error {
+	var def evergreen.BuildBaronSettings
+	switch h.(type) {
+	case evergreen.BuildBaronSettings:
+		def = h.(evergreen.BuildBaronSettings)
+	case *evergreen.BuildBaronSettings:
+		def = *h.(*evergreen.BuildBaronSettings)
+	default:
+		return errors.Errorf("Invalid build baron config of type '%T'", h)
+	}
+	bb.TicketCreateProject = utility.ToStringPtr(def.TicketCreateProject)
+	bb.TicketSearchProjects = utility.ToStringPtrSlice(def.TicketSearchProjects)
+	bb.BFSuggestionServer = utility.ToStringPtr(def.BFSuggestionServer)
+	bb.BFSuggestionUsername = utility.ToStringPtr(def.BFSuggestionUsername)
+	bb.BFSuggestionPassword = utility.ToStringPtr(def.BFSuggestionPassword)
+	bb.BFSuggestionTimeoutSecs = utility.ToIntPtr(def.BFSuggestionTimeoutSecs)
+	bb.BFSuggestionFeaturesURL = utility.ToStringPtr(def.BFSuggestionFeaturesURL)
+	return nil
+}
+
+func (bb *APIBuildBaronSettings) ToService() (interface{}, error) {
+	buildbaron := evergreen.BuildBaronSettings{}
+
+	buildbaron.TicketCreateProject = utility.FromStringPtr(bb.TicketCreateProject)
+	buildbaron.TicketSearchProjects = utility.FromStringPtrSlice(bb.TicketSearchProjects)
+	buildbaron.BFSuggestionServer = utility.FromStringPtr(bb.BFSuggestionServer)
+	buildbaron.BFSuggestionUsername = utility.FromStringPtr(bb.BFSuggestionUsername)
+	buildbaron.BFSuggestionPassword = utility.FromStringPtr(bb.BFSuggestionPassword)
+	buildbaron.BFSuggestionTimeoutSecs = utility.FromIntPtr(bb.BFSuggestionTimeoutSecs)
+	buildbaron.BFSuggestionFeaturesURL = utility.FromStringPtr(bb.BFSuggestionFeaturesURL)
+	return buildbaron, nil
+}
+
+type APITaskAnnotationSettings struct {
+	JiraCustomFields  []APIJiraField `bson:"jira_custom_fields" json:"jira_custom_fields"`
+	FileTicketWebHook APIWebHook     `bson:"web_hook" json:"web_hook"`
+}
+
+type APIWebHook struct {
+	Endpoint *string `bson:"endpoint" json:"endpoint"`
+	Secret   *string `bson:"secret" json:"secret"`
+}
+
+type APIJiraField struct {
+	Field       *string `bson:"field" json:"field"`
+	DisplayText *string `bson:"display_text" json:"display_text"`
+}
+
+func (ta *APITaskAnnotationSettings) ToService() (interface{}, error) {
+	res := evergreen.AnnotationsSettings{}
+	webhook := evergreen.WebHook{}
+	webhook.Secret = utility.FromStringPtr(ta.FileTicketWebHook.Secret)
+	webhook.Endpoint = utility.FromStringPtr(ta.FileTicketWebHook.Endpoint)
+	res.FileTicketWebHook = webhook
+	for _, apiJiraField := range ta.JiraCustomFields {
+		jiraField := evergreen.JiraField{}
+		jiraField.Field = utility.FromStringPtr(apiJiraField.Field)
+		jiraField.DisplayText = utility.FromStringPtr(apiJiraField.DisplayText)
+		res.JiraCustomFields = append(res.JiraCustomFields, jiraField)
+	}
+	return res, nil
+}
+
+func (ta *APITaskAnnotationSettings) BuildFromService(h interface{}) error {
+	var config evergreen.AnnotationsSettings
+	switch h.(type) {
+	case evergreen.AnnotationsSettings:
+		config = h.(evergreen.AnnotationsSettings)
+	case *evergreen.AnnotationsSettings:
+		config = *h.(*evergreen.AnnotationsSettings)
+	}
+
+	apiWebhook := APIWebHook{}
+	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebHook.Secret)
+	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebHook.Endpoint)
+	ta.FileTicketWebHook = apiWebhook
+	for _, jiraField := range config.JiraCustomFields {
+		apiJiraField := APIJiraField{}
+		apiJiraField.Field = utility.ToStringPtr(jiraField.Field)
+		apiJiraField.DisplayText = utility.ToStringPtr(jiraField.DisplayText)
+		ta.JiraCustomFields = append(ta.JiraCustomFields, apiJiraField)
+	}
+	return nil
 }
 
 type APITaskSyncOptions struct {
@@ -261,7 +365,7 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 
 type APIWorkstationConfig struct {
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      bool                         `bson:"git_clone" json:"git_clone"`
+	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
 }
 
 type APIWorkstationSetupCommand struct {
@@ -271,7 +375,7 @@ type APIWorkstationSetupCommand struct {
 
 func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 	res := model.WorkstationConfig{}
-	res.GitClone = utility.ToBoolPtr(c.GitClone)
+	res.GitClone = utility.BoolPtrCopy(c.GitClone)
 	for _, apiCmd := range c.SetupCommands {
 		cmd := model.WorkstationSetupCommand{}
 		cmd.Command = utility.FromStringPtr(apiCmd.Command)
@@ -290,7 +394,7 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 		config = *h.(*model.WorkstationConfig)
 	}
 
-	c.GitClone = utility.FromBoolPtr(config.GitClone)
+	c.GitClone = utility.BoolPtrCopy(config.GitClone)
 	for _, cmd := range config.SetupCommands {
 		apiCmd := APIWorkstationSetupCommand{}
 		apiCmd.Command = utility.ToStringPtr(cmd.Command)
@@ -330,43 +434,46 @@ func (c *APIParameterInfo) BuildFromService(h interface{}) error {
 }
 
 type APIProjectRef struct {
-	Id                          *string              `json:"id"`
-	Owner                       *string              `json:"owner_name"`
-	Repo                        *string              `json:"repo_name"`
-	Branch                      *string              `json:"branch_name"`
-	Enabled                     *bool                `json:"enabled"`
-	Private                     *bool                `json:"private"`
-	BatchTime                   int                  `json:"batch_time"`
-	RemotePath                  *string              `json:"remote_path"`
-	SpawnHostScriptPath         *string              `json:"spawn_host_script_path"`
-	Identifier                  *string              `json:"identifier"`
-	DisplayName                 *string              `json:"display_name"`
-	DeactivatePrevious          *bool                `json:"deactivate_previous"`
-	TracksPushEvents            *bool                `json:"tracks_push_events"`
-	PRTestingEnabled            *bool                `json:"pr_testing_enabled"`
-	GitTagVersionsEnabled       *bool                `json:"git_tag_versions_enabled"`
-	GithubChecksEnabled         *bool                `json:"github_checks_enabled"`
-	CedarTestResultsEnabled     *bool                `json:"cedar_test_results_enabled"`
-	UseRepoSettings             bool                 `json:"use_repo_settings"`
-	RepoRefId                   *string              `json:"repo_ref_id"`
-	DefaultLogger               *string              `json:"default_logger"`
-	CommitQueue                 APICommitQueueParams `json:"commit_queue"`
-	TaskSync                    APITaskSyncOptions   `json:"task_sync"`
-	Hidden                      *bool                `json:"hidden"`
-	PatchingDisabled            *bool                `json:"patching_disabled"`
-	RepotrackerDisabled         *bool                `json:"repotracker_disabled"`
-	DispatchingDisabled         *bool                `json:"dispatching_disabled"`
-	DisabledStatsCache          *bool                `json:"disabled_stats_cache"`
-	FilesIgnoredFromCache       []*string            `json:"files_ignored_from_cache"`
-	Admins                      []*string            `json:"admins"`
-	DeleteAdmins                []*string            `json:"delete_admins,omitempty"`
-	GitTagAuthorizedUsers       []*string            `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
-	DeleteGitTagAuthorizedUsers []*string            `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
-	GitTagAuthorizedTeams       []*string            `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
-	DeleteGitTagAuthorizedTeams []*string            `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
-	NotifyOnBuildFailure        *bool                `json:"notify_on_failure"`
-	Restricted                  *bool                `json:"restricted"`
-	Revision                    *string              `json:"revision"`
+	Id                          *string                   `json:"id"`
+	Owner                       *string                   `json:"owner_name"`
+	Repo                        *string                   `json:"repo_name"`
+	Branch                      *string                   `json:"branch_name"`
+	Enabled                     *bool                     `json:"enabled"`
+	Private                     *bool                     `json:"private"`
+	BatchTime                   int                       `json:"batch_time"`
+	RemotePath                  *string                   `json:"remote_path"`
+	SpawnHostScriptPath         *string                   `json:"spawn_host_script_path"`
+	Identifier                  *string                   `json:"identifier"`
+	DisplayName                 *string                   `json:"display_name"`
+	DeactivatePrevious          *bool                     `json:"deactivate_previous"`
+	TracksPushEvents            *bool                     `json:"tracks_push_events"`
+	PRTestingEnabled            *bool                     `json:"pr_testing_enabled"`
+	GitTagVersionsEnabled       *bool                     `json:"git_tag_versions_enabled"`
+	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
+	CedarTestResultsEnabled     *bool                     `json:"cedar_test_results_enabled"`
+	UseRepoSettings             bool                      `json:"use_repo_settings"`
+	RepoRefId                   *string                   `json:"repo_ref_id"`
+	DefaultLogger               *string                   `json:"default_logger"`
+	CommitQueue                 APICommitQueueParams      `json:"commit_queue"`
+	TaskSync                    APITaskSyncOptions        `json:"task_sync"`
+	TaskAnnotationSettings      APITaskAnnotationSettings `json:"task_annotation_settings"`
+	BuildBaronSettings          APIBuildBaronSettings     `json:"build_baron_settings"`
+	PerfEnabled                 *bool                     `json:"perf_enabled"`
+	Hidden                      *bool                     `json:"hidden"`
+	PatchingDisabled            *bool                     `json:"patching_disabled"`
+	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
+	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
+	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
+	FilesIgnoredFromCache       []*string                 `json:"files_ignored_from_cache"`
+	Admins                      []*string                 `json:"admins"`
+	DeleteAdmins                []*string                 `json:"delete_admins,omitempty"`
+	GitTagAuthorizedUsers       []*string                 `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
+	DeleteGitTagAuthorizedUsers []*string                 `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
+	GitTagAuthorizedTeams       []*string                 `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
+	DeleteGitTagAuthorizedTeams []*string                 `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
+	NotifyOnBuildFailure        *bool                     `json:"notify_on_failure"`
+	Restricted                  *bool                     `json:"restricted"`
+	Revision                    *string                   `json:"revision"`
 
 	Triggers             []APITriggerDefinition       `json:"triggers"`
 	GithubTriggerAliases []*string                    `json:"github_trigger_aliases"`
@@ -405,41 +512,62 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		return nil, errors.Errorf("expected workstation config but was actually '%T'", i)
 	}
 
+	i, err = p.BuildBaronSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot convert API buildbaron config")
+	}
+	buildBaronConfig, ok := i.(evergreen.BuildBaronSettings)
+	if !ok {
+		return nil, errors.Errorf("expected buildbaron config but was actually '%T'", i)
+	}
+
+	i, err = p.TaskAnnotationSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot convert API task annotations config")
+	}
+	taskAnnotationConfig, ok := i.(evergreen.AnnotationsSettings)
+	if !ok {
+		return nil, errors.Errorf("expected task annotations config but was actually '%T'", i)
+	}
+
 	projectRef := model.ProjectRef{
-		Owner:                 utility.FromStringPtr(p.Owner),
-		Repo:                  utility.FromStringPtr(p.Repo),
-		Branch:                utility.FromStringPtr(p.Branch),
-		Enabled:               utility.BoolPtrCopy(p.Enabled),
-		Private:               utility.BoolPtrCopy(p.Private),
-		Restricted:            utility.BoolPtrCopy(p.Restricted),
-		BatchTime:             p.BatchTime,
-		RemotePath:            utility.FromStringPtr(p.RemotePath),
-		Id:                    utility.FromStringPtr(p.Id),
-		Identifier:            utility.FromStringPtr(p.Identifier),
-		DisplayName:           utility.FromStringPtr(p.DisplayName),
-		DeactivatePrevious:    utility.BoolPtrCopy(p.DeactivatePrevious),
-		TracksPushEvents:      utility.BoolPtrCopy(p.TracksPushEvents),
-		DefaultLogger:         utility.FromStringPtr(p.DefaultLogger),
-		PRTestingEnabled:      utility.BoolPtrCopy(p.PRTestingEnabled),
-		GitTagVersionsEnabled: utility.BoolPtrCopy(p.GitTagVersionsEnabled),
-		GithubChecksEnabled:   utility.BoolPtrCopy(p.GithubChecksEnabled),
-		UseRepoSettings:       p.UseRepoSettings,
-		RepoRefId:             utility.FromStringPtr(p.RepoRefId),
-		CommitQueue:           commitQueue.(model.CommitQueueParams),
-		TaskSync:              taskSync,
-		WorkstationConfig:     workstationConfig,
-		Hidden:                utility.BoolPtrCopy(p.Hidden),
-		PatchingDisabled:      utility.BoolPtrCopy(p.PatchingDisabled),
-		RepotrackerDisabled:   utility.BoolPtrCopy(p.RepotrackerDisabled),
-		DispatchingDisabled:   utility.BoolPtrCopy(p.DispatchingDisabled),
-		DisabledStatsCache:    utility.BoolPtrCopy(p.DisabledStatsCache),
-		FilesIgnoredFromCache: utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
-		NotifyOnBuildFailure:  utility.BoolPtrCopy(p.NotifyOnBuildFailure),
-		SpawnHostScriptPath:   utility.FromStringPtr(p.SpawnHostScriptPath),
-		Admins:                utility.FromStringPtrSlice(p.Admins),
-		GitTagAuthorizedUsers: utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
-		GitTagAuthorizedTeams: utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
-		GithubTriggerAliases:  utility.FromStringPtrSlice(p.GithubTriggerAliases),
+		Owner:                  utility.FromStringPtr(p.Owner),
+		Repo:                   utility.FromStringPtr(p.Repo),
+		Branch:                 utility.FromStringPtr(p.Branch),
+		Enabled:                utility.BoolPtrCopy(p.Enabled),
+		Private:                utility.BoolPtrCopy(p.Private),
+		Restricted:             utility.BoolPtrCopy(p.Restricted),
+		BatchTime:              p.BatchTime,
+		RemotePath:             utility.FromStringPtr(p.RemotePath),
+		Id:                     utility.FromStringPtr(p.Id),
+		Identifier:             utility.FromStringPtr(p.Identifier),
+		DisplayName:            utility.FromStringPtr(p.DisplayName),
+		DeactivatePrevious:     utility.BoolPtrCopy(p.DeactivatePrevious),
+		TracksPushEvents:       utility.BoolPtrCopy(p.TracksPushEvents),
+		DefaultLogger:          utility.FromStringPtr(p.DefaultLogger),
+		PRTestingEnabled:       utility.BoolPtrCopy(p.PRTestingEnabled),
+		GitTagVersionsEnabled:  utility.BoolPtrCopy(p.GitTagVersionsEnabled),
+		GithubChecksEnabled:    utility.BoolPtrCopy(p.GithubChecksEnabled),
+		UseRepoSettings:        p.UseRepoSettings,
+		RepoRefId:              utility.FromStringPtr(p.RepoRefId),
+		CommitQueue:            commitQueue.(model.CommitQueueParams),
+		TaskSync:               taskSync,
+		WorkstationConfig:      workstationConfig,
+		BuildBaronSettings:     buildBaronConfig,
+		TaskAnnotationSettings: taskAnnotationConfig,
+		PerfEnabled:            utility.BoolPtrCopy(p.PerfEnabled),
+		Hidden:                 utility.BoolPtrCopy(p.Hidden),
+		PatchingDisabled:       utility.BoolPtrCopy(p.PatchingDisabled),
+		RepotrackerDisabled:    utility.BoolPtrCopy(p.RepotrackerDisabled),
+		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
+		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
+		FilesIgnoredFromCache:  utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
+		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
+		SpawnHostScriptPath:    utility.FromStringPtr(p.SpawnHostScriptPath),
+		Admins:                 utility.FromStringPtrSlice(p.Admins),
+		GitTagAuthorizedUsers:  utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
+		GitTagAuthorizedTeams:  utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
+		GithubTriggerAliases:   utility.FromStringPtrSlice(p.GithubTriggerAliases),
 	}
 
 	// Copy triggers
@@ -462,7 +590,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	// Copy periodic builds
 	if p.PeriodicBuilds != nil {
 		builds := []model.PeriodicBuildDefinition{}
-		for _, t := range p.Triggers {
+		for _, t := range p.PeriodicBuilds {
 			i, err = t.ToService()
 			if err != nil {
 				return nil, errors.Wrap(err, "cannot convert API periodic build")
@@ -506,21 +634,6 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.New("Invalid type of the argument")
 	}
 
-	cq := APICommitQueueParams{}
-	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
-		return errors.Wrap(err, "can't convert commit queue parameters")
-	}
-
-	var taskSync APITaskSyncOptions
-	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
-		return errors.Wrap(err, "cannot convert task sync options to API representation")
-	}
-
-	workstationConfig := APIWorkstationConfig{}
-	if err := workstationConfig.BuildFromService(projectRef.WorkstationConfig); err != nil {
-		return errors.Wrap(err, "cannot convert workstation config")
-	}
-
 	p.Owner = utility.ToStringPtr(projectRef.Owner)
 	p.Repo = utility.ToStringPtr(projectRef.Repo)
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
@@ -540,9 +653,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
 	p.UseRepoSettings = projectRef.UseRepoSettings
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
-	p.CommitQueue = cq
-	p.TaskSync = taskSync
-	p.WorkstationConfig = workstationConfig
+	p.PerfEnabled = utility.BoolPtrCopy(projectRef.PerfEnabled)
 	p.Hidden = utility.BoolPtrCopy(projectRef.Hidden)
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
@@ -555,6 +666,36 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
 	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)
+
+	cq := APICommitQueueParams{}
+	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
+		return errors.Wrap(err, "can't convert commit queue parameters")
+	}
+	p.CommitQueue = cq
+
+	var taskSync APITaskSyncOptions
+	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
+		return errors.Wrap(err, "cannot convert task sync options to API representation")
+	}
+	p.TaskSync = taskSync
+
+	workstationConfig := APIWorkstationConfig{}
+	if err := workstationConfig.BuildFromService(projectRef.WorkstationConfig); err != nil {
+		return errors.Wrap(err, "cannot convert workstation config")
+	}
+	p.WorkstationConfig = workstationConfig
+
+	buildbaronConfig := APIBuildBaronSettings{}
+	if err := buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings); err != nil {
+		return errors.Wrap(err, "cannot convert build baron config")
+	}
+	p.BuildBaronSettings = buildbaronConfig
+
+	taskannotationConfig := APITaskAnnotationSettings{}
+	if err := taskannotationConfig.BuildFromService(projectRef.TaskAnnotationSettings); err != nil {
+		return errors.Wrap(err, "cannot convert task annotations config")
+	}
+	p.TaskAnnotationSettings = taskannotationConfig
 
 	// Copy triggers
 	if projectRef.Triggers != nil {
@@ -595,4 +736,31 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	}
 
 	return nil
+}
+
+// DefaultUnsetBooleans is used to set booleans to their default value.
+func (pRef *APIProjectRef) DefaultUnsetBooleans() {
+	reflected := reflect.ValueOf(pRef).Elem()
+	recursivelyDefaultBooleans(reflected)
+}
+
+func recursivelyDefaultBooleans(structToSet reflect.Value) {
+	var err error
+	var i int
+	defer func() {
+		grip.Error(recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked for field '%d'", i)))
+	}()
+	falseType := reflect.TypeOf(false)
+	// Iterate through each field of the struct.
+	for i = 0; i < structToSet.NumField(); i++ {
+		field := structToSet.Field(i)
+
+		// If it's a boolean pointer, set the default recursively.
+		if field.Type() == reflect.PtrTo(falseType) && util.IsFieldUndefined(field) {
+			field.Set(reflect.New(falseType))
+
+		} else if field.Kind() == reflect.Struct {
+			recursivelyDefaultBooleans(field)
+		}
+	}
 }

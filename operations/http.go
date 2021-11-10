@@ -302,11 +302,8 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 }
 
 // GetConfig fetches the config yaml from the API server for a given project ID.
-func (ac *legacyClient) GetConfig(versionId string, shouldFetch bool) ([]byte, error) {
+func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	path := fmt.Sprintf("versions/%v/config", versionId)
-	if shouldFetch {
-		path = fmt.Sprintf("%s?latest_parser=true", path)
-	}
 	resp, err := ac.get(path, nil)
 	if err != nil {
 		return nil, err
@@ -686,21 +683,21 @@ func (ac *legacyClient) GetOptimalMakespans(numberBuilds int, csv bool) (io.Read
 	return resp.Body, nil
 }
 
-// GetPatchModules retrieves a list of modules available for a given patch.
-func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, error) {
+// GetPatchModules retrieves a list of modules available for a given patch, along with the project identifier.
+func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, string, error) {
 	var out []string
 
 	resp, err := ac.get(fmt.Sprintf("patches/%s/%s/modules", patchId, projectId), nil)
 	if err != nil {
-		return out, err
+		return out, "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, "", client.AuthError
 	}
 	if resp.StatusCode != http.StatusOK {
-		return out, NewAPIError(resp)
+		return out, "", NewAPIError(resp)
 	}
 
 	data := struct {
@@ -710,11 +707,10 @@ func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, er
 
 	err = utility.ReadJSON(resp.Body, &data)
 	if err != nil {
-		return out, err
+		return out, "", err
 	}
-	out = data.Modules
 
-	return out, nil
+	return data.Modules, data.Project, nil
 }
 
 // GetRecentVersions retrieves a list of recent versions for a project,

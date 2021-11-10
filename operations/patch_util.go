@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -135,7 +134,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 		return err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
-		if !confirm("Patch submission is empty. Continue? (y/n)", true) {
+		if !confirm("Patch submission is empty. Continue? (Y/n)", true) {
 			return errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
@@ -144,7 +143,7 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 			grip.Info(diffData.log)
 		}
 
-		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+		if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
 			return errors.New("patch aborted")
 		}
 	}
@@ -152,8 +151,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 	return nil
 }
 
-func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) error {
-	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
+func (p *patchParams) displayPatch(newPatch *patch.Patch, uiHost string, isCommitQueuePatch bool) error {
+	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, uiHost, isCommitQueuePatch)
 	if err != nil {
 		return err
 	}
@@ -167,8 +166,11 @@ func (p *patchParams) displayPatch(conf *ClientSettings, newPatch *patch.Patch) 
 			grip.Warningf("cannot find browser command: %s", err)
 			return nil
 		}
-
-		browserCmd = append(browserCmd, newPatch.GetURL(conf.UIServerHost))
+		url := newPatch.GetURL(uiHost)
+		if isCommitQueuePatch {
+			url = newPatch.GetCommitQueueURL(uiHost)
+		}
+		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
 		return cmd.Run()
 	}
@@ -431,8 +433,14 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
+func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string, isCommitQueuePatch bool) (string, error) {
 	var out bytes.Buffer
+	var link string
+	if isCommitQueuePatch {
+		link = p.GetCommitQueueURL(uiHost)
+	} else {
+		link = p.GetURL(uiHost)
+	}
 
 	err := patchDisplayTemplate.Execute(&out, struct {
 		Patch         *patch.Patch
@@ -443,25 +451,12 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 		Patch:         p,
 		ShowSummary:   summarize,
 		ShowFinalized: p.IsCommitQueuePatch(),
-		Link:          p.GetURL(uiHost),
+		Link:          link,
 	})
 	if err != nil {
 		return "", err
 	}
 	return out.String(), nil
-}
-
-func getAPIPatchDisplay(apiPatch *restmodel.APIPatch, summarize bool, uiHost string) (string, error) {
-	servicePatchIface, err := apiPatch.ToService()
-	if err != nil {
-		return "", errors.Wrap(err, "can't convert patch to service")
-	}
-	servicePatch, ok := servicePatchIface.(patch.Patch)
-	if !ok {
-		return "", errors.New("service patch is not a Patch")
-	}
-
-	return getPatchDisplay(&servicePatch, summarize, uiHost)
 }
 
 func isCommitRange(commits string) bool {

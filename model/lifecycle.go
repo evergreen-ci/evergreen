@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -22,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -535,7 +535,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	var pRef *ProjectRef
 	var githubCheckAliases ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester {
-		pRef, err = FindMergedProjectRef(project.Identifier)
+		pRef, err = FindMergedProjectRef(project.Identifier, v.Id, true)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
 		}
@@ -579,7 +579,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 	tasksWithActivationTime := activationInfo.getActivationTasks(b.BuildVariant)
 	if len(tasksWithActivationTime) > 0 && pRef == nil {
-		pRef, err = FindMergedProjectRef(project.Identifier)
+		pRef, err = FindMergedProjectRef(project.Identifier, v.Id, true)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find project ref")
 		}

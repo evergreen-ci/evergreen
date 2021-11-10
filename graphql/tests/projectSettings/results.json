@@ -38,7 +38,11 @@
               "taskSync" : {
                 "configEnabled" : false,
                 "patchEnabled" : true
-              }
+              },
+              "validDefaultLoggers": [
+                "evergreen",
+                "buildlogger"
+              ]
             }
           }
         }
@@ -227,7 +231,7 @@
         "data": null,
         "errors": [
           {
-            "message": "project/repo doesn't exist",
+            "message": "project doesn't exist",
             "path": [
               "projectSettings"
             ],

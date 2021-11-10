@@ -74,6 +74,7 @@ func (c *AmboyConfig) Get(env Environment) error {
 		}
 		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
+
 	if err := res.Decode(c); err != nil {
 		return errors.Wrap(err, "problem decoding result")
 	}

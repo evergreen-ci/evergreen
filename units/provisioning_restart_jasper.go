@@ -66,7 +66,7 @@ func NewRestartJasperJob(env evergreen.Environment, h host.Host, ts string) ambo
 		MaxTime: maxHostReprovisioningJobTime,
 	})
 	j.SetScopes([]string{reprovisioningJobScope(h.Id)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(10),

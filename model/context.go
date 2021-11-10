@@ -47,7 +47,7 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
-		ctx.ProjectRef, err = FindMergedProjectRef(projectId)
+		ctx.ProjectRef, err = FindMergedProjectRef(projectId, versionId, true)
 		if err != nil {
 			return ctx, err
 		}

@@ -3,8 +3,8 @@ package db
 import (
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/db/mgo"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 func IsDuplicateKey(err error) bool {
@@ -21,4 +21,11 @@ func IsDuplicateKey(err error) bool {
 	}
 
 	return false
+}
+
+func IsDocumentLimit(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(errors.Cause(err).Error(), "an inserted document is too large")
 }

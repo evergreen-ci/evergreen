@@ -61,7 +61,7 @@ func NewPodCreationJob(podID, id string) amboy.Job {
 	j.PodID = podID
 	j.SetID(fmt.Sprintf("%s.%s.%s", podCreationJobName, j.PodID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", podCreationJobName, j.PodID), podLifecycleScope(j.PodID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(podCreationMaxAttempts),

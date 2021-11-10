@@ -1,0 +1,19 @@
+mutation {
+    saveProjectSettingsForSection(
+        projectSettings: {
+            projectRef: {
+                id: "1234"
+            }
+            vars: {
+                vars: {goodbye: "now"},
+                privateVarsList: ["goodbye"]
+            }
+        }
+        section: "variables",
+    ) {
+        vars {
+            vars
+            privateVars
+        }
+    }
+}

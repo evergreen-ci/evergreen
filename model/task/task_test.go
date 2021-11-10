@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -22,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -2375,42 +2375,46 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 	Convey("Should return unique task names for a given build variant", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 		t1 := Task{
-			Id:           "t1",
-			Status:       evergreen.TaskSucceeded,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "dist",
-			Project:      "evergreen",
-			Requester:    evergreen.RepotrackerVersionRequester,
+			Id:                  "t1",
+			Status:              evergreen.TaskSucceeded,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "dist",
+			Project:             "evergreen",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t1.Insert())
 		t2 := Task{
-			Id:           "t2",
-			Status:       evergreen.TaskSucceeded,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "test-agent",
-			Project:      "evergreen",
-			Requester:    evergreen.RepotrackerVersionRequester,
+			Id:                  "t2",
+			Status:              evergreen.TaskSucceeded,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "test-agent",
+			Project:             "evergreen",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t2.Insert())
 		t3 := Task{
-			Id:           "t3",
-			Status:       evergreen.TaskSucceeded,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "test-graphql",
-			Project:      "evergreen",
-			Requester:    evergreen.RepotrackerVersionRequester,
+			Id:                  "t3",
+			Status:              evergreen.TaskSucceeded,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "test-graphql",
+			Project:             "evergreen",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t3.Insert())
 		t4 := Task{
-			Id:           "t4",
-			Status:       evergreen.TaskFailed,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "test-graphql",
-			Project:      "evergreen",
-			Requester:    evergreen.RepotrackerVersionRequester,
+			Id:                  "t4",
+			Status:              evergreen.TaskFailed,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "test-graphql",
+			Project:             "evergreen",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t4.Insert())
-		buildVariantTask, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604")
+		buildVariantTask, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"dist", "test-agent", "test-graphql"}, buildVariantTask)
 
@@ -2418,42 +2422,46 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 	Convey("Should only include tasks that appear on mainline commits", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 		t1 := Task{
-			Id:           "t1",
-			Status:       evergreen.TaskSucceeded,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "test-patch-only",
-			Project:      "evergreen",
-			Requester:    evergreen.PatchVersionRequester,
+			Id:                  "t1",
+			Status:              evergreen.TaskSucceeded,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "test-patch-only",
+			Project:             "evergreen",
+			Requester:           evergreen.PatchVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t1.Insert())
 		t2 := Task{
-			Id:           "t2",
-			Status:       evergreen.TaskSucceeded,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "test-graphql",
-			Project:      "evergreen",
-			Requester:    evergreen.RepotrackerVersionRequester,
+			Id:                  "t2",
+			Status:              evergreen.TaskSucceeded,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "test-graphql",
+			Project:             "evergreen",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t2.Insert())
 		t3 := Task{
-			Id:           "t3",
-			Status:       evergreen.TaskSucceeded,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "dist",
-			Project:      "evergreen",
-			Requester:    evergreen.PatchVersionRequester,
+			Id:                  "t3",
+			Status:              evergreen.TaskSucceeded,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "dist",
+			Project:             "evergreen",
+			Requester:           evergreen.PatchVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t3.Insert())
 		t4 := Task{
-			Id:           "t4",
-			Status:       evergreen.TaskFailed,
-			BuildVariant: "ubuntu1604",
-			DisplayName:  "test-something",
-			Project:      "evergreen",
-			Requester:    evergreen.RepotrackerVersionRequester,
+			Id:                  "t4",
+			Status:              evergreen.TaskFailed,
+			BuildVariant:        "ubuntu1604",
+			DisplayName:         "test-something",
+			Project:             "evergreen",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t4.Insert())
-		buildVariantTasks, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604")
+		buildVariantTasks, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"test-graphql", "test-something"}, buildVariantTasks)
 	})
@@ -2684,6 +2692,29 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.Equal(t, t4.Id, tasks[2].Id)
 }
 
+func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	inactiveTask := Task{
+		Id:            "inactiveTask",
+		Version:       "v1",
+		ActivatedTime: utility.ZeroTime,
+	}
+
+	assert.NoError(t, inactiveTask.Insert())
+
+	// inactive tasks should be included
+	opts := GetTasksByVersionOptions{IncludeEmptyActivaton: true}
+	_, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 1)
+	// inactive tasks should be excluded
+	opts = GetTasksByVersionOptions{IncludeEmptyActivaton: false}
+	_, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 0)
+}
+
 func TestGetTasksByVersionAnnotations(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
@@ -2726,4 +2757,282 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 	assert.Equal(t, evergreen.TaskKnownIssue, tasks[1].DisplayStatus)
 	assert.Equal(t, tasks[2].Id, "t3")
 	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
+}
+
+func TestAbortVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	finishedExecTask := &Task{
+		Id:      "et1",
+		Version: "v1",
+		Status:  evergreen.TaskSucceeded,
+	}
+	failingExecTask := &Task{
+		Id:      "et2",
+		Version: "v1",
+		Status:  evergreen.TaskFailed,
+	}
+	otherExecTask := &Task{
+		Id:      "et3",
+		Version: "v1",
+		Status:  evergreen.TaskStarted,
+	}
+	dt := &Task{
+		Id:             "dt",
+		Version:        "v1",
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"et1", "et2", "et3"},
+	}
+	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
+
+	assert.NoError(t, AbortVersion("v1", AbortInfo{TaskID: "et2"}))
+
+	var err error
+	dt, err = FindOneId("dt")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.False(t, dt.Aborted)
+	assert.Empty(t, dt.AbortInfo.TaskID)
+
+	otherExecTask, err = FindOneId("et3")
+	assert.NoError(t, err)
+	require.NotNil(t, otherExecTask)
+	assert.True(t, otherExecTask.Aborted)
+	assert.NotEmpty(t, otherExecTask.AbortInfo.TaskID)
+}
+
+func TestGetTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:        "t4",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	t5 := Task{
+		Id:        "t5",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:        "t6",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := GetTasksByVersionOptions{}
+	stats, err := GetTaskStatsByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(stats))
+
+}
+
+func TestHasMatchingTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := Task{
+		Id:        "t1",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t2 := Task{
+		Id:        "t2",
+		Version:   "v1",
+		Execution: 0,
+		Status:    evergreen.TaskFailed,
+	}
+	t3 := Task{
+		Id:        "t3",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskSucceeded,
+	}
+	t4 := Task{
+		Id:        "t4",
+		Version:   "v1",
+		Execution: 1,
+		Status:    evergreen.TaskFailed,
+	}
+	t5 := Task{
+		Id:        "t5",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskStatusPending,
+	}
+	t6 := Task{
+		Id:        "t6",
+		Version:   "v1",
+		Execution: 2,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := HasMatchingTasksOptions{
+		Statuses: []string{evergreen.TaskFailed},
+	}
+	hasMatchingTasks, err := HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	opts.Statuses = []string{evergreen.TaskWillRun}
+
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
+}
+
+func TestByExecutionTasksAndMaxExecution(t *testing.T) {
+	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
+	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		t1 := Task{
+			Id:        "t1",
+			Version:   "v1",
+			Execution: 1,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t1))
+
+		ot1 := t1
+		ot1.Execution = 0
+		ot1 = *ot1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1))
+
+		t2 := Task{
+			Id:        "t2",
+			Version:   "v1",
+			Execution: 1,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t2))
+		ot2 := t2
+		ot2.Execution = 0
+		ot2 = *ot2.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot2))
+
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks = convertOldTasksIntoTasks(tasks)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(tasks))
+		assertTasksAreEqual(t, t1, tasks[0], 1)
+		assertTasksAreEqual(t, t2, tasks[1], 1)
+	})
+	t.Run("Fetching latest execution with mismatching executions", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		t1 := Task{
+			Id:        "t1",
+			Version:   "v1",
+			Execution: 2,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t1))
+
+		ot1 := t1
+		ot1.Execution = 1
+		ot1 = *ot1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1))
+
+		ot1.Execution = 1
+		ot1 = *ot1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1))
+
+		t2 := Task{
+			Id:        "t2",
+			Version:   "v1",
+			Execution: 1,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t2))
+		ot2 := t2
+		ot2.Execution = 0
+		ot2 = *ot2.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot2))
+
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 2)
+		tasks = convertOldTasksIntoTasks(tasks)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(tasks))
+		assertTasksAreEqual(t, t1, tasks[0], 2)
+		assertTasksAreEqual(t, t2, tasks[1], 1)
+	})
+	t.Run("Fetching older executions with same execution", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		t1 := Task{
+			Id:        "t1",
+			Version:   "v1",
+			Execution: 2,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t1))
+
+		ot1 := t1
+		ot1.Execution = 1
+		ot1 = *ot1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1))
+
+		ot1.Execution = 0
+		ot1 = *ot1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1))
+
+		t2 := Task{
+			Id:        "t2",
+			Version:   "v1",
+			Execution: 2,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t2))
+
+		ot2 := t2
+		ot2.Execution = 1
+		ot2 = *ot2.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot2))
+
+		ot2.Execution = 0
+		ot2 = *ot2.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot2))
+
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks = convertOldTasksIntoTasks(tasks)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(tasks))
+		assertTasksAreEqual(t, t1, tasks[0], 1)
+		assertTasksAreEqual(t, t2, tasks[1], 1)
+	})
+
+}
+
+func convertOldTasksIntoTasks(tasks []Task) []Task {
+	updatedTasks := []Task{}
+	for _, t := range tasks {
+		if t.OldTaskId != "" {
+			t.Id = t.OldTaskId
+		}
+		updatedTasks = append(updatedTasks, t)
+	}
+	return updatedTasks
+}
+
+func assertTasksAreEqual(t *testing.T, expected, actual Task, exectedExecution int) {
+	assert.Equal(t, expected.Id, actual.Id)
+	assert.Equal(t, expected.Version, actual.Version)
+	assert.Equal(t, expected.Status, actual.Status)
+	assert.Equal(t, exectedExecution, actual.Execution)
 }

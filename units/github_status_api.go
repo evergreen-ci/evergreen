@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/amboy"
@@ -18,7 +19,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -42,6 +42,7 @@ const (
 	NoSyncTasksOrVariants  = "no tasks/variants were configured for sync"
 	GitHubInternalError    = "GitHub returned an error"
 	InvalidConfig          = "config file was invalid"
+	EmptyConfig            = "config file was empty"
 	ProjectFailsValidation = "Project fails validation"
 	OtherErrors            = "Evergreen error"
 )

@@ -231,7 +231,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrap(err, "Argument read error")
 	}
 
-	oldProject, err := h.sc.FindProjectById(h.project, false)
+	oldProject, err := h.sc.FindProjectById(h.project, false, false)
 	if err != nil {
 		return errors.Wrap(err, "error finding original project")
 	}
@@ -394,11 +394,8 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
-	for i, trigger := range h.newProjectRef.Triggers {
-		catcher.Add(trigger.Validate(h.newProjectRef.Id))
-		if trigger.DefinitionID == "" {
-			h.newProjectRef.Triggers[i].DefinitionID = utility.RandomString()
-		}
+	for i := range h.newProjectRef.Triggers {
+		catcher.Add(h.newProjectRef.Triggers[i].Validate(h.newProjectRef.Id))
 	}
 	for i := range h.newProjectRef.PatchTriggerAliases {
 		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
@@ -552,7 +549,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := h.sc.FindProjectById(h.projectName, false)
+	p, err := h.sc.FindProjectById(h.projectName, false, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project '%s'", h.projectName))
 	}
@@ -696,7 +693,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
 	}
 
-	projectAliases, err := dbModel.FindAliasesForProject(project.Id)
+	projectAliases, err := dbModel.FindAliasesForProjectFromDb(project.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project aliases for '%s' could not be found", project.Id))
 	}
@@ -723,9 +720,10 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /rest/v2/projects/{project_id}
 
 type projectIDGetHandler struct {
-	projectName string
-	includeRepo bool
-	sc          data.Connector
+	projectName          string
+	includeRepo          bool
+	includeParserProject bool
+	sc                   data.Connector
 }
 
 func makeGetProjectByID(sc data.Connector) gimlet.RouteHandler {
@@ -743,11 +741,12 @@ func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	h.includeRepo = r.URL.Query().Get("includeRepo") == "true"
+	h.includeParserProject = r.URL.Query().Get("includeParserProject") == "true"
 	return nil
 }
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := h.sc.FindProjectById(h.projectName, h.includeRepo)
+	project, err := h.sc.FindProjectById(h.projectName, h.includeRepo, h.includeParserProject)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -976,7 +975,7 @@ func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := dbModel.FindMergedProjectRef(p.projectID)
+	proj, err := dbModel.FindMergedProjectRef(p.projectID, "", true)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project",

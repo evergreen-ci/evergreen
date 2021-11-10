@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func validatePatchID(patchId string) error {
@@ -203,48 +203,6 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 	}
 
 	return model.SetVersionActivation(patchId, activated, user)
-}
-
-func (pc *DBPatchConnector) FindPatchesByProjectPatchNameStatusesCommitQueue(projectId string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
-	patches, err := patch.Find(patch.ByProjectPatchNameStatusesCommitQueuePaginated(projectId, patchName, statuses, includeCommitQueue, page, limit))
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "problem fetching patches for project %s", projectId)
-	}
-	count, err := patch.Count(patch.ByProjectPatchNameStatusesCommitQueuePaginated(projectId, patchName, statuses, includeCommitQueue, 0, 0))
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "problem counting patches for project %s", projectId)
-	}
-	apiPatches := []restModel.APIPatch{}
-	for _, p := range patches {
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "problem building APIPatch from service for patch: %s", p.Id.Hex())
-		}
-		apiPatches = append(apiPatches, apiPatch)
-	}
-	return apiPatches, &count, nil
-}
-
-func (pc *DBPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
-	patches, err := patch.Find(patch.ByUserPatchNameStatusesCommitQueuePaginated(user, patchName, statuses, includeCommitQueue, page, limit))
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
-	}
-	count, err := patch.Count(patch.ByUserPatchNameStatusesCommitQueuePaginated(user, patchName, statuses, includeCommitQueue, 0, 0))
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "problem counting patches for user %s", user)
-	}
-	apiPatches := []restModel.APIPatch{}
-	for _, p := range patches {
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "problem building APIPatch from service for patch: %s", p.Id.Hex())
-		}
-		apiPatches = append(apiPatches, apiPatch)
-	}
-	return apiPatches, &count, nil
 }
 
 func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
@@ -448,14 +406,6 @@ func (pc *MockPatchConnector) SetPatchActivated(ctx context.Context, patchId str
 	}
 	p.Activated = activated
 	return nil
-}
-
-func (hp *MockPatchConnector) FindPatchesByUserPatchNameStatusesCommitQueue(user string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
-	return nil, nil, nil
-}
-
-func (hp *MockPatchConnector) FindPatchesByProjectPatchNameStatusesCommitQueue(projectId string, patchName string, statuses []string, includeCommitQueue bool, page int, limit int) ([]restModel.APIPatch, *int, error) {
-	return nil, nil, nil
 }
 
 // FindPatchesByUser iterates through the cached patches slice to find the correct patches

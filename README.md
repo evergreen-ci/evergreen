@@ -5,9 +5,9 @@ It dynamically allocates hosts to run tasks in parallel across many machines.
 See [the wiki](https://github.com/evergreen-ci/evergreen/wiki) for
 user-facing documentation.
 
-See [the API docs](https://pkg.go.dev/github.com/evergreen-ci/evergreen) for developer
-documentation. For an overview of the architecture, see the list of directories
-and their descriptions at the bottom of that page.
+See [the API docs](https://pkg.go.dev/github.com/evergreen-ci/evergreen) for
+developer documentation. For an overview of the architecture, see the list of
+directories and their descriptions at the bottom of that page.
 
 # Features
 
@@ -31,17 +31,17 @@ Automatically run past commits to pinpoint the origin of a test failure.
 
 ## Go Requirements
 * [Install Go 1.16 or later](https://golang.org/dl/).
-* Set GO111MODULE="off". Make sure GOPATH and GOROOT are set.
+* This project uses Go modules.
 
 ## Building the Binaries
 
 Setup:
 
-* ensure that your `GOPATH` environment variable is set.
+* If you're going to use the makefile, set `GOMODCACHE` (you can just set it to
+  the output of `go env GOMODCACHE`, unless you want it somewhere else).
 * check out a copy of the repo into your gopath. You can use: `go get
-  github.com/evergreen-ci/evergreen`. If you have an existing checkout
-  of the evergreen repository that is not in
-  `$GOPATH/src/github.com/evergreen-ci/` move or create a symlink.
+  github.com/evergreen-ci/evergreen` or just `git clone
+  https://github.com/evergreen-ci/evergreen`.
 
 Possible Targets:
 

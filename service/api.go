@@ -147,7 +147,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 		}
 		if p == nil {
 			as.LoggedError(w, r, http.StatusNotFound,
-				errors.Errorf("can't find project: %s", p.Identifier))
+				errors.Errorf("can't find config for : %s", projectRef.Id))
 			return
 		}
 
@@ -223,7 +223,7 @@ func (as *APIServer) GetParserProject(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	p, err := model.FindMergedProjectRef(t.Project)
+	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -490,7 +490,7 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["identifier"]
-	projectRef, err := model.FindMergedProjectRef(id)
+	projectRef, err := model.FindMergedProjectRef(id, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

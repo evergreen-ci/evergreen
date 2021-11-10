@@ -1,3 +1,0 @@
-directive @enumLogging on ENUM
-
-extend enum State @enumLogging

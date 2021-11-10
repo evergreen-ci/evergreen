@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -23,7 +24,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -207,7 +207,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchDoc.DisplayNewUI = true
 	}
 
-	pref, err := model.FindMergedProjectRef(patchDoc.Project)
+	pref, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "can't find patch project")
 	}
@@ -239,6 +239,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
+		if strings.Contains(err.Error(), model.EmptyConfigurationError) {
+			j.gitHubError = EmptyConfig
+		}
 		if strings.Contains(err.Error(), thirdparty.Github502Error) {
 			j.gitHubError = GitHubInternalError
 		}
@@ -562,7 +565,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}))
 	}()
 
-	projectRef, err := model.FindMergedProjectRef(patchDoc.Project)
+	projectRef, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
 	}

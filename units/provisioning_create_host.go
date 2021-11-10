@@ -64,7 +64,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, current
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, h.Id, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", createHostJobName, h.Id)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 	j.BuildImageStarted = buildImageStarted
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		DispatchBy: j.host.SpawnOptions.TimeoutSetup,

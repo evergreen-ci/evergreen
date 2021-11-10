@@ -25,7 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
 )
 
@@ -98,17 +98,19 @@ type Connector interface {
 	// in the model (removing old variables if overwrite is set).
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars, bool) error
-	UpdateProjectVarsByValue(string, string, string, bool) (map[string]string, error)
+	UpdateProjectVarsByValue(string, string, string, bool) (map[string][]string, error)
 	// CopyProjectVars copies the variables for the first project to the second
 	CopyProjectVars(string, string) error
 
-	// Find the project matching the given ProjectId. Includes repo settings if set.
-	FindProjectById(string, bool) (*model.ProjectRef, error)
+	// Find the project matching the given ProjectId. Includes repo settings and parser project settings if set.
+	FindProjectById(string, bool, bool) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
 	CreateProject(*model.ProjectRef, *user.DBUser) error
 	UpdateProject(*model.ProjectRef) error
+	// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
+	VerifyUniqueProject(string) error
 	// CopyProject copies the passed in project with the given project identifier, and returns the new project.
-	CopyProject(context.Context, *model.ProjectRef, string) (*restModel.APIProjectRef, error)
+	CopyProject(context.Context, CopyProjectOpts) (*restModel.APIProjectRef, error)
 	GetProjectAliasResults(*model.Project, string, bool) ([]restModel.APIVariantTasks, error)
 
 	UpdateRepo(*model.RepoRef) error
@@ -230,12 +232,6 @@ type Connector interface {
 	FindPatchesByProject(string, time.Time, int) ([]restModel.APIPatch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
 	FindPatchesByUser(string, time.Time, int) ([]restModel.APIPatch, error)
-	// FindPatchesByUserPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input user ID
-	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
-	FindPatchesByUserPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
-	// FindPatchesByProjectPatchNameStatusesCommitQueue fetches a page of patches corresponding to the input project ID
-	// as ordered by creation time and filtered by given statuses, patch name commit queue parameter
-	FindPatchesByProjectPatchNameStatusesCommitQueue(string, string, []string, bool, int, int) ([]restModel.APIPatch, *int, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*restModel.APIPatch, error)
 	// FindPatchById fetches the patch corresponding to the input patch ID.
@@ -397,7 +393,7 @@ type Connector interface {
 	GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error)
 	// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
 	// RepoRef related functions and collection instead of ProjectRef.
-	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) error
+	SaveProjectSettingsForSection(context.Context, string, *restModel.APIProjectSettings, model.ProjectPageSection, bool, string) (*restModel.APIProjectSettings, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)

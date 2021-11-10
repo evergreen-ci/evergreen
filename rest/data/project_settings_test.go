@@ -32,7 +32,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			// ensure that we're saving settings without a special case
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			repoRefFromDB, err := model.FindOneRepoRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDB)
@@ -50,7 +52,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDb)
@@ -58,13 +62,13 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.Equal(t, repoRefFromDb.Admins, ref.Admins)
 
 			// should be restricted
-			projectThatDefaults, err := model.FindMergedProjectRef("myId")
+			projectThatDefaults, err := model.FindMergedProjectRef("myId", "", true)
 			assert.NoError(t, err)
 			assert.NotNil(t, projectThatDefaults)
 			assert.True(t, projectThatDefaults.IsRestricted())
 
 			// should not be restricted
-			projectThatDoesNotDefault, err := model.FindMergedProjectRef("myId2")
+			projectThatDoesNotDefault, err := model.FindMergedProjectRef("myId2", "", true)
 			assert.NoError(t, err)
 			assert.NotNil(t, projectThatDoesNotDefault)
 			assert.False(t, projectThatDoesNotDefault.IsRestricted())
@@ -84,6 +88,37 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 		},
+		"Removes and adds admin with error": func(t *testing.T, ref model.RepoRef) {
+			newAdmin := user.DBUser{
+				Id: "newAdmin",
+			}
+			require.NoError(t, newAdmin.Insert())
+			ref.Admins = []string{"nonexistent", newAdmin.Id}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
+			// should still add newAdmin and delete oldAdmin even with errors
+			assert.EqualError(t, err,
+				"error saving section 'access': error updating repo admin roles: error updating some admins: no user 'nonexistent' found")
+			assert.NotNil(t, settings)
+			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, repoRefFromDb)
+			assert.Equal(t, []string{newAdmin.Id}, repoRefFromDb.Admins)
+
+			newAdminFromDB, err := user.FindOneById("newAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, newAdminFromDB)
+			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
+
+			oldAdminFromDB, err := user.FindOneById("oldAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, oldAdminFromDB)
+			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
+		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.RepoRef) {
 			// remove a variable, modify a variable, add a variable
 			updatedVars := &model.ProjectVars{
@@ -96,7 +131,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
@@ -208,7 +245,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			// ensure that we're saving settings without a special case
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
@@ -226,14 +265,16 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.Restricted)
 			assert.Equal(t, pRefFromDB.Admins, ref.Admins)
 
-			mergedProject, err := model.FindMergedProjectRef(ref.Id)
+			mergedProject, err := model.FindMergedProjectRef(ref.Id, "", true)
 			assert.NoError(t, err)
 			assert.NotNil(t, mergedProject)
 			assert.True(t, mergedProject.IsRestricted())
@@ -253,6 +294,37 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), "admin")
 		},
+		"Removes and adds admin with error": func(t *testing.T, ref model.ProjectRef) {
+			newAdmin := user.DBUser{
+				Id: "newAdmin",
+			}
+			require.NoError(t, newAdmin.Insert())
+			ref.Admins = []string{"nonexistent", newAdmin.Id}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
+			assert.EqualError(t, err,
+				"error saving section 'access': error updating project admin roles: error updating some admins: no user 'nonexistent' found")
+			assert.NotNil(t, settings)
+			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDB)
+			// should still add newAdmin and delete oldAdmin even with errors
+			assert.Equal(t, []string{newAdmin.Id}, pRefFromDB.Admins)
+
+			newAdminFromDB, err := user.FindOneById("newAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, newAdminFromDB)
+			assert.Contains(t, newAdminFromDB.Roles(), "admin")
+
+			oldAdminFromDB, err := user.FindOneById("oldAdmin")
+			assert.NoError(t, err)
+			assert.NotNil(t, oldAdminFromDB)
+			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
+		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.ProjectRef) {
 			// remove a variable, modify a variable, add a variable
 			updatedVars := &model.ProjectVars{
@@ -265,7 +337,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
@@ -295,7 +369,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				Subscriptions: []restModel.APISubscription{apiSub},
 			}
-			assert.NoError(t, dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me"))
+			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 			subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, subsFromDb, 1)

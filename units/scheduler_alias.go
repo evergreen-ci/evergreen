@@ -51,7 +51,7 @@ func NewDistroAliasSchedulerJob(distroID string, ts time.Time) amboy.Job {
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerAliasJobName, distroID, ts.Format(TSFormat)))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", schedulerAliasJobName, distroID)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 
 	return j
 }

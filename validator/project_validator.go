@@ -123,6 +123,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateHostCreates,
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
+	validateAliases,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -398,6 +399,24 @@ func dependencyCycleExists(node model.TVPair, allNodes []model.TVPair, visited m
 
 	// no cycle found
 	return nil
+}
+
+func validateAliases(p *model.Project) ValidationErrors {
+	errs := []string{}
+	errs = append(errs, model.ValidateProjectAliases(p.GitHubPRAliases, "GitHub PR Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.GitHubChecksAliases, "Github Checks Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(p.GitTagAliases, "Git Tag Aliases")...)
+
+	validationErrs := ValidationErrors{}
+	for _, errorMsg := range errs {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: errorMsg,
+			Level:   Error,
+		})
+	}
+	return validationErrs
 }
 
 // Ensures that the project has at least one buildvariant and also that all the

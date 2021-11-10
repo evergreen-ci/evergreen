@@ -154,7 +154,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
-	pref, err := model.FindMergedProjectRef(t.Project)
+	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		return j.handleError(pp, v, errors.WithStack(err))
 	}
@@ -182,6 +182,10 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {
+		return err
+	}
+	// If the document hit the size limit, retrying won't help.
+	if db.IsDocumentLimit(err) {
 		return err
 	}
 	if err != nil {
@@ -279,7 +283,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"version":       t.Version,
 	}))
 	if err != nil && !shouldNoop {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":       "generate.tasks finished with errors",
 			"operation":     "generate.tasks",
 			"duration_secs": time.Since(start).Seconds(),
@@ -297,6 +301,22 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 	if !shouldNoop {
 		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+		if t.IsPatchRequest() {
+			activatedTasks, err := task.CountActivatedTasksForVersion(t.Version)
+			if err != nil {
+				j.AddError(err)
+				return
+			}
+			if activatedTasks > evergreen.NumTasksForLargePatch {
+				grip.Info(message.Fields{
+					"message":             "patch has large number of activated tasks",
+					"op":                  "generate.tasks",
+					"num_tasks_activated": activatedTasks,
+					"version":             t.Version,
+				})
+			}
+		}
+
 	}
 }
 

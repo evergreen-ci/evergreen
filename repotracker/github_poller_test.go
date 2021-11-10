@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"

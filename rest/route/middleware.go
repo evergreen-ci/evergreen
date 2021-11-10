@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -22,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type (
@@ -602,6 +602,9 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		if err != nil {
 			return nil, http.StatusNotFound, err
 		}
+		if test == nil {
+			return nil, http.StatusNotFound, errors.Errorf("test log with id '%s' not found", testLog)
+		}
 		projectID, err = task.FindProjectForTask(test.Task)
 		if err != nil {
 			return nil, http.StatusNotFound, err
@@ -629,7 +632,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return []string{repoID}, http.StatusOK, nil
 	}
 
-	projectRef, err := model.FindMergedProjectRef(projectID)
+	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
 	if err != nil {
 		return nil, http.StatusNotFound, errors.WithStack(err)
 	}

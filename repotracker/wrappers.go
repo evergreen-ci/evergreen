@@ -2,6 +2,7 @@ package repotracker
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -69,11 +70,11 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 	return nil
 }
 
-func ActivateBuildsForProject(project model.ProjectRef) (bool, error) {
+func ActivateBuildsForProject(project model.ProjectRef, ts time.Time) (bool, error) {
 	if !project.IsEnabled() {
 		return false, errors.Errorf("project disabled: %s", project.Id)
 	}
-	ok, err := model.DoProjectActivation(project.Id)
+	ok, err := model.DoProjectActivation(project.Id, ts)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
@@ -81,6 +82,7 @@ func ActivateBuildsForProject(project model.ProjectRef) (bool, error) {
 			"mode":               "catch up",
 			"project":            project.Id,
 			"project_identifier": project.Identifier,
+			"timestamp_used":     ts,
 		}))
 
 		return false, errors.WithStack(err)

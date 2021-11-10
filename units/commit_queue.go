@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -62,7 +62,7 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 	job.QueueID = queueID
 	job.env = env
 	job.SetID(fmt.Sprintf("%s:%s_%s", commitQueueJobName, queueID, id))
-	job.SetShouldApplyScopesOnEnqueue(true)
+	job.SetEnqueueAllScopes(true)
 	job.SetScopes([]string{fmt.Sprintf("%s.%s", commitQueueJobName, queueID)})
 
 	return job
@@ -91,7 +91,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// stop if project is disabled
-	projectRef, err := model.FindMergedProjectRef(j.QueueID)
+	projectRef, err := model.FindMergedProjectRef(j.QueueID, "", false)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find project for queue id %s", j.QueueID))
 		return

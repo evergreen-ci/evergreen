@@ -65,7 +65,7 @@ func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfB
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostTerminationJobName, h.Id)})
-	j.SetShouldApplyScopesOnEnqueue(true)
+	j.SetEnqueueAllScopes(true)
 
 	return j
 }

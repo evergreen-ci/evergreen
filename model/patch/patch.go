@@ -13,17 +13,17 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // SizeLimit is a hard limit on patch size.
@@ -235,6 +235,10 @@ func (p *Patch) SetMergePatch(newPatchID string) error {
 			},
 		},
 	)
+}
+
+func (p *Patch) GetCommitQueueURL(uiHost string) string {
+	return uiHost + "/commit-queue/" + p.Project
 }
 
 func (p *Patch) GetURL(uiHost string) string {
@@ -882,6 +886,10 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		if err != nil {
 			return nil, errors.Wrap(err, "can't fetch patch contents")
 		}
+		if IsMailboxDiff(diff) {
+			newModulePatches = append(newModulePatches, modulePatch)
+			continue
+		}
 		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't convert diff to mbox format")
@@ -899,6 +907,7 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 				Summary:        modulePatch.PatchSet.Summary,
 			},
 		})
+
 	}
 
 	return newModulePatches, nil

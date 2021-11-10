@@ -36,10 +36,11 @@ func TestAPICreatePod(t *testing.T) {
 					Secret: utility.ToBoolPtr(true),
 				},
 			},
-			OS:         utility.ToStringPtr("linux"),
-			Arch:       utility.ToStringPtr("amd64"),
-			Secret:     utility.ToStringPtr("secret"),
-			WorkingDir: utility.ToStringPtr("working_dir"),
+			OS:             APIPodOS(pod.OSWindows),
+			Arch:           APIPodArch(pod.ArchAMD64),
+			WindowsVersion: APIPodWindowsVersion(pod.WindowsVersionServer2019),
+			Secret:         utility.ToStringPtr("secret"),
+			WorkingDir:     utility.ToStringPtr("working_dir"),
 		}
 
 		res, err := apiPod.ToService()
@@ -58,9 +59,11 @@ func TestAPICreatePod(t *testing.T) {
 		assert.Equal(t, utility.FromStringPtr(apiPod.RepoPassword), p.TaskContainerCreationOpts.RepoPassword)
 		assert.Equal(t, utility.FromIntPtr(apiPod.Memory), p.TaskContainerCreationOpts.MemoryMB)
 		assert.Equal(t, utility.FromIntPtr(apiPod.CPU), p.TaskContainerCreationOpts.CPU)
-		assert.Equal(t, utility.FromStringPtr(apiPod.OS), string(p.TaskContainerCreationOpts.OS))
-		assert.Equal(t, utility.FromStringPtr(apiPod.Arch), string(p.TaskContainerCreationOpts.Arch))
-		assert.Equal(t, utility.FromStringPtr(apiPod.WorkingDir), p.TaskContainerCreationOpts.WorkingDir)
+		assert.EqualValues(t, apiPod.OS, p.TaskContainerCreationOpts.OS)
+		assert.EqualValues(t, apiPod.Arch, p.TaskContainerCreationOpts.Arch)
+		require.NotZero(t, p.TaskContainerCreationOpts.WindowsVersion)
+		assert.EqualValues(t, apiPod.WindowsVersion, p.TaskContainerCreationOpts.WindowsVersion)
+		assert.EqualValues(t, utility.FromStringPtr(apiPod.WorkingDir), p.TaskContainerCreationOpts.WorkingDir)
 		assert.Equal(t, pod.StatusInitializing, p.Status)
 		assert.NotZero(t, p.TimeInfo.Initializing)
 		assert.Len(t, p.TaskContainerCreationOpts.EnvVars, 2)
@@ -89,11 +92,14 @@ func TestAPIPod(t *testing.T) {
 				Owned:      utility.FalsePtr(),
 			},
 			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-				Image:        "image",
-				RepoUsername: "username",
-				RepoPassword: "password",
-				MemoryMB:     128,
-				CPU:          128,
+				Image:          "image",
+				RepoUsername:   "username",
+				RepoPassword:   "password",
+				MemoryMB:       128,
+				CPU:            128,
+				OS:             pod.OSWindows,
+				Arch:           pod.ArchAMD64,
+				WindowsVersion: pod.WindowsVersionServer2019,
 				EnvVars: map[string]string{
 					"ENV_VAR0": "val0",
 					"ENV_VAR1": "val1",
@@ -146,13 +152,14 @@ func TestAPIPod(t *testing.T) {
 				Owned:      utility.FalsePtr(),
 			},
 			TaskContainerCreationOpts: APIPodTaskContainerCreationOptions{
-				Image:        utility.ToStringPtr("image"),
-				RepoUsername: utility.ToStringPtr("username"),
-				RepoPassword: utility.ToStringPtr("password"),
-				MemoryMB:     utility.ToIntPtr(128),
-				CPU:          utility.ToIntPtr(128),
-				OS:           utility.ToStringPtr("linux"),
-				Arch:         utility.ToStringPtr("amd64"),
+				Image:          utility.ToStringPtr("image"),
+				RepoUsername:   utility.ToStringPtr("username"),
+				RepoPassword:   utility.ToStringPtr("password"),
+				MemoryMB:       utility.ToIntPtr(128),
+				CPU:            utility.ToIntPtr(128),
+				OS:             APIPodOS(pod.OSWindows),
+				Arch:           APIPodArch(pod.ArchAMD64),
+				WindowsVersion: APIPodWindowsVersion(pod.WindowsVersionServer2019),
 				EnvVars: map[string]string{
 					"ENV_VAR0": "val0",
 					"ENV_VAR1": "val1",
@@ -209,8 +216,9 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword), dbPod.TaskContainerCreationOpts.RepoPassword)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB), dbPod.TaskContainerCreationOpts.MemoryMB)
 			assert.Equal(t, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU), dbPod.TaskContainerCreationOpts.CPU)
-			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS), string(dbPod.TaskContainerCreationOpts.OS))
-			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Arch), string(dbPod.TaskContainerCreationOpts.Arch))
+			assert.EqualValues(t, apiPod.TaskContainerCreationOpts.OS, dbPod.TaskContainerCreationOpts.OS)
+			assert.EqualValues(t, apiPod.TaskContainerCreationOpts.Arch, dbPod.TaskContainerCreationOpts.Arch)
+			assert.EqualValues(t, apiPod.TaskContainerCreationOpts.WindowsVersion, dbPod.TaskContainerCreationOpts.WindowsVersion)
 			require.NotZero(t, dbPod.TaskContainerCreationOpts.EnvVars)
 			for k, v := range apiPod.TaskContainerCreationOpts.EnvVars {
 				assert.Equal(t, v, dbPod.TaskContainerCreationOpts.EnvVars[k])
@@ -244,13 +252,13 @@ func TestAPIPod(t *testing.T) {
 		})
 		t.Run("FailsWithInvalidOS", func(t *testing.T) {
 			apiPod := validAPIPod()
-			apiPod.TaskContainerCreationOpts.OS = nil
+			apiPod.TaskContainerCreationOpts.OS = ""
 			_, err := apiPod.ToService()
 			assert.Error(t, err)
 		})
 		t.Run("FailsWithInvalidArch", func(t *testing.T) {
 			apiPod := validAPIPod()
-			apiPod.TaskContainerCreationOpts.Arch = nil
+			apiPod.TaskContainerCreationOpts.Arch = ""
 			_, err := apiPod.ToService()
 			assert.Error(t, err)
 		})
@@ -273,8 +281,9 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoPassword, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.MemoryMB, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.MemoryMB))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.CPU, utility.FromIntPtr(apiPod.TaskContainerCreationOpts.CPU))
-			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.OS), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.OS))
-			assert.Equal(t, string(dbPod.TaskContainerCreationOpts.Arch), utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Arch))
+			assert.EqualValues(t, dbPod.TaskContainerCreationOpts.OS, apiPod.TaskContainerCreationOpts.OS)
+			assert.EqualValues(t, dbPod.TaskContainerCreationOpts.Arch, apiPod.TaskContainerCreationOpts.Arch)
+			assert.EqualValues(t, dbPod.TaskContainerCreationOpts.WindowsVersion, apiPod.TaskContainerCreationOpts.WindowsVersion)
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.WorkingDir, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.WorkingDir))
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars)
 			for k, v := range dbPod.TaskContainerCreationOpts.EnvVars {

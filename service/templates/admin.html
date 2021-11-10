@@ -991,14 +991,14 @@ Admin Settings
 										</md-card-title>
 										<md-card-content>
 											<div id="okta-scopes-list" class="form-group"
-												ng-repeat="(index, scope) in Settings.auth.okta.scopes">
+												ng-repeat="scope in Settings.auth.okta.scopes track by $index">
 												<section layout="row" flex>
 													<md-input-container class="control" flex=25>
-														<input class="control" type="text" ng-model="scope" placeholder="Scope Name">
+														<input class="control" type="text" ng-model="Settings.auth.okta.scopes[$index]" placeholder="Scope Name">
 													</md-input-container>
 													<div style="margin-top: 1%;">
 														<button class="btn btn-default btn-danger" type="button"
-															style="float: left" ng-click="deleteOktaScope(index)">
+															style="float: left" ng-click="deleteOktaScope($index)">
 															<i class="fa fa-trash"></i>
 														</button>
 													</div>
@@ -1718,15 +1718,15 @@ Admin Settings
                   </md-card-title>
                   <md-card-content>
                     <div id="ecs-subnets" class="form-group"
-                      ng-repeat="(index, subnet) in Settings.providers.aws.pod.ecs.awsvpc.subnets">
+                      ng-repeat="subnet in Settings.providers.aws.pod.ecs.awsvpc.subnets track by $index">
                       <section layout="row" flex>
                         <md-input-container class="control" flex=50>
-                          <input class="control" type="text" ng-model="subnet"
+                          <input class="control" type="text" ng-model="Settings.providers.aws.pod.ecs.awsvpc.subnets[$index]"
                             placeholder="Subnet ID">
                         </md-input-container>
                         <div style="margin-top: 1%;">
                           <button class="btn btn-default btn-danger" type="button"
-                            style="float: left" ng-click="deleteAWSVPCSubnet(index)">
+                            style="float: left" ng-click="deleteAWSVPCSubnet($index)">
                             <i class="fa fa-trash"></i>
                           </button>
                         </div>
@@ -1755,15 +1755,15 @@ Admin Settings
                   </md-card-title>
                   <md-card-content>
                     <div id="ecs-security-groups" class="form-group"
-                      ng-repeat="(index, sg) in Settings.providers.aws.pod.ecs.awsvpc.security_groups">
+                      ng-repeat="sg in Settings.providers.aws.pod.ecs.awsvpc.security_groups track by $index">
                       <section layout="row" flex>
                         <md-input-container class="control" flex=50>
-                          <input class="control" type="text" ng-model="sg"
+                          <input class="control" type="text" ng-model="Settings.providers.aws.pod.ecs.awsvpc.security_groups[$index]"
                             placeholder="Security Group ID">
                         </md-input-container>
                         <div style="margin-top: 1%;">
                           <button class="btn btn-default btn-danger" type="button"
-                            style="float: left" ng-click="deleteAWSVPCSecurityGroup(index)">
+                            style="float: left" ng-click="deleteAWSVPCSecurityGroup($index)">
                             <i class="fa fa-trash"></i>
                           </button>
                         </div>

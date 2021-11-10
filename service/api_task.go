@@ -194,7 +194,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project)
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
@@ -223,12 +223,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	err = projectRef.MergeWithParserProject(t.Version)
-	if err != nil {
-		err = errors.Wrapf(err, "Unable to merge parser project with project ref %s", t.Project)
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
 	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, deactivatePrevious)
 	if err != nil {
@@ -501,7 +495,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			continue
 		}
 
-		projectRef, err := model.FindMergedProjectRef(nextTask.Project)
+		projectRef, err := model.FindMergedProjectRef(nextTask.Project, nextTask.Version, true)
 		errMsg := message.Fields{
 			"task_id":            nextTask.Id,
 			"message":            "could not find project ref for next task, skipping",

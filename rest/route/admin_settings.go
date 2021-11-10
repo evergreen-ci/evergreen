@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -44,6 +45,37 @@ func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(settingsModel)
+}
+
+func makeFetchAdminUIV2Url(sc data.Connector) gimlet.RouteHandler {
+	return &uiV2URLGetHandler{
+		sc: sc,
+	}
+}
+
+type uiV2URLGetHandler struct {
+	sc data.Connector
+}
+
+func (h *uiV2URLGetHandler) Factory() gimlet.RouteHandler {
+	return &uiV2URLGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
+	settings, err := h.sc.GetEvergreenSettings()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	return gimlet.NewJSONResponse(&model.APIUiV2URL{
+		UIv2Url: utility.ToStringPtr(settings.Ui.UIv2Url),
+	})
 }
 
 func makeSetAdminSettings(sc data.Connector) gimlet.RouteHandler {

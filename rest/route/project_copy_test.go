@@ -77,7 +77,7 @@ func (s *ProjectCopySuite) TestParse() {
 }
 
 func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
-	ctx := context.Background()
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "me"})
 	s.route.oldProject = "projectA"
 	s.route.newProject = "projectB"
 	resp := s.route.Run(ctx)
@@ -95,6 +95,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	newProject := resp.Data().(*restmodel.APIProjectRef)
+	s.Require().NotNil(newProject)
 	s.NotEqual("projectC", utility.FromStringPtr(newProject.Id))
 	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
@@ -102,10 +103,10 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Len(newProject.Admins, 1)
 	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
-	res, err := s.route.sc.FindProjectById("projectC", false)
+	res, err := s.route.sc.FindProjectById("projectC", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	res, err = s.route.sc.FindProjectById("projectA", false)
+	res, err = s.route.sc.FindProjectById("projectA", false, false)
 	s.NoError(err)
 	s.NotNil(res)
 	vars, err := s.route.sc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)

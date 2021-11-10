@@ -160,7 +160,7 @@ func mergeCommand() cli.Command {
 				large:       c.Bool(largeFlagName),
 				force:       c.Bool(forceFlagName),
 			}
-			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/n)", false) {
+			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/N)", false) {
 				return errors.New("Merge aborted.")
 			}
 			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
@@ -276,7 +276,7 @@ func enqueuePatch() cli.Command {
 				}
 			}
 			if multipleCommits && !skipConfirm &&
-				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
+				!confirm("Original patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
 				return errors.New("enqueue aborted")
 			}
 
@@ -291,7 +291,11 @@ func enqueuePatch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem creating a commit queue patch")
 			}
-			patchDisp, err := getAPIPatchDisplay(mergePatch, false, conf.UIServerHost)
+			uiV2, err := client.GetUiV2URL(ctx)
+			if err != nil {
+				return errors.Wrap(err, "problem retrieving admin settings")
+			}
+			patchDisp, err := getAPICommitQueuePatchDisplay(mergePatch, false, uiV2)
 			if err != nil {
 				grip.Errorf("can't print patch display for new patch '%s'", mergePatch.Id)
 			}
@@ -392,6 +396,10 @@ func backport() cli.Command {
 				}
 			}
 
+			uiV2, err := client.GetUiV2URL(ctx)
+			if err != nil {
+				return errors.Wrap(err, "problem retrieving admin settings")
+			}
 			latestVersions, err := client.GetRecentVersionsForProject(ctx, patchParams.Project, evergreen.RepotrackerVersionRequester)
 			if err != nil {
 				return errors.Wrapf(err, "can't get latest repotracker version for project '%s'", patchParams.Project)
@@ -405,7 +413,7 @@ func backport() cli.Command {
 				return errors.Wrap(err, "can't upload backport patch")
 			}
 
-			if err = patchParams.displayPatch(conf, backportPatch); err != nil {
+			if err = patchParams.displayPatch(backportPatch, uiV2, true); err != nil {
 				return errors.Wrap(err, "problem getting result display")
 			}
 
@@ -470,7 +478,7 @@ func listCLICommitQueueItem(item restModel.APICommitQueueItem, ac *legacyClient,
 	if p.Author != "" {
 		grip.Infof("Author: %s", p.Author)
 	}
-	disp, err := getPatchDisplay(p, false, uiServerHost)
+	disp, err := getPatchDisplay(p, false, uiServerHost, false)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
 		return
@@ -514,7 +522,11 @@ type mergeParams struct {
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
 	if p.id == "" {
 		showCQMessageForProject(ac, p.project)
-		if err := p.uploadMergePatch(conf, ac); err != nil {
+		uiV2, err := client.GetUiV2URL(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem retrieving admin settings")
+		}
+		if err := p.uploadMergePatch(conf, ac, uiV2); err != nil {
 			return err
 		}
 	} else {
@@ -532,7 +544,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	return nil
 }
 
-func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, uiV2Url string) error {
 	patchParams := &patchParams{
 		Project:     p.project,
 		SkipConfirm: p.skipConfirm,
@@ -560,7 +572,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't get commit count")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
-		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
+		!confirm("Commit queue patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
 		return errors.New("patch aborted")
 	}
 
@@ -591,7 +603,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	if err != nil {
 		return err
 	}
-	if err = patchParams.displayPatch(conf, patch); err != nil {
+	if err = patchParams.displayPatch(patch, uiV2Url, true); err != nil {
 		grip.Error("Patch information cannot be displayed.")
 	}
 
@@ -632,7 +644,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		return errors.New("No commits for module")
 	}
 	if commitCount > 1 && !p.skipConfirm &&
-		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/n):", false) {
+		!confirm("Commit queue module patch has multiple commits (these will be tested together but merged separately). Continue? (y/N):", false) {
 		return errors.New("module patch aborted")
 	}
 
@@ -668,7 +680,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if !p.skipConfirm {
 		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
 		grip.InfoWhen(diffData.log != "", diffData.log)
-		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+		if !confirm("This is a summary of the patch to be submitted. Continue? (Y/n):", true) {
 			return nil
 		}
 	}
@@ -700,4 +712,17 @@ func showCQMessageForPatch(ctx context.Context, comm client.Communicator, patchI
 	if message != "" {
 		grip.Info(message)
 	}
+}
+
+func getAPICommitQueuePatchDisplay(apiPatch *restModel.APIPatch, summarize bool, uiHost string) (string, error) {
+	servicePatchIface, err := apiPatch.ToService()
+	if err != nil {
+		return "", errors.Wrap(err, "can't convert patch to service")
+	}
+	servicePatch, ok := servicePatchIface.(patch.Patch)
+	if !ok {
+		return "", errors.New("service patch is not a Patch")
+	}
+
+	return getPatchDisplay(&servicePatch, summarize, uiHost, true)
 }

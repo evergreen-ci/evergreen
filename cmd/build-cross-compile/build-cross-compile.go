@@ -9,20 +9,6 @@ import (
 	"strings"
 )
 
-func supportsRaceDetector(arch, system string) bool {
-	if arch != "amd64" {
-		return false
-	}
-
-	for _, platform := range []string{"linux", "darwin", "windows"} {
-		if runtime.GOOS == platform && system == platform {
-			return true
-		}
-	}
-
-	return false
-}
-
 func main() {
 	var (
 		arch      string
@@ -33,7 +19,6 @@ func main() {
 		buildName string
 		output    string
 		goBin     string
-		race      bool
 
 		defaultArch   string
 		defaultSystem string
@@ -56,11 +41,15 @@ func main() {
 	flag.StringVar(&buildName, "buildName", "", "use GOOS_ARCH to specify target platform")
 	flag.StringVar(&goBin, "goBinary", "go", "specify path to go binary")
 	flag.StringVar(&output, "output", "", "specify the name of executable")
-	flag.BoolVar(&race, "race", false, "specify to enable the race detector")
 	flag.Parse()
 
 	if buildName != "" {
 		parts := strings.Split(buildName, "_")
+
+		if len(parts) != 2 {
+			fmt.Fprint(os.Stderr, "buildName must be in GOOS_GOARCH format")
+			os.Exit(1)
+		}
 
 		system = parts[0]
 		arch = parts[1]
@@ -70,9 +59,9 @@ func main() {
 
 	cmd := exec.Command(goBin, "build")
 
-	if system == runtime.GOOS && arch == runtime.GOARCH {
-		cmd.Args = append(cmd.Args, "-i")
-	}
+	// -trimpath removes absolute file system paths from the final compiled
+	// binary.
+	cmd.Args = append(cmd.Args, "-trimpath")
 
 	ldf := fmt.Sprintf("-ldflags=%s", ldFlags)
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
@@ -82,17 +71,12 @@ func main() {
 	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
 		cmd.Env = append(cmd.Env, "TMPDIR="+strings.Replace(tmpdir, `\`, `\\`, -1))
 	}
-
-	if race && supportsRaceDetector(arch, system) {
-		cmd.Args = append(cmd.Args, "-race")
-		cmd.Env = append(cmd.Env, "CGO_ENABLED=1", "GORACE=\"halt_on_error=1\"")
-	}
+	// Disable cgo so that the compiled binary is statically linked.
+	cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
 
 	goos := "GOOS=" + system
 	goarch := "GOARCH=" + arch
-	if runtime.Compiler != "gccgo" {
-		cmd.Env = append(cmd.Env, goos, goarch)
-	}
+	cmd.Env = append(cmd.Env, goos, goarch)
 
 	cmd.Args = append(cmd.Args, "-o", output)
 	cmd.Args = append(cmd.Args, source)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -18,7 +19,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestGetRepoIDHandler(t *testing.T) {
@@ -201,7 +201,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.Contains(t, repoVars.Vars, "a")
 	assert.Contains(t, repoVars.PrivateVars, "a")
 
-	aliases, err := dbModel.FindAliasesForProject(repoRef.Id)
+	aliases, err := dbModel.FindAliasesForRepo(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, aliases, 2)
 

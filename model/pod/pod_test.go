@@ -35,9 +35,12 @@ func TestInsertAndFindOneByID(t *testing.T) {
 				},
 				Status: StatusRunning,
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
-					Image:    "alpine",
-					MemoryMB: 128,
-					CPU:      128,
+					Image:          "alpine",
+					MemoryMB:       128,
+					CPU:            128,
+					OS:             OSWindows,
+					Arch:           ArchAMD64,
+					WindowsVersion: WindowsVersionServer2019,
 				},
 				TimeInfo: TimeInfo{
 					Initializing:     utility.BSONTime(time.Now()),

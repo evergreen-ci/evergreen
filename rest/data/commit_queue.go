@@ -19,7 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -338,7 +338,7 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	if requestedPatch == nil {
 		return "", errors.New("no patch found")
 	}
-	project, err := model.FindMergedProjectRef(requestedPatch.Project)
+	project, err := model.FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to find project for patch")
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -28,7 +29,6 @@ import (
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -1949,6 +1949,8 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
+		// if the aborting task is part of a display task, we also don't want to mark it as aborted
+		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
@@ -2949,11 +2951,192 @@ type GetTasksByVersionOptions struct {
 	FieldsToProject       []string
 	Sorts                 []TasksSortOrder
 	IncludeExecutionTasks bool
+	IncludeBaseTasks      bool
+	IncludeEmptyActivaton bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
 // Query results can be filtered by task name, variant name and status in addition to being paginated and limited
 func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
+
+	pipeline := getTasksByVersionPipeline(versionID, opts)
+
+	if len(opts.BaseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+			},
+		})
+	}
+
+	if len(opts.Sorts) > 0 {
+		sortPipeline := []bson.M{}
+
+		sortFields := bson.D{}
+		for _, singleSort := range opts.Sorts {
+			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
+				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
+				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+			} else {
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
+			}
+		}
+		sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+
+		sortPipeline = append(sortPipeline, bson.M{
+			"$sort": sortFields,
+		})
+
+		pipeline = append(pipeline, sortPipeline...)
+	}
+
+	if len(opts.FieldsToProject) > 0 {
+		fieldKeys := bson.M{}
+		for _, field := range opts.FieldsToProject {
+			fieldKeys[field] = 1
+		}
+		pipeline = append(pipeline, bson.M{
+			"$project": fieldKeys,
+		})
+	}
+
+	// If there is a limit we should calculate the total count before we apply the limit and pagination
+	if opts.Limit > 0 {
+		paginatePipeline := []bson.M{}
+		paginatePipeline = append(paginatePipeline, bson.M{
+			"$skip": opts.Page * opts.Limit,
+		})
+		paginatePipeline = append(paginatePipeline, bson.M{
+			"$limit": opts.Limit,
+		})
+		// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
+		tasksAndCountPipeline := bson.M{
+			"$facet": bson.M{
+				"count": []bson.M{
+					{"$count": "count"},
+				},
+				"tasks": paginatePipeline,
+			},
+		}
+		pipeline = append(pipeline, tasksAndCountPipeline)
+	}
+
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var results []Task
+	var count int
+
+	// If there is no limit applied we should just return the tasks and compute the total count in go.
+	// This avoids hitting the 16 MB limit on the aggregation pipeline in the $facet stage https://jira.mongodb.org/browse/EVG-15334
+	if opts.Limit > 0 {
+		type TasksAndCount struct {
+			Tasks []Task           `bson:"tasks"`
+			Count []map[string]int `bson:"count"`
+		}
+		taskAndCountResults := []TasksAndCount{}
+		err = cursor.All(ctx, &taskAndCountResults)
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(taskAndCountResults) > 0 && len(taskAndCountResults[0].Count) > 0 {
+			count = taskAndCountResults[0].Count[0]["count"]
+			results = taskAndCountResults[0].Tasks
+		}
+	} else {
+		taskResults := []Task{}
+		err = cursor.All(ctx, &taskResults)
+		if err != nil {
+			return nil, 0, err
+		}
+		results = taskResults
+		count = len(results)
+	}
+
+	if len(results) == 0 {
+		return nil, 0, nil
+	}
+
+	return results, count, nil
+}
+
+type StatusCount struct {
+	Status string `bson:"status"`
+	Count  int    `bson:"count"`
+}
+
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*StatusCount, error) {
+	StatusCount := []*StatusCount{}
+	pipeline := getTasksByVersionPipeline(versionID, opts)
+	groupPipeline := []bson.M{
+		{"$group": bson.M{
+			"_id":   "$" + DisplayStatusKey,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$sort": bson.M{"_id": 1}},
+		{"$project": bson.M{
+			"status": "$_id",
+			"count":  1,
+		}},
+	}
+	pipeline = append(pipeline, groupPipeline...)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+	err = cursor.All(ctx, &StatusCount)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+
+	return StatusCount, nil
+}
+
+type HasMatchingTasksOptions struct {
+	TaskNames []string
+	Variants  []string
+	Statuses  []string
+}
+
+// HasMatchingTasks returns true if the version has tasks with the given statuses
+func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
+	options := GetTasksByVersionOptions{
+		TaskNames: opts.TaskNames,
+		Variants:  opts.Variants,
+		Statuses:  opts.Statuses,
+	}
+	pipeline := getTasksByVersionPipeline(versionID, options)
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return false, err
+	}
+	type Count struct {
+		Count int `bson:"count"`
+	}
+	count := []*Count{}
+	err = cursor.All(ctx, &count)
+	if err != nil {
+		return false, err
+	}
+	if len(count) == 0 {
+		return false, nil
+	}
+	return count[0].Count > 0, nil
+}
+
+func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) []bson.M {
 	var match bson.M = bson.M{}
 
 	// Allow searching by either variant name or variant display
@@ -2972,9 +3155,10 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	if !opts.IncludeEmptyActivaton {
+		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	}
 	match[VersionKey] = versionID
-	const tempParentKey = "_parent"
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
@@ -2986,6 +3170,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	)
 
 	if !opts.IncludeExecutionTasks {
+		const tempParentKey = "_parent"
 		// Split tasks so that we only look up if the task is an execution task if display task ID is unset and
 		// display only is false (i.e. we don't know if it's a display task or not).
 		facet := bson.M{
@@ -3039,7 +3224,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		pipeline = append(pipeline, recombineTasks...)
 	}
 
-	statusFacet := bson.M{
+	annotationFacet := bson.M{
 		"$facet": bson.M{
 			// We skip annotation lookup for non-failed tasks, because these can't have annotations
 			"not_failed": []bson.M{
@@ -3087,8 +3272,8 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		},
 	}
-	pipeline = append(pipeline, statusFacet)
-	recombineStatusFacet := []bson.M{
+	pipeline = append(pipeline, annotationFacet)
+	recombineAnnotationFacet := []bson.M{
 		{"$project": bson.M{
 			"tasks": bson.M{
 				"$setUnion": []string{"$not_failed", "$failed"},
@@ -3097,45 +3282,49 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 		{"$unwind": "$tasks"},
 		{"$replaceRoot": bson.M{"newRoot": "$tasks"}},
 	}
-	pipeline = append(pipeline, recombineStatusFacet...)
-	pipeline = append(pipeline, []bson.M{
+	pipeline = append(pipeline, recombineAnnotationFacet...)
+	pipeline = append(pipeline,
 		// Add a field for the display status of each task
 		addDisplayStatus,
-		// Add data about the base task
-		{"$lookup": bson.M{
-			"from": Collection,
-			"let": bson.M{
-				RevisionKey:     "$" + RevisionKey,
-				BuildVariantKey: "$" + BuildVariantKey,
-				DisplayNameKey:  "$" + DisplayNameKey,
-			},
-			"as": BaseTaskKey,
-			"pipeline": []bson.M{
-				{"$match": bson.M{
-					RequesterKey: evergreen.RepotrackerVersionRequester,
-					"$expr": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-							{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-							{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-						},
-					},
-				}},
-				{"$project": bson.M{
-					IdKey:     1,
-					StatusKey: displayStatusExpression,
-				}},
-				{"$limit": 1},
-			},
-		}},
-		{
-			"$unwind": bson.M{
-				"path":                       "$" + BaseTaskKey,
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}...,
 	)
+	if opts.IncludeBaseTasks {
+		pipeline = append(pipeline, []bson.M{
+			// Add data about the base task
+			{"$lookup": bson.M{
+				"from": Collection,
+				"let": bson.M{
+					RevisionKey:     "$" + RevisionKey,
+					BuildVariantKey: "$" + BuildVariantKey,
+					DisplayNameKey:  "$" + DisplayNameKey,
+				},
+				"as": BaseTaskKey,
+				"pipeline": []bson.M{
+					{"$match": bson.M{
+						RequesterKey: evergreen.RepotrackerVersionRequester,
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
+								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+							},
+						},
+					}},
+					{"$project": bson.M{
+						IdKey:     1,
+						StatusKey: displayStatusExpression,
+					}},
+					{"$limit": 1},
+				},
+			}},
+			{
+				"$unwind": bson.M{
+					"path":                       "$" + BaseTaskKey,
+					"preserveNullAndEmptyArrays": true,
+				},
+			},
+		}...,
+		)
+	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(opts.Variants) == 0 {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
@@ -3147,88 +3336,7 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			},
 		})
 	}
-	if len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
-	}
-
-	sortAndPaginatePipeline := []bson.M{}
-
-	sortFields := bson.D{}
-	if len(opts.Sorts) > 0 {
-		for _, singleSort := range opts.Sorts {
-			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
-				sortAndPaginatePipeline = append(sortAndPaginatePipeline, addStatusColorSort((singleSort.Key)))
-				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
-			} else {
-				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
-			}
-		}
-	}
-	sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
-
-	sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
-		"$sort": sortFields,
-	})
-
-	if opts.Limit > 0 {
-		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
-			"$skip": opts.Page * opts.Limit,
-		})
-		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
-			"$limit": opts.Limit,
-		})
-	}
-	if len(opts.FieldsToProject) > 0 {
-		fieldKeys := bson.M{}
-		for _, field := range opts.FieldsToProject {
-			fieldKeys[field] = 1
-		}
-		sortAndPaginatePipeline = append(sortAndPaginatePipeline, bson.M{
-			"$project": fieldKeys,
-		})
-	}
-
-	// Use a $facet to perform separate aggregations for $count and to sort and paginate the results in the same query
-	tasksAndCountPipeline := bson.M{
-		"$facet": bson.M{
-			"count": []bson.M{
-				{"$count": "count"},
-			},
-			"tasks": sortAndPaginatePipeline,
-		},
-	}
-
-	pipeline = append(pipeline, tasksAndCountPipeline)
-
-	type TasksAndCount struct {
-		Tasks []Task           `bson:"tasks"`
-		Count []map[string]int `bson:"count"`
-	}
-	results := []TasksAndCount{}
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	err = cursor.All(ctx, &results)
-	if err != nil {
-		return nil, 0, err
-	}
-	if len(results) == 0 {
-		return nil, 0, nil
-	}
-	count := 0
-	result := results[0]
-	if len(result.Count) != 0 {
-		count = result.Count[0]["count"]
-	}
-	return result.Tasks, count, nil
+	return pipeline
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer

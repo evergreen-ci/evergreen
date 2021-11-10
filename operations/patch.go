@@ -137,6 +137,9 @@ func Patch() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "can't test for uncommitted changes")
 				}
+				if keepGoing && utility.StringSliceContains(params.Variants, "all") && utility.StringSliceContains(params.Tasks, "all") {
+					keepGoing = confirm(`For some projects, scheduling all tasks/variants may result in a very large patch build. Continue? (Y/n)`, true)
+				}
 				if !keepGoing {
 					return errors.New("patch aborted")
 				}
@@ -168,7 +171,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if err = params.displayPatch(conf, newPatch); err != nil {
+			if err = params.displayPatch(newPatch, conf.UIServerHost, false); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
@@ -267,7 +270,7 @@ func PatchFile() cli.Command {
 			if err != nil {
 				return err
 			}
-			return params.displayPatch(conf, newPatch)
+			return params.displayPatch(newPatch, conf.UIServerHost, false)
 		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -12,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -457,7 +457,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	resp, err := dc.UpdateProjectVarsByValue("1", "11", "user", true)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, "a", resp[projectId])
+	assert.Equal(t, []string{"a"}, resp[projectId])
 
 	res, err := dc.FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)
@@ -467,7 +467,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	resp, err = dc.UpdateProjectVarsByValue("1", "11", username, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, "a", resp[projectId])
+	assert.Equal(t, []string{"a"}, resp[projectId])
 
 	res, err = dc.FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)

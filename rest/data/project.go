@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -16,7 +17,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // DBProjectConnector is a struct that implements the Project related methods
@@ -24,11 +24,13 @@ import (
 type DBProjectConnector struct{}
 
 // FindProjectById queries the database for the project matching the projectRef.Id.
-func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*model.ProjectRef, error) {
+func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
-	if includeRepo {
-		p, err = model.FindMergedProjectRef(id)
+	if includeRepo && includeParserProject {
+		p, err = model.FindMergedProjectRef(id, "", true)
+	} else if includeRepo {
+		p, err = model.FindMergedProjectRef(id, "", false)
 	} else {
 		p, err = model.FindBranchProjectRef(id)
 	}
@@ -46,6 +48,16 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool) (*mod
 
 // CreateProject inserts the given model.ProjectRef.
 func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+	if projectRef.Identifier != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Identifier); err != nil {
+			return err
+		}
+	}
+	if projectRef.Id != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Id); err != nil {
+			return err
+		}
+	}
 	err := projectRef.Add(u)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -64,6 +76,24 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 		}
+	}
+	return nil
+}
+
+func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
+	_, err := sc.FindProjectById(name, false, false)
+	if err == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
+		}
+	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold an error", err)
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
 	}
 	return nil
 }
@@ -258,7 +288,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
+func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
@@ -267,7 +297,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 	if matchingProjects == nil {
 		catcher.New("no projects with matching value found")
 	}
-	changes := map[string]string{}
+	changes := map[string][]string{}
 	for _, project := range matchingProjects {
 		for key, val := range project.Vars {
 			if val == toReplace {
@@ -300,7 +330,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
 					}
 				}
-				changes[project.Id] = key
+				changes[project.Id] = append(changes[project.Id], key)
 			}
 		}
 	}
@@ -406,7 +436,7 @@ type MockProjectConnector struct {
 	CachedEvents   []restModel.APIProjectEvent
 }
 
-func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool) (*model.ProjectRef, error) {
+func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectId || p.Identifier == projectId {
 			return &p, nil
@@ -419,7 +449,18 @@ func (pc *MockProjectConnector) FindProjectById(projectId string, includeRepo bo
 }
 
 func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
-	projectRef.Id = mgobson.NewObjectId().Hex()
+	if projectRef.Identifier != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Identifier); err != nil {
+			return err
+		}
+	}
+	if projectRef.Id != "" {
+		if err := pc.VerifyUniqueProject(projectRef.Id); err != nil {
+			return err
+		}
+	} else {
+		projectRef.Id = mgobson.NewObjectId().Hex()
+	}
 	for _, p := range pc.CachedProjects {
 		if p.Id == projectRef.Id {
 			return gimlet.ErrorResponse{
@@ -471,6 +512,24 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 		StatusCode: http.StatusInternalServerError,
 		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
 	}
+}
+
+func (sc *MockProjectConnector) VerifyUniqueProject(name string) error {
+	_, err := sc.FindProjectById(name, false, false)
+	if err == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
+		}
+	}
+	apiErr, ok := err.(gimlet.ErrorResponse)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold an error", err)
+	}
+	if apiErr.StatusCode != http.StatusNotFound {
+		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
+	}
+	return nil
 }
 
 func (pc *MockProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
@@ -596,15 +655,15 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 	return nil
 }
 
-func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string]string, error) {
-	changes := map[string]string{}
+func (pc *MockProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+	changes := map[string][]string{}
 	for _, cachedVars := range pc.CachedVars {
 		for key, val := range cachedVars.Vars {
 			if toReplace == val {
 				if !dryRun {
 					cachedVars.Vars[key] = replacement
 				}
-				changes[cachedVars.Id] = key
+				changes[cachedVars.Id] = append(changes[cachedVars.Id], key)
 			}
 		}
 	}
