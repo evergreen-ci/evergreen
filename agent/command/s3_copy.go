@@ -231,7 +231,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 			foundDottedBucketName = true
 		}
 
-		logger.Task().Infof("successfully copied file to '%s'", s3CopyFile.Destination.Path)
+		logger.Task().Infof("successfully copied '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
 	}
 
 	return nil
