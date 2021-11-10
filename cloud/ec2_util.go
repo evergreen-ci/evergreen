@@ -466,6 +466,17 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 			if mount.VolumeType != "" {
 				m.Ebs.VolumeType = aws.String(mount.VolumeType)
 			}
+			if mount.Throughput != 0 {
+				//aws only allows values between 125 and 1000
+				if mount.Throughput > 1000 || mount.Throughput < 125 {
+					return nil, errors.New("throughput must be between 125 and 1000")
+				}
+				// This parameter is valid only for gp3 volumes.
+				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
+					return nil, errors.New(fmt.Sprintf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType)))
+				}
+				m.Ebs.Throughput = aws.Int64(mount.Throughput)
+			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
 		}
