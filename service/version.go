@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -251,7 +250,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 
 	modifications := graphql.VersionModifications{}
-	if err = utility.ReadJSON(util.NewRequestReader(r), &modifications); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &modifications); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

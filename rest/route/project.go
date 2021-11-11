@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -224,7 +223,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.project = gimlet.GetVars(r)["project_id"]
 	h.user = MustHaveUser(ctx)
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -536,7 +535,7 @@ func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -1082,7 +1081,7 @@ func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.user = MustHaveUser(ctx)
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {

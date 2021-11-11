@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
@@ -86,7 +85,7 @@ func (h *jiraCommentNotificationPostHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the JSON payload from the and unmarshals it to an APIJiraComment.
 func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	h.APIJiraComment = &model.APIJiraComment{}
 	if err := gimlet.GetJSON(body, h.APIJiraComment); err != nil {
 		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraComment")
@@ -145,7 +144,7 @@ func (h *jiraIssueNotificationPostHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the JSON payload from the and unmarshals it to an APIJiraIssue.
 func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	h.APIJiraIssue = &model.APIJiraIssue{}
 	if err := gimlet.GetJSON(body, h.APIJiraIssue); err != nil {
 		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraIssue")
@@ -207,7 +206,7 @@ func (h *slackNotificationPostHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the JSON payload from the and unmarshals it to an APISlack.
 func (h *slackNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	h.APISlack = &model.APISlack{}
 	if err := gimlet.GetJSON(body, h.APISlack); err != nil {
 		return errors.Wrap(err, "API error while unmarshalling JSON to model.APISlack")
@@ -273,7 +272,7 @@ func (h *emailNotificationPostHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the JSON payload from the and unmarshals it to an APIEmail.
 func (h *emailNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	h.APIEmail = &model.APIEmail{}
 	if err := gimlet.GetJSON(body, h.APIEmail); err != nil {
 		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIEmail")

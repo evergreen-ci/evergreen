@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -245,7 +244,7 @@ func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {
 // It fetches the task and user from the request context and fetches the changes
 // in activation and priority from the request body.
 func (tep *taskExecutionPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	decoder := json.NewDecoder(body)

@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -104,7 +103,7 @@ func (h *repoIDPatchHandler) Factory() gimlet.RouteHandler {
 func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.repoName = gimlet.GetVars(r)["repo_id"]
 	h.user = MustHaveUser(ctx)
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {

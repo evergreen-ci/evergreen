@@ -255,7 +255,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.annotation)
 	if err != nil {
@@ -430,7 +430,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 		}
 	}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.ticket)
 	if err != nil {

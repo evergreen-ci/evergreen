@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -103,7 +102,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	b, err := ioutil.ReadAll(body)
@@ -322,7 +321,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	b, err := ioutil.ReadAll(body)

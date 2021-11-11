@@ -222,7 +222,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		PatchBytes []byte `json:"patch_bytes"`
 		Githash    string `json:"githash"`
 	}{}
-	if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -359,7 +359,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			Action      string `json:"action"`
 			Description string `json:"description"`
 		}{}
-		if err = utility.ReadJSON(util.NewRequestReader(r), &data); err != nil {
+		if err = utility.ReadJSON(utility.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}

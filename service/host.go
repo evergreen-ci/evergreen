@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -159,7 +158,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 	opts := &uiParams{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), opts); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), opts); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -216,7 +215,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 
 	opts := &uiParams{}
 
-	if err := utility.ReadJSON(util.NewRequestReader(r), opts); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), opts); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
