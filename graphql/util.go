@@ -1319,7 +1319,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 	for groupName, groupedProjects := range groupsMap {
 		gp := GroupedProjects{
-			Name:             &groupName, //deprecated
+			Name:             groupName, //deprecated
 			GroupDisplayName: groupName,
 			Projects:         groupedProjects,
 		}
