@@ -182,10 +182,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 				v = pair.Variant
 			}
 			projectTask := di.Project.FindTaskForVariant(d.Name, v)
-			if projectTask != nil {
-				if projectTask.IsDisabled() {
-					continue
-				}
+			if projectTask != nil && !projectTask.IsDisabled() {
 				deps = append(deps, TVPair{TaskName: d.Name, Variant: v})
 			}
 		}
