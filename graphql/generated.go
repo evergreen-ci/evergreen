@@ -7518,11 +7518,11 @@ input TaskSyncOptionsInput {
 input BuildBaronSettingsInput {
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
-  bfSuggestionServer: String!
-  bfSuggestionUsername: String!
-  bfSuggestionPassword: String!
-  bfSuggestionTimeoutSecs: Int!
-  bfSuggestionFeaturesURL: String!
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
 }
 
 input TaskAnnotationSettingsInput {
@@ -8303,11 +8303,11 @@ type WorkstationConfig {
 type BuildBaronSettings {
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
-  bfSuggestionServer: String!
-  bfSuggestionUsername: String!
-  bfSuggestionPassword: String!
-  bfSuggestionTimeoutSecs: Int!
-  bfSuggestionFeaturesURL: String!
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
 }
 
 type TaskAnnotationSettings {
@@ -11394,14 +11394,11 @@ func (ec *executionContext) _BuildBaronSettings_bfSuggestionServer(ctx context.C
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BuildBaronSettings_bfSuggestionUsername(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
@@ -11429,14 +11426,11 @@ func (ec *executionContext) _BuildBaronSettings_bfSuggestionUsername(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BuildBaronSettings_bfSuggestionPassword(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
@@ -11464,14 +11458,11 @@ func (ec *executionContext) _BuildBaronSettings_bfSuggestionPassword(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BuildBaronSettings_bfSuggestionTimeoutSecs(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
@@ -11499,14 +11490,11 @@ func (ec *executionContext) _BuildBaronSettings_bfSuggestionTimeoutSecs(ctx cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BuildBaronSettings_bfSuggestionFeaturesURL(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
@@ -11534,14 +11522,11 @@ func (ec *executionContext) _BuildBaronSettings_bfSuggestionFeaturesURL(ctx cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BuildVariantTuple_buildVariant(ctx context.Context, field graphql.CollectedField, obj *task.BuildVariantTuple) (ret graphql.Marshaler) {
@@ -37142,7 +37127,7 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionServer"))
-			it.BFSuggestionServer, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.BFSuggestionServer, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37150,7 +37135,7 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionUsername"))
-			it.BFSuggestionUsername, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.BFSuggestionUsername, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37158,7 +37143,7 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionPassword"))
-			it.BFSuggestionPassword, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.BFSuggestionPassword, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37166,7 +37151,7 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionTimeoutSecs"))
-			it.BFSuggestionTimeoutSecs, err = ec.unmarshalNInt2ᚖint(ctx, v)
+			it.BFSuggestionTimeoutSecs, err = ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37174,7 +37159,7 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionFeaturesURL"))
-			it.BFSuggestionFeaturesURL, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.BFSuggestionFeaturesURL, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40150,29 +40135,14 @@ func (ec *executionContext) _BuildBaronSettings(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._BuildBaronSettings_ticketSearchProjects(ctx, field, obj)
 		case "bfSuggestionServer":
 			out.Values[i] = ec._BuildBaronSettings_bfSuggestionServer(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "bfSuggestionUsername":
 			out.Values[i] = ec._BuildBaronSettings_bfSuggestionUsername(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "bfSuggestionPassword":
 			out.Values[i] = ec._BuildBaronSettings_bfSuggestionPassword(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "bfSuggestionTimeoutSecs":
 			out.Values[i] = ec._BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "bfSuggestionFeaturesURL":
 			out.Values[i] = ec._BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

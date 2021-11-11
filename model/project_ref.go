@@ -348,7 +348,7 @@ const (
 	ProjectPageWorkstationsSection   = "workstations"
 	ProjectPageTriggersSection       = "triggers"
 	ProjectPagePeriodicBuildsSection = "periodic-builds"
-	ProjectPagePluginSection         = "plugins"
+	ProjectPagePluginSection         = "PLUGINS"
 )
 
 var adminPermissions = gimlet.Permissions{

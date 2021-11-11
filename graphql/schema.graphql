@@ -507,11 +507,11 @@ input TaskSyncOptionsInput {
 input BuildBaronSettingsInput {
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
-  bfSuggestionServer: String!
-  bfSuggestionUsername: String!
-  bfSuggestionPassword: String!
-  bfSuggestionTimeoutSecs: Int!
-  bfSuggestionFeaturesURL: String!
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
 }
 
 input TaskAnnotationSettingsInput {
@@ -1292,11 +1292,11 @@ type WorkstationConfig {
 type BuildBaronSettings {
   ticketCreateProject: String!
   ticketSearchProjects: [String!]
-  bfSuggestionServer: String!
-  bfSuggestionUsername: String!
-  bfSuggestionPassword: String!
-  bfSuggestionTimeoutSecs: Int!
-  bfSuggestionFeaturesURL: String!
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
 }
 
 type TaskAnnotationSettings {
