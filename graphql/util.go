@@ -365,7 +365,7 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, p
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			if taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
 					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
 				} else {
