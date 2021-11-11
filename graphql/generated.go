@@ -7313,6 +7313,7 @@ enum ProjectSettingsSection {
   WORKSTATION
   TRIGGERS
   PERIODIC_BUILDS
+  PLUGINS
 }
 
 input VolumeHost {
