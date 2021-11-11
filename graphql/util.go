@@ -1332,11 +1332,11 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			}
 
 			if repoRef == nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(message.Fields{
 					"message":     "repoRef not found",
 					"repo_ref_id": repoRefId,
 					"project":     project,
-				}))
+				})
 			} else {
 				apiRepoRef := restModel.APIProjectRef{}
 				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
