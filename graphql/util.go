@@ -1353,7 +1353,6 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	}
 
 	sort.SliceStable(groupsArr, func(i, j int) bool {
-
 		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
 	})
 	return groupsArr, nil

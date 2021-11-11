@@ -1019,7 +1019,7 @@ type BaseTaskInfo {
 
 type GroupedProjects {
   groupDisplayName: String! 
-  name: String @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
 }
