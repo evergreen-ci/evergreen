@@ -338,16 +338,17 @@ const (
 
 type ProjectPageSection string
 
+// These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "general"
-	ProjectPageAccessSection         = "access"
-	ProjectPageVariablesSection      = "variables"
-	ProjectPageGithubAndCQSection    = "github_and_commit_queue"
-	ProjectPageNotificationsSection  = "notifications"
-	ProjectPagePatchAliasSection     = "patch_alias"
-	ProjectPageWorkstationsSection   = "workstations"
-	ProjectPageTriggersSection       = "triggers"
-	ProjectPagePeriodicBuildsSection = "periodic-builds"
+	ProjectPageGeneralSection        = "GENERAL"
+	ProjectPageAccessSection         = "ACCESS"
+	ProjectPageVariablesSection      = "VARIABLES"
+	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection  = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection   = "WORKSTATION"
+	ProjectPageTriggersSection       = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
 	ProjectPagePluginSection         = "PLUGINS"
 )
 

@@ -426,8 +426,8 @@ type ComplexityRoot struct {
 		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section string) int
-		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section string) int
+		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
+		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -1175,8 +1175,8 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
-	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
-	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
+	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
+	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
@@ -3068,7 +3068,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string)), true
+		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection)), true
 
 	case "Mutation.saveRepoSettingsForSection":
 		if e.complexity.Mutation.SaveRepoSettingsForSection == nil {
@@ -3080,7 +3080,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveRepoSettingsForSection(childComplexity, args["repoSettings"].(*model.APIProjectSettings), args["section"].(string)), true
+		return e.complexity.Mutation.SaveRepoSettingsForSection(childComplexity, args["repoSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -7091,8 +7091,8 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: String!): RepoSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   forceRepotrackerRun(projectId: String!): Boolean!
@@ -7301,6 +7301,18 @@ enum HostSortBy {
 enum TaskQueueItemType {
   COMMIT
   PATCH
+}
+
+enum ProjectSettingsSection {
+  GENERAL
+  ACCESS
+  VARIABLES
+  GITHUB_AND_COMMIT_QUEUE
+  NOTIFICATIONS
+  PATCH_ALIASES
+  WORKSTATION
+  TRIGGERS
+  PERIODIC_BUILDS
 }
 
 input VolumeHost {
@@ -9192,10 +9204,10 @@ func (ec *executionContext) field_Mutation_saveProjectSettingsForSection_args(ct
 		}
 	}
 	args["projectSettings"] = arg0
-	var arg1 string
+	var arg1 ProjectSettingsSection
 	if tmp, ok := rawArgs["section"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -9216,10 +9228,10 @@ func (ec *executionContext) field_Mutation_saveRepoSettingsForSection_args(ctx c
 		}
 	}
 	args["repoSettings"] = arg0
-	var arg1 string
+	var arg1 ProjectSettingsSection
 	if tmp, ok := rawArgs["section"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -17012,7 +17024,7 @@ func (ec *executionContext) _Mutation_saveProjectSettingsForSection(ctx context.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string))
+		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17054,7 +17066,7 @@ func (ec *executionContext) _Mutation_saveRepoSettingsForSection(ctx context.Con
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveRepoSettingsForSection(rctx, args["repoSettings"].(*model.APIProjectSettings), args["section"].(string))
+		return ec.resolvers.Mutation().SaveRepoSettingsForSection(rctx, args["repoSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -47975,6 +47987,16 @@ func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._ProjectSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, v interface{}) (ProjectSettingsSection, error) {
+	var res ProjectSettingsSection
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
