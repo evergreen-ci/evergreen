@@ -446,12 +446,16 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-
+	projectName := project.Identifier // this might be the ID, so use identifier if we can
+	identifier, _ := model.GetIdentifierForProject(project.Identifier)
+	if identifier != "" {
+		projectName = identifier
+	}
 	data := struct {
 		Project string   `json:"project"`
 		Modules []string `json:"modules"`
 	}{
-		Project: project.Identifier,
+		Project: projectName,
 	}
 
 	mods := map[string]struct{}{}
@@ -464,6 +468,9 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, m := range p.Patches {
+		if m.ModuleName == "" {
+			continue
+		}
 		mods[m.ModuleName] = struct{}{}
 	}
 

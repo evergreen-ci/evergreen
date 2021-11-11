@@ -283,7 +283,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"version":       t.Version,
 	}))
 	if err != nil && !shouldNoop {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":       "generate.tasks finished with errors",
 			"operation":     "generate.tasks",
 			"duration_secs": time.Since(start).Seconds(),
@@ -301,6 +301,22 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	}
 	if !shouldNoop {
 		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+		if t.IsPatchRequest() {
+			activatedTasks, err := task.CountActivatedTasksForVersion(t.Version)
+			if err != nil {
+				j.AddError(err)
+				return
+			}
+			if activatedTasks > evergreen.NumTasksForLargePatch {
+				grip.Info(message.Fields{
+					"message":             "patch has large number of activated tasks",
+					"op":                  "generate.tasks",
+					"num_tasks_activated": activatedTasks,
+					"version":             t.Version,
+				})
+			}
+		}
+
 	}
 }
 

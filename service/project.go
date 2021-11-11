@@ -395,7 +395,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if err = hook.Insert(); err != nil {
-				// A github hook as been created, but we couldn't
+				// A github hook has been created, but we couldn't
 				// save the hook ID in our database. This needs
 				// manual attention for clean up
 				grip.Error(message.WrapError(err, message.Fields{
