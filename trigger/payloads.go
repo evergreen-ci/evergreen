@@ -438,7 +438,7 @@ func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
 }
 
 func taskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
+	return fmt.Sprintf("%s/task/%s/%d?redirect_spruce_users=true", uiBase, url.PathEscape(taskID), execution)
 }
 
 func taskLogLink(uiBase string, taskID string, execution int) string {

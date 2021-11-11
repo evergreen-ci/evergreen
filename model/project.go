@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -20,8 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
-	mgobson "gopkg.in/mgo.v2/bson"
+	ignore "github.com/sabhiram/go-gitignore"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1033,12 +1033,12 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj, _, err := LoadProjectForVersion(v, t.Project, false)
+
+	bvExpansions, err := FindExpansionsForVariant(v, t.BuildVariant)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling project")
+		return nil, errors.Wrap(err, "error getting expansions for variant")
 	}
-	bv := proj.FindBuildVariant(t.BuildVariant)
-	expansions.Update(bv.Expansions)
+	expansions.Update(bvExpansions)
 	return expansions, nil
 }
 
@@ -1378,7 +1378,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 		return false
 	}
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
-	ignorer, _ := ignore.CompileIgnoreLines(p.Ignore...)
+	ignorer := ignore.CompileIgnoreLines(p.Ignore...)
 	for _, f := range files {
 		if !ignorer.MatchesPath(f) {
 			return false

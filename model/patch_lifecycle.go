@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -26,7 +27,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -453,6 +453,21 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 				return nil, errors.Wrap(err, "unable to finalize child patch")
 			}
 		}
+	}
+	if len(tasksToInsert) > evergreen.NumTasksForLargePatch {
+		numTasksActivated := 0
+		for _, t := range tasksToInsert {
+			if t.Activated {
+				numTasksActivated++
+			}
+		}
+		grip.Info(message.Fields{
+			"message":             "version has large number of activated tasks",
+			"op":                  "finalize patch",
+			"num_tasks_activated": numTasksActivated,
+			"total_tasks":         len(tasksToInsert),
+			"version":             patchVersion.Id,
+		})
 	}
 
 	return patchVersion, nil

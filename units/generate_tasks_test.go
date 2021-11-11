@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -13,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var sampleBaseProject = `

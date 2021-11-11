@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type notificationSuite struct {

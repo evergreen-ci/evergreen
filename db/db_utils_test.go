@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestDBUtils(t *testing.T) {

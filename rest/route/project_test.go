@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -19,7 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -743,7 +743,7 @@ func TestDeleteProject(t *testing.T) {
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
-		projAliases, err := serviceModel.FindAllAliasesForProject(projects[i].Id)
+		projAliases, err := serviceModel.FindAliasesForProjectFromDb(projects[i].Id)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(projAliases))
 

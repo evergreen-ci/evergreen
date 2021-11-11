@@ -247,6 +247,15 @@ func evaluateAxisTags(ase *axisSelectorEvaluator, axis string, selectors []strin
 	return out, errs
 }
 
+func GetVariantsWithMatrices(ase *axisSelectorEvaluator, axes []matrixAxis, bvs []parserBV) ([]parserBV, []error) {
+	if ase == nil {
+		ase = NewAxisSelectorEvaluator(axes)
+	}
+	regularBVs, matrices := sieveMatrixVariants(bvs)
+	matrixBVs, errs := buildMatrixVariants(axes, ase, matrices)
+	return append(regularBVs, matrixBVs...), errs
+}
+
 // buildMatrixVariants takes in a list of axis definitions, an axisSelectorEvaluator, and a slice of
 // matrix definitions. It returns a slice of parserBuildVariants constructed according to
 // our matrix specification.

@@ -158,6 +158,7 @@ type CreateHost struct {
 type EbsDevice struct {
 	DeviceName string `mapstructure:"device_name" json:"device_name" yaml:"device_name"`
 	IOPS       int    `mapstructure:"ebs_iops" json:"ebs_iops" yaml:"ebs_iops"`
+	Throughput int    `mapstructure:"ebs_throughput" json:"ebs_throughput" yaml:"ebs_throughput"`
 	SizeGiB    int    `mapstructure:"ebs_size" json:"ebs_size" yaml:"ebs_size"`
 	SnapshotID string `mapstructure:"ebs_snapshot_id" json:"ebs_snapshot_id" yaml:"ebs_snapshot_id"`
 }
@@ -304,8 +305,9 @@ func (ch *CreateHost) Expand(exp *util.Expansions) error {
 }
 
 type GeneratePollResponse struct {
-	Finished bool     `json:"finished"`
-	Errors   []string `json:"errors"`
+	Finished   bool     `json:"finished"`
+	ShouldExit bool     `json:"should_exit"`
+	Errors     []string `json:"errors"`
 }
 
 // DistroView represents the view of data that the agent uses from the distro

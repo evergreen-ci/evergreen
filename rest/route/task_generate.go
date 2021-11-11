@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 func makeGenerateTasksHandler(sc data.Connector, q amboy.QueueGroup) gimlet.RouteHandler {
@@ -103,8 +106,14 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
+	shouldExit := false
+	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring
+		jobErr := errors.New(strings.Join(jobErrs, ", "))
+		shouldExit = db.IsDocumentLimit(jobErr)
+	}
 	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
-		Finished: finished,
-		Errors:   jobErrs,
+		Finished:   finished,
+		ShouldExit: shouldExit,
+		Errors:     jobErrs,
 	})
 }

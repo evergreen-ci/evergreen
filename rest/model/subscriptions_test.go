@@ -3,9 +3,9 @@ package model
 import (
 	"testing"
 
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/assert"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestSubscriptionModels(t *testing.T) {

@@ -1,7 +1,6 @@
 package data
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -142,11 +141,11 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 
 func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) bool {
 	// if we're updating internal aliases, skip non-internal aliases
-	if section == model.ProjectPageGithubAndCQSection && !utility.StringSliceContains(evergreen.InternalAliases, alias) {
+	if section == model.ProjectPageGithubAndCQSection && model.IsPatchAlias(alias) {
 		return true
 	}
 	// if we're updating patch aliases, skip internal aliases
-	if section == model.ProjectPagePatchAliasSection && utility.StringSliceContains(evergreen.InternalAliases, alias) {
+	if section == model.ProjectPagePatchAliasSection && !model.IsPatchAlias(alias) {
 		return true
 	}
 	return false

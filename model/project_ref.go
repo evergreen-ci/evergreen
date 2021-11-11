@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -32,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // The ProjectRef struct contains general information, independent of any revision control system, needed to track a given project.
@@ -338,16 +338,17 @@ const (
 
 type ProjectPageSection string
 
+// These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "general"
-	ProjectPageAccessSection         = "access"
-	ProjectPageVariablesSection      = "variables"
-	ProjectPageGithubAndCQSection    = "github_and_commit_queue"
-	ProjectPageNotificationsSection  = "notifications"
-	ProjectPagePatchAliasSection     = "patch_alias"
-	ProjectPageWorkstationsSection   = "workstations"
-	ProjectPageTriggersSection       = "triggers"
-	ProjectPagePeriodicBuildsSection = "periodic-builds"
+	ProjectPageGeneralSection        = "GENERAL"
+	ProjectPageAccessSection         = "ACCESS"
+	ProjectPageVariablesSection      = "VARIABLES"
+	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection  = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection   = "WORKSTATION"
+	ProjectPageTriggersSection       = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -2284,9 +2285,6 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	}
 	if d.ConfigFile == "" {
 		catcher.New("A config file must be specified")
-	}
-	if d.Alias == "" {
-		catcher.New("Alias must be specified")
 	}
 
 	if d.ID == "" {
