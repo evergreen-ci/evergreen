@@ -168,7 +168,7 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 	return nil
 }
 
-func (c *createHost) initializeLogBatchInfo(id, conf *internal.TaskConfig, startTime time.Time) (*logBatchInfo, error) {
+func (c *createHost) initializeLogBatchInfo(id string, conf *internal.TaskConfig, startTime time.Time) (*logBatchInfo, error) {
 	const permissions = os.O_APPEND | os.O_CREATE | os.O_WRONLY
 	info := &logBatchInfo{batchStart: startTime}
 
