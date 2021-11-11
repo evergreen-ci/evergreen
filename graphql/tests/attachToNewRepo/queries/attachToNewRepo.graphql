@@ -1,8 +1,8 @@
 mutation {
     attachToNewRepo(project: {
-        id: "1234",
-        owner: "sand",
-        repo: "box",
+        projectId: "1234",
+        newOwner: "sand",
+        newRepo: "box",
     }
     ){
         id

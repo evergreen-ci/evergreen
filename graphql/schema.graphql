@@ -371,9 +371,9 @@ input CopyProjectInput {
 }
 
 input MoveProjectInput {
-  id: String!
-  owner: String!
-  repo: String!
+  projectId: String!
+  newOwner: String!
+  newRepo: String!
 }
 
 input ProjectSettingsInput {

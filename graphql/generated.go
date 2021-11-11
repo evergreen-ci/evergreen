@@ -388,7 +388,7 @@ type ComplexityRoot struct {
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
-		AttachToNewRepo               func(childComplexity int, project model.APIProjectRef) int
+		AttachToNewRepo               func(childComplexity int, project MoveProjectInput) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
@@ -1145,7 +1145,7 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
-	AttachToNewRepo(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
+	AttachToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
@@ -2705,7 +2705,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AttachToNewRepo(childComplexity, args["project"].(model.APIProjectRef)), true
+		return e.complexity.Mutation.AttachToNewRepo(childComplexity, args["project"].(MoveProjectInput)), true
 
 	case "Mutation.attachVolumeToHost":
 		if e.complexity.Mutation.AttachVolumeToHost == nil {
@@ -7232,9 +7232,9 @@ input CopyProjectInput {
 }
 
 input MoveProjectInput {
-  id: String!
-  owner: String!
-  repo: String!
+  projectId: String!
+  newOwner: String!
+  newRepo: String!
 }
 
 input ProjectSettingsInput {
@@ -8504,9 +8504,10 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_args(ctx context.
 func (ec *executionContext) field_Mutation_attachToNewRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.APIProjectRef
+	var arg0 MoveProjectInput
 	if tmp, ok := rawArgs["project"]; ok {
-		arg0, err = ec.unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, tmp)
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
+		arg0, err = ec.unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -16507,10 +16508,11 @@ func (ec *executionContext) _Mutation_attachToNewRepo(ctx context.Context, field
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "Mutation",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
@@ -16523,7 +16525,7 @@ func (ec *executionContext) _Mutation_attachToNewRepo(ctx context.Context, field
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AttachToNewRepo(rctx, args["project"].(model.APIProjectRef))
+		return ec.resolvers.Mutation().AttachToNewRepo(rctx, args["project"].(MoveProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -36741,27 +36743,36 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
-	var it model.APIProjectRef
-	var asMap = obj.(map[string]interface{})
+func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, obj interface{}) (MoveProjectInput, error) {
+	var it MoveProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
 
 	for k, v := range asMap {
 		switch k {
-		case "id":
+		case "projectId":
 			var err error
-			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
-		case "owner":
+		case "newOwner":
 			var err error
-			it.Owner, err = ec.unmarshalNString2ᚖstring(ctx, v)
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newOwner"))
+			it.NewOwner, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
-		case "repo":
+		case "newRepo":
 			var err error
-			it.Repo, err = ec.unmarshalNString2ᚖstring(ctx, v)
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newRepo"))
+			it.NewRepo, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -46462,8 +46473,9 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreen
 	return ret
 }
 
-func (ec *executionContext) unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
-	return ec.unmarshalInputMoveProjectInput(ctx, v)
+func (ec *executionContext) unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx context.Context, v interface{}) (MoveProjectInput, error) {
+	res, err := ec.unmarshalInputMoveProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {

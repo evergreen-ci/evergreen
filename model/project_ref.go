@@ -589,12 +589,14 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		return errors.Wrapf(err, "error validating new owner/repo")
 	}
 
-	if err := p.RemoveFromRepoScope(); err != nil {
-		return errors.Wrapf(err, "error removing project from old repo scope")
-	}
-	p.RepoRefId = "" // will reassign this in add
-	if err := p.AddToRepoScope(u); err != nil {
-		return errors.Wrapf(err, "error adding project to new repo scope")
+	if p.UseRepoSettings {
+		if err := p.RemoveFromRepoScope(); err != nil {
+			return errors.Wrapf(err, "error removing project from old repo scope")
+		}
+		p.RepoRefId = "" // will reassign this in add
+		if err := p.AddToRepoScope(u); err != nil {
+			return errors.Wrapf(err, "error addding project to new repo scope")
+		}
 	}
 	update := bson.M{
 		"$set": bson.M{

@@ -1141,16 +1141,16 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 	return projectRef, nil
 }
 
-func (r *mutationResolver) AttachToNewRepo(ctx context.Context, obj restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
-	usr := MustHaveUser(ctx)
-	i, err := obj.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting APIProjectRef %s to service", *obj.Id))
+func (r *mutationResolver) AttachToNewRepo(ctx context.Context, obj MoveProjectInput) (*restModel.APIProjectRef, error) {
+			usr := MustHaveUser(ctx)
+
+	pRef, err := r.sc.FindProjectById(obj.ProjectID, false, false)
+	if err != nil || pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", obj.ProjectID, err.Error()))
 	}
-	pRef, ok := i.(*model.ProjectRef)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APIProjectRef %s to ProjectRef", *obj.Id))
-	}
+	pRef.Owner = obj.NewOwner
+	pRef.Repo = obj.NewRepo
+
 	if err = pRef.AttachToNewRepo(usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
 	}
