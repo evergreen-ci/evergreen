@@ -80,8 +80,8 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, sectionName: ProjectSettingsSection!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, sectionName: ProjectSettingsSection!): RepoSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   forceRepotrackerRun(projectId: String!): Boolean!
