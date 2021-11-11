@@ -338,6 +338,7 @@ const (
 
 type ProjectPageSection string
 
+// These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
 	ProjectPageGeneralSection        = "GENERAL"
 	ProjectPageAccessSection         = "ACCESS"
