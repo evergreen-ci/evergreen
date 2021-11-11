@@ -7891,7 +7891,7 @@ type BaseTaskInfo {
 
 type GroupedProjects {
   groupDisplayName: String! 
-  name: String @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
 }
@@ -13300,11 +13300,14 @@ func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GroupedProjects_repo(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
@@ -39801,6 +39804,9 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 			}
 		case "name":
 			out.Values[i] = ec._GroupedProjects_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "repo":
 			out.Values[i] = ec._GroupedProjects_repo(ctx, field, obj)
 		case "projects":
