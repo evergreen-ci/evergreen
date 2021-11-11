@@ -72,10 +72,13 @@ func TestGitGetProjectSuite(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
 	s.settings = settings
+	suite.Run(t, s)
+}
+
+func (s *GitGetProjectSuite) SetupSuite() {
 	var err error
 	s.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
-	suite.Run(t, s)
 }
 
 func (s *GitGetProjectSuite) SetupTest() {

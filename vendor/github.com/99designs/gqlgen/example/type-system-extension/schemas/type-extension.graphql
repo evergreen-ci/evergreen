@@ -1,5 +1,0 @@
-directive @fieldLogging on FIELD_DEFINITION
-
-extend type Todo {
-  verified: Boolean! @fieldLogging
-}

@@ -1,4 +1,0 @@
-package: github.com/evergreen-ci/lru
-import:
-- package: github.com/pkg/errors
-- package: github.com/mongodb/grip

@@ -230,6 +230,8 @@ func (c *s3copy) s3Copy(ctx context.Context,
 			logger.Task().Warning("destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
 			foundDottedBucketName = true
 		}
+
+		logger.Task().Infof("successfully copied '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
 	}
 
 	return nil
