@@ -59,7 +59,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Alias             string             `json:"alias"`
 		ReuseDefinition   bool               `json:"reuse_definition"`
 	}{}
-	if err := utility.ReadJSON(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
