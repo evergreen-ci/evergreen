@@ -1290,37 +1290,3 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	}
 	return res, nil
 }
-
-func GetProjectSettingsSection(ctx context.Context, sectionName ProjectSettingsSection) model.ProjectPageSection {
-	var section model.ProjectPageSection
-	switch sectionName {
-	case ProjectSettingsSectionGeneral:
-		section = model.ProjectPageGeneralSection
-		break
-	case ProjectSettingsSectionAccess:
-		section = model.ProjectPageAccessSection
-		break
-	case ProjectSettingsSectionVariables:
-		section = model.ProjectPageVariablesSection
-		break
-	case ProjectSettingsSectionGithubAndCommitQueue:
-		section = model.ProjectPageGithubAndCQSection
-		break
-	case ProjectSettingsSectionNotifications:
-		section = model.ProjectPageNotificationsSection
-		break
-	case ProjectSettingsSectionPatchAliases:
-		section = model.ProjectPagePatchAliasSection
-		break
-	case ProjectSettingsSectionWorkstation:
-		section = model.ProjectPageWorkstationsSection
-		break
-	case ProjectSettingsSectionTriggers:
-		section = model.ProjectPageTriggersSection
-		break
-	case ProjectSettingsSectionPeriodicBuilds:
-		section = model.ProjectPagePeriodicBuildsSection
-		break
-	}
-	return section
-}

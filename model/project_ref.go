@@ -339,15 +339,15 @@ const (
 type ProjectPageSection string
 
 const (
-	ProjectPageGeneralSection        = "general"
-	ProjectPageAccessSection         = "access"
-	ProjectPageVariablesSection      = "variables"
-	ProjectPageGithubAndCQSection    = "github_and_commit_queue"
-	ProjectPageNotificationsSection  = "notifications"
-	ProjectPagePatchAliasSection     = "patch_alias"
-	ProjectPageWorkstationsSection   = "workstations"
-	ProjectPageTriggersSection       = "triggers"
-	ProjectPagePeriodicBuildsSection = "periodic_builds"
+	ProjectPageGeneralSection        = "GENERAL"
+	ProjectPageAccessSection         = "ACCESS"
+	ProjectPageVariablesSection      = "VARIABLES"
+	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection  = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection   = "WORKSTATION"
+	ProjectPageTriggersSection       = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
 )
 
 var adminPermissions = gimlet.Permissions{
