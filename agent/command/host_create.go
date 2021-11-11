@@ -55,7 +55,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 
 func (c *createHost) parseParamsFromFile(fn string, conf *internal.TaskConfig) error {
 	if !filepath.IsAbs(fn) {
-		fn = filepath.Join(conf.WorkDir, fn)
+		fn = getJoinedWithWorkDir(conf, fn)
 	}
 	return errors.Wrapf(utility.ReadYAMLFile(fn, &c.CreateHost),
 		"error reading from file '%s'", fn)
@@ -103,7 +103,7 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	if err != nil {
 		return errors.Wrap(err, "error creating host")
 	} else if c.CreateHost.CloudProvider == apimodels.ProviderDocker {
-		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime, conf.WorkDir); err != nil {
+		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime, conf); err != nil {
 			return errors.Wrap(err, "problem getting logs from created host")
 		}
 	}
@@ -140,13 +140,13 @@ type logBatchInfo struct {
 }
 
 func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client.LoggerProducer, comm client.Communicator,
-	ids []string, startTime time.Time, workDir string) error {
+	ids []string, startTime time.Time, conf *internal.TaskConfig) error {
 	var err error
 	if len(ids) == 0 {
 		return errors.New("Programmer error: no intent host ID received")
 	}
 
-	info, err := c.initializeLogBatchInfo(ids[0], workDir, startTime)
+	info, err := c.initializeLogBatchInfo(ids[0], conf, startTime)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client
 	return nil
 }
 
-func (c *createHost) initializeLogBatchInfo(id, workDir string, startTime time.Time) (*logBatchInfo, error) {
+func (c *createHost) initializeLogBatchInfo(id, conf *internal.TaskConfig, startTime time.Time) (*logBatchInfo, error) {
 	const permissions = os.O_APPEND | os.O_CREATE | os.O_WRONLY
 	info := &logBatchInfo{batchStart: startTime}
 
@@ -177,13 +177,13 @@ func (c *createHost) initializeLogBatchInfo(id, workDir string, startTime time.T
 		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", id)
 	}
 	if !filepath.IsAbs(c.CreateHost.StderrFile) {
-		c.CreateHost.StderrFile = filepath.Join(workDir, c.CreateHost.StderrFile)
+		c.CreateHost.StderrFile = getJoinedWithWorkDir(conf, c.CreateHost.StderrFile)
 	}
 	if c.CreateHost.StdoutFile == "" {
 		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", id)
 	}
 	if !filepath.IsAbs(c.CreateHost.StdoutFile) {
-		c.CreateHost.StdoutFile = filepath.Join(workDir, c.CreateHost.StdoutFile)
+		c.CreateHost.StdoutFile = getJoinedWithWorkDir(conf, c.CreateHost.StdoutFile)
 	}
 
 	// initialize files

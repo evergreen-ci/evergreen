@@ -49,7 +49,7 @@ func (c *taskDataGet) Execute(ctx context.Context,
 	}
 
 	if !filepath.IsAbs(c.File) {
-		c.File = filepath.Join(conf.WorkDir, c.File)
+		c.File = getJoinedWithWorkDir(conf, c.File)
 	}
 
 	if err = createEnclosingDirectoryIfNeeded(c.File); err != nil {
