@@ -22,7 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v34/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -577,7 +577,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	stdErr := noopWriteCloser{&bytes.Buffer{}}
 	err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
-		Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
+		Directory(filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir))).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
 
 	errOutput := stdErr.String()
@@ -864,7 +864,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
 		cmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", cmdsJoined}).
-			Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
+			Directory(filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir))).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 		if err = cmd.Run(ctx); err != nil {
@@ -872,6 +872,17 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		}
 	}
 	return nil
+}
+
+// getJoinedWithDirectory joins the passed path A with c.Directory B like this:
+//   if B is relative, return A+B.
+//   if B is absolute, return B.
+// We use this because *gitFetchProject.Directory might be absolute.
+func (c *gitFetchProject) getJoinedWithDirectory(path string) string {
+	if filepath.IsAbs(c.Directory) {
+		return c.Directory
+	}
+	return filepath.Join(path, c.Directory)
 }
 
 func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {

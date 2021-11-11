@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -26,7 +27,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
-	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 

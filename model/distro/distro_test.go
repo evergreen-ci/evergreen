@@ -10,13 +10,13 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestGenerateName(t *testing.T) {

@@ -72,10 +72,13 @@ func TestGitGetProjectSuite(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
 	s.settings = settings
+	suite.Run(t, s)
+}
+
+func (s *GitGetProjectSuite) SetupSuite() {
 	var err error
 	s.jasper, err = jasper.NewSynchronizedManager(false)
 	s.Require().NoError(err)
-	suite.Run(t, s)
 }
 
 func (s *GitGetProjectSuite) SetupTest() {
@@ -958,4 +961,16 @@ index edc0c34..8e82862 100644
 		}
 	}
 	s.True(foundSuccessMessage, "did not see the following in task output: %s", successMessage)
+}
+
+func (s *GitGetProjectSuite) TestGetJoinedWithDirectory() {
+	c := &gitFetchProject{
+		Directory: "bar",
+	}
+	conf := internal.TaskConfig{
+		WorkDir: "/foo",
+	}
+	s.Equal(c.getJoinedWithDirectory(conf.WorkDir), "/foo/bar")
+	c.Directory = "/bar"
+	s.Equal(c.getJoinedWithDirectory(conf.WorkDir), "/bar")
 }

@@ -72,6 +72,7 @@ type Query {
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
+  hasVersion(id: String!): Boolean!
 }
 
 type Mutation {
@@ -1421,6 +1422,7 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+  defaultProject: String!
 }
 
 type CloudProviderConfig {
