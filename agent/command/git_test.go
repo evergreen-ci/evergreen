@@ -970,7 +970,9 @@ func (s *GitGetProjectSuite) TestGetJoinedWithDirectory() {
 	conf := internal.TaskConfig{
 		WorkDir: "/foo",
 	}
-	s.Equal(filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir)), "/foo/bar")
-	c.Directory = "/bar"
-	s.Equal(filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir)), "/bar")
+	s.Equal("/foo/bar", filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir)))
+	var err error
+	c.Directory, err = filepath.Abs("/bar") // Call filepath.Abs for Windows
+	s.NoError(err)
+	s.Equal("/bar", filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir)))
 }
