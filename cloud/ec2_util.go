@@ -41,6 +41,7 @@ type MountPoint struct {
 	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
 	Size        int64  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
 	Iops        int64  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
+	Throughput  int64  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
 	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
 	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
 }
@@ -414,6 +415,17 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			if mount.VolumeType != "" {
 				m.Ebs.VolumeType = aws.String(mount.VolumeType)
 			}
+			if mount.Throughput != 0 {
+				//aws only allows values between 125 and 1000
+				if mount.Throughput > 1000 || mount.Throughput < 125 {
+					return nil, errors.New("throughput must be between 125 and 1000")
+				}
+				// This parameter is valid only for gp3 volumes.
+				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
+					return nil, errors.New(fmt.Sprintf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType)))
+				}
+				m.Ebs.Throughput = aws.Int64(mount.Throughput)
+			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
 		}
@@ -453,6 +465,17 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTempl
 			}
 			if mount.VolumeType != "" {
 				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+			}
+			if mount.Throughput != 0 {
+				//aws only allows values between 125 and 1000
+				if mount.Throughput > 1000 || mount.Throughput < 125 {
+					return nil, errors.New("throughput must be between 125 and 1000")
+				}
+				// This parameter is valid only for gp3 volumes.
+				if utility.FromStringPtr(m.Ebs.VolumeType) != ec2aws.VolumeTypeGp3 {
+					return nil, errors.New(fmt.Sprintf("throughput is not valid for volume type '%s', it is only valid for gp3 volumes", utility.FromStringPtr(m.Ebs.VolumeType)))
+				}
+				m.Ebs.Throughput = aws.Int64(mount.Throughput)
 			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
