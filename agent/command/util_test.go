@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,4 +42,17 @@ func TestCreateEnclosingDirectory(t *testing.T) {
 	assert.True(dirExists(dirname))
 	assert.NoError(os.RemoveAll(dirname))
 	assert.False(dirExists(dirname))
+}
+
+func TestGetJoinedWithWorkDir(t *testing.T) {
+	assert := assert.New(t)
+	c := &gitFetchProject{
+		Directory: "bar",
+	}
+	conf := &internal.TaskConfig{
+		WorkDir: "/foo",
+	}
+	assert.Equal(getJoinedWithWorkDir(conf, c.Directory), "/foo/bar")
+	c.Directory = "/bar"
+	assert.Equal(getJoinedWithWorkDir(conf, c.Directory), "/bar")
 }
