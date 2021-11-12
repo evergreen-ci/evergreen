@@ -127,6 +127,7 @@ type Mutation {
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
+  reprovisionToNew(hostIds: [String!]!): Int!
   updateHostStatus(
     hostIds: [String!]!
     status: String!
