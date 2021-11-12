@@ -365,12 +365,8 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchPro
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			grip.Info(message.Fields{
-				"bynnbynn": taskFromVariant,
-				"disable":  taskFromVariant.IsDisabled(),
-			})
+			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
 			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
-				grip.Info("here")
 				if taskFromVariant.IsGroup {
 					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
 				} else {
@@ -387,10 +383,6 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchPro
 
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
-		grip.Info(message.Fields{
-			"bynnbynn": task,
-			"disable":  utility.FromBoolPtr(task.Disable),
-		})
 		// add a task name to the list if it's patchable and not restricted to git tags and not disabled
 		if !utility.FromBoolPtr(task.Disable) && utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
