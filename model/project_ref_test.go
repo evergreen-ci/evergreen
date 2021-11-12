@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -19,7 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
@@ -683,15 +683,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.SetupCommands)
 		},
-		ProjectPagePluginSection: func(t *testing.T, id string) {
-			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePluginSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
-			assert.NoError(t, err)
-			assert.NotNil(t, pRefFromDb)
-			assert.Equal(t, pRefFromDb.TaskAnnotationSettings.FileTicketWebHook.Endpoint, "")
-			assert.Equal(t, pRefFromDb.BuildBaronSettings.TicketCreateProject, "")
-			assert.Nil(t, pRefFromDb.PerfEnabled)
-		},
 		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePeriodicBuildsSection, "me"))
 			pRefFromDb, err := FindBranchProjectRef(id)
@@ -721,7 +712,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				GithubChecksEnabled:   utility.FalsePtr(),
 				GitTagAuthorizedUsers: []string{"anna"},
 				NotifyOnBuildFailure:  utility.FalsePtr(),
-				PerfEnabled:           utility.FalsePtr(),
 				Triggers: []TriggerDefinition{
 					{Project: "your_project"},
 				},
@@ -739,15 +729,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 						ID:         "so_occasional",
 						ConfigFile: "build.yml",
 					},
-				},
-				TaskAnnotationSettings: evergreen.AnnotationsSettings{
-					FileTicketWebHook: evergreen.WebHook{
-						Endpoint: "random1",
-					},
-				},
-				BuildBaronSettings: evergreen.BuildBaronSettings{
-					TicketCreateProject:  "BFG",
-					TicketSearchProjects: []string{"BF", "BFG"},
 				},
 			}
 			assert.NoError(t, pRef.Insert())
