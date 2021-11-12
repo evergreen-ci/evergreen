@@ -65,7 +65,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Id:                 "ident",
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
@@ -145,7 +145,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
 	assert.True(t, *mergedProject.DeactivatePrevious)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -683,6 +683,15 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.SetupCommands)
 		},
+		ProjectPagePluginSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePluginSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Equal(t, pRefFromDb.TaskAnnotationSettings.FileTicketWebhook.Endpoint, "")
+			assert.Equal(t, pRefFromDb.BuildBaronSettings.TicketCreateProject, "")
+			assert.Nil(t, pRefFromDb.PerfEnabled)
+		},
 		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePeriodicBuildsSection, "me"))
 			pRefFromDb, err := FindBranchProjectRef(id)
@@ -712,6 +721,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				GithubChecksEnabled:   utility.FalsePtr(),
 				GitTagAuthorizedUsers: []string{"anna"},
 				NotifyOnBuildFailure:  utility.FalsePtr(),
+				PerfEnabled:           utility.FalsePtr(),
 				Triggers: []TriggerDefinition{
 					{Project: "your_project"},
 				},
@@ -729,6 +739,15 @@ func TestDefaultRepoBySection(t *testing.T) {
 						ID:         "so_occasional",
 						ConfigFile: "build.yml",
 					},
+				},
+				TaskAnnotationSettings: evergreen.AnnotationsSettings{
+					FileTicketWebhook: evergreen.WebHook{
+						Endpoint: "random1",
+					},
+				},
+				BuildBaronSettings: evergreen.BuildBaronSettings{
+					TicketCreateProject:  "BFG",
+					TicketSearchProjects: []string{"BF", "BFG"},
 				},
 			}
 			assert.NoError(t, pRef.Insert())
@@ -1832,7 +1851,7 @@ func TestMergeWithParserProject(t *testing.T) {
 		PerfEnabled:        utility.TruePtr(),
 		DeactivatePrevious: utility.FalsePtr(),
 		TaskAnnotationSettings: evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random1",
 			},
 		},
@@ -1851,7 +1870,7 @@ func TestMergeWithParserProject(t *testing.T) {
 		Id:                 "version1",
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
@@ -1875,8 +1894,8 @@ func TestMergeWithParserProject(t *testing.T) {
 
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
+	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.False(t, *projectRef.WorkstationConfig.GitClone)
-	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
 	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
 	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
 }
