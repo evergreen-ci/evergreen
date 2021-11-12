@@ -7,7 +7,7 @@ mutation {
                 remotePath: "my_path_is_new"
             }
         },
-        section: "general"
+        section: GENERAL
     ) {
         projectRef {
             enabled

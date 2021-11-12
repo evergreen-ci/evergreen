@@ -400,6 +400,63 @@ func (e MetStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type ProjectSettingsSection string
+
+const (
+	ProjectSettingsSectionGeneral              ProjectSettingsSection = "GENERAL"
+	ProjectSettingsSectionAccess               ProjectSettingsSection = "ACCESS"
+	ProjectSettingsSectionVariables            ProjectSettingsSection = "VARIABLES"
+	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectSettingsSectionNotifications        ProjectSettingsSection = "NOTIFICATIONS"
+	ProjectSettingsSectionPatchAliases         ProjectSettingsSection = "PATCH_ALIASES"
+	ProjectSettingsSectionWorkstation          ProjectSettingsSection = "WORKSTATION"
+	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
+	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
+)
+
+var AllProjectSettingsSection = []ProjectSettingsSection{
+	ProjectSettingsSectionGeneral,
+	ProjectSettingsSectionAccess,
+	ProjectSettingsSectionVariables,
+	ProjectSettingsSectionGithubAndCommitQueue,
+	ProjectSettingsSectionNotifications,
+	ProjectSettingsSectionPatchAliases,
+	ProjectSettingsSectionWorkstation,
+	ProjectSettingsSectionTriggers,
+	ProjectSettingsSectionPeriodicBuilds,
+	ProjectSettingsSectionPlugins,
+}
+
+func (e ProjectSettingsSection) IsValid() bool {
+	switch e {
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins:
+		return true
+	}
+	return false
+}
+
+func (e ProjectSettingsSection) String() string {
+	return string(e)
+}
+
+func (e *ProjectSettingsSection) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectSettingsSection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectSettingsSection", str)
+	}
+	return nil
+}
+
+func (e ProjectSettingsSection) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type RequiredStatus string
 
 const (
