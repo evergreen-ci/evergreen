@@ -56,6 +56,7 @@ func TestGetJoinedWithWorkDir(t *testing.T) {
 	expected = filepath.ToSlash(expected)
 	actual := filepath.ToSlash(getJoinedWithWorkDir(conf, relativeDir))
 	actual, err = filepath.Abs(actual)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 
 	expected, err = filepath.Abs("/bar")
