@@ -1142,7 +1142,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 }
 
 func (r *mutationResolver) AttachToNewRepo(ctx context.Context, obj MoveProjectInput) (*restModel.APIProjectRef, error) {
-			usr := MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 
 	pRef, err := r.sc.FindProjectById(obj.ProjectID, false, false)
 	if err != nil || pRef == nil {
