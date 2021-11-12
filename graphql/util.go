@@ -374,7 +374,6 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchPro
 				}
 			}
 		}
-		grip.Info(tasksForVariant)
 		if len(tasksForVariant) > 0 {
 			variant.Tasks = tasksForVariant
 			variantMappings[variant.Name] = variant
