@@ -354,7 +354,7 @@ type VariantsAndTasksFromProject struct {
 	Project  model.Project
 }
 
-func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
 	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
