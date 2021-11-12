@@ -1,6 +1,18 @@
 {
   "tests": [
     {
+      "query_file": "baseTask.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "baseTask": {
+              "id":"base-task-1"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "baseTaskMetadata.graphql",
       "result": {
         "data": {

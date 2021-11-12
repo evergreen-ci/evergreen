@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -828,11 +828,8 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
 	ase := NewAxisSelectorEvaluator(pp.Axes)
-	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
-
-	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
+	buildVariants, errs := GetVariantsWithMatrices(ase, pp.Axes, pp.BuildVariants)
 	catcher.Extend(errs)
-	buildVariants := append(regularBVs, matrixVariants...)
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
 	catcher.Extend(errs)

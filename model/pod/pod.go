@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Pod represents a related collection of containers. This model holds metadata

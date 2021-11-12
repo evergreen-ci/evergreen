@@ -1,3 +1,0 @@
-directive @inputLogging on INPUT_OBJECT
-
-extend input TodoInput @inputLogging

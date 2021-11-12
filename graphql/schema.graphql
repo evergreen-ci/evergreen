@@ -16,6 +16,7 @@ type Query {
     baseStatuses: [String!] = []
     variant: String
     taskName: String
+    includeEmptyActivation: Boolean = false
   ): PatchTasks!
   taskTests(
     taskId: String!
@@ -71,6 +72,7 @@ type Query {
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
+  hasVersion(id: String!): Boolean!
 }
 
 type Mutation {
@@ -948,7 +950,7 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata
+  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
@@ -1421,6 +1423,7 @@ type JiraConfig {
 
 type UIConfig {
   userVoice: String
+  defaultProject: String!
 }
 
 type CloudProviderConfig {

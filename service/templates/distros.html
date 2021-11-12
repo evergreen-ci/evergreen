@@ -17,7 +17,7 @@
 Evergreen - Distros
 {{end}}
 {{define "content"}}
-<div class="container" ng-controller="DistrosCtrl" style="margin-bottom: 15px;">
+<div class="container" ng-controller="DistrosCtrl" style="margin-bottom: 15px; width:110%">
   <notify-box ng-init="destination='errorHeader'"></notify-box>
   {{template "flash" . }}
   <div ng-show="distroIds.length == 0">
@@ -465,6 +465,7 @@ Evergreen - Distros
                         <th>Virtual Name</th>
                         <th>Volume Type</th>
                         <th>IOPS</th>
+                        <th>Throughput</th>
                         <th>Size</th>
                       </tr>
                     </thead>
@@ -477,6 +478,7 @@ Evergreen - Distros
                         <td><input ng-readonly="readOnly" name="volType" type="text" ng-model="mount_point.volume_type"
                             class="form-control"></td>
                         <td><input ng-readonly="readOnly" name="iops" type="number" ng-model="mount_point.iops" class="form-control"></td>
+                        <td><input ng-readonly="readOnly" name="throughput" type="number" ng-model="mount_point.throughput" class="form-control"></td>
                         <td><input ng-readonly="readOnly" ng-required="!mount_point.virtual_name" name="devSize" type="number"
                             ng-model="mount_point.size" class="form-control"></td>
                         <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeMount(mount_point)"><i style="margin-top:9px"

@@ -2,12 +2,13 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -70,9 +71,25 @@ func ParserProjectFindOne(query db.Q) (*ParserProject, error) {
 	return project, err
 }
 
+// ParserProjectById returns a query to find a parser project by id.
+func ParserProjectById(id string) db.Q {
+	return db.Query(bson.M{ParserProjectIdKey: id})
+}
+
+// ParserProjectUpsertOne updates one project
+func ParserProjectUpsertOne(query interface{}, update interface{}) error {
+	_, err := db.Upsert(
+		ParserProjectCollection,
+		query,
+		update,
+	)
+
+	return err
+}
+
 // ParserProjectByVersion finds a parser project with a given version.
-// If version is empty the last known good config will be returned
-func ParserProjectByVersion(projectId string, version string) (*ParserProject, error) {
+// If version is empty the last known good config will be returned.
+func ParserProjectByVersion(projectId, version string) (*ParserProject, error) {
 	lookupVersion := false
 	if version == "" {
 		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
@@ -103,20 +120,35 @@ func ParserProjectByVersion(projectId string, version string) (*ParserProject, e
 	return parserProject, nil
 }
 
-// ParserProjectById returns a query to find a parser project by id.
-func ParserProjectById(id string) db.Q {
-	return db.Query(bson.M{ParserProjectIdKey: id})
-}
+func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
+		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding parser project")
+	}
 
-// UpdateOne updates one project
-func ParserProjectUpsertOne(query interface{}, update interface{}) error {
-	_, err := db.Upsert(
-		ParserProjectCollection,
-		query,
-		update,
-	)
+	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
+		if v.Config == "" {
+			return nil, errors.New("version has no config")
+		}
+		pp, err = createIntermediateProject([]byte(v.Config))
+		if err != nil {
+			return nil, errors.Wrap(err, "error parsing legacy config")
+		}
+	}
 
-	return err
+	bvs, errs := GetVariantsWithMatrices(nil, pp.Axes, pp.BuildVariants)
+	if len(errs) > 0 {
+		catcher := grip.NewBasicCatcher()
+		catcher.Extend(errs)
+		return nil, catcher.Resolve()
+	}
+	for _, bv := range bvs {
+		if bv.Name == variant {
+			return bv.Expansions, nil
+		}
+	}
+	return nil, errors.Errorf("error finding variant")
 }
 
 func checkConfigNumberQuery(id string, configNum int) bson.M {

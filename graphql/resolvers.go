@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -38,7 +39,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Resolver struct {
@@ -187,6 +187,27 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost %s from service: %s", host.Id, err))
 	}
 	return &apiHost, nil
+}
+
+func (r *queryResolver) HasVersion(ctx context.Context, id string) (bool, error) {
+	v, err := model.VersionFindOne(model.VersionById(id))
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", id, err.Error()))
+	}
+	if v != nil {
+		return true, nil
+	}
+
+	if patch.IsValidId(id) {
+		p, err := patch.FindOneId(id)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch %s: %s", id, err.Error()))
+		}
+		if p != nil {
+			return false, nil
+		}
+	}
+	return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find patch or version %s", id))
 }
 
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
@@ -1535,7 +1556,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	return groupsArr, nil
 }
 
-func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string) (*PatchTasks, error) {
+func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
 	pageParam := 0
 	if page != nil {
 		pageParam = *page
@@ -1577,15 +1598,17 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
-		BaseStatuses:     baseStatuses,
-		Variants:         []string{variantParam},
-		TaskNames:        []string{taskNameParam},
-		Page:             pageParam,
-		Limit:            limitParam,
-		Sorts:            taskSorts,
-		IncludeBaseTasks: true,
+		Statuses:               statuses,
+		BaseStatuses:           baseStatuses,
+		Variants:               []string{variantParam},
+		TaskNames:              []string{taskNameParam},
+		Page:                   pageParam,
+		Limit:                  limitParam,
+		Sorts:                  taskSorts,
+		IncludeBaseTasks:       true,
+		IncludeEmptyActivation: utility.FromBoolPtr(includeEmptyActivation),
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -3046,7 +3069,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, err
 	}
-	return *canRestart == false && !obj.Aborted, nil
+	return !utility.FromBoolPtr(canRestart) && !obj.Aborted, nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3147,14 +3170,20 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	baseTaskID := t.BaseTask.Id
-	if baseTaskID == "" {
-		return nil, nil
+	var baseTask *task.Task
+	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
+	if t.BaseTask.Id != "" {
+		baseTask, err = r.sc.FindTaskById(t.BaseTask.Id)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
+		}
+	} else {
+		baseTask, err = t.FindTaskOnBaseCommit()
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+		}
 	}
-	baseTask, err := r.sc.FindTaskById(baseTaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *obj.Id))
-	}
+
 	if baseTask == nil {
 		return nil, nil
 	}
@@ -3165,6 +3194,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	}
 	return apiTask, nil
 }
+
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
@@ -3260,7 +3290,18 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 }
 
 func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId string, buildVariant string) ([]string, error) {
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant)
+	pid, err := model.GetIdForProject(projectId)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with id: %s", projectId))
+	}
+	repo, err := model.FindRepository(pid)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", projectId, err.Error()))
+	}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
+	}
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}

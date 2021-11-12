@@ -5,11 +5,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type AliasSuite struct {
@@ -190,7 +190,7 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 }
 
 func (a *AliasSuite) TestUpdateAliasesForSection() {
-	originalAliases, err := model.FindAllAliasesForProject("project_id")
+	originalAliases, err := model.FindAliasesForProjectFromDb("project_id")
 	a.NoError(err)
 	a.Len(originalAliases, 3)
 
@@ -219,7 +219,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	a.NoError(err)
 	a.True(modified)
 
-	aliasesFromDb, err := model.FindAllAliasesForProject("project_id")
+	aliasesFromDb, err := model.FindAliasesForProjectFromDb("project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 3)
 	for _, alias := range aliasesFromDb {
@@ -233,7 +233,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	modified, err = a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
-	aliasesFromDb, err = model.FindAllAliasesForProject("project_id")
+	aliasesFromDb, err = model.FindAliasesForProjectFromDb("project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4) // adds internal alias
 }
