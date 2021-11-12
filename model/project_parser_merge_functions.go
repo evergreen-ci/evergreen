@@ -198,6 +198,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.DeactivatePrevious = toMerge.DeactivatePrevious
 	}
 
+	if pp.WorkstationConfig != nil && toMerge.WorkstationConfig != nil {
+		catcher.New("virtual workstation configs can only be defined in one yaml")
+	} else if toMerge.WorkstationConfig != nil {
+		pp.WorkstationConfig = toMerge.WorkstationConfig
+	}
+
 	if pp.CommitQueue != nil && toMerge.CommitQueue != nil {
 		catcher.New("commit queue settings can only be defined in one yaml")
 	} else if toMerge.CommitQueue != nil {

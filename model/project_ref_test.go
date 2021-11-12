@@ -1855,6 +1855,12 @@ func TestMergeWithParserProject(t *testing.T) {
 				Endpoint: "random1",
 			},
 		},
+		WorkstationConfig: WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
 		CommitQueue: CommitQueueParams{
 			Enabled:     utility.TruePtr(),
 			MergeMethod: "message1",
@@ -1872,6 +1878,12 @@ func TestMergeWithParserProject(t *testing.T) {
 			Enabled:     utility.TruePtr(),
 			MergeMethod: "message2",
 		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.FalsePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "overridden"},
+			},
+		},
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, parserProject.Insert())
@@ -1883,5 +1895,7 @@ func TestMergeWithParserProject(t *testing.T) {
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
 	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.False(t, *projectRef.WorkstationConfig.GitClone)
+	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
 	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
 }
