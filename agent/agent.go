@@ -97,18 +97,11 @@ type timeoutInfo struct {
 	// idleTimeoutDuration maintains the current idle timeout in the task context;
 	// the exec timeout is maintained in the project data structure
 	idleTimeoutDuration time.Duration
-	timeoutType         timeoutType
+	timeoutType         evergreen.TimeoutType
 	hadTimeout          bool
 	// exceededDuration is the length of the timeout that was extended, if the task timed out
 	exceededDuration time.Duration
 }
-
-type timeoutType string
-
-const (
-	execTimeout timeoutType = "exec"
-	idleTimeout timeoutType = "idle"
-)
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run. Users should call

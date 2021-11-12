@@ -262,6 +262,13 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
+type TimeoutType string
+
+const (
+	ExecTimeout TimeoutType = "exec"
+	IdleTimeout TimeoutType = "idle"
+)
+
 var InternalAliases []string = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
