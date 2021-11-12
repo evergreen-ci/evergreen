@@ -338,16 +338,18 @@ const (
 
 type ProjectPageSection string
 
+// These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection        = "general"
-	ProjectPageAccessSection         = "access"
-	ProjectPageVariablesSection      = "variables"
-	ProjectPageGithubAndCQSection    = "github_and_commit_queue"
-	ProjectPageNotificationsSection  = "notifications"
-	ProjectPagePatchAliasSection     = "patch_alias"
-	ProjectPageWorkstationsSection   = "workstations"
-	ProjectPageTriggersSection       = "triggers"
-	ProjectPagePeriodicBuildsSection = "periodic-builds"
+	ProjectPageGeneralSection        = "GENERAL"
+	ProjectPageAccessSection         = "ACCESS"
+	ProjectPageVariablesSection      = "VARIABLES"
+	ProjectPageGithubAndCQSection    = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageNotificationsSection  = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection     = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection   = "WORKSTATION"
+	ProjectPageTriggersSection       = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
+	ProjectPagePluginSection         = "PLUGINS"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -419,6 +421,12 @@ func (p *ProjectRef) MergeWithParserProject(version string) error {
 		}
 		if parserProject.TaskAnnotationSettings != nil {
 			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
+		}
+		if parserProject.WorkstationConfig != nil {
+			p.WorkstationConfig = *parserProject.WorkstationConfig
+		}
+		if parserProject.CommitQueue != nil {
+			p.CommitQueue = *parserProject.CommitQueue
 		}
 	}
 	return nil
@@ -1544,6 +1552,16 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 				},
 			})
+	case ProjectPagePluginSection:
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTaskAnnotationSettingsKey: p.TaskAnnotationSettings,
+					projectRefBuildBaronSettingsKey:     p.BuildBaronSettings,
+					projectRefPerfEnabledKey:            p.PerfEnabled,
+				},
+			})
 	case ProjectPageAccessSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1588,8 +1606,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-
-	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
 
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,

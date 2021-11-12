@@ -49,7 +49,7 @@ func (c *taskDataHistory) Execute(ctx context.Context,
 	}
 
 	if c.File != "" && !filepath.IsAbs(c.File) {
-		c.File = filepath.Join(conf.WorkDir, c.File)
+		c.File = getJoinedWithWorkDir(conf, c.File)
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
