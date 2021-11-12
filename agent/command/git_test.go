@@ -962,3 +962,17 @@ index edc0c34..8e82862 100644
 	}
 	s.True(foundSuccessMessage, "did not see the following in task output: %s", successMessage)
 }
+
+func (s *GitGetProjectSuite) TestGetJoinedWithDirectory() {
+	c := &gitFetchProject{
+		Directory: "bar",
+	}
+	conf := internal.TaskConfig{
+		WorkDir: "/foo",
+	}
+	s.Equal(filepath.ToSlash("/foo/bar"), filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir)))
+	absDir, err := filepath.Abs("/bar") // Call filepath.Abs for Windows c:\
+	s.NoError(err)
+	c.Directory = absDir
+	s.Equal(filepath.ToSlash(absDir), filepath.ToSlash(c.getJoinedWithDirectory(conf.WorkDir)))
+}

@@ -9,7 +9,7 @@ mutation {
                 privateVarsList: ["goodbye"]
             }
         }
-        section: "variables",
+        section: VARIABLES,
     ) {
         vars {
             vars

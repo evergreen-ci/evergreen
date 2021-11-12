@@ -412,7 +412,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, repoAlias.Upsert())
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			aliases, err := FindAllAliasesForProject(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
@@ -424,7 +424,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			aliases, err = FindAllAliasesForProject(pRef.Id)
+			aliases, err = FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
@@ -443,7 +443,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(repoAliases, pRef.RepoRefId))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			aliases, err := FindAllAliasesForProject(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
 			gitTagCount := 0
@@ -623,7 +623,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			aliases, err := FindAllAliasesForProject(id)
+			aliases, err := FindAliasesForProjectFromDb(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAndCQSection, "me"))
@@ -634,7 +634,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAllAliasesForProject(id)
+			aliases, err = FindAliasesForProjectFromDb(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			// assert that only patch aliases are left
@@ -650,7 +650,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
 		ProjectPagePatchAliasSection: func(t *testing.T, id string) {
-			aliases, err := FindAllAliasesForProject(id)
+			aliases, err := FindAliasesForProjectFromDb(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
@@ -660,7 +660,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
 
-			aliases, err = FindAllAliasesForProject(id)
+			aliases, err = FindAliasesForProjectFromDb(id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 4)
 			// assert that no patch aliases are left
@@ -1842,6 +1842,10 @@ func TestMergeWithParserProject(t *testing.T) {
 				{Command: "expeliarmus"},
 			},
 		},
+		CommitQueue: CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message1",
+		},
 	}
 	parserProject := &ParserProject{
 		Id:                 "version1",
@@ -1850,6 +1854,10 @@ func TestMergeWithParserProject(t *testing.T) {
 			FileTicketWebHook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
+		},
+		CommitQueue: &CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message2",
 		},
 		WorkstationConfig: &WorkstationConfig{
 			GitClone: utility.FalsePtr(),
@@ -1870,4 +1878,5 @@ func TestMergeWithParserProject(t *testing.T) {
 	assert.False(t, *projectRef.WorkstationConfig.GitClone)
 	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
 	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
+	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
 }

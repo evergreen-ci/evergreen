@@ -374,6 +374,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 			DeviceName: mount.DeviceName,
 			Size:       int64(mount.SizeGiB),
 			Iops:       int64(mount.IOPS),
+			Throughput: int64(mount.Throughput),
 			SnapshotID: mount.SnapshotID,
 		})
 	}
