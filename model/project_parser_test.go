@@ -1739,6 +1739,10 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 				Task:      "subcommand",
 			},
 		},
+		CommitQueue: &CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message",
+		},
 	}
 	assert.NoError(t, pp.Insert())
 
@@ -1752,6 +1756,7 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 	assert.NotNil(t, ppSelectedFields.TaskAnnotationSettings)
 	assert.NotNil(t, ppSelectedFields.DeactivatePrevious)
 	assert.NotNil(t, ppSelectedFields.CommitQueueAliases)
+	assert.NotNil(t, ppSelectedFields.CommitQueue)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
