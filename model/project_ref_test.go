@@ -1836,6 +1836,10 @@ func TestMergeWithParserProject(t *testing.T) {
 				Endpoint: "random1",
 			},
 		},
+		CommitQueue: CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message1",
+		},
 	}
 	parserProject := &ParserProject{
 		Id:                 "version1",
@@ -1844,6 +1848,10 @@ func TestMergeWithParserProject(t *testing.T) {
 			FileTicketWebHook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
+		},
+		CommitQueue: &CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message2",
 		},
 	}
 	assert.NoError(t, projectRef.Insert())
@@ -1856,4 +1864,5 @@ func TestMergeWithParserProject(t *testing.T) {
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
 	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
 }
