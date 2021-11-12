@@ -2197,7 +2197,7 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 	return TaskQueueItemTypeCommit, nil
 }
 
-func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section string) (*restModel.APIProjectSettings, error) {
+func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
 	usr := MustHaveUser(ctx)
 	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), false, usr.Username())
@@ -2207,7 +2207,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, ob
 	return changes, nil
 }
 
-func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section string) (*restModel.APIProjectSettings, error) {
+func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
 	usr := MustHaveUser(ctx)
 	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), true, usr.Username())

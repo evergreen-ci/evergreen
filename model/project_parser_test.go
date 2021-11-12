@@ -1725,7 +1725,7 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 			},
 		},
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
@@ -1738,6 +1738,16 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 				Variant:   "ubuntu",
 				Task:      "subcommand",
 			},
+		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
+		CommitQueue: &CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message",
 		},
 	}
 	assert.NoError(t, pp.Insert())
@@ -1752,6 +1762,8 @@ func TestParserProjectFindOneIdWithFields(t *testing.T) {
 	assert.NotNil(t, ppSelectedFields.TaskAnnotationSettings)
 	assert.NotNil(t, ppSelectedFields.DeactivatePrevious)
 	assert.NotNil(t, ppSelectedFields.CommitQueueAliases)
+	assert.NotNil(t, ppSelectedFields.CommitQueue)
+	assert.NotNil(t, ppSelectedFields.WorkstationConfig)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {

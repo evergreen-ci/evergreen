@@ -52,11 +52,11 @@ func (e *tarballExtract) Execute(ctx context.Context,
 
 	// if the target is a relative path, join it to the working dir
 	if !filepath.IsAbs(e.TargetDirectory) {
-		e.TargetDirectory = filepath.Join(conf.WorkDir, e.TargetDirectory)
+		e.TargetDirectory = getJoinedWithWorkDir(conf, e.TargetDirectory)
 	}
 
 	if !filepath.IsAbs(e.ArchivePath) {
-		e.ArchivePath = filepath.Join(conf.WorkDir, e.ArchivePath)
+		e.ArchivePath = getJoinedWithWorkDir(conf, e.ArchivePath)
 	}
 
 	if _, err := os.Stat(e.ArchivePath); os.IsNotExist(err) {

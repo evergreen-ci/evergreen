@@ -159,7 +159,7 @@ func (c *s3get) Execute(ctx context.Context,
 	// working dir
 	if c.LocalFile != "" {
 		if !filepath.IsAbs(c.LocalFile) {
-			c.LocalFile = filepath.Join(conf.WorkDir, c.LocalFile)
+			c.LocalFile = getJoinedWithWorkDir(conf, c.LocalFile)
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
@@ -169,7 +169,7 @@ func (c *s3get) Execute(ctx context.Context,
 
 	if c.ExtractTo != "" {
 		if !filepath.IsAbs(c.ExtractTo) {
-			c.ExtractTo = filepath.Join(conf.WorkDir, c.ExtractTo)
+			c.ExtractTo = getJoinedWithWorkDir(conf, c.ExtractTo)
 		}
 
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {

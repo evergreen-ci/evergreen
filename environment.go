@@ -809,7 +809,7 @@ type AnnotationsSettings struct {
 	// a list of jira fields the user wants to display in addition to state assignee and priority
 	JiraCustomFields []JiraField `mapstructure:"jira_custom_fields" bson:"jira_custom_fields" json:"jira_custom_fields"`
 	// the endpoint that the user would like to send data to when the file ticket button is clicked
-	FileTicketWebHook WebHook `mapstructure:"web_hook" bson:"web_hook" json:"web_hook"`
+	FileTicketWebhook WebHook `mapstructure:"web_hook" bson:"web_hook" json:"web_hook"`
 }
 
 type JiraField struct {
