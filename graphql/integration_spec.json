@@ -118,7 +118,7 @@
         ],
         "patches": [
           {
-             "name": "",
+            "name": "",
             "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
             "patch_set": {
               "patch_file_id": "58d05bc79dbe327e79000001",
@@ -196,7 +196,7 @@
         "build": "some_thang",
         "files": [
           {
-             "name": "awesome_test!!!",
+            "name": "awesome_test!!!",
             "link": "www.wikipedia.com",
             "visibility": "the whole world",
             "fetch_ignore": false
@@ -210,19 +210,19 @@
         "build": "some_thang",
         "files": [
           {
-             "name": "THIS IS REALLY COOL",
+            "name": "THIS IS REALLY COOL",
             "link": "www.wikipedia.com",
             "visibility": "the whole world",
             "fetch_ignore": false
           },
           {
-             "name": "really cool test file",
+            "name": "really cool test file",
             "link": "www.wikipedia.com",
             "visibility": "the whole world",
             "fetch_ignore": false
           },
           {
-             "name": "PRIVATE TEST FILEEEEEE",
+            "name": "PRIVATE TEST FILEEEEEE",
             "link": "stuffff",
             "visibility": "none",
             "fetch_ignore": false

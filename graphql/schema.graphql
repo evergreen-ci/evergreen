@@ -6,7 +6,7 @@ type Query {
   patch(id: String!): Patch!
   version(id: String!): Version!
   projects: [GroupedProjects]!
-  ViewableProjectRefs: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!

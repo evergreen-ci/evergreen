@@ -4579,7 +4579,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Version(childComplexity, args["id"].(string)), true
 
-	case "Query.ViewableProjectRefs":
+	case "Query.viewableProjectRefs":
 		if e.complexity.Query.ViewableProjectRefs == nil {
 			break
 		}
@@ -6878,7 +6878,7 @@ type Query {
   patch(id: String!): Patch!
   version(id: String!): Version!
   projects: [GroupedProjects]!
-  ViewableProjectRefs: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -23235,7 +23235,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 	return ec.marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedProjects(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_ViewableProjectRefs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_viewableProjectRefs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -42079,7 +42079,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "ViewableProjectRefs":
+		case "viewableProjectRefs":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -42087,7 +42087,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_ViewableProjectRefs(ctx, field)
+				res = ec._Query_viewableProjectRefs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
