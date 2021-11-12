@@ -302,6 +302,7 @@ enum ProjectSettingsSection {
   WORKSTATION
   TRIGGERS
   PERIODIC_BUILDS
+  PLUGINS
 }
 
 input VolumeHost {
@@ -425,6 +426,9 @@ input ProjectInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 
   hidden: Boolean
   useRepoSettings: Boolean
@@ -474,6 +478,9 @@ input RepoRefInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 }
 
 input TriggerAliasInput {
@@ -508,6 +515,31 @@ input CommitQueueParamsInput {
 input TaskSyncOptionsInput {
   configEnabled: Boolean!
   patchEnabled: Boolean!
+}
+
+input BuildBaronSettingsInput {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
+}
+
+input TaskAnnotationSettingsInput {
+  jiraCustomFields: [JiraFieldInput!]
+  fileTicketWebhook: WebhookInput!
+}
+
+input JiraFieldInput {
+  field: String!
+  displayText: String!
+}
+
+input WebhookInput {
+  endpoint: String!
+  secret: String!
 }
 
 input WorkstationConfigInput {
@@ -1161,6 +1193,9 @@ type Project {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
   useRepoSettings: Boolean!
@@ -1209,6 +1244,9 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  perfEnabled: Boolean!
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   validDefaultLoggers: [String!]!
 }
@@ -1262,6 +1300,31 @@ type RepoTaskSyncOptions {
 type WorkstationConfig {
   setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean
+}
+
+type BuildBaronSettings {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
+}
+
+type TaskAnnotationSettings {
+  jiraCustomFields: [JiraField!]
+  fileTicketWebhook: Webhook!
+}
+
+type JiraField {
+  field: String!
+  displayText: String!
+}
+
+type Webhook {
+  endpoint: String!
+  secret: String!
 }
 
 type RepoWorkstationConfig {
