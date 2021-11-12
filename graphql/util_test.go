@@ -49,11 +49,17 @@ buildvariants:
       - name: task1
         disable: true
       - name: task2
+      - name: task3
+        depends_on:
+          - name: task1
+            status: success
 tasks:
   - name: task1
   - name: task2
+    disable: true
+  - name: task3
 `
 	variantsAndTasks, err := GetVariantsAndTasksFromProject(ctx, patchedConfig, "")
 	assert.NoError(t, err)
-	assert.Len(t, variantsAndTasks.Tasks, 3)
+	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 }
