@@ -422,6 +422,9 @@ func (p *ProjectRef) MergeWithParserProject(version string) error {
 		if parserProject.TaskAnnotationSettings != nil {
 			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
+		if parserProject.CommitQueue != nil {
+			p.CommitQueue = *parserProject.CommitQueue
+		}
 	}
 	return nil
 }
