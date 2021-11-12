@@ -46,13 +46,11 @@ func TestCreateEnclosingDirectory(t *testing.T) {
 
 func TestGetJoinedWithWorkDir(t *testing.T) {
 	assert := assert.New(t)
-	c := &gitFetchProject{
-		Directory: "bar",
-	}
+	relativeDir := "bar"
+	absoluteDir := "/bar"
 	conf := &internal.TaskConfig{
 		WorkDir: "/foo",
 	}
-	assert.Equal(getJoinedWithWorkDir(conf, c.Directory), "/foo/bar")
-	c.Directory = "/bar"
-	assert.Equal(getJoinedWithWorkDir(conf, c.Directory), "/bar")
+	assert.Equal(getJoinedWithWorkDir(conf, relativeDir), "/foo/bar")
+	assert.Equal(getJoinedWithWorkDir(conf, absoluteDir), "/bar")
 }
