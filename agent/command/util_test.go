@@ -45,12 +45,19 @@ func TestCreateEnclosingDirectory(t *testing.T) {
 }
 
 func TestGetJoinedWithWorkDir(t *testing.T) {
-	assert := assert.New(t)
 	relativeDir := "bar"
-	absoluteDir := "/bar"
+	absoluteDir, err := filepath.Abs("/bar")
+	require.NoError(t, err)
 	conf := &internal.TaskConfig{
 		WorkDir: "/foo",
 	}
-	assert.Equal(getJoinedWithWorkDir(conf, relativeDir), "/foo/bar")
-	assert.Equal(getJoinedWithWorkDir(conf, absoluteDir), "/bar")
+	expected, err := filepath.Abs("/foo/bar")
+	require.NoError(t, err)
+	expected = filepath.ToSlash(expected)
+	assert.Equal(t, expected, filepath.ToSlash(getJoinedWithWorkDir(conf, relativeDir)))
+
+	expected, err = filepath.Abs("/bar")
+	require.NoError(t, err)
+	expected = filepath.ToSlash(expected)
+	assert.Equal(t, expected, filepath.ToSlash(getJoinedWithWorkDir(conf, absoluteDir)))
 }
