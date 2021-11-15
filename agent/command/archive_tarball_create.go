@@ -78,12 +78,12 @@ func (c *tarballCreate) Execute(ctx context.Context,
 
 	// if the source dir is a relative path, join it to the working dir
 	if !filepath.IsAbs(c.SourceDir) {
-		c.SourceDir = filepath.Join(conf.WorkDir, c.SourceDir)
+		c.SourceDir = getJoinedWithWorkDir(conf, c.SourceDir)
 	}
 
 	// if the target is a relative path, join it to the working dir
 	if !filepath.IsAbs(c.Target) {
-		c.Target = filepath.Join(conf.WorkDir, c.Target)
+		c.Target = getJoinedWithWorkDir(conf, c.Target)
 	}
 
 	errChan := make(chan error)

@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -61,7 +60,7 @@ func (c *perfSend) Execute(ctx context.Context,
 	}
 
 	// Read the file and add the evergreen info.
-	filename := filepath.Join(conf.WorkDir, c.File)
+	filename := getJoinedWithWorkDir(conf, c.File)
 	report, err := poplar.LoadTests(filename)
 	if err != nil {
 		return errors.Wrapf(err, "problem reading tests from '%s'", filename)

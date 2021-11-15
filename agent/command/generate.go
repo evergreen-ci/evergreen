@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -142,7 +141,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 }
 
 func generateTaskForFile(fn string, conf *internal.TaskConfig) ([]byte, error) {
-	fileLoc := filepath.Join(conf.WorkDir, fn)
+	fileLoc := getJoinedWithWorkDir(conf, fn)
 	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
 		return nil, errors.Wrapf(err, "File '%s' does not exist", fn)
 	}
