@@ -10,7 +10,10 @@ func (r RawD) MarshalBSON() ([]byte, error)  { return Marshal(r) }
 func (r RawD) UnmarshalBSON(in []byte) error { return Unmarshal(in, &r) }
 
 //nolint
-func (o *ObjectId) UnmarshalBSONValue(t bsontype.Type, in []byte) error { *o = ObjectId(in); return nil }
+func (o *ObjectId) UnmarshalBSONValue(t bsontype.Type, in []byte) error {
+	*o = ObjectId(in)
+	return nil
+}
 func (o ObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	return bsontype.ObjectID, []byte(o), nil
 }

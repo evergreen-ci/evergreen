@@ -121,6 +121,16 @@ type ComplexityRoot struct {
 		SearchReturnInfo     func(childComplexity int) int
 	}
 
+	BuildBaronSettings struct {
+		BFSuggestionFeaturesURL func(childComplexity int) int
+		BFSuggestionPassword    func(childComplexity int) int
+		BFSuggestionServer      func(childComplexity int) int
+		BFSuggestionTimeoutSecs func(childComplexity int) int
+		BFSuggestionUsername    func(childComplexity int) int
+		TicketCreateProject     func(childComplexity int) int
+		TicketSearchProjects    func(childComplexity int) int
+	}
+
 	BuildVariantTuple struct {
 		BuildVariant func(childComplexity int) int
 		DisplayName  func(childComplexity int) int
@@ -327,6 +337,11 @@ type ComplexityRoot struct {
 		Host func(childComplexity int) int
 	}
 
+	JiraField struct {
+		DisplayText func(childComplexity int) int
+		Field       func(childComplexity int) int
+	}
+
 	JiraIssueSubscriber struct {
 		IssueType func(childComplexity int) int
 		Project   func(childComplexity int) int
@@ -412,8 +427,8 @@ type ComplexityRoot struct {
 		RestartPatch                  func(childComplexity int, patchID string, abort bool, taskIds []string) int
 		RestartTask                   func(childComplexity int, taskID string) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
-		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section string) int
-		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section string) int
+		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
+		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveSubscription              func(childComplexity int, subscription model.APISubscription) int
 		SchedulePatch                 func(childComplexity int, patchID string, configure PatchConfigure) int
 		SchedulePatchTasks            func(childComplexity int, patchID string) int
@@ -546,6 +561,7 @@ type ComplexityRoot struct {
 		Admins                  func(childComplexity int) int
 		BatchTime               func(childComplexity int) int
 		Branch                  func(childComplexity int) int
+		BuildBaronSettings      func(childComplexity int) int
 		CedarTestResultsEnabled func(childComplexity int) int
 		CommitQueue             func(childComplexity int) int
 		DeactivatePrevious      func(childComplexity int) int
@@ -570,6 +586,7 @@ type ComplexityRoot struct {
 		PatchTriggerAliases     func(childComplexity int) int
 		Patches                 func(childComplexity int, patchesInput PatchesInput) int
 		PatchingDisabled        func(childComplexity int) int
+		PerfEnabled             func(childComplexity int) int
 		PeriodicBuilds          func(childComplexity int) int
 		Private                 func(childComplexity int) int
 		RemotePath              func(childComplexity int) int
@@ -577,6 +594,7 @@ type ComplexityRoot struct {
 		RepoRefId               func(childComplexity int) int
 		RepotrackerDisabled     func(childComplexity int) int
 		SpawnHostScriptPath     func(childComplexity int) int
+		TaskAnnotationSettings  func(childComplexity int) int
 		TaskSync                func(childComplexity int) int
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
@@ -686,6 +704,7 @@ type ComplexityRoot struct {
 		Admins                  func(childComplexity int) int
 		BatchTime               func(childComplexity int) int
 		Branch                  func(childComplexity int) int
+		BuildBaronSettings      func(childComplexity int) int
 		CedarTestResultsEnabled func(childComplexity int) int
 		CommitQueue             func(childComplexity int) int
 		DeactivatePrevious      func(childComplexity int) int
@@ -706,12 +725,14 @@ type ComplexityRoot struct {
 		PRTestingEnabled        func(childComplexity int) int
 		PatchTriggerAliases     func(childComplexity int) int
 		PatchingDisabled        func(childComplexity int) int
+		PerfEnabled             func(childComplexity int) int
 		PeriodicBuilds          func(childComplexity int) int
 		Private                 func(childComplexity int) int
 		RemotePath              func(childComplexity int) int
 		Repo                    func(childComplexity int) int
 		RepotrackerDisabled     func(childComplexity int) int
 		SpawnHostScriptPath     func(childComplexity int) int
+		TaskAnnotationSettings  func(childComplexity int) int
 		TaskSync                func(childComplexity int) int
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
@@ -853,6 +874,11 @@ type ComplexityRoot struct {
 		TotalTestCount          func(childComplexity int) int
 		Version                 func(childComplexity int) int
 		VersionMetadata         func(childComplexity int) int
+	}
+
+	TaskAnnotationSettings struct {
+		FileTicketWebhook func(childComplexity int) int
+		JiraCustomFields  func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -1102,6 +1128,11 @@ type ComplexityRoot struct {
 		Type             func(childComplexity int) int
 	}
 
+	Webhook struct {
+		Endpoint func(childComplexity int) int
+		Secret   func(childComplexity int) int
+	}
+
 	WebhookHeader struct {
 		Key   func(childComplexity int) int
 		Value func(childComplexity int) int
@@ -1146,8 +1177,8 @@ type MutationResolver interface {
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
 	AttachToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
-	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
-	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section string) (*model.APIProjectSettings, error)
+	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
+	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
@@ -1568,6 +1599,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
+
+	case "BuildBaronSettings.bfSuggestionFeaturesURL":
+		if e.complexity.BuildBaronSettings.BFSuggestionFeaturesURL == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.BFSuggestionFeaturesURL(childComplexity), true
+
+	case "BuildBaronSettings.bfSuggestionPassword":
+		if e.complexity.BuildBaronSettings.BFSuggestionPassword == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.BFSuggestionPassword(childComplexity), true
+
+	case "BuildBaronSettings.bfSuggestionServer":
+		if e.complexity.BuildBaronSettings.BFSuggestionServer == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.BFSuggestionServer(childComplexity), true
+
+	case "BuildBaronSettings.bfSuggestionTimeoutSecs":
+		if e.complexity.BuildBaronSettings.BFSuggestionTimeoutSecs == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.BFSuggestionTimeoutSecs(childComplexity), true
+
+	case "BuildBaronSettings.bfSuggestionUsername":
+		if e.complexity.BuildBaronSettings.BFSuggestionUsername == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.BFSuggestionUsername(childComplexity), true
+
+	case "BuildBaronSettings.ticketCreateProject":
+		if e.complexity.BuildBaronSettings.TicketCreateProject == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.TicketCreateProject(childComplexity), true
+
+	case "BuildBaronSettings.ticketSearchProjects":
+		if e.complexity.BuildBaronSettings.TicketSearchProjects == nil {
+			break
+		}
+
+		return e.complexity.BuildBaronSettings.TicketSearchProjects(childComplexity), true
 
 	case "BuildVariantTuple.buildVariant":
 		if e.complexity.BuildVariantTuple.BuildVariant == nil {
@@ -2444,6 +2524,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.JiraConfig.Host(childComplexity), true
 
+	case "JiraField.displayText":
+		if e.complexity.JiraField.DisplayText == nil {
+			break
+		}
+
+		return e.complexity.JiraField.DisplayText(childComplexity), true
+
+	case "JiraField.field":
+		if e.complexity.JiraField.Field == nil {
+			break
+		}
+
+		return e.complexity.JiraField.Field(childComplexity), true
+
 	case "JiraIssueSubscriber.issueType":
 		if e.complexity.JiraIssueSubscriber.IssueType == nil {
 			break
@@ -2988,7 +3082,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string)), true
+		return e.complexity.Mutation.SaveProjectSettingsForSection(childComplexity, args["projectSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection)), true
 
 	case "Mutation.saveRepoSettingsForSection":
 		if e.complexity.Mutation.SaveRepoSettingsForSection == nil {
@@ -3000,7 +3094,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SaveRepoSettingsForSection(childComplexity, args["repoSettings"].(*model.APIProjectSettings), args["section"].(string)), true
+		return e.complexity.Mutation.SaveRepoSettingsForSection(childComplexity, args["repoSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection)), true
 
 	case "Mutation.saveSubscription":
 		if e.complexity.Mutation.SaveSubscription == nil {
@@ -3717,6 +3811,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Branch(childComplexity), true
 
+	case "Project.buildBaronSettings":
+		if e.complexity.Project.BuildBaronSettings == nil {
+			break
+		}
+
+		return e.complexity.Project.BuildBaronSettings(childComplexity), true
+
 	case "Project.cedarTestResultsEnabled":
 		if e.complexity.Project.CedarTestResultsEnabled == nil {
 			break
@@ -3890,6 +3991,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.PatchingDisabled(childComplexity), true
 
+	case "Project.perfEnabled":
+		if e.complexity.Project.PerfEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.PerfEnabled(childComplexity), true
+
 	case "Project.periodicBuilds":
 		if e.complexity.Project.PeriodicBuilds == nil {
 			break
@@ -3938,6 +4046,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.SpawnHostScriptPath(childComplexity), true
+
+	case "Project.taskAnnotationSettings":
+		if e.complexity.Project.TaskAnnotationSettings == nil {
+			break
+		}
+
+		return e.complexity.Project.TaskAnnotationSettings(childComplexity), true
 
 	case "Project.taskSync":
 		if e.complexity.Project.TaskSync == nil {
@@ -4617,6 +4732,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.Branch(childComplexity), true
 
+	case "RepoRef.buildBaronSettings":
+		if e.complexity.RepoRef.BuildBaronSettings == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.BuildBaronSettings(childComplexity), true
+
 	case "RepoRef.cedarTestResultsEnabled":
 		if e.complexity.RepoRef.CedarTestResultsEnabled == nil {
 			break
@@ -4757,6 +4879,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.PatchingDisabled(childComplexity), true
 
+	case "RepoRef.perfEnabled":
+		if e.complexity.RepoRef.PerfEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.PerfEnabled(childComplexity), true
+
 	case "RepoRef.periodicBuilds":
 		if e.complexity.RepoRef.PeriodicBuilds == nil {
 			break
@@ -4798,6 +4927,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.SpawnHostScriptPath(childComplexity), true
+
+	case "RepoRef.taskAnnotationSettings":
+		if e.complexity.RepoRef.TaskAnnotationSettings == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.TaskAnnotationSettings(childComplexity), true
 
 	case "RepoRef.taskSync":
 		if e.complexity.RepoRef.TaskSync == nil {
@@ -5554,6 +5690,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.VersionMetadata(childComplexity), true
+
+	case "TaskAnnotationSettings.fileTicketWebhook":
+		if e.complexity.TaskAnnotationSettings.FileTicketWebhook == nil {
+			break
+		}
+
+		return e.complexity.TaskAnnotationSettings.FileTicketWebhook(childComplexity), true
+
+	case "TaskAnnotationSettings.jiraCustomFields":
+		if e.complexity.TaskAnnotationSettings.JiraCustomFields == nil {
+			break
+		}
+
+		return e.complexity.TaskAnnotationSettings.JiraCustomFields(childComplexity), true
 
 	case "TaskEndDetail.description":
 		if e.complexity.TaskEndDetail.Description == nil {
@@ -6732,6 +6882,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Volume.Type(childComplexity), true
 
+	case "Webhook.endpoint":
+		if e.complexity.Webhook.Endpoint == nil {
+			break
+		}
+
+		return e.complexity.Webhook.Endpoint(childComplexity), true
+
+	case "Webhook.secret":
+		if e.complexity.Webhook.Secret == nil {
+			break
+		}
+
+		return e.complexity.Webhook.Secret(childComplexity), true
+
 	case "WebhookHeader.key":
 		if e.complexity.WebhookHeader.Key == nil {
 			break
@@ -6942,8 +7106,8 @@ type Mutation {
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
   attachToNewRepo(project: MoveProjectInput!): Project!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: String!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: String!): RepoSettings!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   forceRepotrackerRun(projectId: String!): Boolean!
@@ -7154,6 +7318,19 @@ enum TaskQueueItemType {
   PATCH
 }
 
+enum ProjectSettingsSection {
+  GENERAL
+  ACCESS
+  VARIABLES
+  GITHUB_AND_COMMIT_QUEUE
+  NOTIFICATIONS
+  PATCH_ALIASES
+  WORKSTATION
+  TRIGGERS
+  PERIODIC_BUILDS
+  PLUGINS
+}
+
 input VolumeHost {
   volumeId: String!
   hostId: String!
@@ -7281,6 +7458,9 @@ input ProjectInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 
   hidden: Boolean
   useRepoSettings: Boolean
@@ -7330,6 +7510,9 @@ input RepoRefInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 }
 
 input TriggerAliasInput {
@@ -7364,6 +7547,31 @@ input CommitQueueParamsInput {
 input TaskSyncOptionsInput {
   configEnabled: Boolean!
   patchEnabled: Boolean!
+}
+
+input BuildBaronSettingsInput {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
+}
+
+input TaskAnnotationSettingsInput {
+  jiraCustomFields: [JiraFieldInput!]
+  fileTicketWebhook: WebhookInput!
+}
+
+input JiraFieldInput {
+  field: String!
+  displayText: String!
+}
+
+input WebhookInput {
+  endpoint: String!
+  secret: String!
 }
 
 input WorkstationConfigInput {
@@ -8017,6 +8225,9 @@ type Project {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
   useRepoSettings: Boolean!
@@ -8065,6 +8276,9 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  perfEnabled: Boolean!
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   validDefaultLoggers: [String!]!
 }
@@ -8118,6 +8332,31 @@ type RepoTaskSyncOptions {
 type WorkstationConfig {
   setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean
+}
+
+type BuildBaronSettings {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
+}
+
+type TaskAnnotationSettings {
+  jiraCustomFields: [JiraField!]
+  fileTicketWebhook: Webhook!
+}
+
+type JiraField {
+  field: String!
+  displayText: String!
+}
+
+type Webhook {
+  endpoint: String!
+  secret: String!
 }
 
 type RepoWorkstationConfig {
@@ -9002,10 +9241,10 @@ func (ec *executionContext) field_Mutation_saveProjectSettingsForSection_args(ct
 		}
 	}
 	args["projectSettings"] = arg0
-	var arg1 string
+	var arg1 ProjectSettingsSection
 	if tmp, ok := rawArgs["section"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -9026,10 +9265,10 @@ func (ec *executionContext) field_Mutation_saveRepoSettingsForSection_args(ctx c
 		}
 	}
 	args["repoSettings"] = arg0
-	var arg1 string
+	var arg1 ProjectSettingsSection
 	if tmp, ok := rawArgs["section"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		arg1, err = ec.unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -11110,6 +11349,233 @@ func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_ticketCreateProject(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TicketCreateProject, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_ticketSearchProjects(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TicketSearchProjects, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_bfSuggestionServer(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BFSuggestionServer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_bfSuggestionUsername(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BFSuggestionUsername, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_bfSuggestionPassword(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BFSuggestionPassword, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_bfSuggestionTimeoutSecs(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BFSuggestionTimeoutSecs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaronSettings_bfSuggestionFeaturesURL(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaronSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BFSuggestionFeaturesURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BuildVariantTuple_buildVariant(ctx context.Context, field graphql.CollectedField, obj *task.BuildVariantTuple) (ret graphql.Marshaler) {
@@ -15316,6 +15782,76 @@ func (ec *executionContext) _JiraConfig_host(ctx context.Context, field graphql.
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _JiraField_field(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "JiraField",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Field, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _JiraField_displayText(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "JiraField",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayText, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _JiraIssueSubscriber_project(ctx context.Context, field graphql.CollectedField, obj *model.APIJIRAIssueSubscriber) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -16567,7 +17103,7 @@ func (ec *executionContext) _Mutation_saveProjectSettingsForSection(ctx context.
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(string))
+		return ec.resolvers.Mutation().SaveProjectSettingsForSection(rctx, args["projectSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16609,7 +17145,7 @@ func (ec *executionContext) _Mutation_saveRepoSettingsForSection(ctx context.Con
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SaveRepoSettingsForSection(rctx, args["repoSettings"].(*model.APIProjectSettings), args["section"].(string))
+		return ec.resolvers.Mutation().SaveRepoSettingsForSection(rctx, args["repoSettings"].(*model.APIProjectSettings), args["section"].(ProjectSettingsSection))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21777,6 +22313,108 @@ func (ec *executionContext) _Project_workstationConfig(ctx context.Context, fiel
 	return ec.marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_perfEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PerfEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_buildBaronSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildBaronSettings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIBuildBaronSettings)
+	fc.Result = res
+	return ec.marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Project_taskAnnotationSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskAnnotationSettings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APITaskAnnotationSettings)
+	fc.Result = res
+	return ec.marshalNTaskAnnotationSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_hidden(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -25770,6 +26408,111 @@ func (ec *executionContext) _RepoRef_workstationConfig(ctx context.Context, fiel
 	return ec.marshalNRepoWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _RepoRef_perfEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PerfEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_buildBaronSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildBaronSettings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIBuildBaronSettings)
+	fc.Result = res
+	return ec.marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_taskAnnotationSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskAnnotationSettings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APITaskAnnotationSettings)
+	fc.Result = res
+	return ec.marshalNTaskAnnotationSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _RepoRef_validDefaultLoggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -29246,6 +29989,73 @@ func (ec *executionContext) _Task_versionMetadata(ctx context.Context, field gra
 	res := resTmp.(*model.APIVersion)
 	fc.Result = res
 	return ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskAnnotationSettings_jiraCustomFields(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotationSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskAnnotationSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraCustomFields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIJiraField)
+	fc.Result = res
+	return ec.marshalOJiraField2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskAnnotationSettings_fileTicketWebhook(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotationSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskAnnotationSettings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FileTicketWebhook, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIWebHook)
+	fc.Result = res
+	return ec.marshalNWebhook2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskEndDetail_status(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
@@ -34878,6 +35688,76 @@ func (ec *executionContext) _Volume_creationTime(ctx context.Context, field grap
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Webhook_endpoint(ctx context.Context, field graphql.CollectedField, obj *model.APIWebHook) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Webhook",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Endpoint, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Webhook_secret(ctx context.Context, field graphql.CollectedField, obj *model.APIWebHook) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Webhook",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Secret, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _WebhookHeader_key(ctx context.Context, field graphql.CollectedField, obj *model.APIWebhookHeader) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -36309,6 +37189,77 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Context, obj interface{}) (model.APIBuildBaronSettings, error) {
+	var it model.APIBuildBaronSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "ticketCreateProject":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ticketCreateProject"))
+			it.TicketCreateProject, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "ticketSearchProjects":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ticketSearchProjects"))
+			it.TicketSearchProjects, err = ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bfSuggestionServer":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionServer"))
+			it.BFSuggestionServer, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bfSuggestionUsername":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionUsername"))
+			it.BFSuggestionUsername, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bfSuggestionPassword":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionPassword"))
+			it.BFSuggestionPassword, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bfSuggestionTimeoutSecs":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionTimeoutSecs"))
+			it.BFSuggestionTimeoutSecs, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "bfSuggestionFeaturesURL":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionFeaturesURL"))
+			it.BFSuggestionFeaturesURL, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Context, obj interface{}) (BuildVariantOptions, error) {
 	var it BuildVariantOptions
 	asMap := map[string]interface{}{}
@@ -36683,6 +37634,37 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issueKey"))
 			it.IssueKey, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputJiraFieldInput(ctx context.Context, obj interface{}) (model.APIJiraField, error) {
+	var it model.APIJiraField
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "field":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
+			it.Field, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "displayText":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayText"))
+			it.DisplayText, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37480,6 +38462,30 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "perfEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("perfEnabled"))
+			it.PerfEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "buildBaronSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildBaronSettings"))
+			it.BuildBaronSettings, err = ec.unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskAnnotationSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskAnnotationSettings"))
+			it.TaskAnnotationSettings, err = ec.unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "hidden":
 			var err error
 
@@ -37889,6 +38895,30 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workstationConfig"))
 			it.WorkstationConfig, err = ec.unmarshalOWorkstationConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "perfEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("perfEnabled"))
+			it.PerfEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "buildBaronSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildBaronSettings"))
+			it.BuildBaronSettings, err = ec.unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taskAnnotationSettings":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskAnnotationSettings"))
+			it.TaskAnnotationSettings, err = ec.unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38330,6 +39360,37 @@ func (ec *executionContext) unmarshalInputSubscriptionInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("trigger_data"))
 			it.TriggerData, err = ec.unmarshalNStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx context.Context, obj interface{}) (model.APITaskAnnotationSettings, error) {
+	var it model.APITaskAnnotationSettings
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "jiraCustomFields":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraCustomFields"))
+			it.JiraCustomFields, err = ec.unmarshalOJiraFieldInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "fileTicketWebhook":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileTicketWebhook"))
+			it.FileTicketWebhook, err = ec.unmarshalNWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38785,6 +39846,37 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj in
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWebhookInput(ctx context.Context, obj interface{}) (model.APIWebHook, error) {
+	var it model.APIWebHook
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "endpoint":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoint"))
+			it.Endpoint, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "secret":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
+			it.Secret, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWorkstationConfigInput(ctx context.Context, obj interface{}) (model.APIWorkstationConfig, error) {
 	var it model.APIWorkstationConfig
 	asMap := map[string]interface{}{}
@@ -39142,6 +40234,45 @@ func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var buildBaronSettingsImplementors = []string{"BuildBaronSettings"}
+
+func (ec *executionContext) _BuildBaronSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIBuildBaronSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, buildBaronSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BuildBaronSettings")
+		case "ticketCreateProject":
+			out.Values[i] = ec._BuildBaronSettings_ticketCreateProject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ticketSearchProjects":
+			out.Values[i] = ec._BuildBaronSettings_ticketSearchProjects(ctx, field, obj)
+		case "bfSuggestionServer":
+			out.Values[i] = ec._BuildBaronSettings_bfSuggestionServer(ctx, field, obj)
+		case "bfSuggestionUsername":
+			out.Values[i] = ec._BuildBaronSettings_bfSuggestionUsername(ctx, field, obj)
+		case "bfSuggestionPassword":
+			out.Values[i] = ec._BuildBaronSettings_bfSuggestionPassword(ctx, field, obj)
+		case "bfSuggestionTimeoutSecs":
+			out.Values[i] = ec._BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field, obj)
+		case "bfSuggestionFeaturesURL":
+			out.Values[i] = ec._BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -40244,6 +41375,38 @@ func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("JiraConfig")
 		case "host":
 			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var jiraFieldImplementors = []string{"JiraField"}
+
+func (ec *executionContext) _JiraField(ctx context.Context, sel ast.SelectionSet, obj *model.APIJiraField) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, jiraFieldImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("JiraField")
+		case "field":
+			out.Values[i] = ec._JiraField_field(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayText":
+			out.Values[i] = ec._JiraField_displayText(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -41574,6 +42737,18 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "perfEnabled":
+			out.Values[i] = ec._Project_perfEnabled(ctx, field, obj)
+		case "buildBaronSettings":
+			out.Values[i] = ec._Project_buildBaronSettings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "taskAnnotationSettings":
+			out.Values[i] = ec._Project_taskAnnotationSettings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "hidden":
 			out.Values[i] = ec._Project_hidden(ctx, field, obj)
 		case "useRepoSettings":
@@ -42686,6 +43861,21 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "perfEnabled":
+			out.Values[i] = ec._RepoRef_perfEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "buildBaronSettings":
+			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "taskAnnotationSettings":
+			out.Values[i] = ec._RepoRef_taskAnnotationSettings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "validDefaultLoggers":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -43601,6 +44791,35 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var taskAnnotationSettingsImplementors = []string{"TaskAnnotationSettings"}
+
+func (ec *executionContext) _TaskAnnotationSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskAnnotationSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskAnnotationSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskAnnotationSettings")
+		case "jiraCustomFields":
+			out.Values[i] = ec._TaskAnnotationSettings_jiraCustomFields(ctx, field, obj)
+		case "fileTicketWebhook":
+			out.Values[i] = ec._TaskAnnotationSettings_fileTicketWebhook(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -45033,6 +46252,38 @@ func (ec *executionContext) _Volume(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var webhookImplementors = []string{"Webhook"}
+
+func (ec *executionContext) _Webhook(ctx context.Context, sel ast.SelectionSet, obj *model.APIWebHook) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, webhookImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Webhook")
+		case "endpoint":
+			out.Values[i] = ec._Webhook_endpoint(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "secret":
+			out.Values[i] = ec._Webhook_secret(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var webhookHeaderImplementors = []string{"WebhookHeader"}
 
 func (ec *executionContext) _WebhookHeader(ctx context.Context, sel ast.SelectionSet, obj *model.APIWebhookHeader) graphql.Marshaler {
@@ -45512,6 +46763,10 @@ func (ec *executionContext) marshalNBuildBaron2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._BuildBaron(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNBuildBaronSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx context.Context, sel ast.SelectionSet, v model.APIBuildBaronSettings) graphql.Marshaler {
+	return ec._BuildBaronSettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNChildPatchAlias2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAlias(ctx context.Context, sel ast.SelectionSet, v model.APIChildPatchAlias) graphql.Marshaler {
@@ -46186,6 +47441,15 @@ func (ec *executionContext) unmarshalNIssueLinkInput2githubᚗcomᚋevergreenᚑ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNJiraField2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx context.Context, sel ast.SelectionSet, v model.APIJiraField) graphql.Marshaler {
+	return ec._JiraField(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNJiraFieldInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx context.Context, v interface{}) (model.APIJiraField, error) {
+	res, err := ec.unmarshalInputJiraFieldInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNJiraStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraStatus(ctx context.Context, sel ast.SelectionSet, v *thirdparty.JiraStatus) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -46853,6 +48117,16 @@ func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋevergreen�
 	return ec._ProjectSettings(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, v interface{}) (ProjectSettingsSection, error) {
+	var res ProjectSettingsSection
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNProjectSubscription2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISubscription(ctx context.Context, sel ast.SelectionSet, v *model.APISubscription) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -47306,6 +48580,10 @@ func (ec *executionContext) marshalNTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._Task(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTaskAnnotationSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, sel ast.SelectionSet, v model.APITaskAnnotationSettings) graphql.Marshaler {
+	return ec._TaskAnnotationSettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTaskEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskEventData(ctx context.Context, sel ast.SelectionSet, v *model.TaskEventData) graphql.Marshaler {
@@ -47895,6 +49173,10 @@ func (ec *executionContext) unmarshalNVolumeHost2githubᚗcomᚋevergreenᚑci�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNWebhook2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, sel ast.SelectionSet, v model.APIWebHook) graphql.Marshaler {
+	return ec._Webhook(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNWebhookHeader2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeader(ctx context.Context, sel ast.SelectionSet, v []model.APIWebhookHeader) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -47931,6 +49213,11 @@ func (ec *executionContext) marshalNWebhookHeader2ᚕgithubᚗcomᚋevergreenᚑ
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, v interface{}) (model.APIWebHook, error) {
+	res, err := ec.unmarshalInputWebhookInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationConfig) graphql.Marshaler {
@@ -48255,6 +49542,11 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
+}
+
+func (ec *executionContext) unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx context.Context, v interface{}) (model.APIBuildBaronSettings, error) {
+	res, err := ec.unmarshalInputBuildBaronSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx context.Context, v interface{}) (*BuildVariantOptions, error) {
@@ -48884,6 +50176,77 @@ func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._JiraConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOJiraField2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIJiraField) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNJiraField2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOJiraFieldInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraFieldᚄ(ctx context.Context, v interface{}) ([]model.APIJiraField, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APIJiraField, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNJiraFieldInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraField(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOJiraIssueSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIJIRAIssueSubscriber) graphql.Marshaler {
@@ -49858,6 +51221,11 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._Task(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, v interface{}) (model.APITaskAnnotationSettings, error) {
+	res, err := ec.unmarshalInputTaskAnnotationSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
