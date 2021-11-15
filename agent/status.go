@@ -109,7 +109,7 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 }
 
 type TriggerEndTaskResp struct {
-	apimodels.TaskEndDetail `yaml:"-" bson:"-" json:"-"`
+	apimodels.TaskEndDetail `json:",omitempty"`
 	ShouldContinue          bool `json:"should_continue"`
 }
 

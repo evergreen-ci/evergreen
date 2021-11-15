@@ -612,6 +612,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 			tc.logger.Task().Errorf("'%s' is not a valid task status", a.endTaskResp.Status)
 			status = evergreen.TaskFailed
 			failureType = evergreen.CommandTypeSystem
+			tc.logger.Task().Debugf("END TASK RESP: %v", a.endTaskResp)
 		} else {
 			status = a.endTaskResp.Status
 			if len(a.endTaskResp.Description) > MessageLimit {
