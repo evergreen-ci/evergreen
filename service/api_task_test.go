@@ -1153,20 +1153,6 @@ func TestNextTask(t *testing.T) {
 	})
 }
 
-func TestValidateTaskEndDetails(t *testing.T) {
-	Convey("With a set of end details with different statuses", t, func() {
-		details := apimodels.TaskEndDetail{}
-		details.Status = evergreen.TaskUndispatched
-		So(validateTaskEndDetails(&details), ShouldBeTrue)
-		details.Status = evergreen.TaskDispatched
-		So(validateTaskEndDetails(&details), ShouldBeFalse)
-		details.Status = evergreen.TaskFailed
-		So(validateTaskEndDetails(&details), ShouldBeTrue)
-		details.Status = evergreen.TaskSucceeded
-		So(validateTaskEndDetails(&details), ShouldBeTrue)
-	})
-}
-
 func TestCheckHostHealth(t *testing.T) {
 	currentRevision := "abc"
 	Convey("With a host that has different statuses", t, func() {

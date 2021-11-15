@@ -302,6 +302,10 @@ func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
 }
 
+func IsValidTaskEndStatus(status string) bool {
+	return status == TaskSucceeded || status == TaskFailed || status == TaskUndispatched
+}
+
 func IsFinishedPatchStatus(status string) bool {
 	return status == PatchFailed || status == PatchSucceeded
 }

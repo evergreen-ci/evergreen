@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -108,8 +109,8 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 }
 
 type TriggerEndTaskResp struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
+	apimodels.TaskEndDetail `yaml:"-" bson:"-" json:"-"`
+	ShouldContinue          bool `json:"should_continue"`
 }
 
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -117,16 +118,9 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 		_ = grip.GetSender().Close()
 	}()
 
-	grip.Info(message.Fields{
-		"message": "end task triggered",
-		"host_id": r.Host,
-	})
-
 	payload, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error reading task resp body",
-		}))
+		_, _ = w.Write([]byte(err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

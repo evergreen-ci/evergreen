@@ -69,7 +69,8 @@ const (
 	// HostMode indicates that the agent will run in a host.
 	HostMode Mode = "host"
 	// PodMode indicates that the agent will run in a pod's container.
-	PodMode Mode = "pod"
+	PodMode      Mode = "pod"
+	MessageLimit      = 500
 )
 
 type taskContext struct {
@@ -474,14 +475,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 }
 
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, message string) (bool, error) {
-	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
-		if !evergreen.IsFinishedTaskStatus(a.endTaskResp.Status) {
-			tc.logger.Task().Errorf("'%s' is not a valid task status", a.endTaskResp.Status)
-		} else {
-			status = a.endTaskResp.Status
-			message = a.endTaskResp.Message
-		}
-	}
 	resp, err := a.finishTask(ctx, tc, status, message)
 	if err != nil {
 		return false, errors.Wrap(err, "error marking task complete")
@@ -612,14 +605,47 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
-	var cmdType string
+	var failureType string
+	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
+		tc.logger.Task().Infof("Task status set using /task_status")
+		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
+			tc.logger.Task().Errorf("'%s' is not a valid task status", a.endTaskResp.Status)
+			status = evergreen.TaskFailed
+			failureType = evergreen.CommandTypeSystem
+		} else {
+			status = a.endTaskResp.Status
+			if len(a.endTaskResp.Description) > MessageLimit {
+				tc.logger.Task().Warningf("description from task_status is too long to set (%s character limit), defaulting to command display name", MessageLimit)
+			} else {
+				description = a.endTaskResp.Description
+			}
+
+			if len(a.endTaskResp.Message) > MessageLimit {
+				tc.logger.Task().Warningf("message from task_status is too long to set (%s character limit)", MessageLimit)
+				message = ""
+			} else {
+				message = a.endTaskResp.Message
+			}
+
+			if a.endTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, a.endTaskResp.Type) {
+				tc.logger.Task().Warningf("'%s' is not a valid failure type, defaulting to command failure type", a.endTaskResp.Type)
+			} else {
+				failureType = a.endTaskResp.Type
+			}
+		}
+	}
+
 	if tc.getCurrentCommand() != nil {
-		description = tc.getCurrentCommand().DisplayName()
-		cmdType = tc.getCurrentCommand().Type()
+		if description == "" {
+			description = tc.getCurrentCommand().DisplayName()
+		}
+		if failureType == "" {
+			failureType = tc.getCurrentCommand().Type()
+		}
 	}
 	detail := &apimodels.TaskEndDetail{
 		Description:     description,
-		Type:            cmdType,
+		Type:            failureType,
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),

@@ -98,13 +98,6 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, msg)
 }
 
-// validateTaskEndDetails returns true if the task is finished or undispatched
-func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
-	return details.Status == evergreen.TaskSucceeded ||
-		details.Status == evergreen.TaskFailed ||
-		details.Status == evergreen.TaskUndispatched
-}
-
 // checkHostHealth checks that host is running.
 func checkHostHealth(h *host.Host) bool {
 	if h.Status == evergreen.HostRunning {
@@ -161,7 +154,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check that finishing status is a valid constant
-	if !validateTaskEndDetails(details) {
+	if !evergreen.IsValidTaskEndStatus(details.Status) {
 		msg := fmt.Errorf("invalid end status '%s' for task %s", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
