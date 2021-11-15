@@ -499,6 +499,7 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 	assert.Equal(evergreen.TaskFailed, doc.GetDisplayStatus())
 
 	doc.Details.TimedOut = true
+	doc.Details.TimeoutType = string(evergreen.ExecTimeout)
 	assert.Equal(evergreen.TaskTimedOut, doc.GetDisplayStatus())
 
 	doc.Details.TimedOut = false
