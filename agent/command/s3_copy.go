@@ -207,15 +207,10 @@ func (c *s3copy) s3Copy(ctx context.Context,
 			logger.Task().Infof("s3Copy response: %s", responseString)
 		}
 
-		if err == nil {
-			//only upload files to the task if they copied successfully
-			err = c.attachFiles(ctx, comm, logger, td, s3CopyReq)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-		} else {
+		if err != nil {
 			err = errors.Wrap(err, "s3 push copy failed")
 			logger.Execution().Error(err)
+
 			if s3CopyFile.Optional {
 				logger.Execution().Errorf("file '%s' is optional, continuing",
 					s3CopyFile.DisplayName)
@@ -227,6 +222,10 @@ func (c *s3copy) s3Copy(ctx context.Context,
 
 		}
 
+		err = c.attachFiles(ctx, comm, logger, td, s3CopyReq)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 		if !foundDottedBucketName && strings.Contains(s3CopyReq.S3DestinationBucket, ".") {
 			logger.Task().Warning("destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
 			foundDottedBucketName = true

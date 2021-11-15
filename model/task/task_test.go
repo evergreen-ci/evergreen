@@ -448,6 +448,63 @@ func TestFindTasksByIds(t *testing.T) {
 	})
 }
 
+func TestDisplayTasksByVersion(t *testing.T) {
+	Convey("When calling DisplayTasksByVersion...", t, func() {
+		So(db.Clear(Collection), ShouldBeNil)
+		Convey("only tasks that are display tasks should be returned", func() {
+			tasks := []Task{
+				{
+					Id:      "one",
+					Version: "v1",
+				},
+				{
+					Id:          "two",
+					Version:     "v1",
+					DisplayOnly: true,
+				},
+				{
+					Id:            "three",
+					Version:       "v1",
+					DisplayTaskId: utility.ToStringPtr(""),
+				},
+				{
+					Id:             "four",
+					Version:        "v1",
+					ExecutionTasks: []string{"execution_task_one, execution_task_two"},
+				},
+				{
+					Id:            "execution_task_one",
+					Version:       "v1",
+					DisplayTaskId: utility.ToStringPtr("four"),
+				},
+				{
+					Id:            "execution_task_two",
+					Version:       "v1",
+					DisplayTaskId: utility.ToStringPtr("four"),
+				},
+			}
+
+			for _, task := range tasks {
+				So(task.Insert(), ShouldBeNil)
+			}
+
+			dbTasks, err := FindAll(DisplayTasksByVersion("v1"))
+			So(err, ShouldBeNil)
+			So(len(dbTasks), ShouldEqual, 4)
+			So(dbTasks[0].Id, ShouldNotEqual, "execution_task_one")
+			So(dbTasks[1].Id, ShouldNotEqual, "execution_task_one")
+			So(dbTasks[2].Id, ShouldNotEqual, "execution_task_one")
+			So(dbTasks[3].Id, ShouldNotEqual, "execution_task_one")
+
+			So(dbTasks[0].Id, ShouldNotEqual, "execution_task_two")
+			So(dbTasks[1].Id, ShouldNotEqual, "execution_task_two")
+			So(dbTasks[2].Id, ShouldNotEqual, "execution_task_two")
+			So(dbTasks[3].Id, ShouldNotEqual, "execution_task_two")
+
+		})
+	})
+}
+
 func TestFailedTasksByVersion(t *testing.T) {
 	Convey("When calling FailedTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)

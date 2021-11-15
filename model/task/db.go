@@ -359,6 +359,24 @@ func ByVersion(version string) db.Q {
 	})
 }
 
+// DisplayTasksByVersion produces a query that returns all display tasks for the given version.
+func DisplayTasksByVersion(version string) db.Q {
+	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
+	displayTasksQuery := bson.M{
+		"$and": []bson.M{
+			{VersionKey: version},
+			{"$or": []bson.M{
+				{DisplayTaskIdKey: ""},                       // no 'parent' display task
+				{DisplayOnlyKey: true},                       // ...
+				{DisplayTaskIdKey: nil},                      // ...
+				{ExecutionTasksKey: bson.M{"$exists": true}}, // has execution tasks
+			},
+			},
+		},
+	}
+	return db.Query(displayTasksQuery)
+}
+
 // FailedTasksByVersion produces a query that returns all failed tasks for the given version.
 func FailedTasksByVersion(version string) db.Q {
 	return db.Query(bson.M{
