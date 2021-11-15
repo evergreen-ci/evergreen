@@ -1344,7 +1344,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 				}
 				gp.Repo = &apiRepoRef
 				if repoRef.DisplayName != "" {
-					gp.GroupDisplayName = repoRef.DisplayName
+					gp.GroupDisplayName = repoRef.ProjectRef.DisplayName
 				}
 			}
 		}

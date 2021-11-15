@@ -232,7 +232,7 @@
       "query_file":"viewableProjects.graphql",
       "result": {
         "data": {
-          "viewableProjects": [
+          "viewableProjectRefs": [
             {
               "groupDisplayName": "",
               "projects": [
