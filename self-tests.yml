@@ -619,7 +619,6 @@ buildvariants:
   - name: lint
     display_name: Lint
     run_on:
-      - archlinux-new-small
       - archlinux-new-large
     expansions:
       GOROOT: /opt/golang/go1.16

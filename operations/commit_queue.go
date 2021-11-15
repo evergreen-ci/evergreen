@@ -407,8 +407,12 @@ func backport() cli.Command {
 			if len(latestVersions) == 0 {
 				return errors.Errorf("no repotracker versions exist in project '%s'", patchParams.Project)
 			}
+			gitMetadata, err := getGitConfigMetadata()
+			if err != nil {
+				return errors.Wrap(err, "Error getting git metadata")
+			}
 			var backportPatch *patch.Patch
-			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: utility.FromStringPtr(latestVersions[0].Revision)})
+			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: utility.FromStringPtr(latestVersions[0].Revision), gitMetadata: gitMetadata})
 			if err != nil {
 				return errors.Wrap(err, "can't upload backport patch")
 			}

@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"os"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -45,7 +44,7 @@ func (c *taskDataSend) Execute(ctx context.Context,
 	errChan := make(chan error)
 	go func() {
 		// attempt to open the file
-		fileLoc := filepath.Join(conf.WorkDir, c.File)
+		fileLoc := getJoinedWithWorkDir(conf, c.File)
 		jsonFile, err := os.Open(fileLoc)
 		if err != nil {
 			errChan <- errors.Wrap(err, "Couldn't open json file")
