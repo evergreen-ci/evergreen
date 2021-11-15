@@ -122,33 +122,25 @@ func getAllTargets() ([]string, error) {
 
 // generateTasks returns a map of tasks to generate.
 func generateTasks() (*shrub.Configuration, error) {
-	// kim: TODO: this forces the linter to run for all packages and confirm
-	// that the linting changes are still green. Revert this once PR is
-	// approved.
-	// changes, err := whatChanged()
-	// if err != nil {
-	//     return nil, err
-	// }
-	// var targets []string
-	// var maxHosts int
-	// if len(changes) == 0 {
-	//     maxHosts = commitMaxHosts
-	//     targets, err = getAllTargets()
-	//     if err != nil {
-	//         return nil, err
-	//     }
-	// } else {
-	//     maxHosts = patchMaxHosts
-	//     targets, err = targetsFromChangedFiles(changes)
-	//     if err != nil {
-	//         return nil, err
-	//     }
-	// }
-	targets, err := getAllTargets()
+	changes, err := whatChanged()
 	if err != nil {
 		return nil, err
 	}
-	maxHosts := commitMaxHosts
+	var targets []string
+	var maxHosts int
+	if len(changes) == 0 {
+		maxHosts = commitMaxHosts
+		targets, err = getAllTargets()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		maxHosts = patchMaxHosts
+		targets, err = targetsFromChangedFiles(changes)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	conf := &shrub.Configuration{}
 	if len(targets) == 0 {
