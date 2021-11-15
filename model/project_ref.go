@@ -426,7 +426,9 @@ func (p *ProjectRef) MergeWithParserProject(version string) error {
 			p.WorkstationConfig = *parserProject.WorkstationConfig
 		}
 		if parserProject.CommitQueue != nil {
+			enabled := p.CommitQueue.IsEnabled()
 			p.CommitQueue = *parserProject.CommitQueue
+			p.CommitQueue.Enabled = utility.ToBoolPtr(enabled)
 		}
 	}
 	return nil

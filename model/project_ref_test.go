@@ -1874,7 +1874,7 @@ func TestMergeWithParserProject(t *testing.T) {
 			},
 		},
 		CommitQueue: &CommitQueueParams{
-			Enabled:     utility.TruePtr(),
+			Enabled:     utility.FalsePtr(),
 			MergeMethod: "message2",
 		},
 		WorkstationConfig: &WorkstationConfig{
@@ -1897,4 +1897,5 @@ func TestMergeWithParserProject(t *testing.T) {
 	assert.False(t, *projectRef.WorkstationConfig.GitClone)
 	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
 	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
+	assert.True(t, projectRef.CommitQueue.IsEnabled())
 }
