@@ -616,6 +616,12 @@ tasks:
           target: "test-evergreen"
           RUN_TEST: "TestEnvironmentSuite/TestInitDB"
           MONGO_CREDS_FILE: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/test_auth.yml
+  - name: bynnbynn
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "github_commit: ${github_commit}, revision: ${revision}"
 
 task_groups:
   - name: dist-and-upload-clis
@@ -650,6 +656,7 @@ buildvariants:
       - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud
+      - name: bynnbynn
 
   - name: race-detector
     display_name: Race Detector
