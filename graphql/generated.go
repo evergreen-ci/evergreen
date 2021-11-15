@@ -402,6 +402,7 @@ type ComplexityRoot struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
+		AttachProjectToNewRepo        func(childComplexity int, project MoveProjectInput) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
@@ -1175,6 +1176,7 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
+	AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
@@ -2774,6 +2776,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
+
+	case "Mutation.attachProjectToNewRepo":
+		if e.complexity.Mutation.AttachProjectToNewRepo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_attachProjectToNewRepo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AttachProjectToNewRepo(childComplexity, args["project"].(MoveProjectInput)), true
 
 	case "Mutation.attachProjectToRepo":
 		if e.complexity.Mutation.AttachProjectToRepo == nil {
@@ -7091,6 +7105,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
@@ -7391,6 +7406,12 @@ input CopyProjectInput {
   projectIdToCopy: String!
   newProjectIdentifier: String!
   newProjectId: String
+}
+
+input MoveProjectInput {
+  projectId: String!
+  newOwner: String!
+  newRepo: String!
 }
 
 input ProjectSettingsInput {
@@ -8701,6 +8722,21 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 		}
 	}
 	args["identifier"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_attachProjectToNewRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 MoveProjectInput
+	if tmp, ok := rawArgs["project"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
+		arg0, err = ec.unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["project"] = arg0
 	return args, nil
 }
 
@@ -16984,6 +17020,48 @@ func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field gra
 			return data, nil
 		}
 		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIProjectRef`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_attachProjectToNewRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_attachProjectToNewRepo_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AttachProjectToNewRepo(rctx, args["project"].(MoveProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -37647,6 +37725,45 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, obj interface{}) (MoveProjectInput, error) {
+	var it MoveProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "projectId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "newOwner":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newOwner"))
+			it.NewOwner, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "newRepo":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newRepo"))
+			it.NewRepo, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context, obj interface{}) (model.APINotificationPreferences, error) {
 	var it model.APINotificationPreferences
 	asMap := map[string]interface{}{}
@@ -41637,6 +41754,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			}
 		case "copyProject":
 			out.Values[i] = ec._Mutation_copyProject(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "attachProjectToNewRepo":
+			out.Values[i] = ec._Mutation_attachProjectToNewRepo(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -47613,6 +47735,11 @@ func (ec *executionContext) marshalNModuleCodeChange2ᚕgithubᚗcomᚋevergreen
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx context.Context, v interface{}) (MoveProjectInput, error) {
+	res, err := ec.unmarshalInputMoveProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {

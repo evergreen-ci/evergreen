@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -15,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -319,7 +318,7 @@ func TestChangeOwnerRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.ChangeOwnerRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
