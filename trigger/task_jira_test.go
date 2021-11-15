@@ -76,7 +76,7 @@ func TestJIRASummary(t *testing.T) {
 			So(subj, ShouldNotEqual, "")
 			So(err, ShouldBeNil)
 			Convey("denoting the time out and showing the task name", func() {
-				So(subj, ShouldContainSubstring, "Timed Out")
+				So(subj, ShouldContainSubstring, "Failed")
 				So(subj, ShouldContainSubstring, taskName)
 				So(subj, ShouldContainSubstring, buildName)
 				So(subj, ShouldContainSubstring, versionRevision[0:8])
