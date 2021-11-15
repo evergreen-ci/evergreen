@@ -1141,6 +1141,27 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 	return projectRef, nil
 }
 
+func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, obj MoveProjectInput) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+
+	pRef, err := r.sc.FindProjectById(obj.ProjectID, false, false)
+	if err != nil || pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", obj.ProjectID, err.Error()))
+	}
+	pRef.Owner = obj.NewOwner
+	pRef.Repo = obj.NewRepo
+
+	if err = pRef.AttachToNewRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err = res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProjectRef: %s", err.Error()))
+	}
+	return res, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
@@ -1287,7 +1308,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 }
 
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
 	}
@@ -3642,7 +3663,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 }
 
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}

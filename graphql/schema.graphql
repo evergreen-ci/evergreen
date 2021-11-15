@@ -80,6 +80,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
@@ -380,6 +381,12 @@ input CopyProjectInput {
   projectIdToCopy: String!
   newProjectIdentifier: String!
   newProjectId: String
+}
+
+input MoveProjectInput {
+  projectId: String!
+  newOwner: String!
+  newRepo: String!
 }
 
 input ProjectSettingsInput {

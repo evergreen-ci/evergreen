@@ -127,6 +127,12 @@ type Manifest struct {
 	Modules         map[string]interface{} `json:"modules"`
 }
 
+type MoveProjectInput struct {
+	ProjectID string `json:"projectId"`
+	NewOwner  string `json:"newOwner"`
+	NewRepo   string `json:"newRepo"`
+}
+
 type PatchConfigure struct {
 	Description         string                `json:"description"`
 	VariantsTasks       []*VariantTasks       `json:"variantsTasks"`
