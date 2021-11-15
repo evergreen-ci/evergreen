@@ -1343,7 +1343,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
 				}
 				gp.Repo = &apiRepoRef
-				if repoRef.DisplayName != "" {
+				if repoRef.ProjectRef.DisplayName != "" {
 					gp.GroupDisplayName = repoRef.ProjectRef.DisplayName
 				}
 			}
