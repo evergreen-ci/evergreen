@@ -39,7 +39,7 @@
             "tasks": [
               {
                 "id": "4",
-                "status": "task-timed-out",
+                "status": "failed",
                 "baseTask": {
                   "status": "success"
                 },
