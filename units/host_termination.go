@@ -54,6 +54,8 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
+// kim: TODO: verify that host termination job can handle intent hosts without
+// issue.
 func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfBusy bool, reason string) amboy.Job {
 	j := makeHostTerminationJob()
 	j.host = h

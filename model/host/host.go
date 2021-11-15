@@ -493,7 +493,9 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 func (h *Host) SetProvisioning() error {
 	return UpdateOne(
 		bson.M{
-			IdKey:     h.Id,
+			IdKey: h.Id,
+			// kim: TODO: allow host to be "building" due to unreliable host
+			// creation job.
 			StatusKey: evergreen.HostStarting,
 		},
 		bson.M{

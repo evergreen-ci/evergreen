@@ -81,6 +81,9 @@ type TaskEndDetails struct {
 type GetNextTaskDetails struct {
 	TaskGroup     string `json:"task_group"`
 	AgentRevision string `json:"agent_revision"`
+	// EC2InstanceID is the ID of the instance running the agent if the agent is
+	// running on an EC2 host. For non-EC2 hosts, this will not be populated.
+	EC2InstanceID string `json:"instance_id,omitempty"`
 }
 
 // ExpansionVars is a map of expansion variables for a project.

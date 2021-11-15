@@ -910,6 +910,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
+// kim: TODO: make new method to "DecommissionStaleBuilding" hosts.
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
@@ -920,6 +921,16 @@ func RemoveStaleInitializing(distroID string) error {
 				StatusKey:     evergreen.HostUninitialized,
 				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
 			},
+			// kim: TODO: log hosts that are "building" but then are considered
+			// stale.
+			// kim: TODO: a couple options to handle stale hosts:
+			// * Set "building" hosts to "decommissioned" instead of removing
+			// the host doc so that the doc at least exists. The host
+			// termination job won't kill the instance. If the agent actually
+			// starts, the EC2 instance should be stopped by the agent next task
+			// route, since the document still exists.
+			// * Keep removing "building" hosts. This is undesirable since it
+			// makes checkHost middleware quite difficult to work around.
 			{
 				StatusKey:     evergreen.HostBuilding,
 				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
@@ -948,6 +959,11 @@ func RemoveStaleInitializing(distroID string) error {
 
 	return db.RemoveAll(Collection, query)
 }
+
+// kim: TODO: implement
+// func DecommissionStaleBuilding(distroID string) error {
+//
+// }
 
 // === DB Logic ===
 

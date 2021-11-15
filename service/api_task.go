@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -266,22 +267,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-		defer cancel()
-		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "problem stopping agent monitor",
-				"host_id":       currentHost.Id,
-				"operation":     "next_task",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": currentHost.AgentRevision,
-			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
-		}
-		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
-			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
+		if err := as.prepareUnhealthyHostForAgentExit(r.Context(), currentHost, currentHost.Id, "end_task"); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
@@ -332,6 +318,95 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	grip.Info(msg)
 	gimlet.WriteJSON(w, endTaskResp)
+}
+
+// prepareUnhealthyHostForAgentExit prepares a host which has been quarantined
+// to shut down the agent and agent monitor. This is especially important for
+// quarantining static hosts, as the host may continue running, but it must stop
+// all agent-related activity for now. It also ensures that when the host is
+// eventually unquarantined, the agent is deployed.
+// kim: NOTE: this handles the zombie EC2 host that's already been terminated.
+func (as *APIServer) prepareUnhealthyHostForAgentExit(ctx context.Context, h *host.Host, instanceID string, op string) error {
+	// kim: TODO: need to think through this case logic carefully
+	switch h.Status {
+	case evergreen.HostTerminated:
+		var idToTerminate string
+		if instanceID != "" {
+			idToTerminate = instanceID
+		} else if isInstanceID(h.Id) {
+			idToTerminate = h.Id
+		} else {
+			// This is a logical bug. It's unclear how an agent could be running
+			// on a terminated host, since it's not a stale building host.
+			return errors.New("instance does not have an ID in the host document or from its request, but agent is still alive")
+		}
+
+		// In the case of a terminated host, either the host was a stale
+		// building host (which cannot be terminated in EC2 during host
+		// termination due to the missing instance ID) or the host termination
+		// job has somehow failed at doing its job properly (which is a bug).
+
+		return terminateUnhealthyHost(ctx, idToTerminate)
+	case evergreen.HostBuilding, evergreen.HostDecommissioned:
+		if instanceID != "" && instanceID != h.Id {
+			// If the instance ID is given and the host ID is still an intent
+			// host ID, then it was a stale building host. It's easier to
+			// terminate it than to try to fix a stale building host document.
+
+			grip.Info(message.Fields{
+				"message":     "DB-EC2 state mismatch - found EC2 instance with a valid intent host ID, but the host document ID does not match",
+				"host_status": h.Id,
+				"instance_id": instanceID,
+				"hypothesis":  "Evergreen failed to mark host document as started, but the host was successfully started in EC2 nonetheless",
+				"jira_ticket": "EVG-15022",
+			})
+			terminateUnhealthyHost(ctx, instanceID)
+		}
+		// In the case of a decommissioned host, the host termination job is
+		// supposed to eventually catch this host and terminate it.
+
+		return nil
+	case evergreen.HostQuarantined:
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		if err := h.StopAgentMonitor(ctx, as.env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "problem stopping agent monitor",
+				"host_id":       h.Id,
+				"operation":     op,
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
+			}))
+			return errors.Wrap(err, "stopping agent monitor")
+		}
+
+		if err := h.SetNeedsAgentDeploy(true); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error indicating host needs delpoy",
+				"host_id":       h.Id,
+				"operation":     op,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
+			}))
+			return errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
+		}
+
+		return nil
+	default:
+		return nil
+	}
+}
+
+// kim: TODO: figure out if there's a more legit way of checking for EC2
+// instance IDs.
+func isInstanceID(id string) bool {
+	return strings.HasPrefix(id, "i-")
+}
+
+// kim: TODO: implement
+func terminateUnhealthyHost(ctx context.Context, instanceID string) error {
+	return errors.New("kim: TODO: implement")
 }
 
 // prepareForReprovision readies host for reprovisioning.
@@ -725,6 +800,13 @@ func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
 
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
 // and popping the next task off the task queue.
+// kim: TODO: verify that the code reaches checkHostHealth, even for a
+// decommissioned/terminated host. If so, we can proceed with the assumption
+// that it's safe to terminate the EC2 host by its instance ID.
+// kim: TODO: verify that terminated hosts are handled properly with
+// checkHostHealth. Hosts that are "building" status will have to be handled
+// specially by terminating its instance ID, which is much simpler and safer
+// than trying to set it to running from decommissioned/terminated.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
@@ -774,45 +856,19 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var err error
-	if checkHostHealth(h) {
-		response.ShouldExit = true
-
-		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
-		defer cancel()
-		if err = h.StopAgentMonitor(ctx, as.env); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "problem stopping agent monitor",
-				"host_id":       h.Id,
-				"operation":     "next_task",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.AgentRevision,
-			}))
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		if err = h.SetNeedsAgentDeploy(true); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":       h.Id,
-				"operation":     "next_task",
-				"message":       "problem indicating that host needs new agent or agent monitor deploy",
-				"source":        "database error",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.AgentRevision,
-			}))
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		gimlet.WriteJSON(w, response)
-		return
-	}
 	var agentExit bool
 	details, agentExit := getDetails(response, h, w, r)
 	if agentExit {
 		return
 	}
+
+	if checkHostHealth(h) {
+		response.ShouldExit = true
+		_ = as.prepareUnhealthyHostForAgentExit(ctx, h, details.EC2InstanceID, "next_task")
+		gimlet.WriteJSON(w, response)
+		return
+	}
+
 	response, agentExit = handleOldAgentRevision(response, details, h, w)
 	if agentExit {
 		return

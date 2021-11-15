@@ -36,6 +36,9 @@ type Agent struct {
 	jasper        jasper.Manager
 	opts          Options
 	defaultLogger send.Sender
+	// ec2InstanceID is the instance ID from the instance metadata. This only
+	// applies to EC2 hosts.
+	ec2InstanceID string
 }
 
 // Options contains startup options for an Agent.
@@ -164,7 +167,32 @@ func (a *Agent) Start(ctx context.Context) error {
 		tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
 
+	// kim: TODO: add metadata endpoint initial check to get instance ID for
+	// next task request.
+	a.getEC2InstanceID(ctx)
+
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
+}
+
+// getEC2InstanceID sets the agent's instance ID based on the EC2 instance
+// metadata service if it's an EC2 instance. If it's not an EC2 instance, this
+// is a no-op.
+func (a *Agent) getEC2InstanceID(ctx context.Context) {
+	if !utility.StringSliceContains(evergreen.ProviderSpotEc2Type, a.opts.CloudProvider) {
+		return
+	}
+
+	instanceID, err := agentutil.GetEC2InstanceID(ctx)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "could not get EC2 instance ID",
+			"host_id":        a.opts.HostID,
+			"cloud_provider": a.opts.CloudProvider,
+		}))
+		return
+	}
+
+	a.ec2InstanceID = instanceID
 }
 
 func (a *Agent) loop(ctx context.Context) error {
@@ -218,6 +246,7 @@ LOOP:
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,
+				EC2InstanceID: a.ec2InstanceID,
 			})
 			if err != nil {
 				// task secret doesn't match, get another task

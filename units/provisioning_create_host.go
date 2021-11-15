@@ -371,7 +371,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			return errors.Wrapf(err, "unable to replace host %s", j.host.Id)
 		}
 	} else {
-		// for most cases, spawning a host with change the ID, so we remove/re-insert the document
+		// For most cases, spawning a host will change the ID, so we remove/re-insert the document
 		if err = host.RemoveStrict(j.HostID); err != nil {
 			terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
