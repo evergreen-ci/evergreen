@@ -1,10 +1,10 @@
 {
   "tests": [
     {
-      "query_file": "attachToNewRepo.graphql",
+      "query_file": "attachProjectToNewRepo.graphql",
       "result": {
         "data": {
-          "attachToNewRepo": {
+          "attachProjectToNewRepo": {
             "id": "1234",
             "owner": "sand",
             "repo": "box",

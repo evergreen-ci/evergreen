@@ -402,8 +402,8 @@ type ComplexityRoot struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		AddFavoriteProject            func(childComplexity int, identifier string) int
+		AttachProjectToNewRepo        func(childComplexity int, project MoveProjectInput) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
-		AttachToNewRepo               func(childComplexity int, project MoveProjectInput) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
 		BbCreateTicket                func(childComplexity int, taskID string, execution *int) int
 		ClearMySubscriptions          func(childComplexity int) int
@@ -1176,7 +1176,7 @@ type MutationResolver interface {
 	RemoveFavoriteProject(ctx context.Context, identifier string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts) (*model.APIProjectRef, error)
-	AttachToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
+	AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*model.APIProjectRef, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
@@ -2777,6 +2777,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(string)), true
 
+	case "Mutation.attachProjectToNewRepo":
+		if e.complexity.Mutation.AttachProjectToNewRepo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_attachProjectToNewRepo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AttachProjectToNewRepo(childComplexity, args["project"].(MoveProjectInput)), true
+
 	case "Mutation.attachProjectToRepo":
 		if e.complexity.Mutation.AttachProjectToRepo == nil {
 			break
@@ -2788,18 +2800,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AttachProjectToRepo(childComplexity, args["projectId"].(string)), true
-
-	case "Mutation.attachToNewRepo":
-		if e.complexity.Mutation.AttachToNewRepo == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_attachToNewRepo_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AttachToNewRepo(childComplexity, args["project"].(MoveProjectInput)), true
 
 	case "Mutation.attachVolumeToHost":
 		if e.complexity.Mutation.AttachVolumeToHost == nil {
@@ -7105,7 +7105,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
-  attachToNewRepo(project: MoveProjectInput!): Project!
+  attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
@@ -8725,6 +8725,21 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_attachProjectToNewRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 MoveProjectInput
+	if tmp, ok := rawArgs["project"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
+		arg0, err = ec.unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["project"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_attachProjectToRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -8737,21 +8752,6 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_args(ctx context.
 		}
 	}
 	args["projectId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_attachToNewRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 MoveProjectInput
-	if tmp, ok := rawArgs["project"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
-		arg0, err = ec.unmarshalNMoveProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMoveProjectInput(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["project"] = arg0
 	return args, nil
 }
 
@@ -17036,7 +17036,7 @@ func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field gra
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_attachToNewRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_attachProjectToNewRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -17053,7 +17053,7 @@ func (ec *executionContext) _Mutation_attachToNewRepo(ctx context.Context, field
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_attachToNewRepo_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_attachProjectToNewRepo_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -17061,7 +17061,7 @@ func (ec *executionContext) _Mutation_attachToNewRepo(ctx context.Context, field
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AttachToNewRepo(rctx, args["project"].(MoveProjectInput))
+		return ec.resolvers.Mutation().AttachProjectToNewRepo(rctx, args["project"].(MoveProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -41757,8 +41757,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "attachToNewRepo":
-			out.Values[i] = ec._Mutation_attachToNewRepo(ctx, field)
+		case "attachProjectToNewRepo":
+			out.Values[i] = ec._Mutation_attachProjectToNewRepo(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
