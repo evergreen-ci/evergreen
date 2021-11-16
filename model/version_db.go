@@ -64,27 +64,32 @@ func VersionByIds(ids []string) db.Q {
 // All is a query for all versions.
 var VersionAll = db.Query(bson.D{})
 
-// FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given
-// project. Does not apply a limit, so should generally be used with a findOneRepoRefQ.
+// FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given project.
 func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
-	q := bson.M{
-		VersionIdentifierKey: projectId,
-		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-		VersionErrorsKey: bson.M{
-			"$exists": false,
-		},
+	retryLimit := 50
+	for i := 0; i < retryLimit; i++ {
+		q := bson.M{
+			VersionIdentifierKey: projectId,
+			VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
+		}
+
+		if revisionOrderNumber >= 0 {
+			q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
+		}
+		v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
+		}
+		if v == nil || len(v.Errors) == 0 {
+			return v, nil
+		}
+		// try again with the new revision order number
+		revisionOrderNumber = v.RevisionOrderNumber
 	}
 
-	if revisionOrderNumber >= 0 {
-		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
-	}
-	v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
-	}
-	return v, nil
+	// if errors exist on the most recent version, try again, using the new revision order number
+
+	return nil, errors.Errorf("couldn't finding version with good config in last %d commits", retryLimit)
 }
 
 // BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.
