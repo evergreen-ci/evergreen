@@ -83,11 +83,10 @@ func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int)
 		if v == nil || len(v.Errors) == 0 {
 			return v, nil
 		}
-		// try again with the new revision order number
+		// Try again with the new revision order number if error exists for version.
+		// We don't include this in the query in order to use an index for identifier, requester, and order number.
 		revisionOrderNumber = v.RevisionOrderNumber
 	}
-
-	// if errors exist on the most recent version, try again, using the new revision order number
 
 	return nil, errors.Errorf("couldn't finding version with good config in last %d commits", retryLimit)
 }
