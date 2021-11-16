@@ -69,8 +69,14 @@ unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,darwin_arm64 lin
 windowsPlatforms := windows_amd64
 
 
-goos := $(shell $(gobin) env GOOS)
-goarch := $(shell $(gobin) env GOARCH)
+goos := $(GOOS)
+goarch := $(GOARCH)
+ifeq ($(goos),)
+goos := $(shell $(gobin) env GOOS 2> /dev/null)
+endif
+ifeq ($(goarch),)
+goarch := $(shell $(gobin) env GOARCH 2> /dev/null)
+endif
 
 clientBuildDir := clients
 
