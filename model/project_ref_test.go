@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -15,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -319,7 +318,7 @@ func TestChangeOwnerRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.ChangeOwnerRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -803,29 +802,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			test(t, pRef.Id)
 		})
 	}
-}
-
-func TestGroupProjectsByRepo(t *testing.T) {
-	assert := assert.New(t)
-	groupedProjects := GroupProjectsByRepo(
-		[]ProjectRef{
-			{Id: "projectB", RepoRefId: "mongo"},
-			{Id: "projectC", RepoRefId: "mongo"},
-			{Id: "projectD", RepoRefId: "mongo"},
-			{Id: "projectE", RepoRefId: "gimlet"},
-			{Id: "projectF", RepoRefId: "gimlet"},
-		},
-	)
-
-	assert.Equal(2, len(groupedProjects["gimlet"]))
-	assert.Equal(3, len(groupedProjects["mongo"]))
-
-	assert.Equal("projectB", groupedProjects["mongo"][0].Id)
-	assert.Equal("projectC", groupedProjects["mongo"][1].Id)
-	assert.Equal("projectD", groupedProjects["mongo"][2].Id)
-
-	assert.Equal("projectE", groupedProjects["gimlet"][0].Id)
-	assert.Equal("projectF", groupedProjects["gimlet"][1].Id)
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
@@ -1855,6 +1831,12 @@ func TestMergeWithParserProject(t *testing.T) {
 				Endpoint: "random1",
 			},
 		},
+		WorkstationConfig: WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
 		CommitQueue: CommitQueueParams{
 			Enabled:     utility.TruePtr(),
 			MergeMethod: "message1",
@@ -1872,6 +1854,12 @@ func TestMergeWithParserProject(t *testing.T) {
 			Enabled:     utility.TruePtr(),
 			MergeMethod: "message2",
 		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.FalsePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "overridden"},
+			},
+		},
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, parserProject.Insert())
@@ -1883,5 +1871,7 @@ func TestMergeWithParserProject(t *testing.T) {
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
 	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.False(t, *projectRef.WorkstationConfig.GitClone)
+	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
 	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
 }

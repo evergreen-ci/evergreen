@@ -67,7 +67,7 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 
 	if c.Path != "" {
 		if !filepath.IsAbs(c.Path) {
-			c.Path = filepath.Join(conf.WorkDir, c.Path)
+			c.Path = getJoinedWithWorkDir(conf, c.Path)
 		}
 	}
 

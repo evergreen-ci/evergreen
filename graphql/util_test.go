@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,4 +35,31 @@ func TestAddDisplayTasksToPatchReq(t *testing.T) {
 	assert.Len(t, req.VariantsTasks[0].Tasks, 1)
 	assert.Equal(t, "t1", req.VariantsTasks[0].Tasks[0])
 	assert.Len(t, req.VariantsTasks[0].DisplayTasks, 2)
+}
+
+func TestGetVariantsAndTasksFromProject(t *testing.T) {
+	ctx := context.Background()
+	patchedConfig := `
+buildvariants:
+  - name: bv1
+    display_name: bv1_display
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: task1
+        disable: true
+      - name: task2
+      - name: task3
+        depends_on:
+          - name: task1
+            status: success
+tasks:
+  - name: task1
+  - name: task2
+    disable: true
+  - name: task3
+`
+	variantsAndTasks, err := GetVariantsAndTasksFromProject(ctx, patchedConfig, "")
+	assert.NoError(t, err)
+	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 }

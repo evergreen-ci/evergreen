@@ -6,6 +6,7 @@ type Query {
   patch(id: String!): Patch!
   version(id: String!): Version!
   projects: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -80,6 +81,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
@@ -373,6 +375,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  repoRefId: String
   id: String
 }
 
@@ -380,6 +383,12 @@ input CopyProjectInput {
   projectIdToCopy: String!
   newProjectIdentifier: String!
   newProjectId: String
+}
+
+input MoveProjectInput {
+  projectId: String!
+  newOwner: String!
+  newRepo: String!
 }
 
 input ProjectSettingsInput {
@@ -1060,7 +1069,9 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  name: String!
+  groupDisplayName: String! 
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  repo: RepoRef
   projects: [Project!]!
 }
 

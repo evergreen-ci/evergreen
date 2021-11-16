@@ -422,6 +422,9 @@ func (p *ProjectRef) MergeWithParserProject(version string) error {
 		if parserProject.TaskAnnotationSettings != nil {
 			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
+		if parserProject.WorkstationConfig != nil {
+			p.WorkstationConfig = *parserProject.WorkstationConfig
+		}
 		if parserProject.CommitQueue != nil {
 			p.CommitQueue = *parserProject.CommitQueue
 		}
@@ -583,7 +586,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
-func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
@@ -591,8 +594,9 @@ func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
 	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-
+		return errors.Wrapf(err, "error validating new owner/repo")
 	}
+
 	if p.UseRepoSettings {
 		if err := p.RemoveFromRepoScope(); err != nil {
 			return errors.Wrapf(err, "error removing project from old repo scope")
@@ -736,12 +740,13 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeParserProject {
-		err = pRef.MergeWithParserProject(version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-		}
-	}
+	// Removing due to outage: EVG-15856
+	//if includeParserProject {
+	//	err = pRef.MergeWithParserProject(version)
+	//	if err != nil {
+	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+	//	}
+	//}
 	return pRef, nil
 }
 
@@ -1530,26 +1535,32 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
+		setUpdate := bson.M{
+			ProjectRefEnabledKey:                 p.Enabled,
+			ProjectRefBranchKey:                  p.Branch,
+			ProjectRefDisplayNameKey:             p.DisplayName,
+			ProjectRefBatchTimeKey:               p.BatchTime,
+			ProjectRefRemotePathKey:              p.RemotePath,
+			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+			projectRefDefaultLoggerKey:           p.DefaultLogger,
+			projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
+			projectRefPatchingDisabledKey:        p.PatchingDisabled,
+			projectRefTaskSyncKey:                p.TaskSync,
+			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+		}
+		if !isRepo && !p.UseRepoSettings {
+			setUpdate[ProjectRefOwnerKey] = p.Owner
+			setUpdate[ProjectRefRepoKey] = p.Repo
+			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
+		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
-				"$set": bson.M{
-					ProjectRefEnabledKey:                 p.Enabled,
-					ProjectRefBranchKey:                  p.Branch,
-					ProjectRefDisplayNameKey:             p.DisplayName,
-					ProjectRefBatchTimeKey:               p.BatchTime,
-					ProjectRefRemotePathKey:              p.RemotePath,
-					projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
-					projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
-					ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
-					projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
-					projectRefDefaultLoggerKey:           p.DefaultLogger,
-					projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
-					projectRefPatchingDisabledKey:        p.PatchingDisabled,
-					projectRefTaskSyncKey:                p.TaskSync,
-					ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
-					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
-				},
+				"$set": setUpdate,
 			})
 	case ProjectPagePluginSection:
 		err = db.Update(coll,
@@ -1864,16 +1875,6 @@ func RemoveAdminFromProjects(toDelete string) error {
 	_, err = db.UpdateAll(RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
 	catcher.Add(errors.Wrap(err, "error updating repos"))
 	return catcher.Resolve()
-}
-
-// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
-func GroupProjectsByRepo(projects []ProjectRef) map[string][]ProjectRef {
-	groupedProject := make(map[string][]ProjectRef)
-	for _, project := range projects {
-		repoProjects := groupedProject[project.RepoRefId]
-		groupedProject[project.RepoRefId] = append(repoProjects, project)
-	}
-	return groupedProject
 }
 
 func (p *ProjectRef) MakeRestricted() error {

@@ -84,8 +84,10 @@ type GroupedFiles struct {
 }
 
 type GroupedProjects struct {
-	Name     string                 `json:"name"`
-	Projects []*model.APIProjectRef `json:"projects"`
+	GroupDisplayName string                 `json:"groupDisplayName"`
+	Name             string                 `json:"name"`
+	Repo             *model.APIProjectRef   `json:"repo"`
+	Projects         []*model.APIProjectRef `json:"projects"`
 }
 
 type HostEvents struct {
@@ -125,6 +127,12 @@ type Manifest struct {
 	IsBase          bool                   `json:"isBase"`
 	ModuleOverrides map[string]string      `json:"moduleOverrides"`
 	Modules         map[string]interface{} `json:"modules"`
+}
+
+type MoveProjectInput struct {
+	ProjectID string `json:"projectId"`
+	NewOwner  string `json:"newOwner"`
+	NewRepo   string `json:"newRepo"`
 }
 
 type PatchConfigure struct {

@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "attachProjectToNewRepo.graphql",
+      "result": {
+        "data": {
+          "attachProjectToNewRepo": {
+            "id": "1234",
+            "owner": "sand",
+            "repo": "box",
+            "repoRefId": "different"
+          }
+        }
+      }
+    }
+  ]
+}

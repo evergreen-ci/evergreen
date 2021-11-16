@@ -70,7 +70,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 	// All file patterns should be relative to the task's working directory.
 	for i, file := range c.Files {
-		c.Files[i] = filepath.Join(conf.WorkDir, file)
+		c.Files[i] = getJoinedWithWorkDir(conf, file)
 	}
 
 	// will be all files containing test results

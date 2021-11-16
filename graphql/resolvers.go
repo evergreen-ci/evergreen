@@ -1141,6 +1141,27 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 	return projectRef, nil
 }
 
+func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, obj MoveProjectInput) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+
+	pRef, err := r.sc.FindProjectById(obj.ProjectID, false, false)
+	if err != nil || pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", obj.ProjectID, err.Error()))
+	}
+	pRef.Owner = obj.NewOwner
+	pRef.Repo = obj.NewRepo
+
+	if err = pRef.AttachToNewRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err = res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProjectRef: %s", err.Error()))
+	}
+	return res, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
@@ -1287,7 +1308,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 }
 
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
 	}
@@ -1523,37 +1544,31 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
-	groupsMap := make(map[string][]*restModel.APIProjectRef)
+	groupedProjects, err := GroupProjects(allProjs, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
+	return groupedProjects, nil
+}
 
-	for _, p := range allProjs {
-		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
-		apiProjectRef := restModel.APIProjectRef{}
-		if err = apiProjectRef.BuildFromService(p); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
-		}
+func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
+	usr := MustHaveUser(ctx)
+	projectIds, err := usr.GetViewableProjectSettings()
 
-		if projs, ok := groupsMap[groupName]; ok {
-			groupsMap[groupName] = append(projs, &apiProjectRef)
-		} else {
-			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
-		}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
 
-	groupsArr := []*GroupedProjects{}
-
-	for groupName, groupedProjects := range groupsMap {
-		gp := GroupedProjects{
-			Name:     groupName,
-			Projects: groupedProjects,
-		}
-		groupsArr = append(groupsArr, &gp)
+	projects, err := model.FindProjectRefsByIds(projectIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
-	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return groupsArr[i].Name < groupsArr[j].Name
-	})
-
-	return groupsArr, nil
+	groupedProjects, err := GroupProjects(projects, true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
+	return groupedProjects, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
@@ -3642,7 +3657,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 }
 
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}

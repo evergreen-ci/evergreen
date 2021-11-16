@@ -61,4 +61,7 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 )
 
-require github.com/mongodb/jasper v0.0.0-20211109153730-344834c07b95
+require (
+	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
+	github.com/mongodb/jasper v0.0.0-20211109153730-344834c07b95
+)
