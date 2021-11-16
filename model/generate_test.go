@@ -905,7 +905,6 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Len(tasks, 1)
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
-	s.Len(tasks[0].ExecutionTasks, 1)
 }
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
