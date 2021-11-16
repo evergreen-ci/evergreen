@@ -1544,37 +1544,31 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
-	groupsMap := make(map[string][]*restModel.APIProjectRef)
+	groupedProjects, err := GroupProjects(allProjs, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
+	return groupedProjects, nil
+}
 
-	for _, p := range allProjs {
-		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
-		apiProjectRef := restModel.APIProjectRef{}
-		if err = apiProjectRef.BuildFromService(p); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
-		}
+func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
+	usr := MustHaveUser(ctx)
+	projectIds, err := usr.GetViewableProjectSettings()
 
-		if projs, ok := groupsMap[groupName]; ok {
-			groupsMap[groupName] = append(projs, &apiProjectRef)
-		} else {
-			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
-		}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
 
-	groupsArr := []*GroupedProjects{}
-
-	for groupName, groupedProjects := range groupsMap {
-		gp := GroupedProjects{
-			Name:     groupName,
-			Projects: groupedProjects,
-		}
-		groupsArr = append(groupsArr, &gp)
+	projects, err := model.FindProjectRefsByIds(projectIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
-	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return groupsArr[i].Name < groupsArr[j].Name
-	})
-
-	return groupsArr, nil
+	groupedProjects, err := GroupProjects(projects, true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
+	return groupedProjects, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {

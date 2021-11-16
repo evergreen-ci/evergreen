@@ -80,6 +80,12 @@ func (di *dependencyIncluder) handle(pair TVPair) (bool, error) {
 		di.included[pair] = false
 		return false, errors.Errorf("task '%s' in variant '%s' cannot be run for a '%s'", pair.TaskName, pair.Variant, di.requester)
 	}
+
+	if bvt.IsDisabled() {
+		di.included[pair] = false
+		return false, errors.Errorf("task '%s' in variant '%s' has been disabled", pair.TaskName, pair.Variant)
+	}
+
 	di.included[pair] = true
 
 	// queue up all dependencies for recursive inclusion
@@ -115,7 +121,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v.Name)
 					if projectTask != nil {
-						if projectTask.SkipOnRequester(di.requester) {
+						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
 						}
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
@@ -136,7 +142,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v.Name)
 					if projectTask != nil {
-						if projectTask.SkipOnRequester(di.requester) {
+						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
 						}
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
@@ -159,7 +165,7 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 					}
 					projectTask := di.Project.FindTaskForVariant(t.Name, v)
 					if projectTask != nil {
-						if projectTask.SkipOnRequester(di.requester) {
+						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
 						}
 						deps = append(deps, TVPair{TaskName: t.Name, Variant: variant.Name})
@@ -175,7 +181,10 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 			if v == "" {
 				v = pair.Variant
 			}
-			deps = append(deps, TVPair{TaskName: d.Name, Variant: v})
+			projectTask := di.Project.FindTaskForVariant(d.Name, v)
+			if projectTask != nil && !projectTask.IsDisabled() {
+				deps = append(deps, TVPair{TaskName: d.Name, Variant: v})
+			}
 		}
 	}
 	return deps

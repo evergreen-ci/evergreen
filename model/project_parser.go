@@ -145,6 +145,7 @@ type parserTask struct {
 	RunOn           parserStringSlice   `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable         *bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -421,6 +422,7 @@ type parserBVTaskUnit struct {
 	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
 	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable          *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag   *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly       *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
@@ -890,6 +892,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			RunOn:           pt.RunOn,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
+			Disable:         pt.Disable,
 			AllowForGitTag:  pt.AllowForGitTag,
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
@@ -1148,6 +1151,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		Name:             name,
 		Patchable:        bvt.Patchable,
 		PatchOnly:        bvt.PatchOnly,
+		Disable:          bvt.Disable,
 		AllowForGitTag:   bvt.AllowForGitTag,
 		GitTagOnly:       bvt.GitTagOnly,
 		Priority:         bvt.Priority,
@@ -1167,6 +1171,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if res.PatchOnly == nil {
 		res.PatchOnly = pt.PatchOnly
+	}
+	if res.Disable == nil {
+		res.Disable = pt.Disable
 	}
 	if res.AllowForGitTag == nil {
 		res.AllowForGitTag = pt.AllowForGitTag

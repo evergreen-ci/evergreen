@@ -143,8 +143,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	assert.True(t, *mergedProject.DeactivatePrevious)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	// TODO: Commented out for EVG-15856
+	//assert.True(t, *mergedProject.DeactivatePrevious)
+	//assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -802,29 +803,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			test(t, pRef.Id)
 		})
 	}
-}
-
-func TestGroupProjectsByRepo(t *testing.T) {
-	assert := assert.New(t)
-	groupedProjects := GroupProjectsByRepo(
-		[]ProjectRef{
-			{Id: "projectB", RepoRefId: "mongo"},
-			{Id: "projectC", RepoRefId: "mongo"},
-			{Id: "projectD", RepoRefId: "mongo"},
-			{Id: "projectE", RepoRefId: "gimlet"},
-			{Id: "projectF", RepoRefId: "gimlet"},
-		},
-	)
-
-	assert.Equal(2, len(groupedProjects["gimlet"]))
-	assert.Equal(3, len(groupedProjects["mongo"]))
-
-	assert.Equal("projectB", groupedProjects["mongo"][0].Id)
-	assert.Equal("projectC", groupedProjects["mongo"][1].Id)
-	assert.Equal("projectD", groupedProjects["mongo"][2].Id)
-
-	assert.Equal("projectE", groupedProjects["gimlet"][0].Id)
-	assert.Equal("projectF", groupedProjects["gimlet"][1].Id)
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {

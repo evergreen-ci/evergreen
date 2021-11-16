@@ -1,7 +1,6 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client operations cloud cloud-userdata
 packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
@@ -62,6 +61,9 @@ else
 export CGO_ENABLED := 0
 endif
 # end go runtime settings
+
+# Ensure the build directory exists, since most targets require it.
+$(shell mkdir -p $(buildDir))
 
 # start evergreen specific configuration
 
@@ -296,11 +298,6 @@ endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
 endif
-ifneq (,$(TMPDIR))
-testRunEnv += TMPDIR=$(TMPDIR)
-else
-testRunEnv += TMPDIR=$(tmpDir)
-endif
 ifneq (,$(RUN_TEST))
 testArgs += -run='$(RUN_TEST)'
 dlvArgs += -test.run='$(RUN_TEST)'
@@ -326,16 +323,14 @@ testArgs += -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.E
 #  targets to run any tests in the top-level package
 $(buildDir):
 	mkdir -p $@
-$(tmpDir):$(buildDir)
-	mkdir -p $@
-$(buildDir)/output.%.test:$(tmpDir) .FORCE
+$(buildDir)/output.%.test: .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 # Codegen is special because it requires that the repository be compiled for goimports to resolve imports properly.
-$(buildDir)/output.cmd-codegen-core.test: $(tmpDir) build-codegen .FORCE
+$(buildDir)/output.cmd-codegen-core.test: build-codegen .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
-$(buildDir)/output-dlv.%.test:$(tmpDir) .FORCE
+$(buildDir)/output-dlv.%.test: .FORCE
 	$(testRunEnv) dlv test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
-$(buildDir)/output.%.coverage:$(tmpDir) .FORCE
+$(buildDir)/output.%.coverage: .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
@@ -344,9 +339,8 @@ ifneq (go,$(gobin))
 # binary in it, the linter won't work properly.
 lintEnvVars := PATH="$(shell dirname $(gobin)):$(PATH)"
 endif
-# TODO (EVG-15453): make evg-lint compatible with golangci-lint
 $(buildDir)/output.%.lint: $(buildDir)/run-linter .FORCE
-	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint --lintArgs="--timeout=5m" --packages='$*'
+	@$(lintEnvVars) ./$< --output=$@ --lintBin=$(buildDir)/golangci-lint -customLinters="$(gobin) run github.com/evergreen-ci/evg-lint/evg-lint -set_exit_status" --lintArgs="--timeout=5m" --packages='$*'
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
@@ -360,7 +354,7 @@ update-lobster: clean-lobster
 
 # clean and other utility targets
 clean: clean-lobster
-	rm -rf $(buildDir) $(clientBuildDir) $(tmpDir)
+	rm -rf $(buildDir) $(clientBuildDir)
 phony += clean
 
 gqlgen:
