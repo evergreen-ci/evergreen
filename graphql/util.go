@@ -620,13 +620,14 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 	case SetPriority:
 		var projId string
 		if proj == nil {
-			projId, err := model.GetIdForProject(version.Identifier)
+			foundProjId, err := model.GetIdForProject(version.Identifier)
 			if err != nil {
 				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
 			}
-			if projId == "" {
+			if foundProjId == "" {
 				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
 			}
+			projId = foundProjId
 		} else {
 			projId = proj.Id
 		}
