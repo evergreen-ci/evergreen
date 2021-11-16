@@ -534,6 +534,9 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	doc.Details.TimeoutType = string(evergreen.IdleTimeout)
 	assert.Equal("Test Timed Out: ", makeSummaryPrefix(doc, 0))
 
+	doc.Details.TimeoutType = string(evergreen.ExecTimeout)
+	assert.Equal("Task Timed Out: ", makeSummaryPrefix(doc, 0))
+
 	doc.Details.Type = evergreen.CommandTypeSystem
 	assert.Equal("System Timed Out: ", makeSummaryPrefix(doc, 0))
 
