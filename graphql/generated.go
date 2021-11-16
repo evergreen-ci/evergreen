@@ -7524,8 +7524,8 @@ input CommitQueueParamsInput {
 }
 
 input TaskSyncOptionsInput {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
+  configEnabled: Boolean
+  patchEnabled: Boolean
 }
 
 input BuildBaronSettingsInput {
@@ -39335,7 +39335,7 @@ func (ec *executionContext) unmarshalInputTaskSyncOptionsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configEnabled"))
-			it.ConfigEnabled, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			it.ConfigEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -39343,7 +39343,7 @@ func (ec *executionContext) unmarshalInputTaskSyncOptionsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchEnabled"))
-			it.PatchEnabled, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			it.PatchEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
