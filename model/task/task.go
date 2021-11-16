@@ -1606,6 +1606,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ResetWhenFinished = false
 		t.HostId = ""
 		t.AgentVersion = ""
+		t.HostCreateDetails = []HostCreateDetail{}
+		t.OverrideDependencies = false
 	}
 	update := bson.M{
 		"$set": bson.M{
