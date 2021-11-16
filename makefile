@@ -62,6 +62,9 @@ export CGO_ENABLED := 0
 endif
 # end go runtime settings
 
+# Ensure the build directory exists, since most targets require it.
+$(shell mkdir -p $(buildDir))
+
 # start evergreen specific configuration
 
 unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,darwin_arm64 linux_s390x linux_arm64 linux_ppc64le)
