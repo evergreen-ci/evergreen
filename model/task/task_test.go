@@ -2432,7 +2432,7 @@ func TestDisplayStatus(t *testing.T) {
 		Status: evergreen.TaskFailed,
 		Details: apimodels.TaskEndDetail{
 			TimedOut:    true,
-			TimeoutType: "exec",
+			TimeoutType: string(evergreen.ExecTimeout),
 		},
 	}
 	assert.NoError(t, t13.Insert())
@@ -2443,7 +2443,7 @@ func TestDisplayStatus(t *testing.T) {
 		Status: evergreen.TaskFailed,
 		Details: apimodels.TaskEndDetail{
 			TimedOut:    true,
-			TimeoutType: "idle",
+			TimeoutType: string(evergreen.IdleTimeout),
 		},
 	}
 	assert.NoError(t, t14.Insert())
