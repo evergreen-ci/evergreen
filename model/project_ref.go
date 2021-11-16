@@ -740,12 +740,13 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeParserProject {
-		err = pRef.MergeWithParserProject(version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-		}
-	}
+	// Removing due to outage: EVG-15856
+	//if includeParserProject {
+	//	err = pRef.MergeWithParserProject(version)
+	//	if err != nil {
+	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+	//	}
+	//}
 	return pRef, nil
 }
 
