@@ -446,16 +446,20 @@ Evergreen Projects
           </div>
         </div>
         <div id="patch-variants-list-header" class="form-group">
-          <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
-          <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+          <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+          <div class="col-lg-2"> <label class="control-label"> Variant Tags </label> </div>
+          <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
           <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
           <div class="col-lg-2"></div>
         </div>
         <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_aliases track by $index">
-          <div class="col-lg-3">
+          <div class="col-lg-2">
             <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
           </div>
-          <div class="col-lg-3">
+          <div class="col-lg-2">
+            <tag-input klass="form-control" items="obj.variant_tags" placeholder="tags (comma-delimited)" />
+          </div>
+          <div class="col-lg-2">
             <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
           </div>
           <div class="col-lg-2">
@@ -468,10 +472,13 @@ Evergreen Projects
           </div>
         </div>
         <div class="form-group">
-          <div class="col-lg-3">
+          <div class="col-lg-2">
             <input ng-model="github_alias.variant" class="form-control" type="text" placeholder="variant regex">
           </div>
-          <div class="col-lg-3">
+          <div class="col-lg-2">
+            <tag-input klass="form-control" items="github_alias.variant_tags" placeholder="tags (comma-delimited)" />
+          </div>
+          <div class="col-lg-2">
             <input ng-model="github_alias.task" class="form-control" type="text" placeholder="task regex">
           </div>
           <div class="col-lg-2">
@@ -532,16 +539,20 @@ Evergreen Projects
         </div>
         <div ng-show="settingsFormData.github_checks_enabled === true && githubChecksConflicts.length === 0">
           <div id="patch-variants-list-header" class="form-group">
-            <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
-            <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Tags </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
             <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
             <div class="col-lg-2"></div>
           </div>
           <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_checks_aliases track by $index">
-            <div class="col-lg-3">
+            <div class="col-lg-2">
               <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
             </div>
-            <div class="col-lg-3">
+            <div class="col-lg-2">
+              <tag-input klass="form-control" items="obj.variant_tags" placeholder="tags (comma-delimited)" />
+            </div>
+            <div class="col-lg-2">
               <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
@@ -554,10 +565,13 @@ Evergreen Projects
             </div>
           </div>
           <div class="form-group">
-            <div class="col-lg-3">
+            <div class="col-lg-2">
               <input ng-model="github_checks_alias.variant" class="form-control" type="text" placeholder="variant regex">
             </div>
-            <div class="col-lg-3">
+            <div class="col-lg-2">
+              <tag-input klass="form-control" items="github_checks_alias.variant_tags" placeholder="tags (comma-delimited)" />
+            </div>
+            <div class="col-lg-2">
               <input ng-model="github_checks_alias.task" class="form-control" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
@@ -766,16 +780,20 @@ Evergreen Projects
             </div>
           </div>
           <div id="patch-variants-list-header" class="form-group">
-            <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
-            <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Tags </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
             <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
             <div class="col-lg-2"></div>
           </div>
           <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.commit_queue_aliases track by $index">
-            <div class="col-lg-3">
+            <div class="col-lg-2">
               <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
             </div>
-            <div class="col-lg-3">
+            <div class="col-lg-2">
+              <tag-input klass="form-control" items="obj.variant_tags" placeholder="tags (comma-delimited)" />
+            </div>
+            <div class="col-lg-2">
               <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
@@ -788,10 +806,13 @@ Evergreen Projects
             </div>
           </div>
           <div class="form-group">
-            <div class="col-lg-3">
+            <div class="col-lg-2">
               <input ng-model="commit_queue_alias.variant" class="form-control" type="text" placeholder="variant regex">
             </div>
-            <div class="col-lg-3">
+            <div class="col-lg-2">
+              <tag-input klass="form-control" items="commit_queue_alias.variant_tags" placeholder="tags (comma-delimited)" />
+            </div>
+            <div class="col-lg-2">
               <input ng-model="commit_queue_alias.task" class="form-control" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">

@@ -250,8 +250,10 @@ type ComplexityRoot struct {
 	}
 
 	GroupedProjects struct {
-		Name     func(childComplexity int) int
-		Projects func(childComplexity int) int
+		GroupDisplayName func(childComplexity int) int
+		Name             func(childComplexity int) int
+		Projects         func(childComplexity int) int
+		Repo             func(childComplexity int) int
 	}
 
 	Host struct {
@@ -692,6 +694,7 @@ type ComplexityRoot struct {
 		UserConfig               func(childComplexity int) int
 		UserSettings             func(childComplexity int) int
 		Version                  func(childComplexity int, id string) int
+		ViewableProjectRefs      func(childComplexity int) int
 	}
 
 	RepoCommitQueueParams struct {
@@ -1260,6 +1263,7 @@ type QueryResolver interface {
 	Patch(ctx context.Context, id string) (*model.APIPatch, error)
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
+	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
@@ -2097,6 +2101,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GroupedFiles.TaskName(childComplexity), true
 
+	case "GroupedProjects.groupDisplayName":
+		if e.complexity.GroupedProjects.GroupDisplayName == nil {
+			break
+		}
+
+		return e.complexity.GroupedProjects.GroupDisplayName(childComplexity), true
+
 	case "GroupedProjects.name":
 		if e.complexity.GroupedProjects.Name == nil {
 			break
@@ -2110,6 +2121,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedProjects.Projects(childComplexity), true
+
+	case "GroupedProjects.repo":
+		if e.complexity.GroupedProjects.Repo == nil {
+			break
+		}
+
+		return e.complexity.GroupedProjects.Repo(childComplexity), true
 
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
@@ -4690,6 +4708,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Version(childComplexity, args["id"].(string)), true
 
+	case "Query.viewableProjectRefs":
+		if e.complexity.Query.ViewableProjectRefs == nil {
+			break
+		}
+
+		return e.complexity.Query.ViewableProjectRefs(childComplexity), true
+
 	case "RepoCommitQueueParams.enabled":
 		if e.complexity.RepoCommitQueueParams.Enabled == nil {
 			break
@@ -7031,6 +7056,7 @@ type Query {
   patch(id: String!): Patch!
   version(id: String!): Version!
   projects: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -7399,6 +7425,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  repoRefId: String
   id: String
 }
 
@@ -8092,7 +8119,9 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  name: String!
+  groupDisplayName: String! 
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  repo: RepoRef
   projects: [Project!]!
 }
 
@@ -13713,6 +13742,41 @@ func (ec *executionContext) _GroupedFiles_files(ctx context.Context, field graph
 	return ec.marshalOFile2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFileᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _GroupedProjects_groupDisplayName(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GroupedProjects",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GroupDisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -13746,6 +13810,38 @@ func (ec *executionContext) _GroupedProjects_name(ctx context.Context, field gra
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedProjects_repo(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GroupedProjects",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalORepoRef2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GroupedProjects_projects(ctx context.Context, field graphql.CollectedField, obj *GroupedProjects) (ret graphql.Marshaler) {
@@ -23839,6 +23935,41 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Query().Projects(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*GroupedProjects)
+	fc.Result = res
+	return ec.marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedProjects(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_viewableProjectRefs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ViewableProjectRefs(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -37410,6 +37541,14 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 			if err != nil {
 				return it, err
 			}
+		case "repoRefId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoRefId"))
+			it.RepoRefId, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "id":
 			var err error
 
@@ -40906,11 +41045,18 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GroupedProjects")
+		case "groupDisplayName":
+			out.Values[i] = ec._GroupedProjects_groupDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "name":
 			out.Values[i] = ec._GroupedProjects_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "repo":
+			out.Values[i] = ec._GroupedProjects_repo(ctx, field, obj)
 		case "projects":
 			out.Values[i] = ec._GroupedProjects_projects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -43225,6 +43371,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_projects(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "viewableProjectRefs":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_viewableProjectRefs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -50778,6 +50938,13 @@ func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreen
 
 func (ec *executionContext) marshalORepoRef2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._RepoRef(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalORepoRef2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v *model.APIProjectRef) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RepoRef(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalORepoRefInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {

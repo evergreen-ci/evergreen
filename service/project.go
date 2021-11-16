@@ -28,7 +28,7 @@ import (
 // filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view
 func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef, error) {
-	projectIds, err := u.GetViewableProjects()
+	projectIds, err := u.GetViewableProjectSettings()
 	if err != nil {
 		return nil, err
 	}
