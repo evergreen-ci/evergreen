@@ -41,7 +41,6 @@ require (
 	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/stretchr/testify v1.7.0
-	github.com/tychoish/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/urfave/cli v1.22.5
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/vmware/govmomi v0.27.1
@@ -63,5 +62,6 @@ require (
 
 require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
+	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20211109153730-344834c07b95
 )

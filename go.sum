@@ -372,6 +372,8 @@ github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5 h1:nFR0q4RmLKb
 github.com/evergreen-ci/poplar v0.0.0-20211028171636-d45516ea1ce5/go.mod h1:RHBpqOlxE28M/lUgWRpxJ+WrHqCuY8a7EcXIvzqiPys=
 github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd h1:ZTiko2itvbnMVPYBuOlh2aSLjk9JgZ5UFSzjnFG/5ts=
 github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd/go.mod h1:UTWsClgKujHCHUovGzTTRW5i5HPWo5Ie/PTeODAkcjo=
+github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826 h1:oViYb1lmJN1k9SExkF87VTess4JVR7Uvwr8AAKzJ864=
+github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826/go.mod h1:SnQ9F63VSR6kHbC4aFE+f7+iL3yANhjaN9TT9T4skao=
 github.com/evergreen-ci/timber v0.0.0-20211109152550-dca0e0d04672 h1:fszOmIyi0lmRNCLrNY5DvfaMCLdzNWS/LzrmdVQbIwQ=
 github.com/evergreen-ci/timber v0.0.0-20211109152550-dca0e0d04672/go.mod h1:iDWgPhWFrCZ/aTvUwmAjn7YvVh5TmmYtpm79VJuS2kA=
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a h1:rCM80/P6uEBpRnL+OLKf0ybMyEpnqQ5UQURxHlapbAc=
