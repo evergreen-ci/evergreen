@@ -1623,11 +1623,13 @@ func resetTaskUpdate(t *Task) bson.M {
 			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey:            "",
-			HasCedarResultsKey:    "",
-			CedarResultsFailedKey: "",
-			ResetWhenFinishedKey:  "",
-			AgentVersionKey:       "",
+			DetailsKey:              "",
+			HasCedarResultsKey:      "",
+			CedarResultsFailedKey:   "",
+			ResetWhenFinishedKey:    "",
+			AgentVersionKey:         "",
+			HostCreateDetailsKey:    "",
+			OverrideDependenciesKey: "",
 		},
 	}
 	return update
