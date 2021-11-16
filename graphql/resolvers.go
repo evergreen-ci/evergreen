@@ -2775,7 +2775,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("Error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
@@ -2791,7 +2791,7 @@ func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []strin
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing to reprovision: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("Error marking selected hosts as needing to reprovision: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
