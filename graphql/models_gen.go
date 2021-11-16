@@ -84,8 +84,10 @@ type GroupedFiles struct {
 }
 
 type GroupedProjects struct {
-	Name     string                 `json:"name"`
-	Projects []*model.APIProjectRef `json:"projects"`
+	GroupDisplayName string                 `json:"groupDisplayName"`
+	Name             string                 `json:"name"`
+	Repo             *model.APIProjectRef   `json:"repo"`
+	Projects         []*model.APIProjectRef `json:"projects"`
 }
 
 type HostEvents struct {

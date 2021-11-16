@@ -713,7 +713,7 @@ func TestGetOrCreateUser(t *testing.T) {
 	}
 }
 
-func TestViewableProjects(t *testing.T) {
+func TestViewableProjectSettings(t *testing.T) {
 	rm := evergreen.GetEnvironment().RoleManager()
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
 	editScope := gimlet.Scope{
@@ -768,7 +768,7 @@ func TestViewableProjects(t *testing.T) {
 	assert.NoError(t, myUser.AddRole(otherRole.ID))
 
 	// assert that viewable projects contains the edit projects and the view projects
-	projects, err := myUser.GetViewableProjects()
+	projects, err := myUser.GetViewableProjectSettings()
 	assert.NoError(t, err)
 	assert.Len(t, projects, 3)
 	assert.Contains(t, projects, "edit1")
