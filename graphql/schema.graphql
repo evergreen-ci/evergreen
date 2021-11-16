@@ -522,8 +522,8 @@ input CommitQueueParamsInput {
 }
 
 input TaskSyncOptionsInput {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
+  configEnabled: Boolean
+  patchEnabled: Boolean
 }
 
 input BuildBaronSettingsInput {
