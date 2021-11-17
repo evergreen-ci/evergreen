@@ -183,7 +183,6 @@ functions:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
         DEBUG_ENABLED: ${debug}
-        DISABLE_COVERAGE: ${disable_coverage}
         DOCKER_HOST: ${docker_host}
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
@@ -339,6 +338,17 @@ functions:
           set -o xtrace
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
+  copy-fake-destination-optional:
+    - command: s3Copy.copy
+      params:
+        optional: true
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        s3_copy_files:
+            - {'source': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-1'},
+               'destination': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-2'}}
+
+          
 
 #######################################
 #                Tasks                #
@@ -507,12 +517,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: docker-cleanup
+  - name: s3-fake-destination-optional
     commands:
-      - func: get-project-and-modules
-      - func: setup-credentials
-      - func: run-make
-        vars: { target: "test-thirdparty-docker" }
+      - func: copy-fake-destination-optional
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
@@ -551,6 +558,16 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-agent-version-update
+  - name: verify-mod-tidy
+    tags: ["linter"]
+    commands:
+      - command: git.get_project
+        type: setup
+        params:
+          directory: evergreen
+          token: ${github_token}
+      - func: run-make
+        vars: { target: "${task_name}" }
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true
@@ -585,7 +602,6 @@ buildvariants:
       - ubuntu1604-test
       - ubuntu1604-build
     expansions:
-      disable_coverage: yes
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
@@ -598,7 +614,7 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: "docker-cleanup"
+      - name: "s3-fake-destination-optional"
       - name: test-db-auth
       - name: test-cloud
 
@@ -631,7 +647,6 @@ buildvariants:
       - windows-64-vs2017-small
       - windows-64-vs2017-large
     expansions:
-      disable_coverage: yes
       GOROOT: c:/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
@@ -646,7 +661,6 @@ buildvariants:
     run_on:
       - ubuntu1604-arm64-small
     expansions:
-      disable_coverage: yes
       xc_build: yes
       goarch: arm64
       goos: linux
@@ -661,7 +675,6 @@ buildvariants:
     run_on:
       - macos-1014
     expansions:
-      disable_coverage: yes
       GOROOT: /opt/golang/go1.16
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:

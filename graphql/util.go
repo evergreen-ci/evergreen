@@ -354,7 +354,7 @@ type VariantsAndTasksFromProject struct {
 	Project  model.Project
 }
 
-func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
 	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
@@ -365,7 +365,8 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, p
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			if utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
 					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
 				} else {
@@ -373,14 +374,16 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, p
 				}
 			}
 		}
-		variant.Tasks = tasksForVariant
-		variantMappings[variant.Name] = variant
+		if len(tasksForVariant) > 0 {
+			variant.Tasks = tasksForVariant
+			variantMappings[variant.Name] = variant
+		}
 	}
 
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
-		// add a task name to the list if it's patchable and not restricted to git tags
-		if utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
+		// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+		if !utility.FromBoolPtr(task.Disable) && utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
@@ -1310,4 +1313,71 @@ func getTaskStatusCountsForVersion(versionId string, options *BuildVariantOption
 	}
 
 	return stats, nil
+}
+
+// GroupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
+// it groups projects that defaulted to the repo under that repo and groups the rest under "".
+func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
+	groupsMap := make(map[string][]*restModel.APIProjectRef)
+
+	for _, p := range projects {
+		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
+		// todo: switch to p.UseRepoSettings() once implemented
+		if onlyDefaultedToRepo && p.RepoRefId == "" {
+			groupName = ""
+		}
+
+		apiProjectRef := restModel.APIProjectRef{}
+		if err := apiProjectRef.BuildFromService(p); err != nil {
+			return nil, errors.Wrap(err, "error building APIProjectRef from service")
+		}
+
+		if projs, ok := groupsMap[groupName]; ok {
+			groupsMap[groupName] = append(projs, &apiProjectRef)
+		} else {
+			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
+		}
+	}
+
+	groupsArr := []*GroupedProjects{}
+
+	for groupName, groupedProjects := range groupsMap {
+		gp := GroupedProjects{
+			Name:             groupName, //deprecated
+			GroupDisplayName: groupName,
+			Projects:         groupedProjects,
+		}
+		project := groupedProjects[0]
+		if project.UseRepoSettings {
+			repoRefId := utility.FromStringPtr(project.RepoRefId)
+			repoRef, err := model.FindOneRepoRef(repoRefId)
+			if err != nil {
+				return nil, err
+			}
+
+			if repoRef == nil {
+				grip.Error(message.Fields{
+					"message":     "repoRef not found",
+					"repo_ref_id": repoRefId,
+					"project":     project,
+				})
+			} else {
+				apiRepoRef := restModel.APIProjectRef{}
+				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
+					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
+				}
+				gp.Repo = &apiRepoRef
+				if repoRef.ProjectRef.DisplayName != "" {
+					gp.GroupDisplayName = repoRef.ProjectRef.DisplayName
+				}
+			}
+		}
+
+		groupsArr = append(groupsArr, &gp)
+	}
+
+	sort.SliceStable(groupsArr, func(i, j int) bool {
+		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
+	})
+	return groupsArr, nil
 }

@@ -6,6 +6,7 @@ type Query {
   patch(id: String!): Patch!
   version(id: String!): Version!
   projects: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -128,6 +129,7 @@ type Mutation {
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
+  reprovisionToNew(hostIds: [String!]!): Int!
   updateHostStatus(
     hostIds: [String!]!
     status: String!
@@ -374,6 +376,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  repoRefId: String
   id: String
 }
 
@@ -520,8 +523,8 @@ input CommitQueueParamsInput {
 }
 
 input TaskSyncOptionsInput {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
+  configEnabled: Boolean
+  patchEnabled: Boolean
 }
 
 input BuildBaronSettingsInput {
@@ -1068,7 +1071,9 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  name: String!
+  groupDisplayName: String! 
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  repo: RepoRef
   projects: [Project!]!
 }
 

@@ -740,12 +740,13 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeParserProject {
-		err = pRef.MergeWithParserProject(version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-		}
-	}
+	// Removing due to outage: EVG-15856
+	//if includeParserProject {
+	//	err = pRef.MergeWithParserProject(version)
+	//	if err != nil {
+	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+	//	}
+	//}
 	return pRef, nil
 }
 
@@ -1536,6 +1537,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
 			ProjectRefEnabledKey:                 p.Enabled,
+			ProjectRefBranchKey:                  p.Branch,
+			ProjectRefDisplayNameKey:             p.DisplayName,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
@@ -1872,16 +1875,6 @@ func RemoveAdminFromProjects(toDelete string) error {
 	_, err = db.UpdateAll(RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
 	catcher.Add(errors.Wrap(err, "error updating repos"))
 	return catcher.Resolve()
-}
-
-// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
-func GroupProjectsByRepo(projects []ProjectRef) map[string][]ProjectRef {
-	groupedProject := make(map[string][]ProjectRef)
-	for _, project := range projects {
-		repoProjects := groupedProject[project.RepoRefId]
-		groupedProject[project.RepoRefId] = append(repoProjects, project)
-	}
-	return groupedProject
 }
 
 func (p *ProjectRef) MakeRestricted() error {

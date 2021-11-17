@@ -94,6 +94,7 @@ type BuildVariantTaskUnit struct {
 	// fields to overwrite ProjectTask settings.
 	Patchable      *bool                `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly      *bool                `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable        *bool                `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag *bool                `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly     *bool                `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Priority       int64                `yaml:"priority,omitempty" bson:"priority"`
@@ -174,6 +175,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	if bvt.PatchOnly == nil {
 		bvt.PatchOnly = pt.PatchOnly
 	}
+	if bvt.Disable == nil {
+		bvt.Disable = pt.Disable
+	}
 	if bvt.AllowForGitTag == nil {
 		bvt.AllowForGitTag = pt.AllowForGitTag
 	}
@@ -232,6 +236,10 @@ func (bvt *BuildVariantTaskUnit) SkipOnGitTagBuild() bool {
 
 func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 	return utility.FromBoolPtr(bvt.GitTagOnly)
+}
+
+func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
+	return utility.FromBoolPtr(bvt.Disable)
 }
 
 type BuildVariant struct {
@@ -540,6 +548,7 @@ type ProjectTask struct {
 	//   3. false = overriding the project setting with false
 	Patchable       *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable         *bool `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag  *bool `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly      *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -769,7 +778,7 @@ func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfi
 		}
 		for _, t := range bv.Tasks {
 			// omit tasks excluded from the version
-			if t.SkipOnRequester(v.Requester) {
+			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {

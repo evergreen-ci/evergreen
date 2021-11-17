@@ -39,6 +39,18 @@
       }
     },
     {
+      "query_file": "create-project_2.graphql",
+      "result": {
+        "data": {
+          "createProject": {
+            "id": "happyAbyssinian",
+            "identifier": "abyssinianVideos",
+            "repo": "catGenerator"
+          }
+        }
+      }
+    },
+    {
       "query_file": "copy-project.graphql",
       "result": {
         "data": {
@@ -213,6 +225,43 @@
               "filteredPatchCount": 2
             }
           }
+        }
+      }
+    },
+    {
+      "query_file":"viewableProjects.graphql",
+      "result": {
+        "data": {
+          "viewableProjectRefs": [
+            {
+              "groupDisplayName": "",
+              "projects": [
+                {
+                  "identifier": "spruce",
+                  "repo": "evergreen",
+                  "owner": "evergreen-ci",
+                  "repoRefId": ""
+                }
+              ]
+            },
+            {
+              "groupDisplayName": "theCat/catGenerator",
+              "projects": [
+                {
+                  "identifier": "catVideos",
+                  "repo": "catGenerator",
+                  "owner": "theCat",
+                  "repoRefId": "animals"
+                },
+                {
+                  "identifier": "abyssinianVideos",
+                  "repo": "catGenerator",
+                  "owner": "theCat",
+                  "repoRefId": "animals"
+                }
+              ]
+            }
+          ]
         }
       }
     }

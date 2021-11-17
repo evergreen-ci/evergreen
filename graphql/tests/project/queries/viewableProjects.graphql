@@ -1,12 +1,11 @@
 {
-  projects {
+  viewableProjectRefs {
     groupDisplayName
     projects{
       identifier
       repo
       owner 
-      displayName
-      isFavorite
+      repoRefId
     }
-  }
+  } 
 }

@@ -1,11 +1,27 @@
 {
+  "repo_ref": [
+    {
+      "_id": "animals",
+      "identifier": "animals",
+      "display_name": "animals_display"
+    }
+  ],
   "project_ref": [
     {
       "_id": "evergreen",
       "identifier": "evergreen",
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
-      "enabled": true
+      "enabled": true,
+      "repoRefId": "something"
+    },
+    {
+      "_id": "evergreen_2",
+      "identifier": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen",
+      "enabled": true,
+      "repoRefId": "something"
     },
     {
       "_id": "logkeeper",
