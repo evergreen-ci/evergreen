@@ -1291,6 +1291,7 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	return res, nil
 }
 
+// Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
 func getTaskStatusCountsForVersion(versionId string, options *BuildVariantOptions) ([]*task.StatusCount, error) {
 	opts := task.GetTasksByVersionOptions{
 		IncludeBaseTasks:      false,

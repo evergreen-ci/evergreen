@@ -3558,7 +3558,6 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	return getAllTaskStatuses(tasks), nil
 }
 
-// Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
 func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
 	stats, err := getTaskStatusCountsForVersion(*v.Id, options)
 	if err != nil {
