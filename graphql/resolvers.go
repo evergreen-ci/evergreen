@@ -1180,7 +1180,7 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 
 type patchResolver struct{ *Resolver }
 
-func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
+func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
 	if utility.FromStringPtr(obj.Version) == "" {
 		return nil, nil
 	}

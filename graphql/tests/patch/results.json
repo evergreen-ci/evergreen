@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "patch": {
-            "version": null
+            "versionFull": null
           }
         }
       }
@@ -15,7 +15,7 @@
       "result": {
         "data": {
           "patch": {
-            "version": {
+            "versionFull": {
               "id": "5dd2e89cd1fe07048e43bb9c"
             }
           }
