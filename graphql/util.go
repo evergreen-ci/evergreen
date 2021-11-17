@@ -1296,10 +1296,14 @@ func getTaskStatusCountsForVersion(versionId string, options *BuildVariantOption
 	opts := task.GetTasksByVersionOptions{
 		IncludeBaseTasks:      false,
 		IncludeExecutionTasks: false,
-		TaskNames:             options.Tasks,
-		Variants:              options.Variants,
-		Statuses:              options.Statuses,
 	}
+
+	if options != nil {
+		opts.Variants = options.Variants
+		opts.TaskNames = options.Tasks
+		opts.Statuses = options.Statuses
+	}
+
 	stats, err := task.GetTaskStatsByVersion(versionId, opts)
 	if err != nil {
 		return nil, err
