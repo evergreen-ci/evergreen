@@ -498,6 +498,7 @@ type ComplexityRoot struct {
 		ProjectIdentifier       func(childComplexity int) int
 		Status                  func(childComplexity int) int
 		TaskCount               func(childComplexity int) int
+		TaskStatusCounts        func(childComplexity int, options *BuildVariantOptions) int
 		TaskStatuses            func(childComplexity int) int
 		Tasks                   func(childComplexity int) int
 		Time                    func(childComplexity int) int
@@ -1235,6 +1236,7 @@ type PatchResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
+	TaskStatusCounts(ctx context.Context, obj *model.APIPatch, options *BuildVariantOptions) ([]*task.StatusCount, error)
 }
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
@@ -3558,6 +3560,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.TaskCount(childComplexity), true
+
+	case "Patch.taskStatusCounts":
+		if e.complexity.Patch.TaskStatusCounts == nil {
+			break
+		}
+
+		args, err := ec.field_Patch_taskStatusCounts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Patch.TaskStatusCounts(childComplexity, args["options"].(*BuildVariantOptions)), true
 
 	case "Patch.taskStatuses":
 		if e.complexity.Patch.TaskStatuses == nil {
@@ -7855,6 +7869,7 @@ type Patch {
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
   patchTriggerAliases: [PatchTriggerAlias!]!
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
 }
 
 type Build {
@@ -9601,6 +9616,21 @@ func (ec *executionContext) field_Mutation_updateVolume_args(ctx context.Context
 		}
 	}
 	args["updateVolumeInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Patch_taskStatusCounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *BuildVariantOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
 	return args, nil
 }
 
@@ -20266,6 +20296,45 @@ func (ec *executionContext) _Patch_patchTriggerAliases(ctx context.Context, fiel
 	res := resTmp.([]*model.APIPatchTriggerDefinition)
 	fc.Result = res
 	return ec.marshalNPatchTriggerAlias2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchTriggerDefinitionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_taskStatusCounts(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Patch_taskStatusCounts_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().TaskStatusCounts(rctx, obj, args["options"].(*BuildVariantOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*task.StatusCount)
+	fc.Result = res
+	return ec.marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
@@ -42322,6 +42391,17 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			})
+		case "taskStatusCounts":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_taskStatusCounts(ctx, field, obj)
 				return res
 			})
 		default:

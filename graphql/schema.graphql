@@ -830,6 +830,7 @@ type Patch {
   baseTaskStatuses: [String!]!
   canEnqueueToCommitQueue: Boolean!
   patchTriggerAliases: [PatchTriggerAlias!]!
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
 }
 
 type Build {

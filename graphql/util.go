@@ -1290,3 +1290,19 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	}
 	return res, nil
 }
+
+func getTaskStatusCountsForVersion(versionId string, options *BuildVariantOptions) ([]*task.StatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              options.Statuses,
+	}
+	stats, err := task.GetTaskStatsByVersion(versionId, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}

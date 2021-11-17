@@ -1237,6 +1237,14 @@ func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.API
 	return getAllTaskStatuses(baseTasks), nil
 }
 
+func (r *patchResolver) TaskStatusCounts(ctx context.Context, obj *restModel.APIPatch, options *BuildVariantOptions) ([]*task.StatusCount, error) {
+	stats, err := getTaskStatusCountsForVersion(*obj.Id, options)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
+	}
+	return stats, nil
+}
+
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
@@ -3552,18 +3560,10 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
 func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
-	opts := task.GetTasksByVersionOptions{
-		IncludeBaseTasks:      false,
-		IncludeExecutionTasks: false,
-		TaskNames:             options.Tasks,
-		Variants:              options.Variants,
-		Statuses:              options.Statuses,
-	}
-	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
+	stats, err := getTaskStatusCountsForVersion(*v.Id, options)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
-
 	return stats, nil
 }
 
