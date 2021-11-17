@@ -1180,6 +1180,21 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
+	if utility.FromStringPtr(obj.Version) == "" {
+		return nil, nil
+	}
+	v, err := r.sc.FindVersionById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", *obj.Version, err.Error()))
+	}
+	apiVersion := restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(v); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *obj.Version, err.Error()))
+	}
+	return &apiVersion, nil
+}
+
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
 	var commitQueuePosition *int
 	if *apiPatch.Alias == evergreen.CommitQueueAlias {

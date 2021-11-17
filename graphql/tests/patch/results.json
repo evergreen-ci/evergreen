@@ -1,5 +1,27 @@
 {
   "tests": [
+    { 
+      "query_file": "empty-version.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "version": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "version.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "version": {
+              "id": "5dd2e89cd1fe07048e43bb9c"
+            }
+          }
+        }
+      }
+    },
     {
       "query_file": "taskCount.graphql",
       "result": {

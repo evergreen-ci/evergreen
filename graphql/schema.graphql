@@ -811,7 +811,7 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String!
+  version: Version
   status: String!
   variants: [String!]!
   tasks: [String!]!
