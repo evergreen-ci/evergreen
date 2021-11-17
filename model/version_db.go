@@ -67,15 +67,14 @@ var VersionAll = db.Query(bson.D{})
 // FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given project.
 func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
 	retryLimit := 50
+	q := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
+	}
+	if revisionOrderNumber >= 0 {
+		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
+	}
 	for i := 0; i < retryLimit; i++ {
-		q := bson.M{
-			VersionIdentifierKey: projectId,
-			VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
-		}
-
-		if revisionOrderNumber >= 0 {
-			q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
-		}
 		v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
@@ -85,9 +84,8 @@ func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int)
 		}
 		// Try again with the new revision order number if error exists for version.
 		// We don't include this in the query in order to use an index for identifier, requester, and order number.
-		revisionOrderNumber = v.RevisionOrderNumber
+		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": v.RevisionOrderNumber}
 	}
-
 	return nil, errors.Errorf("couldn't finding version with good config in last %d commits", retryLimit)
 }
 
