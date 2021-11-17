@@ -1,0 +1,467 @@
+{
+  "hosts": [
+    {
+      "_id": "i-06f80fa6e28f93b7d",
+      "host_id": "ec2-34-207-222-84.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "tag": "evg-ubuntu1604-small-20200720144805-8687799505734220270",
+      "distro": {
+        "_id": "ubuntu1604-small",
+        "aliases": ["ubuntu1604", "ubuntu1604-test"],
+        "arch": "linux_amd64",
+        "work_dir": "/data/mci",
+        "provider": "ec2-fleet",
+        "user": "ubuntu",
+        "bootstrap_settings": {
+          "method": "user-data",
+          "communication": "rpc",
+          "client_dir": "/opt/evergreen",
+          "jasper_binary_dir": "/opt/evergreen",
+          "jasper_credentials_path": "/opt/evergreen/jasper_credentials.json",
+          "shell_path": "/bin/bash",
+          "resource_limits": {
+            "num_files": 64000,
+            "num_processes": -1,
+            "locked_memory": -1,
+            "virtual_memory": -1
+          }
+        }
+      },
+      "host_type": "ec2-fleet",
+      "ext_identifier": "",
+      "display_name": "",
+      "project": "",
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "priv_attempts": 1,
+      "last_task": "",
+      "no_expiration": false,
+      "creation_time": { "$date": "2020-07-20T14:48:05.256Z" },
+      "start_time": { "$date": "2020-07-20T14:48:27Z" },
+      "agent_start_time": { "$date": "2020-07-20T14:49:20.449Z" },
+      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "task_count": 1,
+      "last_task_completed_time": { "$date": "0001-01-01T00:00:00Z" },
+      "last_communication": { "$date": "2020-07-20T18:58:51.025Z" },
+      "status": "provisioning",
+      "started_by": "mci",
+      "user_host": false,
+      "agent_revision": "2020-07-18",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "instance_type": "",
+      "container_build_attempt": 0,
+      "spawn_options": {},
+      "docker_options": {},
+      "running_task": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
+      "running_task_bv": "ubuntu1604",
+      "running_task_group": "",
+      "running_task_group_order": 0,
+      "running_task_project": "mongo-tools",
+      "running_task_version": "5f15ad3c3627e07772ab2d01",
+      "total_idle_time": { "$numberLong": "54073000000" },
+      "prov_time": { "$date": "2020-07-20T14:49:30.784Z" }
+    },
+    {
+      "_id": "i-0f81a2d39744003dd",
+      "host_id": "ec2-54-161-252-150.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
+      "distro": {
+        "_id": "ubuntu1604-large",
+        "aliases": ["ubuntu1604", "ubuntu1604-build"],
+        "arch": "linux_amd64",
+        "work_dir": "/data/mci",
+        "provider": "ec2-fleet",
+        "provider_settings": [
+          {
+            "region": "us-east-1",
+            "security_group_ids": ["sg-1a636869"],
+            "key_name": "mci",
+            "bid_price": 0.84,
+            "instance_type": "c4.4xlarge",
+            "is_vpc": true,
+            "subnet_id": "subnet-6dd81326",
+            "mount_points": [
+              {
+                "device_name": "/dev/xvdd",
+                "size": 330
+              }
+            ],
+            "vpc_name": "production_dynamic_vpc",
+            "ami": "ami-08db4ac6ea508c686"
+          }
+        ],
+        "setup_as_sudo": true,
+        "setup": "#!/bin/bash\nset -o errexit\nset -o verbose\n\numount /mnt || true\numount /dev/xvdd || true\n/sbin/mkfs.xfs -f /dev/xvdd\nmkdir -p /data\necho \"/dev/xvdd /data auto noatime 0 0\" | tee -a /etc/fstab\nmount /data\n\n\nchown -R ubuntu:ubuntu /data\n\necho \"github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==\" | tee -a /home/ubuntu/.ssh/known_hosts\necho \"${github_private_key}\" | tee /home/ubuntu/.ssh/id_rsa\necho \"${github_public_key}\" | tee /home/ubuntu/.ssh/id_rsa.pub\nchmod 600 /home/ubuntu/.ssh/*\nchown -R ubuntu:ubuntu /data\nchown -R ubuntu:ubuntu /home/ubuntu/.ssh\n\n# /tmp will be a symlink to this\n#\nmkdir /data/tmp\nchmod 1777 /data/tmp\nmkdir -p /data/var/lib/docker\nsystemctl restart docker",
+        "user": "ubuntu",
+        "bootstrap_settings": {
+          "method": "user-data",
+          "communication": "rpc",
+          "client_dir": "/opt/evergreen",
+          "jasper_binary_dir": "/opt/evergreen",
+          "jasper_credentials_path": "/opt/evergreen/jasper_credentials.json",
+          "shell_path": "/bin/bash",
+          "resource_limits": {
+            "num_files": 64000,
+            "num_processes": -1,
+            "locked_memory": -1,
+            "virtual_memory": -1
+          }
+        },
+        "clone_method": "legacy-ssh",
+        "ssh_key": "mci",
+        "ssh_options": [
+          "StrictHostKeyChecking=no",
+          "BatchMode=yes",
+          "ConnectTimeout=10"
+        ],
+        "spawn_allowed": true,
+        "expansions": [
+          {
+            "key": "decompress",
+            "value": "tar zxvf"
+          },
+          {
+            "key": "ps",
+            "value": "ps aux"
+          },
+          {
+            "key": "kill_pid",
+            "value": "kill -- -$(ps opgid= %v)"
+          },
+          {
+            "key": "scons_prune_ratio",
+            "value": "0.8"
+          }
+        ],
+        "finder_settings": {
+          "version": "legacy"
+        },
+        "planner_settings": {
+          "version": "tunable",
+          "target_time": { "$numberLong": "0" },
+          "group_versions": false,
+          "patch_zipper_factor": { "$numberLong": "0" },
+          "patch_time_in_queue_factor": { "$numberLong": "0" },
+          "commit_queue_factor": { "$numberLong": "0" },
+          "mainline_time_in_queue_factor": { "$numberLong": "0" },
+          "expected_runtime_factor": { "$numberLong": "0" }
+        },
+        "dispatcher_settings": {
+          "version": "revised-with-dependencies"
+        },
+        "host_allocator_settings": {
+          "version": "utilization",
+          "minimum_hosts": 0,
+          "maximum_hosts": 120,
+          "acceptable_host_idle_time": { "$numberLong": "0" }
+        },
+        "disable_shallow_clone": false,
+        "note": "",
+        "is_virtual_workstation": false,
+        "is_cluster": false,
+        "home_volume_settings": {
+          "format_command": ""
+        },
+        "icecream_settings": {}
+      },
+      "host_type": "ec2-fleet",
+      "ext_identifier": "",
+      "display_name": "",
+      "project": "",
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "priv_attempts": 1,
+      "last_task": "mongodb_mongo_v3.6_ubuntu1604_debug_ubsan_rollback_fuzzer_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
+      "no_expiration": false,
+      "creation_time": { "$date": "2020-07-20T18:01:08.213Z" },
+      "start_time": { "$date": "2020-07-20T18:02:02Z" },
+      "agent_start_time": { "$date": "2020-07-20T18:02:50.406Z" },
+      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "task_count": 2,
+      "last_task_completed_time": { "$date": "2020-07-20T19:00:10.630Z" },
+      "last_communication": { "$date": "2020-07-20T19:08:41.928Z" },
+      "status": "running",
+      "started_by": "mci",
+      "user_host": false,
+      "agent_revision": "2020-07-18",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "jasper_credentials_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
+      "instance_type": "",
+      "container_build_attempt": 0,
+      "spawn_options": {},
+      "docker_options": {},
+      "instance_tags": [
+        {
+          "key": "name",
+          "value": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
+          "can_be_modified": false
+        },
+        {
+          "key": "distro",
+          "value": "ubuntu1604-large",
+          "can_be_modified": false
+        },
+        {
+          "key": "evergreen-service",
+          "value": "evergreenapp-4.build.10gen.cc",
+          "can_be_modified": false
+        },
+        {
+          "key": "username",
+          "value": "evergreen application server user",
+          "can_be_modified": false
+        },
+        {
+          "key": "owner",
+          "value": "mci",
+          "can_be_modified": false
+        },
+        {
+          "key": "mode",
+          "value": "production",
+          "can_be_modified": false
+        },
+        {
+          "key": "start-time",
+          "value": "20200720180108",
+          "can_be_modified": false
+        },
+        {
+          "key": "expire-on",
+          "value": "2020-07-30",
+          "can_be_modified": false
+        }
+      ],
+      "is_virtual_workstation": false,
+      "home_volume_size": 0,
+      "home_volume_id": "",
+      "volumes": [
+        {
+          "volume_id": "vol-0b5ec54a106c6e976",
+          "device_name": "/dev/sda1",
+          "is_home": false,
+          "host_id": ""
+        },
+        {
+          "volume_id": "vol-015b745bb69a2a16b",
+          "device_name": "/dev/xvdd",
+          "is_home": false,
+          "host_id": ""
+        }
+      ],
+      "total_idle_time": { "$numberLong": "50424000000" },
+      "prov_time": { "$date": "2020-07-20T18:03:00.758Z" },
+      "last_bv": "ubuntu1604-debug-ubsan",
+      "last_group": "",
+      "last_project": "mongodb-mongo-v3.6",
+      "last_version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1",
+      "running_task": "mongodb_mongo_v3.6_enterprise_ubuntu1604_64_jepsen_set_linearizableRead_WT_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
+      "running_task_bv": "enterprise-ubuntu1604-64",
+      "running_task_group": "",
+      "running_task_group_order": 0,
+      "running_task_project": "mongodb-mongo-v3.6",
+      "running_task_version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1"
+    },
+    {
+      "_id": "i-0d0ae8b83366d22be",
+      "host_id": "ec2-35-153-50-124.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "tag": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
+      "distro": {
+        "_id": "osx",
+        "aliases": ["ubuntu1604", "ubuntu1604-test"],
+        "arch": "linux_amd64",
+        "work_dir": "/data/mci",
+        "provider": "ec2-fleet",
+        "provider_settings": [
+          {
+            "vpc_name": "production_dynamic_vpc",
+            "ami": "ami-0e1c271676ad7391c",
+            "subnet_id": "subnet-50f3fe0a",
+            "instance_type": "c4.xlarge",
+            "is_vpc": true,
+            "mount_points": [
+              {
+                "device_name": "/dev/xvdd",
+                "virtual_name": "",
+                "size": 50
+              }
+            ],
+            "security_group_ids": ["sg-1a636869"],
+            "security_group": "sg-1a636869",
+            "bid_price": 0.21,
+            "region": "us-east-1",
+            "key_name": "mci"
+          }
+        ],
+        "setup_as_sudo": true,
+        "user": "ubuntu",
+        "bootstrap_settings": {
+          "method": "user-data",
+          "communication": "rpc",
+          "client_dir": "/opt/evergreen",
+          "jasper_binary_dir": "/opt/evergreen",
+          "jasper_credentials_path": "/opt/evergreen/jasper_credentials.json",
+          "shell_path": "/bin/bash",
+          "resource_limits": {
+            "num_files": -1,
+            "num_processes": -1,
+            "locked_memory": -1,
+            "virtual_memory": -1
+          }
+        },
+        "clone_method": "legacy-ssh",
+        "ssh_key": "mci",
+        "ssh_options": [
+          "StrictHostKeyChecking=no",
+          "BatchMode=yes",
+          "ConnectTimeout=10"
+        ],
+        "spawn_allowed": true,
+        "expansions": [
+          {
+            "key": "decompress",
+            "value": "tar zxvf"
+          },
+          {
+            "key": "ps",
+            "value": "ps aux"
+          },
+          {
+            "key": "kill_pid",
+            "value": "kill -- -$(ps opgid= %v)"
+          },
+          {
+            "key": "scons_prune_ratio",
+            "value": "0.8"
+          }
+        ],
+        "finder_settings": {
+          "version": "legacy"
+        },
+        "planner_settings": {
+          "version": "tunable",
+          "target_time": { "$numberLong": "0" },
+          "group_versions": false,
+          "patch_zipper_factor": { "$numberLong": "0" },
+          "patch_time_in_queue_factor": { "$numberLong": "0" },
+          "commit_queue_factor": { "$numberLong": "0" },
+          "mainline_time_in_queue_factor": { "$numberLong": "0" },
+          "expected_runtime_factor": { "$numberLong": "0" }
+        },
+        "dispatcher_settings": {
+          "version": "revised-with-dependencies"
+        },
+        "host_allocator_settings": {
+          "version": "utilization",
+          "minimum_hosts": 0,
+          "maximum_hosts": 300,
+          "acceptable_host_idle_time": { "$numberLong": "0" }
+        },
+        "disable_shallow_clone": false,
+        "note": "",
+        "is_virtual_workstation": false,
+        "is_cluster": false,
+        "home_volume_settings": {
+          "format_command": ""
+        },
+        "icecream_settings": {}
+      },
+      "host_type": "ec2-fleet",
+      "ext_identifier": "",
+      "display_name": "",
+      "project": "",
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "priv_attempts": 1,
+      "last_task": "mongo_tools_ubuntu1604_qa_tests_4.0_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
+      "no_expiration": false,
+      "creation_time": { "$date": "2020-07-20T14:48:05.256Z" },
+      "start_time": { "$date": "2020-07-20T14:48:09Z" },
+      "agent_start_time": { "$date": "2020-07-20T14:48:54.371Z" },
+      "termination_time": { "$date": "1970-01-01T00:00:00Z" },
+      "task_count": 1,
+      "last_task_completed_time": { "$date": "2020-07-20T19:07:25.876Z" },
+      "last_communication": { "$date": "2020-07-20T19:10:20.453Z" },
+      "status": "running",
+      "started_by": "mci",
+      "user_host": false,
+      "agent_revision": "2020-07-18",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "jasper_credentials_id": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
+      "instance_type": "",
+      "container_build_attempt": 0,
+      "spawn_options": {},
+      "docker_options": {},
+      "instance_tags": [
+        {
+          "key": "name",
+          "value": "evg-ubuntu1604-small-20200720144805-6148531125249313412",
+          "can_be_modified": false
+        },
+        {
+          "key": "distro",
+          "value": "ubuntu1604-small",
+          "can_be_modified": false
+        },
+        {
+          "key": "evergreen-service",
+          "value": "evergreenapp-20.build.10gen.cc",
+          "can_be_modified": false
+        },
+        {
+          "key": "username",
+          "value": "evergreen application server user",
+          "can_be_modified": false
+        },
+        {
+          "key": "owner",
+          "value": "mci",
+          "can_be_modified": false
+        },
+        {
+          "key": "mode",
+          "value": "production",
+          "can_be_modified": false
+        },
+        {
+          "key": "start-time",
+          "value": "20200720144805",
+          "can_be_modified": false
+        },
+        {
+          "key": "expire-on",
+          "value": "2020-07-30",
+          "can_be_modified": false
+        }
+      ],
+      "is_virtual_workstation": false,
+      "home_volume_size": 0,
+      "home_volume_id": "",
+      "volumes": [
+        {
+          "volume_id": "vol-0923f22a2eed4cded",
+          "device_name": "/dev/sda1",
+          "is_home": false,
+          "host_id": ""
+        },
+        {
+          "volume_id": "vol-06048efdf1c52c1d2",
+          "device_name": "/dev/xvdd",
+          "is_home": false,
+          "host_id": ""
+        }
+      ],
+      "total_idle_time": { "$numberLong": "45837000000" },
+      "prov_time": { "$date": "2020-07-20T14:49:00.267Z" },
+      "last_bv": "ubuntu1604",
+      "last_group": "",
+      "last_project": "mongo-tools",
+      "last_version": "5f15ad3c3627e07772ab2d01"
+    }
+  ]
+}
