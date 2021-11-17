@@ -258,7 +258,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":            "error creating shell version",
@@ -695,7 +695,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	v, err := shellVersionFromRevision(ctx, projectInfo.Ref, metadata)
+	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
@@ -772,7 +772,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
+func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var u *user.DBUser
 	var err error
 	if metadata.Revision.AuthorGithubUID != 0 {
