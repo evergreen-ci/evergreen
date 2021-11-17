@@ -1,0 +1,13 @@
+{
+  user {
+    patches(patchesInput: { includeCommitQueue: true }) {
+      patches {
+        taskStatusCounts {
+          status
+          count
+        }
+      }
+      filteredPatchCount
+    }
+  }
+}

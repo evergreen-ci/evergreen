@@ -178,6 +178,38 @@
           }
         }
       }
+    },
+    {
+      "query_file": "patches-taskStatusCounts.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "patches": {
+              "patches": [
+                {
+                  "taskStatusCounts": []
+                },
+                {
+                  "taskStatusCounts": []
+                },
+                {
+                  "taskStatusCounts": []
+                },
+                {
+                  "taskStatusCounts": []
+                },
+                {
+                  "taskStatusCounts": []
+                },
+                {
+                  "taskStatusCounts": []
+                }
+              ],
+              "filteredPatchCount": 6
+            }
+          }
+        }
+      }
     }
   ]
 }
