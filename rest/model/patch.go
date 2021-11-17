@@ -50,7 +50,7 @@ type APIPatch struct {
 type DownstreamTasks struct {
 	Project      *string       `json:"project"`
 	Tasks        []*string     `json:"tasks"`
-	VariantTasks []VariantTask `json:"tasks"`
+	VariantTasks []VariantTask `json:"variant_tasks"`
 }
 
 type ChildPatch struct {
