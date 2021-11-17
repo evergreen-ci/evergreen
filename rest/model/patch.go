@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -47,8 +48,9 @@ type APIPatch struct {
 }
 
 type DownstreamTasks struct {
-	Project *string   `json:"project"`
-	Tasks   []*string `json:"tasks"`
+	Project      *string       `json:"project"`
+	Tasks        []*string     `json:"tasks"`
+	VariantTasks []VariantTask `json:"tasks"`
 }
 
 type ChildPatch struct {
@@ -189,8 +191,22 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
+	//this child apipatch has a child patch
+	// it has variant tasks but no tasks
+	grip.Error(message.Fields{
+		"error":    "chayaMTesting patch.go 196",
+		"v":        v,
+		"apiPatch": apiPatch,
+	})
 
 	downstreamTasks, childPatches, err := getChildPatchesData(v)
+	grip.Error(message.Fields{
+		"error":           "chayaMTesting patch.go 196",
+		"v":               v,
+		"downstreamTasks": downstreamTasks,
+		"childPatches":    childPatches,
+		"err":             err,
+	})
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
@@ -245,10 +261,22 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 		}
 
 		tasks := utility.ToStringPtrSlice(childPatchDoc.Tasks)
+		variantTasks := []VariantTask{}
+		for _, vt := range childPatchDoc.VariantsTasks {
+			vtasks := make([]*string, 0)
+			for _, task := range vt.Tasks {
+				vtasks = append(vtasks, utility.ToStringPtr(task))
+			}
+			variantTasks = append(variantTasks, VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: vtasks,
+			})
+		}
 
 		dt := DownstreamTasks{
-			Project: utility.ToStringPtr(childPatchDoc.Project),
-			Tasks:   tasks,
+			Project:      utility.ToStringPtr(childPatchDoc.Project),
+			Tasks:        tasks,
+			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
 		err = apiPatch.BuildFromService(*childPatchDoc)

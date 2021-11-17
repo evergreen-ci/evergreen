@@ -147,7 +147,13 @@ func TestDownstreamTasks(t *testing.T) {
 		Description: "test",
 		Project:     "mci",
 		Tasks:       []string{"child_task_1", "child_task_2"},
-		Activated:   true,
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "coverage",
+				Tasks:   []string{"variant_task_1", "variant_task_2"},
+			},
+		},
+		Activated: true,
 	}
 	assert.NoError(childPatch.Insert())
 
@@ -156,4 +162,6 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks, 1)
+	assert.Len(a.DownstreamTasks[0].Tasks, 2)
+	assert.Len(a.DownstreamTasks[0].VariantTasks, 1)
 }
