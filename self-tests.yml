@@ -558,6 +558,16 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-agent-version-update
+  - name: verify-mod-tidy
+    tags: ["linter"]
+    commands:
+      - command: git.get_project
+        type: setup
+        params:
+          directory: evergreen
+          token: ${github_token}
+      - func: run-make
+        vars: { target: "${task_name}" }
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true
