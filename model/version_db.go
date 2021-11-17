@@ -66,7 +66,7 @@ var VersionAll = db.Query(bson.D{})
 
 // FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given project.
 func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
-	retryLimit := 50
+	const retryLimit = 50
 	q := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
