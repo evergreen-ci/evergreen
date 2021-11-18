@@ -1396,7 +1396,12 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		return errors.Wrapf(err, "error getting display task for task")
 	}
 	if dt == nil {
-		return errors.Errorf("%s may hold a display task that doesn't exist", t.Id)
+		grip.Error(message.Fields{
+			"message":         "task may hold a display task that doesn't exist",
+			"task_id":         t.Id,
+			"display_task_id": t.DisplayTaskId,
+		})
+		return errors.Errorf("display task not found for task: '%s'", t.Id)
 	}
 	if !dt.DisplayOnly {
 		return errors.Errorf("%s is not a display task", dt.Id)
