@@ -47,8 +47,9 @@ type APIPatch struct {
 }
 
 type DownstreamTasks struct {
-	Project *string   `json:"project"`
-	Tasks   []*string `json:"tasks"`
+	Project      *string       `json:"project"`
+	Tasks        []*string     `json:"tasks"`
+	VariantTasks []VariantTask `json:"variant_tasks"`
 }
 
 type ChildPatch struct {
@@ -245,10 +246,22 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 		}
 
 		tasks := utility.ToStringPtrSlice(childPatchDoc.Tasks)
+		variantTasks := []VariantTask{}
+		for _, vt := range childPatchDoc.VariantsTasks {
+			vtasks := make([]*string, 0)
+			for _, task := range vt.Tasks {
+				vtasks = append(vtasks, utility.ToStringPtr(task))
+			}
+			variantTasks = append(variantTasks, VariantTask{
+				Name:  utility.ToStringPtr(vt.Variant),
+				Tasks: vtasks,
+			})
+		}
 
 		dt := DownstreamTasks{
-			Project: utility.ToStringPtr(childPatchDoc.Project),
-			Tasks:   tasks,
+			Project:      utility.ToStringPtr(childPatchDoc.Project),
+			Tasks:        tasks,
+			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
 		err = apiPatch.BuildFromService(*childPatchDoc)

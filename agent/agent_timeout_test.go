@@ -115,7 +115,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	s.Contains(detail.Description, "shell.exec")
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(execTimeout, detail.TimeoutType)
+	s.EqualValues(evergreen.ExecTimeout, detail.TimeoutType)
 
 	data, err := ioutil.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -183,7 +183,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.Contains(detail.Description, "shell.exec")
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(execTimeout, detail.TimeoutType)
+	s.EqualValues(evergreen.ExecTimeout, detail.TimeoutType)
 
 	data, err := ioutil.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -250,7 +250,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	s.Contains(detail.Description, "shell.exec")
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(idleTimeout, detail.TimeoutType)
+	s.EqualValues(evergreen.IdleTimeout, detail.TimeoutType)
 
 	data, err := ioutil.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -317,7 +317,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.Contains(detail.Description, "shell.exec")
 	s.True(detail.TimedOut)
 	s.Equal(1*time.Second, detail.TimeoutDuration)
-	s.EqualValues(idleTimeout, detail.TimeoutType)
+	s.EqualValues(evergreen.IdleTimeout, detail.TimeoutType)
 
 	data, err := ioutil.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -384,7 +384,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.Contains(detail.Description, "shell.exec")
 	s.True(detail.TimedOut)
 	s.Equal(2*time.Second, detail.TimeoutDuration)
-	s.EqualValues(idleTimeout, detail.TimeoutType)
+	s.EqualValues(evergreen.IdleTimeout, detail.TimeoutType)
 
 	data, err := ioutil.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)
@@ -451,7 +451,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	s.Contains(detail.Description, "shell.exec")
 	s.True(detail.TimedOut)
 	s.Equal(2*time.Second, detail.TimeoutDuration)
-	s.EqualValues(execTimeout, detail.TimeoutType)
+	s.EqualValues(evergreen.ExecTimeout, detail.TimeoutType)
 
 	data, err := ioutil.ReadFile(s.tmpFileName)
 	s.Require().NoError(err)

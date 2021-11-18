@@ -2426,6 +2426,28 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t12.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t11)
+
+	t13 := Task{
+		Id:     "t13",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			TimedOut:    true,
+			TimeoutType: string(evergreen.ExecTimeout),
+		},
+	}
+	assert.NoError(t, t13.Insert())
+	checkStatuses(t, evergreen.TaskTimedOut, t13)
+
+	t14 := Task{
+		Id:     "t14",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			TimedOut:    true,
+			TimeoutType: string(evergreen.IdleTimeout),
+		},
+	}
+	assert.NoError(t, t14.Insert())
+	checkStatuses(t, evergreen.TaskTestTimedOut, t14)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
