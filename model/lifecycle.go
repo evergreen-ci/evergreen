@@ -767,7 +767,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
 		}
-		if !bvt.IsDisabled() && bvt.SkipOnRequester(requester) {
+		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
 			bvt.Populate(taskMap[t])
 			tasks = append(tasks, bvt)
 		}
