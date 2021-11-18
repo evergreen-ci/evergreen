@@ -941,6 +941,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				"build_id":     b.Id,
 			}))
 		} else { // need to create display task
+			if len(execTaskIds) == 0 {
+				continue
+			}
 			newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime, displayTaskActivated)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Failed to create display task %s", id)
