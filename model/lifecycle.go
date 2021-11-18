@@ -735,7 +735,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	return b, tasksForBuild, nil
 }
 
-func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariantTaskUnit {
+func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
 	tasks := []BuildVariantTaskUnit{}
 	tg := proj.FindTaskGroup(in.Name)
 	if tg == nil {
@@ -767,8 +767,10 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
 		}
-		bvt.Populate(taskMap[t])
-		tasks = append(tasks, bvt)
+		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
+			bvt.Populate(taskMap[t])
+			tasks = append(tasks, bvt)
+		}
 	}
 	return tasks
 }
@@ -810,7 +812,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
-			tasksFromVariant := CreateTasksFromGroup(task, project)
+			tasksFromVariant := CreateTasksFromGroup(task, project, b.Requester)
 			for _, taskFromVariant := range tasksFromVariant {
 				if task.IsDisabled() || taskFromVariant.SkipOnRequester(b.Requester) {
 					continue

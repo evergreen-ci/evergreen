@@ -368,7 +368,7 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchPro
 			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
 			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
-					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
+					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)
 				}
