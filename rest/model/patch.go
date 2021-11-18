@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -191,22 +190,8 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
-	//this child apipatch has a child patch
-	// it has variant tasks but no tasks
-	grip.Error(message.Fields{
-		"error":    "chayaMTesting patch.go 196",
-		"v":        v,
-		"apiPatch": apiPatch,
-	})
 
 	downstreamTasks, childPatches, err := getChildPatchesData(v)
-	grip.Error(message.Fields{
-		"error":           "chayaMTesting patch.go 196",
-		"v":               v,
-		"downstreamTasks": downstreamTasks,
-		"childPatches":    childPatches,
-		"err":             err,
-	})
 	if err != nil {
 		return errors.Wrap(err, "error getting downstream tasks")
 	}
