@@ -415,17 +415,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 		}
 		st.ExecutionTasks = ets
 	}
-	if len(ad.ExecutionTasksFull) > 0 {
-		ets := []task.Task{}
-		for _, at := range ad.ExecutionTasksFull {
-			taskData, err := at.ToService()
-			if err != nil {
-				return nil, err
-			}
-			ets = append(ets, *taskData.(*task.Task))
-		}
-		st.ExecutionTasksFull = ets
-	}
 
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 

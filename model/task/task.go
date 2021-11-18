@@ -172,11 +172,10 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly        bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks     []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	ExecutionTasksFull []Task   `bson:"execution_tasks_full" json:"-"` // this is a local pointer from a display task to its execution tasks
-	ResetWhenFinished  bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	DisplayTask        *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	DisplayOnly       bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks    []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	ResetWhenFinished bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	DisplayTask       *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
