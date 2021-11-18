@@ -507,6 +507,7 @@ type ComplexityRoot struct {
 		Variants                func(childComplexity int) int
 		VariantsTasks           func(childComplexity int) int
 		Version                 func(childComplexity int) int
+		VersionFull             func(childComplexity int) int
 	}
 
 	PatchDuration struct {
@@ -1227,6 +1228,8 @@ type MutationResolver interface {
 }
 type PatchResolver interface {
 	AuthorDisplayName(ctx context.Context, obj *model.APIPatch) (string, error)
+
+	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
 
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
@@ -3632,6 +3635,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Version(childComplexity), true
+
+	case "Patch.versionFull":
+		if e.complexity.Patch.VersionFull == nil {
+			break
+		}
+
+		return e.complexity.Patch.VersionFull(childComplexity), true
 
 	case "PatchDuration.makespan":
 		if e.complexity.PatchDuration.Makespan == nil {
@@ -7876,6 +7886,7 @@ type Patch {
   author: String!
   authorDisplayName: String!
   version: String!
+  versionFull: Version
   status: String!
   variants: [String!]!
   tasks: [String!]!
@@ -19726,6 +19737,38 @@ func (ec *executionContext) _Patch_version(ctx context.Context, field graphql.Co
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Patch_versionFull(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().VersionFull(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patch_status(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
@@ -42379,6 +42422,17 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "versionFull":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_versionFull(ctx, field, obj)
+				return res
+			})
 		case "status":
 			out.Values[i] = ec._Patch_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
