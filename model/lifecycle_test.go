@@ -1993,7 +1993,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 			},
 		},
 	}
-	bvts := CreateTasksFromGroup(in, p)
+	bvts := CreateTasksFromGroup(in, p, "")
 	assert.Equal("new_dependency", bvts[0].DependsOn[0].Name)
 	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
 }
