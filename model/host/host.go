@@ -1617,8 +1617,14 @@ func FindHostsToTerminate() ([]Host, error) {
 				},
 				ExpirationTimeKey: bson.M{"$lte": now},
 			},
-			{ // hosts that failed to provision
-				StatusKey: evergreen.HostProvisionFailed,
+			{
+				// Hosts that failed to be created in a cloud provider or
+				// provision.
+				// kim: TODO: test
+				StatusKey: bson.M{"$in": []string{
+					evergreen.HostBuildingFailed,
+					evergreen.HostProvisionFailed},
+				},
 			},
 			{
 				// Either:

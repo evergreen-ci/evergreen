@@ -14,10 +14,17 @@ const (
 	GithubPatchUser = "github_pull_request"
 	ParentPatchUser = "parent_patch"
 
-	HostRunning         = "running"
-	HostTerminated      = "terminated"
-	HostUninitialized   = "initializing"
-	HostBuilding        = "building"
+	HostRunning       = "running"
+	HostTerminated    = "terminated"
+	HostUninitialized = "initializing"
+	// HostBuilding is an intermediate state indicating that the intent host is
+	// attempting to create a real host from an intent host, but has not
+	// successfully done so yet.
+	HostBuilding = "building"
+	// HostBuildingFailed is a failure state indicating that an intent host was
+	// attempting to create a host but failed during creation. Hosts that fail
+	// to build will terminate shortly.
+	HostBuildingFailed  = "building-failed"
 	HostStarting        = "starting"
 	HostProvisioning    = "provisioning"
 	HostProvisionFailed = "provision failed"

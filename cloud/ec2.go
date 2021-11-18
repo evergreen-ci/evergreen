@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -1050,7 +1049,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}
 	}
 
-	if !strings.HasPrefix(instanceId, "i-") {
+	if !IsEC2InstanceID(instanceId) {
 		return errors.Wrap(h.Terminate(user, fmt.Sprintf("detected invalid instance ID %s", instanceId)), "failed to terminate instance in db")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
@@ -1111,6 +1110,44 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 
 	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
 }
+
+// TerminateDisassociatedInstance terminates the EC2 instance, which is not
+// associated with any particular host document.
+// kim: TODO: test
+// func (m *ec2Manager) TerminateDisassociatedInstance(ctx context.Context, instanceID string) error {
+//     if err := m.client.Create(m.credentials, m.region); err != nil {
+//         return errors.Wrap(err, "error creating client")
+//     }
+//     defer m.client.Close()
+//
+//     if !IsEC2InstanceID(instanceID) {
+//         return errors.Errorf("attempted to terminate invalid instance ID '%s'", instanceID)
+//     }
+//     resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
+//         InstanceIds: []*string{aws.String(instanceID)},
+//     })
+//     if err != nil {
+//         grip.Error(message.WrapError(err, message.Fields{
+//             "message":     "error terminating instance",
+//             "instance_id": instanceID,
+//             // This could theoretically be EC2 auto or spot as well, but these
+//             // cloud provider types are deprecated and no longer used.
+//             "cloud_provider": evergreen.ProviderNameEc2OnDemand,
+//         }))
+//         return err
+//     }
+//
+//     for _, stateChange := range resp.TerminatingInstances {
+//         grip.Info(message.Fields{
+//             "message":     "terminated instance",
+//             "instance_id": utility.FromStringPtr(stateChange.InstanceId),
+//             // This could theoretically be EC2 auto or spot as well, but these
+//             // cloud provider types are deprecated and no longer used.
+//             "cloud_provider": evergreen.ProviderNameEc2OnDemand,
+//         })
+//     }
+//     return nil
+// }
 
 // StopInstance stops a running EC2 instance.
 func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string) error {

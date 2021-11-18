@@ -167,8 +167,6 @@ func (a *Agent) Start(ctx context.Context) error {
 		tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
 
-	// kim: TODO: add metadata endpoint initial check to get instance ID for
-	// next task request.
 	a.getEC2InstanceID(ctx)
 
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
@@ -243,6 +241,7 @@ LOOP:
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
 
+			// kim: TODO: test that this is sent in an e2e way.
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,

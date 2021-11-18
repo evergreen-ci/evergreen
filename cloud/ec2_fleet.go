@@ -339,6 +339,46 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	return errors.Wrap(h.Terminate(user, reason), "failed to terminate instance in db")
 }
 
+// TerminateDisassociatedInstance terminates the EC2 instance in the cloud,
+// which is not associated with any particular host document.
+// kim: TODO: test
+// func (m *ec2FleetManager) TerminateDisassociatedInstance(ctx context.Context, instanceID string) error {
+//     if err := m.client.Create(m.credentials, m.region); err != nil {
+//         return errors.Wrap(err, "error creating client")
+//     }
+//     defer m.client.Close()
+//
+//     resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
+//         InstanceIds: []*string{aws.String(instanceID)},
+//     })
+//     if err != nil {
+//         grip.Error(message.WrapError(err, message.Fields{
+//             "message":        "error terminating disassociated instance",
+//             "instance_id":    instanceID,
+//             "cloud_provider": evergreen.ProviderNameEc2Fleet,
+//         }))
+//         return err
+//     }
+//
+//     for _, stateChange := range resp.TerminatingInstances {
+//         if stateChange == nil || stateChange.InstanceId == nil {
+//             grip.Error(message.Fields{
+//                 "message":        "state change missing instance ID",
+//                 "instance_id":    instanceID,
+//                 "cloud_provider": evergreen.ProviderNameEc2Fleet,
+//             })
+//             return errors.New("invalid terminate instances response")
+//         }
+//         grip.Info(message.Fields{
+//             "message":        "terminated disassociated instance",
+//             "instance_id":    instanceID,
+//             "cloud_provider": evergreen.ProviderNameEc2Fleet,
+//         })
+//     }
+//
+//     return nil
+// }
+
 // StopInstance should do nothing for EC2 Fleet.
 func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, string) error {
 	return errors.New("can't stop instances for ec2 fleet provider")

@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -8,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -17,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -910,32 +913,35 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
-// kim: TODO: make new method to "DecommissionStaleBuilding" hosts.
+// kim: TODO: make new method to "MarkStaleBuildingAsFailed" hosts.
+// kim: TODO: update tests to exclude stale building
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
-		"$or": []bson.M{
-			{
-				StatusKey:     evergreen.HostUninitialized,
-				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-			},
-			// kim: TODO: log hosts that are "building" but then are considered
-			// stale.
-			// kim: TODO: a couple options to handle stale hosts:
-			// * Set "building" hosts to "decommissioned" instead of removing
-			// the host doc so that the doc at least exists. The host
-			// termination job won't kill the instance. If the agent actually
-			// starts, the EC2 instance should be stopped by the agent next task
-			// route, since the document still exists.
-			// * Keep removing "building" hosts. This is undesirable since it
-			// makes checkHost middleware quite difficult to work around.
-			{
-				StatusKey:     evergreen.HostBuilding,
-				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
-			},
-		},
+		// "$or": []bson.M{
+		//     {
+		StatusKey:     evergreen.HostUninitialized,
+		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+		// },
+		// kim: TODO: log hosts that are "building" but then are considered
+		// stale.
+		// kim: TODO: a couple options to handle stale hosts:
+		// * Set "building" hosts to new "building-failed" status so that
+		// the doc at least exists. The host termination job may or may not
+		// kill the instance depending on whether the agent checks in first
+		// or not. If the agent actually starts, the EC2 instance should
+		// be properly handled by the next task route since the host
+		// document still exists.
+		// * Keep removing "building" hosts. This is undesirable since it
+		// makes checkHost middleware quite difficult to work around.
+		// kim: TODO: remove
+		// {
+		//     StatusKey:     evergreen.HostBuilding,
+		//     CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
+		// },
+		// },
 	}
 
 	if distroID != "" {
@@ -960,10 +966,53 @@ func RemoveStaleInitializing(distroID string) error {
 	return db.RemoveAll(Collection, query)
 }
 
-// kim: TODO: implement
-// func DecommissionStaleBuilding(distroID string) error {
-//
-// }
+// MarkStaleBuildingAsFailed marks all building hosts that have been stuck
+// building for too long as failed in order to indicate that they need to be
+// terminated.
+// kim: TODO: test
+func MarkStaleBuildingAsFailed(distroID string) error {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	query := bson.M{
+		distroIDKey: distroID,
+		UserHostKey: false,
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+		StatusKey:     evergreen.HostBuilding,
+		CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
+	}
+
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	q := db.Query(query).Project(bson.M{IdKey: 1})
+	hosts := []Host{}
+	if err := db.FindAllQ(Collection, q, &hosts); err != nil {
+		return errors.WithStack(err)
+	}
+	var ids []string
+	for _, h := range hosts {
+		ids = append(ids, h.Id)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	if _, err := db.UpdateAll(Collection, bson.M{
+		IdKey: bson.M{"$in": ids},
+	}, bson.M{
+		"$set": bson.M{StatusKey: evergreen.HostBuildingFailed},
+	}); err != nil {
+		return errors.Wrap(err, "marking stale building hosts as failed")
+	}
+
+	for _, id := range ids {
+		event.LogHostStartFinished(id, false)
+	}
+
+	return nil
+}
 
 // === DB Logic ===
 
@@ -1385,4 +1434,43 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 	}
 
 	return optionsMap, nil
+}
+
+// UnsafeReplace atomically removes the host given by the idToRemove and inserts
+// a new host toInsert. This is typically done to replace the old host ID with a
+// new one. The replacement must be done across two queries (remove old, insert
+// new) since it's not possible to replace the _id of a document once it has
+// been set. Keep in mind that the atomic swap is safer than doing it
+// non-atomically, but is not sufficient to guarantee application correctness,
+// because other threads may still be using the old host document.
+// TODO (EVG-15875): set a field containing the external identifier on the host
+// document rather than do this host document swap logic.
+// kim: TODO: test
+func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove string, toInsert *Host) error {
+	if idToRemove == toInsert.Id {
+		return nil
+	}
+
+	sess, err := env.Client().StartSession()
+	if err != nil {
+		return errors.Wrap(err, "starting transaction session")
+	}
+	defer sess.EndSession(ctx)
+
+	replaceHost := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		if err := RemoveStrict(idToRemove); err != nil {
+			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
+		}
+
+		if err := toInsert.Insert(); err != nil {
+			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
+		}
+		return nil, nil
+	}
+
+	if _, err := sess.WithTransaction(ctx, replaceHost); err != nil {
+		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
+	}
+
+	return nil
 }

@@ -34,7 +34,6 @@ func SpotHostWillTerminateSoon() bool {
 
 // GetEC2InstanceID returns the instance ID from the metadata endpoint if it's
 // an EC2 instance.
-// kim: TODO: verify that this works on an EC2 instance.
 func GetEC2InstanceID(ctx context.Context) (string, error) {
 	url := fmt.Sprintf("%s/instance-id", metadataBaseURL)
 	c := utility.GetHTTPClient()

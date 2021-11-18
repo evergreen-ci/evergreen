@@ -159,9 +159,11 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 
 func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// kim: NOTE: the "building" host should be decommissioned/terminated so
-		// that it still exists in the DB. If the host is decommissioned but has
-		// sent an instance ID, the next task route will shut it down.
+		// kim: NOTE: the "building" host should be decommissioned/terminated
+		// instead of removed so it still exists in the DB. If the host is
+		// decommissioned but has sent an instance ID, the next task route will
+		// shut it down. This still will not handle hosts whose documents get
+		// removed (e.g. RunInstances for on-demand hosts).
 		h, code, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
 		if err != nil {
 			as.LoggedError(w, r, code, errors.Wrap(err, "host not assigned to run task"))
