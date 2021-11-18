@@ -1985,6 +1985,10 @@ func TestCreateTasksFromGroup(t *testing.T) {
 			{
 				Name: "second_task",
 			},
+			{
+				Name:      "third_task",
+				Patchable: utility.FalsePtr(),
+			},
 		},
 		TaskGroups: []TaskGroup{
 			{
@@ -1993,7 +1997,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 			},
 		},
 	}
-	bvts := CreateTasksFromGroup(in, p, "")
+	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
 	assert.Equal("new_dependency", bvts[0].DependsOn[0].Name)
 	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
 }
