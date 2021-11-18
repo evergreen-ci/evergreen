@@ -267,21 +267,19 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
+		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "could not prepare host for agent to exit",
+				"host_id":       currentHost.Id,
+				"operation":     "end_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": currentHost.AgentRevision,
+			}))
+		}
 		endTaskResp.ShouldExit = true
-		// kim: TODO: this should only have to deal with hosts in "quarantined",
-		// "decommissioned", or "terminated" and they're already good hosts.
-		// if err := as.prepareUnhealthyHostForAgentExit(r.Context(), currentHost, currentHost.Id, "end_task"); err != nil {
-		//     grip.Error(message.WrapError(err, message.Fields{
-		//         "message":       "could not prepare host in unusual state for exit",
-		//         "host_id":       currentHost.Id,
-		//         "operation":     "end_task",
-		//         "revision":      evergreen.BuildRevision,
-		//         "agent":         evergreen.AgentVersion,
-		//         "current_agent": currentHost.AgentRevision,
-		//     }))
-		//     gimlet.WriteJSON(w, endTaskResp)
-		//     return
-		// }
+		gimlet.WriteJSON(w, endTaskResp)
+		return
 	}
 
 	// we should disable hosts and prevent them from performing
@@ -330,183 +328,160 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, endTaskResp)
 }
 
-// prepareUnhealthyHostForAgentExit prepares a host which has been quarantined
-// to shut down the agent and agent monitor. This is especially important for
-// quarantining static hosts, as the host may continue running, but it must stop
-// all agent-related activity for now. It also ensures that when the host is
-// eventually unquarantined, the agent is deployed.
-// kim: NOTE: this does not handle the zombie EC2 host that's already been
-// terminated .
-// kim: TODO: test this extensively, I really don't trust it.
-// kim: TODO: reorganize this by next_task/end_task. Only next_task can possibly
-// still have an intent host.
-func (as *APIServer) prepareUnhealthyHostForAgentExit(ctx context.Context, h *host.Host, instanceID string, op string) error {
-	// kim: TODO: need to think through this case logic carefully
-	switch h.Status {
-	case evergreen.HostBuilding:
-		if instanceID != "" && instanceID != h.Id {
-			// The instance ID does not match the host ID because the host is
-			// still an intent host (which is why the instance ID does not match
-			// the host ID). This can happen if the host creation job fails
-			// partway through execution.
-			// In this case, the host document has to be updated by replacing
-			// the intent host with the real host and setting it to "starting".
-			grip.Notice(message.Fields{
-				"message":     "DB-EC2 state mismatch - found EC2 instance with a valid intent host ID, but the host document ID does not match",
-				"host_id":     h.Id,
-				"instance_id": instanceID,
-				"host_status": h.Status,
-				"hypothesis":  "Evergreen failed to handle host metadata updates, but the host was successfully started in EC2 nonetheless",
-			})
-
-			intentHostID := h.Id
-			h.Id = instanceID
-			h.Status = evergreen.HostStarting
-			if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
-				return errors.Wrap(err, "unsafely replacing intent host with real host")
-			}
-
-			event.LogHostStartFinished(h.Id, true)
-
-			return nil
-		} else if instanceID != "" {
-			// The host is "building", but for some reason, the agent passed an
-			// instance ID that matches the actual host ID.
-			// This should never happen, but in this case, the host document is
-			// a real host document and not an intent host document, so we need
-			// to set it to "starting".
-			grip.Notice(message.Fields{
-				"message":     fmt.Sprintf("DB-EC2 state mismatch - found alive EC2 instance with a valid instance ID, but the host document state is still '%s'", evergreen.HostStarting),
-				"host_id":     h.Id,
-				"instance_id": instanceID,
-				"host_status": h.Status,
-				"hypothesis":  fmt.Sprintf("Evergreen failed to update host to status '%s' after spawning host", evergreen.HostStarting),
-			})
-			if err := h.SetStatusAtomically(evergreen.HostStarting, evergreen.User, "DB-EC2 state mismatch"); err != nil {
-				return errors.Wrapf(err, "transitioning host from '%s' to '%s'", evergreen.HostBuilding, evergreen.HostStarting)
-			}
-
-			return nil
-		} else if cloud.IsEC2InstanceID(h.Id) {
-			// The host is "building" and the agent failed to send an instance
-			// ID, but the host document already has the instance ID.
-			// This should never happen, but in this case, the host document is
-			// a real host document and not an intent host document, so we need
-			// to set it to "starting".
-			grip.Notice(message.Fields{
-				"message":     fmt.Sprintf("DB-EC2 state mismatch - found alive EC2 instance that's missing an instance ID, but the host document state is still '%s'", evergreen.HostStarting),
-				"host_id":     h.Id,
-				"host_status": h.Status,
-				"hypothesis":  fmt.Sprintf("Evergreen failed to update host to status '%s' after spawning host", evergreen.HostStarting),
-			})
-			if err := h.SetStatusAtomically(evergreen.HostStarting, evergreen.User, "DB-EC2 state mismatch"); err != nil {
-				return errors.Wrapf(err, "transitioning host from '%s' to '%s'", evergreen.HostBuilding, evergreen.HostStarting)
-			}
-		}
-
-		// The agent did not send an instance ID and also, the host document is
-		// still an intent host. This should never happen, but if the system
-		// ever hits this state, it seems like there are multiple issues (on
-		// both the Evergreen side and the EC2 instance side), so there's
-		// nothing that can be done to resolve it other than manual
-		// investigation.
+// fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
+// host is still believed to be an intent host but somehow the agent is running
+// on an EC2 instance associated with that intent host.
+// kim: TODO: test
+func (as *APIServer) fixIntentHostRunningAgent(ctx context.Context, h *host.Host, instanceID string) error {
+	if !cloud.IsEc2Provider(h.Provider) {
+		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
+		return nil
+	}
+	if cloud.IsEC2InstanceID(h.Id) {
+		// If the host already has an instance ID, it's not an intent host.
+		return nil
+	}
+	if instanceID == "" {
+		// If the host is an intent host but the agent does not send the EC2
+		// instance ID, there's nothing that can be done to fix it here.
 		grip.Warning(message.Fields{
-			"message":     "unresolvable EC2 instance state - host document state is '%s' and EC2 instance is alive, but did not send any instance ID",
+			"message":     "intent host has started an agent, but the agent did not provide an instance ID for the real host",
 			"host_id":     h.Id,
 			"host_status": h.Status,
+			"provider":    h.Provider,
+			"distro":      h.Distro.Id,
 		})
-
 		return nil
-	case evergreen.HostDecommissioned:
+	}
+
+	switch h.Status {
+	case evergreen.HostBuilding:
+		return errors.Wrap(as.transitionIntentHostToStarting(ctx, h, instanceID), "starting intent host that actually succeeded")
+	case evergreen.HostBuildingFailed:
+		return errors.Wrap(as.transitionIntentHostToDecommissioned(ctx, h, instanceID), "decommissioning intent host that failed to build")
+	case evergreen.HostTerminated:
+		return errors.Wrap(as.terminateIntentGhost(ctx, h, instanceID), "terminating lingering intent host")
+	default:
+		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when the agent is running", h.Status)
+	}
+}
+
+// transitionIntentHostToStarting converts an intent host to a real host
+// because it's alive in the cloud. It is marked as starting to indicate that
+// the host has started and can run tasks.
+func (as *APIServer) transitionIntentHostToStarting(ctx context.Context, h *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
+		"host_id":     h.Id,
+		"instance_id": instanceID,
+		"host_status": h.Status,
+	})
+
+	intentHostID := h.Id
+	h.Id = instanceID
+	h.Status = evergreen.HostStarting
+	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	event.LogHostStartFinished(h.Id, true)
+
+	return nil
+}
+
+// transitionIntentHostToDecommissioned converts an intent host to a real
+// host because it's alive in the cloud. It is marked as decommissioned to
+// indicate that the host is not valid and should be terminated.
+func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is a stale building intent host",
+		"host_id":     h.Id,
+		"instance_id": instanceID,
+		"host_status": h.Status,
+	})
+
+	intentHostID := h.Id
+	h.Id = instanceID
+	h.Status = evergreen.HostDecommissioned
+	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	return nil
+}
+
+// terminateIntentGhost terminates a lingering intent host that's still alive in
+// the cloud. This can happen if an intent host failed to transition to a real
+// host and was marked as terminated, but the instance eventually started after
+// it was already marked as terminated.
+func (as *APIServer) terminateIntentGhost(ctx context.Context, h *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is already terminated",
+		"host_id":     h.Id,
+		"instance_id": instanceID,
+		"host_status": h.Status,
+	})
+
+	intentHostID := h.Id
+	h.Id = instanceID
+	h.Status = evergreen.HostTerminated
+	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	return errors.Wrap(as.terminateGhost(ctx, h, "lingering instance came up after the host document was marked terminated"), "terminating intent ghost")
+}
+
+func (as *APIServer) terminateGhost(ctx context.Context, h *host.Host, reason string) error {
+	// kim: QUESTION: should this really terminate in the REST API or should it
+	// make a job to sweep up lingering terminated hosts?
+	cloudHost, err := cloud.GetCloudHost(ctx, h, as.env)
+	if err != nil {
+		return errors.Wrap(err, "getting cloud host")
+	}
+
+	if err := cloudHost.TerminateInstance(ctx, evergreen.User, reason); err != nil {
+		return errors.Wrap(err, "terminating cloud host")
+	}
+
+	return nil
+}
+
+// prepareHostForAgentExit prepares a host to stop running tasks on the host.
+// For a quarantined host, it shuts down the agent and agent monitor to prevent
+// it from running further tasks. This is especially important for quarantining
+// hosts, as the host may continue running, but it must stop all agent-related
+// activity for now. For a terminated host, the host should already have been
+// terminated but is nonetheless alive, so terminate it again.
+// kim: TODO: test
+func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) (shouldExit bool, err error) {
+	switch h.Status {
 	case evergreen.HostQuarantined:
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 		if err := h.StopAgentMonitor(ctx, as.env); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "problem stopping agent monitor",
-				"host_id":       h.Id,
-				"operation":     op,
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.AgentRevision,
-			}))
-			return errors.Wrap(err, "stopping agent monitor")
+			return false, errors.Wrap(err, "stopping agent monitor")
 		}
 
 		if err := h.SetNeedsAgentDeploy(true); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error indicating host needs deploy",
-				"host_id":       h.Id,
-				"operation":     op,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.AgentRevision,
-			}))
-			return errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
+			return false, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 
-		return nil
+		return true, nil
 	case evergreen.HostTerminated:
-		// kim: TODO: double-check this logic
-		// In the case of a decommissioned host, the host termination job will
-		// eventually catch this host and terminate it. Intent hosts are not
-		// decommissioned, so the only hosts that have an agent running and are
-		// decommissioned are real hosts.
-
-		if instanceID != "" && instanceID != h.Id {
-			// If the instance ID is given and the host ID is still an intent
-			// host ID, then it was a stale building host. In this case, replace
-			// the intent host document with the real host document and let it
-			// be cleaned up by the host termination job.
-
-			grip.Notice(message.Fields{
-				"message":     "DB-EC2 state mismatch - found EC2 instance with a valid intent host ID, but the host document ID does not match",
-				"host_id":     h.Id,
-				"instance_id": instanceID,
-				"host_status": h.Status,
-				"hypothesis":  fmt.Sprintf("Evergreen failed to mark host document as started, but the host was successfully started in EC2 nonetheless and was eventually marked as stale due to long time spent in state '%s'", evergreen.HostBuilding),
-			})
-
-			intentHostID := h.Id
-			h.Id = instanceID
-			if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
-				return errors.Wrap(err, "unsafely replacing intent host with real host")
-			}
-
-			return nil
-		} else if instanceID == "" && !cloud.IsEC2InstanceID(h.Id) {
-			// The agent did not send an instance ID and also, the host document
-			// is still an intent host. This should never happen, but if the
-			// system ever hits this state, it seems like there are multiple
-			// issues (on both the Evergreen side and the EC2 instance side), so
-			// there's nothing that can be done to resolve it other than manual
-			// investigation.
-			grip.Warning(message.Fields{
-				"message":     "unresolvable EC2 instance state - host document state is '%s' and EC2 instance is alive, but did not send any instance ID",
-				"host_id":     h.Id,
-				"host_status": h.Status,
-			})
-
-			return nil
+		// The host should already be terminated but somehow it's still alive.
+		// In this anomaly case, manually terminate it again.
+		if err := as.terminateGhost(ctx, h, "host should already have been terminated, but is still alive"); err != nil {
+			return false, errors.Wrap(err, "terminating ghost")
 		}
 
-		// The host has a valid EC2 instance ID. For already-terminated hosts,
-		// terminate it again, because somehow, the agent is still alive.
-
-		return nil
+		return false, nil
 	default:
-		return nil
+		return false, nil
 	}
 }
 
-// kim: TODO: implement
-func (as *APIServer) terminateUnhealthyHost(ctx context.Context, h *host.Host) error {
-	cloud.GetCloudHost(ctx, h, as.env)
-	// kim: TODO: get cloud provider.
-	// kim: TODO: do cloud provider TerminateInstances.
-	return errors.New("kim: TODO: implement")
-}
-
-// prepareForReprovision readies host for reprovisioning.
+// prepareForReprovision readies a host for reprovisioning.
 func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
@@ -936,15 +911,12 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"operation":    "next_task",
 	}))
 
-	stoppedAgentMonitor := (h.Distro.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
-		h.NeedsReprovision == host.ReprovisionRestartJasper)
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
-			"message":               "slow next_task operation",
-			"host_id":               h.Id,
-			"distro":                h.Distro.Id,
-			"latency":               time.Since(begin).Seconds(),
-			"stopped_agent_monitor": stoppedAgentMonitor,
+			"message": "slow next_task operation",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"latency": time.Since(begin).Seconds(),
 		})
 	}()
 
@@ -960,9 +932,28 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(h) {
-		if err := as.prepareUnhealthyHostForAgentExit(ctx, h, details.EC2InstanceID, "next_task"); err != nil {
+		// kim: NOTE: for a building -> started host, the agent should stay
+		// alive. For a building-failed -> decommissioned host, it doesn't
+		// really matter if it exits or not as long as it doesn't pick up a
+		// task.
+		if err := as.fixIntentHostRunningAgent(ctx, h, details.EC2InstanceID); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "could not prepare host in unusual state for exit",
+				"message":       "could not fix intent host that is running an agent",
+				"host_id":       h.Id,
+				"host_status":   h.Status,
+				"operation":     "next_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
+			}))
+			gimlet.WriteJSON(w, response)
+			return
+		}
+
+		shouldExit, err := as.prepareHostForAgentExit(ctx, h)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "could not prepare host for agent to exit",
 				"host_id":       h.Id,
 				"operation":     "next_task",
 				"revision":      evergreen.BuildRevision,
@@ -972,7 +963,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
-		response.ShouldExit = true
+		response.ShouldExit = shouldExit
+
 		gimlet.WriteJSON(w, response)
 		return
 	}

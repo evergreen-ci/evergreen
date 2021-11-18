@@ -54,8 +54,6 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
-// kim: TODO: verify that host termination job can handle intent hosts without
-// issue.
 func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfBusy bool, reason string) amboy.Job {
 	j := makeHostTerminationJob()
 	j.host = h
@@ -166,28 +164,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 		return
 	}
-	// // kim: TODO: need special case for "building-failed". As long as the
-	// agent decommissions when the intent host is "building-failed", then
-	// "building-failed" will always be an intent host.
-	// if j.host.Status == evergreen.HostBuildingFailed {
-	//     // When a host is stale building, it may or may not have an instance ID
-	//     // depending on whether the agent successfully started. If so, the
-	//     // instance should be terminated. If not, just mark the intent host as
-	//     // terminated in the DB.
-	//     if cloud.IsEC2InstanceID(j.host.Id) {
-	//         if err := j.checkAndTerminateCloudHost(ctx, j.host.Status); err != nil {
-	//             j.AddError(errors.Wrap(err, "terminating host that failed to build"))
-	//             grip.Error(message.WrapError(err, message.Fields{
-	//                 "message": "failed to terminate host that failed to build",
-	//             }))
-	//         }
-	//         return
-	//     }
-	//
-	//     // The host is stale building and never transitioned to
-	//
-	//     return
-	// }
 
 	// clear the running task of the host in case one has been assigned.
 	if j.host.RunningTask != "" {

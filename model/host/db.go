@@ -907,41 +907,20 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	return hosts, nil
 }
 
-// Removes host intents that have been been uninitialized for more than 3
+// Removes host intents that have been been initializing for more than 3
 // minutes or spawning (but not started) for more than 15 minutes for the
 // specified distro.
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
-// kim: TODO: make new method to "MarkStaleBuildingAsFailed" hosts.
 // kim: TODO: update tests to exclude stale building
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
-		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
-		// "$or": []bson.M{
-		//     {
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
 		StatusKey:     evergreen.HostUninitialized,
 		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		// },
-		// kim: TODO: log hosts that are "building" but then are considered
-		// stale.
-		// kim: TODO: a couple options to handle stale hosts:
-		// * Set "building" hosts to new "building-failed" status so that
-		// the doc at least exists. The host termination job may or may not
-		// kill the instance depending on whether the agent checks in first
-		// or not. If the agent actually starts, the EC2 instance should
-		// be properly handled by the next task route since the host
-		// document still exists.
-		// * Keep removing "building" hosts. This is undesirable since it
-		// makes checkHost middleware quite difficult to work around.
-		// kim: TODO: remove
-		// {
-		//     StatusKey:     evergreen.HostBuilding,
-		//     CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
-		// },
-		// },
 	}
 
 	if distroID != "" {

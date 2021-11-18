@@ -47,18 +47,6 @@ type Manager interface {
 	// TerminateInstance destroys the host in the underlying provider
 	TerminateInstance(context.Context, *host.Host, string, string) error
 
-	// kim: TODO: may need a TerminateInstance variant that does not assume
-	// there's a valid host document in the DB.
-	// kim: TODO: implement for other cloud providers.
-	// kim: NOTE: it may not be possible to implement this since the AWS
-	// credentials are tied to distros, which we can't get if we don't have a
-	// host document.
-	// TerminateDisassociatedInstance is a special variation of
-	// TerminateInstance that destroys the host in the underlying provider when
-	// the instance is not associated with a host document to track its
-	// metadata.
-	// TerminateDisassociatedInstance(ctx context.Context, instanceID string) error
-
 	// StopInstance stops an instance.
 	StopInstance(context.Context, *host.Host, string) error
 

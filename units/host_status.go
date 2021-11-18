@@ -197,18 +197,6 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 
 		return catcher.Resolve()
 	case cloud.StatusRunning:
-		// kim: TODO: do a check to verify that the host status is either
-		// "building" or "starting". If it's in a down host state
-		// (decommissioned, quarantined, terminated), then we have to leave it
-		// as-is to let it terminate. A host could be prematurely down for
-		// multiple reasons.
-		// If it's "starting", then everything is as normal. If it's "building",
-		// then we have to do the awful host document swap.
-		//
-		// If the host doc says it's down but the host document is still using
-		// an intent host ID instead of an actual host ID, it should terminate
-		// the host in this code, because the host doc can't be atomically
-		// swapped out safely (I hate this John host-ID-swapping code).
 		if err := j.initialSetup(ctx, m, &h); err != nil {
 			return errors.Wrap(err, "problem doing initial setup")
 		}
