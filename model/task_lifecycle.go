@@ -1395,6 +1395,9 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrapf(err, "error getting display task for task")
 	}
+	if dt == nil {
+		return errors.Errorf("%s may hold a display task that doesn't exist", t.Id)
+	}
 	if !dt.DisplayOnly {
 		return errors.Errorf("%s is not a display task", dt.Id)
 	}
