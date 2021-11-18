@@ -1525,7 +1525,12 @@ func (t *Task) GetDisplayStatus() string {
 		return evergreen.TaskSetupFailed
 	}
 	if t.Details.TimedOut {
-		return evergreen.TaskTimedOut
+		if t.Details.TimeoutType == string(evergreen.ExecTimeout) {
+			return evergreen.TaskTimedOut
+		}
+		if t.Details.TimeoutType == string(evergreen.IdleTimeout) {
+			return evergreen.TaskTestTimedOut
+		}
 	}
 	return t.Status
 }

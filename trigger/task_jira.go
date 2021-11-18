@@ -170,7 +170,9 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 	case s == evergreen.TaskSystemTimedOut:
 		return "System Timed Out: "
 	case s == evergreen.TaskTimedOut:
-		return "Timed Out: "
+		return "Task Timed Out: "
+	case s == evergreen.TaskTestTimedOut:
+		return "Test Timed Out: "
 	case s == evergreen.TaskSystemUnresponse:
 		return "System Unresponsive: "
 	case s == evergreen.TaskSystemFailed:

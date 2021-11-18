@@ -88,7 +88,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 
 			if timeSinceLastMessage > timeout {
 				tc.logger.Execution().Errorf("Hit idle timeout (no message on stdout for more than %s)", timeout)
-				tc.reachTimeOut(idleTimeout, timeout)
+				tc.reachTimeOut(evergreen.IdleTimeout, timeout)
 				return
 			}
 		}
@@ -112,7 +112,7 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, c
 
 			if timeSinceTickerStarted > timeout {
 				tc.logger.Execution().Errorf("Hit exec timeout (%s)", timeout)
-				tc.reachTimeOut(execTimeout, timeout)
+				tc.reachTimeOut(evergreen.ExecTimeout, timeout)
 				return
 			}
 		}
