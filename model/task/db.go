@@ -64,7 +64,6 @@ var (
 	PriorityKey                 = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey              = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	ExecutionTasksKey           = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
-	ExecutionTasksFullKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasksFull")
 	DisplayOnlyKey              = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey            = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
 	TaskGroupKey                = bsonutil.MustHaveTag(Task{}, "TaskGroup")
