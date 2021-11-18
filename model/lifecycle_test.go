@@ -1993,7 +1993,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		TaskGroups: []TaskGroup{
 			{
 				Name:  "name",
-				Tasks: []string{"first_task", "second_task"},
+				Tasks: []string{"first_task", "second_task", "third_task"},
 			},
 		},
 	}
