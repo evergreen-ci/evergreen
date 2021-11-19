@@ -44,7 +44,7 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating metadata request", url)
+		return "", errors.Wrap(err, "creating metadata request")
 	}
 
 	resp, err := c.Do(req)

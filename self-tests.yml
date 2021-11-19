@@ -179,6 +179,7 @@ functions:
         - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
+        - RUN_EC2_SPECIFIC_TESTS
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -606,6 +607,7 @@ buildvariants:
       goarch: amd64
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist-and-upload-clis"
@@ -625,6 +627,7 @@ buildvariants:
       - archlinux-new-large
     expansions:
       GOROOT: /opt/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -648,6 +651,7 @@ buildvariants:
       - windows-64-vs2017-large
     expansions:
       GOROOT: c:/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -665,6 +669,7 @@ buildvariants:
       goarch: arm64
       goos: linux
       GOROOT: /opt/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
