@@ -875,33 +875,15 @@ func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
 // kim: TODO: verify that the code reaches checkHostHealth, even for a
 // decommissioned/terminated host. If so, we can proceed with the assumption
 // that it's safe to terminate the EC2 host by its instance ID.
-// kim: TODO: verify that terminated hosts are handled properly with
-// checkHostHealth. Hosts that are "building" status will have to be handled
-// specially by terminating its instance ID, which is much simpler and safer
-// than trying to set it to running from decommissioned/terminated.
+// kim: TODO: verify that quarantined/decommissioned/terminated/building-failed
+// hosts are handled properly during checkHostHealth.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	if h.AgentStartTime.IsZero() {
-		if err := h.SetAgentStartTime(); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not set host's agent start time for first contact",
-				"host_id": h.Id,
-				"distro":  h.Distro.Id,
-			}))
-		} else {
-			grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
-				"message":                   "agent initiated first contact with server",
-				"host_id":                   h.Id,
-				"distro":                    h.Distro.Id,
-				"provisioning":              h.Distro.BootstrapSettings.Method,
-				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
-			})
-		}
-	}
+	setAgentFirstContactTime(h)
 
 	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
@@ -1071,6 +1053,30 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}
 	setNextTask(nextTask, &response)
 	gimlet.WriteJSON(w, response)
+}
+
+func setAgentFirstContactTime(h *host.Host) {
+	if !h.AgentStartTime.IsZero() {
+		return
+	}
+
+	if err := h.SetAgentStartTime(); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not set host's agent start time for first contact",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		}))
+		return
+	}
+
+	grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
+		"message":                   "agent initiated first contact with server",
+		"host_id":                   h.Id,
+		"distro":                    h.Distro.Id,
+		"provisioning":              h.Distro.BootstrapSettings.Method,
+		"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
+	})
+	return
 }
 
 func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (*apimodels.GetNextTaskDetails, bool) {
