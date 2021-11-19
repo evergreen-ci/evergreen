@@ -175,7 +175,6 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 		})
 
 		Convey("hosts that are already terminated should be ignored", func() {
-
 			host1 := &host.Host{
 				Id:           "h1",
 				Provider:     evergreen.ProviderNameMock,
@@ -192,7 +191,6 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 		})
 
 		Convey("hosts that are already provisioned should be ignored", func() {
-
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
@@ -214,7 +212,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Minute * 60),
+				CreationTime: time.Now().Add(-time.Hour),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
@@ -226,6 +224,22 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			So(len(unprovisioned), ShouldEqual, 1)
 			So(unprovisioned[0].Id, ShouldEqual, "h1")
 		})
+		Convey("hosts that have failed to build should be flagged for termination", func() {
+			h := &host.Host{
+				Id:           "h1",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-time.Hour),
+				Status:       evergreen.HostBuildingFailed,
+				Provider:     evergreen.ProviderNameMock,
+			}
+			require.NoError(t, h.Insert())
+
+			found, err := host.FindHostsToTerminate()
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 1)
+			So(found[0].Id, ShouldEqual, "h1")
+		})
+
 		Convey("user data hosts should be ignored if they are running a task or have run a task and recently communicated", func() {
 			h1 := &host.Host{
 				Id:          "h1",
