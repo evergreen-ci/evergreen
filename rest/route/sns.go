@@ -123,12 +123,6 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 
 	switch sns.messageType {
 	case messageTypeNotification:
-		// kim: TODO: ensure that if there's an SNS notification for a running
-		// EC2 instance that's "building" in the DB, the DB host will be set to
-		// "starting" to be funneled into the cloud host ready job. If there's
-		// an SNS notification for a running EC2 instance that's down in the DB,
-		// the EC2 instance will be terminated in this handler because of the
-		// stupid instance ID swapping making it impossible to terminate it.
 		if err := sns.handleNotification(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":      "problem handling SNS notification",
