@@ -159,8 +159,8 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 
 func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// kim: NOTE: the "building" host should be decommissioned/terminated
-		// instead of removed so it still exists in the DB. If the host is
+		// kim: NOTE: the "building" host should have its status updated instead
+		// of removed so it still exists in the DB. If the host is
 		// decommissioned but has sent an instance ID, the next task route will
 		// shut it down. This still will not handle hosts whose documents get
 		// removed (e.g. RunInstances for on-demand hosts).
