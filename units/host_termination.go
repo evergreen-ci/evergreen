@@ -22,10 +22,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const hostTerminationJobName = "host-termination-job"
+const HostTerminationJobName = "host-termination-job"
 
 func init() {
-	registry.AddJobType(hostTerminationJobName, func() amboy.Job {
+	registry.AddJobType(HostTerminationJobName, func() amboy.Job {
 		return makeHostTerminationJob()
 	})
 }
@@ -44,7 +44,7 @@ func makeHostTerminationJob() *hostTerminationJob {
 	j := &hostTerminationJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    hostTerminationJobName,
+				Name:    HostTerminationJobName,
 				Version: 0,
 			},
 		},
@@ -63,8 +63,8 @@ func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfB
 	j.Reason = reason
 	j.SetPriority(2)
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
-	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, h.Id, ts))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostTerminationJobName, h.Id)})
+	j.SetID(fmt.Sprintf("%s.%s.%s", HostTerminationJobName, h.Id, ts))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", HostTerminationJobName, h.Id)})
 	j.SetEnqueueAllScopes(true)
 
 	return j
@@ -139,16 +139,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// we may be running these jobs on hosts that are already
 	// terminated.
-	grip.InfoWhen(j.host.Status == evergreen.HostTerminated,
-		message.Fields{
-			"host_id":  j.host.Id,
-			"provider": j.host.Distro.Provider,
-			"job_type": j.Type().Name,
-			"job":      j.ID(),
-			"message":  "terminating host already marked terminated in the db",
-			"theory":   "job collision",
-			"outcome":  "investigate-spurious-host-termination",
-		})
+	grip.InfoWhen(j.host.Status == evergreen.HostTerminated, message.Fields{
+		"host_id":  j.host.Id,
+		"provider": j.host.Distro.Provider,
+		"job_type": j.Type().Name,
+		"job":      j.ID(),
+		"message":  "terminating host already marked terminated in the db - this could happen for many reasons",
+	})
 
 	// host may still be an intent host
 	if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuildingFailed {
@@ -210,14 +207,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 	// set host as decommissioned in DB so no new task will be assigned
 	prevStatus := j.host.Status
-	if err = j.host.SetDecommissioned(evergreen.User, "host will be terminated shortly, preventing task dispatch"); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"host_id":  j.host.Id,
-			"provider": j.host.Distro.Provider,
-			"job_type": j.Type().Name,
-			"job":      j.ID(),
-			"message":  "problem decommissioning host",
-		}))
+	if prevStatus != evergreen.HostTerminated {
+		if err = j.host.SetDecommissioned(evergreen.User, "host will be terminated shortly, preventing task dispatch"); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"host_id":  j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"job_type": j.Type().Name,
+				"job":      j.ID(),
+				"message":  "problem decommissioning host",
+			}))
+		}
 	}
 
 	j.host, err = host.FindOneId(j.HostID)
