@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -331,7 +332,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 // fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
 // host is still believed to be an intent host but somehow the agent is running
 // on an EC2 instance associated with that intent host.
-// kim: TODO: test
 func (as *APIServer) fixIntentHostRunningAgent(ctx context.Context, h *host.Host, instanceID string) error {
 	if !cloud.IsEc2Provider(h.Provider) {
 		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
@@ -432,18 +432,13 @@ func (as *APIServer) terminateIntentGhost(ctx context.Context, h *host.Host, ins
 	return errors.Wrap(as.terminateGhost(ctx, h, "lingering instance came up after the host document was marked terminated"), "terminating intent ghost")
 }
 
+// terminateGhost sends a host which should already have been terminated but
+// whose instance is still alive to be terminated again.
 func (as *APIServer) terminateGhost(ctx context.Context, h *host.Host, reason string) error {
-	// kim: QUESTION: should this really terminate in the REST API or should it
-	// make a job to sweep up lingering terminated hosts?
-	cloudHost, err := cloud.GetCloudHost(ctx, h, as.env)
-	if err != nil {
-		return errors.Wrap(err, "getting cloud host")
+	j := units.NewHostTerminationJob(as.env, h, true, reason)
+	if err := amboy.EnqueueUniqueJob(ctx, as.env.RemoteQueue(), j); err != nil {
+		return errors.Wrap(err, "enqueueing host termination job")
 	}
-
-	if err := cloudHost.TerminateInstance(ctx, evergreen.User, reason); err != nil {
-		return errors.Wrap(err, "terminating cloud host")
-	}
-
 	return nil
 }
 
@@ -453,18 +448,17 @@ func (as *APIServer) terminateGhost(ctx context.Context, h *host.Host, reason st
 // hosts, as the host may continue running, but it must stop all agent-related
 // activity for now. For a terminated host, the host should already have been
 // terminated but is nonetheless alive, so terminate it again.
-// kim: TODO: test
 func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) (shouldExit bool, err error) {
 	switch h.Status {
 	case evergreen.HostQuarantined:
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 		if err := h.StopAgentMonitor(ctx, as.env); err != nil {
-			return false, errors.Wrap(err, "stopping agent monitor")
+			return true, errors.Wrap(err, "stopping agent monitor")
 		}
 
 		if err := h.SetNeedsAgentDeploy(true); err != nil {
-			return false, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
+			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 
 		return true, nil
@@ -475,7 +469,9 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 			return false, errors.Wrap(err, "terminating ghost")
 		}
 
-		return false, nil
+		return true, nil
+	case evergreen.HostDecommissioned:
+		return true, nil
 	default:
 		return false, nil
 	}
@@ -872,11 +868,6 @@ func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
 
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
 // and popping the next task off the task queue.
-// kim: TODO: verify that the code reaches checkHostHealth, even for a
-// decommissioned/terminated host. If so, we can proceed with the assumption
-// that it's safe to terminate the EC2 host by its instance ID.
-// kim: TODO: verify that quarantined/decommissioned/terminated/building-failed
-// hosts are handled properly during checkHostHealth.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
@@ -942,8 +933,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"agent":         evergreen.AgentVersion,
 				"current_agent": h.AgentRevision,
 			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
 		}
 		response.ShouldExit = shouldExit
 
