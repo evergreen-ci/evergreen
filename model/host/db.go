@@ -913,7 +913,6 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
-// kim: TODO: update tests to exclude stale building
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
@@ -928,36 +927,22 @@ func RemoveStaleInitializing(distroID string) error {
 		query[key] = distroID
 	}
 
-	q := db.Query(query).Project(bson.M{IdKey: 1})
-	hosts := []Host{}
-	if err := db.FindAllQ(Collection, q, &hosts); err != nil {
-		return errors.WithStack(err)
-	}
-	ids := []string{}
-	for _, h := range hosts {
-		ids = append(ids, h.Id)
-	}
-
-	if err := db.RemoveAll(evergreen.CredentialsCollection, bson.M{CertUserIDKey: bson.M{"$in": ids}}); err != nil {
-		return errors.Wrap(err, "could not delete credentials")
-	}
-
 	return db.RemoveAll(Collection, query)
 }
 
-// MarkStaleBuildingAsFailed marks all building hosts that have been stuck
-// building for too long as failed in order to indicate that they need to be
+// MarkStaleBuildingAsFailed marks building hosts that have been stuck building
+// for too long as failed in order to indicate that they're stale and should be
 // terminated.
-// kim: TODO: test
 func MarkStaleBuildingAsFailed(distroID string) error {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	spawnedByTaskKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey)
 	query := bson.M{
-		distroIDKey: distroID,
-		UserHostKey: false,
-		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
-		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
-		StatusKey:     evergreen.HostBuilding,
-		CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
+		distroIDKey:      distroID,
+		UserHostKey:      false,
+		spawnedByTaskKey: bson.M{"$ne": true},
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		StatusKey:        evergreen.HostBuilding,
+		CreateTimeKey:    bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
 	}
 
 	if distroID != "" {
@@ -1424,7 +1409,6 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 // because other threads may still be using the old host document.
 // TODO (EVG-15875): set a field containing the external identifier on the host
 // document rather than do this host document swap logic.
-// kim: TODO: test
 func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove string, toInsert *Host) error {
 	if idToRemove == toInsert.Id {
 		return nil
