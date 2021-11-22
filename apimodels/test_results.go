@@ -160,6 +160,81 @@ func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResul
 	return sample, nil
 }
 
+// CedarFailedTestResultsSample is a sample of test names for a given task and execution.
+type CedarFailedTestResultsSample struct {
+	TaskID                  *string  `json:"task_id"`
+	Execution               int      `json:"execution"`
+	MatchingFailedTestNames []string `json:"matching_failed_test_names"`
+	TotalFailedNames        int      `json:"total_failed_names"`
+}
+
+// GetCedarFailedTestResultsSampleOptions represents the arguments for fetching
+// test names for failed tests via Cedar.
+type GetCedarFailedTestResultsSampleOptions struct {
+	BaseURL       string
+	SampleOptions CedarFailedTestSampleOptions
+}
+
+// CedarFailedTestSampleOptions specifies the tasks to get the sample for
+// and regexes to filter the test names by.
+type CedarFailedTestSampleOptions struct {
+	Tasks        []CedarTaskInfo
+	RegexFilters []string
+}
+
+// CedarTaskInfo specifies a set of test results to find.
+type CedarTaskInfo struct {
+	TaskID      string
+	Execution   int
+	DisplayTask bool
+}
+
+func (opts GetCedarFailedTestResultsSampleOptions) convert() testresults.GetFailedSampleOptions {
+	return testresults.GetFailedSampleOptions{
+		Cedar: timber.GetOptions{
+			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
+		},
+		SampleOptions: opts.SampleOptions.convert(),
+	}
+}
+
+func (opts *CedarFailedTestSampleOptions) convert() testresults.FailedTestSampleOptions {
+	tasks := make([]testresults.TaskInfo, 0, len(opts.Tasks))
+	for _, t := range opts.Tasks {
+		tasks = append(tasks, t.convert())
+	}
+
+	return testresults.FailedTestSampleOptions{
+		Tasks:        tasks,
+		RegexFilters: opts.RegexFilters,
+	}
+}
+
+func (info *CedarTaskInfo) convert() testresults.TaskInfo {
+	return testresults.TaskInfo{
+		TaskID:      info.TaskID,
+		Execution:   info.Execution,
+		DisplayTask: info.DisplayTask,
+	}
+}
+
+// GetCedarFilteredFailedSamples makes a request to Cedar for failed
+// test result samples for the specified tasks.
+func GetCedarFilteredFailedSamples(ctx context.Context, opts GetCedarFailedTestResultsSampleOptions) ([]CedarFailedTestResultsSample, error) {
+	timberOpts := opts.convert()
+	data, err := testresults.GetFailedSamples(ctx, timberOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting failed test result samples from Cedar")
+	}
+
+	samples := []CedarFailedTestResultsSample{}
+	if err = json.Unmarshal(data, &samples); err != nil {
+		return nil, errors.Wrap(err, "unmarshaling failed test result samples from Cedar")
+	}
+
+	return samples, nil
+}
+
 // DisplayTaskInfo represents information about a display task necessary for
 // creating a cedar test result.
 type DisplayTaskInfo struct {
