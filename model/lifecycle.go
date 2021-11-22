@@ -749,6 +749,10 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 	}
 
 	for _, t := range tg.Tasks {
+		pt := proj.FindProjectTask(t)
+		if pt == nil {
+			return tasks
+		}
 		bvt := BuildVariantTaskUnit{
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
@@ -767,6 +771,19 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 			Stepback:         in.Stepback,
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
+		}
+		// Overwrite limiting when tasks will run from project task
+		if bvt.Patchable == nil {
+			bvt.Patchable = pt.Patchable
+		}
+		if bvt.PatchOnly == nil {
+			bvt.PatchOnly = pt.PatchOnly
+		}
+		if bvt.Disable == nil {
+			bvt.Disable = pt.Disable
+		}
+		if bvt.AllowForGitTag == nil {
+			bvt.AllowForGitTag = pt.AllowForGitTag
 		}
 		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
 			bvt.Populate(taskMap[t])
