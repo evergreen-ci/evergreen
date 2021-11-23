@@ -1,7 +1,6 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
@@ -36,47 +35,45 @@ var (
 	ProjectConfigsCommitQueueKey            = bsonutil.MustHaveTag(ProjectConfigs{}, "CommitQueue")
 )
 
-// ProjectConfigsFindOneById returns the parser project for the version
-func ProjectConfigsFindOneById(id string) (*ProjectConfigs, error) {
-	return ProjectConfigsFindOne(ProjectConfigsById(id))
+// FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty
+func FindProjectConfigToMerge(projectId, id string) (*ProjectConfigs, error) {
+	if id == "" {
+		return FindLastKnownGoodProjectConfig(projectId)
+	} else {
+		return ProjectConfigsById(id)
+	}
 }
 
-// ProjectConfigsFindOne finds a parser project with a given query.
+// FindLastKnownGoodProjectConfig retrieves the most recent project config for the given project.
+func FindLastKnownGoodProjectConfig(projectId string) (*ProjectConfigs, error) {
+	q := bson.M{
+		ProjectConfigsIdentifierKey: projectId,
+	}
+	pc, err := ProjectConfigsFindOne(db.Query(q).Sort([]string{"-" + ProjectConfigsCreateTimeKey}))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error finding recent valid project config for '%s'", projectId)
+	}
+	return pc, nil
+}
+
 func ProjectConfigsFindOne(query db.Q) (*ProjectConfigs, error) {
+	projectConfig := &ProjectConfigs{}
+	err := db.FindOneQ(ProjectConfigsCollection, query, projectConfig)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return projectConfig, err
+}
+
+// ProjectConfigsById returns a project config by id.
+func ProjectConfigsById(id string) (*ProjectConfigs, error) {
 	project := &ProjectConfigs{}
+	query := db.Query(bson.M{ProjectConfigsIdKey: id})
 	err := db.FindOneQ(ProjectConfigsCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return project, err
-}
-
-// ProjectConfigsById returns a query to find a parser project by id.
-func ProjectConfigsById(id string) db.Q {
-	return db.Query(bson.M{ProjectConfigsIdKey: id})
-}
-
-// FindLastGoodConfig filters on versions with valid (i.e., have no errors) config for the given
-// project. Does not apply a limit, so should generally be used with a findOneRepoRefQ.
-func FindLastGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
-	q := bson.M{
-		VersionIdentifierKey: projectId,
-		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-		VersionErrorsKey: bson.M{
-			"$exists": false,
-		},
-	}
-
-	if revisionOrderNumber >= 0 {
-		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
-	}
-	v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
-	}
-	return v, nil
 }
 
 // ProjectConfigsUpsertOne updates one project

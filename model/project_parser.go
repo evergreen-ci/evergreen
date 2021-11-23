@@ -791,6 +791,7 @@ func CreateIntermediateConfig(yml []byte) (*ProjectConfigs, error) {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, "error unmarshalling into project configs")
 	}
+	p.CreateTime = time.Now()
 	return p, nil
 }
 

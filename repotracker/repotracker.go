@@ -1111,7 +1111,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
 		}
-		_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.IntermediateConfig)
+		err = projectInfo.IntermediateConfig.Insert()
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
 				"message": "aborting transaction",

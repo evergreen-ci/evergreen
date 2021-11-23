@@ -404,29 +404,33 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-// MergeWithProjectConfig looks up the parser project with the given project ref id and modifies
+// MergeWithProjectConfig looks up the project configs with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
-// Any values that are set at the project parser level will be set on the project ref.
+// Any values that are set at the project config level will be set on the project ref IF they are not set on
+// the project ref.
 func (p *ProjectRef) MergeWithProjectConfig(version string) error {
-	parserProject, err := ProjectConfigsFindOne(ProjectConfigsById(p.Id))
+	projectConfig, err := FindProjectConfigToMerge(p.Id, version)
 	if err != nil {
 		return err
 	}
-	if parserProject != nil {
-		if parserProject.PerfEnabled != nil {
-			p.PerfEnabled = parserProject.PerfEnabled
+	if projectConfig != nil {
+		if p.PerfEnabled == nil {
+			p.PerfEnabled = projectConfig.PerfEnabled
 		}
-		if parserProject.DeactivatePrevious != nil {
-			p.DeactivatePrevious = parserProject.DeactivatePrevious
+		if p.DeactivatePrevious == nil {
+			p.DeactivatePrevious = projectConfig.DeactivatePrevious
 		}
-		if parserProject.TaskAnnotationSettings != nil {
-			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
+		var emptyAnnotations evergreen.AnnotationsSettings
+		if reflect.DeepEqual(p.TaskAnnotationSettings, emptyAnnotations) {
+			p.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
 		}
-		if parserProject.WorkstationConfig != nil {
-			p.WorkstationConfig = *parserProject.WorkstationConfig
+		var emptyWorkstation WorkstationConfig
+		if reflect.DeepEqual(p.WorkstationConfig, emptyWorkstation) {
+			p.WorkstationConfig = *projectConfig.WorkstationConfig
 		}
-		if parserProject.CommitQueue != nil {
-			p.CommitQueue = *parserProject.CommitQueue
+		var emptyCqParams CommitQueueParams
+		if reflect.DeepEqual(p.CommitQueue, emptyCqParams) {
+			p.CommitQueue = *projectConfig.CommitQueue
 		}
 	}
 	return nil
@@ -719,7 +723,7 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 // Relevant fields will also be merged from the parser project with a specified version.
 // If no version is specified, the most recent valid parser project version will be used for merge.
-func FindMergedProjectRef(identifier string, version string, includeParserProject bool) (*ProjectRef, error) {
+func FindMergedProjectRef(identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
@@ -740,13 +744,12 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	// Removing due to outage: EVG-15856
-	//if includeParserProject {
-	//	err = pRef.MergeWithProjectConfig(version)
-	//	if err != nil {
-	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-	//	}
-	//}
+	if includeProjectConfig {
+		err = pRef.MergeWithProjectConfig(version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+		}
+	}
 	return pRef, nil
 }
 
