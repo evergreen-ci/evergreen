@@ -54,5 +54,48 @@
       },
       "distro": "debian71-test"
     }
+  ],
+  "hosts": [
+    {
+      "host_id": "host1",
+      "user": "mci-exec",
+      "distro": {
+          "_id": "osx-108",
+          "aliases": ["os-x-108-64-nossl"],
+          "work_dir": "/data/mci"
+      },
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "status": "running",
+      "started_by": "mci",
+      "user_host": false
+    },
+    {
+      "host_id": "host2",
+      "user": "mci-exec",
+      "distro": {
+          "_id": "osx-108",
+          "aliases": ["os-x-108-64-nossl"],
+          "work_dir": "/data/mci"
+      },
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "status": "running",
+      "started_by": "mci",
+      "user_host": false
+    },
+    {
+      "host_id": "host3",
+      "user": "mci-exec",
+      "distro": {
+          "_id": "debian71-test",
+          "work_dir": "/data/mci"
+      },
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "status": "provisioning",
+      "started_by": "mci",
+      "user_host": false
+    }
   ]
 }

@@ -7,11 +7,13 @@
           "taskQueueDistros": [
             {
               "id": "osx-108",
-              "queueCount": 3
+              "taskCount": 3,
+              "hostCount": 2
             },
             {
               "id": "debian71-test",
-              "queueCount": 0
+              "taskCount": 0,
+              "hostCount": 1
             }
           ]
         }
