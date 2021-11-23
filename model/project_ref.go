@@ -1537,6 +1537,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
 			ProjectRefEnabledKey:                 p.Enabled,
+			ProjectRefBranchKey:                  p.Branch,
+			ProjectRefDisplayNameKey:             p.DisplayName,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,

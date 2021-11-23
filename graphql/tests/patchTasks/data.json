@@ -232,7 +232,8 @@
       "details": {
         "status": "failed",
         "timed_out": true,
-        "type": "test"
+        "type": "test",
+        "timeout_type": "exec"
       },
       "build_id": "windows_build"
     },

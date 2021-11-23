@@ -282,7 +282,7 @@ func (tc *taskContext) getCurrentTimeout() time.Duration {
 	return defaultIdleTimeout
 }
 
-func (tc *taskContext) reachTimeOut(kind timeoutType, dur time.Duration) {
+func (tc *taskContext) reachTimeOut(kind evergreen.TimeoutType, dur time.Duration) {
 	tc.Lock()
 	defer tc.Unlock()
 
@@ -321,7 +321,7 @@ func (tc *taskContext) getIdleTimeout() time.Duration {
 	return tc.timeout.idleTimeoutDuration
 }
 
-func (tc *taskContext) setTimedOut(timeout bool, kind timeoutType) {
+func (tc *taskContext) setTimedOut(timeout bool, kind evergreen.TimeoutType) {
 	tc.timeout.hadTimeout = timeout
 	tc.timeout.timeoutType = kind
 }
@@ -338,7 +338,7 @@ func (tc *taskContext) getTimeoutDuration() time.Duration {
 	return tc.timeout.exceededDuration
 }
 
-func (tc *taskContext) getTimeoutType() timeoutType {
+func (tc *taskContext) getTimeoutType() evergreen.TimeoutType {
 	return tc.timeout.timeoutType
 }
 
