@@ -221,8 +221,7 @@ func (info *CedarTaskInfo) convert() testresults.TaskInfo {
 // GetCedarFilteredFailedSamples makes a request to Cedar for failed
 // test result samples for the specified tasks.
 func GetCedarFilteredFailedSamples(ctx context.Context, opts GetCedarFailedTestResultsSampleOptions) ([]CedarFailedTestResultsSample, error) {
-	timberOpts := opts.convert()
-	data, err := testresults.GetFailedSamples(ctx, timberOpts)
+	data, err := testresults.GetFailedSamples(ctx, opts.convert())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting failed test result samples from Cedar")
 	}
