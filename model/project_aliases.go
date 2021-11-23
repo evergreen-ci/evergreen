@@ -142,7 +142,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 //  other aliases in the category are defined, in which case we shouldn't check other sources.
 func findMatchingAliasForProjectConfigs(projectID, alias string) ([]ProjectAlias, bool, error) {
 	// if alias is a PATCH ALIAS, we want to know if it has ANY patch aliases.
-	projectConfigs, err := ProjectConfigsFindOne(ProjectConfigsById(projectID))
+	projectConfigs, err := FindProjectConfigToMerge(projectID, "")
 	if err != nil {
 		return nil, false, errors.Wrap(err, "error finding project parser")
 	}

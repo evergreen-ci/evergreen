@@ -215,7 +215,7 @@ func BbGetProject(settings *evergreen.Settings, projectId string, version string
 			}
 		}
 		if version != "" {
-			projectConfigs, err := model.ProjectConfigsFindOne(model.ProjectConfigsById(""))
+			projectConfigs, err := model.FindProjectConfigToMerge(projectId, "")
 			if err != nil {
 				return evergreen.BuildBaronSettings{}, false
 			}
