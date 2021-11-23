@@ -76,7 +76,7 @@ func TestJIRASummary(t *testing.T) {
 			So(subj, ShouldNotEqual, "")
 			So(err, ShouldBeNil)
 			Convey("denoting the time out and showing the task name", func() {
-				So(subj, ShouldContainSubstring, "Timed Out")
+				So(subj, ShouldContainSubstring, "Failed")
 				So(subj, ShouldContainSubstring, taskName)
 				So(subj, ShouldContainSubstring, buildName)
 				So(subj, ShouldContainSubstring, versionRevision[0:8])
@@ -499,6 +499,7 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 	assert.Equal(evergreen.TaskFailed, doc.GetDisplayStatus())
 
 	doc.Details.TimedOut = true
+	doc.Details.TimeoutType = string(evergreen.ExecTimeout)
 	assert.Equal(evergreen.TaskTimedOut, doc.GetDisplayStatus())
 
 	doc.Details.TimedOut = false
@@ -530,7 +531,11 @@ func TestMakeSummaryPrefix(t *testing.T) {
 	assert.Equal("Failed: ", makeSummaryPrefix(doc, 0))
 
 	doc.Details.TimedOut = true
-	assert.Equal("Timed Out: ", makeSummaryPrefix(doc, 0))
+	doc.Details.TimeoutType = string(evergreen.IdleTimeout)
+	assert.Equal("Test Timed Out: ", makeSummaryPrefix(doc, 0))
+
+	doc.Details.TimeoutType = string(evergreen.ExecTimeout)
+	assert.Equal("Task Timed Out: ", makeSummaryPrefix(doc, 0))
 
 	doc.Details.Type = evergreen.CommandTypeSystem
 	assert.Equal("System Timed Out: ", makeSummaryPrefix(doc, 0))

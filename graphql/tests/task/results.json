@@ -260,6 +260,19 @@
       }
     },
     {
+      "query_file": "patch.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "patch": {
+              "author": "arjun"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "spawnHostLink.graphql",
       "result": {
         "data": {

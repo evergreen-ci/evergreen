@@ -812,7 +812,8 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
+  versionFull: Version
   status: String!
   variants: [String!]!
   tasks: [String!]!
@@ -1041,6 +1042,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
+  patch: Patch
   patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int

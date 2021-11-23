@@ -166,7 +166,7 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 	v1 := Version{
 		Id:         "project-1",
 		Identifier: "project-1",
-		Requester:  evergreen.GitTagRequester,
+		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",

@@ -1180,6 +1180,21 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 
 type patchResolver struct{ *Resolver }
 
+func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
+	if utility.FromStringPtr(obj.Version) == "" {
+		return nil, nil
+	}
+	v, err := r.sc.FindVersionById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", *obj.Version, err.Error()))
+	}
+	apiVersion := restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(v); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *obj.Version, err.Error()))
+	}
+	return &apiVersion, nil
+}
+
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
 	var commitQueuePosition *int
 	if *apiPatch.Alias == evergreen.CommitQueueAlias {
@@ -3141,6 +3156,9 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
+		return false, nil
+	}
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, err
@@ -3158,14 +3176,34 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			if err != nil {
 				return false, err
 			}
+			projectMatches := false
 			for _, projectName := range perfPlugin.Projects {
 				if projectName == pRef.Id || projectName == pRef.Identifier {
-					return true, nil
+					projectMatches = true
+					break
 				}
 			}
+			if !projectMatches {
+				return false, nil
+			}
+		}
+		opts := apimodels.GetCedarPerfCountOptions{
+			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:    utility.FromStringPtr(obj.Id),
+			Execution: obj.Execution,
+		}
+		if opts.BaseURL == "" {
+			return false, nil
+		}
+		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+		}
+		if result.NumberOfResults == 0 {
+			return false, nil
 		}
 	}
-	return false, nil
+	return true, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
@@ -3275,6 +3313,17 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
 	}
 	return apiVersion, nil
+}
+
+func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
+	if !evergreen.IsPatchRequester(*obj.Requester) {
+		return nil, nil
+	}
+	apiPatch, err := r.sc.FindPatchById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Version, err.Error()))
+	}
+	return apiPatch, nil
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
