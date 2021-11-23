@@ -215,12 +215,12 @@ func BbGetProject(settings *evergreen.Settings, projectId string, version string
 			}
 		}
 		if version != "" {
-			parserProject, err := model.ParserProjectFindOneById(version)
+			projectConfigs, err := model.ProjectConfigsFindOne(model.ProjectConfigsById(""))
 			if err != nil {
 				return evergreen.BuildBaronSettings{}, false
 			}
-			if parserProject != nil && parserProject.BuildBaronSettings != nil {
-				return *parserProject.BuildBaronSettings, true
+			if projectConfigs != nil && projectConfigs.BuildBaronSettings != nil {
+				return *projectConfigs.BuildBaronSettings, true
 			}
 		}
 		projectRef, err := model.FindMergedProjectRef(projectId, version, true)

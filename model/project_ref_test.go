@@ -1864,7 +1864,7 @@ func TestMergeWithParserProject(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, parserProject.Insert())
-	err := projectRef.MergeWithParserProject("version1")
+	err := projectRef.MergeWithProjectConfig("version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, "ident", projectRef.Id)

@@ -64,7 +64,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		Ref:          projectInfo.Ref,
 		ReadFileFrom: model.ReadfromGithub,
 	}
-	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
+	projectInfo.IntermediateProject, projectInfo.IntermediateConfig, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

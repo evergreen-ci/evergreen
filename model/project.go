@@ -73,6 +73,7 @@ type ProjectInfo struct {
 	Ref                 *ProjectRef
 	Project             *Project
 	IntermediateProject *ParserProject
+	IntermediateConfig  *ProjectConfigs
 }
 
 func (p *ProjectInfo) NotPopulated() bool {
@@ -1138,7 +1139,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project, _, err := LoadProjectForVersion(ver, ver.Identifier, false)
+	project, _, _, err := LoadProjectForVersion(ver, ver.Identifier, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
@@ -1188,7 +1189,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
+			project, _, _, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
 			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
 		if err == nil {

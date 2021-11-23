@@ -11,9 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -638,7 +636,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -671,7 +669,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -703,7 +701,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "execution task execTask3 is listed in more than 1 display task")
@@ -729,7 +727,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "display task execTask1 cannot have the same name as an execution task")
@@ -759,7 +757,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -793,7 +791,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
@@ -904,7 +902,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -937,7 +935,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
@@ -973,7 +971,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	for i, t := range proj.TaskGroups[0].Tasks {
@@ -1007,7 +1005,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+	_, _, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 2)
@@ -1045,7 +1043,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1082,7 +1080,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1119,7 +1117,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1155,7 +1153,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1199,7 +1197,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1251,7 +1249,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1296,7 +1294,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
 	assert.Len(t, proj.Tasks, 2)
@@ -1343,7 +1341,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
 	assert.Len(t, proj.BuildVariants, 3)
@@ -1379,7 +1377,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Equal("something", proj.Loggers.Agent[0].Type)
@@ -1678,92 +1676,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 	assert.Equal(t, len(main.Parameters), 2)
 	assert.Equal(t, len(main.Modules), 2)
 	assert.Equal(t, len(main.Functions), 4)
-}
-
-func TestParserProjectFindOneIdWithFields(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(ParserProjectCollection))
-	pp := &ParserProject{
-		Id: "version1",
-		Tasks: []parserTask{
-			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
-			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
-			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
-		},
-		TaskGroups: []parserTaskGroup{
-			{
-				Name:  "my_tg",
-				Tasks: []string{"tg_task"},
-			},
-		},
-		Parameters: []ParameterInfo{
-			{
-				Parameter: patch.Parameter{
-					Key:   "key",
-					Value: "val",
-				},
-			},
-		},
-		Modules: []Module{
-			{
-				Name: "my_module",
-			},
-		},
-		Functions: map[string]*YAMLCommandSet{
-			"func1": &YAMLCommandSet{
-				SingleCommand: &PluginCommandConf{
-					Command: "single_command",
-				},
-			},
-			"func2": &YAMLCommandSet{
-				MultiCommand: []PluginCommandConf{
-					{
-						Command: "multi_command1",
-					}, {
-						Command: "multi_command2",
-					},
-				},
-			},
-		},
-		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebhook: evergreen.WebHook{
-				Endpoint: "random2",
-			},
-		},
-		DeactivatePrevious: utility.TruePtr(),
-		CommitQueueAliases: []ProjectAlias{
-			ProjectAlias{
-				ID:        mgobson.NewObjectId(),
-				ProjectID: projectId,
-				Alias:     "alias1",
-				Variant:   "ubuntu",
-				Task:      "subcommand",
-			},
-		},
-		WorkstationConfig: &WorkstationConfig{
-			GitClone: utility.TruePtr(),
-			SetupCommands: []WorkstationSetupCommand{
-				{Command: "expeliarmus"},
-			},
-		},
-		CommitQueue: &CommitQueueParams{
-			Enabled:     utility.TruePtr(),
-			MergeMethod: "message",
-		},
-	}
-	assert.NoError(t, pp.Insert())
-
-	ppSelectedFields, err := ParserProjectByVersion("", "version1")
-	assert.NoError(t, err)
-	assert.Nil(t, ppSelectedFields.Tasks)
-	assert.Nil(t, ppSelectedFields.Modules)
-	assert.Nil(t, ppSelectedFields.TaskGroups)
-	assert.Nil(t, ppSelectedFields.Parameters)
-	assert.Nil(t, ppSelectedFields.Tasks)
-	assert.NotNil(t, ppSelectedFields.TaskAnnotationSettings)
-	assert.NotNil(t, ppSelectedFields.DeactivatePrevious)
-	assert.NotNil(t, ppSelectedFields.CommitQueueAliases)
-	assert.NotNil(t, ppSelectedFields.CommitQueue)
-	assert.NotNil(t, ppSelectedFields.WorkstationConfig)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {

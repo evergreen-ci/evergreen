@@ -121,7 +121,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
+		if _, _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
 			return nil, "", errors.WithStack(err)
 		}
 		return project, p.PatchedConfig, nil
@@ -162,7 +162,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
@@ -276,13 +276,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
+	intermediateProject, intermediateConfig, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
 			p.Githash)
 	}
 	intermediateProject.Id = p.Id.Hex()
+	intermediateConfig.Id = p.Id.Hex()
 
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
@@ -427,6 +428,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		_, err = db.Collection(ParserProjectCollection).InsertOne(sessCtx, intermediateProject)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error inserting parser project for version '%s'", patchVersion.Id)
+		}
+		_, err = db.Collection(ProjectConfigsCollection).InsertOne(sessCtx, intermediateConfig)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error inserting project configs for version '%s'", patchVersion.Id)
 		}
 		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
 			return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)
@@ -708,7 +713,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	project := &Project{}
-	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), nil, existingPatch.Project, project); err != nil {
+	if _, _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), nil, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 

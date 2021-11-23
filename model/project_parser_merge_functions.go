@@ -180,36 +180,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
 	}
 
-	if pp.TaskAnnotationSettings != nil && toMerge.TaskAnnotationSettings != nil {
-		catcher.New("task annotation settings can only be defined in one yaml")
-	} else if toMerge.TaskAnnotationSettings != nil {
-		pp.TaskAnnotationSettings = toMerge.TaskAnnotationSettings
-	}
-
-	if pp.PerfEnabled != nil && toMerge.PerfEnabled != nil {
-		catcher.New("perf settings can only be defined in one yaml")
-	} else if toMerge.PerfEnabled != nil {
-		pp.PerfEnabled = toMerge.PerfEnabled
-	}
-
-	if pp.DeactivatePrevious != nil && toMerge.DeactivatePrevious != nil {
-		catcher.New("scheduling settings can only be defined in one yaml")
-	} else if toMerge.DeactivatePrevious != nil {
-		pp.DeactivatePrevious = toMerge.DeactivatePrevious
-	}
-
-	if pp.WorkstationConfig != nil && toMerge.WorkstationConfig != nil {
-		catcher.New("virtual workstation configs can only be defined in one yaml")
-	} else if toMerge.WorkstationConfig != nil {
-		pp.WorkstationConfig = toMerge.WorkstationConfig
-	}
-
-	if pp.CommitQueue != nil && toMerge.CommitQueue != nil {
-		catcher.New("commit queue settings can only be defined in one yaml")
-	} else if toMerge.CommitQueue != nil {
-		pp.CommitQueue = toMerge.CommitQueue
-	}
-
 	return catcher.Resolve()
 }
 

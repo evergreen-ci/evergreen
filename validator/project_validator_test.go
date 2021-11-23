@@ -2016,7 +2016,7 @@ func TestTaskValidation(t *testing.T) {
 `
 	var proj model.Project
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
+	_, _, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "spaces are unauthorized")
 }
@@ -2043,7 +2043,7 @@ func TestTaskGroupValidation(t *testing.T) {
   `
 	var proj model.Project
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(duplicateYml), nil, "", &proj)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(duplicateYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2083,7 +2083,7 @@ func TestTaskGroupValidation(t *testing.T) {
     tasks:
     - name: foo
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "", &proj)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2113,7 +2113,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	pp, err = model.LoadProjectInto(ctx, []byte(attachInGroupTeardownYml), nil, "", &proj)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(attachInGroupTeardownYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2139,7 +2139,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2185,7 +2185,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2224,7 +2224,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2282,7 +2282,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2333,7 +2333,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2370,7 +2370,7 @@ func TestValidateCreateHosts(t *testing.T) {
   `
 	var p model.Project
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs := validateHostCreates(&p)
@@ -2391,7 +2391,7 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs = validateHostCreates(&p)
@@ -2440,7 +2440,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
   `
 	var p model.Project
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs := validateDuplicateBVTasks(&p)
@@ -2462,7 +2462,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
     - tg1
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = validateDuplicateBVTasks(&p)
@@ -2487,7 +2487,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - tg1
     - tg2
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = validateDuplicateBVTasks(&p)
@@ -2515,7 +2515,7 @@ tasks:
 `
 	project := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs := checkLoggerConfig(project)
@@ -2534,7 +2534,7 @@ tasks:
     `
 
 	project = &model.Project{}
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = checkLoggerConfig(project)
@@ -2571,7 +2571,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
@@ -2592,7 +2592,7 @@ buildvariants:
     tasks:
       - name: taskA
 `
-	pp, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotNil(pp)
 	assert.NotEmpty(proj)

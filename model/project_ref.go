@@ -404,11 +404,11 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-// MergeWithParserProject looks up the parser project with the given project ref id and modifies
+// MergeWithProjectConfig looks up the parser project with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project parser level will be set on the project ref.
-func (p *ProjectRef) MergeWithParserProject(version string) error {
-	parserProject, err := ParserProjectByVersion(p.Id, version)
+func (p *ProjectRef) MergeWithProjectConfig(version string) error {
+	parserProject, err := ProjectConfigsFindOne(ProjectConfigsById(p.Id))
 	if err != nil {
 		return err
 	}
@@ -742,7 +742,7 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 	}
 	// Removing due to outage: EVG-15856
 	//if includeParserProject {
-	//	err = pRef.MergeWithParserProject(version)
+	//	err = pRef.MergeWithProjectConfig(version)
 	//	if err != nil {
 	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
 	//	}

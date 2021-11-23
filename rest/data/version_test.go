@@ -410,7 +410,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Project:             p,
@@ -460,7 +460,7 @@ tasks:
 - name: t1
 `
 	p = &model.Project{}
-	pp, err = model.LoadProjectInto(ctx, []byte(config2), nil, ref.Id, p)
+	pp, _, err = model.LoadProjectInto(ctx, []byte(config2), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp
