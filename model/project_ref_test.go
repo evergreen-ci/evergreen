@@ -1818,8 +1818,8 @@ func TestPointers(t *testing.T) {
 	assert.True(t, pointerRef.PtrStruct.ShouldGitClone())
 }
 
-//func TestMergeWithParserProject(t *testing.T) {
-//	require.NoError(t, db.ClearCollections(ProjectRefCollection, ParserProjectCollection),
+//func TestMergeWithProjectConfig(t *testing.T) {
+//	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigsCollection),
 //		"Error clearing collection")
 //
 //	projectRef := &ProjectRef{
@@ -1843,7 +1843,7 @@ func TestPointers(t *testing.T) {
 //			MergeMethod: "message1",
 //		},
 //	}
-//	parserProject := &ParserProject{
+//	projectConfig := &ProjectConfigs{
 //		Id:                 "version1",
 //		DeactivatePrevious: utility.TruePtr(),
 //		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
@@ -1863,7 +1863,7 @@ func TestPointers(t *testing.T) {
 //		},
 //	}
 //	assert.NoError(t, projectRef.Insert())
-//	assert.NoError(t, parserProject.Insert())
+//	assert.NoError(t, projectConfig.Insert())
 //	err := projectRef.MergeWithProjectConfig("version1")
 //	assert.NoError(t, err)
 //	require.NotNil(t, projectRef)

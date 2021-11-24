@@ -410,11 +410,12 @@ func TestCreateVersionFromConfig(t *testing.T) {
 
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
+		IntermediateConfig:  pc,
 		Ref:                 &ref,
 	}
 	metadata := model.VersionMetadata{

@@ -712,6 +712,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	projectInfo.IntermediateProject.Id = v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
+	projectInfo.IntermediateConfig.Id = v.Id
 	v.Ignored = ignore
 	v.Activated = utility.FalsePtr()
 
@@ -1111,7 +1112,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
 		}
-		err = projectInfo.IntermediateConfig.Insert()
+		_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.IntermediateConfig)
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
