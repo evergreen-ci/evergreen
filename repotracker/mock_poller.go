@@ -58,7 +58,7 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*m
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, model.TranslateProjectError)
 	}
-	return p, d.parserProject, nil, nil
+	return p, d.parserProject, &model.ProjectConfigs{}, nil
 }
 
 func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
