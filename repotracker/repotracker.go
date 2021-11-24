@@ -1112,18 +1112,19 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
 		}
-		_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.IntermediateConfig)
-		if err != nil {
-			grip.Notice(message.WrapError(err, message.Fields{
-				"message": "aborting transaction",
-				"cause":   "can't insert project configs",
-				"version": v.Id,
-			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-				return errors.Wrap(abortErr, "error aborting transaction")
-			}
-			return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
-		}
+		// todo uncomment
+		//_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.IntermediateConfig)
+		//if err != nil {
+		//	grip.Notice(message.WrapError(err, message.Fields{
+		//		"message": "aborting transaction",
+		//		"cause":   "can't insert project configs",
+		//		"version": v.Id,
+		//	}))
+		//	if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+		//		return errors.Wrap(abortErr, "error aborting transaction")
+		//	}
+		//	return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
+		//}
 		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
