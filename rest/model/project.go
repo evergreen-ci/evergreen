@@ -451,7 +451,7 @@ type APIProjectRef struct {
 	GitTagVersionsEnabled       *bool                     `json:"git_tag_versions_enabled"`
 	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
 	CedarTestResultsEnabled     *bool                     `json:"cedar_test_results_enabled"`
-	UseRepoSettings             bool                      `json:"use_repo_settings"`
+	UseRepoSettings             *bool                     `json:"use_repo_settings"`
 	RepoRefId                   *string                   `json:"repo_ref_id"`
 	DefaultLogger               *string                   `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams      `json:"commit_queue"`
@@ -653,7 +653,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
 	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
 	p.CedarTestResultsEnabled = utility.BoolPtrCopy(projectRef.CedarTestResultsEnabled)
-	p.UseRepoSettings = projectRef.UseRepoSettings
+	p.UseRepoSettings = utility.ToBoolPtr(projectRef.UseRepoSettings())
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
 	p.PerfEnabled = utility.BoolPtrCopy(projectRef.PerfEnabled)
 	p.Hidden = utility.BoolPtrCopy(projectRef.Hidden)

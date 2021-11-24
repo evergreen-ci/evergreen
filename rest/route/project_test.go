@@ -161,45 +161,6 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Nil(p.Restricted)
 }
 
-func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
-	ctx := context.Background()
-	jsonBody := []byte(`{"use_repo_settings": true, "admins": ["me"]}`)
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	u := &user.DBUser{Id: "me"}
-	s.NoError(u.Insert())
-
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-	h := s.rm.(*projectIDPatchHandler)
-	s.NotNil(h.user)
-	s.NotNil(h.originalProject)
-	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(h.originalProject.Owner, h.originalProject.Repo)
-	s.NoError(err)
-	s.Nil(repoRef)
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	p, err := s.sc.FindProjectById("dimoxinil", true, false)
-	s.NoError(err)
-	s.True(p.UseRepoSettings)
-	s.NotEmpty(p.RepoRefId)
-	s.Contains(p.Admins, "me")
-
-	u, err = user.FindOneById("me")
-	s.NoError(err)
-	s.NotNil(u)
-	s.Contains(u.Roles(), serviceModel.GetViewRepoRole(p.RepoRefId))
-	s.Contains(u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
-
-	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.originalProject.Owner, h.originalProject.Repo)
-	s.NoError(err)
-	s.NotNil(repoRef)
-}
-
 func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
@@ -683,7 +644,6 @@ func TestDeleteProject(t *testing.T) {
 			Enabled:              utility.TruePtr(),
 			Private:              utility.TruePtr(),
 			DisplayName:          fmt.Sprintf("display_%d", i),
-			UseRepoSettings:      true,
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     utility.TruePtr(),
 			PRTestingEnabled:     utility.TruePtr(),
@@ -732,14 +692,13 @@ func TestDeleteProject(t *testing.T) {
 		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
-			Id:              projects[i].Id,
-			Owner:           repo.Owner,
-			Repo:            repo.Repo,
-			Branch:          projects[i].Branch,
-			RepoRefId:       repo.Id,
-			Enabled:         utility.FalsePtr(),
-			UseRepoSettings: true,
-			Hidden:          utility.TruePtr(),
+			Id:        projects[i].Id,
+			Owner:     repo.Owner,
+			Repo:      repo.Repo,
+			Branch:    projects[i].Branch,
+			RepoRefId: repo.Id,
+			Enabled:   utility.FalsePtr(),
+			Hidden:    utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -768,8 +727,8 @@ func TestDeleteProject(t *testing.T) {
 
 	// Project with UseRepoSettings == false
 	badProject := serviceModel.ProjectRef{
-		Id:              "bad_project",
-		UseRepoSettings: false,
+		Id:        "bad_project",
+		RepoRefId: "",
 	}
 	require.NoError(t, badProject.Insert())
 	pdh.projectName = badProject.Id

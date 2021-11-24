@@ -433,16 +433,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// if owner/repo has changed or we're toggling repo settings off, update scope
 	if h.newProjectRef.Owner != h.originalProject.Owner || h.newProjectRef.Repo != h.originalProject.Repo ||
-		(!h.newProjectRef.UseRepoSettings && h.originalProject.UseRepoSettings) {
+		(!h.newProjectRef.UseRepoSettings() && h.originalProject.UseRepoSettings()) {
 		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project from old repo scope"))
 		}
 		h.newProjectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
-	}
-	if h.newProjectRef.UseRepoSettings && h.newProjectRef.RepoRefId == "" {
-		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
-		}
 	}
 
 	// complete all updates
@@ -671,20 +666,19 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
 	}
 
-	if !project.UseRepoSettings {
+	if !project.UseRepoSettings() {
 		return gimlet.MakeJSONErrorResponder(
-			errors.Errorf("project '%s' must have UseRepoSettings enabled to be eligible for deletion", h.projectName))
+			errors.Errorf("project '%s' must be attached to a repo enabled to be eligible for deletion", h.projectName))
 	}
 
 	skeletonProj := dbModel.ProjectRef{
-		Id:              project.Id,
-		Owner:           project.Owner,
-		Repo:            project.Repo,
-		Branch:          project.Branch,
-		RepoRefId:       project.RepoRefId,
-		Enabled:         utility.FalsePtr(),
-		UseRepoSettings: true,
-		Hidden:          utility.TruePtr(),
+		Id:        project.Id,
+		Owner:     project.Owner,
+		Repo:      project.Repo,
+		Branch:    project.Branch,
+		RepoRefId: project.RepoRefId,
+		Enabled:   utility.FalsePtr(),
+		Hidden:    utility.TruePtr(),
 	}
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))

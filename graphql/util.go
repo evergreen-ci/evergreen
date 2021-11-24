@@ -1293,8 +1293,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 	for _, p := range projects {
 		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
-		// todo: switch to p.UseRepoSettings() once implemented
-		if onlyDefaultedToRepo && p.RepoRefId == "" {
+		if onlyDefaultedToRepo && !p.UseRepoSettings() {
 			groupName = ""
 		}
 
