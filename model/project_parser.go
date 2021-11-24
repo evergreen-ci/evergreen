@@ -512,12 +512,15 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 
 	// if parser project config number is old then we should default to legacy
 	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
+		var pc *ProjectConfigs
+		pc, err = CreateIntermediateConfig([]byte(v.Config))
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "error generating project config from yaml input")
+		}
 		if pp.Functions == nil {
 			pp.Functions = map[string]*YAMLCommandSet{}
 		}
 		pp.Identifier = utility.ToStringPtr(id)
-		var pc *ProjectConfigs
-		pc, err = CreateIntermediateConfig([]byte(v.Config))
 		var p *Project
 		p, err = TranslateProject(pp)
 		return p, pp, pc, err
