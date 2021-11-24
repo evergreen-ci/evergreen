@@ -61,7 +61,8 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
 	s.NotNil(s.env.Settings())
-
+	// todo remove
+	s.NoError(s.env.DB().CreateCollection(ctx, model.ProjectConfigsCollection))
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
