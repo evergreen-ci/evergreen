@@ -432,6 +432,10 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		if reflect.DeepEqual(p.CommitQueue, emptyCqParams) {
 			p.CommitQueue = *projectConfig.CommitQueue
 		}
+		var emptyTaskSync TaskSyncOptions
+		if reflect.DeepEqual(p.TaskSync, emptyTaskSync) {
+			p.TaskSync = *projectConfig.TaskSync
+		}
 	}
 	return nil
 }

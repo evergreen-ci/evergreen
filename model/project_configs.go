@@ -33,6 +33,7 @@ type ProjectConfigs struct {
 	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
+	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
 } // End of ProjectConfigs struct
 // Comment above is used by the linter to detect the end of the struct.
 

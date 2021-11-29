@@ -33,6 +33,7 @@ var (
 	ProjectConfigsPatchAliasesKey           = bsonutil.MustHaveTag(ProjectConfigs{}, "PatchAliases")
 	ProjectConfigsWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectConfigs{}, "WorkstationConfig")
 	ProjectConfigsCommitQueueKey            = bsonutil.MustHaveTag(ProjectConfigs{}, "CommitQueue")
+	ProjectConfigsTaskSyncKey               = bsonutil.MustHaveTag(ProjectConfigs{}, "TaskSync")
 )
 
 // FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty
