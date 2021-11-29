@@ -429,6 +429,9 @@ func IsIntentHostId(id string) bool {
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
+	if h.Status == status {
+		return nil
+	}
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
