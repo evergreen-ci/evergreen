@@ -57,11 +57,3 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	testSettings.Slack = integrationSettings.Slack
 	testSettings.ShutdownWaitSeconds = integrationSettings.ShutdownWaitSeconds
 }
-
-// SkipEC2TestOnNonEC2Instance skips a test that can only be run on an EC2
-// instance if the environment is not an EC2 instance.
-func SkipEC2TestOnNonEC2Instance(t *testing.T) {
-	if runEC2Test, _ := strconv.ParseBool(os.Getenv("RUN_EC2_SPECIFIC_TESTS")); !runEC2Test {
-		t.Skip("RUN_EC2_SPECIFIC_TESTS is unset, skipping test that can only run on an EC2 instance")
-	}
-}
