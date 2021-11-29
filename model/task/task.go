@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -1978,6 +1979,16 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	)
 	if err != nil {
 		return errors.Wrap(err, "error setting aborted statuses")
+	}
+
+	err = model.VersionUpdateOne(
+		bson.M{model.VersionIdKey: versionId},
+		bson.M{"$set": bson.M{
+			model.VersionStatusKey: evergreen.VersionFailed,
+		}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "error setting version as failed")
 	}
 
 	event.LogManyTaskAbortRequests(ids, reason.User)
