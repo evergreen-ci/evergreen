@@ -1074,10 +1074,10 @@ func TestNextTask(t *testing.T) {
 					Distro: distro.Distro{
 						Id: distroID,
 						BootstrapSettings: distro.BootstrapSettings{
-
 							Method:        distro.BootstrapMethodUserData,
 							Communication: distro.CommunicationMethodRPC,
 						},
+						Provider: evergreen.ProviderNameEc2Fleet,
 					},
 					Secret:        hostSecret,
 					Provisioned:   true,
