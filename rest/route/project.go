@@ -668,7 +668,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if !project.UseRepoSettings() {
 		return gimlet.MakeJSONErrorResponder(
-			errors.Errorf("project '%s' must be attached to a repo enabled to be eligible for deletion", h.projectName))
+			errors.Errorf("project '%s' must be attached to a repo to be eligible for deletion", h.projectName))
 	}
 
 	skeletonProj := dbModel.ProjectRef{
