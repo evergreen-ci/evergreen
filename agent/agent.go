@@ -241,7 +241,6 @@ LOOP:
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
 
-			// kim: TODO: test that this is sent in an e2e way.
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,

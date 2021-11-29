@@ -330,7 +330,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 // fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
 // host is still believed to be an intent host but somehow the agent is running
 // on an EC2 instance associated with that intent host.
-// kim: TODO: test
 func (as *APIServer) fixIntentHostRunningAgent(ctx context.Context, h *host.Host, instanceID string) error {
 	if !cloud.IsEc2Provider(h.Provider) {
 		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
@@ -453,7 +452,6 @@ func (as *APIServer) terminateGhost(ctx context.Context, h *host.Host, reason st
 // hosts, as the host may continue running, but it must stop all agent-related
 // activity for now. For a terminated host, the host should already have been
 // terminated but is nonetheless alive, so terminate it again.
-// kim: TODO: test
 func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) (shouldExit bool, err error) {
 	switch h.Status {
 	case evergreen.HostQuarantined:
@@ -475,8 +473,6 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 			return false, errors.Wrap(err, "terminating ghost")
 		}
 
-		return true, nil
-	case evergreen.HostDecommissioned:
 		return true, nil
 	default:
 		return false, nil
@@ -874,11 +870,6 @@ func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
 
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
 // and popping the next task off the task queue.
-// kim: TODO: verify that the code reaches checkHostHealth, even for a
-// decommissioned/terminated host. If so, we can proceed with the assumption
-// that it's safe to terminate the EC2 host by its instance ID.
-// kim: TODO: verify that quarantined/decommissioned/terminated/building-failed
-// hosts are handled properly during checkHostHealth.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
@@ -916,10 +907,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(h) {
-		// kim: NOTE: for a building -> started host, the agent should stay
-		// alive. For a building-failed -> decommissioned host, it doesn't
-		// really matter if it exits or not as long as it doesn't pick up a
-		// task.
 		if err := as.fixIntentHostRunningAgent(ctx, h, details.EC2InstanceID); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not fix intent host that is running an agent",
@@ -945,8 +932,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"current_agent": h.AgentRevision,
 			}))
 		}
-		response.ShouldExit = shouldExit
 
+		response.ShouldExit = shouldExit
 		gimlet.WriteJSON(w, response)
 		return
 	}
