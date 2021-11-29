@@ -262,16 +262,6 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
-// TimeoutType indicate the type of timeout stored in TaskEndDetail.TimeoutType.
-type TimeoutType string
-
-const (
-	// Represents a task timeout.
-	ExecTimeout TimeoutType = "exec"
-	// Represents a test timeout.
-	IdleTimeout TimeoutType = "idle"
-)
-
 var InternalAliases []string = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
