@@ -153,8 +153,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check that finishing status is a valid constant
-	if !evergreen.IsValidTaskEndStatus(details.Status) {
+	// Check that status is either finished or aborted (i.e. undispatched)
+	if !evergreen.IsValidTaskEndStatus(details.Status) || details.Status != evergreen.TaskUndispatched {
 		msg := fmt.Errorf("invalid end status '%s' for task %s", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return

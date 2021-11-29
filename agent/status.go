@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -109,8 +108,10 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 }
 
 type TriggerEndTaskResp struct {
-	apimodels.TaskEndDetail `json:",omitempty"`
-	ShouldContinue          bool `json:"should_continue"`
+	Description    string `json:"desc,omitempty"`
+	Status         string `json:"status,omitempty"`
+	Type           string `json:"type,omitempty"`
+	ShouldContinue bool   `json:"should_continue"`
 }
 
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
@@ -127,10 +128,10 @@ func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp := TriggerEndTaskResp{}
 	if err := json.Unmarshal(payload, &resp); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "error unmarshalling task resp body",
-		}))
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(errors.Wrap(err, "error unmarshalling task resp body").Error()))
+
 		return
 	}
 

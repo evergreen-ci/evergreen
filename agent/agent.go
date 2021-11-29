@@ -607,25 +607,17 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) 
 	var description string
 	var failureType string
 	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
-		tc.logger.Task().Infof("Task status set using /task_status")
+		tc.logger.Task().Infof("Task status set with HTTP endpoint")
 		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
 			tc.logger.Task().Errorf("'%s' is not a valid task status", a.endTaskResp.Status)
 			status = evergreen.TaskFailed
 			failureType = evergreen.CommandTypeSystem
-			tc.logger.Task().Debugf("END TASK RESP: %v", a.endTaskResp)
 		} else {
 			status = a.endTaskResp.Status
 			if len(a.endTaskResp.Description) > MessageLimit {
-				tc.logger.Task().Warningf("description from task_status is too long to set (%s character limit), defaulting to command display name", MessageLimit)
+				tc.logger.Task().Warningf("description from endpoint is too long to set (%d character limit), defaulting to command display name", MessageLimit)
 			} else {
 				description = a.endTaskResp.Description
-			}
-
-			if len(a.endTaskResp.Message) > MessageLimit {
-				tc.logger.Task().Warningf("message from task_status is too long to set (%s character limit)", MessageLimit)
-				message = ""
-			} else {
-				message = a.endTaskResp.Message
 			}
 
 			if a.endTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, a.endTaskResp.Type) {

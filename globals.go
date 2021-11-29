@@ -303,7 +303,7 @@ func IsFailedTaskStatus(status string) bool {
 }
 
 func IsValidTaskEndStatus(status string) bool {
-	return status == TaskSucceeded || status == TaskFailed || status == TaskUndispatched
+	return status == TaskSucceeded || status == TaskFailed
 }
 
 func IsFinishedPatchStatus(status string) bool {
