@@ -474,6 +474,8 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 		}
 
 		return true, nil
+	case evergreen.HostDecommissioned:
+		return true, nil
 	default:
 		return false, nil
 	}
