@@ -279,8 +279,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			}))
 		}
 		endTaskResp.ShouldExit = true
-		gimlet.WriteJSON(w, endTaskResp)
-		return
 	}
 
 	// we should disable hosts and prevent them from performing
@@ -471,8 +469,8 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 
 		return true, nil
 	case evergreen.HostTerminated:
-		// The host should already be terminated but somehow it's still alive.
-		// In this anomaly case, manually terminate it again.
+		// The host should already be terminated but somehow it's still alive in
+		// the cloud, so terminate it again.
 		if err := as.terminateGhost(ctx, h, "host should already have been terminated, but is still alive"); err != nil {
 			return false, errors.Wrap(err, "terminating ghost")
 		}

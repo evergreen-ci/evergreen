@@ -143,7 +143,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"provider": j.host.Distro.Provider,
 		"job_type": j.Type().Name,
 		"job":      j.ID(),
-		"message":  "terminating host already marked terminated in the db - this could happen for many reasons",
+		"message":  "terminating host already marked terminated in the db",
 	})
 
 	// host may still be an intent host

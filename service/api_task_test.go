@@ -1010,7 +1010,7 @@ func TestNextTask(t *testing.T) {
 					So(realHost.Status, ShouldEqual, evergreen.HostStarting)
 				})
 				Convey("should convert an intent host that failed to build into a decommissioned real host", func() {
-					intentHost.SetStatus(evergreen.HostBuildingFailed, evergreen.User, "")
+					So(intentHost.SetStatus(evergreen.HostBuildingFailed, evergreen.User, ""), ShouldBeNil)
 
 					instanceID := generateFakeEC2InstanceID()
 					reqDetails := &apimodels.GetNextTaskDetails{
@@ -1038,7 +1038,7 @@ func TestNextTask(t *testing.T) {
 					defer cancel()
 
 					withMockEnv(ctx, t, as, func(as *APIServer) {
-						intentHost.SetStatus(evergreen.HostTerminated, evergreen.User, "")
+						So(intentHost.SetStatus(evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
 						instanceID := generateFakeEC2InstanceID()
 						reqDetails := &apimodels.GetNextTaskDetails{
 							AgentRevision: evergreen.AgentVersion,
@@ -1115,7 +1115,7 @@ func TestNextTask(t *testing.T) {
 					defer cancel()
 
 					withMockEnv(ctx, t, as, func(as *APIServer) {
-						nonLegacyHost.SetStatus(evergreen.HostTerminated, evergreen.User, "")
+						So(nonLegacyHost.SetStatus(evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
 						reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 						resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
 

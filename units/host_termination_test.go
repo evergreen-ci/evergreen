@@ -145,7 +145,6 @@ func TestHostTerminationJob(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			// test that trying to terminate a host that does not exist is handled gracecfully
 			h := &host.Host{
 				Id:          "i-12345",
 				Status:      evergreen.HostRunning,

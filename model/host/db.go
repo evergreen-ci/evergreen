@@ -1401,12 +1401,10 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 }
 
 // UnsafeReplace atomically removes the host given by the idToRemove and inserts
-// a new host toInsert. This is typically done to replace the old host ID with a
-// new one. The replacement must be done across two queries (remove old, insert
-// new) since it's not possible to replace the _id of a document once it has
-// been set. Keep in mind that the atomic swap is safer than doing it
-// non-atomically, but is not sufficient to guarantee application correctness,
-// because other threads may still be using the old host document.
+// a new host toInsert. This is typically done to replace the old host with a
+// new one. While the atomic swap is safer than doing it non-atomically, it is
+// not sufficient to guarantee application correctness, because other threads
+// may still be using the old host document.
 // TODO (EVG-15875): set a field containing the external identifier on the host
 // document rather than do this host document swap logic.
 func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove string, toInsert *Host) error {
