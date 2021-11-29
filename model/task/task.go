@@ -3,7 +3,6 @@ package task
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model"
 	"net/url"
 	"regexp"
 	"strings"
