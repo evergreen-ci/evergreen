@@ -735,7 +735,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	return b, tasksForBuild, nil
 }
 
-func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariantTaskUnit {
+func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
 	tasks := []BuildVariantTaskUnit{}
 	tg := proj.FindTaskGroup(in.Name)
 	if tg == nil {
@@ -756,6 +756,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			GroupName:        in.Name,
 			Patchable:        in.Patchable,
 			PatchOnly:        in.PatchOnly,
+			Disable:          in.Disable,
 			AllowForGitTag:   in.AllowForGitTag,
 			GitTagOnly:       in.GitTagOnly,
 			Priority:         in.Priority,
@@ -766,8 +767,10 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
 		}
-		bvt.Populate(taskMap[t])
-		tasks = append(tasks, bvt)
+		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
+			bvt.Populate(taskMap[t])
+			tasks = append(tasks, bvt)
+		}
 	}
 	return tasks
 }
@@ -802,16 +805,16 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	for _, task := range buildVariant.Tasks {
 		// sanity check that the config isn't malformed
 		if task.Name != "" && !task.IsGroup {
-			if task.SkipOnRequester(b.Requester) {
+			if task.IsDisabled() || task.SkipOnRequester(b.Requester) {
 				continue
 			}
 			if createAll || utility.StringSliceContains(taskNames, task.Name) {
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
-			tasksFromVariant := CreateTasksFromGroup(task, project)
+			tasksFromVariant := CreateTasksFromGroup(task, project, b.Requester)
 			for _, taskFromVariant := range tasksFromVariant {
-				if taskFromVariant.SkipOnRequester(b.Requester) {
+				if task.IsDisabled() || taskFromVariant.SkipOnRequester(b.Requester) {
 					continue
 				}
 				if createAll || utility.StringSliceContains(taskNames, taskFromVariant.Name) {

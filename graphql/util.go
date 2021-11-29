@@ -354,7 +354,7 @@ type VariantsAndTasksFromProject struct {
 	Project  model.Project
 }
 
-func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
 	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
@@ -365,22 +365,25 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, p
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			if utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
-					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
+					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)
 				}
 			}
 		}
-		variant.Tasks = tasksForVariant
-		variantMappings[variant.Name] = variant
+		if len(tasksForVariant) > 0 {
+			variant.Tasks = tasksForVariant
+			variantMappings[variant.Name] = variant
+		}
 	}
 
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
-		// add a task name to the list if it's patchable and not restricted to git tags
-		if utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
+		// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+		if !utility.FromBoolPtr(task.Disable) && utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
@@ -618,17 +621,9 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 	case SetPriority:
-		var projId string
-		if proj == nil {
-			projId, err := model.GetIdForProject(version.Identifier)
-			if err != nil {
-				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
-			}
-			if projId == "" {
-				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
-			}
-		} else {
-			projId = proj.Id
+		projId := version.Identifier
+		if projId == "" {
+			return http.StatusNotFound, errors.Errorf("Could not find project for version %s", version.Id)
 		}
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{

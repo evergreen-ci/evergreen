@@ -5,6 +5,7 @@
       "identifier" : "sandbox",
       "display_name" : "Sandbox",
       "enabled" : null,
+      "restricted": true,
       "owner_name" : "evergreen-ci",
       "repo_name" : "commit-queue-sandbox",
       "branch_name" : "main",
