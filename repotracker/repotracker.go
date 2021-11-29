@@ -56,7 +56,7 @@ type VersionErrors struct {
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
 	// the given revision.
-	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfigs, error)
+	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error)
 
 	// Fetches a list of all filepaths modified by a given revision.
 	GetChangedFiles(ctx context.Context, revision string) ([]string, error)
@@ -248,7 +248,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		var versionErrs *VersionErrors
-		project, intermediateProject, intermediateConfig, err := repoTracker.GetProjectConfig(ctx, revision)
+		project, intermediateProject, config, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
 			// this is an error that implies the file is invalid - create a version and store the error
 			projErr, isProjErr := err.(projectConfigError)
@@ -320,7 +320,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			Ref:                 ref,
 			Project:             project,
 			IntermediateProject: intermediateProject,
-			IntermediateConfig:  intermediateConfig,
+			Config:              config,
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
@@ -388,9 +388,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // returning a remote config if the project references a remote repository
 // configuration file - via the Id. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
-func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfigs, error) {
+func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	projectRef := repoTracker.ProjectRef
-	project, intermediateProj, intermediateConfig, err := repoTracker.GetRemoteConfig(ctx, revision)
+	project, intermediateProj, config, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:
@@ -448,7 +448,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 
 		return nil, nil, nil, err
 	}
-	return project, intermediateProj, intermediateConfig, nil
+	return project, intermediateProj, config, nil
 }
 
 // addGithubCheckSubscriptions adds subscriptions to send the status of the version to Github.
@@ -712,7 +712,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	projectInfo.IntermediateProject.Id = v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
-	projectInfo.IntermediateConfig.Id = v.Id
+	projectInfo.Config.Id = v.Id
 	v.Ignored = ignore
 	v.Activated = utility.FalsePtr()
 
@@ -1112,19 +1112,18 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
 		}
-		// todo uncomment
-		//_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.IntermediateConfig)
-		//if err != nil {
-		//	grip.Notice(message.WrapError(err, message.Fields{
-		//		"message": "aborting transaction",
-		//		"cause":   "can't insert project configs",
-		//		"version": v.Id,
-		//	}))
-		//	if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
-		//		return errors.Wrap(abortErr, "error aborting transaction")
-		//	}
-		//	return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
-		//}
+		_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.Config)
+		if err != nil {
+			grip.Notice(message.WrapError(err, message.Fields{
+				"message": "aborting transaction",
+				"cause":   "can't insert project configs",
+				"version": v.Id,
+			}))
+			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				return errors.Wrap(abortErr, "error aborting transaction")
+			}
+			return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
+		}
 		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
 		if err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{

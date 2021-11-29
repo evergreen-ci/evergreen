@@ -801,7 +801,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
@@ -844,7 +844,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, nil)
@@ -889,7 +889,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, &vErrs)
@@ -930,7 +930,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err = CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
@@ -971,7 +971,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Project:             p,
 	}
 	metadata := model.VersionMetadata{Revision: *s.rev}
@@ -1034,7 +1034,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Project:             p,
 	}
 	alias := model.ProjectAlias{

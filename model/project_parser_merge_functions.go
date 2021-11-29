@@ -228,7 +228,7 @@ func (pp *ParserProject) mergeMatrix(toMerge *ParserProject) error {
 	return catcher.Resolve()
 }
 
-func (pp *ParserProject) mergeMultipleProjectConfigs(toMerge *ParserProject) error {
+func (pp *ParserProject) mergeMultipleParserProjects(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
 	// Unordered list, consider naming conflict

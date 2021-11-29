@@ -415,7 +415,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	projectInfo := &model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 		Ref:                 &ref,
 	}
 	metadata := model.VersionMetadata{

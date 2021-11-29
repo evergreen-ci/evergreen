@@ -2148,7 +2148,7 @@ ignore:
 	p2, err := createIntermediateProject([]byte(smallYaml))
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	err = p1.mergeMultipleProjectConfigs(p2)
+	err = p1.mergeMultipleParserProjects(p2)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
 	assert.Equal(t, len(p1.Functions), 2)
@@ -2200,7 +2200,7 @@ buildvariants:
 	p3, err := createIntermediateProject([]byte(fail))
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
-	err = p1.mergeMultipleProjectConfigs(p2)
+	err = p1.mergeMultipleParserProjects(p2)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
 	assert.Equal(t, len(p1.BuildVariants), 2)
@@ -2211,6 +2211,6 @@ buildvariants:
 		assert.Equal(t, len(p1.BuildVariants[0].Tasks), 1)
 		assert.Equal(t, len(p1.BuildVariants[1].Tasks), 2)
 	}
-	err = p1.mergeMultipleProjectConfigs(p3)
+	err = p1.mergeMultipleParserProjects(p3)
 	assert.Error(t, err)
 }

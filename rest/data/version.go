@@ -57,7 +57,7 @@ func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) er
 	return model.RestartTasksInVersion(versionId, true, caller)
 }
 
-func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, *model.ProjectConfigs, error) {
+func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	return model.LoadProjectForVersion(v, projectId, false)
 }
 
@@ -380,7 +380,7 @@ func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, pr
 	}, nil
 }
 
-func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, *model.ProjectConfigs, error) {
+func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	if v.Config != "" {
 		p := &model.Project{}
 		ctx := context.Background()

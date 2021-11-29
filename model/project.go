@@ -73,7 +73,7 @@ type ProjectInfo struct {
 	Ref                 *ProjectRef
 	Project             *Project
 	IntermediateProject *ParserProject
-	IntermediateConfig  *ProjectConfigs
+	Config              *ProjectConfig
 }
 
 func (p *ProjectInfo) NotPopulated() bool {

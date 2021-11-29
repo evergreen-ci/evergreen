@@ -43,7 +43,7 @@ func (d *mockRepoPoller) GetChangedFiles(_ context.Context, commitRevision strin
 	return nil, nil
 }
 
-func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfigs, error) {
+func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	d.ConfigGets++
 	if d.nextError != nil {
 		return nil, nil, nil, d.clearError()
@@ -58,7 +58,7 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*m
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, model.TranslateProjectError)
 	}
-	return p, d.parserProject, &model.ProjectConfigs{}, nil
+	return p, d.parserProject, &model.ProjectConfig{}, nil
 }
 
 func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {

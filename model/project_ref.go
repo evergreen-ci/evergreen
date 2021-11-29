@@ -751,7 +751,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	if includeProjectConfig {
 		err = pRef.MergeWithProjectConfig(version)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
 		}
 	}
 	return pRef, nil

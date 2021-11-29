@@ -173,7 +173,7 @@ func aliasesToMap(aliases []ProjectAlias) map[string][]ProjectAlias {
 	return output
 }
 
-func getFullProjectConfigsAliases(projectConfigs *ProjectConfigs) []ProjectAlias {
+func getFullProjectConfigsAliases(projectConfigs *ProjectConfig) []ProjectAlias {
 	var projectConfigsAliases []ProjectAlias
 	if projectConfigs != nil {
 		for _, commitQueueAlias := range projectConfigs.CommitQueueAliases {
@@ -199,7 +199,7 @@ func getFullProjectConfigsAliases(projectConfigs *ProjectConfigs) []ProjectAlias
 	return projectConfigsAliases
 }
 
-func mergeAliases(projectConfigs *ProjectConfigs, databaseAliases []ProjectAlias) []ProjectAlias {
+func mergeAliases(projectConfigs *ProjectConfig, databaseAliases []ProjectAlias) []ProjectAlias {
 	projectConfigsAliases := getFullProjectConfigsAliases(projectConfigs)
 	ppAliasMap := aliasesToMap(projectConfigsAliases)
 	dbAliasMap := aliasesToMap(databaseAliases)

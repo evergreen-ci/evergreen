@@ -8,7 +8,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 )
 
-type ProjectConfigs struct {
+type ProjectConfig struct {
 	Id          string    `yaml:"_id" bson:"_id"`
 	Enabled     *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 	Owner       *string   `yaml:"owner,omitempty" bson:"owner,omitempty"`
@@ -34,13 +34,13 @@ type ProjectConfigs struct {
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
-} // End of ProjectConfigs struct
+} // End of ProjectConfig struct
 // Comment above is used by the linter to detect the end of the struct.
 
-func (pc *ProjectConfigs) Insert() error {
+func (pc *ProjectConfig) Insert() error {
 	return db.Insert(ProjectConfigsCollection, pc)
 }
 
-func (pc *ProjectConfigs) MarshalBSON() ([]byte, error) {
+func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
 	return mgobson.Marshal(pc)
 }

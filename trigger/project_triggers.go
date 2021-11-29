@@ -36,7 +36,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	// get the downstream config
 	var proj *model.Project
 	var pp *model.ParserProject
-	var pc *model.ProjectConfigs
+	var pc *model.ProjectConfig
 	if args.ConfigFile != "" {
 		proj, pp, pc, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
@@ -56,7 +56,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 		Ref:                 &args.DownstreamProject,
 		Project:             proj,
 		IntermediateProject: pp,
-		IntermediateConfig:  pc,
+		Config:              pc,
 	}
 	v, err := repotracker.CreateVersionFromConfig(context.Background(), projectInfo, metadata, false, nil)
 	if err != nil {
@@ -129,7 +129,7 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.Vers
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, *model.ProjectConfigs, error) {
+func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &ref,
 		RemotePath: file,

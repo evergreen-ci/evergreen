@@ -1843,7 +1843,7 @@ func TestPointers(t *testing.T) {
 //			MergeMethod: "message1",
 //		},
 //	}
-//	projectConfig := &ProjectConfigs{
+//	projectConfig := &ProjectConfig{
 //		Id:                 "version1",
 //		DeactivatePrevious: utility.TruePtr(),
 //		TaskAnnotationSettings: &evergreen.AnnotationsSettings{

@@ -13,40 +13,33 @@ const (
 )
 
 var (
-	ProjectConfigsIdKey          = bsonutil.MustHaveTag(ProjectConfigs{}, "Id")
-	ProjectConfigsEnabledKey     = bsonutil.MustHaveTag(ProjectConfigs{}, "Enabled")
-	ProjectConfigsOwnerKey       = bsonutil.MustHaveTag(ProjectConfigs{}, "Owner")
-	ProjectConfigsRepoKey        = bsonutil.MustHaveTag(ProjectConfigs{}, "Repo")
-	ProjectConfigsRemotePathKey  = bsonutil.MustHaveTag(ProjectConfigs{}, "RemotePath")
-	ProjectConfigsBranchKey      = bsonutil.MustHaveTag(ProjectConfigs{}, "Branch")
-	ProjectConfigsIdentifierKey  = bsonutil.MustHaveTag(ProjectConfigs{}, "Identifier")
-	ProjectConfigsDisplayNameKey = bsonutil.MustHaveTag(ProjectConfigs{}, "DisplayName")
-	ProjectConfigsCreateTimeKey  = bsonutil.MustHaveTag(ProjectConfigs{}, "CreateTime")
+	ProjectConfigsIdKey         = bsonutil.MustHaveTag(ProjectConfig{}, "Id")
+	ProjectConfigsIdentifierKey = bsonutil.MustHaveTag(ProjectConfig{}, "Identifier")
+	ProjectConfigsCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "CreateTime")
 
-	ProjectConfigsTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectConfigs{}, "TaskAnnotationSettings")
-	ProjectConfigsBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectConfigs{}, "BuildBaronSettings")
-	ProjectConfigsPerfEnabledKey            = bsonutil.MustHaveTag(ProjectConfigs{}, "PerfEnabled")
-	ProjectConfigsCommitQueueAliasesKey     = bsonutil.MustHaveTag(ProjectConfigs{}, "CommitQueueAliases")
-	ProjectConfigsGitHubPRAliasesKey        = bsonutil.MustHaveTag(ProjectConfigs{}, "GitHubPRAliases")
-	ProjectConfigsGitTagAliasesKey          = bsonutil.MustHaveTag(ProjectConfigs{}, "GitTagAliases")
-	ProjectConfigsGitHubChecksAliasesKey    = bsonutil.MustHaveTag(ProjectConfigs{}, "GitHubChecksAliases")
-	ProjectConfigsPatchAliasesKey           = bsonutil.MustHaveTag(ProjectConfigs{}, "PatchAliases")
-	ProjectConfigsWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectConfigs{}, "WorkstationConfig")
-	ProjectConfigsCommitQueueKey            = bsonutil.MustHaveTag(ProjectConfigs{}, "CommitQueue")
-	ProjectConfigsTaskSyncKey               = bsonutil.MustHaveTag(ProjectConfigs{}, "TaskSync")
+	ProjectConfigsTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectConfig{}, "TaskAnnotationSettings")
+	ProjectConfigsBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectConfig{}, "BuildBaronSettings")
+	ProjectConfigsPerfEnabledKey            = bsonutil.MustHaveTag(ProjectConfig{}, "PerfEnabled")
+	ProjectConfigsCommitQueueAliasesKey     = bsonutil.MustHaveTag(ProjectConfig{}, "CommitQueueAliases")
+	ProjectConfigsGitHubPRAliasesKey        = bsonutil.MustHaveTag(ProjectConfig{}, "GitHubPRAliases")
+	ProjectConfigsGitTagAliasesKey          = bsonutil.MustHaveTag(ProjectConfig{}, "GitTagAliases")
+	ProjectConfigsGitHubChecksAliasesKey    = bsonutil.MustHaveTag(ProjectConfig{}, "GitHubChecksAliases")
+	ProjectConfigsPatchAliasesKey           = bsonutil.MustHaveTag(ProjectConfig{}, "PatchAliases")
+	ProjectConfigsWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectConfig{}, "WorkstationConfig")
+	ProjectConfigsCommitQueueKey            = bsonutil.MustHaveTag(ProjectConfig{}, "CommitQueue")
+	ProjectConfigsTaskSyncKey               = bsonutil.MustHaveTag(ProjectConfig{}, "TaskSync")
 )
 
 // FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty
-func FindProjectConfigToMerge(projectId, id string) (*ProjectConfigs, error) {
+func FindProjectConfigToMerge(projectId, id string) (*ProjectConfig, error) {
 	if id == "" {
 		return FindLastKnownGoodProjectConfig(projectId)
-	} else {
-		return ProjectConfigsById(id)
 	}
+	return FindProjectConfigById(id)
 }
 
 // FindLastKnownGoodProjectConfig retrieves the most recent project config for the given project.
-func FindLastKnownGoodProjectConfig(projectId string) (*ProjectConfigs, error) {
+func FindLastKnownGoodProjectConfig(projectId string) (*ProjectConfig, error) {
 	q := bson.M{
 		ProjectConfigsIdentifierKey: projectId,
 	}
@@ -57,8 +50,8 @@ func FindLastKnownGoodProjectConfig(projectId string) (*ProjectConfigs, error) {
 	return pc, nil
 }
 
-func ProjectConfigsFindOne(query db.Q) (*ProjectConfigs, error) {
-	projectConfig := &ProjectConfigs{}
+func ProjectConfigsFindOne(query db.Q) (*ProjectConfig, error) {
+	projectConfig := &ProjectConfig{}
 	err := db.FindOneQ(ProjectConfigsCollection, query, projectConfig)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -66,9 +59,9 @@ func ProjectConfigsFindOne(query db.Q) (*ProjectConfigs, error) {
 	return projectConfig, err
 }
 
-// ProjectConfigsById returns a project config by id.
-func ProjectConfigsById(id string) (*ProjectConfigs, error) {
-	project := &ProjectConfigs{}
+// FindProjectConfigById returns a project config by id.
+func FindProjectConfigById(id string) (*ProjectConfig, error) {
+	project := &ProjectConfig{}
 	query := db.Query(bson.M{ProjectConfigsIdKey: id})
 	err := db.FindOneQ(ProjectConfigsCollection, query, project)
 	if adb.ResultsNotFound(err) {
@@ -77,7 +70,7 @@ func ProjectConfigsById(id string) (*ProjectConfigs, error) {
 	return project, err
 }
 
-// ProjectConfigsUpsertOne updates one project
+// ProjectConfigsUpsertOne updates one project config
 func ProjectConfigsUpsertOne(query interface{}, update interface{}) error {
 	_, err := db.Upsert(
 		ProjectConfigsCollection,
