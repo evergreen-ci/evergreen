@@ -1610,6 +1610,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ResetWhenFinished = false
 		t.HostId = ""
 		t.AgentVersion = ""
+		t.HostCreateDetails = []HostCreateDetail{}
+		t.OverrideDependencies = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -1627,11 +1629,13 @@ func resetTaskUpdate(t *Task) bson.M {
 			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey:            "",
-			HasCedarResultsKey:    "",
-			CedarResultsFailedKey: "",
-			ResetWhenFinishedKey:  "",
-			AgentVersionKey:       "",
+			DetailsKey:              "",
+			HasCedarResultsKey:      "",
+			CedarResultsFailedKey:   "",
+			ResetWhenFinishedKey:    "",
+			AgentVersionKey:         "",
+			HostCreateDetailsKey:    "",
+			OverrideDependenciesKey: "",
 		},
 	}
 	return update
