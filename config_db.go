@@ -62,7 +62,6 @@ var (
 	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
 
 	// degraded mode flags
-	pluginAdminPageDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "PluginAdminPageDisabled")
 	taskDispatchKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                      = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	podInitDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "PodInitDisabled")

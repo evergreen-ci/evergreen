@@ -11,164 +11,101 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildBaronPluginConfigure(t *testing.T) {
+func TestValidateBbProject(t *testing.T) {
 	assert := assert.New(t)
-
-	bbPlugin := BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-			},
-		},
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection))
+	p := model.ProjectRef{
+		Identifier: "proj1",
+	}
+	assert.NoError(p.Insert())
+	assert.True(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:  "BFG",
+		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
-	assert.Len(bbPlugin.opts.Projects, 1)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj1": evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-			},
-			"proj2": evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-			},
-		},
+	assert.True(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:  "BFG",
+		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
-	assert.Len(bbPlugin.opts.Projects, 2)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject: "BFG",
-			},
-		},
+	assert.True(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:  "BFG",
+		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketSearchProjects: []string{"BF", "BFG"},
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject: "BFG",
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
+
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketSearchProjects: []string{"BF", "BFG"},
+	}))
 }
 
 func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 	assert := assert.New(t)
-
-	bbPlugin := BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionUsername:    "user",
-				BFSuggestionPassword:    "pass",
-				BFSuggestionTimeoutSecs: 10,
-			},
-		},
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection))
+	p := model.ProjectRef{
+		Identifier: "proj1",
+	}
+	assert.NoError(p.Insert())
+	assert.True(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionServer:      "https://evergreen.mongodb.com",
+		BFSuggestionUsername:    "user",
+		BFSuggestionPassword:    "pass",
+		BFSuggestionTimeoutSecs: 10,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 1)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 10,
-			},
-		},
+	assert.True(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionServer:      "https://evergreen.mongodb.com",
+		BFSuggestionTimeoutSecs: 10,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 1)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:  "BFG",
-				TicketSearchProjects: []string{"BF", "BFG"},
-				BFSuggestionUsername: "user",
-				BFSuggestionPassword: "pass",
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:  "BFG",
+		TicketSearchProjects: []string{"BF", "BFG"},
+		BFSuggestionUsername: "user",
+		BFSuggestionPassword: "pass",
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionTimeoutSecs: 10,
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionTimeoutSecs: 10,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 10,
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionServer:      "://evergreen.mongodb.com",
+		BFSuggestionTimeoutSecs: 10,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionPassword:    "pass",
-				BFSuggestionTimeoutSecs: 10,
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionServer:      "https://evergreen.mongodb.com",
+		BFSuggestionPassword:    "pass",
+		BFSuggestionTimeoutSecs: 10,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 0,
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionServer:      "https://evergreen.mongodb.com",
+		BFSuggestionTimeoutSecs: 0,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 
-	bbPlugin = BuildBaronPlugin{}
-	assert.Nil(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronSettings{
-			"proj": evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: -1,
-			},
-		},
+	assert.False(validateBbProject("proj1", evergreen.BuildBaronSettings{
+		TicketCreateProject:     "BFG",
+		TicketSearchProjects:    []string{"BF", "BFG"},
+		BFSuggestionServer:      "https://evergreen.mongodb.com",
+		BFSuggestionTimeoutSecs: -1,
 	}))
-	assert.Len(bbPlugin.opts.Projects, 0)
 }
 
 func TestBbGetProject(t *testing.T) {
@@ -211,14 +148,8 @@ func TestBbGetProject(t *testing.T) {
 	assert.NoError(t, myProject2.Insert())
 	assert.NoError(t, myProjectParser.Insert())
 
-	env := evergreen.GetEnvironment().Settings()
-	flags := evergreen.ServiceFlags{
-		PluginAdminPageDisabled: true,
-	}
-	assert.NoError(t, evergreen.SetServiceFlags(flags))
-
-	bbProj, ok1 := BbGetProject(env, testTask.Project, testTask.Version)
-	bbProj2, ok2 := BbGetProject(env, testTask2.Project, testTask2.Version)
+	bbProj, ok1 := BbGetProject(testTask.Project, testTask.Version)
+	bbProj2, ok2 := BbGetProject(testTask2.Project, testTask2.Version)
 	assert.True(t, ok1)
 	assert.True(t, ok2)
 	assert.Equal(t, bbProj.TicketCreateProject, "BFG")

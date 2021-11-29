@@ -3154,49 +3154,24 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, err
+	projectMatches := model.IsPerfEnabledForProject(*obj.ProjectId)
+	if !projectMatches {
+		return false, nil
 	}
-	if flags.PluginAdminPageDisabled {
-		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
-	} else {
-		var perfPlugin *plugin.PerfPlugin
-		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false, false)
-		if err != nil {
-			return false, err
-		}
-		if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
-			err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
-			if err != nil {
-				return false, err
-			}
-			projectMatches := false
-			for _, projectName := range perfPlugin.Projects {
-				if projectName == pRef.Id || projectName == pRef.Identifier {
-					projectMatches = true
-					break
-				}
-			}
-			if !projectMatches {
-				return false, nil
-			}
-		}
-		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:    utility.FromStringPtr(obj.Id),
-			Execution: obj.Execution,
-		}
-		if opts.BaseURL == "" {
-			return false, nil
-		}
-		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
-		}
-		if result.NumberOfResults == 0 {
-			return false, nil
-		}
+	opts := apimodels.GetCedarPerfCountOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:    utility.FromStringPtr(obj.Id),
+		Execution: obj.Execution,
+	}
+	if opts.BaseURL == "" {
+		return false, nil
+	}
+	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+	}
+	if result.NumberOfResults == 0 {
+		return false, nil
 	}
 	return true, nil
 }
