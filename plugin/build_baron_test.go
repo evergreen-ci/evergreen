@@ -115,19 +115,22 @@ func TestBbGetProject(t *testing.T) {
 	myProject := model.ProjectRef{
 		Id: "proj",
 		BuildBaronSettings: evergreen.BuildBaronSettings{
-			TicketCreateProject: "BFG",
+			TicketCreateProject:  "BFG",
+			TicketSearchProjects: []string{"EVG"},
 		},
 	}
 	myProject2 := model.ProjectRef{
 		Id: "proj2",
 		BuildBaronSettings: evergreen.BuildBaronSettings{
-			TicketCreateProject: "123",
+			TicketCreateProject:  "123",
+			TicketSearchProjects: []string{"EVG"},
 		},
 	}
 	myProjectParser := model.ParserProject{
 		Id: "proj2",
 		BuildBaronSettings: &evergreen.BuildBaronSettings{
-			TicketCreateProject: "ABC",
+			TicketCreateProject:  "ABC",
+			TicketSearchProjects: []string{"EVG"},
 		},
 	}
 	testTask := task.Task{
