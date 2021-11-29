@@ -406,6 +406,7 @@ input ProjectInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -458,6 +459,7 @@ input RepoRefInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -1177,6 +1179,7 @@ type Project {
   displayName: String!
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String!
   repo: String!
   branch: String!
@@ -1228,6 +1231,7 @@ type RepoRef {
   displayName: String!
   enabled: Boolean!
   private: Boolean!
+  restricted: Boolean!
   owner: String!
   repo: String!
   branch: String!
