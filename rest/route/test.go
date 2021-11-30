@@ -111,7 +111,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 		}
 		if status != http.StatusOK && status != http.StatusNotFound {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting test results from Cedar returned status '%d'", status))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting test results from Cedar returned status '%d'", status))
 		}
 
 		if page*tgh.limit < utility.FromIntPtr(cedarTestResults.Stats.FilteredCount) {
