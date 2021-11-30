@@ -102,13 +102,12 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting test results from Cedar")
 	}
-	if status != http.StatusOK {
-		return nil, status, nil
-	}
 
 	testResults := &CedarTestResults{}
-	if err = json.Unmarshal(data, testResults); err != nil {
-		return nil, 0, errors.Wrap(err, "unmarshaling test results from Cedar")
+	if status == http.StatusOK {
+		if err = json.Unmarshal(data, testResults); err != nil {
+			return nil, 0, errors.Wrap(err, "unmarshaling test results from Cedar")
+		}
 	}
 
 	return testResults, status, nil
@@ -150,13 +149,12 @@ func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptio
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting test results stats from Cedar")
 	}
-	if status != http.StatusOK {
-		return nil, status, nil
-	}
 
 	stats := &CedarTestResultsStats{}
-	if err = json.Unmarshal(data, stats); err != nil {
-		return nil, 0, errors.Wrap(err, "unmarshaling test results stats from cedar")
+	if status == http.StatusOK {
+		if err = json.Unmarshal(data, stats); err != nil {
+			return nil, 0, errors.Wrap(err, "unmarshaling test results stats from Cedar")
+		}
 	}
 
 	return stats, status, nil
@@ -188,13 +186,12 @@ func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResul
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "getting failed test result sample from Cedar")
 	}
-	if status != http.StatusOK {
-		return nil, status, nil
-	}
 
 	sample := []string{}
-	if err = json.Unmarshal(data, &sample); err != nil {
-		return nil, 0, errors.Wrap(err, "unmarshaling failed test result sample from Cedar")
+	if status == http.StatusOK {
+		if err = json.Unmarshal(data, &sample); err != nil {
+			return nil, 0, errors.Wrap(err, "unmarshaling failed test result sample from Cedar")
+		}
 	}
 
 	return sample, status, nil
