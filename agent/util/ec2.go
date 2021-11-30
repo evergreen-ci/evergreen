@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// metadataBaseURL is the URL to make requests for instance-specific metadata on
+// EC2 instances.
 const metadataBaseURL = "http://169.254.169.254/latest/meta-data"
 
 // SpotHostWillTerminateSoon returns true if the EC2 spot host it is running on will terminate soon.

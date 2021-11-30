@@ -907,9 +907,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	return hosts, nil
 }
 
-// Removes host intents that have been been initializing for more than 3
-// minutes or spawning (but not started) for more than 15 minutes for the
-// specified distro.
+// Removes host intents that have been initializing for more than 3 minutes.
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
