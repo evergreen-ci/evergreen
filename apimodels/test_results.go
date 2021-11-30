@@ -104,13 +104,11 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 	}
 
 	testResults := &CedarTestResults{}
-	if status == http.StatusOK {
-		if err = json.Unmarshal(data, testResults); err != nil {
-			return nil, 0, errors.Wrap(err, "unmarshaling test results from Cedar")
-		}
+	if status != http.StatusOK {
+		return testResults, status, nil
 	}
 
-	return testResults, status, nil
+	return testResults, status, errors.Wrap(json.Unmarshal(data, testResults), "unmarshaling test results from Cedar")
 }
 
 // GetCedarTestResultsWithStatusError  makes a request to Cedar for a task's
@@ -151,13 +149,11 @@ func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptio
 	}
 
 	stats := &CedarTestResultsStats{}
-	if status == http.StatusOK {
-		if err = json.Unmarshal(data, stats); err != nil {
-			return nil, 0, errors.Wrap(err, "unmarshaling test results stats from Cedar")
-		}
+	if status != http.StatusOK {
+		return stats, status, nil
 	}
 
-	return stats, status, nil
+	return stats, status, errors.Wrap(json.Unmarshal(data, stats), "unmarshaling test results stats from Cedar")
 }
 
 // GetCedarTestResultsStatsWithStatusError  makes a request to Cedar for a
@@ -188,13 +184,11 @@ func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResul
 	}
 
 	sample := []string{}
-	if status == http.StatusOK {
-		if err = json.Unmarshal(data, &sample); err != nil {
-			return nil, 0, errors.Wrap(err, "unmarshaling failed test result sample from Cedar")
-		}
+	if status != http.StatusOK {
+		return sample, status, nil
 	}
 
-	return sample, status, nil
+	return sample, status, errors.Wrap(json.Unmarshal(data, &sample), "unmarshaling failed test result sample from Cedar")
 }
 
 // GetCedarTestResultsFailedSampleWithStatusError makes a request to Cedar for
