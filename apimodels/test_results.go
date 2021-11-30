@@ -156,7 +156,7 @@ func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptio
 	return stats, status, errors.Wrap(json.Unmarshal(data, stats), "unmarshaling test results stats from Cedar")
 }
 
-// GetCedarTestResultsStatsWithStatusError  makes a request to Cedar for a
+// GetCedarTestResultsStatsWithStatusError makes a request to Cedar for a
 // task's test results stats. This route ignores filtering, sorting, and
 // pagination query parameters. An error is returned if Cedar sends a non-200
 // HTTP status.
