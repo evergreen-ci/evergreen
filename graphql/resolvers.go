@@ -1709,7 +1709,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if baseTask != nil && baseTask.HasCedarResults {
 			opts.BaseTaskID = baseTask.Id
 		}
-		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		cedarTestResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task %s: %s", taskID, err))
 		}
@@ -2993,7 +2993,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
-		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
 			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 		}
@@ -3017,7 +3017,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
-		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
 			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 		}
