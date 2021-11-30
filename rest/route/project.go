@@ -437,7 +437,15 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project from old repo scope"))
 		}
-		h.newProjectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
+		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+
+	if h.apiNewProjectRef.UseRepoSettings && h.newProjectRef.RepoRefId == "" {
+		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
 	}
 
 	// complete all updates

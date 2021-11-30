@@ -314,6 +314,15 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		sc:       &data.DBConnector{},
 		settings: settings,
 	}
+	// test that turning on repo settings doesn't impact existing restricted values
+	body := bytes.NewBuffer([]byte(`{"use_repo_settings": true}`))
+	req, _ := http.NewRequest("PATCH", "rest/v2/projects/branch2", body)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch2"})
+
+	assert.NoError(t, projectHandler.Parse(ctx, req))
+	resp := projectHandler.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, resp.Status(), http.StatusOK)
 
 	pRefs, err := dbModel.FindMergedEnabledProjectRefsByRepoAndBranch("owner", "repo", "main")
 	assert.NoError(t, err)
@@ -324,7 +333,6 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 			assert.True(t, branch.IsRestricted(), fmt.Sprintf("branch '%s' should be restricted", branch.Id))
 		} else {
 			assert.False(t, branch.IsRestricted(), fmt.Sprintf("branch '%s' shouldn't be restricted", branch.Id))
-			assert.NoError(t, branch.AttachToRepo(u))
 			assert.NotEmpty(t, branch.RepoRefId)
 			repoId = branch.RepoRefId
 		}
@@ -353,8 +361,8 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.Equal(t, scope.Resources, []string{"branch2"})
 
 	// test that setting repo to restricted impacts the branch project
-	body := bytes.NewBuffer([]byte(`{"restricted": true}`))
-	req, _ := http.NewRequest("PATCH", fmt.Sprintf("rest/v2/repos/%s", repoId), body)
+	body = bytes.NewBuffer([]byte(`{"restricted": true}`))
+	req, _ = http.NewRequest("PATCH", fmt.Sprintf("rest/v2/repos/%s", repoId), body)
 	req = gimlet.SetURLVars(req, map[string]string{"repo_id": repoId})
 
 	repoHandler := repoIDPatchHandler{
@@ -362,7 +370,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 		settings: settings,
 	}
 	assert.NoError(t, repoHandler.Parse(ctx, req))
-	resp := repoHandler.Run(ctx)
+	resp = repoHandler.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.Status(), http.StatusOK)
 
@@ -396,7 +404,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 
 	// test that setting branch explicitly not-restricted impacts that branch, even though it's using repo settings
-	body = bytes.NewBuffer([]byte(`{"restricted": false}`))
+	body = bytes.NewBuffer([]byte(`{"restricted": false, "use_repo_settings": true}`))
 	req, _ = http.NewRequest("PATCH", "rest/v2/projects/branch1", body)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
 
@@ -409,13 +417,12 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, pRefs, 2)
 	for _, branch := range pRefs {
+		assert.NotEmpty(t, branch.RepoRefId)
 		if branch.Id == "branch2" {
 			assert.True(t, branch.IsRestricted(), fmt.Sprintf("branch %s should be restricted", branch.Id))
 		} else {
-			assert.NoError(t, branch.AttachToRepo(u))
 			assert.False(t, branch.IsRestricted(), fmt.Sprintf("branch '%s' shouldn't be restricted", branch.Id))
 		}
-		assert.NotEmpty(t, branch.RepoRefId)
 	}
 	restrictedScope, err = rm.GetScope(ctx, evergreen.RestrictedProjectsScope)
 	assert.NoError(t, err)
