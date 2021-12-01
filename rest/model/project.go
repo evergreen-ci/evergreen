@@ -549,7 +549,6 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		GitTagVersionsEnabled:   utility.BoolPtrCopy(p.GitTagVersionsEnabled),
 		GithubChecksEnabled:     utility.BoolPtrCopy(p.GithubChecksEnabled),
 		CedarTestResultsEnabled: utility.BoolPtrCopy(p.CedarTestResultsEnabled),
-		UseRepoSettings:         p.UseRepoSettings,
 		RepoRefId:               utility.FromStringPtr(p.RepoRefId),
 		CommitQueue:             commitQueue.(model.CommitQueueParams),
 		TaskSync:                taskSync,
