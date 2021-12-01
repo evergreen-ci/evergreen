@@ -46,7 +46,7 @@ func TestCheckHostWrapper(t *testing.T) {
 
 		app := gimlet.NewApp()
 		app.NoVersions = true
-		app.AddRoute("/{taskId}/").Handler(as.checkTaskStrict(as.checkHost(
+		app.AddRoute("/{taskId}/").Handler(as.requireTaskStrict(as.requireHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retrievedTask = GetTask(r)
 				retrievedHost = GetHost(r)
@@ -170,7 +170,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			})
 		})
 	})
-	Convey("With a checkTask and checkHost-wrapped route using URL params", t, func() {
+	Convey("With a requireTask and requireHost-wrapped route using URL params", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
@@ -187,7 +187,7 @@ func TestCheckHostWrapper(t *testing.T) {
 
 		app := gimlet.NewApp()
 		app.NoVersions = true
-		app.AddRoute("/{taskId}/{hostId}").Handler(as.checkTaskStrict(as.checkHost(
+		app.AddRoute("/{taskId}/{hostId}").Handler(as.requireTaskStrict(as.requireHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retrievedTask = GetTask(r)
 				retrievedHost = GetHost(r)
