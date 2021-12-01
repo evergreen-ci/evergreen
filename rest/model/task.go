@@ -77,10 +77,11 @@ type APITask struct {
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies bool `json:"-"`
-	Archived             bool `json:"archived"`
-	HasCedarResults      bool `json:"-"`
-	CedarResultsFailed   bool `json:"-"`
+	OverrideDependencies bool                                    `json:"-"`
+	Archived             bool                                    `json:"archived"`
+	HasCedarResults      bool                                    `json:"-"`
+	CedarResultsFailed   bool                                    `json:"-"`
+	TestResultsSample    *apimodels.CedarFailedTestResultsSample `json:"-"`
 }
 
 type APIAbortInfo struct {

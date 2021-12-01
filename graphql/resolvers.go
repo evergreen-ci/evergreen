@@ -3666,6 +3666,34 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *v.Id, err.Error()))
 	}
+
+	if len(options.Tests) > 0 {
+		allFailedTasks := []*restModel.APITask{}
+		taskMap := map[string]*restModel.APITask{}
+		for _, gbv := range groupedBuildVariants {
+			for _, t := range gbv.Tasks {
+				if evergreen.IsFailedTaskStatus(utility.FromStringPtr(t.Status)) {
+					allFailedTasks = append(allFailedTasks, t)
+					taskMap[utility.FromStringPtr(t.Id)] = t
+				}
+			}
+		}
+		if len(allFailedTasks) > 0 {
+			testFilters := []string{}
+			for _, test := range options.Tests {
+				testFilters = append(testFilters, test.TestName)
+			}
+			testResultSample, err := getFailedTestResultsSample(ctx, allFailedTasks, testFilters)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results for version %s : %s", *v.Id, err.Error()))
+			}
+			for _, testResult := range testResultSample {
+				tr := testResult
+				taskMap[utility.FromStringPtr(testResult.TaskID)].TestResultsSample = &tr
+			}
+		}
+	}
+
 	return groupedBuildVariants, nil
 }
 
@@ -3889,6 +3917,19 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 	return false, nil
 }
 
+func (r *taskResolver) TestResultsSample(ctx context.Context, obj *restModel.APITask) (*TaskTestResultSample, error) {
+	if obj.TestResultsSample == nil {
+		return nil, nil
+	}
+	result := TaskTestResultSample{
+		TaskID:                  utility.FromStringPtr(obj.TestResultsSample.TaskID),
+		Execution:               obj.TestResultsSample.Execution,
+		MatchingFailedTestNames: obj.TestResultsSample.MatchingFailedTestNames,
+		TotalTestCount:          utility.ToIntPtr(obj.TestResultsSample.TotalFailedNames),
+	}
+	return &result, nil
+
+}
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
 	t, err := r.sc.FindTaskById(*obj.TaskId)
 	if err != nil {

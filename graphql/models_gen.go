@@ -39,9 +39,10 @@ type BuildBaron struct {
 }
 
 type BuildVariantOptions struct {
-	Variants []string `json:"variants"`
-	Tasks    []string `json:"tasks"`
-	Statuses []string `json:"statuses"`
+	Variants []string     `json:"variants"`
+	Tasks    []string     `json:"tasks"`
+	Statuses []string     `json:"statuses"`
+	Tests    []*TestTuple `json:"tests"`
 }
 
 type Dependency struct {
@@ -275,6 +276,18 @@ type TaskTestResult struct {
 	TotalTestCount    int              `json:"totalTestCount"`
 	FilteredTestCount int              `json:"filteredTestCount"`
 	TestResults       []*model.APITest `json:"testResults"`
+}
+
+type TaskTestResultSample struct {
+	TaskID                  string   `json:"taskId"`
+	Execution               int      `json:"execution"`
+	TotalTestCount          *int     `json:"totalTestCount"`
+	MatchingFailedTestNames []string `json:"matchingFailedTestNames"`
+}
+
+type TestTuple struct {
+	TestName string `json:"testName"`
+	Status   string `json:"status"`
 }
 
 type UpdateVolumeInput struct {

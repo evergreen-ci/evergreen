@@ -876,6 +876,7 @@ type ComplexityRoot struct {
 		Status                  func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
+		TestResultsSample       func(childComplexity int) int
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
 		Version                 func(childComplexity int) int
@@ -991,6 +992,13 @@ type ComplexityRoot struct {
 		FilteredTestCount func(childComplexity int) int
 		TestResults       func(childComplexity int) int
 		TotalTestCount    func(childComplexity int) int
+	}
+
+	TaskTestResultSample struct {
+		Execution               func(childComplexity int) int
+		MatchingFailedTestNames func(childComplexity int) int
+		TaskID                  func(childComplexity int) int
+		TotalTestCount          func(childComplexity int) int
 	}
 
 	TestLog struct {
@@ -1357,6 +1365,8 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
+
+	TestResultsSample(ctx context.Context, obj *model.APITask) (*TaskTestResultSample, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 
@@ -5721,6 +5731,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.TaskGroupMaxHosts(childComplexity), true
 
+	case "Task.testResultsSample":
+		if e.complexity.Task.TestResultsSample == nil {
+			break
+		}
+
+		return e.complexity.Task.TestResultsSample(childComplexity), true
+
 	case "Task.timeTaken":
 		if e.complexity.Task.TimeTaken == nil {
 			break
@@ -6231,6 +6248,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskTestResult.TotalTestCount(childComplexity), true
+
+	case "TaskTestResultSample.execution":
+		if e.complexity.TaskTestResultSample.Execution == nil {
+			break
+		}
+
+		return e.complexity.TaskTestResultSample.Execution(childComplexity), true
+
+	case "TaskTestResultSample.matchingFailedTestNames":
+		if e.complexity.TaskTestResultSample.MatchingFailedTestNames == nil {
+			break
+		}
+
+		return e.complexity.TaskTestResultSample.MatchingFailedTestNames(childComplexity), true
+
+	case "TaskTestResultSample.taskId":
+		if e.complexity.TaskTestResultSample.TaskID == nil {
+			break
+		}
+
+		return e.complexity.TaskTestResultSample.TaskID(childComplexity), true
+
+	case "TaskTestResultSample.totalTestCount":
+		if e.complexity.TaskTestResultSample.TotalTestCount == nil {
+			break
+		}
+
+		return e.complexity.TaskTestResultSample.TotalTestCount(childComplexity), true
 
 	case "TestLog.lineNum":
 		if e.complexity.TestLog.LineNum == nil {
@@ -7311,7 +7356,15 @@ input BuildVariantOptions {
   variants: [String!]
   tasks: [String!]
   statuses: [String!]
+  # testNames filters for failing test names that match the filter criteria.
+  tests: [TestTuple]
 }
+
+input TestTuple {
+  testName: String!
+  status: String!
+}
+
 input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
@@ -7894,7 +7947,7 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
   versionFull: Version
   status: String!
   variants: [String!]!
@@ -8021,6 +8074,15 @@ type OomTrackerInfo {
   pids: [Int]
 }
 
+# This will represent failing test results on the task history pages.
+type TaskTestResultSample {
+  taskId: String!
+  execution: Int!
+  totalTestCount: Int
+  matchingFailedTestNames: [String!]
+}
+
+
 type TaskTestResult {
   totalTestCount: Int!
   filteredTestCount: Int!
@@ -8143,6 +8205,7 @@ type Task {
   status: String!
   taskGroup: String
   taskGroupMaxHosts: Int
+  testResultsSample: TaskTestResultSample
   timeTaken: Duration
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
@@ -30142,6 +30205,38 @@ func (ec *executionContext) _Task_taskGroupMaxHosts(ctx context.Context, field g
 	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_testResultsSample(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().TestResultsSample(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*TaskTestResultSample)
+	fc.Result = res
+	return ec.marshalOTaskTestResultSample2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResultSample(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -32617,6 +32712,140 @@ func (ec *executionContext) _TaskTestResult_testResults(ctx context.Context, fie
 	res := resTmp.([]*model.APITest)
 	fc.Result = res
 	return ec.marshalNTestResult2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskTestResultSample_taskId(ctx context.Context, field graphql.CollectedField, obj *TaskTestResultSample) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskTestResultSample",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskTestResultSample_execution(ctx context.Context, field graphql.CollectedField, obj *TaskTestResultSample) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskTestResultSample",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Execution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskTestResultSample_totalTestCount(ctx context.Context, field graphql.CollectedField, obj *TaskTestResultSample) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskTestResultSample",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalTestCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskTestResultSample_matchingFailedTestNames(ctx context.Context, field graphql.CollectedField, obj *TaskTestResultSample) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskTestResultSample",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MatchingFailedTestNames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
@@ -37581,6 +37810,14 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 			if err != nil {
 				return it, err
 			}
+		case "tests":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tests"))
+			it.Tests, err = ec.unmarshalOTestTuple2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestTuple(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -39757,6 +39994,37 @@ func (ec *executionContext) unmarshalInputTaskSyncOptionsInput(ctx context.Conte
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchEnabled"))
 			it.PatchEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestTuple(ctx context.Context, obj interface{}) (TestTuple, error) {
+	var it TestTuple
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "testName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testName"))
+			it.TestName, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "status":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			it.Status, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45100,6 +45368,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroup(ctx, field, obj)
 		case "taskGroupMaxHosts":
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
+		case "testResultsSample":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_testResultsSample(ctx, field, obj)
+				return res
+			})
 		case "timeTaken":
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
 		case "totalTestCount":
@@ -45758,6 +46037,42 @@ func (ec *executionContext) _TaskTestResult(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var taskTestResultSampleImplementors = []string{"TaskTestResultSample"}
+
+func (ec *executionContext) _TaskTestResultSample(ctx context.Context, sel ast.SelectionSet, obj *TaskTestResultSample) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskTestResultSampleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskTestResultSample")
+		case "taskId":
+			out.Values[i] = ec._TaskTestResultSample_taskId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "execution":
+			out.Values[i] = ec._TaskTestResultSample_execution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "totalTestCount":
+			out.Values[i] = ec._TaskTestResultSample_totalTestCount(ctx, field, obj)
+		case "matchingFailedTestNames":
+			out.Values[i] = ec._TaskTestResultSample_matchingFailedTestNames(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -51666,6 +51981,13 @@ func (ec *executionContext) unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergr
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOTaskTestResultSample2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResultSample(ctx context.Context, sel ast.SelectionSet, v *TaskTestResultSample) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskTestResultSample(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOTestSortCategory2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortCategory(ctx context.Context, v interface{}) (*TestSortCategory, error) {
 	if v == nil {
 		return nil, nil
@@ -51680,6 +52002,38 @@ func (ec *executionContext) marshalOTestSortCategory2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOTestTuple2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestTuple(ctx context.Context, v interface{}) ([]*TestTuple, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*TestTuple, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalOTestTuple2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestTuple(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOTestTuple2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestTuple(ctx context.Context, v interface{}) (*TestTuple, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTestTuple(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {

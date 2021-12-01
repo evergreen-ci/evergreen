@@ -228,7 +228,15 @@ input BuildVariantOptions {
   variants: [String!]
   tasks: [String!]
   statuses: [String!]
+  # testNames filters for failing test names that match the filter criteria.
+  tests: [TestTuple]
 }
+
+input TestTuple {
+  testName: String!
+  status: String!
+}
+
 input MainlineCommitsOptions {
   projectID: String!
   limit: Int = 7
@@ -938,6 +946,15 @@ type OomTrackerInfo {
   pids: [Int]
 }
 
+# This will represent failing test results on the task history pages.
+type TaskTestResultSample {
+  taskId: String!
+  execution: Int!
+  totalTestCount: Int
+  matchingFailedTestNames: [String!]
+}
+
+
 type TaskTestResult {
   totalTestCount: Int!
   filteredTestCount: Int!
@@ -1060,6 +1077,7 @@ type Task {
   status: String!
   taskGroup: String
   taskGroupMaxHosts: Int
+  testResultsSample: TaskTestResultSample
   timeTaken: Duration
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
