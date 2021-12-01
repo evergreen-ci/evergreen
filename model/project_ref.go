@@ -849,6 +849,9 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
 		repoRef.Admins = append(repoRef.Admins, u.Username())
 	}
+	if repoRef.Id != "" {
+		return nil, errors.Wrap(err, "repo ref is already defined")
+	}
 	// some fields shouldn't be set from projects
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	// set explicitly in case no project is enabled
