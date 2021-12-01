@@ -1089,6 +1089,7 @@ type ComplexityRoot struct {
 		Activated         func(childComplexity int) int
 		Author            func(childComplexity int) int
 		BaseTaskStatuses  func(childComplexity int) int
+		BaseVersion       func(childComplexity int) int
 		BaseVersionID     func(childComplexity int) int
 		Branch            func(childComplexity int) int
 		BuildVariants     func(childComplexity int, options *BuildVariantOptions) int
@@ -1392,6 +1393,7 @@ type VersionResolver interface {
 	ChildVersions(ctx context.Context, obj *model.APIVersion) ([]*model.APIVersion, error)
 	TaskCount(ctx context.Context, obj *model.APIVersion) (*int, error)
 	BaseVersionID(ctx context.Context, obj *model.APIVersion) (*string, error)
+	BaseVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -6673,6 +6675,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.BaseTaskStatuses(childComplexity), true
 
+	case "Version.baseVersion":
+		if e.complexity.Version.BaseVersion == nil {
+			break
+		}
+
+		return e.complexity.Version.BaseVersion(childComplexity), true
+
 	case "Version.baseVersionID":
 		if e.complexity.Version.BaseVersionID == nil {
 			break
@@ -7296,6 +7305,7 @@ type Version {
   childVersions: [Version]
   taskCount: Int
   baseVersionID: String
+  baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!
@@ -35387,6 +35397,38 @@ func (ec *executionContext) _Version_baseVersionID(ctx context.Context, field gr
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_baseVersion(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().BaseVersion(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_versionTiming(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -46528,6 +46570,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_baseVersionID(ctx, field, obj)
+				return res
+			})
+		case "baseVersion":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_baseVersion(ctx, field, obj)
 				return res
 			})
 		case "versionTiming":
