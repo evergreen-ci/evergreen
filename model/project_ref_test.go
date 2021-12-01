@@ -1818,61 +1818,76 @@ func TestPointers(t *testing.T) {
 	assert.True(t, pointerRef.PtrStruct.ShouldGitClone())
 }
 
-//func TestMergeWithProjectConfig(t *testing.T) {
-//	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigsCollection),
-//		"Error clearing collection")
-//
-//	projectRef := &ProjectRef{
-//		Owner:              "mongodb",
-//		Id:                 "ident",
-//		PerfEnabled:        utility.TruePtr(),
-//		DeactivatePrevious: utility.FalsePtr(),
-//		TaskAnnotationSettings: evergreen.AnnotationsSettings{
-//			FileTicketWebhook: evergreen.WebHook{
-//				Endpoint: "random1",
-//			},
-//		},
-//		WorkstationConfig: WorkstationConfig{
-//			GitClone: utility.TruePtr(),
-//			SetupCommands: []WorkstationSetupCommand{
-//				{Command: "expeliarmus"},
-//			},
-//		},
-//		CommitQueue: CommitQueueParams{
-//			Enabled:     utility.TruePtr(),
-//			MergeMethod: "message1",
-//		},
-//	}
-//	projectConfig := &ProjectConfig{
-//		Id:                 "version1",
-//		DeactivatePrevious: utility.TruePtr(),
-//		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-//			FileTicketWebhook: evergreen.WebHook{
-//				Endpoint: "random2",
-//			},
-//		},
-//		CommitQueue: &CommitQueueParams{
-//			Enabled:     utility.TruePtr(),
-//			MergeMethod: "message2",
-//		},
-//		WorkstationConfig: &WorkstationConfig{
-//			GitClone: utility.FalsePtr(),
-//			SetupCommands: []WorkstationSetupCommand{
-//				{Command: "overridden"},
-//			},
-//		},
-//	}
-//	assert.NoError(t, projectRef.Insert())
-//	assert.NoError(t, projectConfig.Insert())
-//	err := projectRef.MergeWithProjectConfig("version1")
-//	assert.NoError(t, err)
-//	require.NotNil(t, projectRef)
-//	assert.Equal(t, "ident", projectRef.Id)
-//
-//	assert.True(t, *projectRef.DeactivatePrevious)
-//	assert.True(t, *projectRef.PerfEnabled)
-//	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
-//	assert.False(t, *projectRef.WorkstationConfig.GitClone)
-//	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
-//	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
-//}
+func TestMergeWithProjectConfig(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigsCollection),
+		"Error clearing collection")
+
+	projectRef := &ProjectRef{
+		Owner:              "mongodb",
+		Id:                 "ident",
+		DeactivatePrevious: utility.FalsePtr(),
+		TaskAnnotationSettings: evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "random1",
+			},
+		},
+		WorkstationConfig: WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
+		CommitQueue: CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message1",
+		},
+		BuildBaronSettings: evergreen.BuildBaronSettings{
+			TicketCreateProject:  "EVG",
+			TicketSearchProjects: []string{"BF", "BFG"},
+		},
+	}
+	projectConfig := &ProjectConfig{
+		Id:                 "version1",
+		PerfEnabled:        utility.TruePtr(),
+		DeactivatePrevious: utility.TruePtr(),
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "random2",
+			},
+		},
+		CommitQueue: &CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message2",
+		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.FalsePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "overridden"},
+			},
+		},
+		BuildBaronSettings: &evergreen.BuildBaronSettings{
+			TicketCreateProject:     "BFG",
+			TicketSearchProjects:    []string{"BF", "BFG"},
+			BFSuggestionServer:      "https://evergreen.mongodb.com",
+			BFSuggestionTimeoutSecs: 10,
+		},
+	}
+	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectConfig.Insert())
+	err := projectRef.MergeWithProjectConfig("version1")
+	assert.NoError(t, err)
+	require.NotNil(t, projectRef)
+	assert.Equal(t, "ident", projectRef.Id)
+
+	assert.False(t, *projectRef.DeactivatePrevious)
+	assert.True(t, *projectRef.PerfEnabled)
+	assert.Equal(t, "random1", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.True(t, *projectRef.WorkstationConfig.GitClone)
+	assert.Equal(t, "expeliarmus", projectRef.WorkstationConfig.SetupCommands[0].Command)
+	assert.Equal(t, "message1", projectRef.CommitQueue.MergeMethod)
+
+	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
+	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
+	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
+
+}

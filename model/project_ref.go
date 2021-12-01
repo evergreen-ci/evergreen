@@ -414,30 +414,33 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		return err
 	}
 	if projectConfig != nil {
-		if p.PerfEnabled == nil {
-			p.PerfEnabled = projectConfig.PerfEnabled
+		defer func() {
+			err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
+		}()
+		pRefToMerge := ProjectRef{
+			DeactivatePrevious: projectConfig.DeactivatePrevious,
+			PerfEnabled:        projectConfig.PerfEnabled,
 		}
-		if p.DeactivatePrevious == nil {
-			p.DeactivatePrevious = projectConfig.DeactivatePrevious
+		if projectConfig.WorkstationConfig != nil {
+			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
 		}
-		var emptyAnnotations evergreen.AnnotationsSettings
-		if reflect.DeepEqual(p.TaskAnnotationSettings, emptyAnnotations) {
-			p.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
+		if projectConfig.BuildBaronSettings != nil {
+			pRefToMerge.BuildBaronSettings = *projectConfig.BuildBaronSettings
 		}
-		var emptyWorkstation WorkstationConfig
-		if reflect.DeepEqual(p.WorkstationConfig, emptyWorkstation) {
-			p.WorkstationConfig = *projectConfig.WorkstationConfig
+		if projectConfig.TaskAnnotationSettings != nil {
+			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
 		}
-		var emptyCqParams CommitQueueParams
-		if reflect.DeepEqual(p.CommitQueue, emptyCqParams) {
-			p.CommitQueue = *projectConfig.CommitQueue
+		if projectConfig.CommitQueue != nil {
+			pRefToMerge.CommitQueue = *projectConfig.CommitQueue
 		}
-		var emptyTaskSync TaskSyncOptions
-		if reflect.DeepEqual(p.TaskSync, emptyTaskSync) {
-			p.TaskSync = *projectConfig.TaskSync
+		if projectConfig.TaskSync != nil {
+			pRefToMerge.TaskSync = *projectConfig.TaskSync
 		}
+		reflectedRef := reflect.ValueOf(p).Elem()
+		reflectedConfig := reflect.ValueOf(pRefToMerge)
+		recursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
-	return nil
+	return err
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.

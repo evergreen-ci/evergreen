@@ -1,23 +1,21 @@
 package model
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 type ProjectConfig struct {
-	Id          string    `yaml:"_id" bson:"_id"`
-	Enabled     *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
-	Owner       *string   `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo        *string   `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath  *string   `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	Branch      *string   `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier  *string   `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName *string   `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CreateTime  time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	Id         string    `yaml:"_id" bson:"_id"`
+	Identifier *string   `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	CreateTime time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on the project page will take precedence over this struct and will
@@ -43,4 +41,36 @@ func (pc *ProjectConfig) Insert() error {
 
 func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
 	return mgobson.Marshal(pc)
+}
+
+func (pc *ProjectConfig) isEmpty() bool {
+	reflectedConfig := reflect.ValueOf(pc).Elem()
+	types := reflect.TypeOf(pc).Elem()
+
+	for i := 0; i < reflectedConfig.NumField(); i++ {
+		field := reflectedConfig.Field(i)
+		name := types.Field(i).Name
+		if name != "Id" && name != "Identifier" {
+			if !util.IsFieldUndefined(field) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// createConfig marshals the supplied YAML into our
+// intermediate configs representation.
+func createConfig(yml []byte) (*ProjectConfig, error) {
+	p := &ProjectConfig{}
+	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, errors.Wrap(yamlErr, "error unmarshalling into project configs")
+	}
+	isEmpty := p.isEmpty()
+	if isEmpty {
+		return nil, nil
+	}
+	p.CreateTime = time.Now()
+	return p, nil
 }

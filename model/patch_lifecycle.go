@@ -283,7 +283,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			p.Githash)
 	}
 	intermediateProject.Id = p.Id.Hex()
-	config.Id = p.Id.Hex()
+	if config != nil {
+		config.Id = p.Id.Hex()
+	}
 
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
@@ -429,9 +431,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if err != nil {
 			return nil, errors.Wrapf(err, "error inserting parser project for version '%s'", patchVersion.Id)
 		}
-		_, err = db.Collection(ProjectConfigsCollection).InsertOne(sessCtx, config)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error inserting project configs for version '%s'", patchVersion.Id)
+		if config != nil {
+			_, err = db.Collection(ProjectConfigsCollection).InsertOne(sessCtx, config)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error inserting project configs for version '%s'", patchVersion.Id)
+			}
 		}
 		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
 			return nil, errors.Wrapf(err, "error inserting builds for version '%s'", patchVersion.Id)

@@ -781,18 +781,6 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	return p, nil
 }
 
-// createConfig marshals the supplied YAML into our
-// intermediate configs representation.
-func createConfig(yml []byte) (*ProjectConfig, error) {
-	p := &ProjectConfig{}
-	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
-		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-		return nil, errors.Wrap(yamlErr, "error unmarshalling into project configs")
-	}
-	p.CreateTime = time.Now()
-	return p, nil
-}
-
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
