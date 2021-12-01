@@ -442,7 +442,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if h.apiNewProjectRef.UseRepoSettings && h.newProjectRef.RepoRefId == "" {
+	if utility.FromBoolPtr(h.apiNewProjectRef.UseRepoSettings) && h.newProjectRef.RepoRefId == "" {
 		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}

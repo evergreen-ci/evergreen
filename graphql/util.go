@@ -1318,7 +1318,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			Projects:         groupedProjects,
 		}
 		project := groupedProjects[0]
-		if project.UseRepoSettings {
+		if utility.FromBoolPtr(project.UseRepoSettings) {
 			repoRefId := utility.FromStringPtr(project.RepoRefId)
 			repoRef, err := model.FindOneRepoRef(repoRefId)
 			if err != nil {
