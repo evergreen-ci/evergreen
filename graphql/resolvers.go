@@ -3768,6 +3768,18 @@ func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIV
 	return &baseVersion.Id, nil
 }
 
+func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
+	if baseVersion == nil || err != nil {
+		return nil, nil
+	}
+	apiVersion := restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(baseVersion); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", baseVersion.Id, err.Error()))
+	}
+	return &apiVersion, nil
+}
+
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
