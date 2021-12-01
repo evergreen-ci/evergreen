@@ -1126,7 +1126,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 					return errors.Wrap(abortErr, "error aborting transaction")
 				}
 				return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
-			}x
+			}
 		}
 		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
 		if err != nil {
