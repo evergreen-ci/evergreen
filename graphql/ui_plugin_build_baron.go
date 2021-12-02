@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -53,7 +54,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (bool, 
 		return taskNotFound, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
-	webHook, ok, err := plugin.IsWebhookConfigured(t.Project, t.Version)
+	webHook, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
 	if err != nil {
 		return taskNotFound, errors.Wrapf(err, "Error retrieving webhook config for %s", t.Project)
 	}

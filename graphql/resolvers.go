@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -3154,8 +3153,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	projectMatches := model.IsPerfEnabledForProject(*obj.ProjectId)
-	if !projectMatches {
+	if !model.IsPerfEnabledForProject(*obj.ProjectId) {
 		return false, nil
 	}
 	opts := apimodels.GetCedarPerfCountOptions{
@@ -3872,7 +3870,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	_, ok, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
 }
 

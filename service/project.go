@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -566,6 +567,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
 		return
 	}
+	err = bbProjectIsValid(projectRef.Id, buildbaronConfig)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
+		return
+	}
 
 	i, err = responseRef.TaskAnnotationSettings.ToService()
 	if err != nil {
@@ -1008,4 +1014,88 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		}
 	}
 	return false, nil
+}
+
+func bbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error {
+	webHook, _, _ := model.IsWebhookConfigured(projName, "")
+	webhookConfigured := webHook.Endpoint != ""
+
+	if !webhookConfigured && proj.TicketCreateProject == "" {
+		msg := "ticket_create_project and taskAnnotationSettings.FileTicketWebhook endpoint cannot both be blank"
+		grip.Critical(message.Fields{
+			"message":      msg,
+			"project_name": projName,
+		})
+		return errors.Errorf(msg)
+	}
+	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
+		msg := "ticket_search_projects cannot be empty"
+		grip.Critical(message.Fields{
+			"message":      msg,
+			"project_name": projName,
+		})
+		return errors.Errorf(msg)
+	}
+	if proj.BFSuggestionServer != "" {
+		if _, err := url.Parse(proj.BFSuggestionServer); err != nil {
+			msg := fmt.Sprintf(`Failed to parse bf_suggestion_server for project "%s"`, projName)
+			grip.Critical(message.WrapError(err, message.Fields{
+				"message":      msg,
+				"project_name": projName,
+			}))
+			return errors.Errorf(msg)
+		}
+		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
+			msg := fmt.Sprintf(`Failed validating configuration for project "%s": `+
+				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
+			grip.Critical(message.Fields{
+				"message":      msg,
+				"project_name": projName,
+			})
+			return errors.Errorf(msg)
+		}
+		if proj.BFSuggestionTimeoutSecs <= 0 {
+			msg := fmt.Sprintf(`Failed validating configuration for project "%s": `+
+				"bf_suggestion_timeout_secs must be positive", projName)
+			grip.Critical(message.Fields{
+				"message":      msg,
+				"project_name": projName,
+			})
+			return errors.Errorf(msg)
+		}
+	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
+		msg := fmt.Sprintf(`Failed validating configuration for project "%s": `+
+			"bf_suggestion_username and bf_suggestion_password must be blank alt_endpoint_url is blank", projName)
+		grip.Critical(message.Fields{
+			"message":      msg,
+			"project_name": projName,
+		})
+		return errors.Errorf(msg)
+	} else if proj.BFSuggestionTimeoutSecs != 0 {
+		msg := fmt.Sprintf(`Failed validating configuration for project "%s": `+
+			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
+		grip.Critical(message.Fields{
+			"message":      msg,
+			"project_name": projName,
+		})
+		return errors.Errorf(msg)
+	}
+	// the webhook cannot be used if the default build baron creation and search is configured
+	if webhookConfigured {
+		if len(proj.TicketCreateProject) != 0 {
+			msg := "The custom file ticket webhook and the build baron TicketCreateProject should not both be configured"
+			grip.Critical(message.Fields{
+				"message":      msg,
+				"project_name": projName})
+			return errors.Errorf(msg)
+		}
+		if _, err := url.Parse(webHook.Endpoint); err != nil {
+			msg := "Failed to parse webhook endpoint for project"
+			grip.Critical(message.WrapError(err, message.Fields{
+				"message":      msg,
+				"project_name": projName}))
+			return errors.Errorf(msg)
+		}
+	}
+	return nil
 }

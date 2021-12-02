@@ -2306,6 +2306,20 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	return catcher.Resolve()
 }
 
+// IsWebhookConfigured retrieves webhook configuration from the project settings.
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool, error) {
+	projectRef, err := FindMergedProjectRef(project, version, true)
+	if err != nil || projectRef == nil {
+		return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
+	}
+	webHook := projectRef.TaskAnnotationSettings.FileTicketWebhook
+	if webHook.Endpoint != "" {
+		return webHook, true, nil
+	} else {
+		return evergreen.WebHook{}, false, nil
+	}
+}
+
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	if triggerID == "" || triggerType == "" {
 		return "", nil
