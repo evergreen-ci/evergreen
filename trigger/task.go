@@ -345,7 +345,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
 	var payload interface{}
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
-		// We avoid creating BFG ticket in the case that the task is stranded to reduce noise for the Build Baron
+		// We avoid creating BFG ticket in the case that the task is setup-failed or stranded to reduce noise for the Build Baron
 		// If task is display, we skip ticket creation if all execution task failures are only 'stranded'
 		shouldSkipTicket := false
 		if t.task.DisplayOnly {
