@@ -1,10 +1,10 @@
 package model
 
 import (
-	"github.com/evergreen-ci/utility"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
