@@ -447,10 +447,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		useRepoSettings := utility.FromBoolPtr(h.apiNewProjectRef.UseRepoSettings)
 		// the user set it to false, and it was previously true - remove
 		if !useRepoSettings && h.newProjectRef.RepoRefId != "" {
-			h.newProjectRef.RepoRefId = ""
 			if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
+			h.newProjectRef.RepoRefId = ""
 			// the user set it to true, and it was previously false - add
 		} else if useRepoSettings && h.newProjectRef.RepoRefId == "" {
 			if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
