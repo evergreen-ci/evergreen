@@ -266,7 +266,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 func TestBatchTimeForTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
-		build.Collection, task.Collection), ShouldBeNil)
+		build.Collection, task.Collection, model.ProjectConfigsCollection), ShouldBeNil)
 
 	simpleYml := `
 buildvariants:
