@@ -429,6 +429,9 @@ func IsIntentHostId(id string) bool {
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
+	if h.Status == status {
+		return nil
+	}
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
@@ -1615,8 +1618,13 @@ func FindHostsToTerminate() ([]Host, error) {
 				},
 				ExpirationTimeKey: bson.M{"$lte": now},
 			},
-			{ // hosts that failed to provision
-				StatusKey: evergreen.HostProvisionFailed,
+			{
+				// Hosts that failed to be created in a cloud provider or
+				// provision.
+				StatusKey: bson.M{"$in": []string{
+					evergreen.HostBuildingFailed,
+					evergreen.HostProvisionFailed},
+				},
 			},
 			{
 				// Either:
