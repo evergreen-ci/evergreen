@@ -108,7 +108,6 @@ var (
 	TaskEndDetailTimedOut    = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TimedOut")
 	TaskEndDetailType        = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Type")
 	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
-	TaskEndDetailTimeoutType = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TimeoutType")
 )
 
 var (
@@ -214,21 +213,9 @@ var (
 				},
 				{
 					"case": bson.M{
-						"$and": []bson.M{
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimeoutType), evergreen.ExecTimeout}},
-						},
+						"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
 					},
 					"then": evergreen.TaskTimedOut,
-				},
-				{
-					"case": bson.M{
-						"$and": []bson.M{
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimeoutType), evergreen.IdleTimeout}},
-						},
-					},
-					"then": evergreen.TaskTestTimedOut,
 				},
 				// A task will be unscheduled if it is not activated
 				{

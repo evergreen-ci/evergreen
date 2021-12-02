@@ -1709,7 +1709,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if baseTask != nil && baseTask.HasCedarResults {
 			opts.BaseTaskID = baseTask.Id
 		}
-		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		cedarTestResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task %s: %s", taskID, err))
 		}
@@ -2993,7 +2993,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
-		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
 			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 		}
@@ -3017,7 +3017,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
-		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
 			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 		}
@@ -3766,6 +3766,18 @@ func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIV
 		return nil, nil
 	}
 	return &baseVersion.Id, nil
+}
+
+func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
+	if baseVersion == nil || err != nil {
+		return nil, nil
+	}
+	apiVersion := restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(baseVersion); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", baseVersion.Id, err.Error()))
+	}
+	return &apiVersion, nil
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {

@@ -597,6 +597,7 @@ type ComplexityRoot struct {
 		Repo                    func(childComplexity int) int
 		RepoRefId               func(childComplexity int) int
 		RepotrackerDisabled     func(childComplexity int) int
+		Restricted              func(childComplexity int) int
 		SpawnHostScriptPath     func(childComplexity int) int
 		TaskAnnotationSettings  func(childComplexity int) int
 		TaskSync                func(childComplexity int) int
@@ -736,6 +737,7 @@ type ComplexityRoot struct {
 		RemotePath              func(childComplexity int) int
 		Repo                    func(childComplexity int) int
 		RepotrackerDisabled     func(childComplexity int) int
+		Restricted              func(childComplexity int) int
 		SpawnHostScriptPath     func(childComplexity int) int
 		TaskAnnotationSettings  func(childComplexity int) int
 		TaskSync                func(childComplexity int) int
@@ -1087,6 +1089,7 @@ type ComplexityRoot struct {
 		Activated         func(childComplexity int) int
 		Author            func(childComplexity int) int
 		BaseTaskStatuses  func(childComplexity int) int
+		BaseVersion       func(childComplexity int) int
 		BaseVersionID     func(childComplexity int) int
 		Branch            func(childComplexity int) int
 		BuildVariants     func(childComplexity int, options *BuildVariantOptions) int
@@ -1390,6 +1393,7 @@ type VersionResolver interface {
 	ChildVersions(ctx context.Context, obj *model.APIVersion) ([]*model.APIVersion, error)
 	TaskCount(ctx context.Context, obj *model.APIVersion) (*int, error)
 	BaseVersionID(ctx context.Context, obj *model.APIVersion) (*string, error)
+	BaseVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -4084,6 +4088,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.RepotrackerDisabled(childComplexity), true
 
+	case "Project.restricted":
+		if e.complexity.Project.Restricted == nil {
+			break
+		}
+
+		return e.complexity.Project.Restricted(childComplexity), true
+
 	case "Project.spawnHostScriptPath":
 		if e.complexity.Project.SpawnHostScriptPath == nil {
 			break
@@ -4971,6 +4982,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.RepotrackerDisabled(childComplexity), true
+
+	case "RepoRef.restricted":
+		if e.complexity.RepoRef.Restricted == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.Restricted(childComplexity), true
 
 	case "RepoRef.spawnHostScriptPath":
 		if e.complexity.RepoRef.SpawnHostScriptPath == nil {
@@ -6657,6 +6675,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.BaseTaskStatuses(childComplexity), true
 
+	case "Version.baseVersion":
+		if e.complexity.Version.BaseVersion == nil {
+			break
+		}
+
+		return e.complexity.Version.BaseVersion(childComplexity), true
+
 	case "Version.baseVersionID":
 		if e.complexity.Version.BaseVersionID == nil {
 			break
@@ -7280,6 +7305,7 @@ type Version {
   childVersions: [Version]
   taskCount: Int
   baseVersionID: String
+  baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!
@@ -7489,6 +7515,7 @@ input ProjectInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -7541,6 +7568,7 @@ input RepoRefInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -7894,7 +7922,7 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
   versionFull: Version
   status: String!
   variants: [String!]!
@@ -8260,6 +8288,7 @@ type Project {
   displayName: String!
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String!
   repo: String!
   branch: String!
@@ -8311,6 +8340,7 @@ type RepoRef {
   displayName: String!
   enabled: Boolean!
   private: Boolean!
+  restricted: Boolean!
   owner: String!
   repo: String!
   branch: String!
@@ -21576,6 +21606,38 @@ func (ec *executionContext) _Project_private(ctx context.Context, field graphql.
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_restricted(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Restricted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_owner(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -25651,6 +25713,41 @@ func (ec *executionContext) _RepoRef_private(ctx context.Context, field graphql.
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Private, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_restricted(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Restricted, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35300,6 +35397,38 @@ func (ec *executionContext) _Version_baseVersionID(ctx context.Context, field gr
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_baseVersion(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().BaseVersion(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_versionTiming(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -38526,6 +38655,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "restricted":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restricted"))
+			it.Restricted, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "owner":
 			var err error
 
@@ -38959,6 +39096,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("private"))
 			it.Private, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "restricted":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restricted"))
+			it.Restricted, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42968,6 +43113,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_enabled(ctx, field, obj)
 		case "private":
 			out.Values[i] = ec._Project_private(ctx, field, obj)
+		case "restricted":
+			out.Values[i] = ec._Project_restricted(ctx, field, obj)
 		case "owner":
 			out.Values[i] = ec._Project_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -44064,6 +44211,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "private":
 			out.Values[i] = ec._RepoRef_private(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "restricted":
+			out.Values[i] = ec._RepoRef_restricted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
@@ -46418,6 +46570,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_baseVersionID(ctx, field, obj)
+				return res
+			})
+		case "baseVersion":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_baseVersion(ctx, field, obj)
 				return res
 			})
 		case "versionTiming":

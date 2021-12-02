@@ -4,6 +4,7 @@
         projectRef {
             id
             identifier
+            restricted
             commitQueue {
                 enabled
                 mergeMethod

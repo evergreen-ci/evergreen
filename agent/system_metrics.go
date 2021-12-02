@@ -1,5 +1,3 @@
-// +build linux windows darwin,!arm64
-
 package agent
 
 import (

@@ -424,7 +424,11 @@ function buildRegexSelectors() {
 
 function taskRegexSelectors() {
   return [{
-    type: "display-name",
-    type_label: "Task Name",
-  }];
+      type: "display-name",
+      type_label: "Task Name",
+    },
+    {
+      type: "build-variant",
+      type_label: "Build Variant Name",
+    }];
 }
