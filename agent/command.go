@@ -147,6 +147,12 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			return errors.Wrap(ctx.Err(), "Agent stopped early")
 		}
 		tc.logger.Task().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
+		if (options.isTaskCommands || options.failPreAndPost) && a.endTaskResp != nil && !a.endTaskResp.ShouldContinue {
+			// only error if we're running a command that should fail, and we don't want to continue to run other tasks
+			msg := fmt.Sprintf("task status has been set to '%s'; triggering end task", a.endTaskResp.Status)
+			tc.logger.Task().Debug(msg)
+			return errors.New(msg)
+		}
 	}
 	return nil
 }

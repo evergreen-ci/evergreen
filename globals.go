@@ -269,16 +269,6 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
-// TimeoutType indicate the type of timeout stored in TaskEndDetail.TimeoutType.
-type TimeoutType string
-
-const (
-	// Represents a task timeout.
-	ExecTimeout TimeoutType = "exec"
-	// Represents a test timeout.
-	IdleTimeout TimeoutType = "idle"
-)
-
 var InternalAliases []string = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
@@ -317,6 +307,10 @@ func IsFinishedTaskStatus(status string) bool {
 
 func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
+}
+
+func IsValidTaskEndStatus(status string) bool {
+	return status == TaskSucceeded || status == TaskFailed
 }
 
 func IsFinishedPatchStatus(status string) bool {

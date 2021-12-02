@@ -228,7 +228,7 @@ mciModule.controller(
 
     $scope.findProject = function (identifier) {
       return _.find($scope.trackedProjects, function (project) {
-        return project.identifier == identifier;
+        return project.identifier == identifier || project.id == identifier;
       });
     };
 
@@ -374,7 +374,7 @@ mciModule.controller(
 
       if ($scope.findProject($scope.newProject.identifier)) {
         console.log("project identifier already exists");
-        $scope.newProjectMessage = "Project name already exists.";
+        $scope.newProjectMessage = "Project with this ID or identifier already exists.";
         $scope.newProject = {};
         return;
       }

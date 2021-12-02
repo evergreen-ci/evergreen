@@ -106,9 +106,12 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			Limit:       tgh.limit,
 			Page:        page,
 		}
-		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, opts)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
+		}
+		if status != http.StatusOK && status != http.StatusNotFound {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting test results from Cedar returned status '%d'", status))
 		}
 
 		if page*tgh.limit < utility.FromIntPtr(cedarTestResults.Stats.FilteredCount) {

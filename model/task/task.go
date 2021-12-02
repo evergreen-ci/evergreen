@@ -1524,12 +1524,7 @@ func (t *Task) GetDisplayStatus() string {
 		return evergreen.TaskSetupFailed
 	}
 	if t.Details.TimedOut {
-		if t.Details.TimeoutType == string(evergreen.ExecTimeout) {
-			return evergreen.TaskTimedOut
-		}
-		if t.Details.TimeoutType == string(evergreen.IdleTimeout) {
-			return evergreen.TaskTestTimedOut
-		}
+		return evergreen.TaskTimedOut
 	}
 	return t.Status
 }
@@ -3556,7 +3551,7 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 		DisplayTask: t.DisplayOnly,
 	}
 
-	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	cedarResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results from cedar")
 	}
