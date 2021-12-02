@@ -544,11 +544,13 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 	return result, nil
 }
 
+// getFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
 func getFailedTestResultsSample(ctx context.Context, tasks []*restModel.APITask, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
 	results := []apimodels.CedarFailedTestResultsSample{}
+	// if one task has test results on cedar, its safe to assume they all do for a given version
 	if tasks[0].HasCedarResults {
 		cedarTaskInfo := []apimodels.CedarTaskInfo{}
 		for _, t := range tasks {
@@ -567,12 +569,11 @@ func getFailedTestResultsSample(ctx context.Context, tasks []*restModel.APITask,
 			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			SampleOptions: cedarFailedTestSampleOpts,
 		}
-
-		results, err := apimodels.GetCedarFilteredFailedSamples(ctx, opts)
+		var err error
+		results, err = apimodels.GetCedarFilteredFailedSamples(ctx, opts)
 		if err != nil {
 			return nil, errors.Wrap(err, "error getting cedar filtered failed samples")
 		}
-		return results, nil
 	}
 	return results, nil
 }

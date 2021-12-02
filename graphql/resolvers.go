@@ -3667,9 +3667,10 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *v.Id, err.Error()))
 	}
 
-	if len(options.Tests) > 0 {
+	if utility.FromBoolPtr(options.IncludeFailingTestSample) {
 		allFailedTasks := []*restModel.APITask{}
 		taskMap := map[string]*restModel.APITask{}
+		// Get all failed tasks for the version since only failing tasks have failing test results
 		for _, gbv := range groupedBuildVariants {
 			for _, t := range gbv.Tasks {
 				if evergreen.IsFailedTaskStatus(utility.FromStringPtr(t.Status)) {
@@ -3680,8 +3681,11 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		}
 		if len(allFailedTasks) > 0 {
 			testFilters := []string{}
-			for _, test := range options.Tests {
-				testFilters = append(testFilters, test.TestName)
+			if options.Tests != nil {
+				// Ignore the test status for now since we don't have a way to filter by non failing tests.
+				for _, test := range options.Tests {
+					testFilters = append(testFilters, test.TestName)
+				}
 			}
 			testResultSample, err := getFailedTestResultsSample(ctx, allFailedTasks, testFilters)
 			if err != nil {
@@ -3689,6 +3693,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 			}
 			for _, testResult := range testResultSample {
 				tr := testResult
+				// Populate the testResultSample field for each task.
 				taskMap[utility.FromStringPtr(testResult.TaskID)].TestResultsSample = &tr
 			}
 		}

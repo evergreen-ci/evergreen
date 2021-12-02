@@ -39,10 +39,11 @@ type BuildBaron struct {
 }
 
 type BuildVariantOptions struct {
-	Variants []string     `json:"variants"`
-	Tasks    []string     `json:"tasks"`
-	Statuses []string     `json:"statuses"`
-	Tests    []*TestTuple `json:"tests"`
+	Variants                 []string     `json:"variants"`
+	Tasks                    []string     `json:"tasks"`
+	Statuses                 []string     `json:"statuses"`
+	Tests                    []*TestTuple `json:"tests"`
+	IncludeFailingTestSample *bool        `json:"includeFailingTestSample"`
 }
 
 type Dependency struct {

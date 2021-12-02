@@ -230,6 +230,7 @@ input BuildVariantOptions {
   statuses: [String!]
   # testNames filters for failing test names that match the filter criteria.
   tests: [TestTuple]
+  includeFailingTestSample: Boolean
 }
 
 input TestTuple {

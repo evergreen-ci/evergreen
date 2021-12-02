@@ -7358,6 +7358,7 @@ input BuildVariantOptions {
   statuses: [String!]
   # testNames filters for failing test names that match the filter criteria.
   tests: [TestTuple]
+  includeFailingTestSample: Boolean
 }
 
 input TestTuple {
@@ -37815,6 +37816,14 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tests"))
 			it.Tests, err = ec.unmarshalOTestTuple2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestTuple(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "includeFailingTestSample":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeFailingTestSample"))
+			it.IncludeFailingTestSample, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
