@@ -36,6 +36,7 @@ type Agent struct {
 	jasper        jasper.Manager
 	opts          Options
 	defaultLogger send.Sender
+	endTaskResp   *TriggerEndTaskResp
 }
 
 // Options contains startup options for an Agent.
@@ -68,7 +69,8 @@ const (
 	// HostMode indicates that the agent will run in a host.
 	HostMode Mode = "host"
 	// PodMode indicates that the agent will run in a pod's container.
-	PodMode Mode = "pod"
+	PodMode      Mode = "pod"
+	MessageLimit      = 500
 )
 
 type taskContext struct {
@@ -207,6 +209,7 @@ LOOP:
 			grip.Info("agent loop canceled")
 			return nil
 		case <-timer.C:
+			a.endTaskResp = nil // reset this in case a previous task used this to trigger a response
 			// Check the cedar GRPC connection so we can fail early
 			// and avoid task system failures.
 			err := utility.Retry(ctx, func() (bool, error) {
@@ -221,7 +224,6 @@ LOOP:
 				}
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
-
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,
@@ -603,14 +605,40 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 func (a *Agent) endTaskResponse(tc *taskContext, status string, message string) *apimodels.TaskEndDetail {
 	var description string
-	var cmdType string
+	var failureType string
+	if a.endTaskResp != nil { // if the user indicated a task response, use this instead
+		tc.logger.Task().Infof("Task status set with HTTP endpoint")
+		if !evergreen.IsValidTaskEndStatus(a.endTaskResp.Status) {
+			tc.logger.Task().Errorf("'%s' is not a valid task status", a.endTaskResp.Status)
+			status = evergreen.TaskFailed
+			failureType = evergreen.CommandTypeSystem
+		} else {
+			status = a.endTaskResp.Status
+			if len(a.endTaskResp.Description) > MessageLimit {
+				tc.logger.Task().Warningf("description from endpoint is too long to set (%d character limit), defaulting to command display name", MessageLimit)
+			} else {
+				description = a.endTaskResp.Description
+			}
+
+			if a.endTaskResp.Type != "" && !utility.StringSliceContains(evergreen.ValidCommandTypes, a.endTaskResp.Type) {
+				tc.logger.Task().Warningf("'%s' is not a valid failure type, defaulting to command failure type", a.endTaskResp.Type)
+			} else {
+				failureType = a.endTaskResp.Type
+			}
+		}
+	}
+
 	if tc.getCurrentCommand() != nil {
-		description = tc.getCurrentCommand().DisplayName()
-		cmdType = tc.getCurrentCommand().Type()
+		if description == "" {
+			description = tc.getCurrentCommand().DisplayName()
+		}
+		if failureType == "" {
+			failureType = tc.getCurrentCommand().Type()
+		}
 	}
 	detail := &apimodels.TaskEndDetail{
 		Description:     description,
-		Type:            cmdType,
+		Type:            failureType,
 		TimedOut:        tc.hadTimedOut(),
 		TimeoutType:     string(tc.getTimeoutType()),
 		TimeoutDuration: tc.getTimeoutDuration(),
