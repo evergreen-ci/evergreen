@@ -196,7 +196,8 @@ type Version {
   patch: Patch
   childVersions: [Version]
   taskCount: Int
-  baseVersionID: String
+  baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
+  baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!

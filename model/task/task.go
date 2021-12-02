@@ -3551,7 +3551,7 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 		DisplayTask: t.DisplayOnly,
 	}
 
-	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	cedarResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results from cedar")
 	}
