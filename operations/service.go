@@ -18,7 +18,7 @@ import (
 func Service() cli.Command {
 	return cli.Command{
 		Name:  "service",
-		Usage: "run evergreen services",
+		Usage: "run evergreen services MALIK",
 		Subcommands: []cli.Command{
 			deploy(),
 			startWebService(),
