@@ -349,7 +349,6 @@ functions:
             - {'source': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-1'},
                'destination': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-2'}}
 
-          
 
 #######################################
 #                Tasks                #
@@ -663,7 +662,7 @@ buildvariants:
     display_name: Ubuntu 16.04 ARM
     batchtime: 2880
     run_on:
-      - ubuntu1604-arm64-small
+      - ubuntu1604-arm64-large
     expansions:
       xc_build: yes
       goarch: arm64
