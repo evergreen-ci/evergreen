@@ -1900,7 +1900,7 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 	return task, bv, nil
 }
 
-// checkTaskTimeout checks if all tasks contains a timeout
+// checkTaskTimeout checks if all tasks contain a timeout
 func checkTaskTimeout(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
