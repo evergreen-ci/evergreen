@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const EventLogLimit = 10
+
 // DBProjectConnector is a struct that implements the Project related methods
 // from the Connector through interactions with the backing database.
 type DBProjectConnector struct{}
@@ -357,6 +359,17 @@ func (ac *DBProjectConnector) GetProjectEventLog(project string, before time.Tim
 		// don't return an error here to preserve existing behavior
 		return nil, nil
 	}
+	return getEventsById(id, before, n)
+}
+
+func (ac *DBProjectConnector) GetRepoEventLog(repoId string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	return getEventsById(repoId, before, n)
+}
+
+func getEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	if n == 0 {
+		n = EventLogLimit
+	}
 	events, err := model.ProjectEventsBefore(id, before, n)
 	if err != nil {
 		return nil, err
@@ -374,7 +387,6 @@ func (ac *DBProjectConnector) GetProjectEventLog(project string, before time.Tim
 		}
 		out = append(out, apiEvent)
 	}
-
 	return out, catcher.Resolve()
 }
 
@@ -685,6 +697,10 @@ func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId strin
 }
 
 func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	return pc.CachedEvents, nil
+}
+
+func (pc *MockProjectConnector) GetRepoEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	return pc.CachedEvents, nil
 }
 

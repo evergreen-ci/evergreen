@@ -1286,6 +1286,14 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	return res, nil
 }
 
+func getPointerEventList(events []restModel.APIProjectEvent) []*restModel.APIProjectEvent {
+	res := make([]*restModel.APIProjectEvent, len(events))
+	for i := range events {
+		res[i] = &events[i]
+	}
+	return res
+}
+
 // GroupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
 // it groups projects that defaulted to the repo under that repo and groups the rest under "".
 func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
