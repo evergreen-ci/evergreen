@@ -64,7 +64,7 @@ func TestValidateBbProject(t *testing.T) {
 		TicketCreateProject: "BFG",
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.Nil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
 }
