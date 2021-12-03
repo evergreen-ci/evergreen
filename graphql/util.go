@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/event"
 
 	"github.com/evergreen-ci/evergreen"
@@ -541,6 +542,35 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		"buildVariantCount": len(result),
 	})
 	return result, nil
+}
+
+// getFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
+func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	cedarTaskInfo := []apimodels.CedarTaskInfo{}
+	for _, t := range tasks {
+		cedarTestOption := apimodels.CedarTaskInfo{
+			TaskID:      t.Id,
+			Execution:   t.Execution,
+			DisplayTask: t.DisplayOnly,
+		}
+		cedarTaskInfo = append(cedarTaskInfo, cedarTestOption)
+	}
+	cedarFailedTestSampleOpts := apimodels.CedarFailedTestSampleOptions{
+		Tasks:        cedarTaskInfo,
+		RegexFilters: testFilters,
+	}
+	opts := apimodels.GetCedarFailedTestResultsSampleOptions{
+		BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SampleOptions: cedarFailedTestSampleOpts,
+	}
+	results, err := apimodels.GetCedarFilteredFailedSamples(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting cedar filtered failed samples")
+	}
+	return results, nil
 }
 
 type VersionModificationAction string
