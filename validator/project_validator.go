@@ -131,6 +131,7 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkLoggerConfig,
+	checkTaskTimeout,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
@@ -1897,4 +1898,22 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 		return "", "", errors.Errorf("command '%s' was supplied parameter '%s' but is not a string argument, got %T", c.Command, paramName, i)
 	}
 	return task, bv, nil
+}
+
+// checkTaskTimeout checks if all tasks contains a timeout
+func checkTaskTimeout(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, task := range project.Tasks {
+		if task.ExecTimeoutSecs == 0 {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("task '%s' in project '%s' does not "+
+						"contain an exec_timeout_secs",
+						task.Name, project.Identifier),
+					Level: Warning,
+				},
+			)
+		}
+	}
+	return errs
 }
