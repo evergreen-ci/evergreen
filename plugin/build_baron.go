@@ -3,7 +3,6 @@ package plugin
 import (
 	"html/template"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 )
 
@@ -29,7 +28,7 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (interface{}, error) {
-					bbSettings, ok := BbGetProject(context.ProjectRef.Id, "")
+					bbSettings, ok := model.GetBuildBaronSettings(context.ProjectRef.Id, "")
 					enabled := ok && len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`
@@ -38,15 +37,4 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 			},
 		},
 	}, nil
-}
-
-// BbGetProject retrieves build baron settings from project settings.
-// Project page settings takes precedence, otherwise fallback to project config yaml.
-// Returns build baron settings and ok if found.
-func BbGetProject(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
-	projectRef, err := model.FindMergedProjectRef(projectId, version, true)
-	if err != nil || projectRef == nil {
-		return evergreen.BuildBaronSettings{}, false
-	}
-	return projectRef.BuildBaronSettings, true
 }

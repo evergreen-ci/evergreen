@@ -54,8 +54,8 @@ func TestBbGetProject(t *testing.T) {
 	assert.NoError(t, myProject2.Insert())
 	assert.NoError(t, myProjectParser.Insert())
 
-	bbProj, ok1 := BbGetProject(testTask.Project, testTask.Version)
-	bbProj2, ok2 := BbGetProject(testTask2.Project, testTask2.Version)
+	bbProj, ok1 := model.GetBuildBaronSettings(testTask.Project, testTask.Version)
+	bbProj2, ok2 := model.GetBuildBaronSettings(testTask2.Project, testTask2.Version)
 	assert.True(t, ok1)
 	assert.True(t, ok2)
 	assert.Equal(t, bbProj.TicketCreateProject, "BFG")

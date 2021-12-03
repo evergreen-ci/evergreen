@@ -1023,7 +1023,7 @@ func bbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error 
 	}
 	webhookConfigured := webHook.Endpoint != ""
 
-	if !webhookConfigured && proj.TicketCreateProject == "" {
+	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
 		return nil
 	}
 	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
@@ -1031,27 +1031,27 @@ func bbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error 
 	}
 	if proj.BFSuggestionServer != "" {
 		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
-			return errors.Errorf(fmt.Sprintf(`Failed to parse bf_suggestion_server for project "%s"`, projName))
+			return errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
 		}
 		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-			return errors.Errorf(fmt.Sprintf(`Failed validating configuration for project "%s": `+
-				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName))
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
 		}
 		if proj.BFSuggestionTimeoutSecs <= 0 {
-			return errors.Errorf(fmt.Sprintf(`Failed validating configuration for project "%s": `+
-				"bf_suggestion_timeout_secs must be positive", projName))
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_timeout_secs must be positive", projName)
 		}
 	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-		return errors.Errorf(fmt.Sprintf(`Failed validating configuration for project "%s": `+
-			"bf_suggestion_username and bf_suggestion_password must be blank alt_endpoint_url is blank", projName))
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_username and bf_suggestion_password must be blank alt_endpoint_url is blank", projName)
 	} else if proj.BFSuggestionTimeoutSecs != 0 {
-		return errors.Errorf(fmt.Sprintf(`Failed validating configuration for project "%s": `+
-			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName))
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 	}
 	// the webhook cannot be used if the default build baron creation and search is configured
 	if webhookConfigured {
 		if len(proj.TicketCreateProject) != 0 {
-			return errors.Errorf("The custom file ticket webhook and the build baron TicketCreateProject should not both be configured")
+			return errors.Errorf("The custom file ticket webhook and the build baron should not both be configured")
 		}
 		if _, err = url.Parse(webHook.Endpoint); err != nil {
 			return errors.Errorf("Failed to parse webhook endpoint for project")

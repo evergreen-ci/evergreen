@@ -2235,6 +2235,17 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
+// GetBuildBaronSettings retrieves build baron settings from project settings.
+// Project page settings takes precedence, otherwise fallback to project config yaml.
+// Returns build baron settings and ok if found.
+func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
+	projectRef, err := FindMergedProjectRef(projectId, version, true)
+	if err != nil || projectRef == nil {
+		return evergreen.BuildBaronSettings{}, false
+	}
+	return projectRef.BuildBaronSettings, true
+}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
