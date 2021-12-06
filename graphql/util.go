@@ -549,26 +549,26 @@ func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, tes
 	if len(tasks) == 0 {
 		return nil, nil
 	}
-	cedarTaskInfo := []apimodels.CedarTaskInfo{}
+	taskFilters := []apimodels.CedarTaskInfo{}
 	for _, t := range tasks {
-		cedarTestOption := apimodels.CedarTaskInfo{
+		taskFilter := apimodels.CedarTaskInfo{
 			TaskID:      t.Id,
 			Execution:   t.Execution,
 			DisplayTask: t.DisplayOnly,
 		}
-		cedarTaskInfo = append(cedarTaskInfo, cedarTestOption)
+		taskFilters = append(taskFilters, taskFilter)
 	}
-	cedarFailedTestSampleOpts := apimodels.CedarFailedTestSampleOptions{
-		Tasks:        cedarTaskInfo,
-		RegexFilters: testFilters,
-	}
+
 	opts := apimodels.GetCedarFailedTestResultsSampleOptions{
-		BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		SampleOptions: cedarFailedTestSampleOpts,
+		BaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SampleOptions: apimodels.CedarFailedTestSampleOptions{
+			Tasks:        taskFilters,
+			RegexFilters: testFilters,
+		},
 	}
 	results, err := apimodels.GetCedarFilteredFailedSamples(ctx, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting cedar filtered failed samples")
+		return nil, errors.Wrap(err, "getting cedar filtered failed samples")
 	}
 	return results, nil
 }
