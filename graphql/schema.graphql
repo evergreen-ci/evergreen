@@ -172,8 +172,8 @@ input TestFilter {
 type TaskTestResultSample {
   taskId: String!
   execution: Int!
-  totalTestCount: Int
-  matchingFailedTestNames: [String!]
+  totalTestCount: Int!
+  matchingFailedTestNames: [String!]!
 }
 
 # Array of activated and unactivated versions

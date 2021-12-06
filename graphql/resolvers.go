@@ -1795,10 +1795,10 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	}
 	t, err := task.Find(task.ByIds(tasks))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", tasks[0], err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", tasks[0]))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
 	// We can assume that if one of the tasks has cedar results, all of them do
 	if t[0].HasCedarResults {
@@ -1817,7 +1817,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 				TaskID:                  utility.FromStringPtr(r.TaskID),
 				Execution:               r.Execution,
 				MatchingFailedTestNames: r.MatchingFailedTestNames,
-				TotalTestCount:          &r.TotalFailedNames,
+				TotalTestCount:          r.TotalFailedNames,
 			}
 			testResultsToReturn = append(testResultsToReturn, tr)
 		}

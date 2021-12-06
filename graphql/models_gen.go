@@ -280,7 +280,7 @@ type TaskTestResult struct {
 type TaskTestResultSample struct {
 	TaskID                  string   `json:"taskId"`
 	Execution               int      `json:"execution"`
-	TotalTestCount          *int     `json:"totalTestCount"`
+	TotalTestCount          int      `json:"totalTestCount"`
 	MatchingFailedTestNames []string `json:"matchingFailedTestNames"`
 }
 
