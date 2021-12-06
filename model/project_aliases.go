@@ -115,7 +115,7 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 // findMatchingAliasForProjectRef finds all aliases with a given name for a project.
 // Typically FindAliasInProjectOrRepo should be used.
 // Returns true if we have an alias match or the alias doesn't match but
-//  other aliases in the category are defined, in which case we shouldn't check other sources.
+// other aliases in the category are defined, in which case we shouldn't check other sources.
 func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bool, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
@@ -139,22 +139,22 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 }
 
 // Returns true if we have an alias match or the alias doesn't match but
-//  other aliases in the category are defined, in which case we shouldn't check other sources.
-func findMatchingAliasForProjectConfigs(projectID, alias string) ([]ProjectAlias, bool, error) {
+// other aliases in the category are defined, in which case we shouldn't check other sources.
+func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias, bool, error) {
 	// if alias is a PATCH ALIAS, we want to know if it has ANY patch aliases.
-	projectConfigs, err := FindProjectConfigToMerge(projectID, "")
+	projectConfig, err := FindProjectConfigToMerge(projectID, "")
 	if err != nil {
-		return nil, false, errors.Wrap(err, "error finding project parser")
+		return nil, false, errors.Wrap(err, "error finding project config")
 	}
-	if projectConfigs == nil {
+	if projectConfig == nil {
 		return nil, false, nil
 	}
 
-	projectConfigsAliases := aliasesToMap(getFullProjectConfigsAliases(projectConfigs))
-	if projectConfigsAliases[alias] != nil {
-		return projectConfigsAliases[alias], true, nil
+	projectConfigAliases := aliasesToMap(getFullProjectConfigAliases(projectConfig))
+	if projectConfigAliases[alias] != nil {
+		return projectConfigAliases[alias], true, nil
 	}
-	aliasesDefined := IsPatchAlias(alias) && len(projectConfigs.PatchAliases) > 0
+	aliasesDefined := IsPatchAlias(alias) && len(projectConfig.PatchAliases) > 0
 	return nil, aliasesDefined, nil
 }
 
@@ -173,35 +173,35 @@ func aliasesToMap(aliases []ProjectAlias) map[string][]ProjectAlias {
 	return output
 }
 
-func getFullProjectConfigsAliases(projectConfigs *ProjectConfig) []ProjectAlias {
-	var projectConfigsAliases []ProjectAlias
-	if projectConfigs != nil {
-		for _, commitQueueAlias := range projectConfigs.CommitQueueAliases {
+func getFullProjectConfigAliases(projectConfig *ProjectConfig) []ProjectAlias {
+	var projectConfigAliases []ProjectAlias
+	if projectConfig != nil {
+		for _, commitQueueAlias := range projectConfig.CommitQueueAliases {
 			commitQueueAlias.Alias = evergreen.CommitQueueAlias
-			projectConfigsAliases = append(projectConfigsAliases, commitQueueAlias)
+			projectConfigAliases = append(projectConfigAliases, commitQueueAlias)
 		}
-		for _, gitTagAlias := range projectConfigs.GitTagAliases {
+		for _, gitTagAlias := range projectConfig.GitTagAliases {
 			gitTagAlias.Alias = evergreen.GitTagAlias
-			projectConfigsAliases = append(projectConfigsAliases, gitTagAlias)
+			projectConfigAliases = append(projectConfigAliases, gitTagAlias)
 		}
-		for _, githubPrAlias := range projectConfigs.GitHubPRAliases {
+		for _, githubPrAlias := range projectConfig.GitHubPRAliases {
 			githubPrAlias.Alias = evergreen.GithubPRAlias
-			projectConfigsAliases = append(projectConfigsAliases, githubPrAlias)
+			projectConfigAliases = append(projectConfigAliases, githubPrAlias)
 		}
-		for _, gitHubCheckAlias := range projectConfigs.GitHubChecksAliases {
+		for _, gitHubCheckAlias := range projectConfig.GitHubChecksAliases {
 			gitHubCheckAlias.Alias = evergreen.GithubChecksAlias
-			projectConfigsAliases = append(projectConfigsAliases, gitHubCheckAlias)
+			projectConfigAliases = append(projectConfigAliases, gitHubCheckAlias)
 		}
-		for _, patchAlias := range projectConfigs.PatchAliases {
-			projectConfigsAliases = append(projectConfigsAliases, patchAlias)
+		for _, patchAlias := range projectConfig.PatchAliases {
+			projectConfigAliases = append(projectConfigAliases, patchAlias)
 		}
 	}
-	return projectConfigsAliases
+	return projectConfigAliases
 }
 
-func mergeAliases(projectConfigs *ProjectConfig, databaseAliases []ProjectAlias) []ProjectAlias {
-	projectConfigsAliases := getFullProjectConfigsAliases(projectConfigs)
-	ppAliasMap := aliasesToMap(projectConfigsAliases)
+func mergeAliases(projectConfig *ProjectConfig, databaseAliases []ProjectAlias) []ProjectAlias {
+	projectConfigAliases := getFullProjectConfigAliases(projectConfig)
+	ppAliasMap := aliasesToMap(projectConfigAliases)
 	dbAliasMap := aliasesToMap(databaseAliases)
 	var out []ProjectAlias
 	for _, v := range ppAliasMap {
@@ -222,7 +222,7 @@ func mergeAliases(projectConfigs *ProjectConfig, databaseAliases []ProjectAlias)
 // FindAliasInProjectOrRepo finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
-	aliases, shouldExit, err := findMatchingAliasForProjectConfigs(projectID, alias)
+	aliases, shouldExit, err := findMatchingAliasForProjectConfig(projectID, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "error checking parser project for project '%s' for aliases", projectID)
 	}

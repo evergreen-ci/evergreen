@@ -9,7 +9,7 @@ import (
 )
 
 func TestCreateConfig(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(ProjectConfigsCollection))
+	assert.NoError(t, db.ClearCollections(ProjectConfigCollection))
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -18,7 +18,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	pc, err := createConfig([]byte(projYml))
+	pc, err := createProjectConfig([]byte(projYml))
 	assert.Nil(t, err)
 	assert.Nil(t, pc)
 
@@ -31,7 +31,7 @@ task_groups:
       script: "echo hi"
 deactivate_previous: true
 `
-	pc, err = createConfig([]byte(projYml))
+	pc, err = createProjectConfig([]byte(projYml))
 	assert.Nil(t, err)
 	assert.NotNil(t, pc)
 	assert.True(t, utility.FromBoolPtr(pc.DeactivatePrevious))

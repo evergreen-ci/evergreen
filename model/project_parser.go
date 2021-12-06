@@ -566,7 +566,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
-	config, err := createConfig(data)
+	config, err := createProjectConfig(data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -614,6 +614,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		*project = *p
 	}
 	project.Identifier = identifier
+	config.Identifier = &identifier
 	return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 }
 

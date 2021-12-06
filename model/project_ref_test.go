@@ -60,14 +60,14 @@ func TestFindMergedProjectRef(t *testing.T) {
 	}
 	assert.NoError(t, v1.Insert())
 
-	parserProject := &ParserProject{
-		Id: "ident",
-		//DeactivatePrevious: utility.TruePtr(),
-		//TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-		//	FileTicketWebhook: evergreen.WebHook{
-		//		Endpoint: "random2",
-		//	},
-		//},
+	parserProject := &ProjectConfig{
+		Id:                 "ident",
+		DeactivatePrevious: utility.TruePtr(),
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "random2",
+			},
+		},
 	}
 	assert.NoError(t, parserProject.Insert())
 
@@ -143,9 +143,8 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	// TODO: Commented out for EVG-15856
-	//assert.True(t, *mergedProject.DeactivatePrevious)
-	//assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.True(t, *mergedProject.DeactivatePrevious)
+	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -1819,7 +1818,7 @@ func TestPointers(t *testing.T) {
 }
 
 func TestMergeWithProjectConfig(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigsCollection),
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection),
 		"Error clearing collection")
 
 	projectRef := &ProjectRef{

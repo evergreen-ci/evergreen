@@ -32,11 +32,12 @@ type ProjectConfig struct {
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
-} // End of ProjectConfig struct
+}
+
 // Comment above is used by the linter to detect the end of the struct.
 
 func (pc *ProjectConfig) Insert() error {
-	return db.Insert(ProjectConfigsCollection, pc)
+	return db.Insert(ProjectConfigCollection, pc)
 }
 
 func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {
@@ -59,16 +60,15 @@ func (pc *ProjectConfig) isEmpty() bool {
 	return true
 }
 
-// createConfig marshals the supplied YAML into our
+// createProjectConfig marshals the supplied YAML into our
 // intermediate configs representation.
-func createConfig(yml []byte) (*ProjectConfig, error) {
+func createProjectConfig(yml []byte) (*ProjectConfig, error) {
 	p := &ProjectConfig{}
 	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-		return nil, errors.Wrap(yamlErr, "error unmarshalling into project configs")
+		return nil, errors.Wrap(yamlErr, "error unmarshalling into project config")
 	}
-	isEmpty := p.isEmpty()
-	if isEmpty {
+	if p.isEmpty() {
 		return nil, nil
 	}
 	p.CreateTime = time.Now()

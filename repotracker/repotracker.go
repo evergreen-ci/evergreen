@@ -1115,11 +1115,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
 		}
 		if projectInfo.Config != nil {
-			_, err = db.Collection(model.ProjectConfigsCollection).InsertOne(sessCtx, projectInfo.Config)
+			_, err = db.Collection(model.ProjectConfigCollection).InsertOne(sessCtx, projectInfo.Config)
 			if err != nil {
 				grip.Notice(message.WrapError(err, message.Fields{
 					"message": "aborting transaction",
-					"cause":   "can't insert project configs",
+					"cause":   "can't insert project config",
 					"version": v.Id,
 				}))
 				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {

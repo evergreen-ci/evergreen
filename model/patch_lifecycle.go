@@ -432,9 +432,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			return nil, errors.Wrapf(err, "error inserting parser project for version '%s'", patchVersion.Id)
 		}
 		if config != nil {
-			_, err = db.Collection(ProjectConfigsCollection).InsertOne(sessCtx, config)
+			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error inserting project configs for version '%s'", patchVersion.Id)
+				return nil, errors.Wrapf(err, "error inserting project config for version '%s'", patchVersion.Id)
 			}
 		}
 		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {

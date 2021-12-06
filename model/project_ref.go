@@ -404,7 +404,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-// MergeWithProjectConfig looks up the project configs with the given project ref id and modifies
+// MergeWithProjectConfig looks up the project config with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
 // the project ref.
@@ -415,7 +415,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 	}
 	if projectConfig != nil {
 		defer func() {
-			err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
+			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
 			DeactivatePrevious: projectConfig.DeactivatePrevious,

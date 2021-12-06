@@ -208,13 +208,6 @@ func BbGetProject(settings *evergreen.Settings, projectId string, version string
 		return evergreen.BuildBaronSettings{}, false
 	}
 	if flags.PluginAdminPageDisabled {
-		projectConfigs, err := model.FindProjectConfigToMerge(projectId, version)
-		if err != nil {
-			return evergreen.BuildBaronSettings{}, false
-		}
-		if projectConfigs != nil && projectConfigs.BuildBaronSettings != nil {
-			return *projectConfigs.BuildBaronSettings, true
-		}
 		projectRef, err := model.FindMergedProjectRef(projectId, version, true)
 		if err != nil || projectRef == nil {
 			return evergreen.BuildBaronSettings{}, false

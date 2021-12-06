@@ -110,6 +110,8 @@ func createTaskCollections() {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 	cmd["create"] = model.ParserProjectCollection
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+	cmd["create"] = model.ProjectConfigCollection
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 }
 
 func TestGetRevisionsSinceWithPaging(t *testing.T) {

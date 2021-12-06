@@ -2,6 +2,9 @@ package model
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/utility"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -159,71 +162,66 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.Len(found, 2)
 }
 
-//func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
-//	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ParserProjectCollection, VersionCollection))
-//	v1 := Version{
-//		Id:         "project-1",
-//		Identifier: "project-1",
-//		Requester:  evergreen.GitTagRequester,
-//	}
-//	a1 := ProjectAlias{
-//		ProjectID: "project-1",
-//		Alias:     evergreen.CommitQueueAlias,
-//	}
-//	a2 := ProjectAlias{
-//		ProjectID: "project-1",
-//		Alias:     evergreen.CommitQueueAlias,
-//	}
-//	a3 := ProjectAlias{
-//		ProjectID: "project-1",
-//		Alias:     evergreen.GithubPRAlias,
-//	}
-//	s.NoError(a1.Upsert())
-//	s.NoError(a2.Upsert())
-//	s.NoError(a3.Upsert())
-//	s.NoError(v1.Insert())
-//
-//	parserProject := &ParserProject{
-//		Id: "project-1",
-//		PatchAliases: []ProjectAlias{
-//			{
-//				ID:        mgobson.NewObjectId(),
-//				ProjectID: "project-1",
-//				Alias:     "alias-2",
-//			},
-//			{
-//				ID:        mgobson.NewObjectId(),
-//				ProjectID: "project-1",
-//				Alias:     "alias-1",
-//			},
-//		},
-//		CommitQueueAliases: []ProjectAlias{
-//			{
-//				ID:        mgobson.NewObjectId(),
-//				ProjectID: "project-1",
-//			},
-//		},
-//	}
-//	s.NoError(parserProject.TryUpsert())
-//
-//	projectAliases, err := FindAliasInProjectOrRepo("project-1", evergreen.CommitQueueAlias)
-//	s.NoError(err)
-//	s.Len(projectAliases, 1)
-//
-//	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubPRAlias)
-//	s.NoError(err)
-//	s.Len(projectAliases, 1)
-//	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-1")
-//	s.NoError(err)
-//	s.Len(projectAliases, 1)
-//	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
-//	s.NoError(err)
-//	s.Len(projectAliases, 1)
-//
-//	projectAliases, err = FindAliasInProjectOrRepo("project-1", "nonexistent")
-//	s.NoError(err)
-//	s.Len(projectAliases, 0)
-//}
+func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
+	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ProjectConfigCollection, VersionCollection))
+	a1 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     evergreen.CommitQueueAlias,
+	}
+	a2 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     evergreen.CommitQueueAlias,
+	}
+	a3 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     evergreen.GithubPRAlias,
+	}
+	s.NoError(a1.Upsert())
+	s.NoError(a2.Upsert())
+	s.NoError(a3.Upsert())
+
+	projectConfig := &ProjectConfig{
+		Id:         "project-1",
+		Identifier: utility.ToStringPtr("project-1"),
+		PatchAliases: []ProjectAlias{
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+				Alias:     "alias-2",
+			},
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+				Alias:     "alias-1",
+			},
+		},
+		CommitQueueAliases: []ProjectAlias{
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+			},
+		},
+	}
+	s.NoError(projectConfig.Insert())
+
+	projectAliases, err := FindAliasInProjectOrRepo("project-1", evergreen.CommitQueueAlias)
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubPRAlias)
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-1")
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "nonexistent")
+	s.NoError(err)
+	s.Len(projectAliases, 0)
+}
 
 func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 	s.Require().NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
