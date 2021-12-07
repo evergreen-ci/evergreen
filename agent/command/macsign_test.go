@@ -23,7 +23,6 @@ func TestMacSignValidateParams(t *testing.T) {
 		var cmd *macSign
 
 		Convey("when validating signing command params", func() {
-
 			cmd = &macSign{}
 
 			Convey("a missing key id should cause an error", func() {
@@ -95,6 +94,7 @@ func TestMacSignValidateParams(t *testing.T) {
 		})
 
 		Convey("when validating notarization command params", func() {
+			cmd = &macSign{}
 
 			Convey("notarizing requested bundleId not given should cause an error", func() {
 
