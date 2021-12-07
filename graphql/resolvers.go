@@ -1800,7 +1800,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
-	// We can assume that if one of the tasks has cedar results, all of them do
+	// We can assume that if one of the tasks has cedar results, all of them do.
 	if t[0].HasCedarResults {
 		failingTests := []string{}
 		for _, f := range testFilters {

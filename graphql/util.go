@@ -551,12 +551,11 @@ func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, tes
 	}
 	taskFilters := []apimodels.CedarTaskInfo{}
 	for _, t := range tasks {
-		taskFilter := apimodels.CedarTaskInfo{
+		taskFilters = append(taskFilters, apimodels.CedarTaskInfo{
 			TaskID:      t.Id,
 			Execution:   t.Execution,
 			DisplayTask: t.DisplayOnly,
-		}
-		taskFilters = append(taskFilters, taskFilter)
+		})
 	}
 
 	opts := apimodels.GetCedarFailedTestResultsSampleOptions{
