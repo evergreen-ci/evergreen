@@ -355,13 +355,10 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 					return nil, errors.Wrapf(err, "error getting execution task")
 				}
 				if executionTask.Details.Status == evergreen.TaskFailed {
-					skipTicket := executionTask.Details.Description == evergreen.TaskDescriptionStranded ||
+					shouldSkipTicket := executionTask.Details.Description == evergreen.TaskDescriptionStranded ||
 						executionTask.Details.Type == evergreen.CommandTypeSetup ||
 						executionTask.IsSystemUnresponsive()
-					if skipTicket {
-						shouldSkipTicket = true
-					} else {
-						shouldSkipTicket = false
+					if !shouldSkipTicket {
 						break
 					}
 				}
