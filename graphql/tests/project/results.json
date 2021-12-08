@@ -245,7 +245,7 @@
               ]
             },
             {
-              "groupDisplayName": "theCat/catGenerator",
+              "groupDisplayName": "animals_display",
               "projects": [
                 {
                   "identifier": "catVideos",
