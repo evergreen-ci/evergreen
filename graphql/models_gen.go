@@ -277,6 +277,18 @@ type TaskTestResult struct {
 	TestResults       []*model.APITest `json:"testResults"`
 }
 
+type TaskTestResultSample struct {
+	TaskID                  string   `json:"taskId"`
+	Execution               int      `json:"execution"`
+	TotalTestCount          int      `json:"totalTestCount"`
+	MatchingFailedTestNames []string `json:"matchingFailedTestNames"`
+}
+
+type TestFilter struct {
+	TestName   string `json:"testName"`
+	TestStatus string `json:"testStatus"`
+}
+
 type UpdateVolumeInput struct {
 	Expiration   *time.Time `json:"expiration"`
 	NoExpiration *bool      `json:"noExpiration"`

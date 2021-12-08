@@ -30,6 +30,10 @@ type Query {
     statuses: [String!]! = []
     groupId: String = ""
   ): TaskTestResult!
+  taskTestSample(
+    tasks: [String!]!
+    filters: [TestFilter!]!
+  ): [TaskTestResultSample!]
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
@@ -159,6 +163,18 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
+input TestFilter {
+  testName: String!
+  testStatus: String!
+}
+
+# This will represent failing test results on the task history pages.
+type TaskTestResultSample {
+  taskId: String!
+  execution: Int!
+  totalTestCount: Int!
+  matchingFailedTestNames: [String!]!
+}
 
 # Array of activated and unactivated versions
 # nextPageOrderNumber represents the last order number returned and is used for pagination
