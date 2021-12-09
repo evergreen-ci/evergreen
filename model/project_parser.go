@@ -614,7 +614,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		*project = *p
 	}
 	project.Identifier = identifier
-	config.Identifier = utility.ToStringPtr(identifier)
+	if config != nil {
+		config.Identifier = utility.ToStringPtr(identifier)
+	}
 	return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 }
 
