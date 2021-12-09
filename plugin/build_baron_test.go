@@ -190,7 +190,8 @@ func TestBbGetProject(t *testing.T) {
 	myProjectConfig := model.ProjectConfig{
 		Id: "proj2",
 		BuildBaronSettings: &evergreen.BuildBaronSettings{
-			TicketCreateProject: "ABC",
+			TicketCreateProject:  "ABC",
+			TicketSearchProjects: []string{"ABC"},
 		},
 	}
 	testTask := task.Task{
@@ -222,5 +223,6 @@ func TestBbGetProject(t *testing.T) {
 	assert.True(t, ok1)
 	assert.True(t, ok2)
 	assert.Equal(t, bbProj.TicketCreateProject, "BFG")
-	assert.Equal(t, bbProj2.TicketCreateProject, "ABC")
+	assert.Equal(t, bbProj2.TicketCreateProject, "123")
+	assert.Equal(t, bbProj2.TicketSearchProjects, []string{"ABC"})
 }

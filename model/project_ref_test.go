@@ -50,26 +50,19 @@ func TestFindOneProjectRef(t *testing.T) {
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection, VersionCollection),
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection),
 		"Error clearing collection")
 
-	v1 := Version{
-		Id:         "ident",
-		Identifier: "ident",
-		Requester:  evergreen.GitTagRequester,
-	}
-	assert.NoError(t, v1.Insert())
-
-	parserProject := &ProjectConfig{
+	projectConfig := &ProjectConfig{
 		Id:                 "ident",
-		DeactivatePrevious: utility.TruePtr(),
+		DeactivatePrevious: utility.FalsePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
 	}
-	assert.NoError(t, parserProject.Insert())
+	assert.NoError(t, projectConfig.Insert())
 
 	projectRef := &ProjectRef{
 		Owner:                 "mongodb",
@@ -81,7 +74,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Enabled:               utility.FalsePtr(),
 		PatchingDisabled:      utility.FalsePtr(),
 		RepotrackerDisabled:   utility.TruePtr(),
-		DeactivatePrevious:    utility.FalsePtr(),
+		DeactivatePrevious:    utility.TruePtr(),
 		PRTestingEnabled:      nil,
 		GitTagVersionsEnabled: nil,
 		GitTagAuthorizedTeams: []string{},
