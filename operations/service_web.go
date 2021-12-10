@@ -231,41 +231,35 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 
 	apps = append(apps, localAbort, remoteAbort, groupAbort, localManagement)
 
-	serviceFlags, err := evergreen.GetServiceFlags()
+	var (
+		remoteManager management.Manager
+		groupManager  management.Manager
+	)
+
+	remoteManager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
+		Name:    settings.Amboy.Name,
+		Options: opts,
+	}, env.Client())
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting service flags")
+		return nil, errors.Wrap(err, "problem building queue manager")
 	}
-	if !serviceFlags.AmboyRemoteManagementDisabled {
-		var (
-			remoteManager management.Manager
-			groupManager  management.Manager
-		)
 
-		remoteManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
-			Name:    settings.Amboy.Name,
-			Options: opts,
-		}, env.Client())
-		if err != nil {
-			return nil, errors.Wrap(err, "problem building queue manager")
-		}
+	remoteManagement := rest.NewManagementService(remoteManager).App()
+	remoteManagement.SetPrefix("/amboy/remote/management")
+	apps = append(apps, remoteManagement)
 
-		remoteManagement := rest.NewManagementService(remoteManager).App()
-		remoteManagement.SetPrefix("/amboy/remote/management")
-		apps = append(apps, remoteManagement)
-
-		groupManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
-			Name:     settings.Amboy.Name,
-			Options:  opts,
-			ByGroups: true,
-		}, env.Client())
-		if err != nil {
-			return nil, errors.Wrap(err, "problem building queue manager")
-		}
-
-		groupManagement := rest.NewManagementService(groupManager).App()
-		groupManagement.SetPrefix("/amboy/group/management")
-		apps = append(apps, groupManagement)
+	groupManager, err = management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
+		Name:     settings.Amboy.Name,
+		Options:  opts,
+		ByGroups: true,
+	}, env.Client())
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building queue manager")
 	}
+
+	groupManagement := rest.NewManagementService(groupManager).App()
+	groupManagement.SetPrefix("/amboy/group/management")
+	apps = append(apps, groupManagement)
 
 	jpm := remote.NewRESTService(env.JasperManager())
 	jpmapp := jpm.App(ctx)

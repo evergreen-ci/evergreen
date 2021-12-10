@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 const amboyStatsCollectorJobName = "amboy-stats-collector"
@@ -93,15 +92,8 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"stats":   remoteQueue.Stats(ctx),
 		})
 
-		serviceFlags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			j.AddError(errors.Wrap(err, "problem getting service flags"))
-			return
-		}
-		if !serviceFlags.AmboyRemoteManagementDisabled {
-			j.collectExtendedRemoteStats(ctx)
-			j.collectExtendedGroupRemoteStats(ctx)
-		}
+		j.collectExtendedRemoteStats(ctx)
+		j.collectExtendedGroupRemoteStats(ctx)
 	}
 }
 
