@@ -162,13 +162,19 @@ functions:
         directory: evergreen
         token: ${github_token}
         shallow_clone: true
-    - command: subprocess.exec
+    - command: shell.exec
       type: setup
       params:
-        working_dir: evergreen
-        binary: make
-        args: ["mod-tidy"]
+        directory: evergreen
         include_expansions_in_env: ["GOROOT"]
+        script: |
+          # Downloading modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset
+          # by the peer for unknown reasons (this does not happen in other distros). Retry the module download multiple
+          # times to reduce the flakiness.
+          for i in {1..5}; do
+            make mod-tidy
+            [[ $? -eq 0 ]] && break;
+          done
   run-make:
     command: subprocess.exec
     params:
