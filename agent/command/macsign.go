@@ -74,7 +74,6 @@ func (macSign *macSign) Name() string { return "mac.sign" }
 // macSign-specific implementation of ParseParams.
 func (macSign *macSign) ParseParams(params map[string]interface{}) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		// WeaklyTypedInput: true,
 		Result: macSign,
 	})
 	if err != nil {
@@ -147,7 +146,7 @@ func (macSign *macSign) shouldRunForVariant(buildVariantName string) bool {
 	return utility.StringSliceContains(macSign.BuildVariants, buildVariantName)
 }
 
-// Implementation of Execute.  Expands the parameters,
+// Implementation of Execute. Expands the parameters,
 // and then execute macOS signing and/or notarization.
 func (macSign *macSign) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
