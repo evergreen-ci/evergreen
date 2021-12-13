@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
@@ -42,7 +41,6 @@ func makeVolumeExpirationCheckJob() *volumeExpirationCheckJob {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
