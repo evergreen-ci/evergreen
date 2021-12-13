@@ -3589,6 +3589,10 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 	return getAllTaskStatuses(tasks), nil
 }
 
+func (r *versionResolver) IsMainlineCommit(ctx context.Context, obj *restModel.APIVersion) (bool, error) {
+	return utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, *obj.Requester), nil
+}
+
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
 	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*v.Project, *v.Revision).WithFields(model.VersionIdentifierKey))
 	if baseVersion == nil || err != nil {
@@ -3769,6 +3773,8 @@ func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIV
 }
 
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
+	// If this is a mainline commit version, return the version with the previous order number
+
 	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
 	if baseVersion == nil || err != nil {
 		return nil, nil

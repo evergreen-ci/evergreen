@@ -203,6 +203,7 @@ type Version {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   manifest: Manifest
+  isMainlineCommit: Boolean!
 }
 
 type Manifest {

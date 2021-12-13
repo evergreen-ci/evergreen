@@ -1,6 +1,16 @@
 {
   "tests": [
     {
+      "query_file": "isMainlineCommit.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "isMainlineCommit": false
+          }
+        }
+      }
+    },
+    {
       "query_file": "baseTaskStatuses.graphql",
       "result": {
         "data": {
