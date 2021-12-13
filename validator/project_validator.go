@@ -1903,6 +1903,16 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 // checkTaskTimeout checks if all tasks contain a timeout
 func checkTaskTimeout(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
+	if project.ExecTimeoutSecs == 0 {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("roject '%s' does not "+
+					"contain an exec_timeout_secs",
+					project.Identifier),
+				Level: Warning,
+			},
+		)
+	}
 	for _, task := range project.Tasks {
 		if task.ExecTimeoutSecs == 0 {
 			errs = append(errs,
