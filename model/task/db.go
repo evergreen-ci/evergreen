@@ -1183,7 +1183,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	return task, nil
 }
 
-func findAllTaskIDs(q db.Q) ([]string, error) {
+func FindAllTaskIDs(q db.Q) ([]string, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
 	if adb.ResultsNotFound(err) {
@@ -1220,12 +1220,12 @@ func FindStuckDispatching() ([]Task, error) {
 
 func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
 	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
-	return findAllTaskIDs(q)
+	return FindAllTaskIDs(q)
 }
 
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
-	return findAllTaskIDs(q)
+	return FindAllTaskIDs(q)
 }
 
 // FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.

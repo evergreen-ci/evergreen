@@ -581,7 +581,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if modifications.Abort {
-			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
+			if err := model.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error aborting patch: %s", err)
 			}
 		}
