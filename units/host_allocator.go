@@ -125,6 +125,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "Problem removing previous intent hosts before creating new ones"))
 		return
 	}
+	if err = host.MarkStaleBuildingAsFailed(j.DistroID); err != nil {
+		j.AddError(errors.Wrap(err, "marking building hosts as failed"))
+		return
+	}
 
 	existingHosts, err := host.AllActiveHosts(j.DistroID)
 	if err != nil {

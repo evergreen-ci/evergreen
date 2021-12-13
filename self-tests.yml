@@ -179,6 +179,7 @@ functions:
         - GOROOT
         - MONGO_CREDS_FILE
         - RUN_TEST
+        - RUN_EC2_SPECIFIC_TESTS
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -338,17 +339,6 @@ functions:
           set -o xtrace
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
-  copy-fake-destination-optional:
-    - command: s3Copy.copy
-      params:
-        optional: true
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        s3_copy_files:
-            - {'source': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-1'},
-               'destination': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-2'}}
-
-          
 
 #######################################
 #                Tasks                #
@@ -517,9 +507,12 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: s3-fake-destination-optional
+  - name: docker-cleanup
     commands:
-      - func: copy-fake-destination-optional
+      - func: get-project-and-modules
+      - func: setup-credentials
+      - func: run-make
+        vars: { target: "test-thirdparty-docker" }
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
@@ -606,6 +599,7 @@ buildvariants:
       goarch: amd64
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist-and-upload-clis"
@@ -614,7 +608,7 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: "s3-fake-destination-optional"
+      - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud
 
@@ -625,6 +619,7 @@ buildvariants:
       - archlinux-new-large
     expansions:
       GOROOT: /opt/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
@@ -648,6 +643,7 @@ buildvariants:
       - windows-64-vs2017-large
     expansions:
       GOROOT: c:/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -665,6 +661,7 @@ buildvariants:
       goarch: arm64
       goos: linux
       GOROOT: /opt/golang/go1.16
+      RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"

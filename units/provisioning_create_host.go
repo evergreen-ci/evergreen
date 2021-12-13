@@ -371,39 +371,29 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			return errors.Wrapf(err, "unable to replace host %s", j.host.Id)
 		}
 	} else {
-		// for most cases, spawning a host with change the ID, so we remove/re-insert the document
-		if err = host.RemoveStrict(j.HostID); err != nil {
-			terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		// For most cases, spawning a host will change the ID, so we remove/re-insert the document
+		if err := host.UnsafeReplace(ctx, j.env, j.HostID, j.host); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":        "could not perform unsafe host replacement",
+				"job":            j.ID(),
+				"intent_host_id": j.HostID,
+				"host_id":        j.host.Id,
+				"distro":         j.host.Distro.Id,
+				"provider":       j.host.Provider,
+			}))
+			terminateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
-				"message":     "problem terminating instance after cloud host was spawned",
-				"host_id":     j.host.Id,
-				"intent_host": j.HostID,
-				"distro":      j.host.Distro.Id,
-				"provider":    j.host.Provider,
-				"job":         j.ID(),
+				"message":        "could not terminate host after failed unsafe host replacement",
+				"host_id":        j.host.Id,
+				"intent_host_id": j.HostID,
+				"distro":         j.host.Distro.Id,
+				"provider":       j.host.Provider,
+				"job":            j.ID(),
 			}))
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "problem removing intent host",
-				"job":     j.ID(),
-				"host_id": j.HostID,
-				"error":   err.Error(),
-			}))
-			return errors.Wrapf(err, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
+			return errors.Wrapf(err, "replacing intent host '%s' with real host '%s'", j.HostID, j.host.Id)
 		}
 
-		if err = j.host.Insert(); err != nil {
-			terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
-				"message":  "problem terminating instance after cloud host was spawned",
-				"host_id":  j.host.Id,
-				"distro":   j.host.Distro.Id,
-				"provider": j.host.Provider,
-				"job":      j.ID(),
-			}))
-			return errors.Wrapf(err, "error inserting host %s", j.host.Id)
-		}
 		if j.host.HasContainers {
 			grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
 				"message": "unable to update parent ID of containers",

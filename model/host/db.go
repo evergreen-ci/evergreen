@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -8,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -17,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -904,9 +907,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	return hosts, nil
 }
 
-// Removes host intents that have been been uninitialized for more than 3
-// minutes or spawning (but not started) for more than 15 minutes for the
-// specified distro.
+// Removes host intents that have been initializing for more than 3 minutes.
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
@@ -914,17 +915,32 @@ func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		UserHostKey: false,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): bson.M{"$ne": true},
-		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
-		"$or": []bson.M{
-			{
-				StatusKey:     evergreen.HostUninitialized,
-				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-			},
-			{
-				StatusKey:     evergreen.HostBuilding,
-				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
-			},
-		},
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+		StatusKey:     evergreen.HostUninitialized,
+		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+	}
+
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	return db.RemoveAll(Collection, query)
+}
+
+// MarkStaleBuildingAsFailed marks building hosts that have been stuck building
+// for too long as failed in order to indicate that they're stale and should be
+// terminated.
+func MarkStaleBuildingAsFailed(distroID string) error {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	spawnedByTaskKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey)
+	query := bson.M{
+		distroIDKey:      distroID,
+		UserHostKey:      false,
+		spawnedByTaskKey: bson.M{"$ne": true},
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		StatusKey:        evergreen.HostBuilding,
+		CreateTimeKey:    bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
 	}
 
 	if distroID != "" {
@@ -937,16 +953,27 @@ func RemoveStaleInitializing(distroID string) error {
 	if err := db.FindAllQ(Collection, q, &hosts); err != nil {
 		return errors.WithStack(err)
 	}
-	ids := []string{}
+	var ids []string
 	for _, h := range hosts {
 		ids = append(ids, h.Id)
 	}
-
-	if err := db.RemoveAll(evergreen.CredentialsCollection, bson.M{CertUserIDKey: bson.M{"$in": ids}}); err != nil {
-		return errors.Wrap(err, "could not delete credentials")
+	if len(ids) == 0 {
+		return nil
 	}
 
-	return db.RemoveAll(Collection, query)
+	if _, err := db.UpdateAll(Collection, bson.M{
+		IdKey: bson.M{"$in": ids},
+	}, bson.M{
+		"$set": bson.M{StatusKey: evergreen.HostBuildingFailed},
+	}); err != nil {
+		return errors.Wrap(err, "marking stale building hosts as failed")
+	}
+
+	for _, id := range ids {
+		event.LogHostStartFinished(id, false)
+	}
+
+	return nil
 }
 
 // === DB Logic ===
@@ -1369,4 +1396,40 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 	}
 
 	return optionsMap, nil
+}
+
+// UnsafeReplace atomically removes the host given by the idToRemove and inserts
+// a new host toInsert. This is typically done to replace the old host with a
+// new one. While the atomic swap is safer than doing it non-atomically, it is
+// not sufficient to guarantee application correctness, because other threads
+// may still be using the old host document.
+// TODO (EVG-15875): set a field containing the external identifier on the host
+// document rather than do this host document swap logic.
+func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove string, toInsert *Host) error {
+	if idToRemove == toInsert.Id {
+		return nil
+	}
+
+	sess, err := env.Client().StartSession()
+	if err != nil {
+		return errors.Wrap(err, "starting transaction session")
+	}
+	defer sess.EndSession(ctx)
+
+	replaceHost := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		if err := RemoveStrict(idToRemove); err != nil {
+			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
+		}
+
+		if err := toInsert.Insert(); err != nil {
+			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
+		}
+		return nil, nil
+	}
+
+	if _, err := sess.WithTransaction(ctx, replaceHost); err != nil {
+		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
+	}
+
+	return nil
 }

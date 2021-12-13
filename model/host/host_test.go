@@ -18,7 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/bsonutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -3440,12 +3440,10 @@ func TestFindUphostParents(t *testing.T) {
 func TestRemoveStaleInitializing(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.Clear(Collection))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(db.Clear(Collection))
+	defer func() {
+		assert.NoError(db.Clear(Collection))
+	}()
 
 	now := time.Now()
 	distro1 := distro.Distro{Id: "distro1"}
@@ -3519,43 +3517,148 @@ func TestRemoveStaleInitializing(t *testing.T) {
 		},
 	}
 
-	for i, _ := range hosts {
-		require.NoError(hosts[i].Insert())
-		creds, err := hosts[i].GenerateJasperCredentials(ctx, env)
-		require.NoError(err)
-		require.NoError(hosts[i].SaveJasperCredentials(ctx, env, creds))
+	for _, h := range hosts {
+		require.NoError(h.Insert())
 	}
 
-	err := RemoveStaleInitializing(distro1.Id)
-	assert.NoError(err)
+	require.NoError(RemoveStaleInitializing(distro1.Id))
 
-	numHosts, err := Count(All)
-	assert.NoError(err)
-	assert.Equal(6, numHosts)
+	findByDistroID := func(distroID string) ([]Host, error) {
+		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		return Find(db.Query(bson.M{
+			distroIDKey: distroID,
+		}))
+	}
 
-	dbCreds := certdepot.User{}
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host1"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host3"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host4"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host5"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host7"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host8"}), &dbCreds))
-	assert.True(adb.ResultsNotFound(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host2"}), &dbCreds)))
-	assert.True(adb.ResultsNotFound(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host6"}), &dbCreds)))
+	distro1Hosts, err := findByDistroID(distro1.Id)
+	require.NoError(err)
+	require.Len(distro1Hosts, 4)
+	ids := map[string]struct{}{}
+	for _, h := range distro1Hosts {
+		ids[h.Id] = struct{}{}
+	}
+	assert.Contains(ids, "host1")
+	assert.Contains(ids, "host3")
+	assert.Contains(ids, "host5")
+	assert.Contains(ids, "host6")
 
-	err = RemoveStaleInitializing(distro2.Id)
-	assert.NoError(err)
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host1"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host3"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host5"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host7"}), &dbCreds))
-	assert.NoError(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host8"}), &dbCreds))
-	assert.True(adb.ResultsNotFound(db.FindOneQ(evergreen.CredentialsCollection, db.Query(bson.M{CertUserIDKey: "host4"}), &dbCreds)))
+	require.NoError(RemoveStaleInitializing(distro2.Id))
 
-	numHosts, err = Count(All)
-	assert.NoError(err)
-	assert.Equal(5, numHosts)
+	distro2Hosts, err := findByDistroID(distro2.Id)
+	require.NoError(err)
+	require.Len(distro2Hosts, 2)
+	ids = map[string]struct{}{}
+	for _, h := range distro2Hosts {
+		ids[h.Id] = struct{}{}
+	}
+	assert.Contains(ids, "host7")
+	assert.Contains(ids, "host8")
 
+	totalHosts, err := Count(All)
+	require.NoError(err)
+	assert.Equal(totalHosts, len(distro1Hosts)+len(distro2Hosts))
+}
+
+func TestMarkStaleBuildingAsFailed(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	now := time.Now()
+	distro1 := distro.Distro{Id: "distro1"}
+	distro2 := distro.Distro{Id: "distro2"}
+
+	hosts := []Host{
+		{
+			Id:           "host1",
+			Distro:       distro1,
+			Status:       evergreen.HostUninitialized,
+			CreationTime: now.Add(-time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host2",
+			Distro:       distro1,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host3",
+			Distro:       distro1,
+			Status:       evergreen.HostStarting,
+			CreationTime: now.Add(-5 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameStatic,
+		},
+		{
+			Id:           "host4",
+			Distro:       distro1,
+			Status:       evergreen.HostBuildingFailed,
+			CreationTime: now.Add(-5 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host5",
+			Distro:       distro1,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host6",
+			Distro:       distro1,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+			SpawnOptions: SpawnOptions{SpawnedByTask: true},
+		},
+		{
+			Id:           "host7",
+			Distro:       distro2,
+			Status:       evergreen.HostRunning,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host8",
+			Distro:       distro2,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+	}
+
+	for _, h := range hosts {
+		require.NoError(t, h.Insert())
+	}
+
+	require.NoError(t, MarkStaleBuildingAsFailed(distro1.Id))
+
+	checkStatus := func(t *testing.T, h Host, expectedStatus string) {
+		dbHost, err := FindOne(ById(h.Id))
+		require.NoError(t, err)
+		require.NotZero(t, dbHost)
+		assert.Equal(t, dbHost.Status, expectedStatus)
+	}
+
+	for _, h := range append([]Host{hosts[0]}, hosts[2:6]...) {
+		checkStatus(t, h, h.Status)
+	}
+	checkStatus(t, hosts[1], evergreen.HostBuildingFailed)
+
+	require.NoError(t, MarkStaleBuildingAsFailed(distro2.Id))
+
+	checkStatus(t, hosts[6], hosts[6].Status)
+	checkStatus(t, hosts[7], evergreen.HostBuildingFailed)
 }
 
 func TestStaleRunningTasks(t *testing.T) {
@@ -4817,5 +4920,80 @@ func TestCountVirtualWorkstationsByDistro(t *testing.T) {
 		if counter.InstanceType == "bar" {
 			require.Equal(t, 1, counter.Count)
 		}
+	}
+}
+
+func TestUnsafeReplace(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host){
+		"SuccessfullySwapsHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host) {
+			require.NoError(t, old.Insert())
+
+			require.NoError(t, UnsafeReplace(ctx, env, old.Id, &replacement))
+
+			found, err := FindOne(ById(old.Id))
+			assert.NoError(t, err)
+			assert.Zero(t, found)
+
+			found, err = FindOne(ById(replacement.Id))
+			assert.NoError(t, err)
+			require.NotZero(t, found)
+			assert.Equal(t, *found, replacement)
+		},
+		"SucceedsIfNewHostIsIdenticalToOldHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h, _ Host) {
+			require.NoError(t, h.Insert())
+
+			require.NoError(t, UnsafeReplace(ctx, env, h.Id, &h))
+
+			found, err := FindOne(ById(h.Id))
+			assert.NoError(t, err)
+			require.NotZero(t, found)
+			assert.Equal(t, *found, h)
+		},
+		"FailsIfOldHostIsMissing": func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host) {
+			require.Error(t, UnsafeReplace(ctx, env, old.Id, &replacement))
+
+			h, err := FindOne(ById(old.Id))
+			assert.NoError(t, err)
+			assert.Zero(t, h)
+
+			h, err = FindOne(ById(replacement.Id))
+			assert.NoError(t, err)
+			assert.Zero(t, h)
+		},
+		"FailsIfNewHostAlreadyExists": func(ctx context.Context, t *testing.T, env evergreen.Environment, old, replacement Host) {
+			require.NoError(t, replacement.Insert())
+
+			require.Error(t, UnsafeReplace(ctx, env, old.Id, &replacement))
+
+			found, err := FindOne(ById(old.Id))
+			assert.NoError(t, err)
+			assert.Zero(t, found)
+
+			found, err = FindOne(ById(replacement.Id))
+			assert.NoError(t, err)
+			require.NotZero(t, found)
+			assert.Equal(t, *found, replacement)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			old := Host{
+				Id:     "old",
+				Status: evergreen.HostBuilding,
+			}
+			replacement := Host{
+				Id:     "replacement",
+				Status: evergreen.HostStarting,
+			}
+			tCase(ctx, t, env, old, replacement)
+		})
 	}
 }
