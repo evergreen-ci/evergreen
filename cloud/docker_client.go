@@ -25,7 +25,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
 
@@ -380,16 +379,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		PublishAllPorts: containerHost.DockerOptions.PublishPorts,
 		ExtraHosts:      containerHost.DockerOptions.ExtraHosts,
 	}
-	os, arch := parentHost.Distro.Platform()
-	platformConf := &specs.Platform{
-		OS:           os,
-		Architecture: arch,
-	}
 
 	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
 	// Build container
-	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, platformConf, containerHost.Id); err != nil {
+	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, nil, containerHost.Id); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "Docker create API call failed",
 			"container": containerHost.Id,
