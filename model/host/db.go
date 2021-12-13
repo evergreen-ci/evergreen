@@ -1427,7 +1427,18 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		return nil, nil
 	}
 
-	if _, err := sess.WithTransaction(ctx, replaceHost); err != nil {
+	txnStart := time.Now()
+	_, err = sess.WithTransaction(ctx, replaceHost)
+	grip.Info(message.Fields{
+		"error":       err,
+		"message":     "attempted to replace old host with new host in a transaction",
+		"jira_ticket": "EVG-15022",
+		"old_host_id": idToRemove,
+		"new_host_id": toInsert.Id,
+		"distro_id":   toInsert.Distro.Id,
+		"duration":    time.Since(txnStart),
+	})
+	if err != nil {
 		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
 	}
 
