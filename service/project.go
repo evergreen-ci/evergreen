@@ -1029,6 +1029,9 @@ func bbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error 
 	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
 		return errors.Errorf("Must provide projects to search")
 	}
+	if !webhookConfigured && proj.TicketCreateProject == "" {
+		return errors.Errorf("Must provide project to create tickets for")
+	}
 	if proj.BFSuggestionServer != "" {
 		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
 			return errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
@@ -1043,7 +1046,7 @@ func bbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error 
 		}
 	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
 		return errors.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_username and bf_suggestion_password must be blank alt_endpoint_url is blank", projName)
+			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
 	} else if proj.BFSuggestionTimeoutSecs != 0 {
 		return errors.Errorf("Failed validating configuration for project '%s': "+
 			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
