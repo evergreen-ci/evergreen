@@ -17,7 +17,7 @@ import (
 )
 
 func TestCleanup(t *testing.T) {
-	dockerClient, err := client.NewClientWithOpts()
+	dockerClient, err := client.NewClientWithOpts(client.WithAPIVersionNegotiation())
 	require.NoError(t, err)
 	ctx := context.Background()
 
