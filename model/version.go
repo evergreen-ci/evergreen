@@ -2,9 +2,6 @@ package model
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,11 +9,14 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )

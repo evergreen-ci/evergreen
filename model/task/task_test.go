@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 	"testing"
 	"time"
 
@@ -2863,7 +2864,7 @@ func TestAbortVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
-	assert.NoError(t, AbortVersion("v1", AbortInfo{TaskID: "et2"}))
+	assert.NoError(t, model.AbortVersion("v1", AbortInfo{TaskID: "et2"}))
 
 	var err error
 	dt, err = FindOneId("dt")
