@@ -1,5 +1,3 @@
-// +build go1.7
-
 package cloud
 
 import (
@@ -385,7 +383,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
 	// Build container
-	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id); err != nil {
+	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, nil, containerHost.Id); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "Docker create API call failed",
 			"container": containerHost.Id,
