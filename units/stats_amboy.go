@@ -91,9 +91,6 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(ctx),
 		})
-
-		j.collectExtendedRemoteStats(ctx)
-		j.collectExtendedGroupRemoteStats(ctx)
 	}
 }
 
