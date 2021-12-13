@@ -34,7 +34,7 @@ func TestCleanup(t *testing.T) {
 			var resp container.ContainerCreateCreatedBody
 			resp, err = dockerClient.ContainerCreate(ctx, &container.Config{
 				Image: "hello-world",
-			}, nil, nil, "")
+			}, nil, nil, nil, "")
 			require.NoError(t, err)
 			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
 			var info types.Info
@@ -72,7 +72,7 @@ func TestCleanup(t *testing.T) {
 		"Cleanup": func(*testing.T) {
 			resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
 				Image: "hello-world",
-			}, nil, nil, "")
+			}, nil, nil, nil, "")
 			require.NoError(t, err)
 			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
 			info, err := dockerClient.Info(ctx)
