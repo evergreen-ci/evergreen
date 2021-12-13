@@ -122,8 +122,6 @@ github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:l
 github.com/aws/aws-sdk-go v1.15.11/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
 github.com/aws/aws-sdk-go v1.41.11/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.41.12/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
-github.com/aws/aws-sdk-go v1.41.16 h1:rNbPreEO4K2b8LwhHOe5+iNRH3Ih35L+H9U5tLdcevo=
-github.com/aws/aws-sdk-go v1.41.16/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aws/aws-sdk-go v1.42.21 h1:ffd+rwCDBiJMYqNssW+oe9uPes4gQNfbYH9vH2Y1fo0=
 github.com/aws/aws-sdk-go v1.42.21/go.mod h1:585smgzpB/KqRA+K3y/NL/oYRqQvpNJYvLm+LY1U59Q=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 h1:0NmehRCgyk5rljDQLKUO+cRJCnduDyn11+zGZIc9Z48=
@@ -751,8 +749,6 @@ github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lN
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/mongodb/amboy v0.0.0-20200527191935-07fdffff5b8c/go.mod h1:SfpzZNF2KZUT5zO0/q4eUqW+EQe64MiY8xXmkBHZDqk=
 github.com/mongodb/amboy v0.0.0-20211101161704-2b42087d24e6/go.mod h1:aYcnjrBUtbgB+naQ6FlVltCdprHv9Td2GOkQkZUqPvY=
-github.com/mongodb/amboy v0.0.0-20211101172957-63ecb128b0be h1:Mp3Ug8NdkteeINBvMgO30E32Jdz4qkl+j/ylhkzCMDU=
-github.com/mongodb/amboy v0.0.0-20211101172957-63ecb128b0be/go.mod h1:aYcnjrBUtbgB+naQ6FlVltCdprHv9Td2GOkQkZUqPvY=
 github.com/mongodb/amboy v0.0.0-20211213142319-cd190dc4cf43 h1:PBBtZwdO6kBWps5RiiQAIMm+GZ90u17Euw3qqqrhN8s=
 github.com/mongodb/amboy v0.0.0-20211213142319-cd190dc4cf43/go.mod h1:UhFnhbpO0GkcQEDFUeonNzKga17AkqXIjMc/NBQEPEc=
 github.com/mongodb/anser v0.0.0-20190422213746-1fb43a6d9968/go.mod h1:ESqf0zBEuYrqL0xADbIAFgdEOaBFpwZ4tkzY84ge+QA=
@@ -1045,7 +1041,6 @@ go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.5/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 go.etcd.io/etcd v0.5.0-alpha.5.0.20200910180754-dd1b699fc489/go.mod h1:yVHk9ub3CSBatqGNg7GRmsnfLWtoW60w4eDYfh7vHDg=
 go.mongodb.org/mongo-driver v1.7.3/go.mod h1:NqaYOwnXWr5Pm7AOpO5QFxKJ503nbMse/R79oO62zWg=
-go.mongodb.org/mongo-driver v1.7.4 h1:sllcioag8Mec0LYkftYWq+cKNPIR4Kqq3iv9ZXY0g/E=
 go.mongodb.org/mongo-driver v1.7.4/go.mod h1:NqaYOwnXWr5Pm7AOpO5QFxKJ503nbMse/R79oO62zWg=
 go.mongodb.org/mongo-driver v1.8.1 h1:OZE4Wni/SJlrcmSIBRYNzunX5TKxjrTS4jKSnA99oKU=
 go.mongodb.org/mongo-driver v1.8.1/go.mod h1:0sQWfOeY63QTntERDJJ/0SuKK0T1uVSgKCuAROlKEPY=
