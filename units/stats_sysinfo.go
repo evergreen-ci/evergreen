@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -42,7 +41,6 @@ func makeSysInfoStatsCollector() *sysInfoStatsCollector {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 )
@@ -45,7 +44,6 @@ func makeJasperManagerCleanup() *jasperManagerCleanup {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
