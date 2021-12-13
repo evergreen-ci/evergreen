@@ -345,16 +345,6 @@ functions:
           set -o xtrace
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
-  copy-fake-destination-optional:
-    - command: s3Copy.copy
-      params:
-        optional: true
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        s3_copy_files:
-            - {'source': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-1'},
-               'destination': {'path': 'hello.tgz', 'bucket': 'evg-test-bucket-2'}}
-
 
 #######################################
 #                Tasks                #
@@ -523,9 +513,12 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: s3-fake-destination-optional
+  - name: docker-cleanup
     commands:
-      - func: copy-fake-destination-optional
+      - func: get-project-and-modules
+      - func: setup-credentials
+      - func: run-make
+        vars: { target: "test-thirdparty-docker" }
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
@@ -621,7 +614,7 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter"
-      - name: "s3-fake-destination-optional"
+      - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud
 

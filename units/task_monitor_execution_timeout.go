@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -55,8 +54,6 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
@@ -236,8 +233,6 @@ func makeTaskExecutionTimeoutPopulateJob() *taskExecutionTimeoutPopulationJob {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 

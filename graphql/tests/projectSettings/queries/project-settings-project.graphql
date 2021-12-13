@@ -1,6 +1,6 @@
 {
     projectSettings(identifier: "sandbox") {
-        githubWebhooksEnabled
+        gitHubWebhooksEnabled
         projectRef {
             id
             identifier

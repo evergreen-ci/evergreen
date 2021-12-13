@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -41,20 +40,18 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 		},
 		logger: logging.MakeGrip(grip.GetSender()),
 	}
-	j.SetDependency(dependency.NewAlways())
-	j.SetPriority(-1)
-	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		MaxTime: time.Minute,
-	})
 
 	return j
 }
 
 func NewNotificationStatsCollector(id string) amboy.Job {
-	job := makeNotificationsStatsCollector()
-	job.SetID(fmt.Sprintf("%s-%s", notificationsStatsCollectorJobName, id))
-
-	return job
+	j := makeNotificationsStatsCollector()
+	j.SetID(fmt.Sprintf("%s-%s", notificationsStatsCollectorJobName, id))
+	j.SetPriority(-1)
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: time.Minute,
+	})
+	return j
 }
 
 func (j *notificationsStatsCollector) Run(ctx context.Context) {

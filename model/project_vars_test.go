@@ -46,20 +46,18 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, repo.Upsert())
 
 	project0 := ProjectRef{
-		Id:              "project_0",
-		Owner:           "mongodb",
-		Branch:          "branch_0",
-		Repo:            "test_repo",
-		RepoRefId:       "repo_ref",
-		UseRepoSettings: true,
+		Id:        "project_0",
+		Owner:     "mongodb",
+		Branch:    "branch_0",
+		Repo:      "test_repo",
+		RepoRefId: "repo_ref",
 	}
 	project1 := ProjectRef{
-		Id:              "project_1",
-		Owner:           "mongodb",
-		Branch:          "branch_1",
-		Repo:            "test_repo",
-		RepoRefId:       "repo_ref",
-		UseRepoSettings: true,
+		Id:        "project_1",
+		Owner:     "mongodb",
+		Branch:    "branch_1",
+		Repo:      "test_repo",
+		RepoRefId: "repo_ref",
 	}
 	require.NoError(t, project0.Insert())
 	require.NoError(t, project1.Insert())
@@ -104,8 +102,8 @@ func TestFindMergedProjectVars(t *testing.T) {
 	assert.Equal(0, len(mergedVars.PrivateVars))
 	assert.Equal(0, len(mergedVars.RestrictedVars))
 
-	// Testing ProjectRef.UseRepoSettings == false
-	project0.UseRepoSettings = false
+	// Testing ProjectRef.RepoRefId == ""
+	project0.RepoRefId = ""
 	require.NoError(t, project0.Update())
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)

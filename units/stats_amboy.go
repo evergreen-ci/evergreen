@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/management"
 	"github.com/mongodb/amboy/queue"
@@ -63,8 +62,6 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 

@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -49,9 +48,6 @@ func makeHostAllocatorJob() *hostAllocatorJob {
 			},
 		},
 	}
-
-	job.SetDependency(dependency.NewAlways())
-
 	return job
 }
 
