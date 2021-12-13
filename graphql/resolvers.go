@@ -80,6 +80,7 @@ func (r *Resolver) RepoRef() RepoRefResolver {
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
+
 func (r *Resolver) TaskLogs() TaskLogsResolver {
 	return &taskLogsResolver{r}
 }
@@ -1084,6 +1085,34 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 
 	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
+}
+
+func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error) {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
+	events, err := r.sc.GetProjectEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	res := &ProjectEvents{
+		EventLogEntries: getPointerEventList(events),
+		Count:           len(events),
+	}
+	return res, err
+}
+
+func (r *queryResolver) RepoEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*RepoEvents, error) {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
+	events, err := r.sc.GetRepoEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	res := &RepoEvents{
+		EventLogEntries: getPointerEventList(events),
+		Count:           len(events),
+	}
+	return res, err
 }
 
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {

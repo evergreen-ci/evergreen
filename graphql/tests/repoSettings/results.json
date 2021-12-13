@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "repoSettings": {
-            "githubWebhooksEnabled": false,
+            "gitHubWebhooksEnabled": false,
             "projectRef": {
               "id": "1234",
               "commitQueue": {
