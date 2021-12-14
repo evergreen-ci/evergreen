@@ -2157,16 +2157,20 @@ func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
 	d := distro.Distro{Id: "example_distro"}
 	require.NoError(d.Insert())
 	exampleYml := `
+exec_timeout_secs: 100
 tasks:
 - name: not_in_a_task_group
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
   depends_on:
   - name: task_in_a_task_group_1
 - name: task_in_a_task_group_1
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
 - name: task_in_a_task_group_2
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
 task_groups:
@@ -2210,8 +2214,10 @@ func TestYamlStrict(t *testing.T) {
 	d := distro.Distro{Id: "example_distro"}
 	require.NoError(d.Insert())
 	exampleYml := `
+exec_timeout_secs: 100
 tasks:
 - name: task1
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
 buildvariants:
@@ -2262,15 +2268,18 @@ func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
 	exampleYml := `
 tasks:
 - name: not_in_a_task_group
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
 - name: task_in_a_task_group
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
   depends_on:
   - name: not_in_a_task_group
 task_groups:
 - name: example_task_group
+  exec_timeout_secs: 100 
   tasks:
   - task_in_a_task_group
 buildvariants:
@@ -2310,12 +2319,15 @@ func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
 	exampleYml := `
 tasks:
 - name: one
+  exec_timeout_secs: 100 
   commands:
   - command: shell.exec
 - name: two
+  exec_timeout_secs: 100 
   commands:
   - command: shell.exec
 - name: display_three
+  exec_timeout_secs: 100 
   commands:
   - command: shell.exec
 buildvariants:
