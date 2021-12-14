@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "query_file": "getBranch.graphql",
+      "result": {
+        "data": {
+          "projectEvents": {
+            "eventLogEntries": [
+              {
+                "user": "Annie Black",
+                "timestamp": "2020-03-03T10:46:00-05:00",
+                "before": {
+                  "projectRef": {
+                    "branch": "master"
+                  },
+                  "gitHubWebhooksEnabled": false
+                },
+                "after": {
+                  "projectRef": {
+                    "branch": "main"
+                  },
+                  "gitHubWebhooksEnabled": true
+                }
+              }
+            ],
+            "count": 1
+          }
+        }
+      }
+    }
+  ]
+}

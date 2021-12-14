@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -40,9 +39,6 @@ func makeDistroAliasSchedulerJob() *distroAliasSchedulerJob {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
-
 	return j
 }
 
