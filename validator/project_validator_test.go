@@ -2319,9 +2319,11 @@ func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
 	exampleYml := `
 tasks:
 - name: one
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
 - name: two
+  exec_timeout_secs: 100
   commands:
   - command: shell.exec
 - name: display_three
