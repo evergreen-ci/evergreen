@@ -33,56 +33,6 @@ func (s *StatUnitsSuite) SetupTest() {
 	s.Require().NoError(s.env.Configure(ctx))
 }
 
-func (s *StatUnitsSuite) TestAmboyStatsCollector() {
-	factory, err := registry.GetJobFactory(amboyStatsCollectorJobName)
-	s.NoError(err)
-	s.NotNil(factory)
-	s.NotNil(factory())
-	s.Equal(factory().Type().Name, amboyStatsCollectorJobName)
-
-	// if the env is set, but the queues aren't logged it should
-	// run and complete but report an error.
-	j := makeAmboyStatsCollector()
-	s.False(j.Status().Completed)
-	j.env = s.env
-	j.TaskID = amboyStatsCollectorJobName + "-"
-	j.logger = logging.MakeGrip(s.sender)
-	s.False(s.sender.HasMessage())
-
-	s.False(j.ExcludeLocal)
-	s.False(j.ExcludeRemote)
-	s.True(j.env.LocalQueue().Info().Started)
-	s.True(j.env.RemoteQueue().Info().Started)
-
-	j.Run(context.Background())
-	s.True(s.sender.HasMessage())
-	s.True(j.Status().Completed)
-	s.False(j.HasErrors())
-
-	j = makeAmboyStatsCollector()
-	s.False(j.Status().Completed)
-	j.env = s.env
-	j.logger = logging.MakeGrip(s.sender)
-	orig := s.sender.Len()
-
-	j.Run(context.Background())
-	s.True(orig < s.sender.Len())
-	s.True(j.Status().Completed)
-	s.False(j.HasErrors())
-
-	m1, ok1 := s.sender.GetMessageSafe()
-	if s.True(ok1) {
-		s.True(m1.Logged)
-		s.True(strings.Contains(m1.Message.String(), "local queue stats"), m1.Message.String())
-	}
-
-	m2, ok2 := s.sender.GetMessageSafe()
-	if s.True(ok2) {
-		s.True(m2.Logged)
-		s.True(strings.Contains(m2.Message.String(), "remote queue stats"), m2.Message.String())
-	}
-}
-
 func (s *StatUnitsSuite) TestHostStatsCollector() {
 	factory, err := registry.GetJobFactory(hostStatsCollectorJobName)
 	s.NoError(err)

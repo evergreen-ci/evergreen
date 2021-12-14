@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -75,7 +74,6 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
 	j.SetPriority(1)
 	return j
 }

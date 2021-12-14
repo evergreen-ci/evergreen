@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/event"
 
 	"github.com/evergreen-ci/evergreen"
@@ -541,6 +542,34 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		"buildVariantCount": len(result),
 	})
 	return result, nil
+}
+
+// getFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
+func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	taskFilters := []apimodels.CedarTaskInfo{}
+	for _, t := range tasks {
+		taskFilters = append(taskFilters, apimodels.CedarTaskInfo{
+			TaskID:      t.Id,
+			Execution:   t.Execution,
+			DisplayTask: t.DisplayOnly,
+		})
+	}
+
+	opts := apimodels.GetCedarFailedTestResultsSampleOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SampleOptions: apimodels.CedarFailedTestSampleOptions{
+			Tasks:        taskFilters,
+			RegexFilters: testFilters,
+		},
+	}
+	results, err := apimodels.GetCedarFilteredFailedSamples(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting cedar filtered failed samples")
+	}
+	return results, nil
 }
 
 type VersionModificationAction string
@@ -1286,6 +1315,14 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 	return res, nil
 }
 
+func getPointerEventList(events []restModel.APIProjectEvent) []*restModel.APIProjectEvent {
+	res := make([]*restModel.APIProjectEvent, len(events))
+	for i := range events {
+		res[i] = &events[i]
+	}
+	return res
+}
+
 // GroupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
 // it groups projects that defaulted to the repo under that repo and groups the rest under "".
 func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
@@ -1293,8 +1330,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 	for _, p := range projects {
 		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
-		// todo: switch to p.UseRepoSettings() once implemented
-		if onlyDefaultedToRepo && p.RepoRefId == "" {
+		if onlyDefaultedToRepo && !p.UseRepoSettings() {
 			groupName = ""
 		}
 
@@ -1319,7 +1355,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			Projects:         groupedProjects,
 		}
 		project := groupedProjects[0]
-		if project.UseRepoSettings {
+		if utility.FromBoolPtr(project.UseRepoSettings) {
 			repoRefId := utility.FromStringPtr(project.RepoRefId)
 			repoRef, err := model.FindOneRepoRef(repoRefId)
 			if err != nil {

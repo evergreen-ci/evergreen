@@ -193,7 +193,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		hosts, err := host.FindHostsToTerminate()
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "populate host termination jobs",
-			"cron":      hostTerminationJobName,
+			"cron":      HostTerminationJobName,
 			"impact":    "hosts termination interrupted",
 		}))
 		catcher.Add(err)
@@ -212,7 +212,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "populate hosts spawned by tasks termination jobs",
-			"cron":      hostTerminationJobName,
+			"cron":      HostTerminationJobName,
 			"impact":    "hosts termination interrupted",
 		}))
 		catcher.Add(err)
@@ -970,7 +970,6 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfMinute(part).Format(TSFormat)
 
-		catcher.Add(queue.Put(ctx, NewRemoteAmboyStatsCollector(env, ts)))
 		catcher.Add(queue.Put(ctx, NewHostStatsCollector(ts)))
 		catcher.Add(queue.Put(ctx, NewTaskStatsCollector(ts)))
 		catcher.Add(queue.Put(ctx, NewLatencyStatsCollector(ts, time.Minute)))
@@ -1115,7 +1114,6 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher.Add(queue.Put(ctx, NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", utility.RoundPartOfMinute(30).Format(TSFormat)))))
-		catcher.Add(queue.Put(ctx, NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", utility.RoundPartOfMinute(0).Format(TSFormat)))))
 		return catcher.Resolve()
 
 	}

@@ -30,6 +30,10 @@ type Query {
     statuses: [String!]! = []
     groupId: String = ""
   ): TaskTestResult!
+  taskTestSample(
+    tasks: [String!]!
+    filters: [TestFilter!]!
+  ): [TaskTestResultSample!]
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
@@ -73,6 +77,16 @@ type Query {
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
+  projectEvents(
+    identifier: String!
+    limit: Int = 0
+    before: Time
+  ): ProjectEvents!
+  repoEvents(
+    id: String!
+    limit: Int = 0
+    before: Time
+  ): RepoEvents!
   hasVersion(id: String!): Boolean!
 }
 
@@ -159,6 +173,18 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
+input TestFilter {
+  testName: String!
+  testStatus: String!
+}
+
+# This will represent failing test results on the task history pages.
+type TaskTestResultSample {
+  taskId: String!
+  execution: Int!
+  totalTestCount: Int!
+  matchingFailedTestNames: [String!]!
+}
 
 # Array of activated and unactivated versions
 # nextPageOrderNumber represents the last order number returned and is used for pagination
@@ -196,7 +222,8 @@ type Version {
   patch: Patch
   childVersions: [Version]
   taskCount: Int
-  baseVersionID: String
+  baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
+  baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!
@@ -406,6 +433,7 @@ input ProjectInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -458,6 +486,7 @@ input RepoRefInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -1079,7 +1108,7 @@ type GroupedProjects {
 }
 
 type ProjectSettings {
-  githubWebhooksEnabled: Boolean!
+  gitHubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -1087,11 +1116,34 @@ type ProjectSettings {
 }
 
 type RepoSettings {
-  githubWebhooksEnabled: Boolean!
+  gitHubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
   aliases: [ProjectAlias!]
   subscriptions: [ProjectSubscription!]
+}
+
+type ProjectEvents {
+  eventLogEntries: [ProjectEventLogEntry!]!
+  count: Int!
+}
+
+type ProjectEventLogEntry {
+  timestamp: Time!
+  user: String!
+  before: ProjectSettings
+  after: ProjectSettings
+}
+
+type RepoEvents {
+  eventLogEntries: [RepoEventLogEntry!]!
+  count: Int!
+}
+type RepoEventLogEntry {
+  timestamp: Time!
+  user: String!
+  before: RepoSettings
+  after: RepoSettings
 }
 
 type ProjectVars {
@@ -1177,6 +1229,7 @@ type Project {
   displayName: String!
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String!
   repo: String!
   branch: String!
@@ -1228,6 +1281,7 @@ type RepoRef {
   displayName: String!
   enabled: Boolean!
   private: Boolean!
+  restricted: Boolean!
   owner: String!
   repo: String!
   branch: String!

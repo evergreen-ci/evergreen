@@ -185,7 +185,7 @@ func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
 
 	p, err := s.sc.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
-	s.True(p.UseRepoSettings)
+	s.True(p.UseRepoSettings())
 	s.NotEmpty(p.RepoRefId)
 	s.Contains(p.Admins, "me")
 
@@ -683,7 +683,6 @@ func TestDeleteProject(t *testing.T) {
 			Enabled:              utility.TruePtr(),
 			Private:              utility.TruePtr(),
 			DisplayName:          fmt.Sprintf("display_%d", i),
-			UseRepoSettings:      true,
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     utility.TruePtr(),
 			PRTestingEnabled:     utility.TruePtr(),
@@ -732,14 +731,13 @@ func TestDeleteProject(t *testing.T) {
 		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
-			Id:              projects[i].Id,
-			Owner:           repo.Owner,
-			Repo:            repo.Repo,
-			Branch:          projects[i].Branch,
-			RepoRefId:       repo.Id,
-			Enabled:         utility.FalsePtr(),
-			UseRepoSettings: true,
-			Hidden:          utility.TruePtr(),
+			Id:        projects[i].Id,
+			Owner:     repo.Owner,
+			Repo:      repo.Repo,
+			Branch:    projects[i].Branch,
+			RepoRefId: repo.Id,
+			Enabled:   utility.FalsePtr(),
+			Hidden:    utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -768,8 +766,8 @@ func TestDeleteProject(t *testing.T) {
 
 	// Project with UseRepoSettings == false
 	badProject := serviceModel.ProjectRef{
-		Id:              "bad_project",
-		UseRepoSettings: false,
+		Id:        "bad_project",
+		RepoRefId: "",
 	}
 	require.NoError(t, badProject.Insert())
 	pdh.projectName = badProject.Id

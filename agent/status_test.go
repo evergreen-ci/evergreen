@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -198,4 +200,15 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	lines, pids := tracker.Report()
 	s.Len(lines, 0)
 	s.Len(pids, 0)
+}
+
+func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
+	body := `{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue":true}`
+	resp := TriggerEndTaskResp{}
+
+	assert.NoError(t, json.Unmarshal([]byte(body), &resp))
+	assert.Equal(t, resp.Status, "failed")
+	assert.Equal(t, resp.Type, "setup")
+	assert.Equal(t, resp.Description, "this should be set")
+	assert.Equal(t, resp.ShouldContinue, true)
 }

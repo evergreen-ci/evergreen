@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -58,15 +57,13 @@ func makeIdleHostJob() *idleHostJob {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
-	j.SetPriority(2)
-
 	return j
 }
 
 func NewIdleHostTerminationJob(env evergreen.Environment, id string) amboy.Job {
 	j := makeIdleHostJob()
 	j.env = env
+	j.SetPriority(2)
 	j.SetID(fmt.Sprintf("%s.%s", idleHostJobName, id))
 	return j
 }

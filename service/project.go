@@ -17,7 +17,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -87,7 +86,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			})
 		return
 	}
-	if projRef.UseRepoSettings {
+	if projRef.UseRepoSettings() {
 		projRef, err = model.FindMergedProjectRef(projRef.Id, "", false)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -141,7 +140,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var projVars *model.ProjectVars
-	if projRef.UseRepoSettings {
+	if projRef.UseRepoSettings() {
 		projVars, err = model.FindMergedProjectVars(projRef.Id)
 	} else {
 		projVars, err = model.FindOneProjectVars(projRef.Id)
@@ -161,7 +160,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if len(projectAliases) == 0 && projRef.UseRepoSettings {
+	if len(projectAliases) == 0 && projRef.UseRepoSettings() {
 		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -261,7 +260,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
-	if projectRef.UseRepoSettings {
+	if projectRef.UseRepoSettings() {
 		http.Error(w, "can't modify branch projects here", http.StatusBadRequest)
 		return
 	}
@@ -325,7 +324,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		TaskAnnotationSettings restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
 	}{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -858,7 +857,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Id string `json:"id"`
 	}{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), &projectWithId); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &projectWithId); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -923,7 +922,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 
 	project := gimlet.GetVars(r)["project_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	data, err := ioutil.ReadAll(body)
