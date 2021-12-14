@@ -151,16 +151,16 @@ func (macSign *macSign) shouldRunForVariant(buildVariantName string) bool {
 func (macSign *macSign) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
+	if err := macSign.expandParams(conf); err != nil {
+		return errors.WithStack(err)
+	}
+
 	if !macSign.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping macsign of local file %v for variant %v",
+		logger.Task().Infof("Skipping macsign of local file %s for variant %s",
 			macSign.LocalZipFile, conf.BuildVariant.Name)
 		return nil
 	}
 
-	// expand necessary params
-	if err := macSign.expandParams(conf); err != nil {
-		return errors.WithStack(err)
-	}
 	// client binary
 	if macSign.ClientBinary == "" {
 		macSign.ClientBinary = "/usr/local/bin/macnotary"
