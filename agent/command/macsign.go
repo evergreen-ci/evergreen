@@ -123,7 +123,7 @@ func (macSign *macSign) validate() error {
 // to all appropriate fields of the macSign.
 func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 	var err error
-	if err = util.ExpandValues(macSign, conf.GetExpansionsWithRestricted()); err != nil {
+	if err = util.ExpandValues(macSign, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
 
