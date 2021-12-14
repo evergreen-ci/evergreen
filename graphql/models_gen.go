@@ -84,8 +84,10 @@ type GroupedFiles struct {
 }
 
 type GroupedProjects struct {
-	Name     string                 `json:"name"`
-	Projects []*model.APIProjectRef `json:"projects"`
+	GroupDisplayName string                 `json:"groupDisplayName"`
+	Name             string                 `json:"name"`
+	Repo             *model.APIProjectRef   `json:"repo"`
+	Projects         []*model.APIProjectRef `json:"projects"`
 }
 
 type HostEvents struct {
@@ -125,6 +127,12 @@ type Manifest struct {
 	IsBase          bool                   `json:"isBase"`
 	ModuleOverrides map[string]string      `json:"moduleOverrides"`
 	Modules         map[string]interface{} `json:"modules"`
+}
+
+type MoveProjectInput struct {
+	ProjectID string `json:"projectId"`
+	NewOwner  string `json:"newOwner"`
+	NewRepo   string `json:"newRepo"`
 }
 
 type PatchConfigure struct {
@@ -180,9 +188,19 @@ type ProjectBuildVariant struct {
 	Tasks       []string `json:"tasks"`
 }
 
+type ProjectEvents struct {
+	EventLogEntries []*model.APIProjectEvent `json:"eventLogEntries"`
+	Count           int                      `json:"count"`
+}
+
 type PublicKeyInput struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`
+}
+
+type RepoEvents struct {
+	EventLogEntries []*model.APIProjectEvent `json:"eventLogEntries"`
+	Count           int                      `json:"count"`
 }
 
 type SortOrder struct {
@@ -267,6 +285,18 @@ type TaskTestResult struct {
 	TotalTestCount    int              `json:"totalTestCount"`
 	FilteredTestCount int              `json:"filteredTestCount"`
 	TestResults       []*model.APITest `json:"testResults"`
+}
+
+type TaskTestResultSample struct {
+	TaskID                  string   `json:"taskId"`
+	Execution               int      `json:"execution"`
+	TotalTestCount          int      `json:"totalTestCount"`
+	MatchingFailedTestNames []string `json:"matchingFailedTestNames"`
+}
+
+type TestFilter struct {
+	TestName   string `json:"testName"`
+	TestStatus string `json:"testStatus"`
 }
 
 type UpdateVolumeInput struct {
@@ -412,6 +442,7 @@ const (
 	ProjectSettingsSectionWorkstation          ProjectSettingsSection = "WORKSTATION"
 	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
 	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -424,11 +455,12 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionWorkstation,
 	ProjectSettingsSectionTriggers,
 	ProjectSettingsSectionPeriodicBuilds,
+	ProjectSettingsSectionPlugins,
 }
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins:
 		return true
 	}
 	return false

@@ -5,10 +5,11 @@
       "result": {
         "data": {
           "projectSettings": {
-            "githubWebhooksEnabled": false,
+            "gitHubWebhooksEnabled": false,
             "projectRef": {
               "id": "1234",
               "identifier": "sandbox",
+              "restricted": true,
               "commitQueue": {
                 "enabled": true,
                 "mergeMethod": "squash"
@@ -39,6 +40,28 @@
                 "configEnabled" : false,
                 "patchEnabled" : true
               },
+              "perfEnabled" : true,
+              "buildBaronSettings" : {
+                "ticketCreateProject" : "EVG",
+                "ticketSearchProjects" : ["EVG"],
+                "bfSuggestionFeaturesURL" : "",
+                "bfSuggestionPassword" : "",
+                "bfSuggestionServer" : "",
+                "bfSuggestionTimeoutSecs" : 0,
+                "bfSuggestionUsername" : ""
+              },
+
+              "taskAnnotationSettings" : {
+                "jiraCustomFields" : [{
+                  "displayText" : "description",
+                  "field" : "sample_field"
+                }],
+                "fileTicketWebhook" : {
+                  "endpoint" : "endpoint",
+                  "secret" : "shh"
+                }
+              },
+
               "validDefaultLoggers": [
                 "evergreen",
                 "buildlogger"

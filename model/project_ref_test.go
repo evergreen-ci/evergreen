@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -15,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +64,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Id:                 "ident",
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
@@ -78,7 +77,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 		BatchTime:             10,
 		Id:                    "ident",
 		Admins:                []string{"john.smith", "john.doe"},
-		UseRepoSettings:       true,
 		Enabled:               utility.FalsePtr(),
 		PatchingDisabled:      utility.FalsePtr(),
 		RepotrackerDisabled:   utility.TruePtr(),
@@ -125,7 +123,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.NotContains(t, mergedProject.Admins, "john.liu")
 	assert.False(t, *mergedProject.Enabled)
 	assert.False(t, mergedProject.IsPatchingDisabled())
-	assert.True(t, mergedProject.UseRepoSettings)
+	assert.True(t, mergedProject.UseRepoSettings())
 	assert.True(t, mergedProject.IsRepotrackerDisabled())
 	assert.False(t, mergedProject.IsGitTagVersionsEnabled())
 	assert.False(t, mergedProject.IsGithubChecksEnabled())
@@ -144,8 +142,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	assert.True(t, *mergedProject.DeactivatePrevious)
-	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	// TODO: Commented out for EVG-15856
+	//assert.True(t, *mergedProject.DeactivatePrevious)
+	//assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -301,12 +300,11 @@ func TestChangeOwnerRepo(t *testing.T) {
 
 	evergreen.SetEnvironment(env)
 	pRef := ProjectRef{
-		Id:              "myProject",
-		Owner:           "evergreen-ci",
-		Repo:            "evergreen",
-		Admins:          []string{"me"},
-		RepoRefId:       "myRepo",
-		UseRepoSettings: true,
+		Id:        "myProject",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Admins:    []string{"me"},
+		RepoRefId: "myRepo",
 	}
 	assert.NoError(t, pRef.Insert())
 	repoRef := RepoRef{ProjectRef{
@@ -319,7 +317,7 @@ func TestChangeOwnerRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	assert.NoError(t, pRef.ChangeOwnerRepo(u))
+	assert.NoError(t, pRef.AttachToNewRepo(u))
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
@@ -352,13 +350,13 @@ func TestAttachToRepo(t *testing.T) {
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	assert.NoError(t, pRef.AttachToRepo(u))
-	assert.True(t, pRef.UseRepoSettings)
+	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
-	assert.True(t, pRefFromDB.UseRepoSettings)
+	assert.True(t, pRefFromDB.UseRepoSettings())
 	assert.NotEmpty(t, pRefFromDB.RepoRefId)
 
 	u, err = user.FindOneById("me")
@@ -376,7 +374,7 @@ func TestDetachFromRepo(t *testing.T) {
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
-			assert.False(t, pRefFromDB.UseRepoSettings)
+			assert.False(t, pRefFromDB.UseRepoSettings())
 			assert.Empty(t, pRefFromDB.RepoRefId)
 			assert.NotNil(t, pRefFromDB.PRTestingEnabled)
 			assert.False(t, pRefFromDB.IsPRTestingEnabled())
@@ -420,7 +418,7 @@ func TestDetachFromRepo(t *testing.T) {
 			// reattach to repo to test without project patch aliases
 			assert.NoError(t, pRef.AttachToRepo(dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
-			assert.True(t, pRef.UseRepoSettings)
+			assert.True(t, pRef.UseRepoSettings())
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -521,12 +519,11 @@ func TestDetachFromRepo(t *testing.T) {
 			_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 			pRef := &ProjectRef{
-				Id:              "myProject",
-				Owner:           "evergreen-ci",
-				Repo:            "evergreen",
-				Admins:          []string{"me"},
-				UseRepoSettings: true,
-				RepoRefId:       "myRepo",
+				Id:        "myProject",
+				Owner:     "evergreen-ci",
+				Repo:      "evergreen",
+				Admins:    []string{"me"},
+				RepoRefId: "myRepo",
 
 				PeriodicBuilds:        []PeriodicBuildDefinition{}, // also shouldn't be overwritten
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
@@ -683,6 +680,15 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.SetupCommands)
 		},
+		ProjectPagePluginSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePluginSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Equal(t, pRefFromDb.TaskAnnotationSettings.FileTicketWebhook.Endpoint, "")
+			assert.Equal(t, pRefFromDb.BuildBaronSettings.TicketCreateProject, "")
+			assert.Nil(t, pRefFromDb.PerfEnabled)
+		},
 		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPagePeriodicBuildsSection, "me"))
 			pRefFromDb, err := FindBranchProjectRef(id)
@@ -712,6 +718,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				GithubChecksEnabled:   utility.FalsePtr(),
 				GitTagAuthorizedUsers: []string{"anna"},
 				NotifyOnBuildFailure:  utility.FalsePtr(),
+				PerfEnabled:           utility.FalsePtr(),
 				Triggers: []TriggerDefinition{
 					{Project: "your_project"},
 				},
@@ -729,6 +736,15 @@ func TestDefaultRepoBySection(t *testing.T) {
 						ID:         "so_occasional",
 						ConfigFile: "build.yml",
 					},
+				},
+				TaskAnnotationSettings: evergreen.AnnotationsSettings{
+					FileTicketWebhook: evergreen.WebHook{
+						Endpoint: "random1",
+					},
+				},
+				BuildBaronSettings: evergreen.BuildBaronSettings{
+					TicketCreateProject:  "BFG",
+					TicketSearchProjects: []string{"BF", "BFG"},
 				},
 			}
 			assert.NoError(t, pRef.Insert())
@@ -786,29 +802,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 	}
 }
 
-func TestGroupProjectsByRepo(t *testing.T) {
-	assert := assert.New(t)
-	groupedProjects := GroupProjectsByRepo(
-		[]ProjectRef{
-			{Id: "projectB", RepoRefId: "mongo"},
-			{Id: "projectC", RepoRefId: "mongo"},
-			{Id: "projectD", RepoRefId: "mongo"},
-			{Id: "projectE", RepoRefId: "gimlet"},
-			{Id: "projectF", RepoRefId: "gimlet"},
-		},
-	)
-
-	assert.Equal(2, len(groupedProjects["gimlet"]))
-	assert.Equal(3, len(groupedProjects["mongo"]))
-
-	assert.Equal("projectB", groupedProjects["mongo"][0].Id)
-	assert.Equal("projectC", groupedProjects["mongo"][1].Id)
-	assert.Equal("projectD", groupedProjects["mongo"][2].Id)
-
-	assert.Equal("projectE", groupedProjects["gimlet"][0].Id)
-	assert.Equal("projectF", groupedProjects["gimlet"][1].Id)
-}
-
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
@@ -853,7 +846,6 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	projectRef.Id = "uses_repo"
 	projectRef.Enabled = nil
 	projectRef.RepoRefId = "my_repo"
-	projectRef.UseRepoSettings = true
 	assert.NoError(projectRef.Insert())
 
 	repoRef := RepoRef{ProjectRef{
@@ -1133,12 +1125,11 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	}}
 	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
-		Id:              "defaulting_project",
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "mine",
-		UseRepoSettings: true,
-		RepoRefId:       repoDoc.Id,
+		Id:        "defaulting_project",
+		Owner:     "mongodb",
+		Repo:      "mci",
+		Branch:    "mine",
+		RepoRefId: repoDoc.Id,
 	}
 	assert.NoError(doc.Insert())
 	doc2 := &ProjectRef{
@@ -1146,7 +1137,6 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "mine",
-		UseRepoSettings:  true,
 		RepoRefId:        repoDoc.Id,
 		Enabled:          utility.FalsePtr(),
 		PRTestingEnabled: utility.FalsePtr(),
@@ -1243,12 +1233,11 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 
 	// doc defaults to repo, which is not enabled
 	doc = &ProjectRef{
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "not_main",
-		Id:              "mci_main",
-		RepoRefId:       "my_repo",
-		UseRepoSettings: true,
+		Owner:     "mongodb",
+		Repo:      "mci",
+		Branch:    "not_main",
+		Id:        "mci_main",
+		RepoRefId: "my_repo",
 	}
 	repoDoc := &RepoRef{ProjectRef{Id: "my_repo"}}
 	assert.NoError(doc.Insert())
@@ -1325,14 +1314,13 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 	}}
 	assert.NoError(t, repoRef.Upsert())
 	doc := &ProjectRef{
-		Enabled:         utility.TruePtr(),
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "main",
-		Identifier:      "mci",
-		Id:              "1",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Enabled:    utility.TruePtr(),
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "main",
+		Identifier: "mci",
+		Id:         "1",
+		RepoRefId:  repoRef.Id,
 	}
 	assert.NoError(t, doc.Insert())
 	doc.Enabled = nil
@@ -1345,7 +1333,6 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 
 	doc.Enabled = utility.TruePtr()
 	doc.RepoRefId = ""
-	doc.UseRepoSettings = false
 	doc.Id = "4"
 	assert.NoError(t, doc.Insert())
 
@@ -1376,14 +1363,13 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	}}
 	assert.NoError(repoRef.Upsert())
 	doc := &ProjectRef{
-		Enabled:         utility.TruePtr(),
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "main",
-		Identifier:      "mci",
-		Id:              "1",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Enabled:    utility.TruePtr(),
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "main",
+		Identifier: "mci",
+		Id:         "1",
+		RepoRefId:  repoRef.Id,
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -1482,20 +1468,18 @@ func TestFindDownstreamProjects(t *testing.T) {
 	assert.NoError(t, repoRef.Upsert())
 
 	proj1 := ProjectRef{
-		Id:              "evergreen",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
-		Enabled:         utility.TruePtr(),
-		Triggers:        []TriggerDefinition{{Project: "grip"}},
+		Id:        "evergreen",
+		RepoRefId: repoRef.Id,
+		Enabled:   utility.TruePtr(),
+		Triggers:  []TriggerDefinition{{Project: "grip"}},
 	}
 	require.NoError(t, proj1.Insert())
 
 	proj2 := ProjectRef{
-		Id:              "mci",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
-		Enabled:         utility.FalsePtr(),
-		Triggers:        []TriggerDefinition{{Project: "grip"}},
+		Id:        "mci",
+		RepoRefId: repoRef.Id,
+		Enabled:   utility.FalsePtr(),
+		Triggers:  []TriggerDefinition{{Project: "grip"}},
 	}
 	require.NoError(t, proj2.Insert())
 
@@ -1708,10 +1692,9 @@ func TestFindPeriodicProjects(t *testing.T) {
 	assert.NoError(t, repoRef.Upsert())
 
 	pRef := ProjectRef{
-		Id:              "p1",
-		RepoRefId:       "my_repo",
-		UseRepoSettings: true,
-		PeriodicBuilds:  []PeriodicBuildDefinition{},
+		Id:             "p1",
+		RepoRefId:      "my_repo",
+		PeriodicBuilds: []PeriodicBuildDefinition{},
 	}
 	assert.NoError(t, pRef.Insert())
 
@@ -1832,17 +1815,37 @@ func TestMergeWithParserProject(t *testing.T) {
 		PerfEnabled:        utility.TruePtr(),
 		DeactivatePrevious: utility.FalsePtr(),
 		TaskAnnotationSettings: evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random1",
 			},
+		},
+		WorkstationConfig: WorkstationConfig{
+			GitClone: utility.TruePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "expeliarmus"},
+			},
+		},
+		CommitQueue: CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message1",
 		},
 	}
 	parserProject := &ParserProject{
 		Id:                 "version1",
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebHook: evergreen.WebHook{
+			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
+			},
+		},
+		CommitQueue: &CommitQueueParams{
+			Enabled:     utility.TruePtr(),
+			MergeMethod: "message2",
+		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.FalsePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "overridden"},
 			},
 		},
 	}
@@ -1855,5 +1858,8 @@ func TestMergeWithParserProject(t *testing.T) {
 
 	assert.True(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
-	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebHook.Endpoint)
+	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.False(t, *projectRef.WorkstationConfig.GitClone)
+	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
+	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
 }

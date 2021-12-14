@@ -290,7 +290,7 @@ func (bb *APIBuildBaronSettings) ToService() (interface{}, error) {
 
 type APITaskAnnotationSettings struct {
 	JiraCustomFields  []APIJiraField `bson:"jira_custom_fields" json:"jira_custom_fields"`
-	FileTicketWebHook APIWebHook     `bson:"web_hook" json:"web_hook"`
+	FileTicketWebhook APIWebHook     `bson:"web_hook" json:"web_hook"`
 }
 
 type APIWebHook struct {
@@ -306,9 +306,9 @@ type APIJiraField struct {
 func (ta *APITaskAnnotationSettings) ToService() (interface{}, error) {
 	res := evergreen.AnnotationsSettings{}
 	webhook := evergreen.WebHook{}
-	webhook.Secret = utility.FromStringPtr(ta.FileTicketWebHook.Secret)
-	webhook.Endpoint = utility.FromStringPtr(ta.FileTicketWebHook.Endpoint)
-	res.FileTicketWebHook = webhook
+	webhook.Secret = utility.FromStringPtr(ta.FileTicketWebhook.Secret)
+	webhook.Endpoint = utility.FromStringPtr(ta.FileTicketWebhook.Endpoint)
+	res.FileTicketWebhook = webhook
 	for _, apiJiraField := range ta.JiraCustomFields {
 		jiraField := evergreen.JiraField{}
 		jiraField.Field = utility.FromStringPtr(apiJiraField.Field)
@@ -328,9 +328,9 @@ func (ta *APITaskAnnotationSettings) BuildFromService(h interface{}) error {
 	}
 
 	apiWebhook := APIWebHook{}
-	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebHook.Secret)
-	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebHook.Endpoint)
-	ta.FileTicketWebHook = apiWebhook
+	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebhook.Secret)
+	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebhook.Endpoint)
+	ta.FileTicketWebhook = apiWebhook
 	for _, jiraField := range config.JiraCustomFields {
 		apiJiraField := APIJiraField{}
 		apiJiraField.Field = utility.ToStringPtr(jiraField.Field)
@@ -451,7 +451,7 @@ type APIProjectRef struct {
 	GitTagVersionsEnabled       *bool                     `json:"git_tag_versions_enabled"`
 	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
 	CedarTestResultsEnabled     *bool                     `json:"cedar_test_results_enabled"`
-	UseRepoSettings             bool                      `json:"use_repo_settings"`
+	UseRepoSettings             *bool                     `json:"use_repo_settings"`
 	RepoRefId                   *string                   `json:"repo_ref_id"`
 	DefaultLogger               *string                   `json:"default_logger"`
 	CommitQueue                 APICommitQueueParams      `json:"commit_queue"`
@@ -531,43 +531,43 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	}
 
 	projectRef := model.ProjectRef{
-		Owner:                  utility.FromStringPtr(p.Owner),
-		Repo:                   utility.FromStringPtr(p.Repo),
-		Branch:                 utility.FromStringPtr(p.Branch),
-		Enabled:                utility.BoolPtrCopy(p.Enabled),
-		Private:                utility.BoolPtrCopy(p.Private),
-		Restricted:             utility.BoolPtrCopy(p.Restricted),
-		BatchTime:              p.BatchTime,
-		RemotePath:             utility.FromStringPtr(p.RemotePath),
-		Id:                     utility.FromStringPtr(p.Id),
-		Identifier:             utility.FromStringPtr(p.Identifier),
-		DisplayName:            utility.FromStringPtr(p.DisplayName),
-		DeactivatePrevious:     utility.BoolPtrCopy(p.DeactivatePrevious),
-		TracksPushEvents:       utility.BoolPtrCopy(p.TracksPushEvents),
-		DefaultLogger:          utility.FromStringPtr(p.DefaultLogger),
-		PRTestingEnabled:       utility.BoolPtrCopy(p.PRTestingEnabled),
-		GitTagVersionsEnabled:  utility.BoolPtrCopy(p.GitTagVersionsEnabled),
-		GithubChecksEnabled:    utility.BoolPtrCopy(p.GithubChecksEnabled),
-		UseRepoSettings:        p.UseRepoSettings,
-		RepoRefId:              utility.FromStringPtr(p.RepoRefId),
-		CommitQueue:            commitQueue.(model.CommitQueueParams),
-		TaskSync:               taskSync,
-		WorkstationConfig:      workstationConfig,
-		BuildBaronSettings:     buildBaronConfig,
-		TaskAnnotationSettings: taskAnnotationConfig,
-		PerfEnabled:            utility.BoolPtrCopy(p.PerfEnabled),
-		Hidden:                 utility.BoolPtrCopy(p.Hidden),
-		PatchingDisabled:       utility.BoolPtrCopy(p.PatchingDisabled),
-		RepotrackerDisabled:    utility.BoolPtrCopy(p.RepotrackerDisabled),
-		DispatchingDisabled:    utility.BoolPtrCopy(p.DispatchingDisabled),
-		DisabledStatsCache:     utility.BoolPtrCopy(p.DisabledStatsCache),
-		FilesIgnoredFromCache:  utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
-		NotifyOnBuildFailure:   utility.BoolPtrCopy(p.NotifyOnBuildFailure),
-		SpawnHostScriptPath:    utility.FromStringPtr(p.SpawnHostScriptPath),
-		Admins:                 utility.FromStringPtrSlice(p.Admins),
-		GitTagAuthorizedUsers:  utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
-		GitTagAuthorizedTeams:  utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
-		GithubTriggerAliases:   utility.FromStringPtrSlice(p.GithubTriggerAliases),
+		Owner:                   utility.FromStringPtr(p.Owner),
+		Repo:                    utility.FromStringPtr(p.Repo),
+		Branch:                  utility.FromStringPtr(p.Branch),
+		Enabled:                 utility.BoolPtrCopy(p.Enabled),
+		Private:                 utility.BoolPtrCopy(p.Private),
+		Restricted:              utility.BoolPtrCopy(p.Restricted),
+		BatchTime:               p.BatchTime,
+		RemotePath:              utility.FromStringPtr(p.RemotePath),
+		Id:                      utility.FromStringPtr(p.Id),
+		Identifier:              utility.FromStringPtr(p.Identifier),
+		DisplayName:             utility.FromStringPtr(p.DisplayName),
+		DeactivatePrevious:      utility.BoolPtrCopy(p.DeactivatePrevious),
+		TracksPushEvents:        utility.BoolPtrCopy(p.TracksPushEvents),
+		DefaultLogger:           utility.FromStringPtr(p.DefaultLogger),
+		PRTestingEnabled:        utility.BoolPtrCopy(p.PRTestingEnabled),
+		GitTagVersionsEnabled:   utility.BoolPtrCopy(p.GitTagVersionsEnabled),
+		GithubChecksEnabled:     utility.BoolPtrCopy(p.GithubChecksEnabled),
+		CedarTestResultsEnabled: utility.BoolPtrCopy(p.CedarTestResultsEnabled),
+		RepoRefId:               utility.FromStringPtr(p.RepoRefId),
+		CommitQueue:             commitQueue.(model.CommitQueueParams),
+		TaskSync:                taskSync,
+		WorkstationConfig:       workstationConfig,
+		BuildBaronSettings:      buildBaronConfig,
+		TaskAnnotationSettings:  taskAnnotationConfig,
+		PerfEnabled:             utility.BoolPtrCopy(p.PerfEnabled),
+		Hidden:                  utility.BoolPtrCopy(p.Hidden),
+		PatchingDisabled:        utility.BoolPtrCopy(p.PatchingDisabled),
+		RepotrackerDisabled:     utility.BoolPtrCopy(p.RepotrackerDisabled),
+		DispatchingDisabled:     utility.BoolPtrCopy(p.DispatchingDisabled),
+		DisabledStatsCache:      utility.BoolPtrCopy(p.DisabledStatsCache),
+		FilesIgnoredFromCache:   utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
+		NotifyOnBuildFailure:    utility.BoolPtrCopy(p.NotifyOnBuildFailure),
+		SpawnHostScriptPath:     utility.FromStringPtr(p.SpawnHostScriptPath),
+		Admins:                  utility.FromStringPtrSlice(p.Admins),
+		GitTagAuthorizedUsers:   utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
+		GitTagAuthorizedTeams:   utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
+		GithubTriggerAliases:    utility.FromStringPtrSlice(p.GithubTriggerAliases),
 	}
 
 	// Copy triggers
@@ -651,7 +651,8 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
 	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
-	p.UseRepoSettings = projectRef.UseRepoSettings
+	p.CedarTestResultsEnabled = utility.BoolPtrCopy(projectRef.CedarTestResultsEnabled)
+	p.UseRepoSettings = utility.ToBoolPtr(projectRef.UseRepoSettings())
 	p.RepoRefId = utility.ToStringPtr(projectRef.RepoRefId)
 	p.PerfEnabled = utility.BoolPtrCopy(projectRef.PerfEnabled)
 	p.Hidden = utility.BoolPtrCopy(projectRef.Hidden)

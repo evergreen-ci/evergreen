@@ -27,7 +27,7 @@ import (
 // filterViewableProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view
 func (uis *UIServer) filterViewableProjects(u *user.DBUser) ([]model.ProjectRef, error) {
-	projectIds, err := u.GetViewableProjects()
+	projectIds, err := u.GetViewableProjectSettings()
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			})
 		return
 	}
-	if projRef.UseRepoSettings {
+	if projRef.UseRepoSettings() {
 		projRef, err = model.FindMergedProjectRef(projRef.Id, "", false)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -139,7 +139,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var projVars *model.ProjectVars
-	if projRef.UseRepoSettings {
+	if projRef.UseRepoSettings() {
 		projVars, err = model.FindMergedProjectVars(projRef.Id)
 	} else {
 		projVars, err = model.FindOneProjectVars(projRef.Id)
@@ -159,7 +159,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if len(projectAliases) == 0 && projRef.UseRepoSettings {
+	if len(projectAliases) == 0 && projRef.UseRepoSettings() {
 		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -259,7 +259,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
-	if projectRef.UseRepoSettings {
+	if projectRef.UseRepoSettings() {
 		http.Error(w, "can't modify branch projects here", http.StatusBadRequest)
 		return
 	}

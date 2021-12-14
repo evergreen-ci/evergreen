@@ -1,0 +1,13 @@
+mutation {
+    attachProjectToNewRepo(project: {
+        projectId: "1234",
+        newOwner: "sand",
+        newRepo: "box",
+    }
+    ){
+        id
+        owner
+        repo
+        repoRefId
+    }
+}

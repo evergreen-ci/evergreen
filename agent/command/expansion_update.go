@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"os"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -105,7 +104,7 @@ func (c *update) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 
-		filename := filepath.Join(conf.WorkDir, c.YamlFile)
+		filename := getJoinedWithWorkDir(conf, c.YamlFile)
 
 		_, err = os.Stat(filename)
 		if os.IsNotExist(err) {

@@ -67,7 +67,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		grip.Warningln("conflict with existing pushed file:", copyToLocation)
 		gimlet.WriteJSON(w, gimlet.ErrorResponse{
 			StatusCode: http.StatusOK,
-			Message:    fmt.Sprintf("noop, file %s exists", copyToLocation),
+			Message:    fmt.Sprintf("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s'", copyToLocation),
 		})
 		return
 	}

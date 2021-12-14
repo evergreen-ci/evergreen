@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/timber"
@@ -96,15 +97,29 @@ func (opts GetCedarTestResultsOptions) convert() testresults.GetOptions {
 }
 
 // GetCedarTestResults makes a request to Cedar for a task's test results.
-func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResults, error) {
-	data, err := testresults.Get(ctx, opts.convert())
+func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResults, int, error) {
+	data, status, err := testresults.Get(ctx, opts.convert())
 	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from Cedar")
+		return nil, 0, errors.Wrap(err, "getting test results from Cedar")
 	}
 
 	testResults := &CedarTestResults{}
-	if err = json.Unmarshal(data, testResults); err != nil {
-		return nil, errors.Wrap(err, "unmarshaling test results from Cedar")
+	if status != http.StatusOK {
+		return testResults, status, nil
+	}
+
+	return testResults, status, errors.Wrap(json.Unmarshal(data, testResults), "unmarshaling test results from Cedar")
+}
+
+// GetCedarTestResultsWithStatusError  makes a request to Cedar for a task's
+// test results. An error is returned if Cedar sends a non-200 HTTP status.
+func GetCedarTestResultsWithStatusError(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResults, error) {
+	testResults, status, err := GetCedarTestResults(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, errors.Errorf("getting test results from Cedar returned HTTP status '%d'", status)
 	}
 
 	return testResults, nil
@@ -113,29 +128,45 @@ func GetCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (
 // GetMultiPageCedarTestResults makes a request to Cedar for a task's test
 // results and returns an io.ReadCloser that will continue fetching and reading
 // subsequent pages of test results if paginated.
-func GetMultiPageCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (io.ReadCloser, error) {
-	r, err := testresults.GetWithPaginatedReadCloser(ctx, opts.convert())
+func GetMultiPageCedarTestResults(ctx context.Context, opts GetCedarTestResultsOptions) (io.ReadCloser, int, error) {
+	r, status, err := testresults.GetWithPaginatedReadCloser(ctx, opts.convert())
 	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from Cedar")
+		return nil, 0, errors.Wrap(err, "getting test results from Cedar")
 	}
 
-	return r, nil
+	return r, status, nil
 }
 
 // GetCedarTestResultsStats makes a request to Cedar for a task's test results
 // stats. This route ignores filtering, sorting, and pagination query
 // parameters.
-func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResultsStats, error) {
+func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResultsStats, int, error) {
 	timberOpts := opts.convert()
 	timberOpts.Stats = true
-	data, err := testresults.Get(ctx, timberOpts)
+	data, status, err := testresults.Get(ctx, timberOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting test results stats from Cedar")
+		return nil, 0, errors.Wrap(err, "getting test results stats from Cedar")
 	}
 
 	stats := &CedarTestResultsStats{}
-	if err = json.Unmarshal(data, stats); err != nil {
-		return nil, errors.Wrap(err, "unmarshaling test results stats from cedar")
+	if status != http.StatusOK {
+		return stats, status, nil
+	}
+
+	return stats, status, errors.Wrap(json.Unmarshal(data, stats), "unmarshaling test results stats from Cedar")
+}
+
+// GetCedarTestResultsStatsWithStatusError makes a request to Cedar for a
+// task's test results stats. This route ignores filtering, sorting, and
+// pagination query parameters. An error is returned if Cedar sends a non-200
+// HTTP status.
+func GetCedarTestResultsStatsWithStatusError(ctx context.Context, opts GetCedarTestResultsOptions) (*CedarTestResultsStats, error) {
+	stats, status, err := GetCedarTestResultsStats(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, errors.Errorf("getting test results stats from Cedar returned HTTP status '%d'", status)
 	}
 
 	return stats, nil
@@ -144,20 +175,110 @@ func GetCedarTestResultsStats(ctx context.Context, opts GetCedarTestResultsOptio
 // GetCedarTestResultsFailedSample makes a request to Cedar for a task's failed
 // test result sample. This route ignores filtering, sorting, and pagination
 // query parameters.
-func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResultsOptions) ([]string, error) {
+func GetCedarTestResultsFailedSample(ctx context.Context, opts GetCedarTestResultsOptions) ([]string, int, error) {
 	timberOpts := opts.convert()
 	timberOpts.FailedSample = true
-	data, err := testresults.Get(ctx, timberOpts)
+	data, status, err := testresults.Get(ctx, timberOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting failed test result sample from Cedar")
+		return nil, 0, errors.Wrap(err, "getting failed test result sample from Cedar")
 	}
 
 	sample := []string{}
-	if err = json.Unmarshal(data, &sample); err != nil {
-		return nil, errors.Wrap(err, "unmarshaling failed test result sample from Cedar")
+	if status != http.StatusOK {
+		return sample, status, nil
+	}
+
+	return sample, status, errors.Wrap(json.Unmarshal(data, &sample), "unmarshaling failed test result sample from Cedar")
+}
+
+// GetCedarTestResultsFailedSampleWithStatusError makes a request to Cedar for
+// a task's failed test result sample. This route ignores filtering, sorting,
+// and pagination query parameters. An error is returned if Cedar sends a
+// non-200 HTTP status.
+func GetCedarTestResultsFailedSampleWithStatusError(ctx context.Context, opts GetCedarTestResultsOptions) ([]string, error) {
+	sample, status, err := GetCedarTestResultsFailedSample(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, errors.Errorf("getting failed test result sample from Cedar returned HTTP status '%d'", status)
 	}
 
 	return sample, nil
+}
+
+// CedarFailedTestResultsSample is a sample of test names for a given task and execution.
+type CedarFailedTestResultsSample struct {
+	TaskID                  *string  `json:"task_id"`
+	Execution               int      `json:"execution"`
+	MatchingFailedTestNames []string `json:"matching_failed_test_names"`
+	TotalFailedNames        int      `json:"total_failed_names"`
+}
+
+// GetCedarFailedTestResultsSampleOptions represents the arguments for fetching
+// test names for failed tests via Cedar.
+type GetCedarFailedTestResultsSampleOptions struct {
+	BaseURL       string
+	SampleOptions CedarFailedTestSampleOptions
+}
+
+// CedarFailedTestSampleOptions specifies the tasks to get the sample for
+// and regexes to filter the test names by.
+type CedarFailedTestSampleOptions struct {
+	Tasks        []CedarTaskInfo
+	RegexFilters []string
+}
+
+// CedarTaskInfo specifies a set of test results to find.
+type CedarTaskInfo struct {
+	TaskID      string
+	Execution   int
+	DisplayTask bool
+}
+
+func (opts GetCedarFailedTestResultsSampleOptions) convert() testresults.GetFailedSampleOptions {
+	return testresults.GetFailedSampleOptions{
+		Cedar: timber.GetOptions{
+			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
+		},
+		SampleOptions: opts.SampleOptions.convert(),
+	}
+}
+
+func (opts *CedarFailedTestSampleOptions) convert() testresults.FailedTestSampleOptions {
+	tasks := make([]testresults.TaskInfo, 0, len(opts.Tasks))
+	for _, t := range opts.Tasks {
+		tasks = append(tasks, t.convert())
+	}
+
+	return testresults.FailedTestSampleOptions{
+		Tasks:        tasks,
+		RegexFilters: opts.RegexFilters,
+	}
+}
+
+func (info *CedarTaskInfo) convert() testresults.TaskInfo {
+	return testresults.TaskInfo{
+		TaskID:      info.TaskID,
+		Execution:   info.Execution,
+		DisplayTask: info.DisplayTask,
+	}
+}
+
+// GetCedarFilteredFailedSamples makes a request to Cedar for failed
+// test result samples for the specified tasks.
+func GetCedarFilteredFailedSamples(ctx context.Context, opts GetCedarFailedTestResultsSampleOptions) ([]CedarFailedTestResultsSample, error) {
+	data, err := testresults.GetFailedSamples(ctx, opts.convert())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting failed test result samples from Cedar")
+	}
+
+	samples := []CedarFailedTestResultsSample{}
+	if err = json.Unmarshal(data, &samples); err != nil {
+		return nil, errors.Wrap(err, "unmarshaling failed test result samples from Cedar")
+	}
+
+	return samples, nil
 }
 
 // DisplayTaskInfo represents information about a display task necessary for

@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -97,13 +99,6 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, msg)
 }
 
-// validateTaskEndDetails returns true if the task is finished or undispatched
-func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
-	return details.Status == evergreen.TaskSucceeded ||
-		details.Status == evergreen.TaskFailed ||
-		details.Status == evergreen.TaskUndispatched
-}
-
 // checkHostHealth checks that host is running.
 func checkHostHealth(h *host.Host) bool {
 	if h.Status == evergreen.HostRunning {
@@ -159,8 +154,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check that finishing status is a valid constant
-	if !validateTaskEndDetails(details) {
+	// Check that status is either finished or aborted (i.e. undispatched)
+	if !evergreen.IsValidTaskEndStatus(details.Status) && details.Status != evergreen.TaskUndispatched {
 		msg := fmt.Errorf("invalid end status '%s' for task %s", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
@@ -265,24 +260,15 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-		defer cancel()
-		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
+		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "problem stopping agent monitor",
+				"message":       "could not prepare host for agent to exit",
 				"host_id":       currentHost.Id,
-				"operation":     "next_task",
+				"operation":     "end_task",
 				"revision":      evergreen.BuildRevision,
 				"agent":         evergreen.AgentVersion,
 				"current_agent": currentHost.AgentRevision,
 			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
-		}
-		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
-			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
 		}
 		endTaskResp.ShouldExit = true
 	}
@@ -305,7 +291,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "problem stopping agent monitor",
 				"host_id":       currentHost.Id,
-				"operation":     "next_task",
+				"operation":     "end_task",
 				"revision":      evergreen.BuildRevision,
 				"agent":         evergreen.AgentVersion,
 				"current_agent": currentHost.AgentRevision,
@@ -333,7 +319,161 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, endTaskResp)
 }
 
-// prepareForReprovision readies host for reprovisioning.
+// fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
+// host is still believed to be an intent host but somehow the agent is running
+// on an EC2 instance associated with that intent host.
+func (as *APIServer) fixIntentHostRunningAgent(ctx context.Context, h *host.Host, instanceID string) error {
+	if !cloud.IsEc2Provider(h.Provider) {
+		// Intent host issues only affect ephemeral (i.e. EC2) hosts.
+		return nil
+	}
+	if cloud.IsEC2InstanceID(h.Id) {
+		// If the host already has an instance ID, it's not an intent host.
+		return nil
+	}
+	if instanceID == "" {
+		// If the host is an intent host but the agent does not send the EC2
+		// instance ID, there's nothing that can be done to fix it here.
+		grip.Warning(message.Fields{
+			"message":     "intent host has started an agent, but the agent did not provide an instance ID for the real host",
+			"host_id":     h.Id,
+			"host_status": h.Status,
+			"provider":    h.Provider,
+			"distro":      h.Distro.Id,
+		})
+		return nil
+	}
+
+	switch h.Status {
+	case evergreen.HostBuilding:
+		return errors.Wrap(as.transitionIntentHostToStarting(ctx, h, instanceID), "starting intent host that actually succeeded")
+	case evergreen.HostBuildingFailed:
+		return errors.Wrap(as.transitionIntentHostToDecommissioned(ctx, h, instanceID), "decommissioning intent host that failed to build")
+	case evergreen.HostTerminated:
+		return errors.Wrap(as.terminateIntentGhost(ctx, h, instanceID), "terminating lingering intent host")
+	default:
+		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when the agent is running", h.Status)
+	}
+}
+
+// transitionIntentHostToStarting converts an intent host to a real host
+// because it's alive in the cloud. It is marked as starting to indicate that
+// the host has started and can run tasks.
+func (as *APIServer) transitionIntentHostToStarting(ctx context.Context, h *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host still an intent host",
+		"host_id":     h.Id,
+		"instance_id": instanceID,
+		"host_status": h.Status,
+	})
+
+	intentHostID := h.Id
+	h.Id = instanceID
+	h.Status = evergreen.HostStarting
+	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	event.LogHostStartFinished(h.Id, true)
+
+	return nil
+}
+
+// transitionIntentHostToDecommissioned converts an intent host to a real
+// host because it's alive in the cloud. It is marked as decommissioned to
+// indicate that the host is not valid and should be terminated.
+func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is a stale building intent host",
+		"host_id":     h.Id,
+		"instance_id": instanceID,
+		"host_status": h.Status,
+	})
+
+	intentHostID := h.Id
+	h.Id = instanceID
+	oldStatus := h.Status
+	h.Status = evergreen.HostDecommissioned
+	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but it's already considered a failed building host")
+
+	return nil
+}
+
+// terminateIntentGhost terminates a lingering intent host that's still alive in
+// the cloud. This can happen if an intent host failed to transition to a real
+// host and was marked as terminated, but the instance eventually started after
+// it was already marked as terminated.
+func (as *APIServer) terminateIntentGhost(ctx context.Context, h *host.Host, instanceID string) error {
+	grip.Notice(message.Fields{
+		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is already terminated",
+		"host_id":     h.Id,
+		"instance_id": instanceID,
+		"host_status": h.Status,
+	})
+
+	intentHostID := h.Id
+	h.Id = instanceID
+	oldStatus := h.Status
+	h.Status = evergreen.HostTerminated
+	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
+		return errors.Wrap(err, "replacing intent host with real host")
+	}
+
+	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but it's already considered terminated")
+
+	return errors.Wrap(as.terminateGhost(ctx, h, "lingering instance came up after the host document was marked terminated"), "terminating intent ghost")
+}
+
+// terminateGhost sends a host which should already have been terminated but
+// whose instance is still alive to be terminated again.
+func (as *APIServer) terminateGhost(ctx context.Context, h *host.Host, reason string) error {
+	j := units.NewHostTerminationJob(as.env, h, true, reason)
+	if err := amboy.EnqueueUniqueJob(ctx, as.env.RemoteQueue(), j); err != nil {
+		return errors.Wrap(err, "enqueueing host termination job")
+	}
+	return nil
+}
+
+// prepareHostForAgentExit prepares a host to stop running tasks on the host.
+// For a quarantined host, it shuts down the agent and agent monitor to prevent
+// it from running further tasks. This is especially important for quarantining
+// hosts, as the host may continue running, but it must stop all agent-related
+// activity for now. For a terminated host, the host should already have been
+// terminated but is nonetheless alive, so terminate it again.
+func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) (shouldExit bool, err error) {
+	switch h.Status {
+	case evergreen.HostQuarantined:
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		if err := h.StopAgentMonitor(ctx, as.env); err != nil {
+			return true, errors.Wrap(err, "stopping agent monitor")
+		}
+
+		if err := h.SetNeedsAgentDeploy(true); err != nil {
+			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
+		}
+
+		return true, nil
+	case evergreen.HostTerminated:
+		// The host should already be terminated but somehow it's still alive in
+		// the cloud, so terminate it again.
+		if err := as.terminateGhost(ctx, h, "host should already have been terminated, but is still alive"); err != nil {
+			return false, errors.Wrap(err, "terminating ghost")
+		}
+
+		return true, nil
+	case evergreen.HostDecommissioned:
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+// prepareForReprovision readies a host for reprovisioning.
 func prepareForReprovision(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	if err := h.MarkAsReprovisioning(); err != nil {
 		return errors.Wrap(err, "error marking host as ready for reprovisioning")
@@ -730,23 +870,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	if h.AgentStartTime.IsZero() {
-		if err := h.SetAgentStartTime(); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not set host's agent start time for first contact",
-				"host_id": h.Id,
-				"distro":  h.Distro.Id,
-			}))
-		} else {
-			grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
-				"message":                   "agent initiated first contact with server",
-				"host_id":                   h.Id,
-				"distro":                    h.Distro.Id,
-				"provisioning":              h.Distro.BootstrapSettings.Method,
-				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
-			})
-		}
-	}
+	setAgentFirstContactTime(h)
 
 	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
 		"message":      "failed to mark host as done provisioning with user data",
@@ -756,15 +880,12 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"operation":    "next_task",
 	}))
 
-	stoppedAgentMonitor := (h.Distro.LegacyBootstrap() && h.NeedsReprovision == host.ReprovisionToLegacy ||
-		h.NeedsReprovision == host.ReprovisionRestartJasper)
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
-			"message":               "slow next_task operation",
-			"host_id":               h.Id,
-			"distro":                h.Distro.Id,
-			"latency":               time.Since(begin).Seconds(),
-			"stopped_agent_monitor": stoppedAgentMonitor,
+			"message": "slow next_task operation",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"latency": time.Since(begin).Seconds(),
 		})
 	}()
 
@@ -773,45 +894,44 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var err error
-	if checkHostHealth(h) {
-		response.ShouldExit = true
-
-		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
-		defer cancel()
-		if err = h.StopAgentMonitor(ctx, as.env); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "problem stopping agent monitor",
-				"host_id":       h.Id,
-				"operation":     "next_task",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.AgentRevision,
-			}))
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		if err = h.SetNeedsAgentDeploy(true); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":       h.Id,
-				"operation":     "next_task",
-				"message":       "problem indicating that host needs new agent or agent monitor deploy",
-				"source":        "database error",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": h.AgentRevision,
-			}))
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		gimlet.WriteJSON(w, response)
-		return
-	}
 	var agentExit bool
 	details, agentExit := getDetails(response, h, w, r)
 	if agentExit {
 		return
 	}
+
+	if checkHostHealth(h) {
+		if err := as.fixIntentHostRunningAgent(ctx, h, details.EC2InstanceID); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "could not fix intent host that is running an agent",
+				"host_id":       h.Id,
+				"host_status":   h.Status,
+				"operation":     "next_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
+			}))
+			gimlet.WriteJSON(w, response)
+			return
+		}
+
+		shouldExit, err := as.prepareHostForAgentExit(ctx, h)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "could not prepare host for agent to exit",
+				"host_id":       h.Id,
+				"operation":     "next_task",
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": h.AgentRevision,
+			}))
+		}
+
+		response.ShouldExit = shouldExit
+		gimlet.WriteJSON(w, response)
+		return
+	}
+
 	response, agentExit = handleOldAgentRevision(response, details, h, w)
 	if agentExit {
 		return
@@ -914,6 +1034,30 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	}
 	setNextTask(nextTask, &response)
 	gimlet.WriteJSON(w, response)
+}
+
+func setAgentFirstContactTime(h *host.Host) {
+	if !h.AgentStartTime.IsZero() {
+		return
+	}
+
+	if err := h.SetAgentStartTime(); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not set host's agent start time for first contact",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		}))
+		return
+	}
+
+	grip.InfoWhen(h.Provider != evergreen.ProviderNameStatic, message.Fields{
+		"message":                   "agent initiated first contact with server",
+		"host_id":                   h.Id,
+		"distro":                    h.Distro.Id,
+		"provisioning":              h.Distro.BootstrapSettings.Method,
+		"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
+	})
+	return
 }
 
 func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (*apimodels.GetNextTaskDetails, bool) {

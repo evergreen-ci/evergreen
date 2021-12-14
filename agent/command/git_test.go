@@ -962,15 +962,3 @@ index edc0c34..8e82862 100644
 	}
 	s.True(foundSuccessMessage, "did not see the following in task output: %s", successMessage)
 }
-
-func (s *GitGetProjectSuite) TestGetJoinedWithDirectory() {
-	c := &gitFetchProject{
-		Directory: "bar",
-	}
-	conf := internal.TaskConfig{
-		WorkDir: "/foo",
-	}
-	s.Equal(c.getJoinedWithDirectory(conf.WorkDir), "/foo/bar")
-	c.Directory = "/bar"
-	s.Equal(c.getJoinedWithDirectory(conf.WorkDir), "/bar")
-}

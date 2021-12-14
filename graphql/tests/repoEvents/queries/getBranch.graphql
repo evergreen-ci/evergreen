@@ -1,0 +1,21 @@
+{
+    repoEvents(id: "5678") {
+        eventLogEntries {
+            user
+            timestamp
+            before {
+                projectRef {
+                    branch
+                }
+                gitHubWebhooksEnabled
+            }
+            after {
+                projectRef {
+                    branch
+                }
+                gitHubWebhooksEnabled
+            }
+        }
+        count
+    }
+}

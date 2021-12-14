@@ -53,36 +53,40 @@ const EmptyConfigurationError = "received empty configuration file"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                     string                         `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber     int                            `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
-	Enabled                *bool                          `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
-	Stepback               *bool                          `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PreErrorFailsTask      *bool                          `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask     *bool                          `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
-	OomTracker             *bool                          `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
-	BatchTime              *int                           `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	Owner                  *string                        `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo                   *string                        `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath             *string                        `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	Branch                 *string                        `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier             *string                        `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName            *string                        `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CommandType            *string                        `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
-	Ignore                 parserStringSlice              `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
-	Parameters             []ParameterInfo                `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                    *YAMLCommandSet                `yaml:"pre,omitempty" bson:"pre,omitempty"`
-	Post                   *YAMLCommandSet                `yaml:"post,omitempty" bson:"post,omitempty"`
-	Timeout                *YAMLCommandSet                `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	EarlyTermination       *YAMLCommandSet                `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
-	CallbackTimeout        *int                           `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Modules                []Module                       `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	BuildVariants          []parserBV                     `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
-	Functions              map[string]*YAMLCommandSet     `yaml:"functions,omitempty" bson:"functions,omitempty"`
-	TaskGroups             []parserTaskGroup              `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
-	Tasks                  []parserTask                   `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	ExecTimeoutSecs        *int                           `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	Loggers                *LoggerConfig                  `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
-	CreateTime             time.Time                      `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
+	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
+	BatchTime          *int                       `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo               *string                    `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath         *string                    `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	Branch             *string                    `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier         *string                    `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName        *string                    `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType        *string                    `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	EarlyTermination   *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
+	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+
+	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
+	// Values for the below fields set on this struct will take precedence over the project page and will
+	// be the configs used for a given project during runtime.
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
@@ -91,11 +95,9 @@ type ParserProject struct {
 	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
 	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
 	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
-
-	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
-	// Values for the below fields set on this struct will take precedence over the project page and will
-	// be the configs used for a given project during runtime.
-	DeactivatePrevious *bool `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
+	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
@@ -143,6 +145,7 @@ type parserTask struct {
 	RunOn           parserStringSlice   `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable         *bool               `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag  *bool               `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -419,6 +422,7 @@ type parserBVTaskUnit struct {
 	Name             string             `yaml:"name,omitempty" bson:"name,omitempty"`
 	Patchable        *bool              `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	PatchOnly        *bool              `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+	Disable          *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
 	AllowForGitTag   *bool              `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly       *bool              `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Priority         int64              `yaml:"priority,omitempty" bson:"priority,omitempty"`
@@ -795,34 +799,30 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:                utility.FromBoolPtr(pp.Enabled),
-		Stepback:               utility.FromBoolPtr(pp.Stepback),
-		PreErrorFailsTask:      utility.FromBoolPtr(pp.PreErrorFailsTask),
-		PostErrorFailsTask:     utility.FromBoolPtr(pp.PostErrorFailsTask),
-		OomTracker:             utility.FromBoolPtr(pp.OomTracker),
-		BatchTime:              utility.FromIntPtr(pp.BatchTime),
-		Owner:                  utility.FromStringPtr(pp.Owner),
-		Repo:                   utility.FromStringPtr(pp.Repo),
-		RemotePath:             utility.FromStringPtr(pp.RemotePath),
-		Branch:                 utility.FromStringPtr(pp.Branch),
-		Identifier:             utility.FromStringPtr(pp.Identifier),
-		DisplayName:            utility.FromStringPtr(pp.DisplayName),
-		CommandType:            utility.FromStringPtr(pp.CommandType),
-		Ignore:                 pp.Ignore,
-		Parameters:             pp.Parameters,
-		Pre:                    pp.Pre,
-		Post:                   pp.Post,
-		EarlyTermination:       pp.EarlyTermination,
-		Timeout:                pp.Timeout,
-		CallbackTimeout:        utility.FromIntPtr(pp.CallbackTimeout),
-		Modules:                pp.Modules,
-		Functions:              pp.Functions,
-		ExecTimeoutSecs:        utility.FromIntPtr(pp.ExecTimeoutSecs),
-		Loggers:                pp.Loggers,
-		TaskAnnotationSettings: pp.TaskAnnotationSettings,
-		BuildBaronSettings:     pp.BuildBaronSettings,
-		PerfEnabled:            utility.FromBoolPtr(pp.PerfEnabled),
-		DeactivatePrevious:     utility.FromBoolPtr(pp.DeactivatePrevious),
+		Enabled:            utility.FromBoolPtr(pp.Enabled),
+		Stepback:           utility.FromBoolPtr(pp.Stepback),
+		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
+		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
+		OomTracker:         utility.FromBoolPtr(pp.OomTracker),
+		BatchTime:          utility.FromIntPtr(pp.BatchTime),
+		Owner:              utility.FromStringPtr(pp.Owner),
+		Repo:               utility.FromStringPtr(pp.Repo),
+		RemotePath:         utility.FromStringPtr(pp.RemotePath),
+		Branch:             utility.FromStringPtr(pp.Branch),
+		Identifier:         utility.FromStringPtr(pp.Identifier),
+		DisplayName:        utility.FromStringPtr(pp.DisplayName),
+		CommandType:        utility.FromStringPtr(pp.CommandType),
+		Ignore:             pp.Ignore,
+		Parameters:         pp.Parameters,
+		Pre:                pp.Pre,
+		Post:               pp.Post,
+		EarlyTermination:   pp.EarlyTermination,
+		Timeout:            pp.Timeout,
+		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
+		Modules:            pp.Modules,
+		Functions:          pp.Functions,
+		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
+		Loggers:            pp.Loggers,
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -892,6 +892,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			RunOn:           pt.RunOn,
 			Patchable:       pt.Patchable,
 			PatchOnly:       pt.PatchOnly,
+			Disable:         pt.Disable,
 			AllowForGitTag:  pt.AllowForGitTag,
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
@@ -1150,6 +1151,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		Name:             name,
 		Patchable:        bvt.Patchable,
 		PatchOnly:        bvt.PatchOnly,
+		Disable:          bvt.Disable,
 		AllowForGitTag:   bvt.AllowForGitTag,
 		GitTagOnly:       bvt.GitTagOnly,
 		Priority:         bvt.Priority,
@@ -1169,6 +1171,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if res.PatchOnly == nil {
 		res.PatchOnly = pt.PatchOnly
+	}
+	if res.Disable == nil {
+		res.Disable = pt.Disable
 	}
 	if res.AllowForGitTag == nil {
 		res.AllowForGitTag = pt.AllowForGitTag

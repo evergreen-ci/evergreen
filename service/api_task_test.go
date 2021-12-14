@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -768,9 +769,13 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 	})
 }
 
+func generateFakeEC2InstanceID() string {
+	return "i-" + utility.RandomString()
+}
+
 func TestNextTask(t *testing.T) {
 	env := evergreen.GetEnvironment()
-	queue := env.LocalQueue()
+	q := env.LocalQueue()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection}
@@ -787,7 +792,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
-		as, err := NewAPIServer(env, queue)
+		as, err := NewAPIServer(env, q)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -854,7 +859,7 @@ func TestNextTask(t *testing.T) {
 		So(pref.Insert(), ShouldBeNil)
 
 		sent := &apimodels.GetNextTaskDetails{}
-		Convey("getting the next task api endpoint should work", func() {
+		Convey("getting the next task api endpoint", func() {
 			resp := getNextTaskEndpoint(t, as, sampleHost.Id, sent)
 			So(resp, ShouldNotBeNil)
 			Convey("should return an http status ok", func() {
@@ -868,7 +873,7 @@ func TestNextTask(t *testing.T) {
 					So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 				})
 			})
-			Convey("and should set the agent start time", func() {
+			Convey("should set the agent start time", func() {
 				dbHost, err := host.FindOneId(sampleHost.Id)
 				require.NoError(t, err)
 				So(utility.IsZeroTime(dbHost.AgentStartTime), ShouldBeFalse)
@@ -913,63 +918,223 @@ func TestNextTask(t *testing.T) {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 
-				env := as.env
-				defer func() {
-					as.env = env
-				}()
-				mockEnv := &mock.Environment{}
-				require.NoError(t, mockEnv.Configure(ctx))
-				as.env = mockEnv
+				withMockEnv(ctx, t, as, func(as *APIServer) {
+					h := host.Host{
+						Id: "id",
+						Distro: distro.Distro{
+							Id: distroID,
+							BootstrapSettings: distro.BootstrapSettings{
 
-				h := host.Host{
-					Id: "id",
-					Distro: distro.Distro{
-						Id: distroID,
-						BootstrapSettings: distro.BootstrapSettings{
-
-							Method:        distro.BootstrapMethodSSH,
-							Communication: distro.CommunicationMethodRPC,
+								Method:        distro.BootstrapMethodSSH,
+								Communication: distro.CommunicationMethodRPC,
+							},
 						},
-					},
-					Secret:           hostSecret,
-					Provisioned:      true,
-					Status:           evergreen.HostRunning,
-					NeedsReprovision: host.ReprovisionToNew,
-				}
-				So(h.Insert(), ShouldBeNil)
+						Secret:           hostSecret,
+						Provisioned:      true,
+						Status:           evergreen.HostRunning,
+						NeedsReprovision: host.ReprovisionToNew,
+					}
+					So(h.Insert(), ShouldBeNil)
 
-				Convey("should prepare to reprovision", func() {
-					_, err := host.FindOneId(h.Id)
-					So(err, ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
-					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
-					respDetails := &apimodels.NextTaskResponse{}
-					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
-					So(respDetails.ShouldExit, ShouldBeTrue)
-					dbHost, err := host.FindOneId(h.Id)
-					So(err, ShouldBeNil)
-					So(dbHost.NeedsReprovision, ShouldEqual, host.ReprovisionToNew)
-					So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
-					So(dbHost.Provisioned, ShouldBeFalse)
-					So(dbHost.NeedsNewAgent, ShouldBeFalse)
-					So(dbHost.NeedsNewAgentMonitor, ShouldBeTrue)
-					So(utility.IsZeroTime(dbHost.AgentStartTime), ShouldBeTrue)
+					Convey("should prepare to reprovision", func() {
+						_, err := host.FindOneId(h.Id)
+						So(err, ShouldBeNil)
+						reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
+						resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
+						respDetails := &apimodels.NextTaskResponse{}
+						So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+						So(respDetails.ShouldExit, ShouldBeTrue)
+						dbHost, err := host.FindOneId(h.Id)
+						So(err, ShouldBeNil)
+						So(dbHost.NeedsReprovision, ShouldEqual, host.ReprovisionToNew)
+						So(dbHost.Status, ShouldEqual, evergreen.HostProvisioning)
+						So(dbHost.Provisioned, ShouldBeFalse)
+						So(dbHost.NeedsNewAgent, ShouldBeFalse)
+						So(dbHost.NeedsNewAgentMonitor, ShouldBeTrue)
+						So(utility.IsZeroTime(dbHost.AgentStartTime), ShouldBeTrue)
+					})
+					Convey("does not reprovision if no reprovision is needed", func() {
+						So(host.UpdateOne(bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}), ShouldBeNil)
+						reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
+						resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
+						respDetails := &apimodels.NextTaskResponse{}
+						So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+						So(respDetails.ShouldExit, ShouldBeFalse)
+						dbHost, err := host.FindOneId(h.Id)
+						So(err, ShouldBeNil)
+						So(dbHost.NeedsReprovision, ShouldBeEmpty)
+						So(dbHost.Status, ShouldEqual, evergreen.HostRunning)
+						So(dbHost.Provisioned, ShouldBeTrue)
+						So(dbHost.NeedsNewAgent, ShouldBeFalse)
+						So(dbHost.NeedsNewAgentMonitor, ShouldBeFalse)
+						So(dbHost.AgentStartTime, ShouldNotEqual, utility.ZeroTime)
+					})
 				})
-				Convey("does not reprovision if no reprovision is needed", func() {
-					So(host.UpdateOne(bson.M{host.IdKey: h.Id}, bson.M{"$unset": bson.M{host.NeedsReprovisionKey: host.ReprovisionNone}}), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
-					resp := getNextTaskEndpoint(t, as, h.Id, reqDetails)
+			})
+			Convey("with an intent host", func() {
+				intentHost := host.Host{
+					Id: "intentHost",
+					Distro: distro.Distro{
+						Id:       distroID,
+						Provider: evergreen.ProviderNameEc2Fleet,
+					},
+					Secret:        hostSecret,
+					Provisioned:   true,
+					Status:        evergreen.HostBuilding,
+					AgentRevision: evergreen.AgentVersion,
+					Provider:      evergreen.ProviderNameEc2Fleet,
+				}
+				So(intentHost.Insert(), ShouldBeNil)
+
+				Convey("should convert a building intent host to a starting real host waiting to transition to running", func() {
+					instanceID := generateFakeEC2InstanceID()
+
+					reqDetails := &apimodels.GetNextTaskDetails{
+						AgentRevision: evergreen.AgentVersion,
+						EC2InstanceID: instanceID,
+					}
+					resp := getNextTaskEndpoint(t, as, intentHost.Id, reqDetails)
+
 					respDetails := &apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
 					So(respDetails.ShouldExit, ShouldBeFalse)
-					dbHost, err := host.FindOneId(h.Id)
+					So(respDetails.TaskId, ShouldBeEmpty)
+
+					dbIntentHost, err := host.FindOneId(intentHost.Id)
 					So(err, ShouldBeNil)
-					So(dbHost.NeedsReprovision, ShouldBeEmpty)
-					So(dbHost.Status, ShouldEqual, evergreen.HostRunning)
-					So(dbHost.Provisioned, ShouldBeTrue)
-					So(dbHost.NeedsNewAgent, ShouldBeFalse)
-					So(dbHost.NeedsNewAgentMonitor, ShouldBeFalse)
-					So(dbHost.AgentStartTime, ShouldNotEqual, utility.ZeroTime)
+					So(dbIntentHost, ShouldBeNil)
+
+					realHost, err := host.FindOneId(instanceID)
+					So(err, ShouldBeNil)
+					So(realHost, ShouldNotBeNil)
+					So(realHost.Status, ShouldEqual, evergreen.HostStarting)
+				})
+				Convey("should convert an intent host that failed to build into a decommissioned real host", func() {
+					So(intentHost.SetStatus(evergreen.HostBuildingFailed, evergreen.User, ""), ShouldBeNil)
+
+					instanceID := generateFakeEC2InstanceID()
+					reqDetails := &apimodels.GetNextTaskDetails{
+						AgentRevision: evergreen.AgentVersion,
+						EC2InstanceID: instanceID,
+					}
+					resp := getNextTaskEndpoint(t, as, intentHost.Id, reqDetails)
+
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeTrue)
+					So(respDetails.TaskId, ShouldBeEmpty)
+
+					dbIntentHost, err := host.FindOneId(intentHost.Id)
+					So(err, ShouldBeNil)
+					So(dbIntentHost, ShouldBeNil)
+
+					realHost, err := host.FindOneId(instanceID)
+					So(err, ShouldBeNil)
+					So(realHost, ShouldNotBeNil)
+					So(realHost.Status, ShouldEqual, evergreen.HostDecommissioned)
+				})
+				Convey("should convert a terminated intent host into a real host and try to terminate it again", func() {
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+
+					withMockEnv(ctx, t, as, func(as *APIServer) {
+						So(intentHost.SetStatus(evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
+						instanceID := generateFakeEC2InstanceID()
+						reqDetails := &apimodels.GetNextTaskDetails{
+							AgentRevision: evergreen.AgentVersion,
+							EC2InstanceID: instanceID,
+						}
+						resp := getNextTaskEndpoint(t, as, intentHost.Id, reqDetails)
+
+						respDetails := &apimodels.NextTaskResponse{}
+						So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+						So(respDetails.ShouldExit, ShouldBeTrue)
+						So(respDetails.TaskId, ShouldBeEmpty)
+
+						dbIntentHost, err := host.FindOneId(intentHost.Id)
+						So(err, ShouldBeNil)
+						So(dbIntentHost, ShouldBeNil)
+
+						realHost, err := host.FindOneId(instanceID)
+						So(err, ShouldBeNil)
+						So(realHost, ShouldNotBeNil)
+						So(realHost.Status, ShouldEqual, evergreen.HostTerminated)
+
+						qStats := as.env.RemoteQueue().Stats(ctx)
+						require.Equal(t, qStats.Total, 1)
+						j := as.env.RemoteQueue().Next(ctx)
+						require.NotZero(t, j)
+						assert.Contains(t, j.ID(), units.HostTerminationJobName)
+					})
+				})
+			})
+			Convey("with a non-legacy host", func() {
+				nonLegacyHost := host.Host{
+					Id: "nonLegacyHost",
+					Distro: distro.Distro{
+						Id: distroID,
+						BootstrapSettings: distro.BootstrapSettings{
+							Method:        distro.BootstrapMethodUserData,
+							Communication: distro.CommunicationMethodRPC,
+						},
+						Provider: evergreen.ProviderNameEc2Fleet,
+					},
+					Secret:        hostSecret,
+					Provisioned:   true,
+					Status:        evergreen.HostRunning,
+					AgentRevision: evergreen.AgentVersion,
+				}
+				So(nonLegacyHost.Insert(), ShouldBeNil)
+
+				Convey("should exit when it is quarantined", func() {
+					So(nonLegacyHost.SetStatus(evergreen.HostQuarantined, evergreen.User, ""), ShouldBeNil)
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeTrue)
+					So(respDetails.TaskId, ShouldBeEmpty)
+					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.Status, ShouldEqual, evergreen.HostQuarantined)
+				})
+				Convey("should exit when it is decommissioned", func() {
+					So(nonLegacyHost.SetStatus(evergreen.HostDecommissioned, evergreen.User, ""), ShouldBeNil)
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeTrue)
+					So(respDetails.TaskId, ShouldBeEmpty)
+					dbHost, err := host.FindOneId(nonLegacyHost.Id)
+					So(err, ShouldBeNil)
+					So(dbHost.Status, ShouldEqual, evergreen.HostDecommissioned)
+				})
+				Convey("should attempt to re-terminate a supposedly terminated but actually alive host", func() {
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+
+					withMockEnv(ctx, t, as, func(as *APIServer) {
+						So(nonLegacyHost.SetStatus(evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
+						reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
+						resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+
+						respDetails := &apimodels.NextTaskResponse{}
+						So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+						So(respDetails.ShouldExit, ShouldBeTrue)
+						So(respDetails.TaskId, ShouldBeEmpty)
+
+						dbHost, err := host.FindOneId(nonLegacyHost.Id)
+						So(err, ShouldBeNil)
+						So(dbHost, ShouldNotBeNil)
+						So(dbHost.Status, ShouldEqual, evergreen.HostTerminated)
+
+						qStats := as.env.RemoteQueue().Stats(ctx)
+						require.Equal(t, qStats.Total, 1)
+						j := as.env.RemoteQueue().Next(ctx)
+						require.NotZero(t, j)
+						assert.Contains(t, j.ID(), units.HostTerminationJobName)
+					})
 				})
 			})
 			Convey("with a non-legacy host with an old agent revision in the database", func() {
@@ -1015,18 +1180,6 @@ func TestNextTask(t *testing.T) {
 					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
 					So(respDetails.TaskId, ShouldNotBeEmpty)
 					So(respDetails.Build, ShouldEqual, "buildId")
-				})
-				Convey("should exit when it is quarantined", func() {
-					So(nonLegacyHost.SetStatus(evergreen.HostQuarantined, evergreen.User, ""), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
-					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
-					respDetails := &apimodels.NextTaskResponse{}
-					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
-					So(respDetails.ShouldExit, ShouldBeTrue)
-					So(respDetails.TaskId, ShouldBeEmpty)
-					dbHost, err := host.FindOneId(nonLegacyHost.Id)
-					So(err, ShouldBeNil)
-					So(dbHost.Status, ShouldEqual, evergreen.HostQuarantined)
 				})
 				Convey("with the latest agent revision in the next task details", func() {
 					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
@@ -1153,18 +1306,21 @@ func TestNextTask(t *testing.T) {
 	})
 }
 
-func TestValidateTaskEndDetails(t *testing.T) {
-	Convey("With a set of end details with different statuses", t, func() {
-		details := apimodels.TaskEndDetail{}
-		details.Status = evergreen.TaskUndispatched
-		So(validateTaskEndDetails(&details), ShouldBeTrue)
-		details.Status = evergreen.TaskDispatched
-		So(validateTaskEndDetails(&details), ShouldBeFalse)
-		details.Status = evergreen.TaskFailed
-		So(validateTaskEndDetails(&details), ShouldBeTrue)
-		details.Status = evergreen.TaskSucceeded
-		So(validateTaskEndDetails(&details), ShouldBeTrue)
-	})
+func withMockEnv(ctx context.Context, t *testing.T, as *APIServer, op func(as *APIServer)) {
+	env := as.env
+	defer func() {
+		as.env = env
+	}()
+
+	mockEnv := &mock.Environment{}
+	require.NoError(t, mockEnv.Configure(ctx))
+	as.env = mockEnv
+
+	remote, err := queue.NewLocalLimitedSizeSerializable(1, 8)
+	require.NoError(t, err)
+	mockEnv.Remote = remote
+
+	op(as)
 }
 
 func TestCheckHostHealth(t *testing.T) {

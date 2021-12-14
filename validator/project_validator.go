@@ -348,7 +348,7 @@ func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit 
 		tasksToAdd := []model.BuildVariantTaskUnit{}
 		for _, t := range bv.Tasks {
 			if _, ok := taskGroups[t.Name]; ok {
-				tasksToAdd = append(tasksToAdd, model.CreateTasksFromGroup(t, p)...)
+				tasksToAdd = append(tasksToAdd, model.CreateTasksFromGroup(t, p, "")...)
 			} else {
 				tasksToAdd = append(tasksToAdd, t)
 			}
@@ -1575,7 +1575,7 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 				if tg.TeardownTask != nil {
 					setupAndTeardownCmds = append(setupAndTeardownCmds, p.CommandsRunOnBV(tg.TeardownTask.List(), cmd, bv.Name)...)
 				}
-				for _, tgTask := range model.CreateTasksFromGroup(bvtu, p) {
+				for _, tgTask := range model.CreateTasksFromGroup(bvtu, p, "") {
 					addCmdsForTaskInBV(bvToTasksWithCmds, bv.Name, tgTask.Name, setupAndTeardownCmds)
 					if projTask := p.FindProjectTask(tgTask.Name); projTask != nil {
 						cmds := p.CommandsRunOnBV(projTask.Commands, cmd, bv.Name)

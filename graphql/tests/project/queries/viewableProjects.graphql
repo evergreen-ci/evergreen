@@ -1,0 +1,11 @@
+{
+  viewableProjectRefs {
+    groupDisplayName
+    projects{
+      identifier
+      repo
+      owner 
+      repoRefId
+    }
+  } 
+}

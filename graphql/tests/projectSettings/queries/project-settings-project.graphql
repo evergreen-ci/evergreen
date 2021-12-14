@@ -1,9 +1,10 @@
 {
     projectSettings(identifier: "sandbox") {
-        githubWebhooksEnabled
+        gitHubWebhooksEnabled
         projectRef {
             id
             identifier
+            restricted
             commitQueue {
                 enabled
                 mergeMethod
@@ -30,6 +31,27 @@
                 taskSpecifiers {
                     taskRegex
                     variantRegex
+                }
+            }
+            perfEnabled
+            buildBaronSettings {
+                ticketCreateProject
+                ticketSearchProjects
+                bfSuggestionFeaturesURL
+                bfSuggestionPassword
+                bfSuggestionServer
+                bfSuggestionTimeoutSecs
+                bfSuggestionUsername
+            }
+
+            taskAnnotationSettings {
+                jiraCustomFields {
+                    displayText
+                    field
+                }
+                fileTicketWebhook {
+                    endpoint
+                    secret
                 }
             }
 

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -51,8 +50,6 @@ func makeCreateHostJob() *createHostJob {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
@@ -371,39 +368,11 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			return errors.Wrapf(err, "unable to replace host %s", j.host.Id)
 		}
 	} else {
-		// for most cases, spawning a host with change the ID, so we remove/re-insert the document
-		if err = host.RemoveStrict(j.HostID); err != nil {
-			terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
-				"message":     "problem terminating instance after cloud host was spawned",
-				"host_id":     j.host.Id,
-				"intent_host": j.HostID,
-				"distro":      j.host.Distro.Id,
-				"provider":    j.host.Provider,
-				"job":         j.ID(),
-			}))
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "problem removing intent host",
-				"job":     j.ID(),
-				"host_id": j.HostID,
-				"error":   err.Error(),
-			}))
-			return errors.Wrapf(err, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
+		// For most cases, spawning a host will change the ID, so we remove/re-insert the document
+		if err := j.tryHostReplacement(ctx, cloudManager); err != nil {
+			return errors.Wrap(err, "attempting host replacement")
 		}
 
-		if err = j.host.Insert(); err != nil {
-			terminateCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			grip.Error(message.WrapError(cloudManager.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
-				"message":  "problem terminating instance after cloud host was spawned",
-				"host_id":  j.host.Id,
-				"distro":   j.host.Distro.Id,
-				"provider": j.host.Provider,
-				"job":      j.ID(),
-			}))
-			return errors.Wrapf(err, "error inserting host %s", j.host.Id)
-		}
 		if j.host.HasContainers {
 			grip.Error(message.WrapError(j.host.UpdateParentIDs(), message.Fields{
 				"message": "unable to update parent ID of containers",
@@ -472,4 +441,54 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		}))
 	}
 	return false, nil
+}
+
+// tryHostReplacement attempts to atomically replace the intent host with the
+// real host that was created by this job. If that fails, it checks to see if
+// the real host already exists. If both of those fail, it will attempt to
+// terminate the cloud host.
+func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.Manager) error {
+	err := host.UnsafeReplace(ctx, j.env, j.HostID, j.host)
+	if err == nil {
+		return nil
+	}
+
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":        "could not perform unsafe host replacement",
+		"job":            j.ID(),
+		"intent_host_id": j.HostID,
+		"host_id":        j.host.Id,
+		"distro":         j.host.Distro.Id,
+		"provider":       j.host.Provider,
+	}))
+
+	// Host replacement can fail due to timing issues, but the host might have
+	// already been replaced successfully.
+	//
+	// It's possible for an agent to start on an instance and ask for a task
+	// before this host replacement operation succeeds. In this case, the agent
+	// REST route swaps the intent host for the real host. However, that would
+	// conflict with this job and cause it to error here, because it cannot
+	// remove the old, now-nonexistent intent host.
+	//
+	// In the case of the agent asking for a task before this succeeds,
+	// check to see if the instance ID exists in the DB. If so,
+	// the host has already been swapped successfully.
+	checkHost, _ := host.FindOneId(j.host.Id)
+	if checkHost != nil {
+		return nil
+	}
+
+	terminateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	grip.Error(message.WrapError(cloudMgr.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
+		"message":        "could not terminate host after failed unsafe host replacement",
+		"host_id":        j.host.Id,
+		"intent_host_id": j.HostID,
+		"distro":         j.host.Distro.Id,
+		"provider":       j.host.Provider,
+		"job":            j.ID(),
+	}))
+
+	return errors.Wrapf(err, "replacing intent host '%s' with real host '%s'", j.HostID, j.host.Id)
 }

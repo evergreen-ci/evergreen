@@ -166,7 +166,7 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 	v1 := Version{
 		Id:         "project-1",
 		Identifier: "project-1",
-		Requester:  evergreen.GitTagRequester,
+		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
@@ -236,14 +236,12 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 		Repo:  "test_repo",
 	}}
 	pRef1 := ProjectRef{
-		Id:              "p1",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Id:        "p1",
+		RepoRefId: repoRef.Id,
 	}
 	pRef2 := ProjectRef{
-		Id:              "p2",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Id:        "p2",
+		RepoRefId: repoRef.Id,
 	}
 	s.NoError(repoRef.Upsert())
 	s.NoError(pRef1.Upsert())

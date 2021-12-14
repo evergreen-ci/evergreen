@@ -113,6 +113,10 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  ProjectEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
+  RepoEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   RepoSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
@@ -153,6 +157,22 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   PatchTriggerAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
+  BuildBaronSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
+  BuildBaronSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
+  TaskAnnotationSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
+  TaskAnnotationSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
+  JiraField:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
+  JiraFieldInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
+  Webhook:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
+  WebhookInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
   TaskSpecifier:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TaskSpecifierInput:

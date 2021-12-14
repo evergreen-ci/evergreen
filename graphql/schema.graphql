@@ -6,6 +6,7 @@ type Query {
   patch(id: String!): Patch!
   version(id: String!): Version!
   projects: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects]!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -29,6 +30,10 @@ type Query {
     statuses: [String!]! = []
     groupId: String = ""
   ): TaskTestResult!
+  taskTestSample(
+    tasks: [String!]!
+    filters: [TestFilter!]!
+  ): [TaskTestResultSample!]
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
@@ -72,6 +77,16 @@ type Query {
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
+  projectEvents(
+    identifier: String!
+    limit: Int = 0
+    before: Time
+  ): ProjectEvents!
+  repoEvents(
+    id: String!
+    limit: Int = 0
+    before: Time
+  ): RepoEvents!
   hasVersion(id: String!): Boolean!
 }
 
@@ -80,6 +95,7 @@ type Mutation {
   removeFavoriteProject(identifier: String!): Project!
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
+  attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
@@ -127,6 +143,7 @@ type Mutation {
   removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
   restartJasper(hostIds: [String!]!): Int!
+  reprovisionToNew(hostIds: [String!]!): Int!
   updateHostStatus(
     hostIds: [String!]!
     status: String!
@@ -156,6 +173,18 @@ input VersionToRestart {
   taskIds: [String!]!
 }
 
+input TestFilter {
+  testName: String!
+  testStatus: String!
+}
+
+# This will represent failing test results on the task history pages.
+type TaskTestResultSample {
+  taskId: String!
+  execution: Int!
+  totalTestCount: Int!
+  matchingFailedTestNames: [String!]!
+}
 
 # Array of activated and unactivated versions
 # nextPageOrderNumber represents the last order number returned and is used for pagination
@@ -193,7 +222,8 @@ type Version {
   patch: Patch
   childVersions: [Version]
   taskCount: Int
-  baseVersionID: String
+  baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
+  baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!
@@ -302,6 +332,7 @@ enum ProjectSettingsSection {
   WORKSTATION
   TRIGGERS
   PERIODIC_BUILDS
+  PLUGINS
 }
 
 input VolumeHost {
@@ -372,6 +403,7 @@ input CreateProjectInput {
   identifier: String!
   owner: String!
   repo: String!
+  repoRefId: String
   id: String
 }
 
@@ -379,6 +411,12 @@ input CopyProjectInput {
   projectIdToCopy: String!
   newProjectIdentifier: String!
   newProjectId: String
+}
+
+input MoveProjectInput {
+  projectId: String!
+  newOwner: String!
+  newRepo: String!
 }
 
 input ProjectSettingsInput {
@@ -395,6 +433,7 @@ input ProjectInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -425,6 +464,9 @@ input ProjectInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 
   hidden: Boolean
   useRepoSettings: Boolean
@@ -444,6 +486,7 @@ input RepoRefInput {
   displayName: String
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String
   repo: String
   branch: String
@@ -474,6 +517,9 @@ input RepoRefInput {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfigInput
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettingsInput
+  taskAnnotationSettings: TaskAnnotationSettingsInput
 }
 
 input TriggerAliasInput {
@@ -506,8 +552,33 @@ input CommitQueueParamsInput {
 }
 
 input TaskSyncOptionsInput {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
+  configEnabled: Boolean
+  patchEnabled: Boolean
+}
+
+input BuildBaronSettingsInput {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
+}
+
+input TaskAnnotationSettingsInput {
+  jiraCustomFields: [JiraFieldInput!]
+  fileTicketWebhook: WebhookInput!
+}
+
+input JiraFieldInput {
+  field: String!
+  displayText: String!
+}
+
+input WebhookInput {
+  endpoint: String!
+  secret: String!
 }
 
 input WorkstationConfigInput {
@@ -769,7 +840,8 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String!
+  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
+  versionFull: Version
   status: String!
   variants: [String!]!
   tasks: [String!]!
@@ -998,6 +1070,7 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
+  patch: Patch
   patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
@@ -1028,12 +1101,14 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  name: String!
+  groupDisplayName: String! 
+  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  repo: RepoRef
   projects: [Project!]!
 }
 
 type ProjectSettings {
-  githubWebhooksEnabled: Boolean!
+  gitHubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -1041,11 +1116,34 @@ type ProjectSettings {
 }
 
 type RepoSettings {
-  githubWebhooksEnabled: Boolean!
+  gitHubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
   aliases: [ProjectAlias!]
   subscriptions: [ProjectSubscription!]
+}
+
+type ProjectEvents {
+  eventLogEntries: [ProjectEventLogEntry!]!
+  count: Int!
+}
+
+type ProjectEventLogEntry {
+  timestamp: Time!
+  user: String!
+  before: ProjectSettings
+  after: ProjectSettings
+}
+
+type RepoEvents {
+  eventLogEntries: [RepoEventLogEntry!]!
+  count: Int!
+}
+type RepoEventLogEntry {
+  timestamp: Time!
+  user: String!
+  before: RepoSettings
+  after: RepoSettings
 }
 
 type ProjectVars {
@@ -1131,6 +1229,7 @@ type Project {
   displayName: String!
   enabled: Boolean
   private: Boolean
+  restricted: Boolean
   owner: String!
   repo: String!
   branch: String!
@@ -1161,6 +1260,9 @@ type Project {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean
   workstationConfig: WorkstationConfig!
+  perfEnabled: Boolean
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
   useRepoSettings: Boolean!
@@ -1179,6 +1281,7 @@ type RepoRef {
   displayName: String!
   enabled: Boolean!
   private: Boolean!
+  restricted: Boolean!
   owner: String!
   repo: String!
   branch: String!
@@ -1209,6 +1312,9 @@ type RepoRef {
   filesIgnoredFromCache: [String!]
   disabledStatsCache: Boolean!
   workstationConfig: RepoWorkstationConfig!
+  perfEnabled: Boolean!
+  buildBaronSettings: BuildBaronSettings!
+  taskAnnotationSettings: TaskAnnotationSettings!
 
   validDefaultLoggers: [String!]!
 }
@@ -1262,6 +1368,31 @@ type RepoTaskSyncOptions {
 type WorkstationConfig {
   setupCommands: [WorkstationSetupCommand!]
   gitClone: Boolean
+}
+
+type BuildBaronSettings {
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  bfSuggestionServer: String
+  bfSuggestionUsername: String
+  bfSuggestionPassword: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionFeaturesURL: String
+}
+
+type TaskAnnotationSettings {
+  jiraCustomFields: [JiraField!]
+  fileTicketWebhook: Webhook!
+}
+
+type JiraField {
+  field: String!
+  displayText: String!
+}
+
+type Webhook {
+  endpoint: String!
+  secret: String!
 }
 
 type RepoWorkstationConfig {

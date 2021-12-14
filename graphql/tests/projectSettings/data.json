@@ -5,6 +5,7 @@
       "identifier" : "sandbox",
       "display_name" : "Sandbox",
       "enabled" : null,
+      "restricted": true,
       "owner_name" : "evergreen-ci",
       "repo_name" : "commit-queue-sandbox",
       "branch_name" : "main",
@@ -40,6 +41,26 @@
       "task_sync" : {
         "config_enabled" : false,
         "patch_enabled" : true
+      },
+      "perf_enabled" : true,
+      "build_baron_settings" : {
+        "ticket_create_project" : "EVG",
+        "ticket_search_projects" : ["EVG"],
+        "bf_suggestion_server" : "",
+        "bf_suggestion_username" : "",
+        "bf_suggestion_password" : "",
+        "bf_suggestion_timeout_secs" : 0,
+        "bf_suggestion_features_url" : ""
+      },
+      "task_annotation_settings" : {
+        "web_hook" : {
+          "endpoint" : "endpoint",
+          "secret" : "shh"
+        },
+        "jira_custom_fields" : [{
+          "display_text" : "description",
+          "field" : "sample_field"
+        }]
       },
       "git_tag_authorized_users" : [
         "ablack12"

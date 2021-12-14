@@ -64,27 +64,29 @@ func VersionByIds(ids []string) db.Q {
 // All is a query for all versions.
 var VersionAll = db.Query(bson.D{})
 
-// FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given
-// project. Does not apply a limit, so should generally be used with a findOneRepoRefQ.
+// FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given project.
 func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
+	const retryLimit = 50
 	q := bson.M{
 		VersionIdentifierKey: projectId,
-		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-		VersionErrorsKey: bson.M{
-			"$exists": false,
-		},
+		VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
 	}
-
 	if revisionOrderNumber >= 0 {
 		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
 	}
-	v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
+	for i := 0; i < retryLimit; i++ {
+		v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
+		}
+		if v == nil || len(v.Errors) == 0 {
+			return v, nil
+		}
+		// Try again with the new revision order number if error exists for version.
+		// We don't include this in the query in order to use an index for identifier, requester, and order number.
+		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": v.RevisionOrderNumber}
 	}
-	return v, nil
+	return nil, errors.Errorf("couldn't finding version with good config in last %d commits", retryLimit)
 }
 
 // BaseVersionByProjectIdAndRevision finds a base version for the given project and revision.

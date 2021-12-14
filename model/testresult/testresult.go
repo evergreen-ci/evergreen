@@ -249,7 +249,12 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	pipeline = append(pipeline, bson.M{"$project": project})
 
 	if opts.TestName != "" {
-		matchTestName := bson.M{"$match": bson.M{TestFileKey: bson.M{"$regex": opts.TestName, "$options": "i"}}}
+		matchTestName := bson.M{"$match": bson.M{
+			"$or": []bson.M{
+				{TestFileKey: bson.M{"$regex": opts.TestName, "$options": "i"}},
+				{DisplayTestNameKey: bson.M{"$regex": opts.TestName, "$options": "i"}},
+			},
+		}}
 		pipeline = append(pipeline, matchTestName)
 	}
 

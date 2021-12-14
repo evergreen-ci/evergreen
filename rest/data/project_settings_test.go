@@ -26,6 +26,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.Empty(t, ref.SpawnHostScriptPath)
 
 			ref.SpawnHostScriptPath = "my script path"
+			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
 			apiChanges := &restModel.APIProjectSettings{
@@ -39,6 +40,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDB)
 			assert.NotEmpty(t, repoRefFromDB.SpawnHostScriptPath)
+			assert.NotEqual(t, repoRefFromDB, "something different") // we don't change this
 		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.RepoRef) {
 			newAdmin := user.DBUser{
@@ -159,12 +161,11 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		assert.NoError(t, repoRef.Upsert())
 
 		pRefThatDefaults := model.ProjectRef{
-			Id:              "myId",
-			Owner:           "evergreen-ci",
-			Repo:            "evergreen",
-			UseRepoSettings: true,
-			RepoRefId:       "myRepoId",
-			Admins:          []string{"oldAdmin"},
+			Id:        "myId",
+			Owner:     "evergreen-ci",
+			Repo:      "evergreen",
+			RepoRefId: "myRepoId",
+			Admins:    []string{"oldAdmin"},
 		}
 		assert.NoError(t, pRefThatDefaults.Upsert())
 
@@ -239,6 +240,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Empty(t, ref.SpawnHostScriptPath)
 
 			ref.SpawnHostScriptPath = "my script path"
+			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(ref))
 			apiChanges := &restModel.APIProjectSettings{
@@ -252,6 +254,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
+			assert.NotEqual(t, pRefFromDB.Owner, "something different") // because use repo settings is true, we don't change this
+
 		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
@@ -383,13 +387,12 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 		pRef := model.ProjectRef{
-			Id:              "myId",
-			Owner:           "evergreen-ci",
-			Repo:            "evergreen",
-			Restricted:      utility.FalsePtr(),
-			UseRepoSettings: true,
-			RepoRefId:       "myRepoId",
-			Admins:          []string{"oldAdmin"},
+			Id:         "myId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+			RepoRefId:  "myRepoId",
+			Admins:     []string{"oldAdmin"},
 		}
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{

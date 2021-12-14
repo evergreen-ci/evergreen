@@ -8,11 +8,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -46,8 +46,6 @@ func makePeriodicBuildsJob() *periodicBuildJob {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
@@ -97,13 +95,57 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			"definition": j.DefinitionID,
 		}))
 	}()
+	versionID, versionError := j.addVersion(ctx, *definition)
 
-	versionID, err := j.addVersion(ctx, *definition)
+	if versionError != nil {
+		// if the version fails to be added, create a stub version and
+		// log an event so users can get notified when notifications are configured
+		metadata := model.VersionMetadata{
+			IsAdHoc:         true,
+			Message:         definition.Message,
+			PeriodicBuildID: definition.ID,
+			Alias:           definition.Alias,
+		}
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
+		if dbErr != nil {
+			grip.Error(message.WrapError(dbErr, message.Fields{
+				"message":            "error creating stub version for periodic build",
+				"runner":             periodicBuildJobName,
+				"project":            j.project,
+				"project_identifier": j.project.Identifier,
+				"definitionID":       j.DefinitionID,
+			}))
+		}
+		if stubVersion == nil {
+			j.AddError(versionError)
+			return
+		}
+		stubVersion.Errors = []string{versionError.Error()}
+		insertError := stubVersion.Insert()
+		if err != nil {
+			grip.Error(message.WrapError(insertError, message.Fields{
+				"message":            "error inserting stub version for periodic build",
+				"runner":             periodicBuildJobName,
+				"project":            j.project,
+				"project_identifier": j.project.Identifier,
+				"definitionID":       j.DefinitionID,
+			}))
+		}
+		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
+
+		j.AddError(versionError)
+		return
+	}
+
+	err = model.SetVersionActivation(versionID, true, evergreen.User)
 	if err != nil {
+		// if the version fails to activate, log an event so users
+		// can get notified when notifications are configured
+		event.LogVersionStateChangeEvent(versionID, evergreen.VersionFailed)
 		j.AddError(err)
 		return
 	}
-	j.AddError(model.SetVersionActivation(versionID, true, evergreen.User))
+
 }
 
 func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) (string, error) {

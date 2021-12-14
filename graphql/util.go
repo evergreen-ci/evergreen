@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/event"
 
 	"github.com/evergreen-ci/evergreen"
@@ -354,7 +355,7 @@ type VariantsAndTasksFromProject struct {
 	Project  model.Project
 }
 
-func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, patchProject string) (*VariantsAndTasksFromProject, error) {
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
 	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
@@ -365,22 +366,25 @@ func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig string, p
 	for _, variant := range project.BuildVariants {
 		tasksForVariant := []model.BuildVariantTaskUnit{}
 		for _, taskFromVariant := range variant.Tasks {
-			if utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
 				if taskFromVariant.IsGroup {
-					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project)...)
+					tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
 				} else {
 					tasksForVariant = append(tasksForVariant, taskFromVariant)
 				}
 			}
 		}
-		variant.Tasks = tasksForVariant
-		variantMappings[variant.Name] = variant
+		if len(tasksForVariant) > 0 {
+			variant.Tasks = tasksForVariant
+			variantMappings[variant.Name] = variant
+		}
 	}
 
 	tasksList := []struct{ Name string }{}
 	for _, task := range project.Tasks {
-		// add a task name to the list if it's patchable and not restricted to git tags
-		if utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
+		// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+		if !utility.FromBoolPtr(task.Disable) && utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
@@ -540,6 +544,34 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 	return result, nil
 }
 
+// getFailedTestResultsSample returns a sample of failed test results for the given tasks that match the supplied testFilters
+func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, testFilters []string) ([]apimodels.CedarFailedTestResultsSample, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	taskFilters := []apimodels.CedarTaskInfo{}
+	for _, t := range tasks {
+		taskFilters = append(taskFilters, apimodels.CedarTaskInfo{
+			TaskID:      t.Id,
+			Execution:   t.Execution,
+			DisplayTask: t.DisplayOnly,
+		})
+	}
+
+	opts := apimodels.GetCedarFailedTestResultsSampleOptions{
+		BaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SampleOptions: apimodels.CedarFailedTestSampleOptions{
+			Tasks:        taskFilters,
+			RegexFilters: testFilters,
+		},
+	}
+	results, err := apimodels.GetCedarFilteredFailedSamples(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting cedar filtered failed samples")
+	}
+	return results, nil
+}
+
 type VersionModificationAction string
 
 const (
@@ -618,17 +650,9 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 	case SetPriority:
-		var projId string
-		if proj == nil {
-			projId, err := model.GetIdForProject(version.Identifier)
-			if err != nil {
-				return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err)
-			}
-			if projId == "" {
-				return http.StatusNotFound, errors.Errorf("project for %s came back nil: %s", version.Branch, err)
-			}
-		} else {
-			projId = proj.Id
+		projId := version.Identifier
+		if projId == "" {
+			return http.StatusNotFound, errors.Errorf("Could not find project for version %s", version.Id)
 		}
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{
@@ -1289,4 +1313,78 @@ func getAPISubscriptionsForProject(ctx context.Context, projectId string) ([]*re
 		res = append(res, &apiSubscription)
 	}
 	return res, nil
+}
+
+func getPointerEventList(events []restModel.APIProjectEvent) []*restModel.APIProjectEvent {
+	res := make([]*restModel.APIProjectEvent, len(events))
+	for i := range events {
+		res[i] = &events[i]
+	}
+	return res
+}
+
+// GroupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
+// it groups projects that defaulted to the repo under that repo and groups the rest under "".
+func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
+	groupsMap := make(map[string][]*restModel.APIProjectRef)
+
+	for _, p := range projects {
+		groupName := fmt.Sprintf("%s/%s", p.Owner, p.Repo)
+		if onlyDefaultedToRepo && !p.UseRepoSettings() {
+			groupName = ""
+		}
+
+		apiProjectRef := restModel.APIProjectRef{}
+		if err := apiProjectRef.BuildFromService(p); err != nil {
+			return nil, errors.Wrap(err, "error building APIProjectRef from service")
+		}
+
+		if projs, ok := groupsMap[groupName]; ok {
+			groupsMap[groupName] = append(projs, &apiProjectRef)
+		} else {
+			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
+		}
+	}
+
+	groupsArr := []*GroupedProjects{}
+
+	for groupName, groupedProjects := range groupsMap {
+		gp := GroupedProjects{
+			Name:             groupName, //deprecated
+			GroupDisplayName: groupName,
+			Projects:         groupedProjects,
+		}
+		project := groupedProjects[0]
+		if utility.FromBoolPtr(project.UseRepoSettings) {
+			repoRefId := utility.FromStringPtr(project.RepoRefId)
+			repoRef, err := model.FindOneRepoRef(repoRefId)
+			if err != nil {
+				return nil, err
+			}
+
+			if repoRef == nil {
+				grip.Error(message.Fields{
+					"message":     "repoRef not found",
+					"repo_ref_id": repoRefId,
+					"project":     project,
+				})
+			} else {
+				apiRepoRef := restModel.APIProjectRef{}
+				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
+					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
+				}
+				gp.Repo = &apiRepoRef
+				if repoRef.ProjectRef.DisplayName != "" {
+					gp.GroupDisplayName = repoRef.ProjectRef.DisplayName
+				}
+			}
+		}
+
+		groupsArr = append(groupsArr, &gp)
+	}
+
+	sort.SliceStable(groupsArr, func(i, j int) bool {
+		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
+	})
+	return groupsArr, nil
 }

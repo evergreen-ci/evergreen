@@ -80,6 +80,7 @@ func (r *Resolver) RepoRef() RepoRefResolver {
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
+
 func (r *Resolver) TaskLogs() TaskLogsResolver {
 	return &taskLogsResolver{r}
 }
@@ -1086,6 +1087,34 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 	return res, nil
 }
 
+func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error) {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
+	events, err := r.sc.GetProjectEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	res := &ProjectEvents{
+		EventLogEntries: getPointerEventList(events),
+		Count:           len(events),
+	}
+	return res, err
+}
+
+func (r *queryResolver) RepoEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*RepoEvents, error) {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
+	events, err := r.sc.GetRepoEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	res := &RepoEvents{
+		EventLogEntries: getPointerEventList(events),
+		Count:           len(events),
+	}
+	return res, err
+}
+
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	i, err := project.ToService()
 	if err != nil {
@@ -1141,6 +1170,27 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 	return projectRef, nil
 }
 
+func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, obj MoveProjectInput) (*restModel.APIProjectRef, error) {
+	usr := MustHaveUser(ctx)
+
+	pRef, err := r.sc.FindProjectById(obj.ProjectID, false, false)
+	if err != nil || pRef == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", obj.ProjectID, err.Error()))
+	}
+	pRef.Owner = obj.NewOwner
+	pRef.Repo = obj.NewRepo
+
+	if err = pRef.AttachToNewRepo(usr); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
+	}
+
+	res := &restModel.APIProjectRef{}
+	if err = res.BuildFromService(pRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProjectRef: %s", err.Error()))
+	}
+	return res, nil
+}
+
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
 	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
@@ -1158,6 +1208,21 @@ func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID st
 }
 
 type patchResolver struct{ *Resolver }
+
+func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
+	if utility.FromStringPtr(obj.Version) == "" {
+		return nil, nil
+	}
+	v, err := r.sc.FindVersionById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", *obj.Version, err.Error()))
+	}
+	apiVersion := restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(v); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", *obj.Version, err.Error()))
+	}
+	return &apiVersion, nil
+}
 
 func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restModel.APIPatch) (*int, error) {
 	var commitQueuePosition *int
@@ -1287,7 +1352,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 }
 
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
 	}
@@ -1523,37 +1588,31 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 
-	groupsMap := make(map[string][]*restModel.APIProjectRef)
+	groupedProjects, err := GroupProjects(allProjs, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
+	return groupedProjects, nil
+}
 
-	for _, p := range allProjs {
-		groupName := strings.Join([]string{p.Owner, p.Repo}, "/")
-		apiProjectRef := restModel.APIProjectRef{}
-		if err = apiProjectRef.BuildFromService(p); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
-		}
+func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
+	usr := MustHaveUser(ctx)
+	projectIds, err := usr.GetViewableProjectSettings()
 
-		if projs, ok := groupsMap[groupName]; ok {
-			groupsMap[groupName] = append(projs, &apiProjectRef)
-		} else {
-			groupsMap[groupName] = []*restModel.APIProjectRef{&apiProjectRef}
-		}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
 
-	groupsArr := []*GroupedProjects{}
-
-	for groupName, groupedProjects := range groupsMap {
-		gp := GroupedProjects{
-			Name:     groupName,
-			Projects: groupedProjects,
-		}
-		groupsArr = append(groupsArr, &gp)
+	projects, err := model.FindProjectRefsByIds(projectIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
-	sort.SliceStable(groupsArr, func(i, j int) bool {
-		return groupsArr[i].Name < groupsArr[j].Name
-	})
-
-	return groupsArr, nil
+	groupedProjects, err := GroupProjects(projects, true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+	}
+	return groupedProjects, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
@@ -1679,7 +1738,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		if baseTask != nil && baseTask.HasCedarResults {
 			opts.BaseTaskID = baseTask.Id
 		}
-		cedarTestResults, err := apimodels.GetCedarTestResults(ctx, opts)
+		cedarTestResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding test results for task %s: %s", taskID, err))
 		}
@@ -1759,6 +1818,42 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}, nil
 }
 
+func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, testFilters []*TestFilter) ([]*TaskTestResultSample, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	t, err := task.Find(task.ByIds(tasks))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
+	}
+	// We can assume that if one of the tasks has cedar results, all of them do.
+	if t[0].HasCedarResults {
+		failingTests := []string{}
+		for _, f := range testFilters {
+			failingTests = append(failingTests, f.TestName)
+		}
+
+		results, err := getCedarFailedTestResultsSample(ctx, t, failingTests)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+		}
+		testResultsToReturn := []*TaskTestResultSample{}
+		for _, r := range results {
+			tr := &TaskTestResultSample{
+				TaskID:                  utility.FromStringPtr(r.TaskID),
+				Execution:               r.Execution,
+				MatchingFailedTestNames: r.MatchingFailedTestNames,
+				TotalTestCount:          r.TotalFailedNames,
+			}
+			testResultsToReturn = append(testResultsToReturn, tr)
+		}
+		return testResultsToReturn, nil
+	}
+	return nil, nil
+}
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
@@ -2775,7 +2870,23 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("Error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
+	}
+
+	return hostsUpdated, nil
+}
+
+func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
+	user := MustHaveUser(ctx)
+
+	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
+	if err != nil {
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+	}
+
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), user.Username()))
+	if err != nil {
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, errors.Errorf("Error marking selected hosts as needing to reprovision: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
@@ -2947,7 +3058,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
-		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
 			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 		}
@@ -2971,7 +3082,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 			Execution:   utility.ToIntPtr(obj.Execution),
 			DisplayTask: obj.DisplayOnly,
 		}
-		stats, err := apimodels.GetCedarTestResultsStats(ctx, opts)
+		stats, err := apimodels.GetCedarTestResultsStatsWithStatusError(ctx, opts)
 		if err != nil {
 			return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 		}
@@ -3105,6 +3216,9 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 }
 
 func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.APITask) (bool, error) {
+	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
+		return false, nil
+	}
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, err
@@ -3122,14 +3236,34 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 			if err != nil {
 				return false, err
 			}
+			projectMatches := false
 			for _, projectName := range perfPlugin.Projects {
 				if projectName == pRef.Id || projectName == pRef.Identifier {
-					return true, nil
+					projectMatches = true
+					break
 				}
 			}
+			if !projectMatches {
+				return false, nil
+			}
+		}
+		opts := apimodels.GetCedarPerfCountOptions{
+			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:    utility.FromStringPtr(obj.Id),
+			Execution: obj.Execution,
+		}
+		if opts.BaseURL == "" {
+			return false, nil
+		}
+		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+		}
+		if result.NumberOfResults == 0 {
+			return false, nil
 		}
 	}
-	return false, nil
+	return true, nil
 }
 
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
@@ -3239,6 +3373,17 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert version: %s to APIVersion", v.Id))
 	}
 	return apiVersion, nil
+}
+
+func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
+	if !evergreen.IsPatchRequester(*obj.Requester) {
+		return nil, nil
+	}
+	apiPatch, err := r.sc.FindPatchById(*obj.Version)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Version, err.Error()))
+	}
+	return apiPatch, nil
 }
 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
@@ -3642,7 +3787,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 }
 
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(task.ByVersion(*obj.Id))
+	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}
@@ -3686,6 +3831,18 @@ func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIV
 		return nil, nil
 	}
 	return &baseVersion.Id, nil
+}
+
+func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
+	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
+	if baseVersion == nil || err != nil {
+		return nil, nil
+	}
+	apiVersion := restModel.APIVersion{}
+	if err = apiVersion.BuildFromService(baseVersion); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", baseVersion.Id, err.Error()))
+	}
+	return &apiVersion, nil
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {

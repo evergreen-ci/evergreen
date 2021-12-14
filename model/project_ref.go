@@ -105,9 +105,7 @@ type ProjectRef struct {
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
-	// This is a temporary flag to enable individual projects to use repo settings
-	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
-	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
@@ -223,7 +221,6 @@ var (
 	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefGithubChecksEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
 	projectRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
-	projectRefUseRepoSettingsKey         = bsonutil.MustHaveTag(ProjectRef{}, "UseRepoSettings")
 	projectRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey             = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefTaskSyncKey                = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
@@ -300,6 +297,10 @@ func (p *ProjectRef) IsHidden() bool {
 	return utility.FromBoolPtr(p.Hidden)
 }
 
+func (p *ProjectRef) UseRepoSettings() bool {
+	return p.RepoRefId != ""
+}
+
 func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
 }
@@ -349,6 +350,7 @@ const (
 	ProjectPageWorkstationsSection   = "WORKSTATION"
 	ProjectPageTriggersSection       = "TRIGGERS"
 	ProjectPagePeriodicBuildsSection = "PERIODIC_BUILDS"
+	ProjectPagePluginSection         = "PLUGINS"
 )
 
 var adminPermissions = gimlet.Permissions{
@@ -421,6 +423,12 @@ func (p *ProjectRef) MergeWithParserProject(version string) error {
 		if parserProject.TaskAnnotationSettings != nil {
 			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
 		}
+		if parserProject.WorkstationConfig != nil {
+			p.WorkstationConfig = *parserProject.WorkstationConfig
+		}
+		if parserProject.CommitQueue != nil {
+			p.CommitQueue = *parserProject.CommitQueue
+		}
 	}
 	return nil
 }
@@ -438,14 +446,12 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 	}
 	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
 		"$set": bson.M{
-			projectRefUseRepoSettingsKey: true,
-			ProjectRefRepoRefIdKey:       p.RepoRefId, // this is set locally in AddToRepoScope
+			ProjectRefRepoRefIdKey: p.RepoRefId, // this is set locally in AddToRepoScope
 		},
 	})
 	if err != nil {
 		return errors.Wrap(err, "error attaching repo to scope")
 	}
-	p.UseRepoSettings = true
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
 
@@ -498,7 +504,6 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	if err = p.RemoveFromRepoScope(); err != nil {
 		return err
 	}
-	p.UseRepoSettings = false
 	p.RepoRefId = ""
 
 	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
@@ -516,7 +521,6 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "error finding merged project vars")
 	}
 
-	mergedProject.UseRepoSettings = false
 	mergedProject.RepoRefId = ""
 	if err = mergedProject.Upsert(); err != nil {
 		return errors.Wrap(err, "error detaching project from repo")
@@ -579,7 +583,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	return catcher.Resolve()
 }
 
-func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
+func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "error getting before project settings event")
@@ -587,9 +591,10 @@ func (p *ProjectRef) ChangeOwnerRepo(u *user.DBUser) error {
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
 	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-
+		return errors.Wrapf(err, "error validating new owner/repo")
 	}
-	if p.UseRepoSettings {
+
+	if p.UseRepoSettings() {
 		if err := p.RemoveFromRepoScope(); err != nil {
 			return errors.Wrapf(err, "error removing project from old repo scope")
 		}
@@ -666,7 +671,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		if err := p.AddToRepoScope(creator); err != nil {
 			return errors.Wrapf(err, "error adding project to repo '%s'", p.RepoRefId)
 		}
@@ -719,7 +724,7 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 	if pRef == nil {
 		return nil, nil
 	}
-	if pRef.UseRepoSettings {
+	if pRef.UseRepoSettings() {
 		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
@@ -732,19 +737,20 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeParserProject {
-		err = pRef.MergeWithParserProject(version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-		}
-	}
+	// Removing due to outage: EVG-15856
+	//if includeParserProject {
+	//	err = pRef.MergeWithParserProject(version)
+	//	if err != nil {
+	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
+	//	}
+	//}
 	return pRef, nil
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo that matches it, if one exists.
 // Otherwise, it will return the project as given.
 func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
-	if !pRef.UseRepoSettings {
+	if !pRef.UseRepoSettings() {
 		return &pRef, nil
 	}
 	if pRef.RepoRefId != "" {
@@ -845,7 +851,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	}
 	// some fields shouldn't be set from projects
 	repoRef.Id = mgobson.NewObjectId().Hex()
-	repoRef.UseRepoSettings = false
+	repoRef.RepoRefId = ""
 	// set explicitly in case no project is enabled
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
@@ -1038,7 +1044,7 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
 	for i, pRef := range pRefs {
 		pRefs[i].checkDefaultLogger()
-		if pRefs[i].UseRepoSettings {
+		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
 				var err error
@@ -1129,7 +1135,7 @@ func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, br
 	projectRefs := []ProjectRef{}
 
 	q := byOwnerRepoAndBranch(owner, repoName, branch)
-	q[projectRefUseRepoSettingsKey] = true
+	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
@@ -1144,8 +1150,7 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	err := db.FindAllQ(
 		ProjectRefCollection,
 		db.Query(bson.M{
-			ProjectRefRepoRefIdKey:       repoId,
-			projectRefUseRepoSettingsKey: true,
+			ProjectRefRepoRefIdKey: repoId,
 		}).WithFields(ProjectRefAdminsKey),
 		&projectRefs,
 	)
@@ -1249,14 +1254,13 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		})
 		// if no project exists, create and return skeleton project
 		hiddenProject = &ProjectRef{
-			Id:              mgobson.NewObjectId().Hex(),
-			Owner:           owner,
-			Repo:            repo,
-			Branch:          branch,
-			RepoRefId:       repoRef.Id,
-			UseRepoSettings: true,
-			Enabled:         utility.FalsePtr(),
-			Hidden:          utility.TruePtr(),
+			Id:        mgobson.NewObjectId().Hex(),
+			Owner:     owner,
+			Repo:      repo,
+			Branch:    branch,
+			RepoRefId: repoRef.Id,
+			Enabled:   utility.FalsePtr(),
+			Hidden:    utility.TruePtr(),
 		}
 		if err = hiddenProject.Add(nil); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -1340,7 +1344,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 
 	for i := range projectRefs {
 		projectRefs[i].checkDefaultLogger()
-		if projectRefs[i].UseRepoSettings {
+		if projectRefs[i].UseRepoSettings() {
 			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error merging settings")
@@ -1418,8 +1422,7 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 	return db.Update(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefRepoRefIdKey:       repoId,
-			projectRefUseRepoSettingsKey: true,
+			ProjectRefRepoRefIdKey: repoId,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1526,23 +1529,41 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	var err error
 	switch section {
 	case ProjectPageGeneralSection:
+		setUpdate := bson.M{
+			ProjectRefEnabledKey:                 p.Enabled,
+			ProjectRefBranchKey:                  p.Branch,
+			ProjectRefDisplayNameKey:             p.DisplayName,
+			ProjectRefBatchTimeKey:               p.BatchTime,
+			ProjectRefRemotePathKey:              p.RemotePath,
+			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+			projectRefDefaultLoggerKey:           p.DefaultLogger,
+			projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
+			projectRefPatchingDisabledKey:        p.PatchingDisabled,
+			projectRefTaskSyncKey:                p.TaskSync,
+			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+		}
+		if !isRepo && !p.UseRepoSettings() {
+			setUpdate[ProjectRefOwnerKey] = p.Owner
+			setUpdate[ProjectRefRepoKey] = p.Repo
+			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
+		}
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": setUpdate,
+			})
+	case ProjectPagePluginSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					ProjectRefEnabledKey:                 p.Enabled,
-					ProjectRefBatchTimeKey:               p.BatchTime,
-					ProjectRefRemotePathKey:              p.RemotePath,
-					projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
-					projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
-					ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
-					projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
-					projectRefDefaultLoggerKey:           p.DefaultLogger,
-					projectRefCedarTestResultsEnabledKey: p.CedarTestResultsEnabled,
-					projectRefPatchingDisabledKey:        p.PatchingDisabled,
-					projectRefTaskSyncKey:                p.TaskSync,
-					ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
-					ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
+					projectRefTaskAnnotationSettingsKey: p.TaskAnnotationSettings,
+					projectRefBuildBaronSettingsKey:     p.BuildBaronSettings,
+					projectRefPerfEnabledKey:            p.PerfEnabled,
 				},
 			})
 	case ProjectPageAccessSection:
@@ -1589,8 +1610,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefTriggersKey: p.Triggers,
 				},
 			})
-
-	// todo: add casing on Build Baron and task annotation settings once EVG-15218 is complete
 
 	case ProjectPagePatchAliasSection:
 		err = db.Update(coll,
@@ -1852,20 +1871,10 @@ func RemoveAdminFromProjects(toDelete string) error {
 	return catcher.Resolve()
 }
 
-// GroupProjectsByRepo takes in an array of projects and groups them in a map based on the repo they are part of
-func GroupProjectsByRepo(projects []ProjectRef) map[string][]ProjectRef {
-	groupedProject := make(map[string][]ProjectRef)
-	for _, project := range projects {
-		repoProjects := groupedProject[project.RepoRefId]
-		groupedProject[project.RepoRefId] = append(repoProjects, project)
-	}
-	return groupedProject
-}
-
 func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
 		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "error removing resource from unrestricted branches scope")
@@ -1885,7 +1894,7 @@ func (p *ProjectRef) MakeRestricted() error {
 func (p *ProjectRef) MakeUnrestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
 		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "error adding resource to unrestricted branches scope")
@@ -2089,7 +2098,7 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 	collection := ProjectRefCollection
 	idKey := ProjectRefIdKey
 	buildsKey := projectRefPeriodicBuildsKey
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		// if the periodic build is part of the repo then update there instead
 		repoRef, err := FindOneRepoRef(p.RepoRefId)
 		if err != nil {

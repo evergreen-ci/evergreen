@@ -5,6 +5,7 @@ mutation {
       id: "grumpyCat",
       owner: "theCat", 
       repo: "catGenerator"
+      repoRefId: "animals"
       }
   ){
     id
