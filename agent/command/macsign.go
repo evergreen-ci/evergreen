@@ -92,28 +92,28 @@ func (macSign *macSign) validate() error {
 
 	// make sure the command params are valid
 	if macSign.KeyId == "" {
-		catcher.Add(errors.New("key_id cannot be blank"))
+		catcher.New("key_id cannot be blank")
 	}
 	if macSign.Secret == "" {
-		catcher.Add(errors.New("secret cannot be blank"))
+		catcher.New("secret cannot be blank")
 	}
 	if macSign.LocalZipFile == "" {
-		catcher.Add(errors.New("local_zip_file cannot be blank"))
+		catcher.New("local_zip_file cannot be blank")
 	}
 	if macSign.OutputZipFile == "" {
-		catcher.Add(errors.New("output_zip_file cannot be blank"))
+		catcher.New("output_zip_file cannot be blank")
 	}
 	if macSign.ServiceUrl == "" {
-		catcher.Add(errors.New("service_url cannot be blank"))
+		catcher.New("service_url cannot be blank")
 	}
 	if macSign.Verify && runtime.GOOS != "darwin" {
-		catcher.Add(errors.New("verify is only supported in macOS"))
+		catcher.New("verify is only supported in macOS")
 	}
 	if !(macSign.ArtifactType == "" || macSign.ArtifactType == "binary" || macSign.ArtifactType == "app") {
-		catcher.Add((errors.New(`artifact_type needs to be either blank, "binary" or "app"`)))
+		catcher.New(`artifact_type needs to be either blank, "binary" or "app"`)
 	}
 	if macSign.Notarize && macSign.BundleId == "" {
-		catcher.Add(errors.New("if notarization is requested, bundle_id cannot be blank"))
+		catcher.New("if notarization is requested, bundle_id cannot be blank")
 	}
 
 	return catcher.Resolve()
