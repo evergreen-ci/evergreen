@@ -338,21 +338,7 @@ func AbortTask(taskId, caller string) error {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-	err = t.SetAborted(task.AbortInfo{User: caller})
-	if err != nil {
-		return err
-	}
-
-	err = VersionUpdateOne(
-		bson.M{VersionIdKey: t.Version},
-		bson.M{"$set": bson.M{
-			VersionStatusKey: evergreen.VersionFailed,
-		}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "error setting version as failed")
-	}
-	return nil
+	return t.SetAborted(task.AbortInfo{User: caller})
 }
 
 // Deactivate any previously activated but undispatched
