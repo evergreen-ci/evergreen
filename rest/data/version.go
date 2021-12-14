@@ -46,7 +46,7 @@ func (vc *DBVersionConnector) AddGitTagToVersion(versionId string, gitTag model.
 // AbortVersion aborts all tasks of a version given its ID.
 // It wraps the service level AbortModel.Version
 func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
-	return model.AbortVersion(versionId, task.AbortInfo{User: caller})
+	return task.AbortVersion(versionId, task.AbortInfo{User: caller})
 }
 
 // RestartVersion wraps the service level RestartVersion, which restarts

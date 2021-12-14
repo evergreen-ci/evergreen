@@ -2,9 +2,6 @@ package model
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -395,57 +392,6 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 		return nil, errors.Errorf("no mainline commit found for project '%v'", projectId)
 	}
 	return &res[0], nil
-}
-
-// AbortVersion sets the abort flag on all tasks associated with the version which are in an
-// abortable state
-func AbortVersion(versionId string, reason task.AbortInfo) error {
-	q := bson.M{
-		task.VersionKey: versionId,
-		task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
-	}
-	if reason.TaskID != "" {
-		q[task.IdKey] = bson.M{"$ne": reason.TaskID}
-		// if the aborting task is part of a display task, we also don't want to mark it as aborted
-		q[task.ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
-	}
-	ids, err := task.FindAllTaskIDs(db.Query(q))
-	if err != nil {
-		return errors.Wrap(err, "error finding updated tasks")
-	}
-
-	if len(ids) == 0 {
-		grip.Info(message.Fields{
-			"message": "no tasks aborted for version",
-			"buildId": versionId,
-		})
-		return nil
-	}
-
-	_, err = task.UpdateAll(
-		bson.M{task.IdKey: bson.M{"$in": ids}},
-		bson.M{"$set": bson.M{
-			task.AbortedKey:   true,
-			task.AbortInfoKey: reason,
-		}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "error setting aborted statuses")
-	}
-
-	err = VersionUpdateOne(
-		bson.M{VersionIdKey: versionId},
-		bson.M{"$set": bson.M{
-			VersionStatusKey: evergreen.VersionFailed,
-		}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "error setting version as failed")
-	}
-
-	event.LogManyTaskAbortRequests(ids, reason.User)
-
-	return nil
 }
 
 // GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit

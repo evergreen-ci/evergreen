@@ -1916,7 +1916,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	ids, err := FindAllTaskIDs(db.Query(q))
+	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
 		return errors.Wrapf(err, "error finding tasks to abort from build '%s'", buildId)
 	}
@@ -1937,6 +1937,47 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 	)
 	if err != nil {
 		return errors.Wrapf(err, "error setting aborted statuses for tasks in build '%s'", buildId)
+	}
+
+	event.LogManyTaskAbortRequests(ids, reason.User)
+
+	return nil
+}
+
+// AbortVersion sets the abort flag on all tasks associated with the version which are in an
+// abortable state
+func AbortVersion(versionId string, reason AbortInfo) error {
+	q := bson.M{
+		VersionKey: versionId,
+		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+	}
+	if reason.TaskID != "" {
+		q[IdKey] = bson.M{"$ne": reason.TaskID}
+		// if the aborting task is part of a display task, we also don't want to mark it as aborted
+		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
+	}
+	ids, err := findAllTaskIDs(db.Query(q))
+	if err != nil {
+		return errors.Wrap(err, "error finding updated tasks")
+	}
+
+	if len(ids) == 0 {
+		grip.Info(message.Fields{
+			"message": "no tasks aborted for version",
+			"buildId": versionId,
+		})
+		return nil
+	}
+
+	_, err = UpdateAll(
+		bson.M{IdKey: bson.M{"$in": ids}},
+		bson.M{"$set": bson.M{
+			AbortedKey:   true,
+			AbortInfoKey: reason,
+		}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
 	}
 
 	event.LogManyTaskAbortRequests(ids, reason.User)
