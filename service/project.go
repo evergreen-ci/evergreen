@@ -16,7 +16,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -324,7 +323,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		TaskAnnotationSettings restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
 	}{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -852,7 +851,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Id string `json:"id"`
 	}{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), &projectWithId); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &projectWithId); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -917,7 +916,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 
 	project := gimlet.GetVars(r)["project_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	data, err := ioutil.ReadAll(body)

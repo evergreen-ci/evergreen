@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -50,7 +49,7 @@ func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, &h.HostToStatus); err != nil {
@@ -504,7 +503,7 @@ func (h *hostFilterGetHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *hostFilterGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	if err := utility.ReadJSON(body, &h.params); err != nil {
 		return errors.Wrap(err, "Argument read error")
@@ -613,7 +612,7 @@ func (h *disableHost) Factory() gimlet.RouteHandler {
 }
 
 func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	h.hostID = gimlet.GetVars(r)["host_id"]
 	if h.hostID == "" {

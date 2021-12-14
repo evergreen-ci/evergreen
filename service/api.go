@@ -264,7 +264,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	log := &model.TestLog{}
-	err := utility.ReadJSON(util.NewRequestReader(r), log)
+	err := utility.ReadJSON(utility.NewRequestReader(r), log)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -299,7 +299,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	results := &task.LocalTestResults{}
-	err := utility.ReadJSON(util.NewRequestReader(r), results)
+	err := utility.ReadJSON(utility.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -372,7 +372,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		CreateTime:      time.Now(),
 	}
 
-	err := utility.ReadJSON(util.NewRequestReader(r), &entry.Files)
+	err := utility.ReadJSON(utility.NewRequestReader(r), &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
@@ -395,7 +395,7 @@ func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request)
 	grip.Infoln("Setting downstream expansions for task:", t.Id)
 
 	var downstreamParams []patch.Parameter
-	err := utility.ReadJSON(util.NewRequestReader(r), &downstreamParams)
+	err := utility.ReadJSON(utility.NewRequestReader(r), &downstreamParams)
 	if err != nil {
 		errorMessage := fmt.Sprintf("Error reading downstream expansions for task %v: %v", t.Id, err)
 		grip.Error(message.Fields{
@@ -533,7 +533,7 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	bytes, err := ioutil.ReadAll(body)
 	if err != nil {

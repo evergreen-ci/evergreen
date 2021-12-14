@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -107,7 +106,7 @@ func (h *hostModifyHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.hostID = gimlet.GetVars(r)["host_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	h.options = &host.HostModifyOptions{}
@@ -259,7 +258,7 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrap(err, "can't get host id")
 	}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
@@ -346,7 +345,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrap(err, "can't get host id")
 	}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
@@ -1180,7 +1179,7 @@ func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	if err := utility.ReadJSON(util.NewRequestReader(r), &hostModify); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -1256,7 +1255,7 @@ func (h *hostExtendExpirationHandler) Factory() gimlet.RouteHandler {
 
 func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	if err := utility.ReadJSON(util.NewRequestReader(r), &hostModify); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -1353,7 +1352,7 @@ func (hs *hostStartProcesses) Factory() gimlet.RouteHandler {
 func (hs *hostStartProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostScriptOpts := model.APIHostScript{}
-	if err = utility.ReadJSON(util.NewRequestReader(r), &hostScriptOpts); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &hostScriptOpts); err != nil {
 		return errors.Wrap(err, "can't read host command from json")
 	}
 	hs.script = hostScriptOpts.Script
@@ -1449,7 +1448,7 @@ func (h *hostGetProcesses) Factory() gimlet.RouteHandler {
 func (h *hostGetProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostProcesses := []model.APIHostProcess{}
-	if err = utility.ReadJSON(util.NewRequestReader(r), &hostProcesses); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &hostProcesses); err != nil {
 		return errors.Wrap(err, "can't read host processes from json")
 	}
 	h.hostProcesses = hostProcesses
