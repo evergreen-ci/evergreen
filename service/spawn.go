@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -247,7 +246,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		Region                string     `json:"region"`
 	}{}
 
-	err := utility.ReadJSON(util.NewRequestReader(r), &putParams)
+	err := utility.ReadJSON(utility.NewRequestReader(r), &putParams)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
@@ -326,7 +325,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	updateParams := restModel.APISpawnHostModify{}
 	ctx := r.Context()
 
-	if err := utility.ReadJSON(util.NewRequestReader(r), &updateParams); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -504,7 +503,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	volume := &host.Volume{}
-	if err := utility.ReadJSON(util.NewRequestReader(r), volume); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), volume); err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -532,7 +531,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	updateParams := restModel.APIVolumeModify{}
-	if err := utility.ReadJSON(util.NewRequestReader(r), &updateParams); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 

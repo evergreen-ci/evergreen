@@ -155,7 +155,7 @@ func perfHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 		err = model.DeleteTaskJSONTagFromTask(taskId, name)
 	case http.MethodPost:
 		tc := model.TagContainer{}
-		err = utility.ReadJSON(util.NewRequestReader(r), &tc)
+		err = utility.ReadJSON(utility.NewRequestReader(r), &tc)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

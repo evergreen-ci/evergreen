@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -83,7 +82,7 @@ func (h *keysPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	key := model.APIPubKey{}

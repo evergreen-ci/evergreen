@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ func (p *patchChangeStatusHandler) Factory() gimlet.RouteHandler {
 
 func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, p); err != nil {
@@ -457,7 +456,7 @@ func (p *mergePatchHandler) Factory() gimlet.RouteHandler {
 func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	if err := utility.ReadJSON(body, p); err != nil {
 		return errors.Wrap(err, "Argument read error")
@@ -522,7 +521,7 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 		return errors.Wrap(err, "unable to parse patch")
 	}
 	p.patch = dbPatch.(patch.Patch)
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	tasks := patchTasks{}
 	if err = utility.ReadJSON(body, &tasks); err != nil {

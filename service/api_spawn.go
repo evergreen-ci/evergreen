@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		PublicKey string `json:"public_key"`
 		Region    string `json:"region"`
 	}{}
-	err := utility.ReadJSON(util.NewRequestReader(r), &hostRequest)
+	err := utility.ReadJSON(utility.NewRequestReader(r), &hostRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

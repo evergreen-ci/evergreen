@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -273,7 +272,7 @@ func (p *commitQueueConcludeMerge) Factory() gimlet.RouteHandler {
 }
 
 func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	if p.patchId == "" {
