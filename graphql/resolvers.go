@@ -1829,6 +1829,8 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
+	testResultsToReturn := []*TaskTestResultSample{}
+
 	// We can assume that if one of the tasks has cedar results, all of them do.
 	if t[0].HasCedarResults {
 		failingTests := []string{}
@@ -1840,7 +1842,6 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 		}
-		testResultsToReturn := []*TaskTestResultSample{}
 		for _, r := range results {
 			tr := &TaskTestResultSample{
 				TaskID:                  utility.FromStringPtr(r.TaskID),
@@ -1850,10 +1851,48 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 			}
 			testResultsToReturn = append(testResultsToReturn, tr)
 		}
-		return testResultsToReturn, nil
+	} else {
+		regexFilter := ""
+		for i, f := range testFilters {
+			regexFilter += f.TestName
+			// If there is another test filter add a pipe to separate them
+			if i < len(testFilters)-1 {
+				regexFilter += "|"
+			}
+		}
+		for _, t := range t {
+			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+				TaskID:    t.Id,
+				Execution: t.Execution,
+				TestName:  regexFilter,
+				Statuses:  []string{evergreen.TestFailedStatus},
+				Limit:     10,
+				Page:      0,
+			})
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, err.Error())
+			}
+			failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
+			}
+			tr := &TaskTestResultSample{
+				TaskID:         t.Id,
+				Execution:      t.Execution,
+				TotalTestCount: failedTestCount,
+			}
+			matchingFailingTestNames := []string{}
+			for _, r := range filteredTestResults {
+				matchingFailingTestNames = append(matchingFailingTestNames, r.TestFile)
+			}
+			tr.MatchingFailedTestNames = matchingFailingTestNames
+			testResultsToReturn = append(testResultsToReturn, tr)
+		}
+
 	}
-	return nil, nil
+	return testResultsToReturn, nil
 }
+
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
