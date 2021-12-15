@@ -18,46 +18,27 @@ var (
 	LastBuildNumberKey = bsonutil.MustHaveTag(Global{}, "LastBuildNumber")
 )
 
+// FindOne gets one global build variant document for the given query.
+func FindOne(q bson.M) (*Global, error) {
+	var global Global
+	err := db.FindOneQ(Collection, db.Query(q), &global)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return &global, err
+}
+
 // GetNewBuildVariantBuildNumber atomically gets a new number for a build,
 // given its variant name.
 func GetNewBuildVariantBuildNumber(buildVariant string) (uint64, error) {
-	session, db, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return 0, err
-	}
-	defer session.Close()
-
-	// get the record for this build variant
-	global := Global{}
-	err = db.C(Collection).Find(bson.M{BuildVariantKey: buildVariant}).One(&global)
-
-	// if this is the first build for this
-	// this build variant, insert it
-	if err != nil && adb.ResultsNotFound(err) {
-		change := adb.Change{
-			Update:    bson.M{"$inc": bson.M{LastBuildNumberKey: 1}},
-			Upsert:    true,
-			ReturnNew: true,
-		}
-
-		_, err = db.C(Collection).Find(bson.M{BuildVariantKey: buildVariant}).Apply(change, &global)
-		if err != nil {
-			return 0, err
-		}
-		return global.LastBuildNumber, nil
-	}
-
-	// At this point, we know we've
-	// seen this build variant before
-	// find and modify last build variant number
 	change := adb.Change{
 		Update:    bson.M{"$inc": bson.M{LastBuildNumberKey: 1}},
+		Upsert:    true,
 		ReturnNew: true,
 	}
 
-	_, err = db.C(Collection).Find(bson.M{BuildVariantKey: buildVariant}).Apply(change, &global)
-
-	if err != nil {
+	var global Global
+	if _, err := db.FindAndModify(Collection, bson.M{BuildVariantKey: buildVariant}, nil, change, &global); err != nil {
 		return 0, err
 	}
 
