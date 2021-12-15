@@ -8,8 +8,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/amboy/management"
-	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
@@ -92,73 +90,4 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"stats":   remoteQueue.Stats(ctx),
 		})
 	}
-}
-
-func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) {
-	settings := j.env.Settings()
-
-	opts := queue.DefaultMongoDBOptions()
-	opts.URI = settings.Database.Url
-	opts.DB = settings.Amboy.DB
-	opts.Priority = true
-
-	manager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
-		Name:    settings.Amboy.Name,
-		Options: opts,
-	}, j.env.Client())
-	if err != nil {
-		j.AddError(err)
-		return
-	}
-
-	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue report", manager)
-	j.AddError(err)
-	j.logger.InfoWhen(len(r) > 1, r)
-}
-
-func (j *amboyStatsCollector) collectExtendedGroupRemoteStats(ctx context.Context) {
-	settings := j.env.Settings()
-	opts := queue.DefaultMongoDBOptions()
-	opts.URI = settings.Database.Url
-	opts.DB = settings.Amboy.DB
-	opts.Priority = true
-
-	manager, err := management.MakeDBQueueManager(ctx, management.DBQueueManagerOptions{
-		Name:     settings.Amboy.Name,
-		Options:  opts,
-		ByGroups: true,
-	}, j.env.Client())
-	if err != nil {
-		j.AddError(err)
-		return
-	}
-
-	r, err := buildAmboyQueueMessage(ctx, "amboy remote queue group", manager)
-	j.AddError(err)
-	j.logger.InfoWhen(len(r) > 1, r)
-}
-
-func buildAmboyQueueMessage(ctx context.Context, msg string, manager management.Manager) (message.Fields, error) {
-	catcher := grip.NewBasicCatcher()
-	r := message.Fields{
-		"message": msg,
-	}
-
-	pending, err := manager.JobStatus(ctx, management.Pending)
-	catcher.Add(err)
-	if pending != nil {
-		r["pending"] = pending
-	}
-	inprog, err := manager.JobStatus(ctx, management.InProgress)
-	catcher.Add(err)
-	if inprog != nil {
-		r["inprog"] = inprog
-	}
-	stale, err := manager.JobStatus(ctx, management.Stale)
-	catcher.Add(err)
-	if stale != nil {
-		r["stale"] = stale
-	}
-
-	return r, catcher.Resolve()
 }
