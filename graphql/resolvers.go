@@ -1822,11 +1822,11 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if len(tasks) == 0 {
 		return nil, nil
 	}
-	t, err := task.Find(task.ByIds(tasks))
+	t, err := task.FindAll(task.ByIds(tasks))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
-	if t == nil {
+	if len(t) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
 	testResultsToReturn := []*TaskTestResultSample{}
