@@ -1907,7 +1907,6 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	PluginAdminPageDisabled    bool `json:"plugin_admin_page_disabled"`
 	TaskDispatchDisabled       bool `json:"task_dispatch_disabled"`
 	HostInitDisabled           bool `json:"host_init_disabled"`
 	PodInitDisabled            bool `json:"pod_init_disabled"`
@@ -2166,7 +2165,6 @@ func (ab *APIBanner) ToService() (interface{}, error) {
 func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ServiceFlags:
-		as.PluginAdminPageDisabled = v.PluginAdminPageDisabled
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.PodInitDisabled = v.PodInitDisabled
@@ -2204,7 +2202,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
-		PluginAdminPageDisabled:      as.PluginAdminPageDisabled,
 		TaskDispatchDisabled:         as.TaskDispatchDisabled,
 		HostInitDisabled:             as.HostInitDisabled,
 		PodInitDisabled:              as.PodInitDisabled,

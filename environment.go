@@ -794,9 +794,6 @@ type BuildBaronSettings struct {
 
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project" json:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects" json:"ticket_search_projects"`
-
-	TaskAnnotationSettings AnnotationsSettings `mapstructure:"task_annotation_settings" bson:"task_annotation_settings" json:"task_annotation_settings"`
-
 	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
 	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server" json:"bf_suggestion_server"`
 	BFSuggestionUsername    string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username" json:"bf_suggestion_username"`

@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -3219,49 +3218,23 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, err
+	if !model.IsPerfEnabledForProject(*obj.ProjectId) {
+		return false, nil
 	}
-	if flags.PluginAdminPageDisabled {
-		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
-	} else {
-		var perfPlugin *plugin.PerfPlugin
-		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false, false)
-		if err != nil {
-			return false, err
-		}
-		if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
-			err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
-			if err != nil {
-				return false, err
-			}
-			projectMatches := false
-			for _, projectName := range perfPlugin.Projects {
-				if projectName == pRef.Id || projectName == pRef.Identifier {
-					projectMatches = true
-					break
-				}
-			}
-			if !projectMatches {
-				return false, nil
-			}
-		}
-		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:    utility.FromStringPtr(obj.Id),
-			Execution: obj.Execution,
-		}
-		if opts.BaseURL == "" {
-			return false, nil
-		}
-		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
-		}
-		if result.NumberOfResults == 0 {
-			return false, nil
-		}
+	opts := apimodels.GetCedarPerfCountOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:    utility.FromStringPtr(obj.Id),
+		Execution: obj.Execution,
+	}
+	if opts.BaseURL == "" {
+		return false, nil
+	}
+	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+	}
+	if result.NumberOfResults == 0 {
+		return false, nil
 	}
 	return true, nil
 }
@@ -3974,7 +3947,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	_, ok, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
 }
 

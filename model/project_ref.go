@@ -2229,6 +2229,17 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
+// GetBuildBaronSettings retrieves build baron settings from project settings.
+// Project page settings takes precedence, otherwise fallback to project config yaml.
+// Returns build baron settings and ok if found.
+func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
+	projectRef, err := FindMergedProjectRef(projectId, version, true)
+	if err != nil || projectRef == nil {
+		return evergreen.BuildBaronSettings{}, false
+	}
+	return projectRef.BuildBaronSettings, true
+}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -2298,6 +2309,20 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	}
 
 	return catcher.Resolve()
+}
+
+// IsWebhookConfigured retrieves webhook configuration from the project settings.
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool, error) {
+	projectRef, err := FindMergedProjectRef(project, version, true)
+	if err != nil || projectRef == nil {
+		return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
+	}
+	webHook := projectRef.TaskAnnotationSettings.FileTicketWebhook
+	if webHook.Endpoint != "" {
+		return webHook, true, nil
+	} else {
+		return evergreen.WebHook{}, false, nil
+	}
 }
 
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {

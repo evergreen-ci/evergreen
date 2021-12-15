@@ -9,11 +9,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +60,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations := resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
 	assert.Len(t, apiAnnotations, 0)
 
 	annotations := []annotations.TaskAnnotation{
@@ -94,7 +95,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 2) // skip the previous execution of task-with-many-executions
 	for _, a := range apiAnnotations {
 		assert.NotEqual(t, 1, a.TaskExecution)
@@ -104,7 +105,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	assert.Len(t, apiAnnotations, 3)
 	for _, a := range apiAnnotations {
 		assert.NotEqual(t, "wrong-build", utility.FromStringPtr(a.TaskId))
@@ -151,7 +152,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations := resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
 	assert.Len(t, apiAnnotations, 0)
 
 	annotations := []annotations.TaskAnnotation{
@@ -186,7 +187,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 2) // skip the previous execution of task-with-many-executions
 	for _, a := range apiAnnotations {
 		assert.NotEqual(t, 1, a.TaskExecution)
@@ -196,7 +197,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	assert.Len(t, apiAnnotations, 3)
 	for _, a := range apiAnnotations {
 		assert.NotEqual(t, "wrong-build", utility.FromStringPtr(a.TaskId))
@@ -261,7 +262,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations := resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
 	assert.Len(t, apiAnnotations, 0)
 
 	annotations := []annotations.TaskAnnotation{
@@ -293,7 +294,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 1)
 	require.NotNil(t, apiAnnotations)
 	assert.Equal(t, 1, *apiAnnotations[0].TaskExecution)
@@ -305,7 +306,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 1)
 	require.NotNil(t, apiAnnotations)
 	assert.Equal(t, 0, *apiAnnotations[0].TaskExecution)
@@ -318,7 +319,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 1)
 	require.NotNil(t, apiAnnotations)
 	assert.Equal(t, 0, *apiAnnotations[0].TaskExecution)
@@ -332,7 +333,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	apiAnnotations = resp.Data().([]model.APITaskAnnotation)
+	apiAnnotations = resp.Data().([]restModel.APITaskAnnotation)
 	require.Len(t, apiAnnotations, 2)
 	require.NotNil(t, apiAnnotations)
 	for _, a := range apiAnnotations {
@@ -375,10 +376,10 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	execution0 := 0
 	execution1 := 1
-	a := &model.APITaskAnnotation{
+	a := &restModel.APITaskAnnotation{
 		Id:     utility.ToStringPtr("1"),
 		TaskId: utility.ToStringPtr("TaskFailedId"),
-		Note:   &model.APINote{Message: utility.ToStringPtr("task-1-note_0")},
+		Note:   &restModel.APINote{Message: utility.ToStringPtr("task-1-note_0")},
 	}
 
 	jsonBody, err := json.Marshal(a)
@@ -400,7 +401,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a.Issues = []model.APIIssueLink{
+	a.Issues = []restModel.APIIssueLink{
 		{
 			URL: utility.ToStringPtr("issuelink.com"),
 		},
@@ -408,7 +409,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 			URL: utility.ToStringPtr("https://issuelink.com/ticket"),
 		},
 	}
-	a.SuspectedIssues = []model.APIIssueLink{
+	a.SuspectedIssues = []restModel.APIIssueLink{
 		{
 			URL: utility.ToStringPtr("https://issuelinkcom"),
 		},
@@ -429,7 +430,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("non-existent"),
 		TaskExecution: &execution1,
@@ -447,7 +448,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskFailedId"),
 		TaskExecution: &execution1,
@@ -465,7 +466,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:     utility.ToStringPtr("1"),
 		TaskId: utility.ToStringPtr("TaskFailedId"),
 	}
@@ -482,7 +483,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskFailedId"),
 		TaskExecution: &execution1,
@@ -501,7 +502,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:     utility.ToStringPtr("1"),
 		TaskId: utility.ToStringPtr("TaskFailedId"),
 	}
@@ -519,7 +520,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskFailedId"),
 		TaskExecution: &execution1,
@@ -537,7 +538,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{}
+	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest("PUT", "/task/TaskFailedId/annotations?execution=1", buffer)
@@ -550,7 +551,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskSystemUnresponseId"),
 		TaskExecution: &execution0,
@@ -568,7 +569,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{}
+	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -579,7 +580,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "TaskSystemFailedId", h.taskId)
 
-	a = &model.APITaskAnnotation{}
+	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -590,7 +591,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "TaskTimedOutId", h.taskId)
 
-	a = &model.APITaskAnnotation{}
+	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -605,7 +606,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{
 		sc: &data.MockConnector{},
 	}
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskSucceededId"),
 		TaskExecution: &execution0,
@@ -620,7 +621,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
 
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskWillRunId"),
 		TaskExecution: &execution0,
@@ -635,7 +636,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
 
-	a = &model.APITaskAnnotation{
+	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
 		TaskId:        utility.ToStringPtr("TaskDispatchedId"),
 		TaskExecution: &execution0,
@@ -656,11 +657,11 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection))
 	execution0 := 0
 	execution1 := 1
-	a := model.APITaskAnnotation{
+	a := restModel.APITaskAnnotation{
 		TaskId:        utility.ToStringPtr("t1"),
 		TaskExecution: &execution0,
-		Note:          &model.APINote{Message: utility.ToStringPtr("task-1-note_0")},
-		Issues: []model.APIIssueLink{
+		Note:          &restModel.APINote{Message: utility.ToStringPtr("task-1-note_0")},
+		Issues: []restModel.APIIssueLink{
 			{
 				URL:      utility.ToStringPtr("some_url_0"),
 				IssueKey: utility.ToStringPtr("some key 0"),
@@ -692,10 +693,10 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
 
 	//test update
-	h.annotation = &model.APITaskAnnotation{
+	h.annotation = &restModel.APITaskAnnotation{
 		TaskId:        utility.ToStringPtr("t1"),
 		TaskExecution: &execution0,
-		Note:          &model.APINote{Message: utility.ToStringPtr("task-1-note_0_updated")},
+		Note:          &restModel.APINote{Message: utility.ToStringPtr("task-1-note_0_updated")},
 	}
 
 	resp = h.Run(ctx)
@@ -710,10 +711,10 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
 
 	//test that it can update old executions
-	h.annotation = &model.APITaskAnnotation{
+	h.annotation = &restModel.APITaskAnnotation{
 		TaskId:        utility.ToStringPtr("t1"),
 		TaskExecution: &execution1,
-		Note:          &model.APINote{Message: utility.ToStringPtr("task-1-note_1_updated")},
+		Note:          &restModel.APINote{Message: utility.ToStringPtr("task-1-note_1_updated")},
 	}
 
 	resp = h.Run(ctx)
@@ -726,8 +727,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 
 // test created tickets route
 func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection))
+	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection, model.ProjectRefCollection))
 	testProject := "testProject"
+	p := model.ProjectRef{
+		Identifier: testProject,
+	}
+	assert.NoError(t, p.Insert())
 	tasks := []task.Task{
 		{Id: "t1", Execution: 1, Project: testProject},
 		{Id: "t2", Execution: 1, Project: testProject},
@@ -741,7 +746,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
 	url := utility.ToStringPtr("https://issuelink.com")
-	ticket := &model.APIIssueLink{
+	ticket := &restModel.APIIssueLink{
 		URL:      url,
 		IssueKey: utility.ToStringPtr("some key 0"),
 	}
@@ -755,21 +760,12 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	err = h.Parse(ctx, r)
 	assert.Contains(t, err.Error(), "there is no webhook configured for 'testProject'")
 
-	plugins := evergreen.PluginConfig{
-		"buildbaron": {
-			"projects": map[string]evergreen.BuildBaronSettings{
-				testProject: {
-					TaskAnnotationSettings: evergreen.AnnotationsSettings{
-						FileTicketWebhook: evergreen.WebHook{
-							Endpoint: "random",
-						},
-					},
-				},
-			},
+	p.TaskAnnotationSettings = evergreen.AnnotationsSettings{
+		FileTicketWebhook: evergreen.WebHook{
+			Endpoint: "random",
 		},
 	}
-	evergreen.GetEnvironment().Settings().Plugins = plugins
-
+	assert.NoError(t, p.Upsert())
 	r, err = http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
@@ -810,7 +806,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection))
 
-	ticket := &model.APIIssueLink{
+	ticket := &restModel.APIIssueLink{
 		URL:      utility.ToStringPtr("https://issuelink1.com"),
 		IssueKey: utility.ToStringPtr("Issue_key_1"),
 	}
@@ -835,7 +831,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
 
 	// add a ticket to the existing annotation
-	h.ticket = &model.APIIssueLink{
+	h.ticket = &restModel.APIIssueLink{
 		URL:      utility.ToStringPtr("https://issuelink2.com"),
 		IssueKey: utility.ToStringPtr("Issue_key_2"),
 	}

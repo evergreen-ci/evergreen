@@ -9,7 +9,6 @@ import (
 
 // ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
-	PluginAdminPageDisabled    bool `bson:"plugin_admin_page_disabled" json:"plugin_admin_page_disabled"`
 	TaskDispatchDisabled       bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled           bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	PodInitDisabled            bool `bson:"pod_init_disabled" json:"pod_init_disabled"`
@@ -72,7 +71,6 @@ func (c *ServiceFlags) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			pluginAdminPageDisabledKey:      c.PluginAdminPageDisabled,
 			taskDispatchKey:                 c.TaskDispatchDisabled,
 			hostInitKey:                     c.HostInitDisabled,
 			podInitDisabledKey:              c.PodInitDisabled,
