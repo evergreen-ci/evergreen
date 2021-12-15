@@ -4582,3 +4582,55 @@ func TestValidationErrorsAtLevel(t *testing.T) {
 		assert.Empty(t, errs.AtLevel(Error))
 	})
 }
+
+func TestCheckDuplicateModuleNames(t *testing.T) {
+	assert.New(t)
+
+	tests := map[string]struct {
+		exampleYml         string
+		expectErr          bool
+		expectedErrLength  int
+		expectedErrMessage string
+	}{
+		"duplicateName": {
+			exampleYml: `
+modules:
+- name: mongo-perf
+  repo: test-repo-1
+  branch: master
+- name: mongo-perf
+  repo: test-repo-2
+  branch: master`,
+			expectErr:          true,
+			expectedErrLength:  1,
+			expectedErrMessage: "has a duplicate module name 'mongo-perf'",
+		},
+		"differentNames": {
+			exampleYml: `
+modules:
+- name: mongo-perf-1
+  repo: test-repo-1
+  branch: master
+- name: mongo-perf-2
+  repo: test-repo-2
+  branch: master`,
+		},
+	}
+
+	for testName, testCase := range tests {
+		t.Run(testName, func(t *testing.T) {
+			var proj model.Project
+			ctx := context.Background()
+			_, err := model.LoadProjectInto(ctx, []byte(testCase.exampleYml), nil, "", &proj)
+			assert.Nil(t, err)
+			validationErrs := checkDuplicateModuleNames(&proj)
+			if testCase.expectErr {
+				assert.Len(t, validationErrs, testCase.expectedErrLength)
+				assert.Contains(t, validationErrs[0].Message, testCase.expectedErrMessage)
+			} else {
+				assert.Len(t, validationErrs, 0)
+			}
+
+		})
+	}
+}
