@@ -131,7 +131,6 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkLoggerConfig,
-	checkDuplicateModuleNames,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
@@ -668,7 +667,7 @@ func validateModules(project *model.Project) ValidationErrors {
 		} else if moduleNames[module.Name] {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("module '%s' already exists", module.Name),
+				Message: fmt.Sprintf("module '%s' already exists; the first module name defined will be used", module.Name),
 			})
 		} else {
 			moduleNames[module.Name] = true
@@ -1898,22 +1897,4 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 		return "", "", errors.Errorf("command '%s' was supplied parameter '%s' but is not a string argument, got %T", c.Command, paramName, i)
 	}
 	return task, bv, nil
-}
-
-func checkDuplicateModuleNames(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	moduleNameCheckup := make(map[string]bool)
-	for _, module := range project.Modules {
-		if moduleNameCheckup[module.Name] {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("project '%s' has a duplicate module name '%s'",
-						project.Identifier, module.Name),
-					Level: Warning,
-				},
-			)
-		}
-		moduleNameCheckup[module.Name] = true
-	}
-	return errs
 }
