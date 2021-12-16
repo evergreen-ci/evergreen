@@ -600,8 +600,14 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		var yaml []byte
 		opts.Identifier = identifier
+		opts.RemotePath = path.FileName
+		grip.Debug(message.Fields{
+			"message":     "retrieving included yaml file",
+			"remote_path": opts.RemotePath,
+			"read_from":   opts.ReadFileFrom,
+			"module":      path.Module,
+		})
 		if path.Module != "" {
-			opts.RemotePath = path.FileName
 			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
 		} else {
 			yaml, err = retrieveFile(ctx, *opts)
