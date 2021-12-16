@@ -61,9 +61,8 @@ type macSign struct {
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants"`
 
-	// workDir sets the working directory relative to which s3put should look for files to upload.
-	// workDir will be empty if an absolute path is provided to the file.
-	workDir string
+	// WorkingDir sets the current working directory.
+	WorkingDir string `mapstructure:"working_directory" plugin:"expand"`
 
 	base
 }
@@ -127,10 +126,21 @@ func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 		return errors.WithStack(err)
 	}
 
-	if filepath.IsAbs(macSign.LocalZipFile) {
-		macSign.workDir = ""
-	} else {
-		macSign.workDir = conf.WorkDir
+	if macSign.WorkingDir == "" {
+		macSign.WorkingDir = conf.WorkDir
+	}
+
+	if !filepath.IsAbs(macSign.LocalZipFile) {
+		macSign.LocalZipFile = filepath.Join(macSign.WorkingDir, macSign.LocalZipFile)
+	}
+	if !filepath.IsAbs(macSign.OutputZipFile) {
+		macSign.OutputZipFile = filepath.Join(macSign.WorkingDir, macSign.OutputZipFile)
+	}
+	if !filepath.IsAbs(macSign.EntitlementsFilePath) {
+		macSign.EntitlementsFilePath = filepath.Join(macSign.WorkingDir, macSign.EntitlementsFilePath)
+	}
+	if !filepath.IsAbs(macSign.ClientBinary) {
+		macSign.ClientBinary = filepath.Join(macSign.WorkingDir, macSign.ClientBinary)
 	}
 
 	return nil
@@ -153,6 +163,10 @@ func (macSign *macSign) Execute(ctx context.Context,
 
 	if err := macSign.expandParams(conf); err != nil {
 		return errors.WithStack(err)
+	}
+
+	if err := createEnclosingDirectoryIfNeeded(macSign.WorkingDir); err != nil {
+		return errors.Wrap(err, "problem making working directory")
 	}
 
 	if !macSign.shouldRunForVariant(conf.BuildVariant.Name) {
