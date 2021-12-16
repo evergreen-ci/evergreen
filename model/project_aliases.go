@@ -57,7 +57,7 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId `bson:"_id" json:"_id"`
+	ID          mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	ProjectID   string           `bson:"project_id" json:"project_id"`
 	Alias       string           `bson:"alias" json:"alias"`
 	Variant     string           `bson:"variant,omitempty" json:"variant"`
