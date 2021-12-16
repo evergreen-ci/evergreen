@@ -1822,17 +1822,17 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if len(tasks) == 0 {
 		return nil, nil
 	}
-	t, err := task.FindAll(task.ByIds(tasks))
+	dbTasks, err := task.FindAll(task.ByIds(tasks))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
-	if len(t) == 0 {
+	if len(dbTasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
 	testResultsToReturn := []*TaskTestResultSample{}
 
 	// We can assume that if one of the tasks has cedar results, all of them do.
-	if t[0].HasCedarResults {
+	if dbTasks[0].HasCedarResults {
 		failingTests := []string{}
 		for _, f := range testFilters {
 			failingTests = append(failingTests, f.TestName)
@@ -1860,7 +1860,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 				regexFilter += "|"
 			}
 		}
-		for _, t := range t {
+		for _, t := range dbTasks {
 			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 				TaskID:    t.Id,
 				Execution: t.Execution,
@@ -1870,7 +1870,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 				Page:      0,
 			})
 			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, err.Error())
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 			}
 			failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
 			if err != nil {
