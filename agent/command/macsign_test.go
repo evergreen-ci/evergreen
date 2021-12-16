@@ -173,7 +173,8 @@ func TestMacSignExecute(t *testing.T) {
 				)
 				cmd := &macSign{}
 				tc.params["client_binary"] = mockClientBinary
-				cmd.ParseParams(tc.params)
+				err := cmd.ParseParams(tc.params)
+				assert.NoError(t, err)
 
 				comm := client.NewMock("http://localhost.com")
 				conf := &internal.TaskConfig{
