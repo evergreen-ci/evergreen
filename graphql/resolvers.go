@@ -450,7 +450,7 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 }
 
 func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
@@ -469,7 +469,7 @@ func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *r
 }
 
 func (r *repoSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {

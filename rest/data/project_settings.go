@@ -142,15 +142,14 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			}
 		}
 	case model.ProjectPageVariablesSection:
-		// Remove any variables that only exist in the original settings.
-		toDelete := []string{}
-		for key, _ := range before.Vars.Vars {
-			if _, ok := changes.Vars.Vars[key]; !ok {
-				toDelete = append(toDelete, key)
+		for key, value := range before.Vars.Vars {
+			// Private variables are redacted in the UI, so re-set to the real value
+			// before updating (assuming the value isn't deleted).
+			if before.Vars.PrivateVars[key] && changes.Vars.PrivateVars[key] {
+				changes.Vars.Vars[key] = value
 			}
 		}
-		changes.Vars.VarsToDelete = toDelete
-		if err = sc.UpdateProjectVars(projectId, &changes.Vars, false); err != nil { // destructively modifies vars
+		if err = sc.UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
 			return nil, errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
 		}
 		modified = true
@@ -188,13 +187,13 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			catcher.Wrapf(err, "error getting after project settings event")
 		} else {
 			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
+			after.Vars = *after.Vars.RedactPrivateVars() // ensure that we're not returning private variables back to the UI
 			res, err = restModel.DbProjectSettingsToRestModel(*after)
 			if err != nil {
 				catcher.Wrapf(err, "error converting project settings")
 			}
 		}
 	}
-
 	return &res, errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
 }
 
