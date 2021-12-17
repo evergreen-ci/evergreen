@@ -242,6 +242,13 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		} else if !t.IsFinished() {
 			if detail != nil {
 				grip.Debugln(msg, "marking as failed")
+				if detail.Status == "" {
+					grip.Error(message.Fields{
+						"error":   errors.WithStack(errors.New("task end details status detected as empty, marking status as failed")),
+						"details": detail,
+					})
+					detail.Status = evergreen.TaskFailed
+				}
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOneId(etId)

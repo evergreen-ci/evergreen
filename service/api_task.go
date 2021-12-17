@@ -309,6 +309,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"operation":   "mark end",
 		"duration":    time.Since(finishTime),
 		"should_exit": endTaskResp.ShouldExit,
+		"status":      details.Status,
 	}
 
 	if dt != nil {
