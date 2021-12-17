@@ -27,6 +27,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/yaml.v2"
 )
 
 type TaskVariantPairs struct {
@@ -161,12 +162,16 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	_, _, err = LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
-
-	return project, string(projectFileBytes), nil
+	// TODO: EVG-16000 Introduce new variable for patches to store patched config
+	out, err := yaml.Marshal(pp)
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "Could not marshal parser project into yaml")
+	}
+	return project, string(out), nil
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version

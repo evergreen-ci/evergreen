@@ -196,7 +196,7 @@ func getFullProjectConfigAliases(projectConfig *ProjectConfig) []ProjectAlias {
 // FindAliasInProjectOrRepo finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
-	aliases, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
+	aliases, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking for existing aliases")
 	}
@@ -206,30 +206,6 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	shouldExit := false
-	if IsPatchAlias(alias) {
-		projectRefPatchAliases, err := countPatchAliases(projectID)
-		if err != nil {
-			return nil, errors.Wrap(err, "error counting patch aliases")
-		}
-		shouldExit = projectRefPatchAliases > 0
-		if !shouldExit {
-			project, err := FindBranchProjectRef(projectID)
-			if err != nil {
-				return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)
-			}
-			if project == nil {
-				return aliases, errors.Errorf("project '%s' does not exist", projectID)
-			}
-			if project.UseRepoSettings() {
-				repoPatchAliases, err := countPatchAliases(project.RepoRefId)
-				if err != nil {
-					return nil, errors.Wrap(err, "error counting patch aliases")
-				}
-				shouldExit = repoPatchAliases > 0
-			}
-		}
-	}
 	if shouldExit {
 		return aliases, nil
 	}
@@ -238,34 +214,42 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 
 // FindAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
 // If the project has no aliases, the repo is checked for aliases.
-func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, error) {
+func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, bool, error) {
 	aliases, shouldExit, err := findMatchingAliasForProjectRef(projectID, alias)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error finding aliases for project ref '%s'", projectID)
+		return aliases, false, errors.Wrapf(err, "error finding aliases for project ref '%s'", projectID)
 	}
 	if shouldExit {
-		return aliases, nil
+		return aliases, true, nil
 	}
 	return tryGetRepoAliases(projectID, alias, aliases)
 }
 
-func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, error) {
+func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, bool, error) {
 	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)
+		return aliases, false, errors.Wrapf(err, "error finding project '%s'", projectID)
 	}
 	if project == nil {
-		return aliases, errors.Errorf("project '%s' does not exist", projectID)
+		return aliases, false, errors.Errorf("project '%s' does not exist", projectID)
 	}
 	if !project.UseRepoSettings() {
-		return aliases, nil
+		return aliases, false, nil
 	}
 
 	aliases, err = findMatchingAliasForRepo(project.RepoRefId, alias)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
+		return aliases, false, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
 	}
-	return aliases, nil
+	shouldExit := false
+	if IsPatchAlias(alias) {
+		numRepoPatchAliases, err := countPatchAliases(project.RepoRefId)
+		if err != nil {
+			return nil, false, errors.Wrap(err, "error counting patch aliases")
+		}
+		shouldExit = numRepoPatchAliases > 0
+	}
+	return aliases, shouldExit, nil
 }
 
 func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
