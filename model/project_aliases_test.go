@@ -164,8 +164,8 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
 	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ProjectConfigCollection, ProjectRefCollection))
 	pRef := ProjectRef{
-		Id:              "project-1",
-		UseRepoSettings: true,
+		Id:        "project-1",
+		RepoRefId: "r1",
 	}
 	s.NoError(pRef.Upsert())
 	a1 := ProjectAlias{
