@@ -122,7 +122,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			Resource:      pref.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionPatches,
-			RequiredLevel: evergreen.PatchSubmitBot.Value,
+			RequiredLevel: evergreen.PatchSubmitAdmin.Value,
 		}
 		if !dbUser.HasPermission(opts) {
 			as.LoggedError(w, r, http.StatusUnauthorized, errors.New("user is not authorized to patch on behalf of other users"))
