@@ -14,7 +14,7 @@ import (
 
 type ProjectConfig struct {
 	Id         string    `yaml:"_id" bson:"_id"`
-	Identifier *string   `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	Identifier string    `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
 	CreateTime time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.

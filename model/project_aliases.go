@@ -57,15 +57,15 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
-	ProjectID   string           `bson:"project_id" json:"project_id"`
-	Alias       string           `bson:"alias" json:"alias"`
-	Variant     string           `bson:"variant,omitempty" json:"variant"`
-	GitTag      string           `bson:"git_tag" json:"git_tag"`
-	RemotePath  string           `bson:"remote_path" json:"remote_path"`
-	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags"`
-	Task        string           `bson:"task,omitempty" json:"task"`
-	TaskTags    []string         `bson:"tags,omitempty" json:"tags"`
+	ID          mgobson.ObjectId `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID   string           `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias       string           `bson:"alias" json:"alias" yaml:"alias"`
+	Variant     string           `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	GitTag      string           `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath  string           `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
+	Task        string           `bson:"task,omitempty" json:"task" yaml:"task"`
+	TaskTags    []string         `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
 }
 
 type ProjectAliases []ProjectAlias
@@ -129,7 +129,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 
 	if len(out) == 0 && IsPatchAlias(alias) {
 		// return true if any patch aliases are defined
-		numPatchAliases, err := countPatchAliasesForProjectRef(projectID)
+		numPatchAliases, err := countPatchAliases(projectID)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "error counting patch aliases")
 		}
@@ -152,7 +152,7 @@ func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias,
 	return projectConfigAliases[alias], nil
 }
 
-func countPatchAliasesForProjectRef(projectID string) (int, error) {
+func countPatchAliases(projectID string) (int, error) {
 	return db.Count(ProjectAliasCollection, bson.M{
 		projectIDKey: projectID,
 		aliasKey:     bson.M{"$nin": evergreen.InternalAliases},
@@ -200,19 +200,35 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking for existing aliases")
 	}
-	// If nothing is defined in the DB, check the project config
-	// Unless the alias defined is a patch alias and there are patch aliases
+	// If nothing is defined in the DB, check the project config,
+	// unless the alias defined is a patch alias and there are patch aliases
 	// defined on the project page.
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
 	shouldExit := false
 	if IsPatchAlias(alias) {
-		numPatchAliases, err := countPatchAliasesForProjectRef(projectID)
+		projectRefPatchAliases, err := countPatchAliases(projectID)
 		if err != nil {
 			return nil, errors.Wrap(err, "error counting patch aliases")
 		}
-		shouldExit = numPatchAliases > 0
+		shouldExit = projectRefPatchAliases > 0
+		if !shouldExit {
+			project, err := FindBranchProjectRef(projectID)
+			if err != nil {
+				return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)
+			}
+			if project == nil {
+				return aliases, errors.Errorf("project '%s' does not exist", projectID)
+			}
+			if project.UseRepoSettings {
+				repoPatchAliases, err := countPatchAliases(project.RepoRefId)
+				if err != nil {
+					return nil, errors.Wrap(err, "error counting patch aliases")
+				}
+				shouldExit = repoPatchAliases > 0
+			}
+		}
 	}
 	if shouldExit {
 		return aliases, nil

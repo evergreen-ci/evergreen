@@ -30,9 +30,18 @@ task_groups:
     params:
       script: "echo hi"
 deactivate_previous: true
+build_baron_settings:
+  ticket_create_project: BF
+  ticket_search_projects: ["BF"]
+
+commit_queue_aliases:
+  - project_id: evg
+    variant: ubuntu1604
+
 `
 	pc, err = createProjectConfig([]byte(projYml))
 	assert.Nil(t, err)
 	assert.NotNil(t, pc)
 	assert.True(t, utility.FromBoolPtr(pc.DeactivatePrevious))
+	assert.Equal(t, "BF", pc.BuildBaronSettings.TicketCreateProject)
 }

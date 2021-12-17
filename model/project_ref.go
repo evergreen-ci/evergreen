@@ -115,17 +115,17 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled       *bool  `bson:"enabled" json:"enabled"`
-	RequireSigned *bool  `bson:"require_signed" json:"require_signed"`
-	MergeMethod   string `bson:"merge_method" json:"merge_method"`
-	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+	Enabled       *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
+	RequireSigned *bool  `bson:"require_signed" json:"require_signed" yaml:"require_signed"`
+	MergeMethod   string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
 // syncing task directories to S3.
 type TaskSyncOptions struct {
-	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled"`
-	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled"`
+	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled" yaml:"config_enabled"`
+	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled" yaml:"patch_enabled"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -174,13 +174,13 @@ type PeriodicBuildDefinition struct {
 }
 
 type WorkstationConfig struct {
-	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      *bool                     `bson:"git_clone" json:"git_clone"`
+	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands" yaml:"setup_commands"`
+	GitClone      *bool                     `bson:"git_clone" json:"git_clone" yaml:"git_clone"`
 }
 
 type WorkstationSetupCommand struct {
-	Command   string `bson:"command" json:"command"`
-	Directory string `bson:"directory" json:"directory"`
+	Command   string `bson:"command" json:"command" yaml:"command"`
+	Directory string `bson:"directory" json:"directory" yaml:"directory"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
