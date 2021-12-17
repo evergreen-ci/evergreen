@@ -143,6 +143,7 @@ func TestMacSignExecute(t *testing.T) {
 				"notarize":          true,
 				"bundle_id":         "bundleId",
 				"working_directory": "shouldbecreated",
+				"verify":            true,
 			},
 			executableContent: "#!/bin/sh \nexit 1",
 			shouldErr:         true,
@@ -157,6 +158,7 @@ func TestMacSignExecute(t *testing.T) {
 				"service_url":     "url",
 				"notarize":        true,
 				"bundle_id":       "bundleId",
+				"verify":          true,
 			},
 			executableContent: fmt.Sprintf("#!/bin/sh \ntouch %s && exit 0", filepath.Join(t.TempDir(), "output.zip")),
 			shouldErr:         false,
@@ -175,6 +177,8 @@ func TestMacSignExecute(t *testing.T) {
 				tc.params["client_binary"] = mockClientBinary
 				err := cmd.ParseParams(tc.params)
 				assert.NoError(t, err)
+
+				assert.NoError(t, cmd.validate())
 
 				comm := client.NewMock("http://localhost.com")
 				conf := &internal.TaskConfig{
