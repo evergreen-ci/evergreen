@@ -1838,7 +1838,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 			failingTests = append(failingTests, f.TestName)
 		}
 
-		results, err := getCedarFailedTestResultsSample(ctx, t, failingTests)
+		results, err := getCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 		}
@@ -1852,14 +1852,11 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 			testResultsToReturn = append(testResultsToReturn, tr)
 		}
 	} else {
-		regexFilter := ""
-		for i, f := range testFilters {
-			regexFilter += f.TestName
-			// If there is another test filter add a pipe to separate them
-			if i < len(testFilters)-1 {
-				regexFilter += "|"
-			}
+		filters := []string{}
+		for _, f := range testFilters {
+			filters = append(filters, f.TestName)
 		}
+		regexFilter := strings.Join(filters, "|")
 		for _, t := range dbTasks {
 			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 				TaskID:    t.Id,
