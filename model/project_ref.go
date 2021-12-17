@@ -382,7 +382,8 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 				return errors.Wrapf(err, "error upserting project ref '%s'", hidden.Id)
 			}
 			if creator != nil {
-				return p.UpdateAdminRoles([]string{creator.Id}, nil)
+				_, err = p.UpdateAdminRoles([]string{creator.Id}, nil)
+				return err
 			}
 			return nil
 		}
@@ -1910,24 +1911,25 @@ func (p *ProjectRef) MakeUnrestricted() error {
 	return nil
 }
 
-func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
+// UpdateAdminRoles returns true if any admins have been modified/removed, regardless of errors.
+func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	if len(toAdd) == 0 && len(toRemove) == 0 {
-		return nil
+		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
 	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
-		return errors.Wrap(err, "error finding role with admin permissions")
+		return false, errors.Wrap(err, "error finding role with admin permissions")
 	}
 	if role == nil {
-		return errors.Errorf("no admin role for %s found", p.Id)
+		return false, errors.Errorf("no admin role for %s found", p.Id)
 	}
 	viewRole := ""
 	allBranchAdmins := []string{}
 	if p.RepoRefId != "" {
 		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
 		if err != nil {
-			return errors.Wrapf(err, "error finding branch admins for repo '%s'", p.RepoRefId)
+			return false, errors.Wrapf(err, "error finding branch admins for repo '%s'", p.RepoRefId)
 		}
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
@@ -1979,10 +1981,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			}
 		}
 	}
-	if err = catcher.Resolve(); err != nil {
-		return errors.Wrap(err, "error updating some admins")
-	}
-	return nil
+	return true, errors.Wrap(catcher.Resolve(), "error updating some admins")
 }
 
 func (p *ProjectRef) removeFromAdminsList(user string) {
