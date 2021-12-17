@@ -271,25 +271,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	grip.Info(message.Fields{
-		"message": "patch is",
-		"patch":   p,
-	})
-	grip.Info("MALIK3 " + p.PatchedConfig)
 	intermediateProject, config, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
 			p.Githash)
 	}
-	grip.Info(message.Fields{
-		"message": "project config result",
-		"config":  config,
-	})
-	grip.Info(message.Fields{
-		"message": "project parser result",
-		"ip":      intermediateProject,
-	})
 	intermediateProject.Id = p.Id.Hex()
 	if config != nil {
 		config.Id = p.Id.Hex()

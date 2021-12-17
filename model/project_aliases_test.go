@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -192,7 +191,7 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
 
 	projectConfig := &ProjectConfig{
 		Id:         "project-1",
-		Identifier: utility.ToStringPtr("project-1"),
+		Identifier: "project-1",
 		PatchAliases: []ProjectAlias{
 			{
 				ID:        mgobson.NewObjectId(),
