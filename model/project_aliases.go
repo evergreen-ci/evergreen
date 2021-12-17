@@ -221,7 +221,7 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 			if project == nil {
 				return aliases, errors.Errorf("project '%s' does not exist", projectID)
 			}
-			if project.UseRepoSettings {
+			if project.UseRepoSettings() {
 				repoPatchAliases, err := countPatchAliases(project.RepoRefId)
 				if err != nil {
 					return nil, errors.Wrap(err, "error counting patch aliases")
