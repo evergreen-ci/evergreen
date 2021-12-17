@@ -105,8 +105,9 @@ func (macSign *macSign) validate() error {
 	if macSign.ServiceUrl == "" {
 		catcher.New("service_url cannot be blank")
 	}
-	if macSign.Verify && runtime.GOOS != "darwin" {
-		catcher.New("verify is only supported in macOS")
+	if runtime.GOOS != "darwin" {
+		// do not fail, just set verifying to false.
+		macSign.Verify = false
 	}
 	if !(macSign.ArtifactType == "" || macSign.ArtifactType == "binary" || macSign.ArtifactType == "app") {
 		catcher.New(`artifact_type needs to be either blank, "binary" or "app"`)
@@ -122,24 +123,24 @@ func (macSign *macSign) validate() error {
 // to all appropriate fields of the macSign.
 func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 	var err error
-	if err = util.ExpandValues(macSign, conf.Expansions); err != nil {
-		return errors.WithStack(err)
-	}
-
 	if macSign.WorkingDir == "" {
 		macSign.WorkingDir = conf.WorkDir
+	}
+
+	if err = util.ExpandValues(macSign, conf.Expansions); err != nil {
+		return errors.WithStack(err)
 	}
 
 	if !filepath.IsAbs(macSign.LocalZipFile) {
 		macSign.LocalZipFile = filepath.Join(macSign.WorkingDir, macSign.LocalZipFile)
 	}
-	if !filepath.IsAbs(macSign.OutputZipFile) {
+	if macSign.OutputZipFile != "" && !filepath.IsAbs(macSign.OutputZipFile) {
 		macSign.OutputZipFile = filepath.Join(macSign.WorkingDir, macSign.OutputZipFile)
 	}
-	if !filepath.IsAbs(macSign.EntitlementsFilePath) {
+	if macSign.EntitlementsFilePath != "" && !filepath.IsAbs(macSign.EntitlementsFilePath) {
 		macSign.EntitlementsFilePath = filepath.Join(macSign.WorkingDir, macSign.EntitlementsFilePath)
 	}
-	if !filepath.IsAbs(macSign.ClientBinary) {
+	if macSign.ClientBinary != "" && !filepath.IsAbs(macSign.ClientBinary) {
 		macSign.ClientBinary = filepath.Join(macSign.WorkingDir, macSign.ClientBinary)
 	}
 
@@ -187,12 +188,22 @@ func (macSign *macSign) Execute(ctx context.Context,
 		"-k", macSign.KeyId,
 		"-s", macSign.Secret,
 		"-u", macSign.ServiceUrl,
-		"--verify", fmt.Sprintf("%t", macSign.Verify),
-		"-t", macSign.ArtifactType,
-		"-e", macSign.EntitlementsFilePath,
 		"-m", signMode,
-		"-o", macSign.OutputZipFile,
-		"-b", macSign.BundleId,
+	}
+	if macSign.EntitlementsFilePath != "" {
+		args = append(args, "-e", macSign.EntitlementsFilePath)
+	}
+	if macSign.OutputZipFile != "" {
+		args = append(args, macSign.OutputZipFile)
+	}
+	if macSign.ArtifactType != "" {
+		args = append(args, "-t", macSign.ArtifactType)
+	}
+	if macSign.BundleId != "" {
+		args = append(args, "-b", macSign.BundleId)
+	}
+	if macSign.Verify {
+		args = append(args, "--verify")
 	}
 
 	cmd := exec.Command(macSign.ClientBinary, args...)
