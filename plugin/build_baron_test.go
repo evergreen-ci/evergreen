@@ -60,5 +60,5 @@ func TestBbGetProject(t *testing.T) {
 	assert.True(t, ok2)
 	assert.Equal(t, bbProj.TicketCreateProject, "BFG")
 	assert.Equal(t, bbProj2.TicketCreateProject, "123")
-	assert.Equal(t, bbProj2.TicketSearchProjects, []string{"ABC"})
+	assert.Equal(t, bbProj2.TicketSearchProjects, []string{"EVG"})
 }
