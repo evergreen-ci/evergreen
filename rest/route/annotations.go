@@ -8,11 +8,11 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -116,9 +116,9 @@ func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Re
 	if !allExecutions {
 		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
 	}
-	var res []model.APITaskAnnotation
+	var res []restModel.APITaskAnnotation
 	for _, a := range annotationsToReturn {
-		apiAnnotation := model.APITaskAnnotationBuildFromService(a)
+		apiAnnotation := restModel.APITaskAnnotationBuildFromService(a)
 		res = append(res, *apiAnnotation)
 	}
 
@@ -195,10 +195,10 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding task annotation"))
 		}
 		if a == nil {
-			return gimlet.NewJSONResponse([]model.APITaskAnnotation{})
+			return gimlet.NewJSONResponse([]restModel.APITaskAnnotation{})
 		}
-		taskAnnotation := model.APITaskAnnotationBuildFromService(*a)
-		return gimlet.NewJSONResponse([]model.APITaskAnnotation{*taskAnnotation})
+		taskAnnotation := restModel.APITaskAnnotationBuildFromService(*a)
+		return gimlet.NewJSONResponse([]restModel.APITaskAnnotation{*taskAnnotation})
 	}
 
 	allAnnotations, err := annotations.FindByTaskId(h.taskId)
@@ -211,9 +211,9 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		annotationsToReturn = annotations.GetLatestExecutions(allAnnotations)
 	}
 
-	var res []model.APITaskAnnotation
+	var res []restModel.APITaskAnnotation
 	for _, a := range annotationsToReturn {
-		apiAnnotation := model.APITaskAnnotationBuildFromService(a)
+		apiAnnotation := restModel.APITaskAnnotationBuildFromService(a)
 		res = append(res, *apiAnnotation)
 	}
 
@@ -228,7 +228,7 @@ type annotationByTaskPutHandler struct {
 	taskId string
 
 	user       gimlet.User
-	annotation *model.APITaskAnnotation
+	annotation *restModel.APITaskAnnotation
 	sc         data.Connector
 }
 
@@ -255,7 +255,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.annotation)
 	if err != nil {
@@ -337,7 +337,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.UpdateAnnotation(model.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := annotations.UpdateAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -360,7 +360,7 @@ type createdTicketByTaskPutHandler struct {
 	taskId    string
 	execution int
 	user      gimlet.User
-	ticket    *model.APIIssueLink
+	ticket    *restModel.APIIssueLink
 	sc        data.Connector
 }
 
@@ -416,7 +416,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	}
 	// if there is no custom webhook configured, return an error because the
 	// purpose of this endpoint is to store the ticket created by the web-hook
-	_, ok, err := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("Error while retrieving webhook config: '%s'", err.Error()),
@@ -430,7 +430,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 		}
 	}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.ticket)
 	if err != nil {
@@ -454,7 +454,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (h *createdTicketByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.AddCreatedTicket(h.taskId, h.execution, *model.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
+	err := annotations.AddCreatedTicket(h.taskId, h.execution, *restModel.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

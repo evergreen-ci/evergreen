@@ -266,6 +266,7 @@ const (
 // addAgentPodSettings adds any pod configuration that is necessary to run the
 // agent.
 func addAgentPodSettings(p *pod.Pod) {
+	p.Type = pod.TypeAgent
 	if p.Secret.Name == "" {
 		p.Secret.Name = podSecretEnvVar
 	}

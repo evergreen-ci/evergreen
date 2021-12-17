@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -92,7 +91,7 @@ func (h *distroIDChangeSetupHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the distroId and JSON payload from the http request.
 func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroID = gimlet.GetVars(r)["distro_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, h); err != nil {
@@ -148,7 +147,7 @@ func (h *distroIDPutHandler) Factory() gimlet.RouteHandler {
 func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroID = gimlet.GetVars(r)["distro_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -296,7 +295,7 @@ func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the distroId from the http request.
 func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroID = gimlet.GetVars(r)["distro_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -470,7 +469,7 @@ func (h *modifyDistrosSettingsHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -702,7 +701,7 @@ func (h *distroExecuteHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the distro and JSON payload from the http request.
 func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distro = gimlet.GetVars(r)["distro_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, &h.opts); err != nil {
@@ -780,7 +779,7 @@ func (h *distroIcecreamConfigHandler) Factory() gimlet.RouteHandler {
 // Parse extracts the distro and JSON payload from the http request.
 func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distro = gimlet.GetVars(r)["distro_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, &h.opts); err != nil {

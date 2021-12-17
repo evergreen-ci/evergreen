@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -29,7 +28,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}{}
 
-	if err := utility.ReadJSON(util.NewRequestReader(r), &creds); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &creds); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -58,7 +57,7 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}{}
 
-	if err := utility.ReadJSON(util.NewRequestReader(r), &creds); err != nil {
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &creds); err != nil {
 		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "malformed request",
 			StatusCode: http.StatusBadRequest,

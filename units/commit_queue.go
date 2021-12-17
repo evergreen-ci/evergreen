@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -52,8 +51,6 @@ func makeCommitQueueJob() *commitQueueJob {
 			},
 		},
 	}
-	job.SetDependency(dependency.NewAlways())
-
 	return job
 }
 

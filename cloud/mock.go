@@ -264,9 +264,6 @@ func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Ho
 	if !ok {
 		return errors.Errorf("unable to fetch host: %s", host.Id)
 	}
-	if host.Status == evergreen.HostTerminated {
-		return errors.Errorf("Cannot terminate %s; already marked as terminated!", host.Id)
-	}
 
 	instance.Status = StatusTerminated
 	mockMgr.Instances[host.Id] = instance

@@ -137,6 +137,7 @@ type Connector interface {
 	// GetProjectVersionsWithOptions returns the batch of project versions
 	GetProjectVersionsWithOptions(string, model.GetVersionsOptions) ([]restModel.APIVersion, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
+	GetRepoEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
 
 	// Given a version and a project ID, return the translated project and the intermediate project.

@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -80,6 +79,7 @@ func (r *Resolver) RepoRef() RepoRefResolver {
 func (r *Resolver) Annotation() AnnotationResolver {
 	return &annotationResolver{r}
 }
+
 func (r *Resolver) TaskLogs() TaskLogsResolver {
 	return &taskLogsResolver{r}
 }
@@ -1086,6 +1086,34 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 	return res, nil
 }
 
+func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*ProjectEvents, error) {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
+	events, err := r.sc.GetProjectEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	res := &ProjectEvents{
+		EventLogEntries: getPointerEventList(events),
+		Count:           len(events),
+	}
+	return res, err
+}
+
+func (r *queryResolver) RepoEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*RepoEvents, error) {
+	timestamp := time.Now()
+	if before != nil {
+		timestamp = *before
+	}
+
+	events, err := r.sc.GetRepoEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	res := &RepoEvents{
+		EventLogEntries: getPointerEventList(events),
+		Count:           len(events),
+	}
+	return res, err
+}
+
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	i, err := project.ToService()
 	if err != nil {
@@ -1789,6 +1817,42 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}, nil
 }
 
+func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, testFilters []*TestFilter) ([]*TaskTestResultSample, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+	t, err := task.Find(task.ByIds(tasks))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
+	}
+	// We can assume that if one of the tasks has cedar results, all of them do.
+	if t[0].HasCedarResults {
+		failingTests := []string{}
+		for _, f := range testFilters {
+			failingTests = append(failingTests, f.TestName)
+		}
+
+		results, err := getCedarFailedTestResultsSample(ctx, t, failingTests)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+		}
+		testResultsToReturn := []*TaskTestResultSample{}
+		for _, r := range results {
+			tr := &TaskTestResultSample{
+				TaskID:                  utility.FromStringPtr(r.TaskID),
+				Execution:               r.Execution,
+				MatchingFailedTestNames: r.MatchingFailedTestNames,
+				TotalTestCount:          r.TotalFailedNames,
+			}
+			testResultsToReturn = append(testResultsToReturn, tr)
+		}
+		return testResultsToReturn, nil
+	}
+	return nil, nil
+}
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
@@ -3154,49 +3218,23 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, err
+	if !model.IsPerfEnabledForProject(*obj.ProjectId) {
+		return false, nil
 	}
-	if flags.PluginAdminPageDisabled {
-		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
-	} else {
-		var perfPlugin *plugin.PerfPlugin
-		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false, false)
-		if err != nil {
-			return false, err
-		}
-		if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
-			err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
-			if err != nil {
-				return false, err
-			}
-			projectMatches := false
-			for _, projectName := range perfPlugin.Projects {
-				if projectName == pRef.Id || projectName == pRef.Identifier {
-					projectMatches = true
-					break
-				}
-			}
-			if !projectMatches {
-				return false, nil
-			}
-		}
-		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:    utility.FromStringPtr(obj.Id),
-			Execution: obj.Execution,
-		}
-		if opts.BaseURL == "" {
-			return false, nil
-		}
-		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
-		}
-		if result.NumberOfResults == 0 {
-			return false, nil
-		}
+	opts := apimodels.GetCedarPerfCountOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:    utility.FromStringPtr(obj.Id),
+		Execution: obj.Execution,
+	}
+	if opts.BaseURL == "" {
+		return false, nil
+	}
+	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+	}
+	if result.NumberOfResults == 0 {
+		return false, nil
 	}
 	return true, nil
 }
@@ -3909,7 +3947,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	_, ok, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
 }
 

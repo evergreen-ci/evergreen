@@ -681,3 +681,9 @@ func ModifyVolumeBadRequest(err error) bool {
 	}
 	return false
 }
+
+// IsEC2InstanceID returns whether or not a host's ID is an EC2 instance ID or
+// not.
+func IsEC2InstanceID(id string) bool {
+	return strings.HasPrefix(id, "i-")
+}

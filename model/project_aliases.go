@@ -257,7 +257,7 @@ func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) (
 	if project == nil {
 		return aliases, errors.Errorf("project '%s' does not exist", projectID)
 	}
-	if !project.UseRepoSettings {
+	if !project.UseRepoSettings() {
 		return aliases, nil
 	}
 
