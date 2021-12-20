@@ -211,6 +211,14 @@ func (c *podCommunicator) SetDownstreamParams(ctx context.Context, downstreamPar
 	return errors.New("TODO: implement")
 }
 
+func (c *podCommunicator) NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error) {
+	return nil, errors.New("TODO: implement")
+}
+
+func (c *podCommunicator) UpdatePushStatus(context.Context, TaskData, *model.PushLog) error {
+	return errors.New("TODO: implement")
+}
+
 func (c *podCommunicator) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
 	return nil, errors.New("TODO: implement")
 }

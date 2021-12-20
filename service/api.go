@@ -440,6 +440,80 @@ func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request)
 	gimlet.WriteJSON(w, fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
 }
 
+// NewPush updates when a task is pushing to s3 for s3 copy
+func (as *APIServer) NewPush(w http.ResponseWriter, r *http.Request) {
+	task := MustHaveTask(r)
+	s3CopyReq := &apimodels.S3CopyRequest{}
+
+	if err := utility.ReadJSON(utility.NewRequestReader(r), s3CopyReq); err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	// Get the version for this task, so we can check if it has
+	// any already-done pushes
+	v, err := model.VersionFindOne(model.VersionById(task.Version))
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "problem querying task %s with version id %s",
+				task.Id, task.Version))
+		return
+	}
+
+	// Check for an already-pushed file with this same file path,
+	// but from a conflicting or newer commit sequence num
+	if v == nil {
+		as.LoggedError(w, r, http.StatusNotFound,
+			errors.Errorf("no version found for build '%s'", task.BuildId))
+		return
+	}
+
+	copyToLocation := strings.Join([]string{s3CopyReq.S3DestinationBucket, s3CopyReq.S3DestinationPath}, "/")
+
+	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "problem querying for push log at %s (build=%s)",
+				copyToLocation, task.BuildId))
+		return
+	}
+	if newestPushLog != nil {
+		grip.Warningln("conflict with existing pushed file:", copyToLocation)
+		gimlet.WriteJSON(w, nil)
+		return
+	}
+
+	// It's now safe to put the file in its permanent location.
+	newPushLog := model.NewPushLog(v, task, copyToLocation)
+	if err = newPushLog.Insert(); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "failed to create new push log: %+v", newPushLog))
+	}
+	gimlet.WriteJSON(w, newPushLog)
+}
+
+// UpdatePushStatus updates the status for a file that a task is pushing to s3 for s3 copy
+func (as *APIServer) UpdatePushStatus(w http.ResponseWriter, r *http.Request) {
+	task := MustHaveTask(r)
+	pushLog := &model.PushLog{}
+	err := utility.ReadJSON(utility.NewRequestReader(r), pushLog)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	err = errors.Wrapf(pushLog.UpdateStatus(pushLog.Status),
+		"updating pushlog status failed for task %s", task.Id)
+	if err != nil {
+		grip.Error(err)
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "updating pushlog status failed for task %s", task.Id))
+		return
+	}
+
+	gimlet.WriteJSON(w, nil)
+}
+
 // AppendTaskLog appends the received logs to the task's internal logs.
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	if as.GetSettings().ServiceFlags.TaskLoggingDisabled {
@@ -678,11 +752,12 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(requireTask, requireHost).Handler(as.GetExpansions).Get()
 
 	// plugins
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/newPush").Wrap(requireTask).Handler(as.NewPush).Post()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/updatePushStatus").Wrap(requireTask).Handler(as.UpdatePushStatus).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(requireTaskSecret).Handler(as.gitServePatchFile).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(requireTaskSecret).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(requireTask).Handler(as.keyValPluginInc).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(requireTask).Handler(as.manifestLoadHandler).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(requireTaskSecret).Handler(as.s3copyPlugin).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(requireTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTagsForTask).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTaskHistory).Get()
