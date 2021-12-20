@@ -34,7 +34,6 @@ type Build struct {
 	Project             string        `bson:"branch" json:"branch,omitempty"`
 	Revision            string        `bson:"gitspec" json:"gitspec,omitempty"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant,omitempty"`
-	BuildNumber         string        `bson:"build_number" json:"build_number,omitempty"`
 	Status              string        `bson:"status" json:"status,omitempty"`
 	Activated           bool          `bson:"activated" json:"activated,omitempty"`
 	ActivatedBy         string        `bson:"activated_by" json:"activated_by,omitempty"`

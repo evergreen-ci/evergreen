@@ -66,7 +66,6 @@ func TestGetBuildInfo(t *testing.T) {
 			Project:             projectName,
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			BuildVariant:        "some-build-variant",
-			BuildNumber:         "42",
 			Status:              "success",
 			Activated:           true,
 			ActivatedTime:       time.Now().Add(-15 * time.Minute),
@@ -119,7 +118,6 @@ func TestGetBuildInfo(t *testing.T) {
 			So(jsonBody["project"], ShouldEqual, build.Project)
 			So(jsonBody["revision"], ShouldEqual, build.Revision)
 			So(jsonBody["variant"], ShouldEqual, build.BuildVariant)
-			So(jsonBody["number"], ShouldEqual, build.BuildNumber)
 			So(jsonBody["status"], ShouldEqual, build.Status)
 			So(jsonBody["activated"], ShouldEqual, build.Activated)
 
