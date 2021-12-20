@@ -194,7 +194,7 @@ func (macSign *macSign) Execute(ctx context.Context,
 		args = append(args, "-e", macSign.EntitlementsFilePath)
 	}
 	if macSign.OutputZipFile != "" {
-		args = append(args, macSign.OutputZipFile)
+		args = append(args, "-o", macSign.OutputZipFile)
 	}
 	if macSign.ArtifactType != "" {
 		args = append(args, "-t", macSign.ArtifactType)
