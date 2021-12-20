@@ -202,6 +202,13 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 
 	var foundDottedBucketName bool
 
+	client := utility.GetHTTPClient()
+	client.Timeout = 10 * time.Minute
+	defer utility.PutHTTPClient(client)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, s3CopyFile := range s3pc.S3CopyFiles {
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
@@ -240,9 +247,6 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 		s3CopyReq.AwsSecret = s3pc.AwsSecret
 
 		// Now copy the file into the permanent location
-		client := utility.GetHTTPClient()
-		client.Timeout = 10 * time.Minute
-		defer utility.PutHTTPClient(client)
 		srcOpts := pail.S3Options{
 			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 			Region:      s3CopyReq.S3SourceRegion,
@@ -250,8 +254,6 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
 		if err != nil {
 			grip.Error(errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket"))
