@@ -1,6 +1,8 @@
 package global
 
 // Global stores internal global tracking information for each build variant.
+// TODO (EVG-16009): delete this model, as it is only used for populating the
+// unused field BuildNumber.
 type Global struct {
 	// BuildVariant is the name of the stored build variant.
 	BuildVariant string `bson:"_id"`
