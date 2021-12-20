@@ -72,7 +72,7 @@ func (h *podPostHandler) validatePayload() error {
 	return catcher.Resolve()
 }
 
-// Run creates a new resource based on the Request-URI and JSON payload.
+// Run creates a new pod based on the request payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 	res, err := h.sc.CreatePod(h.p)
 	if err != nil {
@@ -127,7 +127,7 @@ func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Run creates a new resource based on the Request-URI and JSON payload.
+// Run finds and returns the REST pod.
 func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
 	p, err := h.sc.FindPodByID(h.podID)
 	if err != nil {
