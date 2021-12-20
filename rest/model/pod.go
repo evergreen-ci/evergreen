@@ -177,16 +177,13 @@ func (t *APIPodType) BuildFromService(pt pod.Type) error {
 }
 
 // ToService converts a REST API pod type into a service-layer pod type.
-func (t *APIPodType) ToService() (*pod.Type, error) {
-	if t == nil {
-		return nil, errors.New("nonexistent pod type")
-	}
+func (t APIPodType) ToService() (*pod.Type, error) {
 	var converted pod.Type
-	switch *t {
+	switch t {
 	case PodTypeAgent:
 		converted = pod.TypeAgent
 	default:
-		return nil, errors.Errorf("unrecognized pod type '%s'", *t)
+		return nil, errors.Errorf("unrecognized pod type '%s'", t)
 	}
 	return &converted, nil
 }
@@ -225,12 +222,9 @@ func (s *APIPodStatus) BuildFromService(ps pod.Status) error {
 }
 
 // ToService converts a REST API pod status into a service-layer pod status.
-func (s *APIPodStatus) ToService() (*pod.Status, error) {
-	if s == nil {
-		return nil, errors.New("nonexistent pod status")
-	}
+func (s APIPodStatus) ToService() (*pod.Status, error) {
 	var converted pod.Status
-	switch *s {
+	switch s {
 	case PodStatusInitializing:
 		converted = pod.StatusInitializing
 	case PodStatusStarting:
@@ -242,7 +236,7 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 	case PodStatusTerminated:
 		converted = pod.StatusTerminated
 	default:
-		return nil, errors.Errorf("unrecognized pod status '%s'", *s)
+		return nil, errors.Errorf("unrecognized pod status '%s'", s)
 	}
 	return &converted, nil
 }
