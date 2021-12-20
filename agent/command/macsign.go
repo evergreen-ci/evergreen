@@ -134,7 +134,7 @@ func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 	if !filepath.IsAbs(macSign.LocalZipFile) {
 		macSign.LocalZipFile = filepath.Join(macSign.WorkingDir, macSign.LocalZipFile)
 	}
-	if macSign.OutputZipFile != "" && !filepath.IsAbs(macSign.OutputZipFile) {
+	if !filepath.IsAbs(macSign.OutputZipFile) {
 		macSign.OutputZipFile = filepath.Join(macSign.WorkingDir, macSign.OutputZipFile)
 	}
 	if macSign.EntitlementsFilePath != "" && !filepath.IsAbs(macSign.EntitlementsFilePath) {
