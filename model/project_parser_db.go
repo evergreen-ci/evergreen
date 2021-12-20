@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -122,6 +123,24 @@ func ParserProjectByVersion(projectId, version string) (*ParserProject, error) {
 	return parserProject, nil
 }
 
+func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
+		ParserProjectParametersKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding parser project")
+	}
+	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
+		if v.Config == "" {
+			return nil, errors.New("version has no config")
+		}
+		pp, err = createIntermediateProject([]byte(v.Config))
+		if err != nil {
+			return nil, errors.Wrap(err, "error parsing legacy config")
+		}
+	}
+	return pp.GetParameters(), nil
+}
+
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
 		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
@@ -200,4 +219,12 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
 	return nil
+}
+
+func (pp *ParserProject) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range pp.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }
