@@ -346,12 +346,12 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	proj, _, err := model.LoadProjectForVersion(v, t.Project, false)
+	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	params := append(proj.GetParameters(), v.Parameters...)
+	params := append(projParams, v.Parameters...)
 	for _, param := range params {
 		res.Vars[param.Key] = param.Value
 	}
