@@ -11,7 +11,7 @@
               "spawnHostScriptPath": ""
             },
             "vars": {
-              "vars": {"hello": "world", "foo":  "bar"}
+              "vars": {"hello": "", "foo":  "bar"}
             }
           }
         }
@@ -23,7 +23,7 @@
         "data": {
           "saveProjectSettingsForSection": {
             "vars": {
-              "vars": {"goodbye":  "now"},
+              "vars": {"goodbye":  ""},
               "privateVars": ["goodbye"]
             }
           }
