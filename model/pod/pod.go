@@ -36,7 +36,7 @@ type Type string
 const (
 	// TypeAgent indicates that it is a pod that is running the Evergreen agent
 	// in a container.
-	TypeAgent = "agent"
+	TypeAgent Type = "agent"
 )
 
 // Status represents a possible state for a pod.

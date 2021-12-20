@@ -45,7 +45,7 @@ func TestPodConnector(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, apiPod)
 
-			require.NotZero(t, apiPod.Status)
+			assert.Equal(t, model.PodTypeAgent, apiPod.Type)
 			assert.Equal(t, model.PodStatusInitializing, apiPod.Status)
 			assert.Equal(t, podSecretEnvVar, utility.FromStringPtr(apiPod.Secret.Name))
 			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(apiPod.Secret.Value))
@@ -60,6 +60,7 @@ func TestPodConnector(t *testing.T) {
 		"FindPodByIDSucceeds": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
 				ID:     "id",
+				Type:   pod.TypeAgent,
 				Status: pod.StatusInitializing,
 				Secret: pod.Secret{
 					Name:       podSecretEnvVar,
@@ -85,7 +86,8 @@ func TestPodConnector(t *testing.T) {
 		},
 		"FindPodByExternalIDSucceeds": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
-				ID: "id",
+				ID:   "id",
+				Type: pod.TypeAgent,
 				Secret: pod.Secret{
 					Name:       podSecretEnvVar,
 					Value:      "secret_value",
@@ -115,6 +117,7 @@ func TestPodConnector(t *testing.T) {
 		"UpdatePodStatusSucceeds": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
 				ID:     "id",
+				Type:   pod.TypeAgent,
 				Status: pod.StatusRunning,
 			}
 			require.NoError(t, p.Insert())
@@ -136,7 +139,8 @@ func TestPodConnector(t *testing.T) {
 		},
 		"CheckPodSecret": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
-				ID: "id",
+				ID:   "id",
+				Type: pod.TypeAgent,
 				Secret: pod.Secret{
 					Name:       podSecretEnvVar,
 					Value:      "secret_value",

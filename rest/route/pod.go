@@ -96,3 +96,49 @@ func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return responder
 }
+
+////////////////////////////////////////////////
+//
+// GET /rest/v2/pods/{pod_id}
+
+type podGetHandler struct {
+	env   evergreen.Environment
+	sc    data.Connector
+	podID string
+}
+
+func makeGetPod(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
+	return &podGetHandler{
+		env: env,
+		sc:  sc,
+	}
+}
+
+func (h *podGetHandler) Factory() gimlet.RouteHandler {
+	return &podGetHandler{
+		env: h.env,
+		sc:  h.sc,
+	}
+}
+
+// Parse fetches the podID and JSON payload from the HTTP request.
+func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.podID = gimlet.GetVars(r)["pod_id"]
+	return nil
+}
+
+// Run creates a new resource based on the Request-URI and JSON payload.
+func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
+	p, err := h.sc.FindPodByID(h.podID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding pod"))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "pod not found",
+		})
+	}
+
+	return gimlet.NewJSONResponse(p)
+}

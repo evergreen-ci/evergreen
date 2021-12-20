@@ -146,6 +146,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/pods/{pod_id}/agent/setup").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentSetup(env.Settings()))
 	app.AddRoute("/pods/{pod_id}/agent/next_task").Version(2).Get().Wrap(requirePod).RouteHandler(makePodAgentNextTask(env, sc))
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env, sc))
+	app.AddRoute("/pods/{pod_id}").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetPod(env, sc))
 	app.AddRoute("/projects").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/test_alias").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetProjectAliasResultsHandler(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject(sc))
