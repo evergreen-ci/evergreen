@@ -113,10 +113,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	patchID := mgobson.NewObjectId()
 	author := dbUser.Id
-	grip.Debug(message.Fields{
-		"message":       "testing user",
-		"github_author": data.GithubAuthor,
-	})
 	if data.GithubAuthor != "" {
 		opts := gimlet.PermissionOpts{
 			Resource:      pref.Id,
@@ -131,6 +127,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author"))
+			return
 		}
 		if specifiedUser != nil {
 			grip.Info(message.Fields{
