@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -411,21 +410,6 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	if t == nil {
 		return gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	// if there is no custom webhook configured, return an error because the
-	// purpose of this endpoint is to store the ticket created by the web-hook
-	_, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("Error while retrieving webhook config: '%s'", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	if !ok {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("there is no webhook configured for '%s'", t.Project),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
