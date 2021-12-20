@@ -95,9 +95,10 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 }
 
 type ValidationInput struct {
-	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
-	Quiet       bool   `json:"quiet" yaml:"quiet"`
-	IncludeLong bool   `json:"include_long" yaml:"include_long"`
+	ProjectYaml       []byte `json:"project_yaml" yaml:"project_yaml"`
+	Quiet             bool   `json:"quiet" yaml:"quiet"`
+	IncludeLong       bool   `json:"include_long" yaml:"include_long"`
+	ProjectIdentifier string `json:"project_identifier" yaml:"project_identifier"`
 }
 
 // Functions used to validate the syntax of a project configuration file.

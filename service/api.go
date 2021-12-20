@@ -533,8 +533,10 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
+
 	body := utility.NewRequestReader(r)
 	defer body.Close()
+
 	bytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
@@ -560,9 +562,27 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	errs := validator.CheckYamlStrict(input.ProjectYaml)
+	errs := validator.ValidationErrors{}
+	if input.ProjectIdentifier != "" {
+		projectRef, err := model.FindBranchProjectRef(input.ProjectIdentifier)
+		if err != nil {
+			validationErr.Message = "error finding project; validation will proceed without checking project settings\n"
+			validationErr.Level = validator.Warning
+			errs = append(errs, validationErr)
+
+		} else if projectRef == nil {
+			validationErr.Message = "project does not exist; validation will proceed without checking project settings\n"
+			validationErr.Level = validator.Warning
+			errs = append(errs, validationErr)
+		} else {
+			errs = append(errs, validator.CheckProjectSettings(project, projectRef)...)
+		}
+	}
+
+	errs = append(errs, validator.CheckYamlStrict(input.ProjectYaml)...)
 	errs = append(errs, validator.CheckProjectSyntax(project, input.IncludeLong)...)
 	errs = append(errs, validator.CheckProjectSemantics(project)...)
+
 	if len(errs) > 0 {
 		if input.Quiet {
 			errs = errs.AtLevel(validator.Error)
