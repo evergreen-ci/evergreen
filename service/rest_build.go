@@ -23,6 +23,7 @@ type restBuild struct {
 	Project             string            `json:"project"`
 	Revision            string            `json:"revision"`
 	BuildVariant        string            `json:"variant"`
+	BuildNumber         string            `json:"number"`
 	Status              string            `json:"status"`
 	Activated           bool              `json:"activated"`
 	ActivatedTime       time.Time         `json:"activated_time"`
@@ -67,6 +68,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	destBuild.Project = b.Project
 	destBuild.Revision = b.Revision
 	destBuild.BuildVariant = b.BuildVariant
+	destBuild.BuildNumber = b.BuildNumber
 	destBuild.Status = b.Status
 	destBuild.Activated = b.Activated
 	destBuild.ActivatedTime = b.ActivatedTime
