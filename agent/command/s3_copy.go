@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -122,13 +123,34 @@ func (s3pc *s3copy) validate() error {
 
 	// make sure the command params are valid
 	if s3pc.AwsKey == "" {
-		catcher.Add(errors.New("aws_key cannot be blank"))
+		catcher.New("aws_key cannot be blank")
 	}
 	if s3pc.AwsSecret == "" {
-		catcher.Add(errors.New("aws_secret cannot be blank"))
+		catcher.New("aws_secret cannot be blank")
 	}
 
 	for _, s3CopyFile := range s3pc.S3CopyFiles {
+		if s3CopyFile.Source.Path == "" {
+			return errors.New("s3 source path cannot be blank")
+		}
+		if s3CopyFile.Destination.Path == "" {
+			return errors.New("s3 destination path cannot be blank")
+		}
+		if s3CopyFile.Permissions == "" {
+			s3CopyFile.Permissions = s3.BucketCannedACLPublicRead
+		}
+		if s3CopyFile.Source.Region == "" {
+			s3CopyFile.Source.Region = endpoints.UsEast1RegionID
+		}
+		if s3CopyFile.Destination.Region == "" {
+			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
+		}
+		if s3CopyFile.Source.Bucket == "" {
+			return errors.New("s3 source bucket cannot be blank")
+		}
+		if s3CopyFile.Destination.Bucket == "" {
+			return errors.New("s3 destination bucket cannot be blank")
+		}
 		// make sure both buckets are valid
 		if err := validateS3BucketName(s3CopyFile.Source.Bucket); err != nil {
 			return errors.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Source.Bucket)
@@ -137,25 +159,9 @@ func (s3pc *s3copy) validate() error {
 			return errors.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Destination.Bucket)
 		}
 
-		if s3CopyFile.Source.Region == "" {
-			s3CopyFile.Source.Region = endpoints.UsEast1RegionID
-		}
-		if s3CopyFile.Destination.Region == "" {
-			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
-		}
 	}
 
 	return catcher.Resolve()
-}
-
-// Apply the expansions from the relevant task config (including restricted expansion)
-// to all appropriate fields of the s3put.
-func (s3pc *s3copy) expandParams(conf *internal.TaskConfig) error {
-	var err error
-	if err = util.ExpandValues(s3pc, conf.GetExpansionsWithRestricted()); err != nil {
-		return errors.WithStack(err)
-	}
-	return nil
 }
 
 // Implementation of Execute.  Expands the parameters, and then copies the
@@ -164,7 +170,7 @@ func (s3pc *s3copy) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// expand necessary params
-	if err := s3pc.expandParams(conf); err != nil {
+	if err := util.ExpandValues(s3pc, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
 	// re-validate command here, in case an expansion is not defined
