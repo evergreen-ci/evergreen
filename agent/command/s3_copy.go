@@ -48,7 +48,6 @@ type s3copy struct {
 	//  E.g. text/html, application/pdf, image/jpeg, ...
 	ContentType string `mapstructure:"content_type" plugin:"expand"`
 
-	taskdata client.TaskData
 	base
 }
 
@@ -96,45 +95,45 @@ type s3Loc struct {
 	Path string `mapstructure:"path" plugin:"expand"`
 }
 
-func s3CopyFactory() Command      { return &s3copy{} }
-func (s3pc *s3copy) Name() string { return "s3Copy.copy" }
+func s3CopyFactory() Command   { return &s3copy{} }
+func (c *s3copy) Name() string { return "s3Copy.copy" }
 
 // ParseParams decodes the S3 push command parameters
-func (s3pc *s3copy) ParseParams(params map[string]interface{}) error {
+func (c *s3copy) ParseParams(params map[string]interface{}) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
-		Result:           s3pc,
+		Result:           c,
 	})
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	if err := decoder.Decode(params); err != nil {
-		return errors.Wrapf(err, "error decoding %s params", s3pc.Name())
+		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
 
-	return s3pc.validate()
+	return c.validate()
 }
 
 // validateParams is a helper function that ensures all
 // the fields necessary for carrying out an S3 copy operation are present
-func (s3pc *s3copy) validate() error {
+func (c *s3copy) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
 	// make sure the command params are valid
-	if s3pc.AwsKey == "" {
+	if c.AwsKey == "" {
 		catcher.New("aws_key cannot be blank")
 	}
-	if s3pc.AwsSecret == "" {
+	if c.AwsSecret == "" {
 		catcher.New("aws_secret cannot be blank")
 	}
 
-	for _, s3CopyFile := range s3pc.S3CopyFiles {
+	for _, s3CopyFile := range c.S3CopyFiles {
 		if s3CopyFile.Source.Path == "" {
-			return errors.New("s3 source path cannot be blank")
+			catcher.New("s3 source path cannot be blank")
 		}
 		if s3CopyFile.Destination.Path == "" {
-			return errors.New("s3 destination path cannot be blank")
+			catcher.New("s3 destination path cannot be blank")
 		}
 		if s3CopyFile.Permissions == "" {
 			s3CopyFile.Permissions = s3.BucketCannedACLPublicRead
@@ -146,17 +145,17 @@ func (s3pc *s3copy) validate() error {
 			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
 		}
 		if s3CopyFile.Source.Bucket == "" {
-			return errors.New("s3 source bucket cannot be blank")
+			catcher.New("s3 source bucket cannot be blank")
 		}
 		if s3CopyFile.Destination.Bucket == "" {
-			return errors.New("s3 destination bucket cannot be blank")
+			catcher.New("s3 destination bucket cannot be blank")
 		}
 		// make sure both buckets are valid
 		if err := validateS3BucketName(s3CopyFile.Source.Bucket); err != nil {
-			return errors.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Source.Bucket)
+			catcher.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Source.Bucket)
 		}
 		if err := validateS3BucketName(s3CopyFile.Destination.Bucket); err != nil {
-			return errors.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Destination.Bucket)
+			catcher.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Destination.Bucket)
 		}
 
 	}
@@ -166,45 +165,43 @@ func (s3pc *s3copy) validate() error {
 
 // Implementation of Execute.  Expands the parameters, and then copies the
 // resource from one s3 bucket to another one.
-func (s3pc *s3copy) Execute(ctx context.Context,
+func (c *s3copy) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	// expand necessary params
-	if err := util.ExpandValues(s3pc, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
 	// re-validate command here, in case an expansion is not defined
-	if err := s3pc.validate(); err != nil {
+	if err := c.validate(); err != nil {
 		return errors.WithStack(err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
 	errChan := make(chan error)
 	go func() {
-		errChan <- errors.WithStack(s3pc.copyWithRetry(ctx, comm, logger, conf))
+		errChan <- errors.WithStack(c.copyWithRetry(ctx, comm, logger, conf))
 	}()
 
 	select {
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of S3 Put Command")
+		logger.Execution().Info("Received signal to terminate execution of S3 copy Command")
 		return nil
 	}
 
 }
 
-func (s3pc *s3copy) copyWithRetry(ctx context.Context,
+func (c *s3copy) copyWithRetry(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	td := s3pc.taskdata
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	var foundDottedBucketName bool
 
@@ -212,10 +209,7 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 	client.Timeout = 10 * time.Minute
 	defer utility.PutHTTPClient(client)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for _, s3CopyFile := range s3pc.S3CopyFiles {
+	for _, s3CopyFile := range c.S3CopyFiles {
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
 			S3SourceBucket:      s3CopyFile.Source.Bucket,
@@ -249,8 +243,8 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
 			s3CopyFile.Destination.Path)
 
-		s3CopyReq.AwsKey = s3pc.AwsKey
-		s3CopyReq.AwsSecret = s3pc.AwsSecret
+		s3CopyReq.AwsKey = c.AwsKey
+		s3CopyReq.AwsSecret = c.AwsSecret
 
 		// Now copy the file into the permanent location
 		srcOpts := pail.S3Options{
@@ -262,7 +256,10 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 
 		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
 		if err != nil {
-			grip.Error(errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket"))
+			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
+			grip.Error(connectionErr)
+			logger.Task().Error(connectionErr)
+			return connectionErr
 		}
 
 		if err := srcBucket.Check(ctx); err != nil {
@@ -276,10 +273,13 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 		}
 		destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 		if err != nil {
-			grip.Error(errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket"))
+			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
+			grip.Error(connectionErr)
+			logger.Task().Error(connectionErr)
+			return connectionErr
 		}
 
-		for i := 1; i <= maxS3OpAttempts; i++ {
+		for i := 0; i < maxS3OpAttempts; i++ {
 			select {
 			case <-ctx.Done():
 				return errors.New("s3 put operation canceled")
@@ -296,8 +296,8 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 						return errors.Wrap(err, "updating pushlog status failed for task")
 					}
 					if s3CopyFile.Optional {
-						logger.Execution().Errorf("S3 push copy failed to copy'%s' to '%s'. File is optional, continuing \n error",
-							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						logger.Execution().Errorf("S3 push copy failed to copy'%s' to '%s'. File is optional, continuing \n error: %v",
+							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
 						continue
 					} else {
 						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error",
@@ -308,7 +308,7 @@ func (s3pc *s3copy) copyWithRetry(ctx context.Context,
 					if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
 						return errors.Wrap(err, "updating pushlog status success for task")
 					}
-					if err = s3pc.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
+					if err = c.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
 						return errors.WithStack(err)
 					}
 				}

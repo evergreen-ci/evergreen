@@ -464,7 +464,7 @@ func (as *APIServer) NewPush(w http.ResponseWriter, r *http.Request) {
 	// but from a conflicting or newer commit sequence num
 	if v == nil {
 		as.LoggedError(w, r, http.StatusNotFound,
-			errors.Errorf("no version found for build '%s'", task.BuildId))
+			errors.Errorf("no version found for '%s'", task.Id))
 		return
 	}
 
@@ -473,8 +473,8 @@ func (as *APIServer) NewPush(w http.ResponseWriter, r *http.Request) {
 	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrapf(err, "problem querying for push log at %s (build=%s)",
-				copyToLocation, task.BuildId))
+			errors.Wrapf(err, "problem querying for push log at '%s' for '%s'",
+				copyToLocation, task.Id))
 		return
 	}
 	if newestPushLog != nil {
@@ -505,7 +505,12 @@ func (as *APIServer) UpdatePushStatus(w http.ResponseWriter, r *http.Request) {
 	err = errors.Wrapf(pushLog.UpdateStatus(pushLog.Status),
 		"updating pushlog status failed for task %s", task.Id)
 	if err != nil {
-		grip.Error(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"task":      task.Id,
+			"project":   task.Project,
+			"version":   task.Version,
+			"execution": task.Execution,
+		}))
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "updating pushlog status failed for task %s", task.Id))
 		return
