@@ -41,7 +41,7 @@ func (h *podPostHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse fetches the podID and JSON payload from the HTTP request.
+// Parse fetches the pod ID and JSON payload from the HTTP request.
 func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
@@ -121,7 +121,7 @@ func (h *podGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse fetches the podID and JSON payload from the HTTP request.
+// Parse fetches the pod ID from the HTTP request.
 func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.podID = gimlet.GetVars(r)["pod_id"]
 	return nil
