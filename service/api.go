@@ -478,6 +478,7 @@ func (as *APIServer) NewPush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if newestPushLog != nil {
+		// the error is not being returned in order to avoid a retry
 		grip.Warningln("conflict with existing pushed file:", copyToLocation)
 		gimlet.WriteJSON(w, nil)
 		return
@@ -763,6 +764,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(requireTaskSecret).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(requireTask).Handler(as.keyValPluginInc).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(requireTask).Handler(as.manifestLoadHandler).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(requireTaskSecret).Handler(as.s3copyPlugin).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(requireTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTagsForTask).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTaskHistory).Get()
