@@ -30,7 +30,7 @@ func Validate() cli.Command {
 			Name:  joinFlagNames(localModulesFlagName, "lm"),
 			Usage: "specify local modules as MODULE_NAME=PATH pairs",
 		}, cli.StringFlag{
-			Name:  joinFlagNames(projectId, "i"),
+			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
@@ -40,7 +40,7 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
 
-			identifier := c.String(projectId)
+			identifier := c.String(projectFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
