@@ -203,10 +203,7 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 	// If nothing is defined in the DB, check the project config,
 	// unless the alias defined is a patch alias and there are patch aliases
 	// defined on the project page.
-	if len(aliases) > 0 {
-		return aliases, nil
-	}
-	if shouldExit {
+	if len(aliases) > 0 || shouldExit {
 		return aliases, nil
 	}
 	return findMatchingAliasForProjectConfig(projectID, alias)
