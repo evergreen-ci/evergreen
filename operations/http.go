@@ -539,6 +539,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Parameters        []patch.Parameter  `json:"parameters"`
 		GitMetadata       patch.GitMetadata  `json:"git_metadata"`
 		ReuseDefinition   bool               `json:"reuse_definition"`
+		GithubAuthor      string             `json:"github_author"`
 	}{
 		Description:       incomingPatch.description,
 		Project:           incomingPatch.projectName,
@@ -558,6 +559,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Parameters:        incomingPatch.parameters,
 		GitMetadata:       incomingPatch.gitMetadata,
 		ReuseDefinition:   incomingPatch.reuseDefinition,
+		GithubAuthor:      incomingPatch.githubAuthor,
 	}
 
 	rPipe, wPipe := io.Pipe()

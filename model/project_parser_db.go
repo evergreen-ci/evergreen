@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -157,4 +158,12 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
 	return nil
+}
+
+func (pp *ParserProject) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range pp.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }

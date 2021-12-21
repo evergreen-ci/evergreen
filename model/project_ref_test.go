@@ -1587,7 +1587,9 @@ func TestUpdateAdminRoles(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	assert.NoError(t, p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
+	modified, err := p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id})
+	assert.NoError(t, err)
+	assert.True(t, modified)
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, oldAdminFromDB.Roles(), 0)
@@ -1600,6 +1602,27 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	oldAdmin := user.DBUser{
+		Id:          "oldAdmin",
+		SystemRoles: []string{"admin"},
+	}
+	require.NoError(t, oldAdmin.Insert())
+	newAdmin := user.DBUser{
+		Id: "newAdmin",
+	}
+	require.NoError(t, newAdmin.Insert())
+	p := ProjectRef{
+		Id:     "proj",
+		Admins: []string{oldAdmin.Id},
+	}
+	require.NoError(t, p.Insert())
+
+	// check that, without a valid role, the whole update fails
+	modified, err := p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
+	assert.Error(t, err)
+	assert.False(t, modified)
+	assert.Equal(t, p.Admins, []string{oldAdmin.Id})
+
 	rm := env.RoleManager()
 	adminScope := gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
@@ -1613,22 +1636,11 @@ func TestUpdateAdminRolesError(t *testing.T) {
 		Permissions: adminPermissions,
 	}
 	require.NoError(t, rm.UpdateRole(adminRole))
-	oldAdmin := user.DBUser{
-		Id:          "oldAdmin",
-		SystemRoles: []string{"admin"},
-	}
-	require.NoError(t, oldAdmin.Insert())
-	newAdmin := user.DBUser{
-		Id: "newAdmin",
-	}
-	require.NoError(t, newAdmin.Insert())
-	p := ProjectRef{
-		Id: "proj",
-	}
-	require.NoError(t, p.Insert())
 
 	// check that the existing users have been added and removed while returning an error
-	assert.Error(t, p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id}))
+	modified, err = p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
+	assert.Error(t, err)
+	assert.True(t, modified)
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, oldAdminFromDB.Roles(), 0)

@@ -1348,7 +1348,7 @@ func FindAllFirstExecution(q db.Q) ([]Task, error) {
 	return tasks, nil
 }
 
-// Find returns all tasks that satisfy the query.
+// Find returns all tasks that satisfy the query it also filters out display tasks from the results.
 func Find(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)

@@ -1265,7 +1265,7 @@ func (buildVariantOptions *BuildVariantOptions) isPopulated() bool {
 	return len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0
 }
 
-func getAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
+func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", projectId, err.Error()))
@@ -1273,6 +1273,7 @@ func getAPIVarsForProject(ctx context.Context, projectId string) (*restModel.API
 	if vars == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", projectId))
 	}
+	vars = vars.RedactPrivateVars()
 	res := &restModel.APIProjectVars{}
 	if err = res.BuildFromService(vars); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIProjectVars from service: %s", err.Error()))

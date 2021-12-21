@@ -112,8 +112,8 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		adminsToDelete, adminsToAdd := utility.StringSliceSymmetricDifference(before.ProjectRef.Admins, mergedProjectRef.Admins)
 		makeRestricted := !before.ProjectRef.IsRestricted() && mergedProjectRef.IsRestricted()
 		makeUnrestricted := before.ProjectRef.IsRestricted() && !mergedProjectRef.IsRestricted()
-		modified = true
 		if isRepo {
+			modified = true
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
 			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
 			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
@@ -131,26 +131,30 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 				catcher.Wrap(repoRef.MakeUnrestricted(branchProjects), "error making repo unrestricted")
 			}
 		} else {
-			if err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+			if modified, err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
 				catcher.Wrap(err, "error updating project admin roles")
+				if !modified { // return before we save any admin updates to the project ref collection
+					return nil, catcher.Resolve()
+				}
 			}
 			if makeRestricted {
 				catcher.Wrap(before.ProjectRef.MakeRestricted(), "error making branch restricted")
+				modified = true
 			}
 			if makeUnrestricted {
 				catcher.Wrap(before.ProjectRef.MakeUnrestricted(), "error making branch unrestricted")
+				modified = true
 			}
 		}
 	case model.ProjectPageVariablesSection:
-		// Remove any variables that only exist in the original settings.
-		toDelete := []string{}
-		for key, _ := range before.Vars.Vars {
-			if _, ok := changes.Vars.Vars[key]; !ok {
-				toDelete = append(toDelete, key)
+		for key, value := range before.Vars.Vars {
+			// Private variables are redacted in the UI, so re-set to the real value
+			// before updating (assuming the value isn't deleted).
+			if before.Vars.PrivateVars[key] && changes.Vars.PrivateVars[key] {
+				changes.Vars.Vars[key] = value
 			}
 		}
-		changes.Vars.VarsToDelete = toDelete
-		if err = sc.UpdateProjectVars(projectId, &changes.Vars, false); err != nil { // destructively modifies vars
+		if err = sc.UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
 			return nil, errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
 		}
 		modified = true
@@ -188,13 +192,13 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			catcher.Wrapf(err, "error getting after project settings event")
 		} else {
 			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
+			after.Vars = *after.Vars.RedactPrivateVars() // ensure that we're not returning private variables back to the UI
 			res, err = restModel.DbProjectSettingsToRestModel(*after)
 			if err != nil {
 				catcher.Wrapf(err, "error converting project settings")
 			}
 		}
 	}
-
 	return &res, errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
 }
 

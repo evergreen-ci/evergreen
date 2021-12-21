@@ -251,7 +251,8 @@ func (pc *DBProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd,
 	if project == nil {
 		return errors.New("no project found")
 	}
-	return project.UpdateAdminRoles(toAdd, toDelete)
+	_, err := project.UpdateAdminRoles(toAdd, toDelete)
+	return err
 }
 
 // RemoveAdminFromProjects removes a user from all Admins slices of every project
