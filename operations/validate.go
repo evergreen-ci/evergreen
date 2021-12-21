@@ -40,7 +40,7 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
 
-			identifier := c.String(projectFlagName)
+			projectID := c.String(projectFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -74,12 +74,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap, identifier))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, long, localModuleMap, identifier)
+			return validateFile(path, ac, quiet, long, localModuleMap, projectID)
 		},
 	}
 }
@@ -97,7 +97,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, identifier string) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "problem reading file")
@@ -117,7 +117,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		return errors.Wrapf(err, "Could not marshal parser project into yaml")
 	}
 
-	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, identifier)
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {
 		return nil
 	}

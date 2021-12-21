@@ -563,8 +563,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs := validator.ValidationErrors{}
-	if input.ProjectIdentifier != "" {
-		projectRef, err := model.FindBranchProjectRef(input.ProjectIdentifier)
+	if input.ProjectID != "" {
+		projectRef, err := model.FindBranchProjectRef(input.ProjectID)
 		if err != nil {
 			validationErr.Message = "error finding project; validation will proceed without checking project settings\n"
 			validationErr.Level = validator.Warning
