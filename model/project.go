@@ -1202,6 +1202,10 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 		}))
 	}
 
+	if lastGoodVersion == nil {
+		return nil, nil, errors.WithStack(errors.Errorf("could not find a valid version for project %s", projectId))
+	}
+
 	return nil, nil, errors.Wrapf(err, "Error loading project from "+
 		"last good version for project, %s", lastGoodVersion.Identifier)
 }
