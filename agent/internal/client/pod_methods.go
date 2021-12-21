@@ -223,10 +223,6 @@ func (c *podCommunicator) GetManifest(ctx context.Context, taskData TaskData) (*
 	return nil, errors.New("TODO: implement")
 }
 
-func (c *podCommunicator) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (string, error) {
-	return "", errors.New("TODO: implement")
-}
-
 func (c *podCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv *model.KeyVal) error {
 	return errors.New("TODO: implement")
 }
