@@ -113,17 +113,17 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled       *bool  `bson:"enabled" json:"enabled"`
-	RequireSigned *bool  `bson:"require_signed" json:"require_signed"`
-	MergeMethod   string `bson:"merge_method" json:"merge_method"`
-	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+	Enabled       *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
+	RequireSigned *bool  `bson:"require_signed" json:"require_signed" yaml:"require_signed"`
+	MergeMethod   string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
 // syncing task directories to S3.
 type TaskSyncOptions struct {
-	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled"`
-	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled"`
+	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled" yaml:"config_enabled"`
+	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled" yaml:"patch_enabled"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -172,13 +172,13 @@ type PeriodicBuildDefinition struct {
 }
 
 type WorkstationConfig struct {
-	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      *bool                     `bson:"git_clone" json:"git_clone"`
+	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands" yaml:"setup_commands"`
+	GitClone      *bool                     `bson:"git_clone" json:"git_clone" yaml:"git_clone"`
 }
 
 type WorkstationSetupCommand struct {
-	Command   string `bson:"command" json:"command"`
-	Directory string `bson:"directory" json:"directory"`
+	Command   string `bson:"command" json:"command" yaml:"command"`
+	Directory string `bson:"directory" json:"directory" yaml:"directory"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -406,32 +406,43 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-// MergeWithParserProject looks up the parser project with the given project ref id and modifies
+// MergeWithProjectConfig looks up the project config with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
-// Any values that are set at the project parser level will be set on the project ref.
-func (p *ProjectRef) MergeWithParserProject(version string) error {
-	parserProject, err := ParserProjectByVersion(p.Id, version)
+// Any values that are set at the project config level will be set on the project ref IF they are not set on
+// the project ref.
+func (p *ProjectRef) MergeWithProjectConfig(version string) error {
+	projectConfig, err := FindProjectConfigToMerge(p.Id, version)
 	if err != nil {
 		return err
 	}
-	if parserProject != nil {
-		if parserProject.PerfEnabled != nil {
-			p.PerfEnabled = parserProject.PerfEnabled
+	if projectConfig != nil {
+		defer func() {
+			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
+		}()
+		pRefToMerge := ProjectRef{
+			DeactivatePrevious: projectConfig.DeactivatePrevious,
+			PerfEnabled:        projectConfig.PerfEnabled,
 		}
-		if parserProject.DeactivatePrevious != nil {
-			p.DeactivatePrevious = parserProject.DeactivatePrevious
+		if projectConfig.WorkstationConfig != nil {
+			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
 		}
-		if parserProject.TaskAnnotationSettings != nil {
-			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
+		if projectConfig.BuildBaronSettings != nil {
+			pRefToMerge.BuildBaronSettings = *projectConfig.BuildBaronSettings
 		}
-		if parserProject.WorkstationConfig != nil {
-			p.WorkstationConfig = *parserProject.WorkstationConfig
+		if projectConfig.TaskAnnotationSettings != nil {
+			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
 		}
-		if parserProject.CommitQueue != nil {
-			p.CommitQueue = *parserProject.CommitQueue
+		if projectConfig.CommitQueue != nil {
+			pRefToMerge.CommitQueue = *projectConfig.CommitQueue
 		}
+		if projectConfig.TaskSync != nil {
+			pRefToMerge.TaskSync = *projectConfig.TaskSync
+		}
+		reflectedRef := reflect.ValueOf(p).Elem()
+		reflectedConfig := reflect.ValueOf(pRefToMerge)
+		recursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
-	return nil
+	return err
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
@@ -717,7 +728,7 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 // Relevant fields will also be merged from the parser project with a specified version.
 // If no version is specified, the most recent valid parser project version will be used for merge.
-func FindMergedProjectRef(identifier string, version string, includeParserProject bool) (*ProjectRef, error) {
+func FindMergedProjectRef(identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
@@ -738,13 +749,12 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	// Removing due to outage: EVG-15856
-	//if includeParserProject {
-	//	err = pRef.MergeWithParserProject(version)
-	//	if err != nil {
-	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-	//	}
-	//}
+	if includeProjectConfig {
+		err = pRef.MergeWithProjectConfig(version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
+		}
+	}
 	return pRef, nil
 }
 

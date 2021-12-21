@@ -29,7 +29,7 @@ func TestBbGetProject(t *testing.T) {
 			TicketSearchProjects: []string{"EVG"},
 		},
 	}
-	myProjectParser := model.ParserProject{
+	myProjectConfig := model.ProjectConfig{
 		Id: "proj2",
 		BuildBaronSettings: &evergreen.BuildBaronSettings{
 			TicketCreateProject:  "ABC",
@@ -52,7 +52,7 @@ func TestBbGetProject(t *testing.T) {
 	assert.NoError(t, testTask.Insert())
 	assert.NoError(t, myProject.Insert())
 	assert.NoError(t, myProject2.Insert())
-	assert.NoError(t, myProjectParser.Insert())
+	assert.NoError(t, myProjectConfig.Insert())
 
 	bbProj, ok1 := model.GetBuildBaronSettings(testTask.Project, testTask.Version)
 	bbProj2, ok2 := model.GetBuildBaronSettings(testTask2.Project, testTask2.Version)
@@ -60,4 +60,5 @@ func TestBbGetProject(t *testing.T) {
 	assert.True(t, ok2)
 	assert.Equal(t, bbProj.TicketCreateProject, "BFG")
 	assert.Equal(t, bbProj2.TicketCreateProject, "123")
+	assert.Equal(t, bbProj2.TicketSearchProjects, []string{"EVG"})
 }

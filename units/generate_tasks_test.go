@@ -227,7 +227,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Make sure first project was not changed
 	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
-	p, _, err := model.LoadProjectForVersion(v, "mci", true)
+	p, _, _, err := model.LoadProjectForVersion(v, "mci", true)
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 2)
@@ -238,7 +238,7 @@ func TestGenerateTasks(t *testing.T) {
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
-	p, _, err = model.LoadProjectForVersion(v, "mci", true)
+	p, _, _, err = model.LoadProjectForVersion(v, "mci", true)
 	assert.NoError(err)
 	require.NotNil(p)
 	assert.Len(p.Tasks, 4)

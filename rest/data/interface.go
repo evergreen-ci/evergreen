@@ -116,7 +116,7 @@ type Connector interface {
 	UpdateRepo(*model.RepoRef) error
 
 	// GetProjectFromFile finds the file for the projectRef and returns the translated project, using the given token
-	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (*model.Project, *model.ParserProject, error)
+	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error)
 
 	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
 	// If unable to setup the new webhook, returns false but no error.
@@ -141,7 +141,7 @@ type Connector interface {
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
 
 	// Given a version and a project ID, return the translated project and the intermediate project.
-	LoadProjectForVersion(*model.Version, string) (*model.Project, *model.ParserProject, error)
+	LoadProjectForVersion(*model.Version, string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error)
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
 	// for paginating through the results.

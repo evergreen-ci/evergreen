@@ -36,8 +36,9 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	// get the downstream config
 	var proj *model.Project
 	var pp *model.ParserProject
+	var pc *model.ProjectConfig
 	if args.ConfigFile != "" {
-		proj, pp, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
+		proj, pp, pc, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -55,6 +56,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 		Ref:                 &args.DownstreamProject,
 		Project:             proj,
 		IntermediateProject: pp,
+		Config:              pc,
 	}
 	v, err := repotracker.CreateVersionFromConfig(context.Background(), projectInfo, metadata, false, nil)
 	if err != nil {
@@ -127,7 +129,7 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.Vers
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, error) {
+func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &ref,
 		RemotePath: file,
@@ -135,11 +137,11 @@ func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Pr
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting evergreen settings")
+		return nil, nil, nil, errors.Wrap(err, "error getting evergreen settings")
 	}
 	opts.Token, err = settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
