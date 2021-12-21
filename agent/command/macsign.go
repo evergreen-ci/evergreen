@@ -119,7 +119,7 @@ func (macSign *macSign) validate() error {
 	return catcher.Resolve()
 }
 
-// Apply the expansions from the relevant task config (including restricted expansion)
+// Apply the expansions from the relevant task config
 // to all appropriate fields of the macSign.
 func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 	var err error
