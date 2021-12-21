@@ -566,12 +566,12 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	if input.ProjectID != "" {
 		projectRef, err := model.FindBranchProjectRef(input.ProjectID)
 		if err != nil {
-			validationErr.Message = "error finding project; validation will proceed without checking project settings\n"
+			validationErr.Message = "error finding project; validation will proceed without checking project settings"
 			validationErr.Level = validator.Warning
 			errs = append(errs, validationErr)
 
 		} else if projectRef == nil {
-			validationErr.Message = "project does not exist; validation will proceed without checking project settings\n"
+			validationErr.Message = "project does not exist; validation will proceed without checking project settings"
 			validationErr.Level = validator.Warning
 			errs = append(errs, validationErr)
 		} else {
