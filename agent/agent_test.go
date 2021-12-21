@@ -262,7 +262,7 @@ pre:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -295,7 +295,7 @@ pre:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -324,7 +324,7 @@ post:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -352,7 +352,7 @@ post:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -387,7 +387,7 @@ post:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -686,7 +686,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -724,7 +724,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -759,7 +759,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -794,7 +794,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -828,7 +828,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -864,7 +864,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -901,7 +901,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -940,7 +940,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	s.tc.taskConfig = &internal.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -981,7 +981,7 @@ timeout:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	s.NoError(err)
 	p.CallbackTimeout = 2
 	s.tc.taskConfig = &internal.TaskConfig{

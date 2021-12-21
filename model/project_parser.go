@@ -83,22 +83,6 @@ type ParserProject struct {
 	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
-
-	// The below fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
-	// Values for the below fields set on this struct will take precedence over the project page and will
-	// be the configs used for a given project during runtime.
-	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
-	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
-	CommitQueueAliases     []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
-	GitHubPRAliases        []ProjectAlias                 `yaml:"github_pr_aliases,omitempty" bson:"github_pr_aliases,omitempty"`
-	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
-	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
-	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
-	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
-	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
-	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
-
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
@@ -517,13 +501,13 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
-func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *ParserProject, error) {
+func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *ParserProject, *ProjectConfig, error) {
 	var pp *ParserProject
 	var err error
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error finding parser project")
+		return nil, nil, nil, errors.Wrap(err, "error finding parser project")
 	}
 
 	// if parser project config number is old then we should default to legacy
@@ -534,18 +518,18 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		pp.Identifier = utility.ToStringPtr(id)
 		var p *Project
 		p, err = TranslateProject(pp)
-		return p, pp, err
+		return p, pp, nil, err
 	}
 
 	if v.Config == "" {
-		return nil, nil, errors.New("version has no config")
+		return nil, nil, nil, errors.New("version has no config")
 	}
 	p := &Project{}
 	// opts empty because project yaml with `include` will not hit this case
 	ctx := context.Background()
-	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
+	pp, pc, err := LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error loading project")
+		return nil, nil, nil, errors.Wrap(err, "error loading project")
 	}
 	pp.Id = v.Id
 	pp.Identifier = utility.ToStringPtr(id)
@@ -559,10 +543,10 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 				"version": v.Id,
 				"message": "error inserting parser project for version",
 			}))
-			return nil, nil, errors.Wrap(err, "error updating version with project")
+			return nil, nil, nil, errors.Wrap(err, "error updating version with project")
 		}
 	}
-	return p, pp, nil
+	return p, pp, pc, nil
 }
 
 func GetProjectFromBSON(data []byte) (*Project, error) {
@@ -577,10 +561,14 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, *ProjectConfig, error) {
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
-		return nil, errors.Wrapf(err, LoadProjectError)
+		return nil, nil, errors.Wrapf(err, LoadProjectError)
+	}
+	config, err := createProjectConfig(data)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
 
 	// return intermediateProject even if we run into issues to show merge progress
@@ -588,7 +576,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		if opts == nil {
 			err = errors.New("Trying to open include files with empty opts")
 			grip.Critical(message.NewError(errors.WithStack(err)))
-			return nil, errors.Wrapf(err, LoadProjectError)
+			return nil, nil, errors.Wrapf(err, LoadProjectError)
 		}
 		// read from the patch diff if a change has been made in any of the include files
 		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
@@ -600,22 +588,28 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		var yaml []byte
 		opts.Identifier = identifier
+		opts.RemotePath = path.FileName
+		grip.Debug(message.Fields{
+			"message":     "retrieving included yaml file",
+			"remote_path": opts.RemotePath,
+			"read_from":   opts.ReadFileFrom,
+			"module":      path.Module,
+		})
 		if path.Module != "" {
-			opts.RemotePath = path.FileName
 			yaml, err = retrieveFileForModule(ctx, *opts, intermediateProject.Modules, path.Module)
 		} else {
 			yaml, err = retrieveFile(ctx, *opts)
 		}
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, config, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
 		}
 		add, err := createIntermediateProject(yaml)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 		}
-		err = intermediateProject.mergeMultipleProjectConfigs(add)
+		err = intermediateProject.mergeMultipleParserProjects(add)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 		}
 	}
 	intermediateProject.Include = nil
@@ -626,7 +620,10 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		*project = *p
 	}
 	project.Identifier = identifier
-	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+	if config != nil {
+		config.Identifier = identifier
+	}
+	return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 }
 
 const (
@@ -763,18 +760,18 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	return projectFileBytes, nil
 }
 
-func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, error) {
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, *ProjectConfig, error) {
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	config := Project{}
-	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
+	pp, pc, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
+		return nil, nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}
-	return &config, pp, nil
+	return &config, pp, pc, nil
 }
 
 // createIntermediateProject marshals the supplied YAML into our

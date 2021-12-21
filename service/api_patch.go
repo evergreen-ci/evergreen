@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -58,6 +59,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		TriggerAliases    []string           `json:"trigger_aliases"`
 		Alias             string             `json:"alias"`
 		ReuseDefinition   bool               `json:"reuse_definition"`
+		GithubAuthor      string             `json:"github_author"`
 	}{}
 	if err := utility.ReadJSON(utility.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -109,8 +111,43 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	patchID := mgobson.NewObjectId()
+	author := dbUser.Id
+	if data.GithubAuthor != "" {
+		opts := gimlet.PermissionOpts{
+			Resource:      pref.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionPatches,
+			RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+		}
+		if !dbUser.HasPermission(opts) {
+			as.LoggedError(w, r, http.StatusUnauthorized, errors.New("user is not authorized to patch on behalf of other users"))
+			return
+		}
+		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error looking for specified author"))
+			return
+		}
+		if specifiedUser != nil {
+			grip.Info(message.Fields{
+				"message":    "overriding patch author as specified by the submitter",
+				"submitter":  dbUser.Id,
+				"new_author": data.GithubAuthor,
+				"patch_id":   patchID,
+			})
+			author = specifiedUser.Id
+		}
+		grip.DebugWhen(specifiedUser == nil, message.Fields{
+			"message":         "github user not found",
+			"github_username": data.GithubAuthor,
+			"patch_id":        patchID,
+		})
+
+	}
+
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:            dbUser.Id,
+		User:            author,
 		Project:         pref.Id,
 		Path:            data.Path,
 		BaseGitHash:     data.Githash,
@@ -148,7 +185,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchID := mgobson.NewObjectId()
 	grip.Info(message.Fields{
 		"operation":  "patch creation",
 		"message":    "creating patch",

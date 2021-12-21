@@ -29,6 +29,7 @@ const (
 	backportProjectFlag = "backport-project"
 	commitShaFlag       = "commit-sha"
 	commitMessageFlag   = "commit-message"
+	githubAuthorFlag    = "author"
 
 	noCommits             = "No Commits Added"
 	commitQueuePatchLabel = "Commit Queue Merge:"
@@ -136,6 +137,11 @@ func mergeCommand() cli.Command {
 				Name:  forceFlagName,
 				Usage: "force item to front of queue",
 			},
+			cli.StringFlag{
+				Name: githubAuthorFlag,
+				Usage: "optionally define the patch author by providing a Github username (this will only work if the " +
+					"submitter has permission and the provided user has provided the username in their Evergreen settings)",
+			},
 		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
@@ -151,14 +157,15 @@ func mergeCommand() cli.Command {
 			}
 
 			params := mergeParams{
-				project:     c.String(projectFlagName),
-				ref:         ref,
-				commits:     commits,
-				id:          c.String(resumeFlagName),
-				pause:       c.Bool(pauseFlagName),
-				skipConfirm: c.Bool(skipConfirmFlagName),
-				large:       c.Bool(largeFlagName),
-				force:       c.Bool(forceFlagName),
+				project:      c.String(projectFlagName),
+				ref:          ref,
+				commits:      commits,
+				id:           c.String(resumeFlagName),
+				pause:        c.Bool(pauseFlagName),
+				skipConfirm:  c.Bool(skipConfirmFlagName),
+				large:        c.Bool(largeFlagName),
+				force:        c.Bool(forceFlagName),
+				githubAuthor: c.String(githubAuthorFlag),
 			}
 			if params.force && !params.skipConfirm && !confirm("Forcing item to front of queue will be reported. Continue? (y/N)", false) {
 				return errors.New("Merge aborted.")
@@ -513,14 +520,15 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 }
 
 type mergeParams struct {
-	project     string
-	commits     string
-	ref         string
-	id          string
-	pause       bool
-	skipConfirm bool
-	large       bool
-	force       bool
+	project      string
+	commits      string
+	ref          string
+	id           string
+	pause        bool
+	skipConfirm  bool
+	large        bool
+	force        bool
+	githubAuthor string
 }
 
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
@@ -550,10 +558,11 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 
 func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, uiV2Url string) error {
 	patchParams := &patchParams{
-		Project:     p.project,
-		SkipConfirm: p.skipConfirm,
-		Large:       p.large,
-		Alias:       evergreen.CommitQueueAlias,
+		Project:      p.project,
+		SkipConfirm:  p.skipConfirm,
+		Large:        p.large,
+		Alias:        evergreen.CommitQueueAlias,
+		GithubAuthor: p.githubAuthor,
 	}
 
 	if err := patchParams.loadProject(conf); err != nil {

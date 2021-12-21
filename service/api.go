@@ -346,12 +346,12 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	proj, _, err := model.LoadProjectForVersion(v, t.Project, false)
+	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	params := append(proj.GetParameters(), v.Parameters...)
+	params := append(projParams, v.Parameters...)
 	for _, param := range params {
 		res.Vars[param.Key] = param.Value
 	}
@@ -634,7 +634,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return

@@ -76,6 +76,7 @@ type patchParams struct {
 	TriggerAliases    []string
 	Parameters        []patch.Parameter
 	ReuseDefinition   bool
+	GithubAuthor      string
 }
 
 type patchSubmission struct {
@@ -97,6 +98,7 @@ type patchSubmission struct {
 	backportOf        patch.BackportInfo
 	gitMetadata       patch.GitMetadata
 	reuseDefinition   bool
+	githubAuthor      string
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -119,6 +121,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		gitMetadata:       diffData.gitMetadata,
 		reuseDefinition:   p.ReuseDefinition,
 		path:              p.Path,
+		githubAuthor:      p.GithubAuthor,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

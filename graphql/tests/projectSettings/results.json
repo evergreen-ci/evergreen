@@ -118,7 +118,7 @@
         "data": {
           "projectSettings": {
             "vars": {
-              "vars": {"hello": "world", "foo":  "bar"},
+              "vars": {"hello": "", "foo":  "bar"},
               "privateVars": ["hello"]
             }
           }

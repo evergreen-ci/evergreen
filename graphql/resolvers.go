@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -450,7 +449,7 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 }
 
 func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
@@ -469,7 +468,7 @@ func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *r
 }
 
 func (r *repoSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
@@ -1822,25 +1821,26 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if len(tasks) == 0 {
 		return nil, nil
 	}
-	t, err := task.Find(task.ByIds(tasks))
+	dbTasks, err := task.FindAll(task.ByIds(tasks))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
-	if t == nil {
+	if len(dbTasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
+	testResultsToReturn := []*TaskTestResultSample{}
+
 	// We can assume that if one of the tasks has cedar results, all of them do.
-	if t[0].HasCedarResults {
+	if dbTasks[0].HasCedarResults {
 		failingTests := []string{}
 		for _, f := range testFilters {
 			failingTests = append(failingTests, f.TestName)
 		}
 
-		results, err := getCedarFailedTestResultsSample(ctx, t, failingTests)
+		results, err := getCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 		}
-		testResultsToReturn := []*TaskTestResultSample{}
 		for _, r := range results {
 			tr := &TaskTestResultSample{
 				TaskID:                  utility.FromStringPtr(r.TaskID),
@@ -1850,10 +1850,45 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 			}
 			testResultsToReturn = append(testResultsToReturn, tr)
 		}
-		return testResultsToReturn, nil
+	} else {
+		filters := []string{}
+		for _, f := range testFilters {
+			filters = append(filters, f.TestName)
+		}
+		regexFilter := strings.Join(filters, "|")
+		for _, t := range dbTasks {
+			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+				TaskID:    t.Id,
+				Execution: t.Execution,
+				TestName:  regexFilter,
+				Statuses:  []string{evergreen.TestFailedStatus},
+				Limit:     10,
+				Page:      0,
+			})
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+			}
+			failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
+			}
+			tr := &TaskTestResultSample{
+				TaskID:         t.Id,
+				Execution:      t.Execution,
+				TotalTestCount: failedTestCount,
+			}
+			matchingFailingTestNames := []string{}
+			for _, r := range filteredTestResults {
+				matchingFailingTestNames = append(matchingFailingTestNames, r.TestFile)
+			}
+			tr.MatchingFailedTestNames = matchingFailingTestNames
+			testResultsToReturn = append(testResultsToReturn, tr)
+		}
+
 	}
-	return nil, nil
+	return testResultsToReturn, nil
 }
+
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
@@ -3219,49 +3254,23 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, err
+	if !model.IsPerfEnabledForProject(*obj.ProjectId) {
+		return false, nil
 	}
-	if flags.PluginAdminPageDisabled {
-		return model.IsPerfEnabledForProject(*obj.ProjectId), nil
-	} else {
-		var perfPlugin *plugin.PerfPlugin
-		pRef, err := r.sc.FindProjectById(*obj.ProjectId, false, false)
-		if err != nil {
-			return false, err
-		}
-		if perfPluginSettings, exists := evergreen.GetEnvironment().Settings().Plugins[perfPlugin.Name()]; exists {
-			err := mapstructure.Decode(perfPluginSettings, &perfPlugin)
-			if err != nil {
-				return false, err
-			}
-			projectMatches := false
-			for _, projectName := range perfPlugin.Projects {
-				if projectName == pRef.Id || projectName == pRef.Identifier {
-					projectMatches = true
-					break
-				}
-			}
-			if !projectMatches {
-				return false, nil
-			}
-		}
-		opts := apimodels.GetCedarPerfCountOptions{
-			BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:    utility.FromStringPtr(obj.Id),
-			Execution: obj.Execution,
-		}
-		if opts.BaseURL == "" {
-			return false, nil
-		}
-		result, err := apimodels.CedarPerfResultsCount(ctx, opts)
-		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
-		}
-		if result.NumberOfResults == 0 {
-			return false, nil
-		}
+	opts := apimodels.GetCedarPerfCountOptions{
+		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:    utility.FromStringPtr(obj.Id),
+		Execution: obj.Execution,
+	}
+	if opts.BaseURL == "" {
+		return false, nil
+	}
+	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+	}
+	if result.NumberOfResults == 0 {
+		return false, nil
 	}
 	return true, nil
 }
@@ -3974,7 +3983,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
 	}
-	_, ok, _ := plugin.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
 }
 

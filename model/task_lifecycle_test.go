@@ -3476,6 +3476,73 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	assert.True(dbTask.Activated)
 }
 
+func TestEvalStepbackDeactivatePrevious(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection))
+
+	proj := ProjectRef{
+		Id: "proj",
+	}
+	require.NoError(t, proj.Insert())
+	d := distro.Distro{
+		Id: "distro",
+	}
+	require.NoError(t, d.Insert())
+	v := Version{
+		Id:        "sample_version",
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(t, v.Insert())
+	stepbackTask := task.Task{
+		Id:                  "t2",
+		BuildId:             "b2",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 2,
+		DispatchTime:        utility.ZeroTime,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Version:             v.Id,
+	}
+	assert.NoError(stepbackTask.Insert())
+	b2 := build.Build{
+		Id:           "b2",
+		BuildVariant: "bv",
+	}
+	assert.NoError(b2.Insert())
+	finishedTask := task.Task{
+		Id:                  "t3",
+		BuildId:             "b3",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.TriggerRequester,
+		Version:             v.Id,
+	}
+	b3 := build.Build{
+		Id:           "b3",
+		BuildVariant: "bv",
+	}
+	assert.NoError(b3.Insert())
+
+	// should not unschedule previous tasks if the requester is not repotracker.
+	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskSucceeded, true))
+	checkTask, err := task.FindOneId(stepbackTask.Id)
+	assert.NoError(err)
+	assert.True(checkTask.Activated)
+
+	finishedTask.Requester = evergreen.RepotrackerVersionRequester
+	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskSucceeded, true))
+	checkTask, err = task.FindOneId(stepbackTask.Id)
+	assert.NoError(err)
+	assert.False(checkTask.Activated)
+}
+
 func TestEvalStepback(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection, VersionCollection))

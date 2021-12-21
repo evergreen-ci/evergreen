@@ -305,7 +305,6 @@ func MockConfig() *evergreen.Settings {
 			TaskFinder: "legacy",
 		},
 		ServiceFlags: evergreen.ServiceFlags{
-			PluginAdminPageDisabled:      false,
 			TaskDispatchDisabled:         true,
 			HostInitDisabled:             true,
 			PodInitDisabled:              true,
