@@ -189,12 +189,10 @@ func (macSign *macSign) Execute(ctx context.Context,
 		"-s", macSign.Secret,
 		"-u", macSign.ServiceUrl,
 		"-m", signMode,
+		"-o", macSign.OutputZipFile,
 	}
 	if macSign.EntitlementsFilePath != "" {
 		args = append(args, "-e", macSign.EntitlementsFilePath)
-	}
-	if macSign.OutputZipFile != "" {
-		args = append(args, "-o", macSign.OutputZipFile)
 	}
 	if macSign.ArtifactType != "" {
 		args = append(args, "-t", macSign.ArtifactType)
