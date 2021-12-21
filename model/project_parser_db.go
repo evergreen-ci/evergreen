@@ -80,6 +80,24 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
+func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
+		ParserProjectParametersKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding parser project")
+	}
+	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
+		if v.Config == "" {
+			return nil, errors.New("version has no config")
+		}
+		pp, err = createIntermediateProject([]byte(v.Config))
+		if err != nil {
+			return nil, errors.Wrap(err, "error parsing legacy config")
+		}
+	}
+	return pp.GetParameters(), nil
+}
+
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
 		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
