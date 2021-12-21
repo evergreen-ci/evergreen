@@ -667,7 +667,7 @@ func validateModules(project *model.Project) ValidationErrors {
 		} else if moduleNames[module.Name] {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("module '%s' already exists", module.Name),
+				Message: fmt.Sprintf("module '%s' already exists; the first module name defined will be used", module.Name),
 			})
 		} else {
 			moduleNames[module.Name] = true
