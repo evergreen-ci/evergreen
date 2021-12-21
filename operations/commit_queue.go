@@ -92,13 +92,11 @@ func deleteItem() cli.Command {
 			Usage: "delete `ITEM`",
 		}),
 		Before: mergeBeforeFuncs(
-			requireStringFlag(projectFlagName),
 			requireStringFlag(itemFlagName),
 			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
-			projectID := c.String(projectFlagName)
 			item := c.String(itemFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -110,12 +108,12 @@ func deleteItem() cli.Command {
 			client := conf.setupRestCommunicator(ctx)
 			defer client.Close()
 
-			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
-			showCQMessageForProject(ac, projectID)
-			return deleteCommitQueueItem(ctx, client, projectID, item)
+
+			showCQMessageForPatch(ctx, client, item)
+			return deleteCommitQueueItem(ctx, client, item)
 		},
 	}
 }
@@ -508,8 +506,8 @@ func listModules(item restModel.APICommitQueueItem) {
 	}
 }
 
-func deleteCommitQueueItem(ctx context.Context, client client.Communicator, projectID, item string) error {
-	err := client.DeleteCommitQueueItem(ctx, projectID, item)
+func deleteCommitQueueItem(ctx context.Context, client client.Communicator, item string) error {
+	err := client.DeleteCommitQueueItem(ctx, item)
 	if err != nil {
 		return err
 	}

@@ -328,13 +328,13 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	}
 	s.NoError(projectRef.Insert())
 
-	s.Error(deleteCommitQueueItem(s.ctx, s.client, "mci", "not_here"))
+	s.Error(deleteCommitQueueItem(s.ctx, s.client, "not_here"))
 
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	s.NoError(grip.SetSender(send.MakePlainLogger()))
-	s.NoError(deleteCommitQueueItem(s.ctx, s.client, "mci", validId))
+	s.NoError(deleteCommitQueueItem(s.ctx, s.client, validId))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
