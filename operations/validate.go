@@ -40,14 +40,6 @@ func Validate() cli.Command {
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
 			projectID := c.String(projectFlagName)
-			if projectID == "" {
-				cwd, err := os.Getwd()
-				grip.Error(errors.Wrap(err, "unable to get current working directory"))
-				cwd, err = filepath.EvalSymlinks(cwd)
-				grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
-				conf := ClientSettings{}
-				projectID = conf.FindDefaultProject(cwd, false)
-			}
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -67,6 +59,14 @@ func Validate() cli.Command {
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
+			}
+
+			if projectID == "" {
+				cwd, err := os.Getwd()
+				grip.Error(errors.Wrap(err, "unable to get current working directory"))
+				cwd, err = filepath.EvalSymlinks(cwd)
+				grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+				projectID = conf.FindDefaultProject(cwd, false)
 			}
 
 			fileInfo, err := os.Stat(path)
