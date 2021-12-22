@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -110,6 +111,9 @@ func TestMacSignValidateParams(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skip("command supported only on darwin and linux")
+			}
 			tc := tc
 			t.Parallel()
 			cmd := &macSign{}
@@ -167,6 +171,9 @@ func TestMacSignExecute(t *testing.T) {
 		{
 			tc := tc
 			t.Run(tc.name, func(t *testing.T) {
+				if runtime.GOOS == "windows" {
+					t.Skip("command supported only on darwin and linux")
+				}
 				t.Parallel()
 				ctx := context.TODO()
 				mockClientBinary := filepath.Join(t.TempDir(), "client")
