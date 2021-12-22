@@ -441,14 +441,18 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*
 type MainlineCommitVersionOptions struct {
 	Limit           int
 	SkipOrderNumber int
+	Requesters      []string
 }
 
 func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
-
+	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
+	if len(invalidRequesters) > 0 {
+		return nil, errors.Errorf("invalid requesters: %v", invalidRequesters)
+	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
+			"$in": opts.Requesters,
 		},
 	}
 	if opts.SkipOrderNumber != 0 {
@@ -462,7 +466,8 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	}
 
 	pipeline = append(pipeline, bson.M{"$limit": limit})
-
+	fmt.Println("Match: ", match)
+	fmt.Println("Pipeline: ", pipeline)
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
