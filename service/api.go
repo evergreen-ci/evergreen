@@ -565,23 +565,25 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	if input.ProjectID != "" {
 		projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
 		if err != nil {
-			validationErr = validator.ValidationError{}
-			validationErr.Message = "error finding project; validation will proceed without checking project settings"
-			validationErr.Level = validator.Warning
+			validationErr = validator.ValidationError{
+				Message: "error finding project; validation will proceed without checking project settings",
+				Level:   validator.Warning,
+			}
 			errs = append(errs, validationErr)
-
 		} else if projectRef == nil {
-			validationErr = validator.ValidationError{}
-			validationErr.Message = "project does not exist; validation will proceed without checking project settings"
-			validationErr.Level = validator.Warning
+			validationErr = validator.ValidationError{
+				Message: "project does not exist; validation will proceed without checking project settings",
+				Level:   validator.Warning,
+			}
 			errs = append(errs, validationErr)
 		} else {
 			errs = append(errs, validator.CheckProjectSettings(project, projectRef)...)
 		}
 	} else {
-		validationErr = validator.ValidationError{}
-		validationErr.Message = "no project specified; validation will proceed without checking project settings"
-		validationErr.Level = validator.Warning
+		validationErr = validator.ValidationError{
+			Message: "no project specified; validation will proceed without checking project settings",
+			Level:   validator.Warning,
+		}
 		errs = append(errs, validationErr)
 	}
 
