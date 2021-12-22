@@ -110,7 +110,7 @@ func (macSign *macSign) validate() error {
 		macSign.Verify = false
 	}
 	if !(macSign.ArtifactType == "" || macSign.ArtifactType == "binary" || macSign.ArtifactType == "app") {
-		catcher.New(`artifact_type needs to be either blank, "binary" or "app"`)
+		catcher.New("artifact_type needs to be either blank,'binary' or 'app'")
 	}
 	if macSign.Notarize && macSign.BundleId == "" {
 		catcher.New("if notarization is requested, bundle_id cannot be blank")
@@ -142,6 +142,11 @@ func (macSign *macSign) expandParams(conf *internal.TaskConfig) error {
 	}
 	if macSign.ClientBinary != "" && !filepath.IsAbs(macSign.ClientBinary) {
 		macSign.ClientBinary = filepath.Join(macSign.WorkingDir, macSign.ClientBinary)
+	}
+
+	// setting default client binary if not given
+	if macSign.ClientBinary == "" {
+		macSign.ClientBinary = "/usr/local/bin/macnotary"
 	}
 
 	return nil
@@ -176,10 +181,6 @@ func (macSign *macSign) Execute(ctx context.Context,
 		return nil
 	}
 
-	// client binary
-	if macSign.ClientBinary == "" {
-		macSign.ClientBinary = "/usr/local/bin/macnotary"
-	}
 	signMode := "sign"
 	if macSign.Notarize {
 		signMode = "notarizeAndSign"
@@ -214,7 +215,7 @@ func (macSign *macSign) Execute(ctx context.Context,
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
 		if !ok {
-			return fmt.Errorf("unexpected error %s: \n%s\n%s\n%s", err, output, runtime.GOOS, runtime.GOARCH)
+			return errors.Wrapf(err, "unexpected error %s\n%s,%s", output, runtime.GOOS, runtime.GOARCH)
 		}
 
 		exitCode = exitErr.ExitCode()
