@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -81,7 +82,12 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		if time.Since(t.CreateTime) >= 2*7*24*time.Hour {
 			tasksToDeactivate = append(tasksToDeactivate, t)
 		} else {
-			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), &t.Details))
+			details := &apimodels.TaskEndDetail{
+				Type:        evergreen.CommandTypeSystem,
+				Status:      evergreen.TaskFailed,
+				Description: evergreen.TaskDescriptionStranded,
+			}
+			j.AddError(model.TryResetTask(t.Id, evergreen.User, j.ID(), details))
 		}
 	}
 	if len(tasksToDeactivate) > 0 {
