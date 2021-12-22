@@ -3,10 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
