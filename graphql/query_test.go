@@ -44,9 +44,13 @@ func populateMainlineCommits(t *testing.T) {
 		versionId := fmt.Sprintf("v%d", i)
 		// Every other version is activated
 		isActivated := i%2 == 0
+		requester := evergreen.RepotrackerVersionRequester
+		if i%3 == 0 {
+			requester = evergreen.GitTagRequester
+		}
 		v := &model.Version{
 			Id:                  versionId,
-			Requester:           evergreen.RepotrackerVersionRequester,
+			Requester:           requester,
 			Activated:           utility.ToBoolPtr(isActivated),
 			Branch:              projectId,
 			RevisionOrderNumber: 12 - i,
@@ -149,4 +153,21 @@ func TestMainlineCommits(t *testing.T) {
 	lastCommit = res.Versions[len(res.Versions)-1].Version
 	assert.NotNil(t, lastCommit)
 	require.Equal(t, utility.FromIntPtr(res.NextPageOrderNumber), lastCommit.Order)
+
+	// Should only return mainline commits that match the passed in requester
+	mainlineCommitOptions.Requesters = []string{evergreen.RepotrackerVersionRequester}
+	res, err = config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
+	require.NoError(t, err)
+	assert.NotNil(t, res)
+
+	require.Equal(t, 8, utility.FromIntPtr(res.NextPageOrderNumber))
+	assert.Nil(t, res.PrevPageOrderNumber)
+	require.Equal(t, 3, len(res.Versions))
+
+	for _, v := range res.Versions {
+		if v.Version != nil {
+			assert.NotNil(t, v.Version)
+			assert.Equal(t, evergreen.RepotrackerVersionRequester, utility.FromStringPtr(v.Version.Requester))
+		}
+	}
 }

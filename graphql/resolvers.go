@@ -3487,9 +3487,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	if utility.FromIntPtr(options.Limit) != 0 {
 		limit = utility.FromIntPtr(options.Limit)
 	}
+	requesters := options.Requesters
+	if len(requesters) == 0 {
+		requesters = evergreen.SystemVersionRequesterTypes
+	}
 	opts := model.MainlineCommitVersionOptions{
 		Limit:           limit,
 		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
+		Requesters:      requesters,
 	}
 
 	versions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
@@ -3608,6 +3613,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			opts := model.MainlineCommitVersionOptions{
 				Limit:           limit,
 				SkipOrderNumber: skipOrderNumber,
+				Requesters:      requesters,
 			}
 
 			versions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)

@@ -262,6 +262,7 @@ input MainlineCommitsOptions {
   skipOrderNumber: Int = 0
   # shouldCollapse is used to determine if unmatching active versions should be collapsed
   shouldCollapse: Boolean = false
+  requesters: [String!]
 }
 
 type BuildVariantTuple {

@@ -113,10 +113,11 @@ type MainlineCommits struct {
 }
 
 type MainlineCommitsOptions struct {
-	ProjectID       string `json:"projectID"`
-	Limit           *int   `json:"limit"`
-	SkipOrderNumber *int   `json:"skipOrderNumber"`
-	ShouldCollapse  *bool  `json:"shouldCollapse"`
+	ProjectID       string   `json:"projectID"`
+	Limit           *int     `json:"limit"`
+	SkipOrderNumber *int     `json:"skipOrderNumber"`
+	ShouldCollapse  *bool    `json:"shouldCollapse"`
+	Requesters      []string `json:"requesters"`
 }
 
 type Manifest struct {
