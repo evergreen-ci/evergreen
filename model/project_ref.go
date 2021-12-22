@@ -2334,6 +2334,19 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
+// IsWebhookConfigured retrieves webhook configuration from the project settings.
+func IsBBTicketCreationDefined(project string, version string) (bool, error) {
+	projectRef, err := FindMergedProjectRef(project, version, true)
+	if err != nil || projectRef == nil {
+		return false, errors.Errorf("Unable to find merged project ref for project %s", project)
+	}
+	createProject := projectRef.BuildBaronSettings.TicketCreateProject
+	if createProject != "" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	if triggerID == "" || triggerType == "" {
 		return "", nil
