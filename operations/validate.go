@@ -31,7 +31,7 @@ func Validate() cli.Command {
 			Usage: "specify local modules as MODULE_NAME=PATH pairs",
 		}, cli.StringFlag{
 			Name:  joinFlagNames(projectFlagName, "p"),
-			Usage: "specify project identifier",
+			Usage: "specify project identifier in order to run validation requiring project settings",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -39,8 +39,15 @@ func Validate() cli.Command {
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
-
 			projectID := c.String(projectFlagName)
+			if projectID == "" {
+				cwd, err := os.Getwd()
+				grip.Error(errors.Wrap(err, "unable to get current working directory"))
+				cwd, err = filepath.EvalSymlinks(cwd)
+				grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+				conf := ClientSettings{}
+				projectID = conf.FindDefaultProject(cwd, false)
+			}
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {

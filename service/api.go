@@ -533,7 +533,6 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
-
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 
@@ -564,19 +563,26 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	errs := validator.ValidationErrors{}
 	if input.ProjectID != "" {
-		projectRef, err := model.FindBranchProjectRef(input.ProjectID)
+		projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
 		if err != nil {
+			validationErr = validator.ValidationError{}
 			validationErr.Message = "error finding project; validation will proceed without checking project settings"
 			validationErr.Level = validator.Warning
 			errs = append(errs, validationErr)
 
 		} else if projectRef == nil {
+			validationErr = validator.ValidationError{}
 			validationErr.Message = "project does not exist; validation will proceed without checking project settings"
 			validationErr.Level = validator.Warning
 			errs = append(errs, validationErr)
 		} else {
 			errs = append(errs, validator.CheckProjectSettings(project, projectRef)...)
 		}
+	} else {
+		validationErr = validator.ValidationError{}
+		validationErr.Message = "no project specified; validation will proceed without checking project settings"
+		validationErr.Level = validator.Warning
+		errs = append(errs, validationErr)
 	}
 
 	errs = append(errs, validator.CheckYamlStrict(input.ProjectYaml)...)
