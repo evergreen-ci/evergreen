@@ -227,7 +227,7 @@ func (macSign *macSign) Execute(ctx context.Context,
 
 	logger.Task().Info(output)
 
-	logger.Task().Infof("Artifact - %s signed(and/or notarized) and new file created: %s", macSign.LocalZipFile, macSign.OutputZipFile)
+	logger.Task().Infof("Artifact - %s signed (and/or notarized) and new file created: %s", macSign.LocalZipFile, macSign.OutputZipFile)
 
 	return nil
 }
