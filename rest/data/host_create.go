@@ -172,7 +172,7 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 	if v == nil {
 		return nil, nil, errors.New("version doesn't exist")
 	}
-	proj, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
+	proj, _, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}

@@ -83,6 +83,7 @@ func TestAPIPod(t *testing.T) {
 	validDBPod := func() pod.Pod {
 		return pod.Pod{
 			ID:     "id",
+			Type:   pod.TypeAgent,
 			Status: pod.StatusRunning,
 			Secret: pod.Secret{
 				Name:       "secret_name",
@@ -143,6 +144,7 @@ func TestAPIPod(t *testing.T) {
 	validAPIPod := func() APIPod {
 		return APIPod{
 			ID:     utility.ToStringPtr("id"),
+			Type:   PodTypeAgent,
 			Status: PodStatusRunning,
 			Secret: APIPodSecret{
 				Name:       utility.ToStringPtr("secret_name"),
@@ -205,6 +207,7 @@ func TestAPIPod(t *testing.T) {
 			dbPod, err := apiPod.ToService()
 			require.NoError(t, err)
 			assert.Equal(t, utility.FromStringPtr(apiPod.ID), dbPod.ID)
+			assert.Equal(t, pod.TypeAgent, dbPod.Type)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Secret.Name), dbPod.Secret.Name)
 			assert.Equal(t, utility.FromStringPtr(apiPod.Secret.ExternalID), dbPod.Secret.ExternalID)
@@ -244,6 +247,12 @@ func TestAPIPod(t *testing.T) {
 				assert.Empty(t, right, "actual has extra unexpected container secret IDs: %s", right)
 			}
 		})
+		t.Run("FailsWithInvalidPodType", func(t *testing.T) {
+			apiPod := validAPIPod()
+			apiPod.Type = "foo"
+			_, err := apiPod.ToService()
+			assert.Error(t, err)
+		})
 		t.Run("FailsWithInvalidStatus", func(t *testing.T) {
 			apiPod := validAPIPod()
 			apiPod.Status = "foo"
@@ -269,7 +278,7 @@ func TestAPIPod(t *testing.T) {
 			var apiPod APIPod
 			require.NoError(t, apiPod.BuildFromService(&dbPod))
 			assert.Equal(t, dbPod.ID, utility.FromStringPtr(apiPod.ID))
-			require.NotZero(t, apiPod.Status)
+			assert.Equal(t, PodTypeAgent, apiPod.Type)
 			assert.Equal(t, PodStatusRunning, apiPod.Status)
 			assert.Equal(t, dbPod.Secret.Name, utility.FromStringPtr(apiPod.Secret.Name))
 			assert.Equal(t, dbPod.Secret.ExternalID, utility.FromStringPtr(apiPod.Secret.ExternalID))
@@ -309,6 +318,12 @@ func TestAPIPod(t *testing.T) {
 				assert.Empty(t, left, "actual is missing container secret IDs: %s", left)
 				assert.Empty(t, right, "actual has extra unexpected container secret IDs: %s", right)
 			}
+		})
+		t.Run("FailsWithInvalidPodType", func(t *testing.T) {
+			dbPod := validDBPod()
+			dbPod.Type = "invalid"
+			var apiPod APIPod
+			assert.Error(t, apiPod.BuildFromService(&dbPod))
 		})
 		t.Run("FailsWithInvalidStatus", func(t *testing.T) {
 			dbPod := validDBPod()
