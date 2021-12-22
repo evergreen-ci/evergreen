@@ -168,7 +168,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Token:        token,
 		ReadFileFrom: model.ReadfromGithub,
 	}
-	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
+	intermediateProject, config, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing config file")
 	}
@@ -182,6 +182,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Ref:                 j.project,
 		Project:             proj,
 		IntermediateProject: intermediateProject,
+		Config:              config,
 	}
 	v, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {

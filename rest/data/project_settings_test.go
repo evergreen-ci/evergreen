@@ -344,6 +344,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
+			assert.Equal(t, settings.Vars.Vars["banana"], "") // confirm that this is redacted
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)

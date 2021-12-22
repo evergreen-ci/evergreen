@@ -42,6 +42,7 @@ func init() {
 		"json.get_history":              taskDataHistoryFactory,
 		"json.send":                     taskDataSendFactory,
 		"keyval.inc":                    keyValIncFactory,
+		"mac.sign":                      macSignFactory,
 		"manifest.load":                 manifestLoadFactory,
 		"perf.send":                     perfSendFactory,
 		"downstream_expansions.set":     setExpansionsFactory,

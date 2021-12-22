@@ -819,6 +819,10 @@ var (
 		Description: "Not able to view or edit tasks",
 		Value:       0,
 	}
+	PatchSubmitAdmin = PermissionLevel{
+		Description: "Submit/edit patches, and submit patches on behalf of users",
+		Value:       20,
+	}
 	PatchSubmit = PermissionLevel{
 		Description: "Submit and edit patches",
 		Value:       10,

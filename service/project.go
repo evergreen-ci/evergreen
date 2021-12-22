@@ -817,7 +817,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toAdd, toRemove := utility.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
-	if err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
+	if _, err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -1001,7 +1001,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
+	existingAliasDefinitions, _, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}

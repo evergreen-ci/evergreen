@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -170,6 +171,54 @@ func TestPostPod(t *testing.T) {
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podPostHandler))
+		})
+	}
+}
+
+func TestGetPod(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler){
+		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler) {
+			podID := "id"
+			sc.CachedPods = []pod.Pod{
+				{
+					ID:     podID,
+					Type:   pod.TypeAgent,
+					Status: pod.StatusRunning,
+				},
+			}
+
+			ph.podID = podID
+			resp := ph.Run(ctx)
+			require.NotZero(t, resp)
+
+			require.Equal(t, http.StatusOK, resp.Status())
+			require.NotZero(t, resp.Data())
+			apiPod, ok := resp.Data().(*model.APIPod)
+			require.True(t, ok)
+			assert.Equal(t, podID, utility.FromStringPtr(apiPod.ID))
+			assert.Equal(t, model.PodTypeAgent, apiPod.Type)
+			assert.Equal(t, model.PodStatusRunning, apiPod.Status)
+		},
+		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler) {
+			ph.podID = "nonexistent"
+			resp := ph.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+		// "": func(ctx context.Context, t *testing.T, ph *podGetHandler) {},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			sc := &data.MockConnector{}
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			p := makeGetPod(env, sc)
+			require.NotZero(t, p)
+
+			tCase(ctx, t, sc, p.(*podGetHandler))
 		})
 	}
 }

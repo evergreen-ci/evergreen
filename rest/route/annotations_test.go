@@ -754,19 +754,13 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	jsonBody, err := json.Marshal(ticket)
 	require.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
-	r, err := http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
-	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
-	assert.NoError(t, err)
-	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "there is no webhook configured for 'testProject'")
-
 	p.TaskAnnotationSettings = evergreen.AnnotationsSettings{
 		FileTicketWebhook: evergreen.WebHook{
 			Endpoint: "random",
 		},
 	}
 	assert.NoError(t, p.Upsert())
-	r, err = http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
+	r, err := http.NewRequest("PUT", "/task/t1/created_ticket?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
 	assert.NoError(t, h.Parse(ctx, r))

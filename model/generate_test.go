@@ -533,7 +533,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
 	ctx := context.Background()
-	pp, err := LoadProjectInto(ctx, []byte(sampleProjYml), nil, "", p)
+	pp, _, err := LoadProjectInto(ctx, []byte(sampleProjYml), nil, "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
@@ -570,7 +570,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	pp, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
+	pp, _, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
 	s.NoError(err)
 	newPP, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
@@ -647,7 +647,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 
-	p, pp, err := LoadProjectForVersion(v, "proj", false)
+	p, pp, _, err := LoadProjectForVersion(v, "proj", false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)
@@ -746,7 +746,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, err := LoadProjectForVersion(v, "", false)
+	p, pp, _, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -837,7 +837,7 @@ buildvariants:
 		},
 	}
 
-	p, pp, err := LoadProjectForVersion(v, "", false)
+	p, pp, _, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.NoError(err)
@@ -883,7 +883,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, err := LoadProjectForVersion(v, "", false)
+	p, pp, _, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
 	p, pp, v, err = g.NewVersion(p, pp, v)
 	s.Require().NoError(err)

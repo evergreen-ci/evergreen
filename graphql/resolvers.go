@@ -449,7 +449,7 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 }
 
 func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
@@ -468,7 +468,7 @@ func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *r
 }
 
 func (r *repoSettingsResolver) Vars(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIProjectVars, error) {
-	return getAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
 func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
@@ -1821,25 +1821,26 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if len(tasks) == 0 {
 		return nil, nil
 	}
-	t, err := task.Find(task.ByIds(tasks))
+	dbTasks, err := task.FindAll(task.ByIds(tasks))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
-	if t == nil {
+	if len(dbTasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks %s not found", tasks))
 	}
+	testResultsToReturn := []*TaskTestResultSample{}
+
 	// We can assume that if one of the tasks has cedar results, all of them do.
-	if t[0].HasCedarResults {
+	if dbTasks[0].HasCedarResults {
 		failingTests := []string{}
 		for _, f := range testFilters {
 			failingTests = append(failingTests, f.TestName)
 		}
 
-		results, err := getCedarFailedTestResultsSample(ctx, t, failingTests)
+		results, err := getCedarFailedTestResultsSample(ctx, dbTasks, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 		}
-		testResultsToReturn := []*TaskTestResultSample{}
 		for _, r := range results {
 			tr := &TaskTestResultSample{
 				TaskID:                  utility.FromStringPtr(r.TaskID),
@@ -1849,10 +1850,45 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 			}
 			testResultsToReturn = append(testResultsToReturn, tr)
 		}
-		return testResultsToReturn, nil
+	} else {
+		filters := []string{}
+		for _, f := range testFilters {
+			filters = append(filters, f.TestName)
+		}
+		regexFilter := strings.Join(filters, "|")
+		for _, t := range dbTasks {
+			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+				TaskID:    t.Id,
+				Execution: t.Execution,
+				TestName:  regexFilter,
+				Statuses:  []string{evergreen.TestFailedStatus},
+				Limit:     10,
+				Page:      0,
+			})
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+			}
+			failedTestCount, err := r.sc.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
+			}
+			tr := &TaskTestResultSample{
+				TaskID:         t.Id,
+				Execution:      t.Execution,
+				TotalTestCount: failedTestCount,
+			}
+			matchingFailingTestNames := []string{}
+			for _, r := range filteredTestResults {
+				matchingFailingTestNames = append(matchingFailingTestNames, r.TestFile)
+			}
+			tr.MatchingFailedTestNames = matchingFailingTestNames
+			testResultsToReturn = append(testResultsToReturn, tr)
+		}
+
 	}
-	return nil, nil
+	return testResultsToReturn, nil
 }
+
 func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution *int) (*TaskFiles, error) {
 	emptyTaskFiles := TaskFiles{
 		FileCount:    0,
