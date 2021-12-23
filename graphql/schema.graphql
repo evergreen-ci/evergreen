@@ -1032,7 +1032,6 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
-  bbTicketCreationDefined: Boolean!
   baseTask: Task
   baseStatus: String
   baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
@@ -1620,6 +1619,7 @@ type HostEventLogData {
 type BuildBaron {
   searchReturnInfo: SearchReturnInfo
   buildBaronConfigured: Boolean!
+  bbTicketCreationDefined: Boolean!
 }
 
 # build baron plugin
