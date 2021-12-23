@@ -488,7 +488,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		if detailsCopy.Status == evergreen.TaskSucceeded && count == 0 && t.MustHaveResults {
 			detailsCopy.Status = evergreen.TaskFailed
 			detailsCopy.Description = evergreen.TaskDescriptionNoResults
-			detailsCopy.Type = evergreen.CommandTypeTest
+			if !hasFailedTests {
+				detailsCopy.Type = evergreen.CommandTypeTest
+			}
 		}
 	}
 
