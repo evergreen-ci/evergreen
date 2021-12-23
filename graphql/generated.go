@@ -117,9 +117,8 @@ type ComplexityRoot struct {
 	}
 
 	BuildBaron struct {
-		BbTicketCreationDefined func(childComplexity int) int
-		BuildBaronConfigured    func(childComplexity int) int
-		SearchReturnInfo        func(childComplexity int) int
+		BuildBaronConfigured func(childComplexity int) int
+		SearchReturnInfo     func(childComplexity int) int
 	}
 
 	BuildBaronSettings struct {
@@ -852,6 +851,7 @@ type ComplexityRoot struct {
 		BaseStatus              func(childComplexity int) int
 		BaseTask                func(childComplexity int) int
 		BaseTaskMetadata        func(childComplexity int) int
+		BbTicketCreationDefined func(childComplexity int) int
 		Blocked                 func(childComplexity int) int
 		BuildId                 func(childComplexity int) int
 		BuildVariant            func(childComplexity int) int
@@ -1354,6 +1354,7 @@ type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
 
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
+	BbTicketCreationDefined(ctx context.Context, obj *model.APITask) (bool, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -1634,13 +1635,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
-
-	case "BuildBaron.bbTicketCreationDefined":
-		if e.complexity.BuildBaron.BbTicketCreationDefined == nil {
-			break
-		}
-
-		return e.complexity.BuildBaron.BbTicketCreationDefined(childComplexity), true
 
 	case "BuildBaron.buildBaronConfigured":
 		if e.complexity.BuildBaron.BuildBaronConfigured == nil {
@@ -5522,6 +5516,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.BaseTaskMetadata(childComplexity), true
 
+	case "Task.bbTicketCreationDefined":
+		if e.complexity.Task.BbTicketCreationDefined == nil {
+			break
+		}
+
+		return e.complexity.Task.BbTicketCreationDefined(childComplexity), true
+
 	case "Task.blocked":
 		if e.complexity.Task.Blocked == nil {
 			break
@@ -8329,6 +8330,7 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  bbTicketCreationDefined: Boolean!
   baseTask: Task
   baseStatus: String
   baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
@@ -8916,7 +8918,6 @@ type HostEventLogData {
 type BuildBaron {
   searchReturnInfo: SearchReturnInfo
   buildBaronConfigured: Boolean!
-  bbTicketCreationDefined: Boolean!
 }
 
 # build baron plugin
@@ -11774,41 +11775,6 @@ func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BuildBaronConfigured, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _BuildBaron_bbTicketCreationDefined(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "BuildBaron",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BbTicketCreationDefined, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -29235,6 +29201,41 @@ func (ec *executionContext) _Task_annotation(ctx context.Context, field graphql.
 	return ec.marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_bbTicketCreationDefined(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().BbTicketCreationDefined(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_baseTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -41741,11 +41742,6 @@ func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "bbTicketCreationDefined":
-			out.Values[i] = ec._BuildBaron_bbTicketCreationDefined(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -46046,6 +46042,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_annotation(ctx, field, obj)
+				return res
+			})
+		case "bbTicketCreationDefined":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_bbTicketCreationDefined(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "baseTask":

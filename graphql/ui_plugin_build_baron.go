@@ -177,8 +177,7 @@ type buildBaronConfig struct {
 	ProjectFound bool
 	// if search project is configured, then that's an
 	// indication that the build baron is configured
-	SearchConfigured      bool
-	ticketCreationDefined bool
+	SearchConfigured bool
 }
 
 func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, buildBaronConfig, error) {
@@ -194,12 +193,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 		// either regular build baron or for a custom ticket filing webhook
 		return nil, bbConfig, nil
 	}
-
-	createProject := bbProj.TicketCreateProject
-	if createProject != "" {
-		bbConfig.ticketCreationDefined = true
-	}
-	bbConfig.ticketCreationDefined = false
+	bbConfig.ProjectFound = true
 
 	// the build baron is configured if the jira search is configured
 	if len(bbProj.TicketSearchProjects) <= 0 {
@@ -229,7 +223,6 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	} else {
 		featuresURL = ""
 	}
-	bbConfig.ProjectFound = true
 	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, bbConfig, nil
 }
 

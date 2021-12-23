@@ -34,9 +34,8 @@ type BaseTaskResult struct {
 }
 
 type BuildBaron struct {
-	SearchReturnInfo        *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
-	BuildBaronConfigured    bool                         `json:"buildBaronConfigured"`
-	BbTicketCreationDefined bool                         `json:"bbTicketCreationDefined"`
+	SearchReturnInfo     *thirdparty.SearchReturnInfo `json:"searchReturnInfo"`
+	BuildBaronConfigured bool                         `json:"buildBaronConfigured"`
 }
 
 type BuildVariantOptions struct {
