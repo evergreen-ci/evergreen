@@ -739,7 +739,7 @@ func (c *hostCommunicator) NewPush(ctx context.Context, taskData TaskData, req *
 		version:  apiVersion1,
 	}
 
-	info.setTaskPathSuffix("newPush")
+	info.setTaskPathSuffix("new_push")
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
 		return nil, utility.RespErrorf(resp, "failed to add pushlog to task %s: %s", taskData.ID, err.Error())
@@ -761,7 +761,7 @@ func (c *hostCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskDa
 		version:  apiVersion1,
 	}
 
-	info.setTaskPathSuffix("updatePushStatus")
+	info.setTaskPathSuffix("update_push_status")
 	resp, err := c.retryRequest(ctx, info, pushlog)
 	if err != nil {
 		return utility.RespErrorf(resp, "failed to update pushlog status for task %s: %s", taskData.ID, err.Error())

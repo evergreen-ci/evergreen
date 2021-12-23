@@ -144,18 +144,12 @@ func (c *s3copy) validate() error {
 		if s3CopyFile.Destination.Region == "" {
 			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
 		}
-		if s3CopyFile.Source.Bucket == "" {
-			catcher.New("s3 source bucket cannot be blank")
-		}
-		if s3CopyFile.Destination.Bucket == "" {
-			catcher.New("s3 destination bucket cannot be blank")
-		}
 		// make sure both buckets are valid
 		if err := validateS3BucketName(s3CopyFile.Source.Bucket); err != nil {
-			catcher.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Source.Bucket)
+			catcher.Wrapf(err, "source bucket '%v' is invalid", s3CopyFile.Source.Bucket)
 		}
 		if err := validateS3BucketName(s3CopyFile.Destination.Bucket); err != nil {
-			catcher.Wrapf(err, "%v is an invalid bucket name", s3CopyFile.Destination.Bucket)
+			catcher.Wrapf(err, "destination bucket '%v' is invalid", s3CopyFile.Destination.Bucket)
 		}
 
 	}
@@ -189,7 +183,7 @@ func (c *s3copy) Execute(ctx context.Context,
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of S3 copy Command")
+		logger.Execution().Info("Received signal to terminate execution of S3 copy command")
 		return nil
 	}
 
@@ -257,7 +251,6 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
 		if err != nil {
 			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
-			grip.Error(connectionErr)
 			logger.Task().Error(connectionErr)
 			return connectionErr
 		}
@@ -274,7 +267,6 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 		if err != nil {
 			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
-			grip.Error(connectionErr)
 			logger.Task().Error(connectionErr)
 			return connectionErr
 		}
@@ -282,7 +274,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		for i := 0; i < maxS3OpAttempts; i++ {
 			select {
 			case <-ctx.Done():
-				return errors.New("s3 put operation canceled")
+				return errors.New("s3 copy operation canceled")
 			case <-timer.C:
 				copyOpts := pail.CopyOptions{
 					SourceKey:         s3CopyReq.S3SourcePath,
@@ -296,7 +288,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 						return errors.Wrap(err, "updating pushlog status failed for task")
 					}
 					if s3CopyFile.Optional {
-						logger.Execution().Errorf("S3 push copy failed to copy'%s' to '%s'. File is optional, continuing \n error: %v",
+						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %v",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
 						continue
 					} else {
