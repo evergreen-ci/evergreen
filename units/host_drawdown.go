@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -55,9 +54,6 @@ func makeHostDrawdownJob() *hostDrawdownJob {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
-	j.SetPriority(2)
-
 	return j
 }
 
@@ -68,6 +64,7 @@ func NewHostDrawdownJob(env evergreen.Environment, drawdownInfo DrawdownInfo, ts
 	jobID := fmt.Sprintf("%s.%s.%s", hostDrawdownJobName, drawdownInfo.DistroID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
+	j.SetPriority(2)
 	return j
 }
 

@@ -1470,6 +1470,14 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"project":   t.Project,
 		"details":   t.Details,
 	})
+	if detail.Status == "" {
+		grip.Error(message.WrapError(errors.WithStack(errors.New("task status is empty, marking as failed")), message.Fields{
+			"message": "empty task details",
+			"details": detail,
+			"task_id": t.Id,
+		}))
+		detail.Status = evergreen.TaskFailed
+	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -1524,12 +1532,7 @@ func (t *Task) GetDisplayStatus() string {
 		return evergreen.TaskSetupFailed
 	}
 	if t.Details.TimedOut {
-		if t.Details.TimeoutType == string(evergreen.ExecTimeout) {
-			return evergreen.TaskTimedOut
-		}
-		if t.Details.TimeoutType == string(evergreen.IdleTimeout) {
-			return evergreen.TaskTestTimedOut
-		}
+		return evergreen.TaskTimedOut
 	}
 	return t.Status
 }
@@ -1610,6 +1613,8 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.ResetWhenFinished = false
 		t.HostId = ""
 		t.AgentVersion = ""
+		t.HostCreateDetails = []HostCreateDetail{}
+		t.OverrideDependencies = false
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -1627,11 +1632,13 @@ func resetTaskUpdate(t *Task) bson.M {
 			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey:            "",
-			HasCedarResultsKey:    "",
-			CedarResultsFailedKey: "",
-			ResetWhenFinishedKey:  "",
-			AgentVersionKey:       "",
+			DetailsKey:              "",
+			HasCedarResultsKey:      "",
+			CedarResultsFailedKey:   "",
+			ResetWhenFinishedKey:    "",
+			AgentVersionKey:         "",
+			HostCreateDetailsKey:    "",
+			OverrideDependenciesKey: "",
 		},
 	}
 	return update
@@ -3552,7 +3559,7 @@ func (t *Task) getCedarTestResults() ([]TestResult, error) {
 		DisplayTask: t.DisplayOnly,
 	}
 
-	cedarResults, err := apimodels.GetCedarTestResults(ctx, opts)
+	cedarResults, err := apimodels.GetCedarTestResultsWithStatusError(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results from cedar")
 	}

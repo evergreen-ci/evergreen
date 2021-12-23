@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "repoSettings": {
-            "githubWebhooksEnabled": false,
+            "gitHubWebhooksEnabled": false,
             "projectRef": {
               "id": "1234",
               "commitQueue": {
@@ -115,7 +115,7 @@
         "data": {
           "repoSettings": {
             "vars": {
-              "vars": {"hello": "world", "foo":  "bar"},
+              "vars": {"hello": "", "foo":  "bar"},
               "privateVars": ["hello"]
             }
           }

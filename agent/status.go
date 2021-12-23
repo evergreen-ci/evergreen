@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -33,6 +34,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(a.statusHandler()).Get()
+	app.AddRoute("/task_status").Handler(a.endTaskHandler).Post()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
@@ -103,6 +105,37 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 		_, err = w.Write(out)
 		grip.Error(err)
 	}
+}
+
+type TriggerEndTaskResp struct {
+	Description    string `json:"desc,omitempty"`
+	Status         string `json:"status,omitempty"`
+	Type           string `json:"type,omitempty"`
+	ShouldContinue bool   `json:"should_continue"`
+}
+
+func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		_ = grip.GetSender().Close()
+	}()
+
+	payload, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		_, _ = w.Write([]byte(err.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp := TriggerEndTaskResp{}
+	if err := json.Unmarshal(payload, &resp); err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(errors.Wrap(err, "error unmarshalling task resp body").Error()))
+
+		return
+	}
+
+	a.endTaskResp = &resp
 }
 
 func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {

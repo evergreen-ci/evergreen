@@ -169,6 +169,9 @@ func (c *MockPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "finding pod")
 	}
+	if p == nil {
+		return nil, nil
+	}
 
 	var apiPod model.APIPod
 	if err := apiPod.BuildFromService(p); err != nil {
@@ -266,6 +269,7 @@ const (
 // addAgentPodSettings adds any pod configuration that is necessary to run the
 // agent.
 func addAgentPodSettings(p *pod.Pod) {
+	p.Type = pod.TypeAgent
 	if p.Secret.Name == "" {
 		p.Secret.Name = podSecretEnvVar
 	}

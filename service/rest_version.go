@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -331,7 +331,7 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 	if pp == nil || pp.ConfigUpdateNumber < srcVersion.ConfigUpdateNumber {
 		p := &model.Project{}
 		ctx := context.Background()
-		pp, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), nil, srcVersion.Identifier, p)
+		pp, _, err = model.LoadProjectInto(ctx, []byte(srcVersion.Config), nil, srcVersion.Identifier, p)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem reading project from version"})
 			return
@@ -395,7 +395,7 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 		Activated *bool `json:"activated"`
 	}{}
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := json.NewDecoder(body).Decode(&input); err != nil {

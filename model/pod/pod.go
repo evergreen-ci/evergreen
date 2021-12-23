@@ -14,6 +14,8 @@ import (
 type Pod struct {
 	// ID is the unique identifier for the metadata document.
 	ID string `bson:"_id" json:"id"`
+	// Type indicates the type of pod that this is.
+	Type Type `bson:"type" json:"type"`
 	// Status is the current state of the pod.
 	Status Status `bson:"status"`
 	// Secret is the shared secret between the server and the pod for
@@ -27,6 +29,15 @@ type Pod struct {
 	// Resources are external resources that are owned and managed by this pod.
 	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
 }
+
+// Type is the type of pod.
+type Type string
+
+const (
+	// TypeAgent indicates that it is a pod that is running the Evergreen agent
+	// in a container.
+	TypeAgent Type = "agent"
+)
 
 // Status represents a possible state for a pod.
 type Status string

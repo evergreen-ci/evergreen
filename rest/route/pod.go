@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -42,9 +41,9 @@ func (h *podPostHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse fetches the podID and JSON payload from the HTTP request.
+// Parse fetches the pod ID and JSON payload from the HTTP request.
 func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(r.Body, &h.p); err != nil {
@@ -73,7 +72,7 @@ func (h *podPostHandler) validatePayload() error {
 	return catcher.Resolve()
 }
 
-// Run creates a new resource based on the Request-URI and JSON payload.
+// Run creates a new pod based on the request payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 	res, err := h.sc.CreatePod(h.p)
 	if err != nil {
@@ -96,4 +95,50 @@ func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return responder
+}
+
+////////////////////////////////////////////////
+//
+// GET /rest/v2/pods/{pod_id}
+
+type podGetHandler struct {
+	env   evergreen.Environment
+	sc    data.Connector
+	podID string
+}
+
+func makeGetPod(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
+	return &podGetHandler{
+		env: env,
+		sc:  sc,
+	}
+}
+
+func (h *podGetHandler) Factory() gimlet.RouteHandler {
+	return &podGetHandler{
+		env: h.env,
+		sc:  h.sc,
+	}
+}
+
+// Parse fetches the pod ID from the HTTP request.
+func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.podID = gimlet.GetVars(r)["pod_id"]
+	return nil
+}
+
+// Run finds and returns the REST pod.
+func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
+	p, err := h.sc.FindPodByID(h.podID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding pod"))
+	}
+	if p == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "pod not found",
+		})
+	}
+
+	return gimlet.NewJSONResponse(p)
 }

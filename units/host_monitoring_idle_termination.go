@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -58,15 +57,13 @@ func makeIdleHostJob() *idleHostJob {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways())
-	j.SetPriority(2)
-
 	return j
 }
 
 func NewIdleHostTerminationJob(env evergreen.Environment, id string) amboy.Job {
 	j := makeIdleHostJob()
 	j.env = env
+	j.SetPriority(2)
 	j.SetID(fmt.Sprintf("%s.%s", idleHostJobName, id))
 	return j
 }
@@ -176,12 +173,11 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	}
 
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
-	terminateReason := ""
-
+	var terminateReason string
 	if communicationTime >= idleThreshold {
-		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %d over threshold minutes %d", communicationTime, idleThreshold)
+		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %s over threshold time %s", communicationTime.String(), idleThreshold)
 	} else if idleTime >= idleThreshold {
-		terminateReason = fmt.Sprintf("host is idle or unreachable, idleTime %d over threshold minutes %d", idleTime, idleThreshold)
+		terminateReason = fmt.Sprintf("host is idle or unreachable, idle time %s over threshold time %s", idleTime, idleThreshold)
 	}
 	if terminateReason != "" {
 		j.Terminated++

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -224,7 +223,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.project = gimlet.GetVars(r)["project_id"]
 	h.user = MustHaveUser(ctx)
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -433,15 +432,29 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// if owner/repo has changed or we're toggling repo settings off, update scope
 	if h.newProjectRef.Owner != h.originalProject.Owner || h.newProjectRef.Repo != h.originalProject.Repo ||
-		(!h.newProjectRef.UseRepoSettings && h.originalProject.UseRepoSettings) {
+		(!h.newProjectRef.UseRepoSettings() && h.originalProject.UseRepoSettings()) {
 		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project from old repo scope"))
 		}
-		h.newProjectRef.RepoRefId = "" // if using repo settings, will reassign this in the next block
-	}
-	if h.newProjectRef.UseRepoSettings && h.newProjectRef.RepoRefId == "" {
 		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+
+	// if the user explicitly set useRepoSettings, update the repo accordingly
+	if h.apiNewProjectRef.UseRepoSettings != nil {
+		useRepoSettings := utility.FromBoolPtr(h.apiNewProjectRef.UseRepoSettings)
+		// the user set it to false, and it was previously true - remove
+		if !useRepoSettings && h.newProjectRef.RepoRefId != "" {
+			if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
+			h.newProjectRef.RepoRefId = ""
+			// the user set it to true, and it was previously false - add
+		} else if useRepoSettings && h.newProjectRef.RepoRefId == "" {
+			if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(err)
+			}
 		}
 	}
 
@@ -536,7 +549,7 @@ func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -671,20 +684,19 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' is already hidden", h.projectName))
 	}
 
-	if !project.UseRepoSettings {
+	if !project.UseRepoSettings() {
 		return gimlet.MakeJSONErrorResponder(
-			errors.Errorf("project '%s' must have UseRepoSettings enabled to be eligible for deletion", h.projectName))
+			errors.Errorf("project '%s' must be attached to a repo to be eligible for deletion", h.projectName))
 	}
 
 	skeletonProj := dbModel.ProjectRef{
-		Id:              project.Id,
-		Owner:           project.Owner,
-		Repo:            project.Repo,
-		Branch:          project.Branch,
-		RepoRefId:       project.RepoRefId,
-		Enabled:         utility.FalsePtr(),
-		UseRepoSettings: true,
-		Hidden:          utility.TruePtr(),
+		Id:        project.Id,
+		Owner:     project.Owner,
+		Repo:      project.Repo,
+		Branch:    project.Branch,
+		RepoRefId: project.RepoRefId,
+		Enabled:   utility.FalsePtr(),
+		Hidden:    utility.TruePtr(),
 	}
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
@@ -1082,7 +1094,7 @@ func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.user = MustHaveUser(ctx)
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {

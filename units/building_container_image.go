@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -50,8 +49,6 @@ func makeBuildingContainerImageJob() *buildingContainerImageJob {
 			},
 		},
 	}
-
-	j.SetDependency(dependency.NewAlways())
 	return j
 }
 

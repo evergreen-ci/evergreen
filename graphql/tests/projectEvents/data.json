@@ -1,0 +1,54 @@
+{
+  "project_ref": [
+    {
+      "_id" : "1234",
+      "identifier" : "evergreen"
+    }
+  ],
+  "project_vars": [
+    {
+    "_id": "1234",
+    "vars": {"hello": "world", "foo":  "bar"},
+    "private_vars": {"hello":  true, "foo":  false}
+    }
+  ],
+  "event_log": [
+    {
+      "_id": "5e5e7bb857e85a21ceb53cb0",
+      "r_type": "PROJECT",
+      "processed_at": {
+        "$date": "2020-03-03T15:46:29.961Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:46:00.709Z"
+      },
+      "r_id": "1234",
+      "e_type": "PROJECT_MODIFIED",
+      "data": {
+        "user" : "Annie Black",
+        "before" : {
+          "proj_ref" : {
+            "owner_name" : "evergreen-ci",
+            "repo_name" : "evergreen",
+            "branch_name": "master"
+          },
+          "github_hooks_enabled" : false,
+          "vars" : {
+            "_id" : "1234"
+          }
+        },
+        "after" : {
+          "proj_ref" : {
+            "owner_name" : "evergreen-ci",
+            "repo_name" : "evergreen",
+            "branch_name": "main"
+          },
+          "github_hooks_enabled" : true,
+          "vars" : {
+            "_id" : "1234"
+          }
+        }
+      }
+    }
+  ]
+}

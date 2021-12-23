@@ -105,9 +105,7 @@ type ProjectRef struct {
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
-	// This is a temporary flag to enable individual projects to use repo settings
-	UseRepoSettings bool   `bson:"use_repo_settings" json:"use_repo_settings" yaml:"use_repo_settings"`
-	RepoRefId       string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
+	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
@@ -115,17 +113,17 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled       *bool  `bson:"enabled" json:"enabled"`
-	RequireSigned *bool  `bson:"require_signed" json:"require_signed"`
-	MergeMethod   string `bson:"merge_method" json:"merge_method"`
-	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+	Enabled       *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
+	RequireSigned *bool  `bson:"require_signed" json:"require_signed" yaml:"require_signed"`
+	MergeMethod   string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // TaskSyncOptions contains information about which features are allowed for
 // syncing task directories to S3.
 type TaskSyncOptions struct {
-	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled"`
-	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled"`
+	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled" yaml:"config_enabled"`
+	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled" yaml:"patch_enabled"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -174,13 +172,13 @@ type PeriodicBuildDefinition struct {
 }
 
 type WorkstationConfig struct {
-	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
-	GitClone      *bool                     `bson:"git_clone" json:"git_clone"`
+	SetupCommands []WorkstationSetupCommand `bson:"setup_commands" json:"setup_commands" yaml:"setup_commands"`
+	GitClone      *bool                     `bson:"git_clone" json:"git_clone" yaml:"git_clone"`
 }
 
 type WorkstationSetupCommand struct {
-	Command   string `bson:"command" json:"command"`
-	Directory string `bson:"directory" json:"directory"`
+	Command   string `bson:"command" json:"command" yaml:"command"`
+	Directory string `bson:"directory" json:"directory" yaml:"directory"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -223,7 +221,6 @@ var (
 	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefGithubChecksEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
 	projectRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
-	projectRefUseRepoSettingsKey         = bsonutil.MustHaveTag(ProjectRef{}, "UseRepoSettings")
 	projectRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey             = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefTaskSyncKey                = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
@@ -298,6 +295,10 @@ func (p *ProjectRef) IsStatsCacheDisabled() bool {
 
 func (p *ProjectRef) IsHidden() bool {
 	return utility.FromBoolPtr(p.Hidden)
+}
+
+func (p *ProjectRef) UseRepoSettings() bool {
+	return p.RepoRefId != ""
 }
 
 func (p *ProjectRef) DoesTrackPushEvents() bool {
@@ -381,7 +382,8 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 				return errors.Wrapf(err, "error upserting project ref '%s'", hidden.Id)
 			}
 			if creator != nil {
-				return p.UpdateAdminRoles([]string{creator.Id}, nil)
+				_, err = p.UpdateAdminRoles([]string{creator.Id}, nil)
+				return err
 			}
 			return nil
 		}
@@ -404,32 +406,43 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 	return patch.PatchTriggerDefinition{}, false
 }
 
-// MergeWithParserProject looks up the parser project with the given project ref id and modifies
+// MergeWithProjectConfig looks up the project config with the given project ref id and modifies
 // the project ref scanning for any properties that can be set on both project ref and project parser.
-// Any values that are set at the project parser level will be set on the project ref.
-func (p *ProjectRef) MergeWithParserProject(version string) error {
-	parserProject, err := ParserProjectByVersion(p.Id, version)
+// Any values that are set at the project config level will be set on the project ref IF they are not set on
+// the project ref.
+func (p *ProjectRef) MergeWithProjectConfig(version string) error {
+	projectConfig, err := FindProjectConfigToMerge(p.Id, version)
 	if err != nil {
 		return err
 	}
-	if parserProject != nil {
-		if parserProject.PerfEnabled != nil {
-			p.PerfEnabled = parserProject.PerfEnabled
+	if projectConfig != nil {
+		defer func() {
+			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
+		}()
+		pRefToMerge := ProjectRef{
+			DeactivatePrevious: projectConfig.DeactivatePrevious,
+			PerfEnabled:        projectConfig.PerfEnabled,
 		}
-		if parserProject.DeactivatePrevious != nil {
-			p.DeactivatePrevious = parserProject.DeactivatePrevious
+		if projectConfig.WorkstationConfig != nil {
+			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
 		}
-		if parserProject.TaskAnnotationSettings != nil {
-			p.TaskAnnotationSettings = *parserProject.TaskAnnotationSettings
+		if projectConfig.BuildBaronSettings != nil {
+			pRefToMerge.BuildBaronSettings = *projectConfig.BuildBaronSettings
 		}
-		if parserProject.WorkstationConfig != nil {
-			p.WorkstationConfig = *parserProject.WorkstationConfig
+		if projectConfig.TaskAnnotationSettings != nil {
+			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
 		}
-		if parserProject.CommitQueue != nil {
-			p.CommitQueue = *parserProject.CommitQueue
+		if projectConfig.CommitQueue != nil {
+			pRefToMerge.CommitQueue = *projectConfig.CommitQueue
 		}
+		if projectConfig.TaskSync != nil {
+			pRefToMerge.TaskSync = *projectConfig.TaskSync
+		}
+		reflectedRef := reflect.ValueOf(p).Elem()
+		reflectedConfig := reflect.ValueOf(pRefToMerge)
+		recursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
-	return nil
+	return err
 }
 
 // AttachToRepo adds the branch to the relevant repo scopes, and updates the project to point to the repo.
@@ -445,14 +458,12 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 	}
 	err = db.UpdateId(ProjectRefCollection, p.Id, bson.M{
 		"$set": bson.M{
-			projectRefUseRepoSettingsKey: true,
-			ProjectRefRepoRefIdKey:       p.RepoRefId, // this is set locally in AddToRepoScope
+			ProjectRefRepoRefIdKey: p.RepoRefId, // this is set locally in AddToRepoScope
 		},
 	})
 	if err != nil {
 		return errors.Wrap(err, "error attaching repo to scope")
 	}
-	p.UseRepoSettings = true
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
 
@@ -505,7 +516,6 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	if err = p.RemoveFromRepoScope(); err != nil {
 		return err
 	}
-	p.UseRepoSettings = false
 	p.RepoRefId = ""
 
 	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
@@ -523,7 +533,6 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "error finding merged project vars")
 	}
 
-	mergedProject.UseRepoSettings = false
 	mergedProject.RepoRefId = ""
 	if err = mergedProject.Upsert(); err != nil {
 		return errors.Wrap(err, "error detaching project from repo")
@@ -597,7 +606,7 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		return errors.Wrapf(err, "error validating new owner/repo")
 	}
 
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		if err := p.RemoveFromRepoScope(); err != nil {
 			return errors.Wrapf(err, "error removing project from old repo scope")
 		}
@@ -674,7 +683,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		if err := p.AddToRepoScope(creator); err != nil {
 			return errors.Wrapf(err, "error adding project to repo '%s'", p.RepoRefId)
 		}
@@ -719,7 +728,7 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 // Relevant fields will also be merged from the parser project with a specified version.
 // If no version is specified, the most recent valid parser project version will be used for merge.
-func FindMergedProjectRef(identifier string, version string, includeParserProject bool) (*ProjectRef, error) {
+func FindMergedProjectRef(identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
@@ -727,7 +736,7 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 	if pRef == nil {
 		return nil, nil
 	}
-	if pRef.UseRepoSettings {
+	if pRef.UseRepoSettings() {
 		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
@@ -740,20 +749,19 @@ func FindMergedProjectRef(identifier string, version string, includeParserProjec
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	// Removing due to outage: EVG-15856
-	//if includeParserProject {
-	//	err = pRef.MergeWithParserProject(version)
-	//	if err != nil {
-	//		return nil, errors.Wrapf(err, "Unable to merge parser project with project ref %s", pRef.Identifier)
-	//	}
-	//}
+	if includeProjectConfig {
+		err = pRef.MergeWithProjectConfig(version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
+		}
+	}
 	return pRef, nil
 }
 
 // GetProjectRefMergedWithRepo merges the project with the repo that matches it, if one exists.
 // Otherwise, it will return the project as given.
 func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
-	if !pRef.UseRepoSettings {
+	if !pRef.UseRepoSettings() {
 		return &pRef, nil
 	}
 	if pRef.RepoRefId != "" {
@@ -854,7 +862,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	}
 	// some fields shouldn't be set from projects
 	repoRef.Id = mgobson.NewObjectId().Hex()
-	repoRef.UseRepoSettings = false
+	repoRef.RepoRefId = ""
 	// set explicitly in case no project is enabled
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
@@ -1047,7 +1055,7 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
 	for i, pRef := range pRefs {
 		pRefs[i].checkDefaultLogger()
-		if pRefs[i].UseRepoSettings {
+		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
 				var err error
@@ -1138,7 +1146,7 @@ func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, br
 	projectRefs := []ProjectRef{}
 
 	q := byOwnerRepoAndBranch(owner, repoName, branch)
-	q[projectRefUseRepoSettingsKey] = true
+	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
@@ -1153,8 +1161,7 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	err := db.FindAllQ(
 		ProjectRefCollection,
 		db.Query(bson.M{
-			ProjectRefRepoRefIdKey:       repoId,
-			projectRefUseRepoSettingsKey: true,
+			ProjectRefRepoRefIdKey: repoId,
 		}).WithFields(ProjectRefAdminsKey),
 		&projectRefs,
 	)
@@ -1258,14 +1265,13 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 		})
 		// if no project exists, create and return skeleton project
 		hiddenProject = &ProjectRef{
-			Id:              mgobson.NewObjectId().Hex(),
-			Owner:           owner,
-			Repo:            repo,
-			Branch:          branch,
-			RepoRefId:       repoRef.Id,
-			UseRepoSettings: true,
-			Enabled:         utility.FalsePtr(),
-			Hidden:          utility.TruePtr(),
+			Id:        mgobson.NewObjectId().Hex(),
+			Owner:     owner,
+			Repo:      repo,
+			Branch:    branch,
+			RepoRefId: repoRef.Id,
+			Enabled:   utility.FalsePtr(),
+			Hidden:    utility.TruePtr(),
 		}
 		if err = hiddenProject.Add(nil); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -1349,7 +1355,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 
 	for i := range projectRefs {
 		projectRefs[i].checkDefaultLogger()
-		if projectRefs[i].UseRepoSettings {
+		if projectRefs[i].UseRepoSettings() {
 			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error merging settings")
@@ -1427,8 +1433,7 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 	return db.Update(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefRepoRefIdKey:       repoId,
-			projectRefUseRepoSettingsKey: true,
+			ProjectRefRepoRefIdKey: repoId,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1552,7 +1557,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
 			ProjectRefFilesIgnoredFromCacheKey:   p.FilesIgnoredFromCache,
 		}
-		if !isRepo && !p.UseRepoSettings {
+		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
 			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
@@ -1880,7 +1885,7 @@ func RemoveAdminFromProjects(toDelete string) error {
 func (p *ProjectRef) MakeRestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
 		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "error removing resource from unrestricted branches scope")
@@ -1900,7 +1905,7 @@ func (p *ProjectRef) MakeRestricted() error {
 func (p *ProjectRef) MakeUnrestricted() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
 		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "error adding resource to unrestricted branches scope")
@@ -1916,24 +1921,25 @@ func (p *ProjectRef) MakeUnrestricted() error {
 	return nil
 }
 
-func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
+// UpdateAdminRoles returns true if any admins have been modified/removed, regardless of errors.
+func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	if len(toAdd) == 0 && len(toRemove) == 0 {
-		return nil
+		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
 	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
-		return errors.Wrap(err, "error finding role with admin permissions")
+		return false, errors.Wrap(err, "error finding role with admin permissions")
 	}
 	if role == nil {
-		return errors.Errorf("no admin role for %s found", p.Id)
+		return false, errors.Errorf("no admin role for %s found", p.Id)
 	}
 	viewRole := ""
 	allBranchAdmins := []string{}
 	if p.RepoRefId != "" {
 		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
 		if err != nil {
-			return errors.Wrapf(err, "error finding branch admins for repo '%s'", p.RepoRefId)
+			return false, errors.Wrapf(err, "error finding branch admins for repo '%s'", p.RepoRefId)
 		}
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
@@ -1985,10 +1991,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			}
 		}
 	}
-	if err = catcher.Resolve(); err != nil {
-		return errors.Wrap(err, "error updating some admins")
-	}
-	return nil
+	return true, errors.Wrap(catcher.Resolve(), "error updating some admins")
 }
 
 func (p *ProjectRef) removeFromAdminsList(user string) {
@@ -2104,7 +2107,7 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 	collection := ProjectRefCollection
 	idKey := ProjectRefIdKey
 	buildsKey := projectRefPeriodicBuildsKey
-	if p.UseRepoSettings {
+	if p.UseRepoSettings() {
 		// if the periodic build is part of the repo then update there instead
 		repoRef, err := FindOneRepoRef(p.RepoRefId)
 		if err != nil {
@@ -2235,6 +2238,17 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
+// GetBuildBaronSettings retrieves build baron settings from project settings.
+// Project page settings takes precedence, otherwise fallback to project config yaml.
+// Returns build baron settings and ok if found.
+func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
+	projectRef, err := FindMergedProjectRef(projectId, version, true)
+	if err != nil || projectRef == nil {
+		return evergreen.BuildBaronSettings{}, false
+	}
+	return projectRef.BuildBaronSettings, true
+}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -2304,6 +2318,33 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	}
 
 	return catcher.Resolve()
+}
+
+// IsWebhookConfigured retrieves webhook configuration from the project settings.
+func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool, error) {
+	projectRef, err := FindMergedProjectRef(project, version, true)
+	if err != nil || projectRef == nil {
+		return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
+	}
+	webHook := projectRef.TaskAnnotationSettings.FileTicketWebhook
+	if webHook.Endpoint != "" {
+		return webHook, true, nil
+	} else {
+		return evergreen.WebHook{}, false, nil
+	}
+}
+
+// IsWebhookConfigured retrieves webhook configuration from the project settings.
+func IsBBTicketCreationDefined(project string, version string) (bool, error) {
+	projectRef, err := FindMergedProjectRef(project, version, true)
+	if err != nil || projectRef == nil {
+		return false, errors.Errorf("Unable to find merged project ref for project %s", project)
+	}
+	createProject := projectRef.BuildBaronSettings.TicketCreateProject
+	if createProject != "" {
+		return true, nil
+	}
+	return false, nil
 }
 
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {

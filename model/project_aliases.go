@@ -57,15 +57,15 @@ const (
 // variants/tasks, assuming the tag matches the defined git_tag regex.
 // In this way, users can define different behavior for different kind of tags.
 type ProjectAlias struct {
-	ID          mgobson.ObjectId `bson:"_id" json:"_id"`
-	ProjectID   string           `bson:"project_id" json:"project_id"`
-	Alias       string           `bson:"alias" json:"alias"`
-	Variant     string           `bson:"variant,omitempty" json:"variant"`
-	GitTag      string           `bson:"git_tag" json:"git_tag"`
-	RemotePath  string           `bson:"remote_path" json:"remote_path"`
-	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags"`
-	Task        string           `bson:"task,omitempty" json:"task"`
-	TaskTags    []string         `bson:"tags,omitempty" json:"tags"`
+	ID          mgobson.ObjectId `bson:"_id,omitempty" json:"_id" yaml:"id"`
+	ProjectID   string           `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Alias       string           `bson:"alias" json:"alias" yaml:"alias"`
+	Variant     string           `bson:"variant,omitempty" json:"variant" yaml:"variant"`
+	GitTag      string           `bson:"git_tag" json:"git_tag" yaml:"git_tag"`
+	RemotePath  string           `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	VariantTags []string         `bson:"variant_tags,omitempty" json:"variant_tags" yaml:"variant_tags"`
+	Task        string           `bson:"task,omitempty" json:"task" yaml:"task"`
+	TaskTags    []string         `bson:"tags,omitempty" json:"tags" yaml:"task_tags"`
 }
 
 type ProjectAliases []ProjectAlias
@@ -115,7 +115,7 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 // findMatchingAliasForProjectRef finds all aliases with a given name for a project.
 // Typically FindAliasInProjectOrRepo should be used.
 // Returns true if we have an alias match or the alias doesn't match but
-//  other aliases in the category are defined, in which case we shouldn't check other sources.
+// other aliases in the category are defined, in which case we shouldn't check other sources.
 func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bool, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
@@ -129,7 +129,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 
 	if len(out) == 0 && IsPatchAlias(alias) {
 		// return true if any patch aliases are defined
-		numPatchAliases, err := countPatchAliasesForProjectRef(projectID)
+		numPatchAliases, err := countPatchAliases(projectID)
 		if err != nil {
 			return nil, false, errors.Wrap(err, "error counting patch aliases")
 		}
@@ -138,27 +138,21 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 	return out, len(out) > 0, nil
 }
 
-// Returns true if we have an alias match or the alias doesn't match but
-//  other aliases in the category are defined, in which case we shouldn't check other sources.
-func findMatchingAliasForParserProject(projectID, alias string) ([]ProjectAlias, bool, error) {
-	// if alias is a PATCH ALIAS, we want to know if it has ANY patch aliases.
-	parserProject, err := ParserProjectByVersion(projectID, "")
+// findMatchingAliasForProjectConfig finds any aliases matching the alias input in the project config.
+func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias, error) {
+	projectConfig, err := FindProjectConfigToMerge(projectID, "")
 	if err != nil {
-		return nil, false, errors.Wrap(err, "error finding project parser")
+		return nil, errors.Wrap(err, "error finding project config")
 	}
-	if parserProject == nil {
-		return nil, false, nil
+	if projectConfig == nil {
+		return nil, nil
 	}
 
-	parserProjectAliases := aliasesToMap(getFullParserProjectAliases(parserProject))
-	if parserProjectAliases[alias] != nil {
-		return parserProjectAliases[alias], true, nil
-	}
-	aliasesDefined := IsPatchAlias(alias) && len(parserProject.PatchAliases) > 0
-	return nil, aliasesDefined, nil
+	projectConfigAliases := aliasesToMap(getFullProjectConfigAliases(projectConfig))
+	return projectConfigAliases[alias], nil
 }
 
-func countPatchAliasesForProjectRef(projectID string) (int, error) {
+func countPatchAliases(projectID string) (int, error) {
 	return db.Count(ProjectAliasCollection, bson.M{
 		projectIDKey: projectID,
 		aliasKey:     bson.M{"$nin": evergreen.InternalAliases},
@@ -173,95 +167,86 @@ func aliasesToMap(aliases []ProjectAlias) map[string][]ProjectAlias {
 	return output
 }
 
-func getFullParserProjectAliases(parserProject *ParserProject) []ProjectAlias {
-	var parserProjectAliases []ProjectAlias
-	if parserProject != nil {
-		for _, commitQueueAlias := range parserProject.CommitQueueAliases {
+func getFullProjectConfigAliases(projectConfig *ProjectConfig) []ProjectAlias {
+	var projectConfigAliases []ProjectAlias
+	if projectConfig != nil {
+		for _, commitQueueAlias := range projectConfig.CommitQueueAliases {
 			commitQueueAlias.Alias = evergreen.CommitQueueAlias
-			parserProjectAliases = append(parserProjectAliases, commitQueueAlias)
+			projectConfigAliases = append(projectConfigAliases, commitQueueAlias)
 		}
-		for _, gitTagAlias := range parserProject.GitTagAliases {
+		for _, gitTagAlias := range projectConfig.GitTagAliases {
 			gitTagAlias.Alias = evergreen.GitTagAlias
-			parserProjectAliases = append(parserProjectAliases, gitTagAlias)
+			projectConfigAliases = append(projectConfigAliases, gitTagAlias)
 		}
-		for _, githubPrAlias := range parserProject.GitHubPRAliases {
+		for _, githubPrAlias := range projectConfig.GitHubPRAliases {
 			githubPrAlias.Alias = evergreen.GithubPRAlias
-			parserProjectAliases = append(parserProjectAliases, githubPrAlias)
+			projectConfigAliases = append(projectConfigAliases, githubPrAlias)
 		}
-		for _, gitHubCheckAlias := range parserProject.GitHubChecksAliases {
+		for _, gitHubCheckAlias := range projectConfig.GitHubChecksAliases {
 			gitHubCheckAlias.Alias = evergreen.GithubChecksAlias
-			parserProjectAliases = append(parserProjectAliases, gitHubCheckAlias)
+			projectConfigAliases = append(projectConfigAliases, gitHubCheckAlias)
 		}
-		for _, patchAlias := range parserProject.PatchAliases {
-			parserProjectAliases = append(parserProjectAliases, patchAlias)
-		}
-	}
-	return parserProjectAliases
-}
-
-func mergeAliases(parserProject *ParserProject, databaseAliases []ProjectAlias) []ProjectAlias {
-	parserProjectAliases := getFullParserProjectAliases(parserProject)
-	ppAliasMap := aliasesToMap(parserProjectAliases)
-	dbAliasMap := aliasesToMap(databaseAliases)
-	var out []ProjectAlias
-	for _, v := range ppAliasMap {
-		for _, alias := range v {
-			out = append(out, alias)
+		for _, patchAlias := range projectConfig.PatchAliases {
+			projectConfigAliases = append(projectConfigAliases, patchAlias)
 		}
 	}
-	for k, v := range dbAliasMap {
-		if ppAliasMap[k] == nil {
-			for _, alias := range v {
-				out = append(out, alias)
-			}
-		}
-	}
-	return out
+	return projectConfigAliases
 }
 
 // FindAliasInProjectOrRepo finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
-	aliases, shouldExit, err := findMatchingAliasForParserProject(projectID, alias)
+	aliases, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error checking parser project for project '%s' for aliases", projectID)
+		return nil, errors.Wrap(err, "error checking for existing aliases")
 	}
-	if shouldExit {
+	// If nothing is defined in the DB, check the project config,
+	// unless the alias defined is a patch alias and there are patch aliases
+	// defined on the project page.
+	if len(aliases) > 0 || shouldExit {
 		return aliases, nil
 	}
-	return FindAliasInProjectOrRepoFromDb(projectID, alias)
+	return findMatchingAliasForProjectConfig(projectID, alias)
 }
 
 // FindAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
 // If the project has no aliases, the repo is checked for aliases.
-func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, error) {
+func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, bool, error) {
 	aliases, shouldExit, err := findMatchingAliasForProjectRef(projectID, alias)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error finding aliases for project ref '%s'", projectID)
+		return aliases, false, errors.Wrapf(err, "error finding aliases for project ref '%s'", projectID)
 	}
 	if shouldExit {
-		return aliases, nil
+		return aliases, true, nil
 	}
 	return tryGetRepoAliases(projectID, alias, aliases)
 }
 
-func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, error) {
+func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, bool, error) {
 	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error finding project '%s'", projectID)
+		return aliases, false, errors.Wrapf(err, "error finding project '%s'", projectID)
 	}
 	if project == nil {
-		return aliases, errors.Errorf("project '%s' does not exist", projectID)
+		return aliases, false, errors.Errorf("project '%s' does not exist", projectID)
 	}
-	if !project.UseRepoSettings {
-		return aliases, nil
+	if !project.UseRepoSettings() {
+		return aliases, false, nil
 	}
 
 	aliases, err = findMatchingAliasForRepo(project.RepoRefId, alias)
 	if err != nil {
-		return aliases, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
+		return aliases, false, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
 	}
-	return aliases, nil
+	shouldExit := false
+	if IsPatchAlias(alias) {
+		numRepoPatchAliases, err := countPatchAliases(project.RepoRefId)
+		if err != nil {
+			return nil, false, errors.Wrap(err, "error counting patch aliases")
+		}
+		shouldExit = numRepoPatchAliases > 0
+	}
+	return aliases, shouldExit, nil
 }
 
 func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {

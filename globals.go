@@ -14,10 +14,17 @@ const (
 	GithubPatchUser = "github_pull_request"
 	ParentPatchUser = "parent_patch"
 
-	HostRunning         = "running"
-	HostTerminated      = "terminated"
-	HostUninitialized   = "initializing"
-	HostBuilding        = "building"
+	HostRunning       = "running"
+	HostTerminated    = "terminated"
+	HostUninitialized = "initializing"
+	// HostBuilding is an intermediate state indicating that the intent host is
+	// attempting to create a real host from an intent host, but has not
+	// successfully done so yet.
+	HostBuilding = "building"
+	// HostBuildingFailed is a failure state indicating that an intent host was
+	// attempting to create a host but failed during creation. Hosts that fail
+	// to build will terminate shortly.
+	HostBuildingFailed  = "building-failed"
 	HostStarting        = "starting"
 	HostProvisioning    = "provisioning"
 	HostProvisionFailed = "provision failed"
@@ -262,16 +269,6 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
-// TimeoutType indicate the type of timeout stored in TaskEndDetail.TimeoutType.
-type TimeoutType string
-
-const (
-	// Represents a task timeout.
-	ExecTimeout TimeoutType = "exec"
-	// Represents a test timeout.
-	IdleTimeout TimeoutType = "idle"
-)
-
 var InternalAliases []string = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
@@ -310,6 +307,10 @@ func IsFinishedTaskStatus(status string) bool {
 
 func IsFailedTaskStatus(status string) bool {
 	return utility.StringSliceContains(TaskFailureStatuses, status)
+}
+
+func IsValidTaskEndStatus(status string) bool {
+	return status == TaskSucceeded || status == TaskFailed
 }
 
 func IsFinishedPatchStatus(status string) bool {
@@ -817,6 +818,10 @@ var (
 	TasksNone = PermissionLevel{
 		Description: "Not able to view or edit tasks",
 		Value:       0,
+	}
+	PatchSubmitAdmin = PermissionLevel{
+		Description: "Submit/edit patches, and submit patches on behalf of users",
+		Value:       20,
 	}
 	PatchSubmit = PermissionLevel{
 		Description: "Submit and edit patches",

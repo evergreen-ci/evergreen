@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,7 +17,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -86,7 +86,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			})
 		return
 	}
-	if projRef.UseRepoSettings {
+	if projRef.UseRepoSettings() {
 		projRef, err = model.FindMergedProjectRef(projRef.Id, "", false)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -140,7 +140,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var projVars *model.ProjectVars
-	if projRef.UseRepoSettings {
+	if projRef.UseRepoSettings() {
 		projVars, err = model.FindMergedProjectVars(projRef.Id)
 	} else {
 		projVars, err = model.FindOneProjectVars(projRef.Id)
@@ -160,7 +160,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if len(projectAliases) == 0 && projRef.UseRepoSettings {
+	if len(projectAliases) == 0 && projRef.UseRepoSettings() {
 		projectAliases, err = model.FindAliasesForRepo(projRef.RepoRefId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -260,7 +260,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
-	if projectRef.UseRepoSettings {
+	if projectRef.UseRepoSettings() {
 		http.Error(w, "can't modify branch projects here", http.StatusBadRequest)
 		return
 	}
@@ -324,7 +324,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		TaskAnnotationSettings restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
 	}{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), &responseRef); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -564,6 +564,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	buildbaronConfig, ok := i.(evergreen.BuildBaronSettings)
 	if !ok {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
+		return
+	}
+	err = bbProjectIsValid(projectRef.Id, buildbaronConfig)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
 		return
 	}
 
@@ -812,7 +817,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	toAdd, toRemove := utility.StringSliceSymmetricDifference(projectRef.Admins, origProjectRef.Admins)
-	if err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
+	if _, err = projectRef.UpdateAdminRoles(toAdd, toRemove); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -852,7 +857,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Id string `json:"id"`
 	}{}
 
-	if err = utility.ReadJSON(util.NewRequestReader(r), &projectWithId); err != nil {
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &projectWithId); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -917,7 +922,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 
 	project := gimlet.GetVars(r)["project_id"]
 
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	data, err := ioutil.ReadAll(body)
@@ -996,7 +1001,7 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		return true, nil
 	}
 
-	existingAliasDefinitions, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
+	existingAliasDefinitions, _, err := model.FindAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking for existing aliases")
 	}
@@ -1008,4 +1013,51 @@ func verifyAliasExists(alias, projectId string, newAliasDefinitions []model.Proj
 		}
 	}
 	return false, nil
+}
+
+func bbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error {
+	webHook, _, err := model.IsWebhookConfigured(projName, "")
+	if err != nil {
+		return err
+	}
+	webhookConfigured := webHook.Endpoint != ""
+
+	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
+		return nil
+	}
+	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
+		return errors.Errorf("Must provide projects to search")
+	}
+	if !webhookConfigured && proj.TicketCreateProject == "" {
+		return errors.Errorf("Must provide project to create tickets for")
+	}
+	if proj.BFSuggestionServer != "" {
+		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
+			return errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
+		}
+		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
+		}
+		if proj.BFSuggestionTimeoutSecs <= 0 {
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_timeout_secs must be positive", projName)
+		}
+	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
+	} else if proj.BFSuggestionTimeoutSecs != 0 {
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
+	}
+	// the webhook cannot be used if the default build baron creation and search is configured
+	if webhookConfigured {
+		if len(proj.TicketCreateProject) != 0 {
+			return errors.Errorf("The custom file ticket webhook and the build baron should not both be configured")
+		}
+		if _, err = url.Parse(webHook.Endpoint); err != nil {
+			return errors.Errorf("Failed to parse webhook endpoint for project")
+		}
+	}
+	return nil
 }

@@ -43,10 +43,10 @@ func (d *mockRepoPoller) GetChangedFiles(_ context.Context, commitRevision strin
 	return nil, nil
 }
 
-func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*model.Project, *model.ParserProject, error) {
+func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	d.ConfigGets++
 	if d.nextError != nil {
-		return nil, nil, d.clearError()
+		return nil, nil, nil, d.clearError()
 	}
 	if d.badDistro != "" {
 		// change the target distros if we've called addBadDistro, creating a validation warning
@@ -56,9 +56,9 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (*m
 
 	p, err := model.TranslateProject(d.parserProject)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, model.TranslateProjectError)
+		return nil, nil, nil, errors.Wrapf(err, model.TranslateProjectError)
 	}
-	return p, d.parserProject, nil
+	return p, d.parserProject, &model.ProjectConfig{}, nil
 }
 
 func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {

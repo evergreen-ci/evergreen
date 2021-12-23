@@ -6,10 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/utility"
-	"github.com/mitchellh/mapstructure"
 )
 
 func init() {
@@ -17,20 +14,12 @@ func init() {
 }
 
 // PerfPlugin displays performance statistics in the UI.
-type PerfPlugin struct {
-	Projects []string `yaml:"string"`
-}
+type PerfPlugin struct{}
 
 // Name implements Plugin Interface.
 func (pp *PerfPlugin) Name() string { return "perf" }
 
-func (pp *PerfPlugin) Configure(params map[string]interface{}) error {
-	err := mapstructure.Decode(params, pp)
-	if err != nil {
-		return fmt.Errorf("error decoding %v params: %v", pp.Name(), err)
-	}
-	return nil
-}
+func (pp *PerfPlugin) Configure(map[string]interface{}) error { return nil }
 
 func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 	panelHTML, err := ioutil.ReadFile(filepath.Join(TemplateRoot(pp.Name()), "task_perf_data.html"))
@@ -55,7 +44,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),
 				DataFunc: func(context UIContext) (interface{}, error) {
-					enabled := isPerfEnabled(*context.ProjectRef, pp.Projects)
+					enabled := model.IsPerfEnabledForProject(context.ProjectRef.Id)
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{Enabled: enabled}, nil
@@ -63,16 +52,4 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 			},
 		},
 	}, nil
-}
-
-func isPerfEnabled(projectRef model.ProjectRef, projects []string) bool {
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false
-	}
-	if flags.PluginAdminPageDisabled {
-		return model.IsPerfEnabledForProject(projectRef.Id)
-	} else {
-		return utility.StringSliceContains(projects, projectRef.Id) || utility.StringSliceContains(projects, projectRef.Identifier)
-	}
 }

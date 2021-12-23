@@ -161,12 +161,11 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		assert.NoError(t, repoRef.Upsert())
 
 		pRefThatDefaults := model.ProjectRef{
-			Id:              "myId",
-			Owner:           "evergreen-ci",
-			Repo:            "evergreen",
-			UseRepoSettings: true,
-			RepoRefId:       "myRepoId",
-			Admins:          []string{"oldAdmin"},
+			Id:        "myId",
+			Owner:     "evergreen-ci",
+			Repo:      "evergreen",
+			RepoRefId: "myRepoId",
+			Admins:    []string{"oldAdmin"},
 		}
 		assert.NoError(t, pRefThatDefaults.Upsert())
 
@@ -345,6 +344,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
+			assert.Equal(t, settings.Vars.Vars["banana"], "") // confirm that this is redacted
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
@@ -388,13 +388,12 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 		pRef := model.ProjectRef{
-			Id:              "myId",
-			Owner:           "evergreen-ci",
-			Repo:            "evergreen",
-			Restricted:      utility.FalsePtr(),
-			UseRepoSettings: true,
-			RepoRefId:       "myRepoId",
-			Admins:          []string{"oldAdmin"},
+			Id:         "myId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+			RepoRefId:  "myRepoId",
+			Admins:     []string{"oldAdmin"},
 		}
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{

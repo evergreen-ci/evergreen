@@ -829,10 +829,9 @@ func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) 
 		}
 		return errors.Wrap(doStepback(t), "error during stepback")
 
-	} else if deactivatePrevious && status == evergreen.TaskSucceeded {
-		// if the task was successful, ignore running previous
-		// activated tasks for this buildvariant
-
+	} else if status == evergreen.TaskSucceeded && deactivatePrevious && t.Requester == evergreen.RepotrackerVersionRequester {
+		// if the task was successful and is a mainline commit (not git tag or project trigger),
+		// ignore running previous activated tasks for this buildvariant
 		if err := DeactivatePreviousTasks(t, caller); err != nil {
 			return errors.Wrap(err, "Error deactivating previous task")
 		}
@@ -872,7 +871,7 @@ func getBuildStatus(buildTasks []task.Task) string {
 
 	// finished but failed
 	for _, t := range buildTasks {
-		if evergreen.IsFailedTaskStatus(t.Status) {
+		if evergreen.IsFailedTaskStatus(t.Status) || t.Status == evergreen.TaskAborted {
 			return evergreen.BuildFailed
 		}
 	}

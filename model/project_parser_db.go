@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -16,46 +17,36 @@ const (
 )
 
 var (
-	ParserProjectIdKey                     = bsonutil.MustHaveTag(ParserProject{}, "Id")
-	ParserProjectConfigNumberKey           = bsonutil.MustHaveTag(ParserProject{}, "ConfigUpdateNumber")
-	ParserProjectEnabledKey                = bsonutil.MustHaveTag(ParserProject{}, "Enabled")
-	ParserProjectStepbackKey               = bsonutil.MustHaveTag(ParserProject{}, "Stepback")
-	ParserProjectPreErrorFailsTaskKey      = bsonutil.MustHaveTag(ParserProject{}, "PreErrorFailsTask")
-	ParserProjectOomTracker                = bsonutil.MustHaveTag(ParserProject{}, "OomTracker")
-	ParserProjectBatchTimeKey              = bsonutil.MustHaveTag(ParserProject{}, "BatchTime")
-	ParserProjectOwnerKey                  = bsonutil.MustHaveTag(ParserProject{}, "Owner")
-	ParserProjectRepoKey                   = bsonutil.MustHaveTag(ParserProject{}, "Repo")
-	ParserProjectRemotePathKey             = bsonutil.MustHaveTag(ParserProject{}, "RemotePath")
-	ParserProjectBranchKey                 = bsonutil.MustHaveTag(ParserProject{}, "Branch")
-	ParserProjectIdentifierKey             = bsonutil.MustHaveTag(ParserProject{}, "Identifier")
-	ParserProjectDisplayNameKey            = bsonutil.MustHaveTag(ParserProject{}, "DisplayName")
-	ParserProjectCommandTypeKey            = bsonutil.MustHaveTag(ParserProject{}, "CommandType")
-	ParserProjectIgnoreKey                 = bsonutil.MustHaveTag(ParserProject{}, "Ignore")
-	ParserProjectParametersKey             = bsonutil.MustHaveTag(ParserProject{}, "Parameters")
-	ParserProjectPreKey                    = bsonutil.MustHaveTag(ParserProject{}, "Pre")
-	ParserProjectPostKey                   = bsonutil.MustHaveTag(ParserProject{}, "Post")
-	ParserProjectEarlyTerminationKey       = bsonutil.MustHaveTag(ParserProject{}, "EarlyTermination")
-	ParserProjectTimeoutKey                = bsonutil.MustHaveTag(ParserProject{}, "Timeout")
-	ParserProjectCallbackTimeoutKey        = bsonutil.MustHaveTag(ParserProject{}, "CallbackTimeout")
-	ParserProjectModulesKey                = bsonutil.MustHaveTag(ParserProject{}, "Modules")
-	ParserProjectBuildVariantsKey          = bsonutil.MustHaveTag(ParserProject{}, "BuildVariants")
-	ParserProjectFunctionsKey              = bsonutil.MustHaveTag(ParserProject{}, "Functions")
-	ParserProjectTaskGroupsKey             = bsonutil.MustHaveTag(ParserProject{}, "TaskGroups")
-	ParserProjectTasksKey                  = bsonutil.MustHaveTag(ParserProject{}, "Tasks")
-	ParserProjectExecTimeoutSecsKey        = bsonutil.MustHaveTag(ParserProject{}, "ExecTimeoutSecs")
-	ParserProjectLoggersKey                = bsonutil.MustHaveTag(ParserProject{}, "Loggers")
-	ParserProjectAxesKey                   = bsonutil.MustHaveTag(ParserProject{}, "Axes")
-	ParserProjectCreateTimeKey             = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
-	ParserProjectTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ParserProject{}, "TaskAnnotationSettings")
-	ParserProjectBuildBaronSettingsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildBaronSettings")
-	ParserProjectPerfEnabledKey            = bsonutil.MustHaveTag(ParserProject{}, "PerfEnabled")
-	ParserProjectCommitQueueAliasesKey     = bsonutil.MustHaveTag(ParserProject{}, "CommitQueueAliases")
-	ParserProjectGitHubPRAliasesKey        = bsonutil.MustHaveTag(ParserProject{}, "GitHubPRAliases")
-	ParserProjectGitTagAliasesKey          = bsonutil.MustHaveTag(ParserProject{}, "GitTagAliases")
-	ParserProjectGitHubChecksAliasesKey    = bsonutil.MustHaveTag(ParserProject{}, "GitHubChecksAliases")
-	ParserProjectPatchAliasesKey           = bsonutil.MustHaveTag(ParserProject{}, "PatchAliases")
-	ParserProjectWorkstationConfigKey      = bsonutil.MustHaveTag(ParserProject{}, "WorkstationConfig")
-	ParserProjectCommitQueueKey            = bsonutil.MustHaveTag(ParserProject{}, "CommitQueue")
+	ParserProjectIdKey                = bsonutil.MustHaveTag(ParserProject{}, "Id")
+	ParserProjectConfigNumberKey      = bsonutil.MustHaveTag(ParserProject{}, "ConfigUpdateNumber")
+	ParserProjectEnabledKey           = bsonutil.MustHaveTag(ParserProject{}, "Enabled")
+	ParserProjectStepbackKey          = bsonutil.MustHaveTag(ParserProject{}, "Stepback")
+	ParserProjectPreErrorFailsTaskKey = bsonutil.MustHaveTag(ParserProject{}, "PreErrorFailsTask")
+	ParserProjectOomTracker           = bsonutil.MustHaveTag(ParserProject{}, "OomTracker")
+	ParserProjectBatchTimeKey         = bsonutil.MustHaveTag(ParserProject{}, "BatchTime")
+	ParserProjectOwnerKey             = bsonutil.MustHaveTag(ParserProject{}, "Owner")
+	ParserProjectRepoKey              = bsonutil.MustHaveTag(ParserProject{}, "Repo")
+	ParserProjectRemotePathKey        = bsonutil.MustHaveTag(ParserProject{}, "RemotePath")
+	ParserProjectBranchKey            = bsonutil.MustHaveTag(ParserProject{}, "Branch")
+	ParserProjectIdentifierKey        = bsonutil.MustHaveTag(ParserProject{}, "Identifier")
+	ParserProjectDisplayNameKey       = bsonutil.MustHaveTag(ParserProject{}, "DisplayName")
+	ParserProjectCommandTypeKey       = bsonutil.MustHaveTag(ParserProject{}, "CommandType")
+	ParserProjectIgnoreKey            = bsonutil.MustHaveTag(ParserProject{}, "Ignore")
+	ParserProjectParametersKey        = bsonutil.MustHaveTag(ParserProject{}, "Parameters")
+	ParserProjectPreKey               = bsonutil.MustHaveTag(ParserProject{}, "Pre")
+	ParserProjectPostKey              = bsonutil.MustHaveTag(ParserProject{}, "Post")
+	ParserProjectEarlyTerminationKey  = bsonutil.MustHaveTag(ParserProject{}, "EarlyTermination")
+	ParserProjectTimeoutKey           = bsonutil.MustHaveTag(ParserProject{}, "Timeout")
+	ParserProjectCallbackTimeoutKey   = bsonutil.MustHaveTag(ParserProject{}, "CallbackTimeout")
+	ParserProjectModulesKey           = bsonutil.MustHaveTag(ParserProject{}, "Modules")
+	ParserProjectBuildVariantsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildVariants")
+	ParserProjectFunctionsKey         = bsonutil.MustHaveTag(ParserProject{}, "Functions")
+	ParserProjectTaskGroupsKey        = bsonutil.MustHaveTag(ParserProject{}, "TaskGroups")
+	ParserProjectTasksKey             = bsonutil.MustHaveTag(ParserProject{}, "Tasks")
+	ParserProjectExecTimeoutSecsKey   = bsonutil.MustHaveTag(ParserProject{}, "ExecTimeoutSecs")
+	ParserProjectLoggersKey           = bsonutil.MustHaveTag(ParserProject{}, "Loggers")
+	ParserProjectAxesKey              = bsonutil.MustHaveTag(ParserProject{}, "Axes")
+	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
 // ParserProjectFindOneById returns the parser project for the version
@@ -89,37 +80,22 @@ func ParserProjectUpsertOne(query interface{}, update interface{}) error {
 	return err
 }
 
-// ParserProjectByVersion finds a parser project with a given version.
-// If version is empty the last known good config will be returned.
-func ParserProjectByVersion(projectId, version string) (*ParserProject, error) {
-	lookupVersion := false
-	if version == "" {
-		lastGoodVersion, err := FindVersionByLastKnownGoodConfig(projectId, -1)
-		if err != nil || lastGoodVersion == nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "Unable to retrieve last good version for project",
-				"project_id": projectId,
-				"version":    version,
-			}))
-			return nil, errors.Wrapf(err, "Unable to retrieve last good version for project '%s'", projectId)
-		}
-		version = lastGoodVersion.Id
-		lookupVersion = true
-	}
-	parserProject, err := ParserProjectFindOne(ParserProjectById(version).WithFields(
-		ParserProjectPerfEnabledKey, ProjectRefDeactivatePreviousKey, ParserProjectTaskAnnotationSettingsKey, ParserProjectBuildBaronSettingsKey,
-		ParserProjectCommitQueueAliasesKey, ParserProjectPatchAliasesKey, ParserProjectGitHubChecksAliasesKey, ParserProjectGitTagAliasesKey,
-		ParserProjectGitHubPRAliasesKey, ParserProjectCommitQueueKey, ParserProjectWorkstationConfigKey))
+func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
+	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
+		ParserProjectParametersKey))
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":        "Error retrieving parser project for version",
-			"project_id":     projectId,
-			"version":        version,
-			"lookup_version": lookupVersion,
-		}))
-		return nil, errors.Wrapf(err, "Error retrieving parser project for version '%s'", version)
+		return nil, errors.Wrap(err, "error finding parser project")
 	}
-	return parserProject, nil
+	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
+		if v.Config == "" {
+			return nil, errors.New("version has no config")
+		}
+		pp, err = createIntermediateProject([]byte(v.Config))
+		if err != nil {
+			return nil, errors.Wrap(err, "error parsing legacy config")
+		}
+	}
+	return pp.GetParameters(), nil
 }
 
 func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, error) {
@@ -200,4 +176,12 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
 	}
 	return nil
+}
+
+func (pp *ParserProject) GetParameters() []patch.Parameter {
+	res := []patch.Parameter{}
+	for _, param := range pp.Parameters {
+		res = append(res, param.Parameter)
+	}
+	return res
 }

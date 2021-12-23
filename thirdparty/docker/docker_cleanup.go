@@ -14,7 +14,7 @@ import (
 // Cleanup removes all containers, images, and volumes from a Docker instance
 // if a Docker daemon is listening on the default socket
 func Cleanup(ctx context.Context, logger grip.Journaler) error {
-	dockerClient, err := client.NewClientWithOpts()
+	dockerClient, err := client.NewClientWithOpts(client.WithAPIVersionNegotiation())
 	if err != nil {
 		return errors.Wrap(err, "can't get Docker client")
 	}

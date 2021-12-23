@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -93,7 +92,7 @@ func (b *buildChangeStatusHandler) Factory() gimlet.RouteHandler {
 
 func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
 	b.buildId = gimlet.GetVars(r)["build_id"]
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, b); err != nil {

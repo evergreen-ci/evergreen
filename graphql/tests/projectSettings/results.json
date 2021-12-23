@@ -5,10 +5,11 @@
       "result": {
         "data": {
           "projectSettings": {
-            "githubWebhooksEnabled": false,
+            "gitHubWebhooksEnabled": false,
             "projectRef": {
               "id": "1234",
               "identifier": "sandbox",
+              "restricted": true,
               "commitQueue": {
                 "enabled": true,
                 "mergeMethod": "squash"
@@ -117,7 +118,7 @@
         "data": {
           "projectSettings": {
             "vars": {
-              "vars": {"hello": "world", "foo":  "bar"},
+              "vars": {"hello": "", "foo":  "bar"},
               "privateVars": ["hello"]
             }
           }

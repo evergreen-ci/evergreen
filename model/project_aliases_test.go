@@ -161,13 +161,13 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.Len(found, 2)
 }
 
-func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
-	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ParserProjectCollection, VersionCollection))
-	v1 := Version{
-		Id:         "project-1",
-		Identifier: "project-1",
-		Requester:  evergreen.RepotrackerVersionRequester,
+func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
+	s.Require().NoError(db.ClearCollections(ProjectAliasCollection, ProjectConfigCollection, ProjectRefCollection))
+	pRef := ProjectRef{
+		Id:        "project-1",
+		RepoRefId: "r1",
 	}
+	s.NoError(pRef.Upsert())
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     evergreen.CommitQueueAlias,
@@ -180,13 +180,18 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 		ProjectID: "project-1",
 		Alias:     evergreen.GithubPRAlias,
 	}
+	patchAlias := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     "alias-0",
+	}
 	s.NoError(a1.Upsert())
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
-	s.NoError(v1.Insert())
+	s.NoError(patchAlias.Upsert())
 
-	parserProject := &ParserProject{
-		Id: "project-1",
+	projectConfig := &ProjectConfig{
+		Id:         "project-1",
+		Identifier: "project-1",
 		PatchAliases: []ProjectAlias{
 			{
 				ID:        mgobson.NewObjectId(),
@@ -205,22 +210,38 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithParserProject() {
 				ProjectID: "project-1",
 			},
 		},
+		GitHubChecksAliases: []ProjectAlias{
+			{
+				ID:        mgobson.NewObjectId(),
+				ProjectID: "project-1",
+			},
+		},
 	}
-	s.NoError(parserProject.TryUpsert())
+	s.NoError(projectConfig.Insert())
 
 	projectAliases, err := FindAliasInProjectOrRepo("project-1", evergreen.CommitQueueAlias)
 	s.NoError(err)
-	s.Len(projectAliases, 1)
+	s.Len(projectAliases, 2)
 
 	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-1")
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubChecksAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-0")
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+
 	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
 	s.NoError(err)
-	s.Len(projectAliases, 1)
+	s.Len(projectAliases, 0)
+
+	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
+	s.NoError(err)
+	s.Len(projectAliases, 0)
 
 	projectAliases, err = FindAliasInProjectOrRepo("project-1", "nonexistent")
 	s.NoError(err)
@@ -236,14 +257,12 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 		Repo:  "test_repo",
 	}}
 	pRef1 := ProjectRef{
-		Id:              "p1",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Id:        "p1",
+		RepoRefId: repoRef.Id,
 	}
 	pRef2 := ProjectRef{
-		Id:              "p2",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Id:        "p2",
+		RepoRefId: repoRef.Id,
 	}
 	s.NoError(repoRef.Upsert())
 	s.NoError(pRef1.Upsert())

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/global"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -700,7 +701,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	}
 
 	// get a new build number for the build
-	buildNumber, err := db.GetNewBuildVariantBuildNumber(args.BuildName)
+	buildNumber, err := global.GetNewBuildVariantBuildNumber(args.BuildName)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not get build number for build variant"+
 			" %v in %v project file", args.BuildName, args.Project.Identifier)

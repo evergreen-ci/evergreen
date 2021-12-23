@@ -1,0 +1,21 @@
+{
+    projectEvents(identifier: "evergreen") {
+        eventLogEntries {
+            user
+            timestamp
+            before {
+                projectRef {
+                    branch
+                }
+                gitHubWebhooksEnabled
+            }
+            after {
+                projectRef {
+                    branch
+                }
+                gitHubWebhooksEnabled
+            }
+        }
+        count
+    }
+}

@@ -219,6 +219,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					CachedPods: []pod.Pod{
 						{
 							ID:     "id",
+							Type:   pod.TypeAgent,
 							Status: pod.StatusRunning,
 							Resources: pod.ResourceInfo{
 								ExternalID: "external_id",

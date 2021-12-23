@@ -188,9 +188,19 @@ type ProjectBuildVariant struct {
 	Tasks       []string `json:"tasks"`
 }
 
+type ProjectEvents struct {
+	EventLogEntries []*model.APIProjectEvent `json:"eventLogEntries"`
+	Count           int                      `json:"count"`
+}
+
 type PublicKeyInput struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`
+}
+
+type RepoEvents struct {
+	EventLogEntries []*model.APIProjectEvent `json:"eventLogEntries"`
+	Count           int                      `json:"count"`
 }
 
 type SortOrder struct {
@@ -276,6 +286,18 @@ type TaskTestResult struct {
 	TotalTestCount    int              `json:"totalTestCount"`
 	FilteredTestCount int              `json:"filteredTestCount"`
 	TestResults       []*model.APITest `json:"testResults"`
+}
+
+type TaskTestResultSample struct {
+	TaskID                  string   `json:"taskId"`
+	Execution               int      `json:"execution"`
+	TotalTestCount          int      `json:"totalTestCount"`
+	MatchingFailedTestNames []string `json:"matchingFailedTestNames"`
+}
+
+type TestFilter struct {
+	TestName   string `json:"testName"`
+	TestStatus string `json:"testStatus"`
 }
 
 type UpdateVolumeInput struct {

@@ -56,7 +56,7 @@ type VersionErrors struct {
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
 	// the given revision.
-	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, error)
+	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error)
 
 	// Fetches a list of all filepaths modified by a given revision.
 	GetChangedFiles(ctx context.Context, revision string) ([]string, error)
@@ -248,7 +248,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		var versionErrs *VersionErrors
-		project, intermediateProject, err := repoTracker.GetProjectConfig(ctx, revision)
+		project, intermediateProject, config, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
 			// this is an error that implies the file is invalid - create a version and store the error
 			projErr, isProjErr := err.(projectConfigError)
@@ -258,7 +258,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":            "error creating shell version",
@@ -320,6 +320,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			Ref:                 ref,
 			Project:             project,
 			IntermediateProject: intermediateProject,
+			Config:              config,
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
@@ -387,9 +388,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // returning a remote config if the project references a remote repository
 // configuration file - via the Id. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
-func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, error) {
+func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	projectRef := repoTracker.ProjectRef
-	project, intermediateProj, err := repoTracker.GetRemoteConfig(ctx, revision)
+	project, intermediateProj, config, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:
@@ -414,7 +415,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			})
 
 			grip.Error(message.WrapError(err, msg))
-			return nil, nil, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
+			return nil, nil, nil, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
 		}
 		// If we get here then we have an infrastructural error - e.g.
 		// a thirdparty.APIUnmarshalError (indicating perhaps an API has
@@ -445,9 +446,9 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			"lastRevision":       lastRevision,
 		}))
 
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return project, intermediateProj, nil
+	return project, intermediateProj, config, nil
 }
 
 // addGithubCheckSubscriptions adds subscriptions to send the status of the version to Github.
@@ -695,7 +696,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	v, err := shellVersionFromRevision(ctx, projectInfo.Ref, metadata)
+	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
@@ -711,6 +712,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	projectInfo.IntermediateProject.Id = v.Id
 	projectInfo.IntermediateProject.CreateTime = v.CreateTime
+	if projectInfo.Config != nil {
+		projectInfo.Config.Id = v.Id
+	}
 	v.Ignored = ignore
 	v.Activated = utility.FalsePtr()
 
@@ -772,7 +776,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
+func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var u *user.DBUser
 	var err error
 	if metadata.Revision.AuthorGithubUID != 0 {
@@ -1109,6 +1113,20 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				return errors.Wrap(abortErr, "error aborting transaction")
 			}
 			return errors.Wrapf(err, "error inserting version '%s'", v.Id)
+		}
+		if projectInfo.Config != nil {
+			_, err = db.Collection(model.ProjectConfigCollection).InsertOne(sessCtx, projectInfo.Config)
+			if err != nil {
+				grip.Notice(message.WrapError(err, message.Fields{
+					"message": "aborting transaction",
+					"cause":   "can't insert project config",
+					"version": v.Id,
+				}))
+				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+					return errors.Wrap(abortErr, "error aborting transaction")
+				}
+				return errors.Wrapf(err, "error inserting project config '%s'", v.Id)
+			}
 		}
 		_, err = db.Collection(model.ParserProjectCollection).InsertOne(sessCtx, projectInfo.IntermediateProject)
 		if err != nil {

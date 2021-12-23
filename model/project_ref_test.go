@@ -50,26 +50,19 @@ func TestFindOneProjectRef(t *testing.T) {
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection, VersionCollection),
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection),
 		"Error clearing collection")
 
-	v1 := Version{
-		Id:         "ident",
-		Identifier: "ident",
-		Requester:  evergreen.GitTagRequester,
-	}
-	assert.NoError(t, v1.Insert())
-
-	parserProject := &ParserProject{
+	projectConfig := &ProjectConfig{
 		Id:                 "ident",
-		DeactivatePrevious: utility.TruePtr(),
+		DeactivatePrevious: utility.FalsePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
 			},
 		},
 	}
-	assert.NoError(t, parserProject.Insert())
+	assert.NoError(t, projectConfig.Insert())
 
 	projectRef := &ProjectRef{
 		Owner:                 "mongodb",
@@ -77,11 +70,10 @@ func TestFindMergedProjectRef(t *testing.T) {
 		BatchTime:             10,
 		Id:                    "ident",
 		Admins:                []string{"john.smith", "john.doe"},
-		UseRepoSettings:       true,
 		Enabled:               utility.FalsePtr(),
 		PatchingDisabled:      utility.FalsePtr(),
 		RepotrackerDisabled:   utility.TruePtr(),
-		DeactivatePrevious:    utility.FalsePtr(),
+		DeactivatePrevious:    utility.TruePtr(),
 		PRTestingEnabled:      nil,
 		GitTagVersionsEnabled: nil,
 		GitTagAuthorizedTeams: []string{},
@@ -124,7 +116,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.NotContains(t, mergedProject.Admins, "john.liu")
 	assert.False(t, *mergedProject.Enabled)
 	assert.False(t, mergedProject.IsPatchingDisabled())
-	assert.True(t, mergedProject.UseRepoSettings)
+	assert.True(t, mergedProject.UseRepoSettings())
 	assert.True(t, mergedProject.IsRepotrackerDisabled())
 	assert.False(t, mergedProject.IsGitTagVersionsEnabled())
 	assert.False(t, mergedProject.IsGithubChecksEnabled())
@@ -143,9 +135,8 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	// TODO: Commented out for EVG-15856
-	//assert.True(t, *mergedProject.DeactivatePrevious)
-	//assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.True(t, *mergedProject.DeactivatePrevious)
+	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
 func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
@@ -301,12 +292,11 @@ func TestChangeOwnerRepo(t *testing.T) {
 
 	evergreen.SetEnvironment(env)
 	pRef := ProjectRef{
-		Id:              "myProject",
-		Owner:           "evergreen-ci",
-		Repo:            "evergreen",
-		Admins:          []string{"me"},
-		RepoRefId:       "myRepo",
-		UseRepoSettings: true,
+		Id:        "myProject",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Admins:    []string{"me"},
+		RepoRefId: "myRepo",
 	}
 	assert.NoError(t, pRef.Insert())
 	repoRef := RepoRef{ProjectRef{
@@ -352,13 +342,13 @@ func TestAttachToRepo(t *testing.T) {
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 	assert.NoError(t, pRef.AttachToRepo(u))
-	assert.True(t, pRef.UseRepoSettings)
+	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
-	assert.True(t, pRefFromDB.UseRepoSettings)
+	assert.True(t, pRefFromDB.UseRepoSettings())
 	assert.NotEmpty(t, pRefFromDB.RepoRefId)
 
 	u, err = user.FindOneById("me")
@@ -376,7 +366,7 @@ func TestDetachFromRepo(t *testing.T) {
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
-			assert.False(t, pRefFromDB.UseRepoSettings)
+			assert.False(t, pRefFromDB.UseRepoSettings())
 			assert.Empty(t, pRefFromDB.RepoRefId)
 			assert.NotNil(t, pRefFromDB.PRTestingEnabled)
 			assert.False(t, pRefFromDB.IsPRTestingEnabled())
@@ -420,7 +410,7 @@ func TestDetachFromRepo(t *testing.T) {
 			// reattach to repo to test without project patch aliases
 			assert.NoError(t, pRef.AttachToRepo(dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
-			assert.True(t, pRef.UseRepoSettings)
+			assert.True(t, pRef.UseRepoSettings())
 			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -521,12 +511,11 @@ func TestDetachFromRepo(t *testing.T) {
 			_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 			pRef := &ProjectRef{
-				Id:              "myProject",
-				Owner:           "evergreen-ci",
-				Repo:            "evergreen",
-				Admins:          []string{"me"},
-				UseRepoSettings: true,
-				RepoRefId:       "myRepo",
+				Id:        "myProject",
+				Owner:     "evergreen-ci",
+				Repo:      "evergreen",
+				Admins:    []string{"me"},
+				RepoRefId: "myRepo",
 
 				PeriodicBuilds:        []PeriodicBuildDefinition{}, // also shouldn't be overwritten
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
@@ -849,7 +838,6 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	projectRef.Id = "uses_repo"
 	projectRef.Enabled = nil
 	projectRef.RepoRefId = "my_repo"
-	projectRef.UseRepoSettings = true
 	assert.NoError(projectRef.Insert())
 
 	repoRef := RepoRef{ProjectRef{
@@ -1129,12 +1117,11 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	}}
 	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
-		Id:              "defaulting_project",
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "mine",
-		UseRepoSettings: true,
-		RepoRefId:       repoDoc.Id,
+		Id:        "defaulting_project",
+		Owner:     "mongodb",
+		Repo:      "mci",
+		Branch:    "mine",
+		RepoRefId: repoDoc.Id,
 	}
 	assert.NoError(doc.Insert())
 	doc2 := &ProjectRef{
@@ -1142,7 +1129,6 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Owner:            "mongodb",
 		Repo:             "mci",
 		Branch:           "mine",
-		UseRepoSettings:  true,
 		RepoRefId:        repoDoc.Id,
 		Enabled:          utility.FalsePtr(),
 		PRTestingEnabled: utility.FalsePtr(),
@@ -1239,12 +1225,11 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 
 	// doc defaults to repo, which is not enabled
 	doc = &ProjectRef{
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "not_main",
-		Id:              "mci_main",
-		RepoRefId:       "my_repo",
-		UseRepoSettings: true,
+		Owner:     "mongodb",
+		Repo:      "mci",
+		Branch:    "not_main",
+		Id:        "mci_main",
+		RepoRefId: "my_repo",
 	}
 	repoDoc := &RepoRef{ProjectRef{Id: "my_repo"}}
 	assert.NoError(doc.Insert())
@@ -1321,14 +1306,13 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 	}}
 	assert.NoError(t, repoRef.Upsert())
 	doc := &ProjectRef{
-		Enabled:         utility.TruePtr(),
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "main",
-		Identifier:      "mci",
-		Id:              "1",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Enabled:    utility.TruePtr(),
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "main",
+		Identifier: "mci",
+		Id:         "1",
+		RepoRefId:  repoRef.Id,
 	}
 	assert.NoError(t, doc.Insert())
 	doc.Enabled = nil
@@ -1341,7 +1325,6 @@ func TestFindMergedEnabledProjectRefsByOwnerAndRepo(t *testing.T) {
 
 	doc.Enabled = utility.TruePtr()
 	doc.RepoRefId = ""
-	doc.UseRepoSettings = false
 	doc.Id = "4"
 	assert.NoError(t, doc.Insert())
 
@@ -1372,14 +1355,13 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	}}
 	assert.NoError(repoRef.Upsert())
 	doc := &ProjectRef{
-		Enabled:         utility.TruePtr(),
-		Owner:           "mongodb",
-		Repo:            "mci",
-		Branch:          "main",
-		Identifier:      "mci",
-		Id:              "1",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
+		Enabled:    utility.TruePtr(),
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "main",
+		Identifier: "mci",
+		Id:         "1",
+		RepoRefId:  repoRef.Id,
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
@@ -1478,20 +1460,18 @@ func TestFindDownstreamProjects(t *testing.T) {
 	assert.NoError(t, repoRef.Upsert())
 
 	proj1 := ProjectRef{
-		Id:              "evergreen",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
-		Enabled:         utility.TruePtr(),
-		Triggers:        []TriggerDefinition{{Project: "grip"}},
+		Id:        "evergreen",
+		RepoRefId: repoRef.Id,
+		Enabled:   utility.TruePtr(),
+		Triggers:  []TriggerDefinition{{Project: "grip"}},
 	}
 	require.NoError(t, proj1.Insert())
 
 	proj2 := ProjectRef{
-		Id:              "mci",
-		RepoRefId:       repoRef.Id,
-		UseRepoSettings: true,
-		Enabled:         utility.FalsePtr(),
-		Triggers:        []TriggerDefinition{{Project: "grip"}},
+		Id:        "mci",
+		RepoRefId: repoRef.Id,
+		Enabled:   utility.FalsePtr(),
+		Triggers:  []TriggerDefinition{{Project: "grip"}},
 	}
 	require.NoError(t, proj2.Insert())
 
@@ -1607,7 +1587,9 @@ func TestUpdateAdminRoles(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	assert.NoError(t, p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
+	modified, err := p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id})
+	assert.NoError(t, err)
+	assert.True(t, modified)
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, oldAdminFromDB.Roles(), 0)
@@ -1620,6 +1602,27 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	oldAdmin := user.DBUser{
+		Id:          "oldAdmin",
+		SystemRoles: []string{"admin"},
+	}
+	require.NoError(t, oldAdmin.Insert())
+	newAdmin := user.DBUser{
+		Id: "newAdmin",
+	}
+	require.NoError(t, newAdmin.Insert())
+	p := ProjectRef{
+		Id:     "proj",
+		Admins: []string{oldAdmin.Id},
+	}
+	require.NoError(t, p.Insert())
+
+	// check that, without a valid role, the whole update fails
+	modified, err := p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
+	assert.Error(t, err)
+	assert.False(t, modified)
+	assert.Equal(t, p.Admins, []string{oldAdmin.Id})
+
 	rm := env.RoleManager()
 	adminScope := gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
@@ -1633,22 +1636,11 @@ func TestUpdateAdminRolesError(t *testing.T) {
 		Permissions: adminPermissions,
 	}
 	require.NoError(t, rm.UpdateRole(adminRole))
-	oldAdmin := user.DBUser{
-		Id:          "oldAdmin",
-		SystemRoles: []string{"admin"},
-	}
-	require.NoError(t, oldAdmin.Insert())
-	newAdmin := user.DBUser{
-		Id: "newAdmin",
-	}
-	require.NoError(t, newAdmin.Insert())
-	p := ProjectRef{
-		Id: "proj",
-	}
-	require.NoError(t, p.Insert())
 
 	// check that the existing users have been added and removed while returning an error
-	assert.Error(t, p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id}))
+	modified, err = p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
+	assert.Error(t, err)
+	assert.True(t, modified)
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, oldAdminFromDB.Roles(), 0)
@@ -1704,10 +1696,9 @@ func TestFindPeriodicProjects(t *testing.T) {
 	assert.NoError(t, repoRef.Upsert())
 
 	pRef := ProjectRef{
-		Id:              "p1",
-		RepoRefId:       "my_repo",
-		UseRepoSettings: true,
-		PeriodicBuilds:  []PeriodicBuildDefinition{},
+		Id:             "p1",
+		RepoRefId:      "my_repo",
+		PeriodicBuilds: []PeriodicBuildDefinition{},
 	}
 	assert.NoError(t, pRef.Insert())
 
@@ -1818,14 +1809,13 @@ func TestPointers(t *testing.T) {
 	assert.True(t, pointerRef.PtrStruct.ShouldGitClone())
 }
 
-func TestMergeWithParserProject(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, ParserProjectCollection),
+func TestMergeWithProjectConfig(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection),
 		"Error clearing collection")
 
 	projectRef := &ProjectRef{
 		Owner:              "mongodb",
 		Id:                 "ident",
-		PerfEnabled:        utility.TruePtr(),
 		DeactivatePrevious: utility.FalsePtr(),
 		TaskAnnotationSettings: evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
@@ -1842,9 +1832,14 @@ func TestMergeWithParserProject(t *testing.T) {
 			Enabled:     utility.TruePtr(),
 			MergeMethod: "message1",
 		},
+		BuildBaronSettings: evergreen.BuildBaronSettings{
+			TicketCreateProject:  "EVG",
+			TicketSearchProjects: []string{"BF", "BFG"},
+		},
 	}
-	parserProject := &ParserProject{
+	projectConfig := &ProjectConfig{
 		Id:                 "version1",
+		PerfEnabled:        utility.TruePtr(),
 		DeactivatePrevious: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
@@ -1861,18 +1856,29 @@ func TestMergeWithParserProject(t *testing.T) {
 				{Command: "overridden"},
 			},
 		},
+		BuildBaronSettings: &evergreen.BuildBaronSettings{
+			TicketCreateProject:     "BFG",
+			TicketSearchProjects:    []string{"BF", "BFG"},
+			BFSuggestionServer:      "https://evergreen.mongodb.com",
+			BFSuggestionTimeoutSecs: 10,
+		},
 	}
 	assert.NoError(t, projectRef.Insert())
-	assert.NoError(t, parserProject.Insert())
-	err := projectRef.MergeWithParserProject("version1")
+	assert.NoError(t, projectConfig.Insert())
+	err := projectRef.MergeWithProjectConfig("version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, "ident", projectRef.Id)
 
-	assert.True(t, *projectRef.DeactivatePrevious)
+	assert.False(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
-	assert.Equal(t, "random2", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
-	assert.False(t, *projectRef.WorkstationConfig.GitClone)
-	assert.Equal(t, "overridden", projectRef.WorkstationConfig.SetupCommands[0].Command)
-	assert.Equal(t, "message2", projectRef.CommitQueue.MergeMethod)
+	assert.Equal(t, "random1", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+	assert.True(t, *projectRef.WorkstationConfig.GitClone)
+	assert.Equal(t, "expeliarmus", projectRef.WorkstationConfig.SetupCommands[0].Command)
+	assert.Equal(t, "message1", projectRef.CommitQueue.MergeMethod)
+
+	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
+	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
+	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
+
 }

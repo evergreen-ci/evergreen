@@ -94,9 +94,9 @@ func MustHaveProject(r *http.Request) *model.Project {
 	return p
 }
 
-// checkTask get the task from the request header and ensures that there is a task. It checks the secret
+// requireTask get the task from the request header and ensures that there is a task. It checks the secret
 // in the header with the secret in the db to ensure that they are the same.
-func (as *APIServer) checkTask(next http.HandlerFunc) http.HandlerFunc {
+func (as *APIServer) requireTask(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], false, r)
 		if err != nil {
@@ -108,7 +108,7 @@ func (as *APIServer) checkTask(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (as *APIServer) checkTaskStrict(next http.HandlerFunc) http.HandlerFunc {
+func (as *APIServer) requireTaskStrict(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], true, r)
 		if err != nil {
@@ -120,9 +120,9 @@ func (as *APIServer) checkTaskStrict(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// checkProject finds the projectId in the request and adds the
+// requireProject finds the projectId in the request and adds the
 // project and project ref to the request context.
-func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
+func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projectId := gimlet.GetVars(r)["projectId"]
 		if projectId == "" {
@@ -157,7 +157,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
+func (as *APIServer) requireHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h, code, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
 		if err != nil {
@@ -264,7 +264,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	log := &model.TestLog{}
-	err := utility.ReadJSON(util.NewRequestReader(r), log)
+	err := utility.ReadJSON(utility.NewRequestReader(r), log)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -299,7 +299,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	results := &task.LocalTestResults{}
-	err := utility.ReadJSON(util.NewRequestReader(r), results)
+	err := utility.ReadJSON(utility.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -346,12 +346,12 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	proj, _, err := model.LoadProjectForVersion(v, t.Project, false)
+	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	params := append(proj.GetParameters(), v.Parameters...)
+	params := append(projParams, v.Parameters...)
 	for _, param := range params {
 		res.Vars[param.Key] = param.Value
 	}
@@ -372,7 +372,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		CreateTime:      time.Now(),
 	}
 
-	err := utility.ReadJSON(util.NewRequestReader(r), &entry.Files)
+	err := utility.ReadJSON(utility.NewRequestReader(r), &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
@@ -395,7 +395,7 @@ func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request)
 	grip.Infoln("Setting downstream expansions for task:", t.Id)
 
 	var downstreamParams []patch.Parameter
-	err := utility.ReadJSON(util.NewRequestReader(r), &downstreamParams)
+	err := utility.ReadJSON(utility.NewRequestReader(r), &downstreamParams)
 	if err != nil {
 		errorMessage := fmt.Sprintf("Error reading downstream expansions for task %v: %v", t.Id, err)
 		grip.Error(message.Fields{
@@ -533,7 +533,7 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
-	body := util.NewRequestReader(r)
+	body := utility.NewRequestReader(r)
 	defer body.Close()
 	bytes, err := ioutil.ReadAll(body)
 	if err != nil {
@@ -554,7 +554,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
@@ -611,11 +611,11 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) GetServiceApp() *gimlet.APIApp {
-	checkProject := gimlet.WrapperMiddleware(as.checkProject)
-	checkTaskSecret := gimlet.WrapperMiddleware(as.checkTaskStrict)
-	checkUser := gimlet.NewRequireAuthHandler()
-	checkTask := gimlet.WrapperMiddleware(as.checkTask)
-	checkHost := gimlet.WrapperMiddleware(as.checkHost)
+	requireProject := gimlet.WrapperMiddleware(as.requireProject)
+	requireTaskSecret := gimlet.WrapperMiddleware(as.requireTaskStrict)
+	requireUser := gimlet.NewRequireAuthHandler()
+	requireTask := gimlet.WrapperMiddleware(as.requireTask)
+	requireHost := gimlet.WrapperMiddleware(as.requireHost)
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	submitPatch := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 
@@ -636,59 +636,59 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_queue/limit").Handler(as.checkTaskQueueSize).Get()
 
 	// CLI Operation Backends
-	app.AddRoute("/tasks/{projectId}").Wrap(checkUser, checkProject, viewTasks).Handler(as.listTasks).Get()
-	app.AddRoute("/variants/{projectId}").Wrap(checkUser, checkProject, viewTasks).Handler(as.listVariants).Get()
-	app.AddRoute("/projects").Wrap(checkUser).Handler(as.listProjects).Get()
+	app.AddRoute("/tasks/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.listTasks).Get()
+	app.AddRoute("/variants/{projectId}").Wrap(requireUser, requireProject, viewTasks).Handler(as.listVariants).Get()
+	app.AddRoute("/projects").Wrap(requireUser).Handler(as.listProjects).Get()
 
 	// Patches
-	app.PrefixRoute("/patches").Route("/").Wrap(checkUser).Handler(as.submitPatch).Put()
-	app.PrefixRoute("/patches").Route("/mine").Wrap(checkUser).Handler(as.listPatches).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, viewTasks).Handler(as.summarizePatch).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(checkUser, submitPatch).Handler(as.existingPatchRequest).Post()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkUser, checkProject, viewTasks).Handler(as.listPatchModules).Get()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.deletePatchModule).Delete()
-	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(checkUser, submitPatch).Handler(as.updatePatchModule).Post()
+	app.PrefixRoute("/patches").Route("/").Wrap(requireUser).Handler(as.submitPatch).Put()
+	app.PrefixRoute("/patches").Route("/mine").Wrap(requireUser).Handler(as.listPatches).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, viewTasks).Handler(as.summarizePatch).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}").Wrap(requireUser, submitPatch).Handler(as.existingPatchRequest).Post()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(requireUser, requireProject, viewTasks).Handler(as.listPatchModules).Get()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch).Handler(as.deletePatchModule).Delete()
+	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch).Handler(as.updatePatchModule).Post()
 
 	// SpawnHosts
-	app.Route().Prefix("/spawn").Wrap(checkUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.hostInfo).Get()
-	app.Route().Prefix("/spawn").Wrap(checkUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.modifyHost).Post()
-	app.Route().Prefix("/spawns").Wrap(checkUser).Route("/").Handler(as.requestHost).Put()
-	app.Route().Prefix("/spawns").Wrap(checkUser).Route("/{user}/").Handler(as.hostsInfoForUser).Get()
-	app.Route().Prefix("/spawns").Wrap(checkUser).Route("/distros/list/").Handler(as.listDistros).Get()
+	app.Route().Prefix("/spawn").Wrap(requireUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.hostInfo).Get()
+	app.Route().Prefix("/spawn").Wrap(requireUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.modifyHost).Post()
+	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/").Handler(as.requestHost).Put()
+	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/{user}/").Handler(as.hostsInfoForUser).Get()
+	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/distros/list/").Handler(as.listDistros).Get()
 	app.AddRoute("/dockerfile").Handler(getDockerfile).Get()
 
 	// Agent routes
 	// NOTE: new agent routes should be written in REST v2. The ones here are
 	// legacy routes.
-	app.Route().Version(2).Route("/agent/setup").Wrap(checkHost).Handler(as.agentSetup).Get()
-	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
-	app.Route().Version(2).Route("/agent/cedar_config").Wrap(checkHost).Handler(as.Cedar).Get()
-	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
-	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()
-	app.Route().Version(2).Route("/task/{taskId}/log").Wrap(checkTaskSecret, checkHost).Handler(as.AppendTaskLog).Post()
-	app.Route().Version(2).Route("/task/{taskId}/").Wrap(checkTaskSecret).Handler(as.FetchTask).Get()
-	app.Route().Version(2).Route("/task/{taskId}/fetch_vars").Wrap(checkTaskSecret).Handler(as.FetchExpansionsForTask).Get()
-	app.Route().Version(2).Route("/task/{taskId}/heartbeat").Wrap(checkTaskSecret, checkHost).Handler(as.Heartbeat).Post()
-	app.Route().Version(2).Route("/task/{taskId}/results").Wrap(checkTaskSecret, checkHost).Handler(as.AttachResults).Post()
-	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
-	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
-	app.Route().Version(2).Route("/task/{taskId}/distro_view").Wrap(checkTask, checkHost).Handler(as.GetDistroView).Get()
-	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(checkTaskSecret).Handler(as.GetParserProject).Get()
-	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTaskSecret).Handler(as.GetProjectRef).Get()
-	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
+	app.Route().Version(2).Route("/agent/setup").Wrap(requireHost).Handler(as.agentSetup).Get()
+	app.Route().Version(2).Route("/agent/next_task").Wrap(requireHost).Handler(as.NextTask).Get()
+	app.Route().Version(2).Route("/agent/cedar_config").Wrap(requireHost).Handler(as.Cedar).Get()
+	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(requireTaskSecret, requireHost).Handler(as.EndTask).Post()
+	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(requireTaskSecret, requireHost).Handler(as.StartTask).Post()
+	app.Route().Version(2).Route("/task/{taskId}/log").Wrap(requireTaskSecret, requireHost).Handler(as.AppendTaskLog).Post()
+	app.Route().Version(2).Route("/task/{taskId}/").Wrap(requireTaskSecret).Handler(as.FetchTask).Get()
+	app.Route().Version(2).Route("/task/{taskId}/fetch_vars").Wrap(requireTaskSecret).Handler(as.FetchExpansionsForTask).Get()
+	app.Route().Version(2).Route("/task/{taskId}/heartbeat").Wrap(requireTaskSecret, requireHost).Handler(as.Heartbeat).Post()
+	app.Route().Version(2).Route("/task/{taskId}/results").Wrap(requireTaskSecret, requireHost).Handler(as.AttachResults).Post()
+	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(requireTaskSecret, requireHost).Handler(as.AttachTestLog).Post()
+	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(requireTask, requireHost).Handler(as.AttachFiles).Post()
+	app.Route().Version(2).Route("/task/{taskId}/distro_view").Wrap(requireTask, requireHost).Handler(as.GetDistroView).Get()
+	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(requireTaskSecret).Handler(as.GetParserProject).Get()
+	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(requireTaskSecret).Handler(as.GetProjectRef).Get()
+	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(requireTask, requireHost).Handler(as.GetExpansions).Get()
 
 	// plugins
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(checkTaskSecret).Handler(as.gitServePatchFile).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(checkTaskSecret).Handler(as.gitServePatch).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(checkTask).Handler(as.keyValPluginInc).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(checkTask).Handler(as.manifestLoadHandler).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(checkTaskSecret).Handler(as.s3copyPlugin).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(checkTask).Handler(as.SetDownstreamParams).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONTagsForTask).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONTaskHistory).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{name}").Wrap(checkTask).Handler(as.insertTaskJSON).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONByName).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{task_name}/{name}/{variant}").Wrap(checkTask).Handler(as.getTaskJSONForVariant).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(requireTaskSecret).Handler(as.gitServePatchFile).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(requireTaskSecret).Handler(as.gitServePatch).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(requireTask).Handler(as.keyValPluginInc).Post()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(requireTask).Handler(as.manifestLoadHandler).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(requireTaskSecret).Handler(as.s3copyPlugin).Post()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(requireTask).Handler(as.SetDownstreamParams).Post()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTagsForTask).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTaskHistory).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{name}").Wrap(requireTask).Handler(as.insertTaskJSON).Post()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONByName).Get()
+	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/data/{task_name}/{name}/{variant}").Wrap(requireTask).Handler(as.getTaskJSONForVariant).Get()
 
 	return app
 }

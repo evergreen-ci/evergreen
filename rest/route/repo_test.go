@@ -117,13 +117,12 @@ func TestPatchRepoIDHandler(t *testing.T) {
 		GithubChecksEnabled: utility.TruePtr(),
 	}
 	branchProject := &dbModel.ProjectRef{
-		Id:              "branch_project_id",
-		Identifier:      "branch",
-		Owner:           repoRef.Owner,
-		Repo:            repoRef.Repo,
-		Branch:          "main",
-		UseRepoSettings: true,
-		RepoRefId:       repoRef.Id,
+		Id:         "branch_project_id",
+		Identifier: "branch",
+		Owner:      repoRef.Owner,
+		Repo:       repoRef.Repo,
+		Branch:     "main",
+		RepoRefId:  repoRef.Id,
 	}
 	assert.NoError(t, independentProject.Insert())
 	assert.NoError(t, branchProject.Insert())
