@@ -3507,7 +3507,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page
 	if options.SkipOrderNumber != nil {
-		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit)
+		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit, requesters)
 
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
