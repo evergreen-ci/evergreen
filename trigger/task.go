@@ -356,7 +356,6 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 				}
 				if executionTask.Details.Status == evergreen.TaskFailed {
 					shouldSkipTicket = executionTask.Details.Description == evergreen.TaskDescriptionStranded ||
-						executionTask.Details.Type == evergreen.CommandTypeSetup ||
 						executionTask.IsSystemUnresponsive()
 					if !shouldSkipTicket {
 						break
@@ -472,7 +471,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
+	if t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 
@@ -526,7 +525,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInBuild, t.task)
@@ -544,7 +543,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
-	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, event.TriggerTaskFirstFailureInVersion, t.task)
@@ -559,7 +558,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() || t.task.Details.Type == evergreen.CommandTypeSetup {
+	if t.data.Status != evergreen.TaskFailed || t.task.IsSystemUnresponsive() {
 		return nil, nil
 	}
 	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInVersionWithName, t.task)
@@ -594,7 +593,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 
 func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 	if t.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) ||
-		t.IsSystemUnresponsive() || t.Details.Type == evergreen.CommandTypeSetup {
+		t.IsSystemUnresponsive() {
 		return false, nil, nil
 	}
 
