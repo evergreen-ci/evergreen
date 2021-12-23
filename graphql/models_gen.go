@@ -265,6 +265,8 @@ type TaskLogs struct {
 type TaskQueueDistro struct {
 	ID         string `json:"id"`
 	QueueCount int    `json:"queueCount"`
+	TaskCount  int    `json:"taskCount"`
+	HostCount  int    `json:"hostCount"`
 }
 
 type TaskResult struct {
