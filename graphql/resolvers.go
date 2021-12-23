@@ -3949,6 +3949,15 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 	return apiAnnotation, nil
 }
 
+func (r *taskResolver) BbTicketCreationDefined(ctx context.Context, obj *restModel.APITask) (bool, error) {
+
+	ok, err := model.IsBBTicketCreationDefined(*obj.ProjectId, *obj.Version)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding BBTicketCreationDefined: %s", err.Error()))
+	}
+	return ok, nil
+}
+
 func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
 	permissions := gimlet.PermissionOpts{

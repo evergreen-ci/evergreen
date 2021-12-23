@@ -851,6 +851,7 @@ type ComplexityRoot struct {
 		BaseStatus              func(childComplexity int) int
 		BaseTask                func(childComplexity int) int
 		BaseTaskMetadata        func(childComplexity int) int
+		BbTicketCreationDefined func(childComplexity int) int
 		Blocked                 func(childComplexity int) int
 		BuildId                 func(childComplexity int) int
 		BuildVariant            func(childComplexity int) int
@@ -1353,6 +1354,7 @@ type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
 
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
+	BbTicketCreationDefined(ctx context.Context, obj *model.APITask) (bool, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
@@ -5514,6 +5516,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.BaseTaskMetadata(childComplexity), true
 
+	case "Task.bbTicketCreationDefined":
+		if e.complexity.Task.BbTicketCreationDefined == nil {
+			break
+		}
+
+		return e.complexity.Task.BbTicketCreationDefined(childComplexity), true
+
 	case "Task.blocked":
 		if e.complexity.Task.Blocked == nil {
 			break
@@ -7511,7 +7520,7 @@ type Version {
   patch: Patch
   childVersions: [Version]
   taskCount: Int
-  baseVersionID: String
+  baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
   baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
@@ -8321,6 +8330,7 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  bbTicketCreationDefined: Boolean!
   baseTask: Task
   baseStatus: String
   baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
@@ -29191,6 +29201,41 @@ func (ec *executionContext) _Task_annotation(ctx context.Context, field graphql.
 	return ec.marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_bbTicketCreationDefined(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().BbTicketCreationDefined(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_baseTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -45997,6 +46042,20 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_annotation(ctx, field, obj)
+				return res
+			})
+		case "bbTicketCreationDefined":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_bbTicketCreationDefined(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "baseTask":
