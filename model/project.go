@@ -1139,11 +1139,11 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project, _, _, err := LoadProjectForVersion(ver, ver.Identifier, false)
+	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
-	return project, nil
+	return projectInfo.Project, nil
 }
 
 func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
@@ -1189,7 +1189,12 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, _, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
+			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId, true)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "Error retrieving project info from "+
+					"last good version for project, %s", lastGoodVersion.Identifier)
+			}
+			project = projectInfo.Project
 			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
 		if err == nil {

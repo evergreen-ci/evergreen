@@ -56,7 +56,7 @@ type VersionErrors struct {
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
 	// the given revision.
-	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error)
+	GetRemoteConfig(ctx context.Context, revision string) (model.ProjectInfo, error)
 
 	// Fetches a list of all filepaths modified by a given revision.
 	GetChangedFiles(ctx context.Context, revision string) ([]string, error)
@@ -248,7 +248,17 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		var versionErrs *VersionErrors
-		project, intermediateProject, config, err := repoTracker.GetProjectConfig(ctx, revision)
+		pInfo, err := repoTracker.GetProjectConfig(ctx, revision)
+		if pInfo.Project == nil {
+			msg := fmt.Sprintf("unable to find project config for revision %s", revision)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            msg,
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+			}))
+			return errors.New(msg)
+		}
 		if err != nil {
 			// this is an error that implies the file is invalid - create a version and store the error
 			projErr, isProjErr := err.(projectConfigError)
@@ -295,7 +305,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
-		if len(project.Ignore) > 0 {
+		if len(pInfo.Project.Ignore) > 0 {
 			var filenames []string
 			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 			if err != nil {
@@ -308,7 +318,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				}))
 				continue
 			}
-			if project.IgnoresAllFiles(filenames) {
+			if pInfo.Project.IgnoresAllFiles(filenames) {
 				ignore = true
 			}
 		}
@@ -318,9 +328,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
-			Project:             project,
-			IntermediateProject: intermediateProject,
-			Config:              config,
+			Project:             pInfo.Project,
+			IntermediateProject: pInfo.IntermediateProject,
+			Config:              pInfo.Config,
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
@@ -355,7 +365,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = CreateManifest(*v, project, ref, repoTracker.Settings)
+		_, err = CreateManifest(*v, pInfo.Project, ref, repoTracker.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -388,9 +398,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // returning a remote config if the project references a remote repository
 // configuration file - via the Id. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
-func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
+func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (model.ProjectInfo, error) {
 	projectRef := repoTracker.ProjectRef
-	project, intermediateProj, config, err := repoTracker.GetRemoteConfig(ctx, revision)
+	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:
@@ -415,7 +425,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			})
 
 			grip.Error(message.WrapError(err, msg))
-			return nil, nil, nil, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
+			return model.ProjectInfo{}, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
 		}
 		// If we get here then we have an infrastructural error - e.g.
 		// a thirdparty.APIUnmarshalError (indicating perhaps an API has
@@ -446,9 +456,9 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			"lastRevision":       lastRevision,
 		}))
 
-		return nil, nil, nil, err
+		return model.ProjectInfo{}, err
 	}
-	return project, intermediateProj, config, nil
+	return projectInfo, nil
 }
 
 // addGithubCheckSubscriptions adds subscriptions to send the status of the version to Github.

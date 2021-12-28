@@ -172,7 +172,7 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 	if v == nil {
 		return nil, nil, errors.New("version doesn't exist")
 	}
-	proj, _, _, err := model.LoadProjectForVersion(v, v.Identifier, true)
+	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, true)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error loading project")
 	}
@@ -192,12 +192,15 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error populating expansions")
 	}
-	params := append(proj.GetParameters(), v.Parameters...)
+	var params []patch.Parameter
+	if projectInfo.Project != nil {
+		params = append(projectInfo.Project.GetParameters(), v.Parameters...)
+	}
 	if err = updateExpansions(&expansions, t.Project, params); err != nil {
 		return nil, nil, errors.Wrap(err, "error updating expansions")
 	}
 
-	return proj, &expansions, nil
+	return projectInfo.Project, &expansions, nil
 }
 
 // updateExpansions updates expansions with project variables and patch

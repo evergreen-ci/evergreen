@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -88,6 +89,8 @@ func Patch() cli.Command {
 		Flags:   getPatchFlags(),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
+			fmt.Println(confPath)
+			fmt.Println("malik")
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),

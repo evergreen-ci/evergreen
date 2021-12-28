@@ -112,7 +112,7 @@ func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 	return nil
 }
 
-func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &pRef,
 		Revision:   pRef.Branch,
@@ -557,7 +557,7 @@ func (pc *MockProjectConnector) RemoveAdminFromProjects(toDelete string) error {
 	return nil
 }
 
-func (pc *MockProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
+func (pc *MockProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
 	config := `
 buildvariants:
 - name: v1
@@ -575,7 +575,12 @@ tasks:
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	pp, pConfig, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
-	return p, pp, pConfig, err
+	return model.ProjectInfo{
+		Project:             p,
+		IntermediateProject: pp,
+		Config:              pConfig,
+		Ref:                 nil,
+	}, err
 }
 
 func (pc *MockProjectConnector) FindProjectVarsById(id, repoId string, redact bool) (*restModel.APIProjectVars, error) {
