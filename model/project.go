@@ -1182,6 +1182,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
+	var projectInfo ProjectInfo
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
 		if err != nil {
@@ -1189,11 +1190,7 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId, true)
-			if err != nil {
-				return nil, nil, errors.Wrapf(err, "Error retrieving project info from "+
-					"last good version for project, %s", lastGoodVersion.Identifier)
-			}
+			projectInfo, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
 			project = projectInfo.Project
 			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
