@@ -523,7 +523,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 			IntermediateProject: pp,
 			Config:              nil,
 			Ref:                 nil,
-		}, nil
+		}, err
 	}
 
 	if v.Config == "" {
