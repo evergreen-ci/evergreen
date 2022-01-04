@@ -772,21 +772,9 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
 		}
-		// Overwrite limiting when tasks will run from project task
-		if bvt.Patchable == nil {
-			bvt.Patchable = pt.Patchable
-		}
-		if bvt.PatchOnly == nil {
-			bvt.PatchOnly = pt.PatchOnly
-		}
-		if bvt.Disable == nil {
-			bvt.Disable = pt.Disable
-		}
-		if bvt.AllowForGitTag == nil {
-			bvt.AllowForGitTag = pt.AllowForGitTag
-		}
+		// Default to project task settings when unspecified
+		bvt.Populate(taskMap[t])
 		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
-			bvt.Populate(taskMap[t])
 			tasks = append(tasks, bvt)
 		}
 	}
