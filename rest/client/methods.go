@@ -1118,7 +1118,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, item strin
 		return errors.Wrap(err, "error finding item")
 	}
 	if requestedPatch == nil {
-		return errors.Wrap(err, "item not found")
+		return errors.New("item not found")
 	}
 	projectID := requestedPatch.Project
 	info := requestInfo{
