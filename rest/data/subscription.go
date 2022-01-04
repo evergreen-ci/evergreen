@@ -209,9 +209,9 @@ func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProje
 	for _, sub := range subs {
 		sub.Owner = newProject
 		sub.ID = ""
-		for _, selector := range sub.Selectors {
+		for i, selector := range sub.Selectors {
 			if selector.Type == event.SelectorProject && selector.Data == oldProject {
-				selector.Data = newProject
+				sub.Selectors[i].Data = newProject
 			}
 		}
 		catcher.Add(sub.Upsert())

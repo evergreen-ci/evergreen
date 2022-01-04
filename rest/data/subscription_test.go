@@ -243,18 +243,18 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 
 func TestCopyProjectSubscriptions(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
-
+	oldProjectId := "my-project"
 	subs := []event.Subscription{
 		{
 			ID:           mgobson.NewObjectId().Hex(),
-			Owner:        "my-project",
+			Owner:        oldProjectId,
 			OwnerType:    event.OwnerTypeProject,
 			ResourceType: "PATCH",
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
-					Type: "id",
-					Data: "1234",
+					Type: event.SelectorProject,
+					Data: oldProjectId,
 				},
 			},
 			Subscriber: event.Subscriber{
@@ -270,8 +270,8 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
-					Type: "id",
-					Data: "1234",
+					Type: event.SelectorProject,
+					Data: "not-my-project",
 				},
 			},
 			Subscriber: event.Subscriber{
@@ -293,16 +293,22 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			require.Len(t, apiSubs, 0)
 		},
 		"FromExistentProject": func(t *testing.T) {
-			assert.NoError(t, c.CopyProjectSubscriptions("my-project", "my-newest-project"))
-			apiSubs, err := event.FindSubscriptionsByOwner("my-project", event.OwnerTypeProject)
+			newProjectId := "my-newest-project"
+			assert.NoError(t, c.CopyProjectSubscriptions(oldProjectId, newProjectId))
+			apiSubs, err := event.FindSubscriptionsByOwner(oldProjectId, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)
 			assert.Equal(t, subs[0].ID, apiSubs[0].ID)
+			require.Len(t, apiSubs[0].Selectors, 1)
+			assert.Equal(t, oldProjectId, apiSubs[0].Selectors[0].Data)
 
-			apiSubs, err = event.FindSubscriptionsByOwner("my-newest-project", event.OwnerTypeProject)
+			apiSubs, err = event.FindSubscriptionsByOwner(newProjectId, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)
 			assert.NotEqual(t, subs[0].ID, apiSubs[0].ID)
+			require.Len(t, apiSubs[0].Selectors, 1)
+			assert.Equal(t, newProjectId, apiSubs[0].Selectors[0].Data)
+
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
