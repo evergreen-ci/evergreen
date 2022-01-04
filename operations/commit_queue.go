@@ -87,10 +87,12 @@ func deleteItem() cli.Command {
 	return cli.Command{
 		Name:  "delete",
 		Usage: "delete an item from a project's commit queue",
-		Flags: addProjectFlag(cli.StringFlag{
-			Name:  joinFlagNames(itemFlagName, "i"),
-			Usage: "delete `ITEM`",
-		}),
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(itemFlagName, "i"),
+				Usage: "delete `ITEM`",
+			},
+		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(itemFlagName),
 			setPlainLogger,
