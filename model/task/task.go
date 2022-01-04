@@ -1470,6 +1470,14 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"project":   t.Project,
 		"details":   t.Details,
 	})
+	if detail.Status == "" {
+		grip.Error(message.WrapError(errors.WithStack(errors.New("task status is empty, marking as failed")), message.Fields{
+			"message": "empty task details",
+			"details": detail,
+			"task_id": t.Id,
+		}))
+		detail.Status = evergreen.TaskFailed
+	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
