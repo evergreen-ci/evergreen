@@ -756,8 +756,8 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(requireTaskSecret).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(requireTaskSecret).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(requireTask, requireHost).Handler(as.GetExpansions).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/new_push").Wrap(requireTask).Handler(as.NewPush).Post()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/update_push_status").Wrap(requireTask).Handler(as.UpdatePushStatus).Post()
+	app.Route().Version(2).Route("/task/{taskId}/new_push").Wrap(requireTaskSecret).Handler(as.NewPush).Post()
+	app.Route().Version(2).Route("/task/{taskId}/update_push_status").Wrap(requireTaskSecret).Handler(as.UpdatePushStatus).Post()
 
 	// plugins
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(requireTaskSecret).Handler(as.gitServePatchFile).Get()
