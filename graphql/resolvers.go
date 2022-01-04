@@ -2305,16 +2305,22 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	distros := []*TaskQueueDistro{}
 
 	for _, distro := range queues {
+		numHosts, err := host.CountRunningHosts(distro.Distro)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
+		}
 		tqd := TaskQueueDistro{
 			ID:         distro.Distro,
 			QueueCount: len(distro.Queue),
+			TaskCount:  len(distro.Queue),
+			HostCount:  numHosts,
 		}
 		distros = append(distros, &tqd)
 	}
 
-	// sort distros by queue count in descending order
+	// sort distros by task count in descending order
 	sort.SliceStable(distros, func(i, j int) bool {
-		return distros[i].QueueCount > distros[j].QueueCount
+		return distros[i].TaskCount > distros[j].TaskCount
 	})
 
 	return distros, nil
@@ -3404,8 +3410,9 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int)
 	}
 
 	return &BuildBaron{
-		SearchReturnInfo:     searchReturnInfo,
-		BuildBaronConfigured: bbConfig.ProjectFound && bbConfig.SearchConfigured,
+		SearchReturnInfo:        searchReturnInfo,
+		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
+		BbTicketCreationDefined: bbConfig.ticketCreationDefined,
 	}, nil
 }
 
