@@ -749,10 +749,6 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 	}
 
 	for _, t := range tg.Tasks {
-		pt := proj.FindProjectTask(t)
-		if pt == nil {
-			return tasks
-		}
 		bvt := BuildVariantTaskUnit{
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
