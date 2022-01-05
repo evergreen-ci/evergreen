@@ -579,7 +579,6 @@ tasks:
 		Project:             p,
 		IntermediateProject: pp,
 		Config:              pConfig,
-		Ref:                 nil,
 	}, err
 }
 

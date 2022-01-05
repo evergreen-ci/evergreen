@@ -1182,7 +1182,6 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	var projectInfo ProjectInfo
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
 		if err != nil {
@@ -1190,18 +1189,19 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			projectInfo, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
+			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId, true)
+			if err != nil {
+				grip.Critical(message.WrapError(err, message.Fields{
+					"message": "last known good version has malformed config",
+					"version": lastGoodVersion.Id,
+					"project": projectId,
+				}))
+				revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
+				continue
+			}
 			project = projectInfo.Project
-			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
 		}
-		if err == nil {
-			return lastGoodVersion, project, nil
-		}
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "last known good version has malformed config",
-			"version": lastGoodVersion.Id,
-			"project": projectId,
-		}))
+		return lastGoodVersion, project, nil
 	}
 
 	if lastGoodVersion == nil {

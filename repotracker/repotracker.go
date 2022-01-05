@@ -249,16 +249,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		var versionErrs *VersionErrors
 		pInfo, err := repoTracker.GetProjectConfig(ctx, revision)
-		if pInfo.Project == nil {
-			msg := fmt.Sprintf("unable to find project config for revision %s", revision)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":            msg,
-				"runner":             RunnerName,
-				"project":            ref.Id,
-				"project_identifier": ref.Identifier,
-			}))
-			return errors.New(msg)
-		}
 		if err != nil {
 			// this is an error that implies the file is invalid - create a version and store the error
 			projErr, isProjErr := err.(projectConfigError)
@@ -301,6 +291,16 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				}))
 				return err
 			}
+		}
+		if pInfo.Project == nil {
+			msg := fmt.Sprintf("unable to find project config for revision %s", revision)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            msg,
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+			}))
+			return errors.New(msg)
 		}
 
 		// "Ignore" a version if all changes are to ignored files

@@ -46,12 +46,12 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, false)
-	if projectInfo.Project == nil {
-		as.LoggedError(w, r, http.StatusNotFound, errors.New("unable to find project for version"))
-		return
-	}
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "error loading project from version"))
+		return
+	}
+	if projectInfo.Project == nil {
+		as.LoggedError(w, r, http.StatusNotFound, errors.New("unable to find project for version"))
 		return
 	}
 

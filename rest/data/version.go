@@ -389,7 +389,6 @@ func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, project
 			Project:             p,
 			IntermediateProject: pp,
 			Config:              pc,
-			Ref:                 nil,
 		}, err
 	}
 	return model.ProjectInfo{}, errors.New("no project for version")

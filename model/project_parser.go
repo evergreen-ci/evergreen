@@ -521,8 +521,6 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 		return ProjectInfo{
 			Project:             p,
 			IntermediateProject: pp,
-			Config:              nil,
-			Ref:                 nil,
 		}, err
 	}
 
@@ -555,7 +553,6 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 		Project:             p,
 		IntermediateProject: pp,
 		Config:              pc,
-		Ref:                 nil,
 	}, nil
 }
 
@@ -785,7 +782,6 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 		Project:             &config,
 		IntermediateProject: pp,
 		Config:              pc,
-		Ref:                 nil,
 	}, nil
 }
 
