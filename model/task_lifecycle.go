@@ -473,8 +473,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	if hasFailedTests {
 		if detailsCopy.Status != evergreen.TaskFailed {
 			detailsCopy.Type = evergreen.CommandTypeTest
+		} else {
+			detailsCopy.Status = evergreen.TaskFailed
 		}
-		detailsCopy.Status = evergreen.TaskFailed
 	}
 
 	if t.Status == detailsCopy.Status {
