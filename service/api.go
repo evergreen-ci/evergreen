@@ -668,8 +668,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs = append(errs, validator.CheckYamlStrict(input.ProjectYaml)...)
-	errs = append(errs, validator.CheckProjectSyntax(project, input.IncludeLong)...)
-	errs = append(errs, validator.CheckProjectSemantics(project)...)
+	errs = append(errs, validator.CheckProjectErrors(project, input.IncludeLong)...)
+	errs = append(errs, validator.CheckProjectWarnings(project)...)
 
 	if len(errs) > 0 {
 		if input.Quiet {

@@ -609,7 +609,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	project.Tasks = append(project.Tasks, mergeTask)
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
-	validationErrors := validator.CheckProjectSyntax(project, true)
+	validationErrors := validator.CheckProjectErrors(project, true)
 	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range validationErrors.AtLevel(validator.Error) {

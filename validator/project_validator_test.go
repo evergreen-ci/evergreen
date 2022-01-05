@@ -172,7 +172,7 @@ func TestValidateTaskDependencies(t *testing.T) {
 					{Name: "t2", Patchable: utility.FalsePtr()},
 				},
 			}
-			errs := validateTaskDependencies(&p)
+			errs := checkTaskDependenciesWarnings(&p)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
 			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
@@ -758,24 +758,24 @@ func TestValidateTaskNames(t *testing.T) {
 		validationResults := validateTaskNames(project)
 		So(len(validationResults), ShouldEqual, 4)
 	})
-	Convey("An error should be returned when a task name", t, func() {
+	Convey("A warning should be returned when a task name", t, func() {
 		Convey("Contains commas", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: "task,"}},
 			}
-			So(len(validateTaskNames(project)), ShouldEqual, 1)
+			So(len(checkTaskNamesWarnings(project)), ShouldEqual, 1)
 		})
 		Convey("Is the same as the all-dependencies syntax", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: model.AllDependencies}},
 			}
-			So(len(validateTaskNames(project)), ShouldEqual, 1)
+			So(len(checkTaskNamesWarnings(project)), ShouldEqual, 1)
 		})
 		Convey("Is 'all'", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: "all"}},
 			}
-			So(len(validateTaskNames(project)), ShouldEqual, 1)
+			So(len(checkTaskNamesWarnings(project)), ShouldEqual, 1)
 		})
 	})
 }
@@ -897,7 +897,7 @@ func TestValidateBVNames(t *testing.T) {
 				},
 			}
 
-			validationResults := validateBVNames(project)
+			validationResults := checkBVNamesWarnings(project)
 			numErrors := len(validationResults.AtLevel(Error))
 			numWarnings := len(validationResults.AtLevel(Warning))
 
@@ -943,14 +943,14 @@ func TestValidateBVNames(t *testing.T) {
 			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateBVNames(project)), ShouldEqual, 3)
 		})
-		Convey("An error should be returned when a buildvariant name", func() {
+		Convey("A warning should be returned when a buildvariant name", func() {
 			Convey("Contains commas", func() {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{
 						{Name: "variant,", DisplayName: "display_name"},
 					},
 				}
-				So(len(validateBVNames(project)), ShouldEqual, 1)
+				So(len(checkBVNamesWarnings(project)), ShouldEqual, 1)
 			})
 			Convey("Is the same as the all-dependencies syntax", func() {
 				project := &model.Project{
@@ -958,13 +958,13 @@ func TestValidateBVNames(t *testing.T) {
 						{Name: model.AllVariants, DisplayName: "display_name"},
 					},
 				}
-				So(len(validateBVNames(project)), ShouldEqual, 1)
+				So(len(checkBVNamesWarnings(project)), ShouldEqual, 1)
 			})
 			Convey("Is 'all'", func() {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
 				}
-				So(len(validateBVNames(project)), ShouldEqual, 1)
+				So(len(checkBVNamesWarnings(project)), ShouldEqual, 1)
 			})
 		})
 	})
@@ -1060,7 +1060,7 @@ func TestValidateBVBatchTimes(t *testing.T) {
 
 	// warning if activated to true with batchtime
 	p.BuildVariants[0].Activate = utility.TruePtr()
-	assert.Len(t, validateBVBatchTimes(p), 1)
+	assert.Len(t, checkBVBatchTimesWarnings(p), 1)
 
 }
 
@@ -1754,7 +1754,7 @@ func TestValidatePluginCommands(t *testing.T) {
 	})
 }
 
-func TestCheckProjectSemantics(t *testing.T) {
+func TestCheckProjectWarnings(t *testing.T) {
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
@@ -1773,7 +1773,7 @@ func TestCheckProjectSemantics(t *testing.T) {
 
 			_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
-			So(CheckProjectSemantics(project), ShouldResemble, ValidationErrors{})
+			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Reset(func() {
@@ -1841,7 +1841,7 @@ func (s *EnsureHasNecessaryProjectFieldSuite) TestFailOnInvalidCommandType() {
 
 func (s *EnsureHasNecessaryProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
 	s.project.BatchTime = math.MaxInt32 + 1
-	validationError := ensureHasNecessaryProjectFields(&s.project)
+	validationError := checkProjectFieldsWarnings(&s.project)
 
 	s.Len(validationError, 1)
 	s.Equal(validationError[0].Level, Warning,
@@ -2066,7 +2066,7 @@ func TestTaskGroupValidation(t *testing.T) {
 			},
 		},
 	}
-	assert.Len(validateTaskGroups(&proj), 1)
+	assert.Len(checkTaskGroups(&proj), 3)
 
 	// check that yml with a task group named the same as a task errors
 	duplicateTaskYml := `
@@ -2199,9 +2199,9 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	syntaxErrs := CheckProjectSyntax(&proj, false)
+	syntaxErrs := CheckProjectErrors(&proj, false)
 	assert.Len(syntaxErrs, 0)
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectWarnings(&proj)
 	assert.Len(semanticErrs, 0)
 	strictErrs := CheckYamlStrict([]byte(exampleYml))
 	assert.Len(strictErrs, 0)
@@ -2234,9 +2234,9 @@ buildvariants:
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
-	syntaxErrs := CheckProjectSyntax(&proj, false)
+	syntaxErrs := CheckProjectErrors(&proj, false)
 	assert.Len(syntaxErrs, 0)
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectWarnings(&proj)
 	assert.Len(semanticErrs, 0)
 	strictErrs := CheckYamlStrict([]byte(exampleYml))
 	assert.Len(strictErrs, 1)
@@ -2301,10 +2301,10 @@ buildvariants:
 	assert.Len(tg.Tasks, 1)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
-	syntaxErrs := CheckProjectSyntax(&proj, false)
+	syntaxErrs := CheckProjectErrors(&proj, false)
 	assert.Len(syntaxErrs, 1)
 	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectWarnings(&proj)
 	assert.Len(semanticErrs, 0)
 	strictErrs := CheckYamlStrict([]byte(exampleYml))
 	assert.Len(strictErrs, 0)
@@ -2353,12 +2353,12 @@ buildvariants:
 	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
-	syntaxErrs := CheckProjectSyntax(&proj, false)
+	syntaxErrs := CheckProjectErrors(&proj, false)
 	assert.Len(syntaxErrs, 1)
 	assert.Equal(syntaxErrs[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
 		syntaxErrs[0].Message)
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectWarnings(&proj)
 	assert.Len(semanticErrs, 0)
 	strictErrs := CheckYamlStrict([]byte(exampleYml))
 	assert.Len(strictErrs, 0)
@@ -2587,8 +2587,10 @@ buildvariants:
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectSyntax(&proj, false)
-	assert.Len(errs, 1, "one warning was found")
+	errs := CheckProjectErrors(&proj, false)
+	assert.Len(errs, 0, "no errors were found")
+	errs = CheckProjectWarnings(&proj)
+	assert.Len(errs, 2, "two warnings were found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 
 	exampleYml = `
