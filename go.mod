@@ -13,7 +13,7 @@ require (
 	github.com/evergreen-ci/birch v0.0.0-20211025210128-7f3409c2b515
 	github.com/evergreen-ci/certdepot v0.0.0-20211117185134-dbedb3d79a10
 	github.com/evergreen-ci/cocoa v0.0.0-20211028185655-0a7d8e6e14e7
-	github.com/evergreen-ci/gimlet v0.0.0-20211119154230-7c9e13926e12
+	github.com/evergreen-ci/gimlet v0.0.0-20220105154228-8854421f39e6
 	github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0
 	github.com/evergreen-ci/juniper v0.0.0-20210624185208-0fd21a88954c
 	github.com/evergreen-ci/pail v0.0.0-20211028170419-8efd623fd305
