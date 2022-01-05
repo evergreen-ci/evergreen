@@ -2552,9 +2552,6 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 }
 
 func (t *Task) IsPartOfDisplay() bool {
-	if t.DisplayOnly {
-		return false
-	}
 	// if display task ID is nil, we need to check manually if we have an execution task
 	if t.DisplayTaskId == nil {
 		dt, err := t.GetDisplayTask()
