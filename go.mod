@@ -33,12 +33,11 @@ require (
 	github.com/mongodb/amboy v0.0.0-20211213142319-cd190dc4cf43
 	github.com/mongodb/anser v0.0.0-20211117165837-ac44bc8e3e4f
 	github.com/mongodb/ftdc v0.0.0-20211028165431-67f017692185
-	github.com/mongodb/grip v0.0.0-20211119154157-aca5d459de3f
+	github.com/mongodb/grip v0.0.0-20211209154908-abdd8964fd40
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
-	github.com/shirou/gopsutil v3.21.10+incompatible
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5
@@ -65,6 +64,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20211213143437-1d373fd6f2c6
+	github.com/shirou/gopsutil/v3 v3.21.11
 	golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect

@@ -15,9 +15,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"github.com/shirou/gopsutil/disk"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/process"
 	"google.golang.org/grpc"
 )
 
@@ -350,16 +350,16 @@ type processesWrapper struct {
 }
 
 type processData struct {
-	PID               int32   `json:"pid,omitempty"`
-	CPUPercent        float64 `json:"percent_cpu,omitempty"`
-	MemoryPercent     float32 `json:"percent_mem,omitempty"`
-	VirtualMemorySize uint64  `json:"vsz,omitempty"`
-	ResidentSetSize   uint64  `json:"rss,omitempty"`
-	Terminal          string  `json:"tt,omitempty"`
-	Stat              string  `json:"stat,omitempty"`
-	Started           int64   `json:"started"`
-	Time              string  `json:"time,omitempty"`
-	Command           string  `json:"command,omitempty"`
+	PID               int32    `json:"pid,omitempty"`
+	CPUPercent        float64  `json:"percent_cpu,omitempty"`
+	MemoryPercent     float32  `json:"percent_mem,omitempty"`
+	VirtualMemorySize uint64   `json:"vsz,omitempty"`
+	ResidentSetSize   uint64   `json:"rss,omitempty"`
+	Terminal          string   `json:"tt,omitempty"`
+	Stat              []string `json:"stat,omitempty"`
+	Started           int64    `json:"started"`
+	Time              string   `json:"time,omitempty"`
+	Command           string   `json:"command,omitempty"`
 }
 
 func (c *processCollector) name() string { return "process" }
@@ -404,7 +404,7 @@ func createProcMetrics(ctx context.Context, procs []*process.Process) []processD
 		}
 		status, err := proc.StatusWithContext(ctx)
 		if err != nil {
-			status = ""
+			status = nil
 		}
 		createTime, err := proc.CreateTimeWithContext(ctx)
 		if err != nil {
