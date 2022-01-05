@@ -276,7 +276,7 @@ func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.API
 	}, nil
 }
 
-func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
+func (c *Mock) DeleteCommitQueueItem(ctx context.Context, item string) error {
 	return nil
 }
 
