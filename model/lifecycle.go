@@ -1334,6 +1334,7 @@ func createDisplayTask(id string, displayName string, execTasks []string, bv *Bu
 		TriggerID:           v.TriggerID,
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
+		DisplayTaskId:       utility.ToStringPtr(""),
 	}
 	return t, nil
 }
