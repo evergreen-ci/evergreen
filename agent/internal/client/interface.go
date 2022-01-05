@@ -86,10 +86,9 @@ type Communicator interface {
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 
 	// The following operations are used by
-	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
-	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error
 	AttachFiles(context.Context, TaskData, []*artifact.File) error
 	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
+	S3Copy(context.Context, TaskData, *apimodels.S3CopyRequest) (string, error)
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
 	// these are for the taskdata/json plugin that saves perf data

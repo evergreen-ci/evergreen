@@ -15,6 +15,7 @@ import (
 const (
 	PushlogCollection = "pushes"
 	PushLogSuccess    = "success"
+	PushLogFailed     = "failed"
 )
 
 type PushLog struct {
