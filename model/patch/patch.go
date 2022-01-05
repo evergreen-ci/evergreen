@@ -138,32 +138,33 @@ type GitMetadata struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id              mgobson.ObjectId       `bson:"_id,omitempty"`
-	Description     string                 `bson:"desc"`
-	Path            string                 `bson:"path,omitempty"`
-	Project         string                 `bson:"branch"`
-	Githash         string                 `bson:"githash"`
-	PatchNumber     int                    `bson:"patch_number"`
-	Author          string                 `bson:"author"`
-	Version         string                 `bson:"version"`
-	Status          string                 `bson:"status"`
-	CreateTime      time.Time              `bson:"create_time"`
-	StartTime       time.Time              `bson:"start_time"`
-	FinishTime      time.Time              `bson:"finish_time"`
-	BuildVariants   []string               `bson:"build_variants"`
-	Tasks           []string               `bson:"tasks"`
-	VariantsTasks   []VariantTasks         `bson:"variants_tasks"`
-	SyncAtEndOpts   SyncAtEndOptions       `bson:"sync_at_end_opts,omitempty"`
-	Patches         []ModulePatch          `bson:"patches"`
-	Parameters      []Parameter            `bson:"parameters,omitempty"`
-	Activated       bool                   `bson:"activated"`
-	PatchedConfig   string                 `bson:"patched_config"`
-	Alias           string                 `bson:"alias"`
-	Triggers        TriggerInfo            `bson:"triggers"`
-	BackportOf      BackportInfo           `bson:"backport_of,omitempty"`
-	MergePatch      string                 `bson:"merge_patch"`
-	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
-	GitInfo         *GitMetadata           `bson:"git_info,omitempty"`
+	Id                   mgobson.ObjectId       `bson:"_id,omitempty"`
+	Description          string                 `bson:"desc"`
+	Path                 string                 `bson:"path,omitempty"`
+	Project              string                 `bson:"branch"`
+	Githash              string                 `bson:"githash"`
+	PatchNumber          int                    `bson:"patch_number"`
+	Author               string                 `bson:"author"`
+	Version              string                 `bson:"version"`
+	Status               string                 `bson:"status"`
+	CreateTime           time.Time              `bson:"create_time"`
+	StartTime            time.Time              `bson:"start_time"`
+	FinishTime           time.Time              `bson:"finish_time"`
+	BuildVariants        []string               `bson:"build_variants"`
+	Tasks                []string               `bson:"tasks"`
+	VariantsTasks        []VariantTasks         `bson:"variants_tasks"`
+	SyncAtEndOpts        SyncAtEndOptions       `bson:"sync_at_end_opts,omitempty"`
+	Patches              []ModulePatch          `bson:"patches"`
+	Parameters           []Parameter            `bson:"parameters,omitempty"`
+	Activated            bool                   `bson:"activated"`
+	PatchedParserProject string                 `bson:"patched_parser_project"`
+	PatchedProjectConfig string                 `bson:"patched_project_config"`
+	Alias                string                 `bson:"alias"`
+	Triggers             TriggerInfo            `bson:"triggers"`
+	BackportOf           BackportInfo           `bson:"backport_of,omitempty"`
+	MergePatch           string                 `bson:"merge_patch"`
+	GithubPatchData      thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
+	GitInfo              *GitMetadata           `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
@@ -678,7 +679,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 		"$set": bson.M{
 			GithashKey:       p.Githash,
 			PatchesKey:       p.Patches,
-			PatchedConfigKey: p.PatchedConfig,
+			PatchedConfigKey: p.PatchedParserProject,
 			VariantsTasksKey: p.VariantsTasks,
 			BuildVariantsKey: p.BuildVariants,
 			TasksKey:         p.Tasks,

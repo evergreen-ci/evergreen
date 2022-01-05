@@ -428,14 +428,15 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		var projectYaml string
-		_, projectYaml, err = model.GetPatchedProject(ctx, p, githubOauthToken)
+		var patchConfig *model.PatchConfig
+		_, patchConfig, err = model.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
-		p.PatchedConfig = projectYaml
+		p.PatchedParserProject = patchConfig.PatchedParserProject
+		p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

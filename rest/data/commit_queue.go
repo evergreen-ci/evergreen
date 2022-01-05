@@ -142,7 +142,7 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
 
-	patchDoc.PatchedConfig = projectYaml
+	patchDoc.PatchedParserProject = projectYaml
 	return patchContent, summaries, config, nil
 }
 

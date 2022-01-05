@@ -685,10 +685,10 @@ buildvariants:
 	}
 	require.NoError(t, projectRef.Insert())
 	unfinalized := patch.Patch{
-		Id:            mgobson.NewObjectId(),
-		Project:       projectRef.Id,
-		Githash:       "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-		PatchedConfig: config,
+		Id:                   mgobson.NewObjectId(),
+		Project:              projectRef.Id,
+		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		PatchedParserProject: config,
 	}
 	require.NoError(t, unfinalized.Insert())
 	ctx := context.Background()
@@ -771,10 +771,10 @@ buildvariants:
 
 	// * should select all tasks
 	patch2 := patch.Patch{
-		Id:            mgobson.NewObjectId(),
-		Project:       projectRef.Id,
-		Githash:       "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-		PatchedConfig: config,
+		Id:                   mgobson.NewObjectId(),
+		Project:              projectRef.Id,
+		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		PatchedParserProject: config,
 	}
 	assert.NoError(t, patch2.Insert())
 	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)

@@ -188,7 +188,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		apiPatch.ModuleCodeChanges = codeChanges
 	}
 
-	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
+	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedParserProject)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 
 	downstreamTasks, childPatches, err := getChildPatchesData(v)

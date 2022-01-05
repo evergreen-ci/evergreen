@@ -402,7 +402,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
-	s.NotEmpty(patchDoc.PatchedConfig)
+	s.NotEmpty(patchDoc.PatchedParserProject)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)

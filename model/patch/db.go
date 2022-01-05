@@ -40,7 +40,7 @@ var (
 	PatchesKey          = bsonutil.MustHaveTag(Patch{}, "Patches")
 	ParametersKey       = bsonutil.MustHaveTag(Patch{}, "Parameters")
 	ActivatedKey        = bsonutil.MustHaveTag(Patch{}, "Activated")
-	PatchedConfigKey    = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
+	PatchedConfigKey    = bsonutil.MustHaveTag(Patch{}, "PatchedParserProject")
 	AliasKey            = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey  = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey       = bsonutil.MustHaveTag(Patch{}, "MergePatch")

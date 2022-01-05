@@ -76,6 +76,11 @@ type ProjectInfo struct {
 	Config              *ProjectConfig
 }
 
+type PatchConfig struct {
+	PatchedParserProject string
+	PatchedProjectConfig string
+}
+
 func (p *ProjectInfo) NotPopulated() bool {
 	return p.Ref == nil || p.IntermediateProject == nil
 }

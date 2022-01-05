@@ -624,7 +624,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 		return errors.Wrap(err, "can't marshall remote config file")
 	}
 
-	patchDoc.PatchedConfig = string(yamlBytes)
+	patchDoc.PatchedParserProject = string(yamlBytes)
 	patchDoc.BuildVariants = append(patchDoc.BuildVariants, evergreen.MergeTaskVariant)
 	patchDoc.Tasks = append(patchDoc.Tasks, evergreen.MergeTaskName)
 	patchDoc.VariantsTasks = append(patchDoc.VariantsTasks, patch.VariantTasks{
@@ -674,12 +674,13 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	patchDoc.Githash = sha
 
 	// Refresh the cached project config
-	patchDoc.PatchedConfig = ""
-	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	patchDoc.PatchedParserProject = ""
+	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get updated project config")
 	}
-	patchDoc.PatchedConfig = projectYaml
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	// Update module githashes
 	for i, mod := range patchDoc.Patches {
