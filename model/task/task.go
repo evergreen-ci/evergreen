@@ -1150,7 +1150,7 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		return err
 	}
 
-	if !t.DisplayOnly && t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay() {
 		displayTask, err := t.GetDisplayTask()
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
@@ -2552,6 +2552,9 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 }
 
 func (t *Task) IsPartOfDisplay() bool {
+	if t.DisplayOnly {
+		return false
+	}
 	// if display task ID is nil, we need to check manually if we have an execution task
 	if t.DisplayTaskId == nil {
 		dt, err := t.GetDisplayTask()
