@@ -355,8 +355,8 @@ github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YW
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lbmNkNEkJEuhIdctIEbJhx4hMzjRvbUg172mQRvNnKo=
 github.com/evergreen-ci/gimlet v0.0.0-20211018155143-ebbbff34990a/go.mod h1:F2dAoc1x1+JwZH9ylB9tpeOnztafEx2IbZjEz8GQzOM=
 github.com/evergreen-ci/gimlet v0.0.0-20211029160936-5b64c7b33753/go.mod h1:57Sr3kCsdBlf9ii/ZYyuNDTzcDLDN7laOyJeIXYPGGs=
-github.com/evergreen-ci/gimlet v0.0.0-20211119154230-7c9e13926e12 h1:rq53jC1lkOc3Xpt7wNo4VytszzWsA9PKy5ebAEi13xQ=
-github.com/evergreen-ci/gimlet v0.0.0-20211119154230-7c9e13926e12/go.mod h1:57Sr3kCsdBlf9ii/ZYyuNDTzcDLDN7laOyJeIXYPGGs=
+github.com/evergreen-ci/gimlet v0.0.0-20220105154228-8854421f39e6 h1:2hPNjA2wJ0gIIJrG5g46EVZgxFx0q4xUZGcZVMLyKCQ=
+github.com/evergreen-ci/gimlet v0.0.0-20220105154228-8854421f39e6/go.mod h1:WNDoaTtcUg3hHKDWLq/fi0sZXUT7fFi4vqM1KjY6XWc=
 github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0 h1:0hhomVgkD0cohkbPX5v//ST2IIngWRWSrJSzYdiUXT4=
 github.com/evergreen-ci/go-test2json v0.0.0-20180702150328-5b6cfd2e8cb0/go.mod h1:LPjADOtSJOJ1MWZ7E7p6KMeIoeQ1XWOo3uuF+GHPcT4=
 github.com/evergreen-ci/juniper v0.0.0-20210624185208-0fd21a88954c h1:FCDPj6Qu/hvMhSvGsulo/vQdsz8iblPjxlTxqa11F3g=
@@ -781,8 +781,9 @@ github.com/nwaples/rardecode v1.1.2 h1:Cj0yZY6T1Zx1R7AhTbyGSALm44/Mmq+BAPc4B/p/d
 github.com/nwaples/rardecode v1.1.2/go.mod h1:5DzqNKiOdpKKBH87u8VlvAnPZMXcGRhxWkRpHbbfGS0=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
-github.com/okta/okta-jwt-verifier-golang v1.1.1 h1:yL4uSwtVQ6L3m2Pq8tcVUbb8e/SZ7p/r6eduqq1YjBM=
 github.com/okta/okta-jwt-verifier-golang v1.1.1/go.mod h1:Nw85EhrNXkWgfkhE9lggRoRVZLVm7zf/ZtglDUzkKU8=
+github.com/okta/okta-jwt-verifier-golang v1.1.2 h1:BYhUEgAfOOaej8lP0rISBnlowlLKlgPvDlFo1yvF/rk=
+github.com/okta/okta-jwt-verifier-golang v1.1.2/go.mod h1:Nw85EhrNXkWgfkhE9lggRoRVZLVm7zf/ZtglDUzkKU8=
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/onsi/ginkgo v0.0.0-20151202141238-7f8ab55aaf3b/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v0.0.0-20170829012221-11459a886d9c/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
@@ -895,8 +896,9 @@ github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBO
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
 github.com/rs/cors v1.6.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
-github.com/rs/cors v1.8.0 h1:P2KMzcFwrPoSjkF1WLRPsp3UMLyql8L4v9hQpVeK5so=
 github.com/rs/cors v1.8.0/go.mod h1:EBwu+T5AvHOcXwvZIkQFjUN6s8Czyqw12GL/Y0tUyRM=
+github.com/rs/cors v1.8.2 h1:KCooALfAYGs415Cwu5ABvv9n9509fSiG5SQJn/AQo4U=
+github.com/rs/cors v1.8.2/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
 github.com/russross/blackfriday/v2 v2.0.1 h1:lPqVAte+HuHNfhJ/0LC98ESWRz8afy9tM/0RK8m9o+Q=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfFZQK844Gfx8o5WFuvpxWRwnSoipWe/p622j1v06w=
