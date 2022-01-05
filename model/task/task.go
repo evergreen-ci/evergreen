@@ -2562,6 +2562,7 @@ func (t *Task) IsPartOfDisplay() bool {
 			}))
 			return false
 		}
+		asdf
 		return dt != nil
 	}
 
