@@ -180,7 +180,7 @@ func TestValidateTaskDependencies(t *testing.T) {
 	})
 }
 
-func TestvalidateDependencyGraph(t *testing.T) {
+func TestValidateDependencyGraph(t *testing.T) {
 	Convey("When checking a project's dependency graph", t, func() {
 		Convey("cycles in the dependency graph should cause error to be returned", func() {
 			project := &model.Project{
@@ -673,7 +673,7 @@ func TestvalidateDependencyGraph(t *testing.T) {
 	})
 }
 
-func TestcheckTaskRuns(t *testing.T) {
+func TestCheckTaskRuns(t *testing.T) {
 	makeProject := func() *model.Project {
 		return &model.Project{
 			Tasks: []model.ProjectTask{
@@ -780,7 +780,7 @@ func TestValidateTaskNames(t *testing.T) {
 	})
 }
 
-func TestcheckModules(t *testing.T) {
+func TestCheckModules(t *testing.T) {
 	Convey("When validating a project's modules", t, func() {
 		Convey("An error should be returned when more than one module shares the same name or is empty", func() {
 			project := &model.Project{
@@ -1064,7 +1064,7 @@ func TestValidateBVBatchTimes(t *testing.T) {
 
 }
 
-func TestcheckBVsContainTasks(t *testing.T) {
+func TestCheckBVsContainTasks(t *testing.T) {
 	Convey("When validating a project's build variants", t, func() {
 		Convey("if any build variant contains no tasks an error should be returned", func() {
 			project := &model.Project{
@@ -1106,7 +1106,7 @@ func TestcheckBVsContainTasks(t *testing.T) {
 	})
 }
 
-func TestvalidateAllDependenciesSpec(t *testing.T) {
+func TestValidateAllDependenciesSpec(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("if a task references all dependencies, no other dependency "+
 			"should be specified. If one is, an error should be returned",
@@ -1787,7 +1787,7 @@ type validateProjectFieldsuite struct {
 	project model.Project
 }
 
-func TestvalidateProjectFieldsuite(t *testing.T) {
+func TestValidateProjectFieldsuite(t *testing.T) {
 	suite.Run(t, new(validateProjectFieldsuite))
 }
 
@@ -1848,7 +1848,7 @@ func (s *validateProjectFieldsuite) TestWarnOnLargeBatchTimeValue() {
 		"Large batch time validation error should be a warning")
 }
 
-func TestvalidateBVFields(t *testing.T) {
+func TestValidateBVFields(t *testing.T) {
 	Convey("When ensuring necessary buildvariant fields are set, ensure that", t, func() {
 		Convey("an error is thrown if no build variants exist", func() {
 			project := &model.Project{
