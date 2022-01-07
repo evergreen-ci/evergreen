@@ -137,12 +137,12 @@ func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch
 	}
 
 	// fetch the latest config file
-	config, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	config, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
 
-	patchDoc.PatchedParserProject = projectYaml
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
 	return patchContent, summaries, config, nil
 }
 
