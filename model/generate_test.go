@@ -104,11 +104,6 @@ var (
 		BuildVariants: []parserBV{
 			parserBV{
 				Name: "my_build_variant",
-				Tasks: parserBVTaskUnits{
-					parserBVTaskUnit{
-						Name: "my_display_task_gen",
-					},
-				},
 				DisplayTasks: []displayTask{
 					displayTask{
 						Name:           "my_display_task",
@@ -863,16 +858,15 @@ buildvariants:
 
 func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	taskThatExists := task.Task{
-		Id:                      "task_that_called_generate_task",
-		DisplayName:             "task_that_called_generate_task",
-		Version:                 "version_that_called_generate_task",
-		BuildVariant:            "my_build_variant",
-		BuildVariantDisplayName: "my_build_variant",
+		Id:           "task_that_called_generate_task",
+		Version:      "version_that_called_generate_task",
+		BuildVariant: "my_build_variant",
 	}
 	taskDisplayGen := task.Task{
-		Id:          "_my_build_variant_my_display_task_gen__01_01_01_00_00_00",
-		DisplayName: "my_display_task_gen_01",
-		Version:     "version_that_called_generate_task",
+		Id:           "_my_build_variant_my_display_task_gen__01_01_01_00_00_00",
+		DisplayName:  "my_display_task_gen",
+		Version:      "version_that_called_generate_task",
+		BuildVariant: "my_build_variant",
 	}
 	sampleBuild := build.Build{
 		Id:           "sample_build",
@@ -912,11 +906,8 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task_gen"}), &tasks))
 	s.Len(tasks, 1)
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
-	// grip.Info(message.Fields{
-	// 	"bynnbynn": "2",
-	// 	"tasks":    tasks,
-	// })
 	s.Len(tasks, 1)
+	s.Len(tasks[0].ExecutionTasks, 1)
 }
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
