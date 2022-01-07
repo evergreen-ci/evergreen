@@ -858,13 +858,15 @@ buildvariants:
 
 func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	taskThatExists := task.Task{
-		Id:      "task_that_called_generate_task",
-		Version: "version_that_called_generate_task",
+		Id:           "task_that_called_generate_task",
+		Version:      "version_that_called_generate_task",
+		BuildVariant: "my_build_variant",
 	}
 	taskDisplayGen := task.Task{
-		Id:          "_my_build_variant_my_display_task_gen__01_01_01_00_00_00",
-		DisplayName: "my_display_task_gen",
-		Version:     "version_that_called_generate_task",
+		Id:           "_my_build_variant_my_display_task_gen__01_01_01_00_00_00",
+		DisplayName:  "my_display_task_gen",
+		Version:      "version_that_called_generate_task",
+		BuildVariant: "my_build_variant",
 	}
 	sampleBuild := build.Build{
 		Id:           "sample_build",
@@ -905,6 +907,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Len(tasks, 1)
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
+	s.Len(tasks[0].ExecutionTasks, 1)
 }
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
