@@ -52,7 +52,7 @@ func init() {
 		evergreen.S3PushCommandName:     s3PushFactory,
 		evergreen.S3PullCommandName:     s3PullFactory,
 		"shell.cleanup":                 shellCleanupFactory,
-		"shell.exec":                    shellExecFactory,
+		evergreen.ShellExecCommandName:  shellExecFactory,
 		"shell.track":                   shellTrackFactory,
 		"subprocess.exec":               subprocessExecFactory,
 		"subprocess.scripting":          subprocessScriptingFactory,
