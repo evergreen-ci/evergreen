@@ -76,14 +76,14 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 	identifier := "project"
 	cmd := "echo hi"
 
-	proj, pp, err := makeDownstreamProjectFromCommand(identifier, cmd, "generate.json")
+	projInfo, err := makeDownstreamProjectFromCommand(identifier, cmd, "generate.json")
 	assert.NoError(err)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.Equal(identifier, proj.Identifier)
+	assert.NotNil(projInfo.Project)
+	assert.NotNil(projInfo.IntermediateProject)
+	assert.Equal(identifier, projInfo.Project.Identifier)
 	foundCommand := false
 	foundFile := false
-	for _, t := range proj.Tasks {
+	for _, t := range projInfo.Project.Tasks {
 		for _, c := range t.Commands {
 			if c.Command == "subprocess.exec" {
 				foundCommand = true
@@ -100,7 +100,7 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 
 	foundCommand = false
 	foundFile = false
-	for _, t := range pp.Tasks {
+	for _, t := range projInfo.IntermediateProject.Tasks {
 		for _, c := range t.Commands {
 			if c.Command == "subprocess.exec" {
 				foundCommand = true

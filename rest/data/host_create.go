@@ -192,10 +192,10 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error populating expansions")
 	}
-	var params []patch.Parameter
-	if projectInfo.Project != nil {
-		params = append(projectInfo.Project.GetParameters(), v.Parameters...)
+	if projectInfo.Project == nil {
+		projectInfo.Project = &model.Project{}
 	}
+	params := append(projectInfo.Project.GetParameters(), v.Parameters...)
 	if err = updateExpansions(&expansions, t.Project, params); err != nil {
 		return nil, nil, errors.Wrap(err, "error updating expansions")
 	}
