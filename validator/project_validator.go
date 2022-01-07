@@ -985,7 +985,7 @@ func validateCommands(section string, project *model.Project,
 		if cmd.Command == evergreen.ShellExecCommandName && cmd.Params["script"] == nil {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("%s section: command '%s' specified without a script", section, cmd.Command),
+				Message: fmt.Sprintf("%s section: command '%s' specified without a script.", section, cmd.Command),
 			})
 		}
 	}
