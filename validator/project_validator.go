@@ -103,17 +103,17 @@ type ValidationInput struct {
 
 // Functions used to validate the syntax of a project configuration file.
 var projectErrorValidators = []projectValidator{
-	ensureHasNecessaryBVFields,
-	checkDependencyGraph,
+	validateBVFields,
+	validateDependencyGraph,
 	validatePluginCommands,
-	ensureHasNecessaryProjectFields,
+	validateProjectFields,
 	validateTaskDependencies,
 	validateTaskNames,
 	validateBVNames,
 	validateBVBatchTimes,
 	validateDisplayTaskNames,
 	validateBVTaskNames,
-	checkAllDependenciesSpec,
+	validateAllDependenciesSpec,
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
 	validateParameters,
@@ -130,14 +130,14 @@ var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
 	checkLoggerConfig,
 	checkTaskTimeout,
-	checkProjectFieldsWarnings,
-	checkTaskDependenciesWarnings,
-	validateTaskRuns,
-	validateModules,
-	checkBVNamesWarnings,
-	checkBVBatchTimesWarnings,
-	validateBVsContainTasks,
-	checkTaskNamesWarnings,
+	checkProjectFields,
+	checkTaskDependencies,
+	checkTaskRuns,
+	checkModules,
+	checkBVNames,
+	checkBVBatchTimes,
+	checkBVsContainTasks,
+	checkTaskNames,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
@@ -204,9 +204,9 @@ func getDistrosForProject(projectID string) (ids []string, aliases []string, err
 // verify that the project configuration semantics is valid
 func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	for _, projectSemanticValidator := range projectWarningValidators {
+	for _, projectWarningValidator := range projectWarningValidators {
 		validationErrs = append(validationErrs,
-			projectSemanticValidator(project)...)
+			projectWarningValidator(project)...)
 	}
 	return validationErrs
 }
@@ -214,9 +214,9 @@ func CheckProjectWarnings(project *model.Project) ValidationErrors {
 // verify that the project configuration syntax is valid
 func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	for _, projectSyntaxValidator := range projectErrorValidators {
+	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
-			projectSyntaxValidator(project)...)
+			projectErrorValidator(project)...)
 	}
 	for _, longSyntaxValidator := range longSyntaxValidators {
 		validationErrs = append(validationErrs,
@@ -264,16 +264,16 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 // verify that the project configuration semantics and configuration syntax is valid
 func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
-	syntaxErrs := CheckProjectErrors(project, false)
-	if len(syntaxErrs) != 0 {
-		if errs := syntaxErrs.AtLevel(Error); len(errs) != 0 {
-			catcher.Errorf("project contains syntax errors: %s", ValidationErrorsToString(errs))
+	projectErrors := CheckProjectErrors(project, false)
+	if len(projectErrors) != 0 {
+		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
+			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))
 		}
 	}
-	semanticErrs := CheckProjectWarnings(project)
-	if len(semanticErrs) != 0 {
-		if errs := semanticErrs.AtLevel(Error); len(errs) != 0 {
-			catcher.Errorf("project contains semantic errors: %s", ValidationErrorsToString(errs))
+	projectWarnings := CheckProjectWarnings(project)
+	if len(projectWarnings) != 0 {
+		if errs := projectWarnings.AtLevel(Error); len(errs) != 0 {
+			catcher.Errorf("project contains warnings: %s", ValidationErrorsToString(errs))
 		}
 	}
 	if settingsErrs := CheckProjectSettings(project, pref); len(settingsErrs) != 0 {
@@ -286,7 +286,7 @@ func CheckProjectConfigurationIsValid(project *model.Project, pref *model.Projec
 
 // ensure that if any task spec references 'model.AllDependencies', it
 // references no other dependency within the variant
-func checkAllDependenciesSpec(project *model.Project) ValidationErrors {
+func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
 		coveredVariants := map[string]bool{}
@@ -315,7 +315,7 @@ func checkAllDependenciesSpec(project *model.Project) ValidationErrors {
 
 // Makes sure that the dependencies for the tasks in the project form a
 // valid dependency graph (no cycles).
-func checkDependencyGraph(project *model.Project) ValidationErrors {
+func validateDependencyGraph(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	tvToTaskUnit := tvToTaskUnit(project)
@@ -428,7 +428,7 @@ func validateAliases(p *model.Project) ValidationErrors {
 
 // Ensures that the project has at least one buildvariant and also that all the
 // fields required for any buildvariant definition are present
-func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
+func validateBVFields(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	if len(project.BuildVariants) == 0 {
 		return ValidationErrors{
@@ -511,7 +511,7 @@ func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
 
 // Checks that the basic fields that are required by any project are present and
 // valid.
-func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
+func validateProjectFields(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	if project.BatchTime < 0 {
@@ -536,7 +536,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkProjectFieldsWarnings(project *model.Project) ValidationErrors {
+func checkProjectFields(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	if project.BatchTime > math.MaxInt32 {
@@ -641,7 +641,7 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskNamesWarnings(project *model.Project) ValidationErrors {
+func checkTaskNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
 		// Warn against commas because the CLI allows users to specify
@@ -672,8 +672,8 @@ func checkTaskNamesWarnings(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateModules checks to make sure that the module's name, branch, and repo are correct.
-func validateModules(project *model.Project) ValidationErrors {
+// checkModules checks to make sure that the module's name, branch, and repo are correct.
+func checkModules(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	moduleNames := map[string]bool{}
 
@@ -762,7 +762,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkBVNamesWarnings(project *model.Project) ValidationErrors {
+func checkBVNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	displayNames := map[string]int{}
 
@@ -876,7 +876,7 @@ func validateBVTaskNames(project *model.Project) ValidationErrors {
 }
 
 // Ensure there are no buildvariants without tasks
-func validateBVsContainTasks(project *model.Project) ValidationErrors {
+func checkBVsContainTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, buildVariant := range project.BuildVariants {
 		if len(buildVariant.Tasks) == 0 {
@@ -941,7 +941,7 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkBVBatchTimesWarnings(project *model.Project) ValidationErrors {
+func checkBVBatchTimes(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, buildVariant := range project.BuildVariants {
 		// check task batchtimes first
@@ -1148,7 +1148,7 @@ func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateTaskRuns(project *model.Project) ValidationErrors {
+func checkTaskRuns(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
 		if bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
@@ -1242,7 +1242,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskDependenciesWarnings(project *model.Project) ValidationErrors {
+func checkTaskDependencies(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
 	allTasks := project.FindAllTasksMap()

@@ -172,7 +172,7 @@ func TestValidateTaskDependencies(t *testing.T) {
 					{Name: "t2", Patchable: utility.FalsePtr()},
 				},
 			}
-			errs := checkTaskDependenciesWarnings(&p)
+			errs := checkTaskDependencies(&p)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
 			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
@@ -180,7 +180,7 @@ func TestValidateTaskDependencies(t *testing.T) {
 	})
 }
 
-func TestCheckDependencyGraph(t *testing.T) {
+func TestvalidateDependencyGraph(t *testing.T) {
 	Convey("When checking a project's dependency graph", t, func() {
 		Convey("cycles in the dependency graph should cause error to be returned", func() {
 			project := &model.Project{
@@ -218,8 +218,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 3)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 3)
 		})
 
 		Convey("task wildcard cycles in the dependency graph should return an error", func() {
@@ -252,8 +252,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 2)
 		})
 
 		Convey("nonexisting nodes in the dependency graph should return an error", func() {
@@ -273,8 +273,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 							{Name: "testOne", DependsOn: []model.TaskUnitDependency{{Name: "compile"}, {Name: "hamSteak"}}}}},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 1)
 		})
 
 		Convey("cross-variant cycles in the dependency graph should return an error", func() {
@@ -317,8 +317,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 2)
 		})
 
 		Convey("cycles/errors from overwriting the dependency graph should return an error", func() {
@@ -344,17 +344,17 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 2)
 
 			project.BuildVariants[0].Tasks[0].DependsOn = nil
 			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskUnitDependency{{Name: "NOPE"}}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 1)
 
 			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskUnitDependency{{Name: "compile", Variant: "bvNOPE"}}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 1)
 		})
 
 		Convey("variant wildcard cycles in the dependency graph should return an error", func() {
@@ -411,8 +411,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 4)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 4)
 		})
 
 		Convey("cycles in a ** dependency graph should return an error", func() {
@@ -472,8 +472,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 3)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 3)
 		})
 
 		Convey("if any task has itself as a dependency, an error should be"+
@@ -499,8 +499,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
+			So(validateDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateDependencyGraph(project)), ShouldEqual, 1)
 		})
 
 		Convey("if there is no cycle in the dependency graph, no error should"+
@@ -537,7 +537,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
+			So(validateDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if there is no cycle in the cross-variant dependency graph, no error should"+
@@ -585,7 +585,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
+			So(validateDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if there is no cycle in the * dependency graph, no error should be returned", func() {
@@ -625,7 +625,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
+			So(validateDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if there is no cycle in the ** dependency graph, no error should be returned", func() {
@@ -667,13 +667,13 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
+			So(validateDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 	})
 }
 
-func TestValidateTaskRuns(t *testing.T) {
+func TestcheckTaskRuns(t *testing.T) {
 	makeProject := func() *model.Project {
 		return &model.Project{
 			Tasks: []model.ProjectTask{
@@ -696,22 +696,22 @@ func TestValidateTaskRuns(t *testing.T) {
 		project.BuildVariants[0].Tasks[0].Patchable = utility.TruePtr()
 		project.BuildVariants[0].Tasks[0].PatchOnly = utility.FalsePtr()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.FalsePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+		So(len(checkTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is not patchable, no error should be thrown", t, func() {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+		So(len(checkTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is patch-only, no error should be thrown", t, func() {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+		So(len(checkTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is git-tag-only, no error should be thrown", t, func() {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 0)
+		So(len(checkTaskRuns(project)), ShouldEqual, 0)
 	})
 	Convey("When a task is not patchable and not patch-only, no error should be thrown", t, func() {
 		project := makeProject()
@@ -722,25 +722,25 @@ func TestValidateTaskRuns(t *testing.T) {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].Patchable = utility.FalsePtr()
 		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+		So(len(checkTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patchable and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].Patchable = utility.TruePtr()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+		So(len(checkTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is patch-only and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].PatchOnly = utility.TruePtr()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+		So(len(checkTaskRuns(project)), ShouldEqual, 1)
 	})
 	Convey("When a task is not allowed for git tags and git-tag-only, an error should be thrown", t, func() {
 		project := makeProject()
 		project.BuildVariants[0].Tasks[0].AllowForGitTag = utility.FalsePtr()
 		project.BuildVariants[0].Tasks[0].GitTagOnly = utility.TruePtr()
-		So(len(validateTaskRuns(project)), ShouldEqual, 1)
+		So(len(checkTaskRuns(project)), ShouldEqual, 1)
 	})
 }
 
@@ -763,24 +763,24 @@ func TestValidateTaskNames(t *testing.T) {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: "task,"}},
 			}
-			So(len(checkTaskNamesWarnings(project)), ShouldEqual, 1)
+			So(len(checkTaskNames(project)), ShouldEqual, 1)
 		})
 		Convey("Is the same as the all-dependencies syntax", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: model.AllDependencies}},
 			}
-			So(len(checkTaskNamesWarnings(project)), ShouldEqual, 1)
+			So(len(checkTaskNames(project)), ShouldEqual, 1)
 		})
 		Convey("Is 'all'", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: "all"}},
 			}
-			So(len(checkTaskNamesWarnings(project)), ShouldEqual, 1)
+			So(len(checkTaskNames(project)), ShouldEqual, 1)
 		})
 	})
 }
 
-func TestValidateModules(t *testing.T) {
+func TestcheckModules(t *testing.T) {
 	Convey("When validating a project's modules", t, func() {
 		Convey("An error should be returned when more than one module shares the same name or is empty", func() {
 			project := &model.Project{
@@ -816,7 +816,7 @@ func TestValidateModules(t *testing.T) {
 					},
 				},
 			}
-			So(len(validateModules(project)), ShouldEqual, 3)
+			So(len(checkModules(project)), ShouldEqual, 3)
 		})
 
 		Convey("An error should be returned when the module does not have a branch", func() {
@@ -837,7 +837,7 @@ func TestValidateModules(t *testing.T) {
 					},
 				},
 			}
-			So(len(validateModules(project)), ShouldEqual, 2)
+			So(len(checkModules(project)), ShouldEqual, 2)
 		})
 
 		Convey("An error should be returned when the module's repo is empty or invalid", func() {
@@ -869,7 +869,7 @@ func TestValidateModules(t *testing.T) {
 					},
 				},
 			}
-			So(len(validateModules(project)), ShouldEqual, 4)
+			So(len(checkModules(project)), ShouldEqual, 4)
 		})
 	})
 }
@@ -897,7 +897,7 @@ func TestValidateBVNames(t *testing.T) {
 				},
 			}
 
-			validationResults := checkBVNamesWarnings(project)
+			validationResults := checkBVNames(project)
 			numErrors := len(validationResults.AtLevel(Error))
 			numWarnings := len(validationResults.AtLevel(Warning))
 
@@ -950,7 +950,7 @@ func TestValidateBVNames(t *testing.T) {
 						{Name: "variant,", DisplayName: "display_name"},
 					},
 				}
-				So(len(checkBVNamesWarnings(project)), ShouldEqual, 1)
+				So(len(checkBVNames(project)), ShouldEqual, 1)
 			})
 			Convey("Is the same as the all-dependencies syntax", func() {
 				project := &model.Project{
@@ -958,13 +958,13 @@ func TestValidateBVNames(t *testing.T) {
 						{Name: model.AllVariants, DisplayName: "display_name"},
 					},
 				}
-				So(len(checkBVNamesWarnings(project)), ShouldEqual, 1)
+				So(len(checkBVNames(project)), ShouldEqual, 1)
 			})
 			Convey("Is 'all'", func() {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
 				}
-				So(len(checkBVNamesWarnings(project)), ShouldEqual, 1)
+				So(len(checkBVNames(project)), ShouldEqual, 1)
 			})
 		})
 	})
@@ -1060,11 +1060,11 @@ func TestValidateBVBatchTimes(t *testing.T) {
 
 	// warning if activated to true with batchtime
 	p.BuildVariants[0].Activate = utility.TruePtr()
-	assert.Len(t, checkBVBatchTimesWarnings(p), 1)
+	assert.Len(t, checkBVBatchTimes(p), 1)
 
 }
 
-func TestValidateBVsContainTasks(t *testing.T) {
+func TestcheckBVsContainTasks(t *testing.T) {
 	Convey("When validating a project's build variants", t, func() {
 		Convey("if any build variant contains no tasks an error should be returned", func() {
 			project := &model.Project{
@@ -1081,7 +1081,7 @@ func TestValidateBVsContainTasks(t *testing.T) {
 					},
 				},
 			}
-			So(len(validateBVsContainTasks(project)), ShouldEqual, 1)
+			So(len(checkBVsContainTasks(project)), ShouldEqual, 1)
 		})
 
 		Convey("if all build variants contain tasks no errors should be returned", func() {
@@ -1101,12 +1101,12 @@ func TestValidateBVsContainTasks(t *testing.T) {
 					},
 				},
 			}
-			So(len(validateBVsContainTasks(project)), ShouldEqual, 0)
+			So(len(checkBVsContainTasks(project)), ShouldEqual, 0)
 		})
 	})
 }
 
-func TestCheckAllDependenciesSpec(t *testing.T) {
+func TestvalidateAllDependenciesSpec(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("if a task references all dependencies, no other dependency "+
 			"should be specified. If one is, an error should be returned",
@@ -1122,9 +1122,9 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 						},
 					},
 				}
-				So(checkAllDependenciesSpec(project), ShouldNotResemble,
+				So(validateAllDependenciesSpec(project), ShouldNotResemble,
 					ValidationErrors{})
-				So(len(checkAllDependenciesSpec(project)), ShouldEqual, 1)
+				So(len(validateAllDependenciesSpec(project)), ShouldEqual, 1)
 			})
 		Convey("if a task references only all dependencies, no error should "+
 			"be returned", func() {
@@ -1138,7 +1138,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					},
 				},
 			}
-			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
+			So(validateAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("if a task references any other dependencies, no error should "+
 			"be returned", func() {
@@ -1152,7 +1152,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					},
 				},
 			}
-			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
+			So(validateAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("if a task references all dependencies on multiple variants, no error should "+
 			" be returned", func() {
@@ -1173,7 +1173,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					},
 				},
 			}
-			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
+			So(validateAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -1782,16 +1782,16 @@ func TestCheckProjectWarnings(t *testing.T) {
 	})
 }
 
-type EnsureHasNecessaryProjectFieldSuite struct {
+type validateProjectFieldsuite struct {
 	suite.Suite
 	project model.Project
 }
 
-func TestEnsureHasNecessaryProjectFieldSuite(t *testing.T) {
-	suite.Run(t, new(EnsureHasNecessaryProjectFieldSuite))
+func TestvalidateProjectFieldsuite(t *testing.T) {
+	suite.Run(t, new(validateProjectFieldsuite))
 }
 
-func (s *EnsureHasNecessaryProjectFieldSuite) SetupTest() {
+func (s *validateProjectFieldsuite) SetupTest() {
 	s.project = model.Project{
 		Enabled:     true,
 		Identifier:  "identifier",
@@ -1803,60 +1803,60 @@ func (s *EnsureHasNecessaryProjectFieldSuite) SetupTest() {
 	}
 }
 
-func (s *EnsureHasNecessaryProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
+func (s *validateProjectFieldsuite) TestBatchTimeValueMustNonNegative() {
 	s.project.BatchTime = -10
-	validationError := ensureHasNecessaryProjectFields(&s.project)
+	validationError := validateProjectFields(&s.project)
 
 	s.Len(validationError, 1)
 	s.Contains(validationError[0].Message, "non-negative 'batchtime'",
 		"Project 'batchtime' must not be negative")
 }
 
-func (s *EnsureHasNecessaryProjectFieldSuite) TestCommandTypes() {
+func (s *validateProjectFieldsuite) TestCommandTypes() {
 	s.project.CommandType = "system"
-	validationError := ensureHasNecessaryProjectFields(&s.project)
+	validationError := validateProjectFields(&s.project)
 	s.Empty(validationError)
 
 	s.project.CommandType = "test"
-	validationError = ensureHasNecessaryProjectFields(&s.project)
+	validationError = validateProjectFields(&s.project)
 	s.Empty(validationError)
 
 	s.project.CommandType = "setup"
-	validationError = ensureHasNecessaryProjectFields(&s.project)
+	validationError = validateProjectFields(&s.project)
 	s.Empty(validationError)
 
 	s.project.CommandType = ""
-	validationError = ensureHasNecessaryProjectFields(&s.project)
+	validationError = validateProjectFields(&s.project)
 	s.Empty(validationError)
 }
 
-func (s *EnsureHasNecessaryProjectFieldSuite) TestFailOnInvalidCommandType() {
+func (s *validateProjectFieldsuite) TestFailOnInvalidCommandType() {
 	s.project.CommandType = "random"
-	validationError := ensureHasNecessaryProjectFields(&s.project)
+	validationError := validateProjectFields(&s.project)
 
 	s.Len(validationError, 1)
 	s.Contains(validationError[0].Message, "invalid command type: random",
 		"Project 'CommandType' must be valid")
 }
 
-func (s *EnsureHasNecessaryProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
+func (s *validateProjectFieldsuite) TestWarnOnLargeBatchTimeValue() {
 	s.project.BatchTime = math.MaxInt32 + 1
-	validationError := checkProjectFieldsWarnings(&s.project)
+	validationError := checkProjectFields(&s.project)
 
 	s.Len(validationError, 1)
 	s.Equal(validationError[0].Level, Warning,
 		"Large batch time validation error should be a warning")
 }
 
-func TestEnsureHasNecessaryBVFields(t *testing.T) {
+func TestvalidateBVFields(t *testing.T) {
 	Convey("When ensuring necessary buildvariant fields are set, ensure that", t, func() {
 		Convey("an error is thrown if no build variants exist", func() {
 			project := &model.Project{
 				Identifier: "test",
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldNotResemble, ValidationErrors{})
-			So(len(ensureHasNecessaryBVFields(project)),
+			So(len(validateBVFields(project)),
 				ShouldEqual, 1)
 		})
 		Convey("buildvariants with none of the necessary fields set throw errors", func() {
@@ -1864,9 +1864,9 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier:    "test",
 				BuildVariants: []model.BuildVariant{{}},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldNotResemble, ValidationErrors{})
-			So(len(ensureHasNecessaryBVFields(project)),
+			So(len(validateBVFields(project)),
 				ShouldEqual, 2)
 		})
 		Convey("an error is thrown if the buildvariant does not have a "+
@@ -1880,9 +1880,9 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldNotResemble, ValidationErrors{})
-			So(len(ensureHasNecessaryBVFields(project)),
+			So(len(validateBVFields(project)),
 				ShouldEqual, 1)
 		})
 		Convey("an error is thrown if the buildvariant does not have any tasks set", func() {
@@ -1895,9 +1895,9 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldNotResemble, ValidationErrors{})
-			So(len(ensureHasNecessaryBVFields(project)),
+			So(len(validateBVFields(project)),
 				ShouldEqual, 1)
 		})
 		Convey("no error is thrown if the buildvariant has a run_on field set", func() {
@@ -1911,7 +1911,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if the buildvariant has no "+
@@ -1926,9 +1926,9 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldNotResemble, ValidationErrors{})
-			So(len(ensureHasNecessaryBVFields(project)),
+			So(len(validateBVFields(project)),
 				ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if the buildvariant does not "+
@@ -1955,7 +1955,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldResemble, ValidationErrors{})
 		})
 		Convey("no error should be thrown if the buildvariant does not "+
@@ -1977,7 +1977,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldResemble, ValidationErrors{})
 		})
 		Convey("blank distros should generate errors", func() {
@@ -1994,7 +1994,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					},
 				},
 			}
-			So(ensureHasNecessaryBVFields(project),
+			So(validateBVFields(project),
 				ShouldResemble, ValidationErrors{
 					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify run_on."},
 				})
