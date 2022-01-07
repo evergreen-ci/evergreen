@@ -984,8 +984,8 @@ func validateCommands(section string, project *model.Project,
 		}
 		if cmd.Command == "shell.exec" && cmd.Params["script"] == nil {
 			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("cannot specify command '%s' without a script", cmd.Command),
+				Level:   Warning,
+				Message: fmt.Sprintf("%s section: command '%s' specified without a script", section, cmd.Command),
 			})
 		}
 	}
@@ -1018,6 +1018,18 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 						project.Identifier, funcName, err),
 				},
 			)
+		}
+
+		for _, c := range commands.List() {
+			if c.Function != "" {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("can not reference a function within a "+
+							"function: '%s' referenced within '%s'", c.Function, funcName),
+					},
+				)
+
+			}
 		}
 
 		// this checks for duplicate function definitions in the project.
