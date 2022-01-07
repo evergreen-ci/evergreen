@@ -460,6 +460,7 @@ const (
 	HostCreateCommandName    = "host.create"
 	S3PushCommandName        = "s3.push"
 	S3PullCommandName        = "s3.pull"
+	ShellExecCommandName     = "shell.exec"
 )
 
 type SenderKey int
