@@ -289,16 +289,16 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					"project_identifier": ref.Identifier,
 					"revision":           revision,
 				}))
-				if pInfo.Project == nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message":            fmt.Sprintf("unable to find project config for revision %s", revision),
-						"runner":             RunnerName,
-						"project":            ref.Id,
-						"project_identifier": ref.Identifier,
-					}))
-				}
 				return err
 			}
+		} else if pInfo.Project == nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            fmt.Sprintf("unable to find project config for revision %s", revision),
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+			}))
+			return err
 		}
 
 		// "Ignore" a version if all changes are to ignored files
