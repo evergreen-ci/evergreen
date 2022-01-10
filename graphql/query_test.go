@@ -166,7 +166,6 @@ func TestMainlineCommits(t *testing.T) {
 
 	for _, v := range res.Versions {
 		if v.Version != nil {
-			assert.NotNil(t, v.Version)
 			assert.Equal(t, evergreen.RepotrackerVersionRequester, utility.FromStringPtr(v.Version.Requester))
 		}
 	}
