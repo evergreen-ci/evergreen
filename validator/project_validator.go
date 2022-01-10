@@ -270,12 +270,7 @@ func CheckProjectConfigurationIsValid(project *model.Project, pref *model.Projec
 			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))
 		}
 	}
-	projectWarnings := CheckProjectWarnings(project)
-	if len(projectWarnings) != 0 {
-		if errs := projectWarnings.AtLevel(Error); len(errs) != 0 {
-			catcher.Errorf("project contains warnings: %s", ValidationErrorsToString(errs))
-		}
-	}
+
 	if settingsErrs := CheckProjectSettings(project, pref); len(settingsErrs) != 0 {
 		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
