@@ -1026,6 +1026,7 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 					ValidationError{
 						Message: fmt.Sprintf("can not reference a function within a "+
 							"function: '%s' referenced within '%s'", c.Function, funcName),
+						Level: Warning,
 					},
 				)
 
