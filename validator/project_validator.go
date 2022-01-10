@@ -982,6 +982,12 @@ func validateCommands(section string, project *model.Project,
 				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'", cmd.Command, cmd.Function),
 			})
 		}
+		if cmd.Command == evergreen.ShellExecCommandName && cmd.Params["script"] == nil {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("%s section: command '%s' specified without a script.", section, cmd.Command),
+			})
+		}
 	}
 	return errs
 }
@@ -1009,7 +1015,8 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("'%s' project's '%s' definition: %s",
-						project.Identifier, funcName, err),
+						project.Identifier, funcName, err.Message),
+					Level: err.Level,
 				},
 			)
 		}

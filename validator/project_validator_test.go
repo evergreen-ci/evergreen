@@ -2163,16 +2163,22 @@ tasks:
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo test
   depends_on:
   - name: task_in_a_task_group_1
 - name: task_in_a_task_group_1
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo test
 - name: task_in_a_task_group_2
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo test
 task_groups:
 - name: example_task_group
   max_hosts: 1
@@ -2220,6 +2226,8 @@ tasks:
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo test
 buildvariants:
 - name: "bv"
   display_name: "bv_display"
@@ -2249,6 +2257,8 @@ tasks:
 - name: task1
   commands:
   - command: shell.exec
+    params:
+      script: echo test
 buildvariants:
 - name: "bv"
   display_name: "bv_display"
@@ -2271,10 +2281,14 @@ tasks:
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo test
 - name: task_in_a_task_group
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo test
   depends_on:
   - name: not_in_a_task_group
 task_groups:
@@ -2322,14 +2336,21 @@ tasks:
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: |
+        echo "test"
 - name: two
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
+    params:
+      script: echo "test"
 - name: display_three
   exec_timeout_secs: 100 
   commands:
   - command: shell.exec
+    params:
+      script: echo "test"
 buildvariants:
 - name: "bv"
   display_name: "bv_display"
@@ -2564,9 +2585,15 @@ tasks:
 - name: one
   commands:
   - command: shell.exec
+    params: 
+      script: | 
+        echo test
 - name: two
   commands:
   - command: shell.exec
+    params:
+      script: |
+        echo test
 buildvariants:
 - name: "bv-1"
   display_name: "bv_display"
