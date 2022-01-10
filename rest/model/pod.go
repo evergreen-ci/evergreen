@@ -104,6 +104,7 @@ func (p *APICreatePod) splitEnvVars() (envVars map[string]string, secrets map[st
 // APIPod represents a pod to be used and returned from the REST API.
 type APIPod struct {
 	ID                        *string                            `json:"id"`
+	Type                      APIPodType                         `json:"type"`
 	Status                    APIPodStatus                       `json:"status"`
 	Secret                    APIPodSecret                       `json:"secret"`
 	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts"`
@@ -114,11 +115,12 @@ type APIPod struct {
 // BuildFromService converts a service-layer pod model into a REST API model.
 func (p *APIPod) BuildFromService(dbPod *pod.Pod) error {
 	p.ID = utility.ToStringPtr(dbPod.ID)
-	var status APIPodStatus
-	if err := status.BuildFromService(dbPod.Status); err != nil {
+	if err := p.Type.BuildFromService(dbPod.Type); err != nil {
+		return errors.Wrap(err, "building pod type from service")
+	}
+	if err := p.Status.BuildFromService(dbPod.Status); err != nil {
 		return errors.Wrap(err, "building status from service")
 	}
-	p.Status = status
 	p.Secret.BuildFromService(dbPod.Secret)
 	p.TimeInfo.BuildFromService(dbPod.TimeInfo)
 	p.TaskContainerCreationOpts.BuildFromService(dbPod.TaskContainerCreationOpts)
@@ -132,6 +134,10 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting status to service")
 	}
+	t, err := p.Type.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting pod type to service")
+	}
 	taskCreationOpts, err := p.TaskContainerCreationOpts.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting task container creation options to service")
@@ -141,12 +147,45 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 	resources := p.Resources.ToService()
 	return &pod.Pod{
 		ID:                        utility.FromStringPtr(p.ID),
+		Type:                      *t,
 		Status:                    *s,
 		Secret:                    secret,
 		TaskContainerCreationOpts: *taskCreationOpts,
 		TimeInfo:                  timing,
 		Resources:                 resources,
 	}, nil
+}
+
+// APIPodType represents a pod's type.
+type APIPodType string
+
+const (
+	PodTypeAgent APIPodType = "agent"
+)
+
+// BuildFromService converts a service-layer pod type into a REST API pod type.
+func (t *APIPodType) BuildFromService(pt pod.Type) error {
+	var converted APIPodType
+	switch pt {
+	case pod.TypeAgent:
+		converted = PodTypeAgent
+	default:
+		return errors.Errorf("unrecognized pod type '%s'", pt)
+	}
+	*t = converted
+	return nil
+}
+
+// ToService converts a REST API pod type into a service-layer pod type.
+func (t APIPodType) ToService() (*pod.Type, error) {
+	var converted pod.Type
+	switch t {
+	case PodTypeAgent:
+		converted = pod.TypeAgent
+	default:
+		return nil, errors.Errorf("unrecognized pod type '%s'", t)
+	}
+	return &converted, nil
 }
 
 // APIPodStatus represents a pod's status.
@@ -183,12 +222,9 @@ func (s *APIPodStatus) BuildFromService(ps pod.Status) error {
 }
 
 // ToService converts a REST API pod status into a service-layer pod status.
-func (s *APIPodStatus) ToService() (*pod.Status, error) {
-	if s == nil {
-		return nil, errors.New("nonexistent pod status")
-	}
+func (s APIPodStatus) ToService() (*pod.Status, error) {
 	var converted pod.Status
-	switch *s {
+	switch s {
 	case PodStatusInitializing:
 		converted = pod.StatusInitializing
 	case PodStatusStarting:
@@ -200,7 +236,7 @@ func (s *APIPodStatus) ToService() (*pod.Status, error) {
 	case PodStatusTerminated:
 		converted = pod.StatusTerminated
 	default:
-		return nil, errors.Errorf("unrecognized pod status '%s'", *s)
+		return nil, errors.Errorf("unrecognized pod status '%s'", s)
 	}
 	return &converted, nil
 }

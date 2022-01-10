@@ -117,8 +117,9 @@ type ComplexityRoot struct {
 	}
 
 	BuildBaron struct {
-		BuildBaronConfigured func(childComplexity int) int
-		SearchReturnInfo     func(childComplexity int) int
+		BbTicketCreationDefined func(childComplexity int) int
+		BuildBaronConfigured    func(childComplexity int) int
+		SearchReturnInfo        func(childComplexity int) int
 	}
 
 	BuildBaronSettings struct {
@@ -974,8 +975,10 @@ type ComplexityRoot struct {
 	}
 
 	TaskQueueDistro struct {
+		HostCount  func(childComplexity int) int
 		ID         func(childComplexity int) int
 		QueueCount func(childComplexity int) int
+		TaskCount  func(childComplexity int) int
 	}
 
 	TaskQueueItem struct {
@@ -1633,6 +1636,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Build.Status(childComplexity), true
+
+	case "BuildBaron.bbTicketCreationDefined":
+		if e.complexity.BuildBaron.BbTicketCreationDefined == nil {
+			break
+		}
+
+		return e.complexity.BuildBaron.BbTicketCreationDefined(childComplexity), true
 
 	case "BuildBaron.buildBaronConfigured":
 		if e.complexity.BuildBaron.BuildBaronConfigured == nil {
@@ -6186,6 +6196,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.TaskLogs(childComplexity), true
 
+	case "TaskQueueDistro.hostCount":
+		if e.complexity.TaskQueueDistro.HostCount == nil {
+			break
+		}
+
+		return e.complexity.TaskQueueDistro.HostCount(childComplexity), true
+
 	case "TaskQueueDistro.id":
 		if e.complexity.TaskQueueDistro.ID == nil {
 			break
@@ -6199,6 +6216,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskQueueDistro.QueueCount(childComplexity), true
+
+	case "TaskQueueDistro.taskCount":
+		if e.complexity.TaskQueueDistro.TaskCount == nil {
+			break
+		}
+
+		return e.complexity.TaskQueueDistro.TaskCount(childComplexity), true
 
 	case "TaskQueueItem.buildVariant":
 		if e.complexity.TaskQueueItem.BuildVariant == nil {
@@ -7991,7 +8015,9 @@ type TaskQueueItem {
 
 type TaskQueueDistro {
   id: ID!
-  queueCount: Int!
+  queueCount: Int! @deprecated(reason: "queueCount is deprecated, use taskCount instead")
+  taskCount: Int!
+  hostCount: Int!
 }
 
 type Host {
@@ -8909,6 +8935,7 @@ type HostEventLogData {
 type BuildBaron {
   searchReturnInfo: SearchReturnInfo
   buildBaronConfigured: Boolean!
+  bbTicketCreationDefined: Boolean!
 }
 
 # build baron plugin
@@ -11766,6 +11793,41 @@ func (ec *executionContext) _BuildBaron_buildBaronConfigured(ctx context.Context
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.BuildBaronConfigured, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BuildBaron_bbTicketCreationDefined(ctx context.Context, field graphql.CollectedField, obj *BuildBaron) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BuildBaron",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BbTicketCreationDefined, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -32568,6 +32630,76 @@ func (ec *executionContext) _TaskQueueDistro_queueCount(ctx context.Context, fie
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskQueueDistro_taskCount(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskQueueDistro",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskQueueDistro_hostCount(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskQueueDistro",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HostCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskQueueItem_id(ctx context.Context, field graphql.CollectedField, obj *model.APITaskQueueItem) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -41706,6 +41838,11 @@ func (ec *executionContext) _BuildBaron(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "bbTicketCreationDefined":
+			out.Values[i] = ec._BuildBaron_bbTicketCreationDefined(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -46846,6 +46983,16 @@ func (ec *executionContext) _TaskQueueDistro(ctx context.Context, sel ast.Select
 			}
 		case "queueCount":
 			out.Values[i] = ec._TaskQueueDistro_queueCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "taskCount":
+			out.Values[i] = ec._TaskQueueDistro_taskCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hostCount":
+			out.Values[i] = ec._TaskQueueDistro_hostCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

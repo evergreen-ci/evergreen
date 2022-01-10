@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -1111,7 +1112,15 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 	return &cq, nil
 }
 
-func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
+func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, item string) error {
+	requestedPatch, err := patch.FindOneId(item)
+	if err != nil {
+		return errors.Wrap(err, "error finding item")
+	}
+	if requestedPatch == nil {
+		return errors.New("item not found")
+	}
+	projectID := requestedPatch.Project
 	info := requestInfo{
 		method: http.MethodDelete,
 		path:   fmt.Sprintf("/commit_queue/%s/%s", projectID, item),

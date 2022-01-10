@@ -470,7 +470,8 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	if err != nil {
 		return errors.Wrap(err, "checking for failed tests")
 	}
-	if hasFailedTests {
+	if hasFailedTests && detailsCopy.Status != evergreen.TaskFailed {
+		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 	}
 
@@ -488,7 +489,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		if detailsCopy.Status == evergreen.TaskSucceeded && count == 0 && t.MustHaveResults {
 			detailsCopy.Status = evergreen.TaskFailed
 			detailsCopy.Description = evergreen.TaskDescriptionNoResults
-			detailsCopy.Type = evergreen.CommandTypeTest
 		}
 	}
 

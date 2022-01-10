@@ -1327,7 +1327,7 @@ func TestCreateTaskGroup(t *testing.T) {
   `
 	proj := &Project{}
 	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(projYml), nil, "test", proj)
+	_, _, err := LoadProjectInto(ctx, []byte(projYml), nil, "test", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{
@@ -1998,6 +1998,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		},
 	}
 	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
+	assert.Equal(2, len(bvts))
 	assert.Equal("new_dependency", bvts[0].DependsOn[0].Name)
 	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
 }

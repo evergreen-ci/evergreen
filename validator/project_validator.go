@@ -98,6 +98,7 @@ type ValidationInput struct {
 	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
 	Quiet       bool   `json:"quiet" yaml:"quiet"`
 	IncludeLong bool   `json:"include_long" yaml:"include_long"`
+	ProjectID   string `json:"project_id" yaml:"project_id"`
 }
 
 // Functions used to validate the syntax of a project configuration file.
@@ -131,6 +132,7 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkLoggerConfig,
+	checkTaskTimeout,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
@@ -667,7 +669,7 @@ func validateModules(project *model.Project) ValidationErrors {
 		} else if moduleNames[module.Name] {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("module '%s' already exists", module.Name),
+				Message: fmt.Sprintf("module '%s' already exists; the first module name defined will be used", module.Name),
 			})
 		} else {
 			moduleNames[module.Name] = true
@@ -1897,4 +1899,27 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 		return "", "", errors.Errorf("command '%s' was supplied parameter '%s' but is not a string argument, got %T", c.Command, paramName, i)
 	}
 	return task, bv, nil
+}
+
+// checkTaskTimeout checks if all tasks contain a timeout
+func checkTaskTimeout(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	if project.ExecTimeoutSecs > 0 {
+		return errs
+	}
+	for _, task := range project.Tasks {
+		if task.ExecTimeoutSecs == 0 {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("project '%s' does not "+
+						"have an exec_timeout_secs defined on one or more tasks; these tasks will default to a timeout of 6 hours",
+						project.Identifier),
+					Level: Warning,
+				},
+			)
+			break
+		}
+	}
+
+	return errs
 }

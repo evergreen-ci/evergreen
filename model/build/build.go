@@ -26,14 +26,16 @@ type TaskCache struct {
 // 	e.g. one build might be "Ubuntu with Python 2.4" and
 //  another might be "OSX with Python 3.0", etc.
 type Build struct {
-	Id                  string        `bson:"_id" json:"_id"`
-	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
-	Version             string        `bson:"version" json:"version,omitempty"`
-	Project             string        `bson:"branch" json:"branch,omitempty"`
-	Revision            string        `bson:"gitspec" json:"gitspec,omitempty"`
-	BuildVariant        string        `bson:"build_variant" json:"build_variant,omitempty"`
+	Id           string    `bson:"_id" json:"_id"`
+	CreateTime   time.Time `bson:"create_time" json:"create_time,omitempty"`
+	StartTime    time.Time `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime   time.Time `bson:"finish_time" json:"finish_time,omitempty"`
+	Version      string    `bson:"version" json:"version,omitempty"`
+	Project      string    `bson:"branch" json:"branch,omitempty"`
+	Revision     string    `bson:"gitspec" json:"gitspec,omitempty"`
+	BuildVariant string    `bson:"build_variant" json:"build_variant,omitempty"`
+	// TODO (EVG-16009): remove BuildNumber, since it is an unused and
+	// deprecated field.
 	BuildNumber         string        `bson:"build_number" json:"build_number,omitempty"`
 	Status              string        `bson:"status" json:"status,omitempty"`
 	Activated           bool          `bson:"activated" json:"activated,omitempty"`

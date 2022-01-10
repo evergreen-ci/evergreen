@@ -535,6 +535,7 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
+
 	bytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
@@ -554,15 +555,42 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
 
-	errs := validator.CheckYamlStrict(input.ProjectYaml)
+	errs := validator.ValidationErrors{}
+	if input.ProjectID != "" {
+		projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
+		if err != nil {
+			validationErr = validator.ValidationError{
+				Message: "error finding project; validation will proceed without checking project settings",
+				Level:   validator.Warning,
+			}
+			errs = append(errs, validationErr)
+		} else if projectRef == nil {
+			validationErr = validator.ValidationError{
+				Message: "project does not exist; validation will proceed without checking project settings",
+				Level:   validator.Warning,
+			}
+			errs = append(errs, validationErr)
+		} else {
+			errs = append(errs, validator.CheckProjectSettings(project, projectRef)...)
+		}
+	} else {
+		validationErr = validator.ValidationError{
+			Message: "no project specified; validation will proceed without checking project settings",
+			Level:   validator.Warning,
+		}
+		errs = append(errs, validationErr)
+	}
+
+	errs = append(errs, validator.CheckYamlStrict(input.ProjectYaml)...)
 	errs = append(errs, validator.CheckProjectSyntax(project, input.IncludeLong)...)
 	errs = append(errs, validator.CheckProjectSemantics(project)...)
+
 	if len(errs) > 0 {
 		if input.Quiet {
 			errs = errs.AtLevel(validator.Error)

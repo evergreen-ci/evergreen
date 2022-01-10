@@ -141,11 +141,12 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 }
 
 // ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong bool) (validator.ValidationErrors, error) {
+func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong bool, projectID string) (validator.ValidationErrors, error) {
 	input := validator.ValidationInput{
 		ProjectYaml: data,
 		Quiet:       quiet,
 		IncludeLong: includeLong,
+		ProjectID:   projectID,
 	}
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
@@ -295,7 +296,7 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := model.LoadProjectInto(resp.Request.Context(), yamlBytes, nil, "", ref); err != nil {
+	if _, _, err := model.LoadProjectInto(resp.Request.Context(), yamlBytes, nil, "", ref); err != nil {
 		return nil, err
 	}
 	return ref, nil

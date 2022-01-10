@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/global"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -700,7 +701,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	}
 
 	// get a new build number for the build
-	buildNumber, err := db.GetNewBuildVariantBuildNumber(args.BuildName)
+	buildNumber, err := global.GetNewBuildVariantBuildNumber(args.BuildName)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "could not get build number for build variant"+
 			" %v in %v project file", args.BuildName, args.Project.Identifier)
@@ -767,8 +768,9 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
 		}
+		// Default to project task settings when unspecified
+		bvt.Populate(taskMap[t])
 		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
-			bvt.Populate(taskMap[t])
 			tasks = append(tasks, bvt)
 		}
 	}
@@ -939,6 +941,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				"build_id":     b.Id,
 			}))
 		} else { // need to create display task
+			if len(execTaskIds) == 0 {
+				continue
+			}
 			newDisplayTask, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project, createTime, displayTaskActivated)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Failed to create display task %s", id)
@@ -1332,6 +1337,7 @@ func createDisplayTask(id string, displayName string, execTasks []string, bv *Bu
 		TriggerID:           v.TriggerID,
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
+		DisplayTaskId:       utility.ToStringPtr(""),
 	}
 	return t, nil
 }

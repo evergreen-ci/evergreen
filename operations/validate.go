@@ -29,6 +29,9 @@ func Validate() cli.Command {
 		}, cli.StringSliceFlag{
 			Name:  joinFlagNames(localModulesFlagName, "lm"),
 			Usage: "specify local modules as MODULE_NAME=PATH pairs",
+		}, cli.StringFlag{
+			Name:  joinFlagNames(projectFlagName, "p"),
+			Usage: "specify project identifier in order to run validation requiring project settings",
 		}),
 		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -36,6 +39,7 @@ func Validate() cli.Command {
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			long := c.Bool(longFlagName)
+			projectID := c.String(projectFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -57,6 +61,14 @@ func Validate() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
+			if projectID == "" {
+				cwd, err := os.Getwd()
+				grip.Error(errors.Wrap(err, "unable to get current working directory"))
+				cwd, err = filepath.EvalSymlinks(cwd)
+				grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
+				projectID = conf.FindDefaultProject(cwd, false)
+			}
+
 			fileInfo, err := os.Stat(path)
 			if err != nil {
 				return errors.Wrap(err, "problem getting file info")
@@ -69,12 +81,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, long, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, long, localModuleMap)
+			return validateFile(path, ac, quiet, long, localModuleMap, projectID)
 		},
 	}
 }
@@ -92,19 +104,18 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string) error {
+func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "problem reading file")
 	}
-
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		LocalModules: localModuleMap,
 		ReadFileFrom: model.ReadFromLocal,
 	}
-	pp, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
+	pp, _, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
 	if err != nil {
 		return errors.Wrapf(err, "%s is an invalid configuration", path)
 	}
@@ -113,7 +124,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		return errors.Wrapf(err, "Could not marshal parser project into yaml")
 	}
 
-	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong)
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {
 		return nil
 	}

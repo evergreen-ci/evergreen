@@ -57,7 +57,7 @@ func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) er
 	return model.RestartTasksInVersion(versionId, true, caller)
 }
 
-func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
+func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	return model.LoadProjectForVersion(v, projectId, false)
 }
 
@@ -380,14 +380,14 @@ func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, pr
 	}, nil
 }
 
-func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, error) {
+func (mvc *MockVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
 	if v.Config != "" {
 		p := &model.Project{}
 		ctx := context.Background()
-		pp, err := model.LoadProjectInto(ctx, []byte(v.Config), nil, projectId, p)
-		return p, pp, err
+		pp, pc, err := model.LoadProjectInto(ctx, []byte(v.Config), nil, projectId, p)
+		return p, pp, pc, err
 	}
-	return nil, nil, errors.New("no project for version")
+	return nil, nil, nil, errors.New("no project for version")
 }
 
 func (mvc *MockVersionConnector) GetProjectVersionsWithOptions(projectId string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {

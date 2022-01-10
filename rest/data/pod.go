@@ -169,6 +169,9 @@ func (c *MockPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "finding pod")
 	}
+	if p == nil {
+		return nil, nil
+	}
 
 	var apiPod model.APIPod
 	if err := apiPod.BuildFromService(p); err != nil {

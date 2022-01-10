@@ -298,7 +298,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 }
 
 func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
-	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection, patch.Collection))
 	validId := bson.NewObjectId().Hex()
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
@@ -326,15 +326,22 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 			Enabled: utility.TruePtr(),
 		},
 	}
+
 	s.NoError(projectRef.Insert())
 
-	s.Error(deleteCommitQueueItem(s.ctx, s.client, "mci", "not_here"))
+	patch := patch.Patch{
+		Id:      patch.NewId(validId),
+		Project: "mci",
+	}
+	s.NoError(patch.Insert())
+
+	s.Error(deleteCommitQueueItem(s.ctx, s.client, "not_here"))
 
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	s.NoError(grip.SetSender(send.MakePlainLogger()))
-	s.NoError(deleteCommitQueueItem(s.ctx, s.client, "mci", validId))
+	s.NoError(deleteCommitQueueItem(s.ctx, s.client, validId))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)

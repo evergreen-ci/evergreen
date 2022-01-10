@@ -98,7 +98,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
-						<li class="link" ng-click="scrollTo('plugins')">Plugins</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<li class="link" ng-click="scrollTo('spawnhosts')">Spawn Hosts</li>
 						<div>Non-Configuration</div>
@@ -428,17 +427,6 @@ Admin Settings
 													<md-radio-group
 														data-ng-model="Settings.service_flags.github_status_api_disabled"
 														layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Use admin-level config for plugin settings</td>
-												<td colspan="2">
-													<md-radio-group
-															data-ng-model="Settings.service_flags.plugin_admin_page_disabled"
-															layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -2108,20 +2096,6 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Version</label>
 										<input type="text" ng-model="Settings.host_jasper.version">
-									</md-input-container>
-								</md-card-content>
-							</md-card>
-
-							<md-card flex=50 id="plugins" style="max-width:49%">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Plugins</span>
-									</md-card-title-text>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control">
-										<textarea ng-model="tempPlugins" rows="3" md-select-on-focus
-											style="font-family:courier new, courier, monospace;"></textarea>
 									</md-input-container>
 								</md-card-content>
 							</md-card>

@@ -1,6 +1,7 @@
 query {
   taskQueueDistros {
     id
-    queueCount
+    taskCount
+    hostCount
   }
 }
