@@ -66,6 +66,14 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $int
       });
   }
 
+  $scope.getCustomCreatedTickets = function() {
+    $http.get('/plugin/buildbaron/custom_created_tickets/' + $scope.taskId).then(
+      function(resp) {
+        $scope.custom_created_tickets = resp.data;
+        console.log("Custom tickets: " + JSON.stringify(resp.data));
+      });
+  }
+
   $scope.getNote = function() {
     $http.get('/plugin/buildbaron/note/' + $scope.taskId ).then(
       function(resp) {
@@ -159,6 +167,7 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $int
     $scope.getNote();
   }
   $scope.getCreatedTickets();
+  $scope.getCustomCreatedTickets();
 
   $scope.stopGetTickets = function() {
     if (angular.isDefined($scope.getTickets)) {
