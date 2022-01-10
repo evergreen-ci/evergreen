@@ -28,6 +28,12 @@ var (
 	ProjectConfigWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectConfig{}, "WorkstationConfig")
 	ProjectConfigCommitQueueKey            = bsonutil.MustHaveTag(ProjectConfig{}, "CommitQueue")
 	ProjectConfigTaskSyncKey               = bsonutil.MustHaveTag(ProjectConfig{}, "TaskSync")
+	ProjectConfigPRTestingEnabledKey       = bsonutil.MustHaveTag(ProjectConfig{}, "PRTestingEnabled")
+	ProjectConfigGithubChecksEnabledKey    = bsonutil.MustHaveTag(ProjectConfig{}, "GithubChecksEnabled")
+	ProjectConfigGitTagVersionsEnabledKey  = bsonutil.MustHaveTag(ProjectConfig{}, "GitTagVersionsEnabled")
+	ProjectConfigGithubTriggerAliasesKey   = bsonutil.MustHaveTag(ProjectConfig{}, "GithubTriggerAliases")
+	ProjectConfigPeriodicBuildsKey         = bsonutil.MustHaveTag(ProjectConfig{}, "PeriodicBuilds")
+	ProjectConfigDeactivatePreviousKey     = bsonutil.MustHaveTag(ProjectConfig{}, "DeactivatePrevious")
 )
 
 // FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty

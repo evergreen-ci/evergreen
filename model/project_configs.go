@@ -24,14 +24,19 @@ type ProjectConfig struct {
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	PerfEnabled            *bool                          `yaml:"perf_enabled,omitempty" bson:"perf_enabled,omitempty"`
 	CommitQueueAliases     []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
-	GitHubPRAliases        []ProjectAlias                 `yaml:"github_pr_aliases,omitempty" bson:"github_pr_aliases,omitempty"`
+	GitHubPRAliases        []ProjectAlias                 `yaml:"github_aliases,omitempty" bson:"github_aliases,omitempty"`
 	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
 	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
 	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
 	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	PRTestingEnabled       *bool                          `yaml:"pr_testing_enabled,omitempty" bson:"pr_testing_enabled,omitempty"`
+	GithubChecksEnabled    *bool                          `yaml:"github_checks_enabled,omitempty" bson:"github_checks_enabled,omitempty"`
+	GitTagVersionsEnabled  *bool                          `yaml:"git_tag_versions_enabled,omitempty" bson:"git_tag_versions_enabled,omitempty"`
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
+	GithubTriggerAliases   []string                       `yaml:"github_trigger_aliases" bson:"github_trigger_aliases"`
+	PeriodicBuilds         []PeriodicBuildDefinition      `yaml:"periodic_builds" bson:"periodic_builds"`
 }
 
 // Comment above is used by the linter to detect the end of the struct.

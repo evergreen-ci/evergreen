@@ -420,8 +420,11 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			DeactivatePrevious: projectConfig.DeactivatePrevious,
-			PerfEnabled:        projectConfig.PerfEnabled,
+			DeactivatePrevious:    projectConfig.DeactivatePrevious,
+			PerfEnabled:           projectConfig.PerfEnabled,
+			PRTestingEnabled:      projectConfig.PRTestingEnabled,
+			GithubChecksEnabled:   projectConfig.GithubChecksEnabled,
+			GitTagVersionsEnabled: projectConfig.GitTagVersionsEnabled,
 		}
 		if projectConfig.WorkstationConfig != nil {
 			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
@@ -437,6 +440,12 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		}
 		if projectConfig.TaskSync != nil {
 			pRefToMerge.TaskSync = *projectConfig.TaskSync
+		}
+		if projectConfig.GithubTriggerAliases != nil {
+			pRefToMerge.GithubTriggerAliases = projectConfig.GithubTriggerAliases
+		}
+		if projectConfig.PeriodicBuilds != nil {
+			pRefToMerge.PeriodicBuilds = projectConfig.PeriodicBuilds
 		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
