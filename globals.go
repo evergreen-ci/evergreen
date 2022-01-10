@@ -267,6 +267,8 @@ const (
 	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
+
+	DefaultExecTimeout = 6 * time.Hour
 )
 
 var InternalAliases []string = []string{
