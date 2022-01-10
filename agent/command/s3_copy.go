@@ -191,7 +191,7 @@ func (c *s3copy) Execute(ctx context.Context,
 
 func (c *s3copy) copyWithRetry(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
+	backoffCounter := getS3OpBackoff()
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -270,7 +270,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			logger.Task().Error(connectionErr)
 			return connectionErr
 		}
-
+	retryLoop:
 		for i := 0; i < maxS3OpAttempts; i++ {
 			select {
 			case <-ctx.Done():
@@ -290,6 +290,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 					if s3CopyFile.Optional {
 						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %v",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
+						timer.Reset(backoffCounter.Duration())
 						continue
 					} else {
 						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error",
@@ -303,6 +304,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 					if err = c.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
 						return errors.WithStack(err)
 					}
+					break retryLoop
 				}
 			}
 		}
