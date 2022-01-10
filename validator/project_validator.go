@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1913,7 +1914,7 @@ func checkTaskTimeout(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("project '%s' does not "+
 						"have an exec_timeout_secs defined at the top-level or on one or more tasks; these tasks will default to a timeout of %d",
-						project.Identifier, evergreen.DefaultExecTimeout),
+						project.Identifier, agent.DefaultExecTimeout),
 					Level: Warning,
 				},
 			)
