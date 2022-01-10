@@ -731,6 +731,50 @@ func (c *hostCommunicator) SetHasCedarResults(ctx context.Context, taskData Task
 	return nil
 }
 
+func (c *hostCommunicator) NewPush(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (*model.PushLog, error) {
+	newPushLog := model.PushLog{}
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+		version:  apiVersion1,
+	}
+
+	info.setTaskPathSuffix("new_push")
+	resp, err := c.retryRequest(ctx, info, req)
+	if err != nil {
+		return nil, utility.RespErrorf(resp, "failed to add pushlog to task %s: %s", taskData.ID, err.Error())
+	}
+	defer resp.Body.Close()
+
+	if err = utility.ReadJSON(resp.Body, &newPushLog); err != nil {
+		return nil, errors.Wrapf(err, "problem parsing response for %s", taskData.ID)
+	}
+
+	return &newPushLog, nil
+}
+
+func (c *hostCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskData, pushlog *model.PushLog) error {
+	newPushLog := model.PushLog{}
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+		version:  apiVersion1,
+	}
+
+	info.setTaskPathSuffix("update_push_status")
+	resp, err := c.retryRequest(ctx, info, pushlog)
+	if err != nil {
+		return utility.RespErrorf(resp, "failed to update pushlog status for task %s: %s", taskData.ID, err.Error())
+	}
+	defer resp.Body.Close()
+
+	if err = utility.ReadJSON(resp.Body, &newPushLog); err != nil {
+		return errors.Wrapf(err, "problem parsing response for %s", taskData.ID)
+	}
+
+	return nil
+}
+
 // AttachFiles attaches task files.
 func (c *hostCommunicator) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
 	if len(taskFiles) == 0 {
@@ -788,25 +832,6 @@ func (c *hostCommunicator) GetManifest(ctx context.Context, taskData TaskData) (
 	}
 
 	return &mfest, nil
-}
-
-func (c *hostCommunicator) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (string, error) {
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-		version:  apiVersion1,
-	}
-	info.setTaskPathSuffix("s3Copy/s3Copy")
-	resp, err := c.retryRequest(ctx, info, req)
-	if err != nil {
-		return "", utility.RespErrorf(resp, "failed to copy file in S3 for task %s: %s", taskData.ID, err.Error())
-	}
-	defer resp.Body.Close()
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem reading results from body for %s", taskData.ID)
-	}
-	return string(out), nil
 }
 
 func (c *hostCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv *model.KeyVal) error {
