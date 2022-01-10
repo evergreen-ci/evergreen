@@ -1015,7 +1015,7 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("'%s' project's '%s' definition: %s",
-						project.Identifier, funcName, err),
+						project.Identifier, funcName, err.Message),
 					Level: err.Level,
 				},
 			)
