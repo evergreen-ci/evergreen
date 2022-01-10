@@ -70,7 +70,6 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $int
     $http.get('/plugin/buildbaron/custom_created_tickets/' + $scope.taskId).then(
       function(resp) {
         $scope.custom_created_tickets = resp.data;
-        console.log("Custom tickets: " + JSON.stringify(resp.data));
       });
   }
 
