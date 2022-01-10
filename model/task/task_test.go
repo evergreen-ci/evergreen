@@ -505,6 +505,45 @@ func TestDisplayTasksByVersion(t *testing.T) {
 	})
 }
 
+func TestNonExecutionTasksByVersion(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	displayTask := Task{
+		Id:             "dt",
+		Version:        "v1",
+		DisplayTaskId:  nil, // legacy, not populated
+		ExecutionTasks: []string{"exec_task", "legacy_task"},
+	}
+	regularTask := Task{
+		Id:            "t1",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+	wrongVersionTask := Task{
+		Id:            "lame_task",
+		Version:       "lame_version",
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+	execTask := Task{
+		Id:            "exec_task",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr("dt"),
+	}
+	legacyTask := Task{
+		Id:            "legacy_task",
+		Version:       "v2",
+		DisplayTaskId: nil, // legacy, not populated
+	}
+	assert.NoError(t, db.InsertMany(Collection, displayTask, regularTask, wrongVersionTask, execTask, legacyTask))
+
+	tasks, err := Find(NonExecutionTasksByVersions([]string{"v1", "v2"}))
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 3) // doesn't include wrong version or execution task with DisplayTaskId cached
+	for _, task := range tasks {
+		assert.NotEqual(t, task.Id, "exec_task")
+		assert.NotEqual(t, task.Version, "lame_version")
+	}
+}
+
 func TestFailedTasksByVersion(t *testing.T) {
 	Convey("When calling FailedTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
