@@ -1773,7 +1773,8 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
 	}
 
-	tasksFromDb, err := task.FindAll(task.ByVersions(versionIds).WithFields(task.StatusFields...))
+	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
+	tasksFromDb, err := task.FindAll(task.NonExecutionTasksByVersions(versionIds).WithFields(task.StatusFields...))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}
