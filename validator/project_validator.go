@@ -1914,7 +1914,7 @@ func checkTaskTimeout(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("project '%s' does not "+
 						"have an exec_timeout_secs defined at the top-level or on one or more tasks; these tasks will default to a timeout of %d hours",
-						project.Identifier, agent.DefaultExecTimeout/time.Hour),
+						project.Identifier, int(agent.DefaultExecTimeout.Hours())),
 					Level: Warning,
 				},
 			)
