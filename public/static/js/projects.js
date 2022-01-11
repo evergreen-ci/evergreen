@@ -531,7 +531,7 @@ mciModule.controller(
             perf_enabled: data.ProjectRef.perf_enabled || false,
           };
           // Divide aliases into categories
-          $scope.settingsFormData.github_aliases = $scope.aliases.filter(
+          $scope.settingsFormData.github_pr_aliases = $scope.aliases.filter(
             function (d) {
               return d.alias === "__github";
             }
@@ -734,7 +734,7 @@ mciModule.controller(
       }
       var item = Object.assign({}, $scope.github_alias);
       item.alias = "__github";
-      $scope.settingsFormData.github_aliases = $scope.settingsFormData.github_aliases.concat(
+      $scope.settingsFormData.github_pr_aliases = $scope.settingsFormData.github_pr_aliases.concat(
         [item]
       );
       delete $scope.github_alias;
@@ -827,12 +827,12 @@ mciModule.controller(
     };
 
     $scope.removeGithubAlias = function (i) {
-      if ($scope.settingsFormData.github_aliases[i]["_id"]) {
+      if ($scope.settingsFormData.github_pr_aliases[i]["_id"]) {
         $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat(
-          [$scope.settingsFormData.github_aliases[i]["_id"]]
+          [$scope.settingsFormData.github_pr_aliases[i]["_id"]]
         );
       }
-      $scope.settingsFormData.github_aliases.splice(i, 1);
+      $scope.settingsFormData.github_pr_aliases.splice(i, 1);
       $scope.isDirty = true;
     };
 

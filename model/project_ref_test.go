@@ -1838,9 +1838,11 @@ func TestMergeWithProjectConfig(t *testing.T) {
 		},
 	}
 	projectConfig := &ProjectConfig{
-		Id:                 "version1",
-		PerfEnabled:        utility.TruePtr(),
-		DeactivatePrevious: utility.TruePtr(),
+		Id:                    "version1",
+		PerfEnabled:           utility.TruePtr(),
+		DeactivatePrevious:    utility.TruePtr(),
+		PRTestingEnabled:      utility.TruePtr(),
+		GitTagVersionsEnabled: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
@@ -1862,6 +1864,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			BFSuggestionServer:      "https://evergreen.mongodb.com",
 			BFSuggestionTimeoutSecs: 10,
 		},
+		GithubTriggerAliases: []string{"one", "two"},
+		PeriodicBuilds:       []PeriodicBuildDefinition{{ID: "p1"}},
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, projectConfig.Insert())
@@ -1872,6 +1876,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 
 	assert.False(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
+	assert.True(t, *projectRef.PRTestingEnabled)
+	assert.True(t, *projectRef.GitTagVersionsEnabled)
 	assert.Equal(t, "random1", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.True(t, *projectRef.WorkstationConfig.GitClone)
 	assert.Equal(t, "expeliarmus", projectRef.WorkstationConfig.SetupCommands[0].Command)
@@ -1880,5 +1886,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "https://evergreen.mongodb.com", projectRef.BuildBaronSettings.BFSuggestionServer)
 	assert.Equal(t, 10, projectRef.BuildBaronSettings.BFSuggestionTimeoutSecs)
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
+	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
+	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
 
 }

@@ -16,18 +16,6 @@ var (
 	ProjectConfigIdKey         = bsonutil.MustHaveTag(ProjectConfig{}, "Id")
 	ProjectConfigIdentifierKey = bsonutil.MustHaveTag(ProjectConfig{}, "Identifier")
 	ProjectConfigCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "CreateTime")
-
-	ProjectConfigTaskAnnotationSettingsKey = bsonutil.MustHaveTag(ProjectConfig{}, "TaskAnnotationSettings")
-	ProjectConfigBuildBaronSettingsKey     = bsonutil.MustHaveTag(ProjectConfig{}, "BuildBaronSettings")
-	ProjectConfigPerfEnabledKey            = bsonutil.MustHaveTag(ProjectConfig{}, "PerfEnabled")
-	ProjectConfigCommitQueueAliasesKey     = bsonutil.MustHaveTag(ProjectConfig{}, "CommitQueueAliases")
-	ProjectConfigGitHubPRAliasesKey        = bsonutil.MustHaveTag(ProjectConfig{}, "GitHubPRAliases")
-	ProjectConfigGitTagAliasesKey          = bsonutil.MustHaveTag(ProjectConfig{}, "GitTagAliases")
-	ProjectConfigGitHubChecksAliasesKey    = bsonutil.MustHaveTag(ProjectConfig{}, "GitHubChecksAliases")
-	ProjectConfigPatchAliasesKey           = bsonutil.MustHaveTag(ProjectConfig{}, "PatchAliases")
-	ProjectConfigWorkstationConfigKey      = bsonutil.MustHaveTag(ProjectConfig{}, "WorkstationConfig")
-	ProjectConfigCommitQueueKey            = bsonutil.MustHaveTag(ProjectConfig{}, "CommitQueue")
-	ProjectConfigTaskSyncKey               = bsonutil.MustHaveTag(ProjectConfig{}, "TaskSync")
 )
 
 // FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty
