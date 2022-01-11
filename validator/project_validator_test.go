@@ -1093,7 +1093,7 @@ func TestCheckBVsContainTasks(t *testing.T) {
 					},
 				},
 			}
-			So(len(checkBVsContainTasks(project)), ShouldEqual, 1)
+			So(len(checkBuildVariants(project)), ShouldEqual, 2)
 		})
 
 		Convey("if all build variants contain tasks no errors should be returned", func() {
@@ -1113,7 +1113,7 @@ func TestCheckBVsContainTasks(t *testing.T) {
 					},
 				},
 			}
-			So(len(checkBVsContainTasks(project)), ShouldEqual, 0)
+			So(len(checkBuildVariants(project)), ShouldEqual, 1)
 		})
 	})
 }

@@ -823,22 +823,6 @@ func validateBVTaskNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// Ensure there are no buildvariants without tasks
-func checkBVsContainTasks(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	for _, buildVariant := range project.BuildVariants {
-		if len(buildVariant.Tasks) == 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' contains no tasks", buildVariant.Name),
-					Level:   Warning,
-				},
-			)
-		}
-	}
-	return errs
-}
-
 func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, buildVariant := range project.BuildVariants {
