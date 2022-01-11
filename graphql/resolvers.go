@@ -3494,9 +3494,14 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	if utility.FromIntPtr(options.Limit) != 0 {
 		limit = utility.FromIntPtr(options.Limit)
 	}
+	requesters := options.Requesters
+	if len(requesters) == 0 {
+		requesters = evergreen.SystemVersionRequesterTypes
+	}
 	opts := model.MainlineCommitVersionOptions{
 		Limit:           limit,
 		SkipOrderNumber: utility.FromIntPtr(options.SkipOrderNumber),
+		Requesters:      requesters,
 	}
 
 	versions, err := model.GetMainlineCommitVersionsWithOptions(projectId, opts)
@@ -3509,7 +3514,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	// We only want to return the PrevPageOrderNumber if a user is not on the first page
 	if options.SkipOrderNumber != nil {
-		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit)
+		prevPageCommit, err := model.GetPreviousPageCommitOrderNumber(projectId, utility.FromIntPtr(options.SkipOrderNumber), limit, requesters)
 
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
@@ -3615,6 +3620,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			opts := model.MainlineCommitVersionOptions{
 				Limit:           limit,
 				SkipOrderNumber: skipOrderNumber,
+				Requesters:      requesters,
 			}
 
 			versions, err = model.GetMainlineCommitVersionsWithOptions(projectId, opts)

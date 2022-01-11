@@ -446,7 +446,8 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, v.Insert())
 
 	opts := MainlineCommitVersionOptions{
-		Limit: 4,
+		Limit:      4,
+		Requesters: evergreen.SystemVersionRequesterTypes,
 	}
 	versions, err := GetMainlineCommitVersionsWithOptions(p.Id, opts)
 	assert.NoError(t, err)
@@ -459,6 +460,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 	opts = MainlineCommitVersionOptions{
 		Limit:           4,
 		SkipOrderNumber: 10,
+		Requesters:      evergreen.SystemVersionRequesterTypes,
 	}
 	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
 	assert.NoError(t, err)
@@ -470,11 +472,21 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 	opts = MainlineCommitVersionOptions{
 		Limit:           4,
 		SkipOrderNumber: 8,
+		Requesters:      evergreen.SystemVersionRequesterTypes,
 	}
 	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
 	assert.NoError(t, err)
 	assert.Len(t, versions, 1)
 	assert.EqualValues(t, "yet_another_version", versions[0].Id)
+
+	opts = MainlineCommitVersionOptions{
+		Limit:      4,
+		Requesters: []string{"Not a real requester"},
+	}
+	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
+	assert.Nil(t, versions)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("invalid requesters: %v", opts.Requesters))
 
 }
 
@@ -522,16 +534,16 @@ func TestGetPreviousPageCommit(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 	// If you are viewing the latest commit it should return nil to indicate that there is no previous page.
-	orderNumber, err := GetPreviousPageCommitOrderNumber(p.Id, 10, 2)
+	orderNumber, err := GetPreviousPageCommitOrderNumber(p.Id, 10, 2, evergreen.SystemVersionRequesterTypes)
 	assert.NoError(t, err)
 	assert.Nil(t, orderNumber)
 	// If you are viewing a commit it should return the previous activated version that is LIMIT versions ago.
-	orderNumber, err = GetPreviousPageCommitOrderNumber(p.Id, 7, 2)
+	orderNumber, err = GetPreviousPageCommitOrderNumber(p.Id, 7, 2, evergreen.SystemVersionRequesterTypes)
 	assert.NoError(t, err)
 	assert.NotNil(t, orderNumber)
 	assert.Equal(t, 10, utility.FromIntPtr(orderNumber))
 	// If the previous pages activated version is the latest it should return 0.
-	orderNumber, err = GetPreviousPageCommitOrderNumber(p.Id, 9, 2)
+	orderNumber, err = GetPreviousPageCommitOrderNumber(p.Id, 9, 2, evergreen.SystemVersionRequesterTypes)
 	assert.NoError(t, err)
 	assert.NotNil(t, orderNumber)
 	assert.Equal(t, 0, utility.FromIntPtr(orderNumber))
