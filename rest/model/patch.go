@@ -39,7 +39,7 @@ type APIPatch struct {
 	GithubPatchData         githubPatch          `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges       []APIModulePatch     `json:"module_code_changes"`
 	Parameters              []APIParameter       `json:"parameters"`
-	PatchedParserProject    *string              `json:"patched_parser_project"`
+	PatchedParserProject    *string              `json:"patched_config"`
 	PatchedProjectConfig    *string              `json:"patched_project_config"`
 	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
 	ChildPatches            []APIPatch           `json:"child_patches"`

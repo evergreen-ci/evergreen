@@ -157,7 +157,7 @@ type Patch struct {
 	Patches              []ModulePatch          `bson:"patches"`
 	Parameters           []Parameter            `bson:"parameters,omitempty"`
 	Activated            bool                   `bson:"activated"`
-	PatchedParserProject string                 `bson:"patched_parser_project"`
+	PatchedParserProject string                 `bson:"patched_config"`
 	PatchedProjectConfig string                 `bson:"patched_project_config"`
 	Alias                string                 `bson:"alias"`
 	Triggers             TriggerInfo            `bson:"triggers"`

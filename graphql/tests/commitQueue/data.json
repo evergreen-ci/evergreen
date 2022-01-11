@@ -86,7 +86,7 @@
       "patches": [],
       "activated": false,
       "alias": "",
-      "patched_parser_project": "some config"
+      "patched_config": "some config"
     },
     {
       "_id": { "$oid": "5e6bb9e23066155a993effff" },
@@ -112,7 +112,7 @@
       "patches": [],
       "activated": false,
       "alias": "",
-      "patched_parser_project": "some config"
+      "patched_config": "some config"
     }
   ],
   "commit_queue": [
