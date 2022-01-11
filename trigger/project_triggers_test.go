@@ -57,15 +57,15 @@ func TestMakeDownstreamConfigFromFile(t *testing.T) {
 		Owner: "evergreen-ci",
 		Repo:  "evergreen",
 	}
-	proj, pp, _, err := makeDownstreamProjectFromFile(ref, "trigger/testdata/downstream_config.yml")
+	projectInfo, err := makeDownstreamProjectFromFile(ref, "trigger/testdata/downstream_config.yml")
 	assert.NoError(err)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.Equal(ref.Id, proj.Identifier)
-	assert.Len(proj.Tasks, 2)
-	assert.Equal("task1", proj.Tasks[0].Name)
-	assert.Len(proj.BuildVariants, 1)
-	assert.Equal("something", proj.BuildVariants[0].DisplayName)
+	assert.NotNil(projectInfo.Project)
+	assert.NotNil(projectInfo.IntermediateProject)
+	assert.Equal(ref.Id, projectInfo.Project.Identifier)
+	assert.Len(projectInfo.Project.Tasks, 2)
+	assert.Equal("task1", projectInfo.Project.Tasks[0].Name)
+	assert.Len(projectInfo.Project.BuildVariants, 1)
+	assert.Equal("something", projectInfo.Project.BuildVariants[0].DisplayName)
 }
 
 func TestMakeDownstreamConfigFromCommand(t *testing.T) {
@@ -76,14 +76,14 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 	identifier := "project"
 	cmd := "echo hi"
 
-	proj, pp, err := makeDownstreamProjectFromCommand(identifier, cmd, "generate.json")
+	projInfo, err := makeDownstreamProjectFromCommand(identifier, cmd, "generate.json")
 	assert.NoError(err)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.Equal(identifier, proj.Identifier)
+	assert.NotNil(projInfo.Project)
+	assert.NotNil(projInfo.IntermediateProject)
+	assert.Equal(identifier, projInfo.Project.Identifier)
 	foundCommand := false
 	foundFile := false
-	for _, t := range proj.Tasks {
+	for _, t := range projInfo.Project.Tasks {
 		for _, c := range t.Commands {
 			if c.Command == "subprocess.exec" {
 				foundCommand = true
@@ -100,7 +100,7 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 
 	foundCommand = false
 	foundFile = false
-	for _, t := range pp.Tasks {
+	for _, t := range projInfo.IntermediateProject.Tasks {
 		for _, c := range t.Commands {
 			if c.Command == "subprocess.exec" {
 				foundCommand = true

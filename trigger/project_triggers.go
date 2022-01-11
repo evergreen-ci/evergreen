@@ -34,16 +34,14 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	metadata.Alias = args.Alias
 
 	// get the downstream config
-	var proj *model.Project
-	var pp *model.ParserProject
-	var pc *model.ProjectConfig
+	projectInfo := model.ProjectInfo{}
 	if args.ConfigFile != "" {
-		proj, pp, pc, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
+		projectInfo, err = makeDownstreamProjectFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 	} else if args.Command != "" {
-		proj, pp, err = makeDownstreamProjectFromCommand(args.DownstreamProject.Id, args.Command, args.GenerateFile)
+		projectInfo, err = makeDownstreamProjectFromCommand(args.DownstreamProject.Id, args.Command, args.GenerateFile)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -52,13 +50,8 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	}
 
 	// create version
-	projectInfo := &model.ProjectInfo{
-		Ref:                 &args.DownstreamProject,
-		Project:             proj,
-		IntermediateProject: pp,
-		Config:              pc,
-	}
-	v, err := repotracker.CreateVersionFromConfig(context.Background(), projectInfo, metadata, false, nil)
+	projectInfo.Ref = &args.DownstreamProject
+	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating version")
 	}
@@ -77,10 +70,10 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if upstreamProject == nil {
 		return nil, errors.Errorf("project %s not found", args.SourceVersion.Identifier)
 	}
-	for _, module := range proj.Modules {
+	for _, module := range projectInfo.Project.Modules {
 		owner, repo := module.GetRepoOwnerAndName()
 		if owner == upstreamProject.Owner && repo == upstreamProject.Repo && module.Branch == upstreamProject.Branch {
-			_, err = repotracker.CreateManifest(*v, proj, upstreamProject, settings)
+			_, err = repotracker.CreateManifest(*v, projectInfo.Project, upstreamProject, settings)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -129,7 +122,7 @@ func metadataFromVersion(source model.Version, ref model.ProjectRef) (model.Vers
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Project, *model.ParserProject, *model.ProjectConfig, error) {
+func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &ref,
 		RemotePath: file,
@@ -137,11 +130,11 @@ func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Pr
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error getting evergreen settings")
+		return model.ProjectInfo{}, errors.Wrap(err, "error getting evergreen settings")
 	}
 	opts.Token, err = settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, nil, nil, err
+		return model.ProjectInfo{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
@@ -149,10 +142,10 @@ func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (*model.Pr
 	return model.GetProjectFromFile(ctx, opts)
 }
 
-func makeDownstreamProjectFromCommand(identifier, command, generateFile string) (*model.Project, *model.ParserProject, error) {
+func makeDownstreamProjectFromCommand(identifier, command, generateFile string) (model.ProjectInfo, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error retrieving config")
+		return model.ProjectInfo{}, errors.Wrap(err, "error retrieving config")
 	}
 	bvtName := "generate-config"
 	fullProject := &model.Project{
@@ -201,5 +194,8 @@ func makeDownstreamProjectFromCommand(identifier, command, generateFile string) 
 
 	pp.AddTask(fullProject.Tasks[0].Name, fullProject.Tasks[0].Commands)
 	pp.AddBuildVariant(fullProject.BuildVariants[0].Name, fullProject.BuildVariants[0].DisplayName, settings.Triggers.GenerateTaskDistro, nil, []string{bvtName})
-	return fullProject, pp, nil
+	return model.ProjectInfo{
+		Project:             fullProject,
+		IntermediateProject: pp,
+	}, nil
 }

@@ -647,9 +647,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 
-	p, pp, _, err := LoadProjectForVersion(v, "proj", false)
+	projectInfo, err := LoadProjectForVersion(v, "proj", false)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, &genTask))
 
@@ -746,9 +746,9 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, _, err := LoadProjectForVersion(v, "", false)
+	projectInfo, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, &tasksThatExist[0]))
 
@@ -837,9 +837,9 @@ buildvariants:
 		},
 	}
 
-	p, pp, _, err := LoadProjectForVersion(v, "", false)
+	projectInfo, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, &t1))
 
@@ -885,9 +885,9 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, pp, _, err := LoadProjectForVersion(v, "", false)
+	projectInfo, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(p, pp, v)
+	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, pp, v, &taskThatExists))
 

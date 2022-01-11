@@ -222,23 +222,23 @@ func TestGetRemoteConfig(t *testing.T) {
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
-				projectConfig, _, _, err := self.GetRemoteConfig(ctx, firstRemoteConfigRef)
+				projectInfo, err := self.GetRemoteConfig(ctx, firstRemoteConfigRef)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
-				So(projectConfig, ShouldNotBeNil)
-				So(len(projectConfig.Tasks), ShouldEqual, 0)
-				projectConfig, _, _, err = self.GetRemoteConfig(ctx, secondRemoteConfigRef)
+				So(projectInfo.Project, ShouldNotBeNil)
+				So(len(projectInfo.Project.Tasks), ShouldEqual, 0)
+				projectInfo, err = self.GetRemoteConfig(ctx, secondRemoteConfigRef)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
-				So(projectConfig, ShouldNotBeNil)
-				So(len(projectConfig.Tasks), ShouldEqual, 1)
+				So(projectInfo.Project, ShouldNotBeNil)
+				So(len(projectInfo.Project.Tasks), ShouldEqual, 1)
 			})
 			Convey("an invalid revision should return an error", func() {
-				_, _, _, err := self.GetRemoteConfig(ctx, "firstRemoteConfRef")
+				_, err := self.GetRemoteConfig(ctx, "firstRemoteConfRef")
 				So(err, ShouldNotBeNil)
 			})
 			Convey("an invalid project configuration should error out", func() {
-				_, _, _, err := self.GetRemoteConfig(ctx, badRemoteConfigRef)
+				_, err := self.GetRemoteConfig(ctx, badRemoteConfigRef)
 				So(err, ShouldNotBeNil)
 			})
 		})

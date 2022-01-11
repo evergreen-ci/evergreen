@@ -1139,11 +1139,11 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project, _, _, err := LoadProjectForVersion(ver, ver.Identifier, false)
+	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
-	return project, nil
+	return projectInfo.Project, nil
 }
 
 func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
@@ -1189,17 +1189,19 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 			continue
 		}
 		if lastGoodVersion != nil {
-			project, _, _, err = LoadProjectForVersion(lastGoodVersion, projectId, true)
-			revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
+			projectInfo, err := LoadProjectForVersion(lastGoodVersion, projectId, true)
+			if err != nil {
+				grip.Critical(message.WrapError(err, message.Fields{
+					"message": "last known good version has malformed config",
+					"version": lastGoodVersion.Id,
+					"project": projectId,
+				}))
+				revisionOrderNum = lastGoodVersion.RevisionOrderNumber // look for an older version if the returned version is malformed
+				continue
+			}
+			project = projectInfo.Project
 		}
-		if err == nil {
-			return lastGoodVersion, project, nil
-		}
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "last known good version has malformed config",
-			"version": lastGoodVersion.Id,
-			"project": projectId,
-		}))
+		return lastGoodVersion, project, nil
 	}
 
 	if lastGoodVersion == nil {
