@@ -45,26 +45,26 @@ func TestValidateBbProject(t *testing.T) {
 		Identifier: "proj1",
 	}
 	assert.NoError(p.Insert())
-	assert.Nil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.Nil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
 
-	assert.Nil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.Nil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
 
-	assert.Nil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.Nil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject: "BFG",
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}))
 }
@@ -76,7 +76,7 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		Identifier: "proj1",
 	}
 	assert.NoError(p.Insert())
-	assert.Nil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.Nil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -85,34 +85,34 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		BFSuggestionTimeoutSecs: 10,
 	}))
 
-	assert.Nil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.Nil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 10,
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 		BFSuggestionUsername: "user",
 		BFSuggestionPassword: "pass",
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionTimeoutSecs: 10,
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 10,
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -120,14 +120,14 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		BFSuggestionTimeoutSecs: 10,
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 0,
 	}))
 
-	assert.NotNil(bbProjectIsValid("proj1", evergreen.BuildBaronSettings{
+	assert.NotNil(model.BbProjectIsValid("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",

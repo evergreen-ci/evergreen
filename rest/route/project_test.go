@@ -39,11 +39,15 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection))
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection))
 	s.sc = getMockProjectsConnector()
 
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
+	ref := serviceModel.ProjectRef{
+		Id: "dimoxinil",
+	}
+	s.NoError(ref.Insert())
 	s.rm = makePatchProjectByID(s.sc, settings).(*projectIDPatchHandler)
 }
 
@@ -120,6 +124,40 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
+}
+
+func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG", "ticket_search_projects": ["EVG"]}}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusOK, resp.Status())
+}
+
+func (s *ProjectPatchByIDSuite) TestRunWithInavlidBbConfig() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusBadRequest, resp.Status())
+	errResp := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal("Must provide projects to search", errResp.Message)
 }
 
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
