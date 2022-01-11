@@ -277,7 +277,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeactivatePrevious      bool                           `json:"deactivate_previous"`
 		Branch                  string                         `json:"branch_name"`
 		ProjVarsMap             map[string]string              `json:"project_vars"`
-		GitHubPRAliases         []model.ProjectAlias           `json:"github_aliases,omitempty"`
+		GitHubPRAliases         []model.ProjectAlias           `json:"github_pr_aliases,omitempty"`
 		GithubChecksAliases     []model.ProjectAlias           `json:"github_checks_aliases,omitempty"`
 		CommitQueueAliases      []model.ProjectAlias           `json:"commit_queue_aliases,omitempty"`
 		PatchAliases            []model.ProjectAlias           `json:"patch_aliases,omitempty"`
