@@ -288,7 +288,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		if err = currentHost.StopAgentMonitor(ctx, as.env); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Warning(message.WrapError(err, message.Fields{
 				"message":       "problem stopping agent monitor",
 				"host_id":       currentHost.Id,
 				"operation":     "end_task",
