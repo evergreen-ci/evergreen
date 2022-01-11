@@ -292,12 +292,12 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				return err
 			}
 		} else if pInfo.Project == nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(message.Fields{
 				"message":            fmt.Sprintf("unable to find project config for revision %s", revision),
 				"runner":             RunnerName,
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
-			}))
+			})
 			return err
 		}
 
