@@ -362,14 +362,17 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// this value with the time the host was created.
 	j.host.StartTime = j.start
 
+	var hostReplaced bool
 	if j.HostID == j.host.Id {
 		// spawning the host did not change the ID, so we can replace the old host with the new one (ie. for docker containers)
 		if err = j.host.Replace(); err != nil {
 			return errors.Wrapf(err, "unable to replace host %s", j.host.Id)
 		}
+		hostReplaced = true
 	} else {
 		// For most cases, spawning a host will change the ID, so we remove/re-insert the document
-		if err := j.tryHostReplacement(ctx, cloudManager); err != nil {
+		hostReplaced, err = j.tryHostReplacement(ctx, cloudManager)
+		if err != nil {
 			return errors.Wrap(err, "attempting host replacement")
 		}
 
@@ -383,7 +386,10 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		}
 	}
 
-	event.LogHostStartFinished(j.host.Id, true)
+	if hostReplaced {
+		event.LogHostStartFinished(j.host.Id, true)
+	}
+
 	grip.Info(message.Fields{
 		"message":      "successfully started host",
 		"host_id":      j.host.Id,
@@ -447,10 +453,9 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 // real host that was created by this job. If that fails, it checks to see if
 // the real host already exists. If both of those fail, it will attempt to
 // terminate the cloud host.
-func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.Manager) error {
-	err := host.UnsafeReplace(ctx, j.env, j.HostID, j.host)
-	if err == nil {
-		return nil
+func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.Manager) (replaced bool, err error) {
+	if err = host.UnsafeReplace(ctx, j.env, j.HostID, j.host); err == nil {
+		return true, nil
 	}
 
 	grip.Warning(message.WrapError(err, message.Fields{
@@ -476,7 +481,7 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 	// the host has already been swapped successfully.
 	checkHost, _ := host.FindOneId(j.host.Id)
 	if checkHost != nil {
-		return nil
+		return false, nil
 	}
 
 	terminateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -490,5 +495,5 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 		"job":            j.ID(),
 	}))
 
-	return errors.Wrapf(err, "replacing intent host '%s' with real host '%s'", j.HostID, j.host.Id)
+	return false, errors.Wrapf(err, "replacing intent host '%s' with real host '%s'", j.HostID, j.host.Id)
 }
