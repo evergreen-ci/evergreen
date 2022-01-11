@@ -172,7 +172,9 @@ func TestValidateTaskDependencies(t *testing.T) {
 					{Name: "t2", Patchable: utility.FalsePtr()},
 				},
 			}
-			errs := checkTaskDependencies(&p)
+			allTasks := p.FindAllTasksMap()
+			errs := checkTaskDependencies(&p, &p.Tasks[0], allTasks)
+			errs = append(errs, checkTaskDependencies(&p, &p.Tasks[1], allTasks)...)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
 			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
@@ -763,19 +765,25 @@ func TestValidateTaskNames(t *testing.T) {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: "task,"}},
 			}
-			So(len(checkTaskNames(project)), ShouldEqual, 1)
+			errs := checkTasks(project)
+			So(len(errs), ShouldEqual, 3)
+			assert.Contains(t, errs.String(), "task name 'task,' should not contain commas")
 		})
 		Convey("Is the same as the all-dependencies syntax", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: model.AllDependencies}},
 			}
-			So(len(checkTaskNames(project)), ShouldEqual, 1)
+			errs := checkTasks(project)
+			So(len(errs), ShouldEqual, 3)
+			assert.Contains(t, errs.String(), "task should not be named '*' because it is ambiguous with the all-dependencies '*' specification")
 		})
 		Convey("Is 'all'", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{{Name: "all"}},
 			}
-			So(len(checkTaskNames(project)), ShouldEqual, 1)
+			errs := checkTasks(project)
+			So(len(errs), ShouldEqual, 3)
+			assert.Contains(t, errs.String(), "task should not be named 'all' because it is ambiguous in task specifications for patches")
 		})
 	})
 }
@@ -897,13 +905,13 @@ func TestValidateBVNames(t *testing.T) {
 				},
 			}
 
-			validationResults := checkBVNames(project)
+			validationResults := checkBuildVariants(project)
 			numErrors := len(validationResults.AtLevel(Error))
 			numWarnings := len(validationResults.AtLevel(Warning))
 
-			So(numWarnings, ShouldEqual, 1)
+			So(numWarnings, ShouldEqual, 3)
 			So(numErrors, ShouldEqual, 0)
-			So(len(validationResults), ShouldEqual, 1)
+			So(len(validationResults), ShouldEqual, 3)
 		})
 
 		Convey("if several buildvariants have duplicate entries, all errors "+
@@ -950,7 +958,8 @@ func TestValidateBVNames(t *testing.T) {
 						{Name: "variant,", DisplayName: "display_name"},
 					},
 				}
-				So(len(checkBVNames(project)), ShouldEqual, 1)
+				buildVariant := project.BuildVariants[0]
+				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
 			})
 			Convey("Is the same as the all-dependencies syntax", func() {
 				project := &model.Project{
@@ -958,13 +967,15 @@ func TestValidateBVNames(t *testing.T) {
 						{Name: model.AllVariants, DisplayName: "display_name"},
 					},
 				}
-				So(len(checkBVNames(project)), ShouldEqual, 1)
+				buildVariant := project.BuildVariants[0]
+				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
 			})
 			Convey("Is 'all'", func() {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
 				}
-				So(len(checkBVNames(project)), ShouldEqual, 1)
+				buildVariant := project.BuildVariants[0]
+				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
 			})
 		})
 	})
@@ -1060,7 +1071,8 @@ func TestValidateBVBatchTimes(t *testing.T) {
 
 	// warning if activated to true with batchtime
 	p.BuildVariants[0].Activate = utility.TruePtr()
-	assert.Len(t, checkBVBatchTimes(p), 1)
+	bv := p.BuildVariants[0]
+	assert.Len(t, checkBVBatchTimes(p, &bv), 1)
 
 }
 
@@ -1236,8 +1248,11 @@ func TestCheckTaskCommands(t *testing.T) {
 					{Name: "compile"},
 				},
 			}
-			So(checkTaskCommands(project), ShouldNotResemble, ValidationErrors{})
-			So(len(checkTaskCommands(project)), ShouldEqual, 1)
+			errs := checkTasks(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 2)
+			assert.Contains(t, errs.String(), "task 'compile' in project '' does not "+
+				"contain any commands")
 		})
 		Convey("ensure tasks that have at least one command do not throw any errors",
 			func() {
@@ -2530,7 +2545,7 @@ tasks:
 	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs := checkLoggerConfig(project)
+	errs := checkLoggerConfig(project, &project.Tasks[0])
 	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
 	assert.Contains(errs.String(), "invalid task logger config: somethingElse is not a valid log sender")
 	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: commandLogger is not a valid log sender")
@@ -2549,7 +2564,7 @@ tasks:
 	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = checkLoggerConfig(project)
+	errs = checkLoggerConfig(project, &project.Tasks[0])
 	assert.Len(errs, 0)
 }
 

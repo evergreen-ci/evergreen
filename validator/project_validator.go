@@ -126,18 +126,12 @@ var projectErrorValidators = []projectValidator{
 
 // Functions used to validate the semantics of a project configuration file.
 var projectWarningValidators = []projectValidator{
-	checkTaskCommands,
 	checkTaskGroups,
-	checkLoggerConfig,
-	checkTaskTimeout,
 	checkProjectFields,
-	checkTaskDependencies,
 	checkTaskRuns,
 	checkModules,
-	checkBVNames,
-	checkBVBatchTimes,
-	checkBVsContainTasks,
-	checkTaskNames,
+	checkTasks,
+	checkBuildVariants,
 }
 
 var projectSettingsValidators = []projectSettingsValidator{
@@ -636,33 +630,31 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskNames(project *model.Project) ValidationErrors {
+func checkTaskNames(project *model.Project, task *model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, task := range project.Tasks {
-		// Warn against commas because the CLI allows users to specify
-		// tasks separated by commas in their patches.
-		if strings.Contains(task.Name, ",") {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("task name '%s' should not contains commas", task.Name),
-			})
-		}
-		// Warn against using "*" since it is ambiguous with the
-		// all-dependencies specification (also "*").
-		if task.Name == model.AllDependencies {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: "task should not be named '*' because it is ambiguous with the all-dependencies '*' specification",
-			})
-		}
-		// Warn against using "all" since it is ambiguous with the special "all"
-		// task specifier when creating patches.
-		if task.Name == "all" {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: "task should not be named 'all' because it is ambiguous in task specifications for patches",
-			})
-		}
+	// Warn against commas because the CLI allows users to specify
+	// tasks separated by commas in their patches.
+	if strings.Contains(task.Name, ",") {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: fmt.Sprintf("task name '%s' should not contain commas", task.Name),
+		})
+	}
+	// Warn against using "*" since it is ambiguous with the
+	// all-dependencies specification (also "*").
+	if task.Name == model.AllDependencies {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: "task should not be named '*' because it is ambiguous with the all-dependencies '*' specification",
+		})
+	}
+	// Warn against using "all" since it is ambiguous with the special "all"
+	// task specifier when creating patches.
+	if task.Name == "all" {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: "task should not be named 'all' because it is ambiguous in task specifications for patches",
+		})
 	}
 	return errs
 }
@@ -757,94 +749,55 @@ func validateBVNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkBVNames(project *model.Project) ValidationErrors {
+func checkBVNames(project *model.Project, buildVariant *model.BuildVariant) ValidationErrors {
 	errs := ValidationErrors{}
-	displayNames := map[string]int{}
 
-	for _, buildVariant := range project.BuildVariants {
-		dispName := buildVariant.DisplayName
-		displayNames[dispName] = displayNames[dispName] + 1
-
-		// Warn against commas because the CLI allows users to specify
-		// variants separated by commas in their patches.
-		if strings.Contains(buildVariant.Name, ",") {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: fmt.Sprintf("buildvariant name '%s' should not contains commas", buildVariant.Name),
-			})
-		}
-		// Warn against using "*" since it is ambiguous with the
-		// all-dependencies specification (also "*").
-		if buildVariant.Name == model.AllVariants {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: "buildvariant should not be named '*' because it is ambiguous with the all-variants '*' specification",
-			})
-		}
-		// Warn against using "all" since it is ambiguous with the special "all"
-		// task specifier when creating patches.
-		if buildVariant.Name == "all" {
-			errs = append(errs, ValidationError{
-				Level:   Warning,
-				Message: "buildvariant should not be named 'all' because it is ambiguous in buildvariant specifications for patches",
-			})
-		}
+	// Warn against commas because the CLI allows users to specify
+	// variants separated by commas in their patches.
+	if strings.Contains(buildVariant.Name, ",") {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: fmt.Sprintf("buildvariant name '%s' should not contains commas", buildVariant.Name),
+		})
 	}
-
-	for k, v := range displayNames {
-		if v > 1 {
-			errs = append(errs,
-				ValidationError{
-					Level:   Warning,
-					Message: fmt.Sprintf("%d build variants share the same display name: '%s'", v, k),
-				},
-			)
-
-		}
+	// Warn against using "*" since it is ambiguous with the
+	// all-dependencies specification (also "*").
+	if buildVariant.Name == model.AllVariants {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: "buildvariant should not be named '*' because it is ambiguous with the all-variants '*' specification",
+		})
 	}
-	return errs
-}
-
-func checkLoggerConfig(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-	if project.Loggers != nil {
-		if err := project.Loggers.IsValid(); err != nil {
-			errs = append(errs, ValidationError{
-				Message: errors.Wrap(err, "error in project-level logger config").Error(),
-				Level:   Warning,
-			})
-		}
-
-		for _, task := range project.Tasks {
-			for _, command := range task.Commands {
-				if err := command.Loggers.IsValid(); err != nil {
-					errs = append(errs, ValidationError{
-						Message: errors.Wrapf(err, "error in logger config for command %s in task %s", command.DisplayName, task.Name).Error(),
-						Level:   Warning,
-					})
-				}
-			}
-		}
+	// Warn against using "all" since it is ambiguous with the special "all"
+	// task specifier when creating patches.
+	if buildVariant.Name == "all" {
+		errs = append(errs, ValidationError{
+			Level:   Warning,
+			Message: "buildvariant should not be named 'all' because it is ambiguous in buildvariant specifications for patches",
+		})
 	}
 
 	return errs
 }
 
-// Checks each task definitions to determine if a command is specified
-func checkTaskCommands(project *model.Project) ValidationErrors {
+func checkLoggerConfig(project *model.Project, task *model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, task := range project.Tasks {
-		if len(task.Commands) == 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("task '%s' in project '%s' does not "+
-						"contain any commands",
-						task.Name, project.Identifier),
-					Level: Warning,
-				},
-			)
+	if err := project.Loggers.IsValid(); err != nil {
+		errs = append(errs, ValidationError{
+			Message: errors.Wrap(err, "error in project-level logger config").Error(),
+			Level:   Warning,
+		})
+	}
+
+	for _, command := range task.Commands {
+		if err := command.Loggers.IsValid(); err != nil {
+			errs = append(errs, ValidationError{
+				Message: errors.Wrapf(err, "error in logger config for command %s in task %s", command.DisplayName, task.Name).Error(),
+				Level:   Warning,
+			})
 		}
 	}
+
 	return errs
 }
 
@@ -936,32 +889,30 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkBVBatchTimes(project *model.Project) ValidationErrors {
+func checkBVBatchTimes(project *model.Project, buildVariant *model.BuildVariant) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, buildVariant := range project.BuildVariants {
-		// check task batchtimes first
-		for _, t := range buildVariant.Tasks {
-			// setting explicitly to true with batchtime will use batchtime
-			if utility.FromBoolPtr(t.Activate) && (t.CronBatchTime != "" || t.BatchTime != nil) {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("task '%s' for variant '%s' activation ignored since batchtime specified",
-							t.Name, buildVariant.Name),
-						Level: Warning,
-					})
-			}
-
-		}
-
-		if utility.FromBoolPtr(buildVariant.Activate) && (buildVariant.CronBatchTime != "" || buildVariant.BatchTime != nil) {
+	// check task batchtimes first
+	for _, t := range buildVariant.Tasks {
+		// setting explicitly to true with batchtime will use batchtime
+		if utility.FromBoolPtr(t.Activate) && (t.CronBatchTime != "" || t.BatchTime != nil) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("variant '%s' activation ignored since batchtime specified", buildVariant.Name),
-					Level:   Warning,
+					Message: fmt.Sprintf("task '%s' for variant '%s' activation ignored since batchtime specified",
+						t.Name, buildVariant.Name),
+					Level: Warning,
 				})
 		}
 
 	}
+
+	if utility.FromBoolPtr(buildVariant.Activate) && (buildVariant.CronBatchTime != "" || buildVariant.BatchTime != nil) {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("variant '%s' activation ignored since batchtime specified", buildVariant.Name),
+				Level:   Warning,
+			})
+	}
+
 	return errs
 }
 
@@ -1237,36 +1188,34 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskDependencies(project *model.Project) ValidationErrors {
+func checkTaskDependencies(project *model.Project, task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 
-	allTasks := project.FindAllTasksMap()
-	for _, task := range project.Tasks {
-		for _, dep := range task.DependsOn {
-			dependent, exists := allTasks[dep.Name]
-			if !exists {
-				continue
-			}
-			if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
-				errs = append(errs, ValidationError{
-					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
-				})
-			}
-			if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
-				errs = append(errs, ValidationError{
-					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
-				})
-			}
-			if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
-				errs = append(errs, ValidationError{
-					Level:   Warning,
-					Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
-				})
-			}
+	for _, dep := range task.DependsOn {
+		dependent, exists := allTasks[dep.Name]
+		if !exists {
+			continue
+		}
+		if utility.FromBoolPtr(dependent.PatchOnly) && !utility.FromBoolPtr(task.PatchOnly) {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("Task '%s' depends on patch-only task '%s'. Both will only run in patches", task.Name, dep.Name),
+			})
+		}
+		if !utility.FromBoolTPtr(dependent.Patchable) && utility.FromBoolTPtr(task.Patchable) {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("Task '%s' depends on non-patchable task '%s'. Neither will run in patches", task.Name, dep.Name),
+			})
+		}
+		if utility.FromBoolPtr(dependent.GitTagOnly) && !utility.FromBoolPtr(task.GitTagOnly) {
+			errs = append(errs, ValidationError{
+				Level:   Warning,
+				Message: fmt.Sprintf("Task '%s' depends on git-tag-only task '%s'. Both will only run when pushing git tags", task.Name, dep.Name),
+			})
 		}
 	}
+
 	return errs
 }
 
@@ -1945,14 +1894,22 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 	return task, bv, nil
 }
 
-// checkTaskTimeout checks if all tasks contain a timeout
-func checkTaskTimeout(project *model.Project) ValidationErrors {
+func checkTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	if project.ExecTimeoutSecs > 0 {
-		return errs
-	}
+	execTimeoutWarningAdded := false
+	allTasks := project.FindAllTasksMap()
 	for _, task := range project.Tasks {
-		if task.ExecTimeoutSecs == 0 {
+		if len(task.Commands) == 0 {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("task '%s' in project '%s' does not "+
+						"contain any commands",
+						task.Name, project.Identifier),
+					Level: Warning,
+				},
+			)
+		}
+		if task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("project '%s' does not "+
@@ -1961,9 +1918,46 @@ func checkTaskTimeout(project *model.Project) ValidationErrors {
 					Level: Warning,
 				},
 			)
-			break
+			execTimeoutWarningAdded = true
 		}
+		if project.Loggers != nil {
+			errs = append(errs, checkLoggerConfig(project, &task)...)
+		}
+		errs = append(errs, checkTaskDependencies(project, &task, allTasks)...)
+		errs = append(errs, checkTaskNames(project, &task)...)
+	}
+	return errs
+}
+
+func checkBuildVariants(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	displayNames := map[string]int{}
+	for _, buildVariant := range project.BuildVariants {
+		dispName := buildVariant.DisplayName
+		displayNames[dispName] = displayNames[dispName] + 1
+
+		if len(buildVariant.Tasks) == 0 {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("buildvariant '%s' contains no tasks", buildVariant.Name),
+					Level:   Warning,
+				},
+			)
+		}
+		errs = append(errs, checkBVNames(project, &buildVariant)...)
+		errs = append(errs, checkBVBatchTimes(project, &buildVariant)...)
 	}
 
+	for k, v := range displayNames {
+		if v > 1 {
+			errs = append(errs,
+				ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("%d build variants share the same display name: '%s'", v, k),
+				},
+			)
+
+		}
+	}
 	return errs
 }
