@@ -188,17 +188,24 @@ func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) 
 	return errors.Wrapf(HandlePoisonedHost(ctx, j.env, j.host, reason), "error terminating host %s", j.host.Id)
 }
 
-// checkAgentMonitor returns whether or not the agent monitor is already
-// running.
+// checkAgentMonitor returns whether or not an agent monitor is already running
+// on the host.
 func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, error) {
 	var alive bool
 	err := j.host.WithAgentMonitor(ctx, j.env, func(procs []jasper.Process) error {
+		var numRunning int
 		for _, proc := range procs {
 			if proc.Running(ctx) {
 				alive = true
-				break
+				numRunning++
 			}
 		}
+		grip.WarningWhen(numRunning > 1, message.Fields{
+			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
+			"host_id": j.host.Id,
+			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
+		})
 
 		return nil
 	})
