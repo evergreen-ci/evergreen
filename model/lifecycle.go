@@ -357,6 +357,12 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			}
 		}
 	}
+	if len(tasksToRestart) > 0 {
+		if err := UpdateVersionStatusForTask(&tasksToRestart[0]); err != nil {
+			return errors.Wrap(err, "problem updating build and version status for task")
+		}
+
+	}
 
 	for tg, t := range taskGroupsToCheck {
 		if err = checkResetSingleHostTaskGroup(&t, caller); err != nil {
