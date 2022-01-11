@@ -7,7 +7,7 @@
         Build Baron
     </h3>
     <div class="mci-pod">
-      <div ng-show="created_tickets && created_tickets.length > 0" class="buildbaron-pod">
+      <div ng-show="(created_tickets && created_tickets.length > 0) || (custom_created_tickets && custom_created_tickets.length > 0)" class="buildbaron-pod">
         <h5> Tickets Created From This Task </h5>
         <div class="buildbaron-results">
           <div class="buildbaron-issue" ng-repeat="issue in created_tickets">
@@ -43,6 +43,15 @@
                 >
                 Unassigned
               </div>
+            </div>
+          </div>
+          <div class="buildbaron-issue" ng-repeat="issue in custom_created_tickets">
+            <div class="buildbaron-row" ng-class="{'buildbaron-row-highlight': issue.fields.status.id==1}">
+              <span class="buildbaron-issue-summary">
+                <a ng-href="[[issue.url]]">
+                  [[issue.issue_key]]
+                </a>
+              </span>
             </div>
           </div>
         </div>
