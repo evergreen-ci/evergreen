@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -119,6 +120,34 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		files = append(files, artifact.Files...)
 	}
 	return files, nil
+}
+
+func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExecution][]string, error) {
+	catcher := grip.NewBasicCatcher()
+	artifacts, err := FindAll(BySecret(toReplace))
+	if err != nil {
+		catcher.Wrap(err, "error finding artifact files by secret")
+	}
+	changes := map[TaskIDAndExecution][]string{}
+	for i, artifact := range artifacts {
+		for j, file := range artifact.Files {
+			if file.AwsSecret == toReplace {
+				if !dryRun {
+					artifacts[i].Files[j].AwsSecret = replacement
+					err := artifacts[i].Update()
+					if err != nil {
+						catcher.Wrapf(err, "Error updating artifact file info for task %s, execution %d", artifact.TaskId, artifact.Execution)
+					}
+				}
+				key := TaskIDAndExecution{
+					TaskID:    artifact.TaskId,
+					Execution: artifact.Execution,
+				}
+				changes[key] = append(changes[key], file.Name)
+			}
+		}
+	}
+	return changes, catcher.Resolve()
 }
 
 // Array turns the parameter map into an array of File structs.

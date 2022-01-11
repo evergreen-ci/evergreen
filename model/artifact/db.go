@@ -77,6 +77,16 @@ func ByBuildId(id string) db.Q {
 	return db.Query(bson.M{BuildIdKey: id}).Sort([]string{TaskNameKey})
 }
 
+func BySecret(secret string) db.Q {
+	return db.Query(bson.M{
+		"files": bson.M{
+			"$elemMatch": bson.M{
+				"aws_secret": secret,
+			},
+		},
+	})
+}
+
 // === DB Logic ===
 
 // Upsert updates the files entry in the db if an entry already exists,
@@ -101,6 +111,45 @@ func (e Entry) Upsert() error {
 			},
 		},
 	)
+	return err
+}
+
+func (e Entry) Update() error {
+	err := db.Update(
+		Collection,
+		bson.M{
+			TaskIdKey:    e.TaskId,
+			TaskNameKey:  e.TaskDisplayName,
+			BuildIdKey:   e.BuildId,
+			ExecutionKey: e.Execution,
+		},
+		bson.M{
+			"$set": bson.M{
+				FilesKey: e.Files,
+			},
+			"$setOnInsert": bson.M{
+				ExecutionKey: e.Execution,
+			},
+		},
+	)
+	if err != nil && e.Execution == 0 {
+		err = db.Update(
+			Collection,
+			bson.M{
+				TaskIdKey:   e.TaskId,
+				TaskNameKey: e.TaskDisplayName,
+				BuildIdKey:  e.BuildId,
+			},
+			bson.M{
+				"$set": bson.M{
+					FilesKey: e.Files,
+				},
+				"$setOnInsert": bson.M{
+					ExecutionKey: e.Execution,
+				},
+			},
+		)
+	}
 	return err
 }
 
