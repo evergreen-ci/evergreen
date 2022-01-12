@@ -263,7 +263,6 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 }
 
 func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
-	s.NoError(db.Clear(serviceModel.ProjectRefCollection))
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	h := s.rm.(*projectIDPatchHandler)
