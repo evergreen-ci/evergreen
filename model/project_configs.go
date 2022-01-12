@@ -28,7 +28,7 @@ type ProjectConfig struct {
 	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
 	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
 	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
-	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	DeactivatePrevious     *bool                          `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
 	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`

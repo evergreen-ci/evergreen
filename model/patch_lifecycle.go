@@ -278,7 +278,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 	return nil, errors.New("no patch on project")
 }
 
-// Finalizes a patch:
+// FinalizePatch Finalizes a patch:
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
@@ -289,7 +289,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	intermediateProject, config, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+	intermediateProject, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"Error marshaling patched parser project from repository revision “%v”",
+			p.Githash)
+	}
+	config, err := createProjectConfig([]byte(p.PatchedProjectConfig))
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -297,6 +303,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.Id = p.Id.Hex()
 	if config != nil {
+		config.Identifier = p.Project
 		config.Id = p.Id.Hex()
 	}
 
