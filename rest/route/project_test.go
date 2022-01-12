@@ -826,7 +826,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	}
 	assert.NoError(t, projVars.Insert())
 
-	repoRef := &serviceModel.RepoRef{serviceModel.ProjectRef{
+	repoRef := &serviceModel.RepoRef{ProjectRef: serviceModel.ProjectRef{
 		Id:                    "myRepo",
 		Owner:                 "evergreen-ci",
 		Repo:                  "evergreen",
