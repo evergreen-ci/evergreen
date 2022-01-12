@@ -509,7 +509,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		GitTag:     tag,
 		RemotePath: remotePath,
 	}
-	info := &model.ProjectInfo{Ref: &pRef}
+	var projectInfo model.ProjectInfo
 	if remotePath != "" {
 		// run everything in the yaml that's provided
 		if gh.settings == nil {
@@ -518,20 +518,20 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				return nil, errors.New("error getting settings config")
 			}
 		}
-		info.Project, info.IntermediateProject, info.Config, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, token)
+		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, token)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to unmarshal yaml config")
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		info.Project, info.IntermediateProject, info.Config, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Id)
+		projectInfo, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier)
 		}
 		metadata.Alias = evergreen.GitTagAlias
 	}
-
-	return gh.sc.CreateVersionFromConfig(ctx, info, metadata, true)
+	projectInfo.Ref = &pRef
+	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata, true)
 }
 
 func validatePushTagEvent(event *github.PushEvent) error {

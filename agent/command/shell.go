@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -77,7 +78,7 @@ type shellExec struct {
 }
 
 func shellExecFactory() Command { return &shellExec{} }
-func (*shellExec) Name() string { return "shell.exec" }
+func (*shellExec) Name() string { return evergreen.ShellExecCommandName }
 
 // ParseParams reads in the command's parameters.
 func (c *shellExec) ParseParams(params map[string]interface{}) error {

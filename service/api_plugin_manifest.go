@@ -45,20 +45,23 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var project *model.Project
-	project, _, _, err = model.LoadProjectForVersion(v, v.Identifier, false)
+	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, false)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "error loading project from version"))
 		return
 	}
+	if projectInfo.Project == nil {
+		as.LoggedError(w, r, http.StatusNotFound, errors.New("unable to find project for version"))
+		return
+	}
 
-	if currentManifest != nil && project.Modules.IsIdentical(*currentManifest) {
+	if currentManifest != nil && projectInfo.Project.Modules.IsIdentical(*currentManifest) {
 		gimlet.WriteJSON(w, currentManifest)
 		return
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := repotracker.CreateManifest(*v, project, projectRef, &as.Settings)
+	manifest, err := repotracker.CreateManifest(*v, projectInfo.Project, projectRef, &as.Settings)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "manifest resource not found"))
