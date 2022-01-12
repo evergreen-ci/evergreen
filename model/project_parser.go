@@ -501,13 +501,13 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 // LoadProjectForVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
-func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *ParserProject, *ProjectConfig, error) {
+func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo, error) {
 	var pp *ParserProject
 	var err error
 
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error finding parser project")
+		return ProjectInfo{}, errors.Wrap(err, "error finding parser project")
 	}
 
 	// if parser project config number is old then we should default to legacy
@@ -518,18 +518,21 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 		pp.Identifier = utility.ToStringPtr(id)
 		var p *Project
 		p, err = TranslateProject(pp)
-		return p, pp, nil, err
+		return ProjectInfo{
+			Project:             p,
+			IntermediateProject: pp,
+		}, err
 	}
 
 	if v.Config == "" {
-		return nil, nil, nil, errors.New("version has no config")
+		return ProjectInfo{}, errors.New("version has no config")
 	}
 	p := &Project{}
 	// opts empty because project yaml with `include` will not hit this case
 	ctx := context.Background()
 	pp, pc, err := LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error loading project")
+		return ProjectInfo{}, errors.Wrap(err, "error loading project")
 	}
 	pp.Id = v.Id
 	pp.Identifier = utility.ToStringPtr(id)
@@ -543,10 +546,14 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (*Project, *P
 				"version": v.Id,
 				"message": "error inserting parser project for version",
 			}))
-			return nil, nil, nil, errors.Wrap(err, "error updating version with project")
+			return ProjectInfo{}, errors.Wrap(err, "error updating version with project")
 		}
 	}
-	return p, pp, pc, nil
+	return ProjectInfo{
+		Project:             p,
+		IntermediateProject: pp,
+		Config:              pc,
+	}, nil
 }
 
 func GetProjectFromBSON(data []byte) (*Project, error) {
@@ -760,18 +767,22 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	return projectFileBytes, nil
 }
 
-func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (*Project, *ParserProject, *ProjectConfig, error) {
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, error) {
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
-		return nil, nil, nil, err
+		return ProjectInfo{}, err
 	}
 
 	config := Project{}
 	pp, pc, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
+		return ProjectInfo{}, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}
-	return &config, pp, pc, nil
+	return ProjectInfo{
+		Project:             &config,
+		IntermediateProject: pp,
+		Config:              pc,
+	}, nil
 }
 
 // createIntermediateProject marshals the supplied YAML into our

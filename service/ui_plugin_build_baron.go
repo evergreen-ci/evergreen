@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
@@ -104,6 +105,23 @@ func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 		results = append(results, *jiraIssue)
+	}
+
+	gimlet.WriteJSON(w, results)
+}
+
+func (uis *UIServer) bbGetCustomCreatedTickets(w http.ResponseWriter, r *http.Request) {
+	taskId := gimlet.GetVars(r)["task_id"]
+	var results []annotations.IssueLink
+
+	annotations, err := annotations.FindByTaskId(taskId)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, err.Error())
+		return
+	}
+
+	for _, annotation := range annotations {
+		results = append(results, annotation.CreatedIssues...)
 	}
 
 	gimlet.WriteJSON(w, results)

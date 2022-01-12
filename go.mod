@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
-	github.com/aws/aws-sdk-go v1.42.21
+	github.com/aws/aws-sdk-go v1.42.25
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v20.10.11+incompatible
 	github.com/docker/go-connections v0.4.0
@@ -30,7 +30,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.2
-	github.com/mongodb/amboy v0.0.0-20211213142319-cd190dc4cf43
+	github.com/mongodb/amboy v0.0.0-20220106171416-066b9040aafb
 	github.com/mongodb/anser v0.0.0-20211117165837-ac44bc8e3e4f
 	github.com/mongodb/ftdc v0.0.0-20211028165431-67f017692185
 	github.com/mongodb/grip v0.0.0-20211209154908-abdd8964fd40
@@ -65,7 +65,6 @@ require (
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/mongodb/jasper v0.0.0-20211213143437-1d373fd6f2c6
 	github.com/shirou/gopsutil/v3 v3.21.11
-	golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 )

@@ -7575,6 +7575,7 @@ input MainlineCommitsOptions {
   skipOrderNumber: Int = 0
   # shouldCollapse is used to determine if unmatching active versions should be collapsed
   shouldCollapse: Boolean = false
+  requesters: [String!]
 }
 
 type BuildVariantTuple {
@@ -39264,6 +39265,14 @@ func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Con
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldCollapse"))
 			it.ShouldCollapse, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "requesters":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requesters"))
+			it.Requesters, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}

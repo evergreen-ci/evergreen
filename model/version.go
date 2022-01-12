@@ -395,7 +395,11 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 }
 
 // GetPreviousPageCommitOrderNumber returns the first mainline commit that is LIMIT activated versions more recent than the specified commit
-func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*int, error) {
+func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, requesters []string) (*int, error) {
+	invalidRequesters, _ := utility.StringSliceSymmetricDifference(requesters, evergreen.SystemVersionRequesterTypes)
+	if len(invalidRequesters) > 0 {
+		return nil, errors.Errorf("invalid requesters: %v", invalidRequesters)
+	}
 	// First check if we are already looking at the most recent commit.
 	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
 	if err != nil {
@@ -409,7 +413,7 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
+			"$in": requesters,
 		},
 		VersionActivatedKey:           true,
 		VersionRevisionOrderNumberKey: bson.M{"$gt": order},
@@ -441,14 +445,18 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int) (*
 type MainlineCommitVersionOptions struct {
 	Limit           int
 	SkipOrderNumber int
+	Requesters      []string
 }
 
 func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
-
+	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
+	if len(invalidRequesters) > 0 {
+		return nil, errors.Errorf("invalid requesters: %v", invalidRequesters)
+	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
+			"$in": opts.Requesters,
 		},
 	}
 	if opts.SkipOrderNumber != 0 {

@@ -376,6 +376,22 @@ func ByVersions(versions []string) db.Q {
 	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
 }
 
+// NonExecutionTasksByVersion will filter out newer execution tasks that store if they have a display task.
+// Old execution tasks without display task ID populated will still be returned.
+func NonExecutionTasksByVersions(versions []string) db.Q {
+	return db.Query(bson.M{
+		VersionKey: bson.M{"$in": versions},
+		"$or": []bson.M{
+			{
+				DisplayTaskIdKey: bson.M{"$exists": false},
+			},
+			{
+				DisplayTaskIdKey: "",
+			},
+		},
+	})
+}
+
 // ByIdsBuildIdAndStatus creates a query to return tasks with a certain build id and statuses
 func ByIdsAndStatus(taskIds []string, statuses []string) db.Q {
 	return db.Query(bson.M{

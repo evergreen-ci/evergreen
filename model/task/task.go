@@ -1150,7 +1150,7 @@ func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 		return err
 	}
 
-	if t.IsPartOfDisplay() {
+	if !t.DisplayOnly && t.IsPartOfDisplay() {
 		displayTask, err := t.GetDisplayTask()
 		if err != nil {
 			return errors.Wrap(err, "getting display task")

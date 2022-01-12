@@ -391,7 +391,7 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 	if tc.taskConfig == nil {
-		return defaultExecTimeout
+		return DefaultExecTimeout
 	}
 	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
 		return time.Duration(dynamicTimeout) * time.Second
@@ -402,7 +402,7 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {
 		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
 	}
-	return defaultExecTimeout
+	return DefaultExecTimeout
 }
 
 func (tc *taskContext) setTaskConfig(taskConfig *internal.TaskConfig) {
