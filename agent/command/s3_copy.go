@@ -202,8 +202,8 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 	client := utility.GetHTTPClient()
 	client.Timeout = 10 * time.Minute
 	defer utility.PutHTTPClient(client)
-
 	for _, s3CopyFile := range c.S3CopyFiles {
+
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
 			S3SourceBucket:      s3CopyFile.Source.Bucket,
@@ -220,11 +220,13 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 		if newPushLog.TaskId == "" {
 			logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
-			return nil
+			timer.Reset(backoffCounter.Duration())
+			continue
 		}
 
 		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
 			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
+			timer.Reset(backoffCounter.Duration())
 			continue
 		}
 
@@ -291,7 +293,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %v",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
 						timer.Reset(backoffCounter.Duration())
-						continue
+						continue retryLoop
 					} else {
 						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
