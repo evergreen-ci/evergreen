@@ -44,31 +44,13 @@ type MockConnector struct {
 	URL    string
 	Prefix string
 
-	MockUserConnector
 	MockTaskConnector
-	MockContextConnector
-	MockDistroConnector
 	MockHostConnector
 	MockPodConnector
-	MockTestConnector
-	MockBuildConnector
 	MockVersionConnector
-	MockPatchConnector
-	MockPatchIntentConnector
 	MockProjectConnector
-	MockAdminConnector
-	MockStatusConnector
-	MockAliasConnector
 	MockRepoTrackerConnector
-	MockCLIUpdateConnector
-	MockGenerateConnector
-	MockSubscriptionConnector
-	MockNotificationConnector
 	MockCreateHostConnector
-	MockStatsConnector
-	MockTaskReliabilityConnector
-	MockCommitQueueConnector
-	MockSchedulerConnector
 }
 
 func (ctx *MockConnector) GetURL() string          { return ctx.URL }

@@ -49,22 +49,3 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 	}
 	return t.GeneratedTasks, errs, nil
 }
-
-type MockGenerateConnector struct{}
-
-func (gc *MockGenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, group amboy.QueueGroup) error {
-	return nil
-}
-
-func (gc *MockGenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.QueueGroup) (bool, []string, error) {
-	// no task
-	if taskID == "0" {
-		return false, nil, errors.New("No task called '0'")
-	}
-	// finished
-	if taskID == "1" {
-		return true, nil, nil
-	}
-	// not yet finished
-	return false, nil, nil
-}

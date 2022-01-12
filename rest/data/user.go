@@ -2,16 +2,14 @@ package data
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
+	"net/http"
+	"strings"
 )
 
 // DBUserConnector is a struct that implements the User related interface
@@ -205,101 +203,4 @@ func (u *DBUserConnector) AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) e
 
 func (u *DBUserConnector) DeleteServiceUser(id string) error {
 	return user.DeleteServiceUser(id)
-}
-
-// MockUserConnector stores a cached set of users that are queried against by the
-// implementations of the UserConnector interface's functions.
-type MockUserConnector struct {
-	CachedUsers map[string]*user.DBUser
-}
-
-// FindUserById provides a mock implementation of the User functions
-// from the Connector that does not need to use a database.
-// It returns results based on the cached users in the MockUserConnector.
-func (muc *MockUserConnector) FindUserById(userId string) (gimlet.User, error) {
-	u := muc.CachedUsers[userId]
-	return u, nil
-}
-
-func (muc *MockUserConnector) FindUserByGithubName(name string) (gimlet.User, error) {
-	for _, u := range muc.CachedUsers {
-		if u.Settings.GithubUser.LastKnownAs == name {
-			return u, nil
-		}
-	}
-	return nil, nil
-}
-
-func (muc *MockUserConnector) AddPublicKey(dbuser *user.DBUser, keyName, keyValue string) error {
-	u, ok := muc.CachedUsers[dbuser.Id]
-	if !ok {
-		return errors.New(fmt.Sprintf("User '%s' doesn't exist", dbuser.Id))
-	}
-
-	_, err := u.GetPublicKey(keyName)
-	if err == nil {
-		return errors.New(fmt.Sprintf("User '%s' already has a key '%s'", dbuser.Id, keyName))
-	}
-
-	u.PubKeys = append(u.PubKeys, user.PubKey{
-		Name:      keyName,
-		Key:       keyValue,
-		CreatedAt: time.Now(),
-	})
-
-	return nil
-}
-
-func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) error {
-	cu, ok := muc.CachedUsers[u.Id]
-	if !ok {
-		return errors.New(fmt.Sprintf("User '%s' doesn't exist", u.Id))
-	}
-
-	newKeys := []user.PubKey{}
-	var found bool = false
-	for _, key := range cu.PubKeys {
-		if key.Name != keyName {
-			newKeys = append(newKeys, key)
-		} else {
-			found = true
-		}
-	}
-	if !found {
-		return errors.New(fmt.Sprintf("User '%s' has no key named '%s'", u.Id, keyName))
-	}
-	cu.PubKeys = newKeys
-	return nil
-}
-
-func (muc *MockUserConnector) GetPublicKey(u *user.DBUser, keyName string) (string, error) {
-	cu, ok := muc.CachedUsers[u.Id]
-	if !ok {
-		return "", errors.New(fmt.Sprintf("User '%s' doesn't exist", u.Id))
-	}
-
-	for _, key := range cu.PubKeys {
-		if key.Name == keyName {
-			return key.Key, nil
-		}
-	}
-
-	return "", errors.New(fmt.Sprintf("User '%s' has no key named '%s'", u.Id, keyName))
-}
-
-func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.UserSettings) error {
-	return errors.New("UpdateSettings not implemented for mock connector")
-}
-
-func (u *MockUserConnector) SubmitFeedback(feedback restModel.APIFeedbackSubmission) error {
-	return nil
-}
-func (u *MockUserConnector) GetServiceUsers() ([]restModel.APIDBUser, error) {
-	return nil, nil
-}
-func (u *MockUserConnector) AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
-	return nil
-}
-func (u *MockUserConnector) DeleteServiceUser(string) error {
-	return nil
 }
