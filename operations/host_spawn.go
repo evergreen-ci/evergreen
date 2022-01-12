@@ -972,12 +972,17 @@ func hostList() cli.Command {
 				Name:  regionFlagName,
 				Usage: "list hosts in specified region",
 			},
+			cli.BoolFlag{
+				Name:  jsonFlagName,
+				Usage: "list hosts in json format",
+			},
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
 			region := c.String(regionFlagName)
+			showJSON := c.Bool(jsonFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -998,7 +1003,12 @@ func hostList() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem getting hosts")
 			}
-			printHosts(hosts)
+
+			if showJSON {
+				printHostsJSON(hosts)
+			} else {
+				printHosts(hosts)
+			}
 
 			return nil
 		},
@@ -1016,6 +1026,29 @@ func printHosts(hosts []*restModel.APIHost) {
 			utility.FromStringPtr(h.User),
 			utility.FromStringPtr(h.AvailabilityZone))
 	}
+}
+
+func printHostsJSON(hosts []*restModel.APIHost) {
+	var output strings.Builder
+	output.WriteString("[")
+	for i, h := range hosts {
+		output.WriteString("{")
+		output.WriteString(fmt.Sprintf(`"id": "%s", "name": "%s", "distro": "%s", "status": "%s", "hostName": "%s", "user": "%s", "availabilityZone": "%s"`,
+			utility.FromStringPtr(h.Id),
+			utility.FromStringPtr(h.DisplayName),
+			utility.FromStringPtr(h.Distro.Id),
+			utility.FromStringPtr(h.Status),
+			utility.FromStringPtr(h.HostURL),
+			utility.FromStringPtr(h.User),
+			utility.FromStringPtr(h.AvailabilityZone)))
+		if i < len(hosts)-1 {
+			output.WriteString("}, ")
+		} else {
+			output.WriteString("}")
+		}
+	}
+	output.WriteString("]")
+	grip.Infof(output.String())
 }
 
 func hostTerminate() cli.Command {

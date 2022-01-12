@@ -59,6 +59,8 @@ const (
 	dbWriteNumFlagName  = "w"
 	dbWmodeFlagName     = "wmode"
 	dbRmodeFlagName     = "rmode"
+
+	jsonFlagName = "json"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
