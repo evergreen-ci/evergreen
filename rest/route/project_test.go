@@ -161,45 +161,6 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Nil(p.Restricted)
 }
 
-func (s *ProjectPatchByIDSuite) TestUseRepoSettings() {
-	ctx := context.Background()
-	jsonBody := []byte(`{"use_repo_settings": true, "admins": ["me"]}`)
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	u := &user.DBUser{Id: "me"}
-	s.NoError(u.Insert())
-
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-	h := s.rm.(*projectIDPatchHandler)
-	s.NotNil(h.user)
-	s.NotNil(h.originalProject)
-	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(h.originalProject.Owner, h.originalProject.Repo)
-	s.NoError(err)
-	s.Nil(repoRef)
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	p, err := s.sc.FindProjectById("dimoxinil", true, false)
-	s.NoError(err)
-	s.True(p.UseRepoSettings())
-	s.NotEmpty(p.RepoRefId)
-	s.Contains(p.Admins, "me")
-
-	u, err = user.FindOneById("me")
-	s.NoError(err)
-	s.NotNil(u)
-	s.Contains(u.Roles(), serviceModel.GetViewRepoRole(p.RepoRefId))
-	s.Contains(u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
-
-	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.originalProject.Owner, h.originalProject.Repo)
-	s.NoError(err)
-	s.NotNil(repoRef)
-}
-
 func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
@@ -773,6 +734,140 @@ func TestDeleteProject(t *testing.T) {
 	pdh.projectName = badProject.Id
 	resp = pdh.Run(ctx)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
+}
+
+func TestAttachProjectToRepo(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
+		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	u := &user.DBUser{Id: "me"}
+	assert.NoError(t, u.Insert())
+
+	pRef := serviceModel.ProjectRef{
+		Id:         "project1",
+		Identifier: "projectIdent",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		RepoRefId:  "hello",
+		Enabled:    utility.TruePtr(),
+		Admins:     []string{"me"},
+	}
+	assert.NoError(t, pRef.Insert())
+	projVars := serviceModel.ProjectVars{
+		Id: "project1",
+	}
+	assert.NoError(t, projVars.Insert())
+
+	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/projects/project1/attach_to_repo", nil)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
+
+	h := attachProjectToRepoHandler{
+		sc: &data.DBConnector{},
+	}
+	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
+
+	pRef.RepoRefId = ""
+	assert.NoError(t, pRef.Update())
+	assert.NoError(t, h.Parse(ctx, req))
+
+	assert.NotNil(t, h.user)
+	assert.NotNil(t, h.project)
+	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
+	assert.NoError(t, err)
+	assert.Nil(t, repoRef) // repo ref doesn't exist before running
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.NotNil(t, resp.Data())
+	assert.Equal(t, resp.Status(), http.StatusOK)
+
+	p, err := serviceModel.FindMergedProjectRef("projectIdent", "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+	assert.True(t, p.UseRepoSettings())
+	assert.NotEmpty(t, p.RepoRefId)
+	assert.Contains(t, p.Admins, "me")
+
+	u, err = user.FindOneById("me")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.Contains(t, u.Roles(), serviceModel.GetViewRepoRole(p.RepoRefId))
+	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
+
+	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoRef)
+}
+
+func TestDetachProjectFromRepo(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
+		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	u := &user.DBUser{Id: "me"}
+	assert.NoError(t, u.Insert())
+
+	pRef := serviceModel.ProjectRef{
+		Id:         "project1",
+		Identifier: "projectIdent",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		Enabled:    utility.TruePtr(),
+		Admins:     []string{"me"},
+	}
+	assert.NoError(t, pRef.Insert())
+	projVars := serviceModel.ProjectVars{
+		Id: "project1",
+	}
+	assert.NoError(t, projVars.Insert())
+
+	repoRef := &serviceModel.RepoRef{serviceModel.ProjectRef{
+		Id:                    "myRepo",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		GitTagVersionsEnabled: utility.TruePtr(),
+	}}
+	assert.NoError(t, repoRef.Add(u))
+	// assert that user _did_ have the right roles
+	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(repoRef.Id))
+
+	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/projects/project1/detach_from_repo", nil)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
+
+	h := detachProjectFromRepoHandler{
+		sc: &data.DBConnector{},
+	}
+	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
+
+	pRef.RepoRefId = repoRef.Id
+	assert.NoError(t, pRef.Update())
+	assert.NoError(t, h.Parse(ctx, req))
+
+	assert.NotNil(t, h.user)
+	assert.NotNil(t, h.project)
+
+	resp := h.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.NotNil(t, resp.Data())
+	assert.Equal(t, resp.Status(), http.StatusOK)
+
+	p, err := serviceModel.FindMergedProjectRef("projectIdent", "", false)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+	assert.False(t, p.UseRepoSettings())
+	assert.Empty(t, p.RepoRefId)
+	assert.Contains(t, p.Admins, "me")
+	assert.True(t, p.IsGitTagVersionsEnabled()) // saved from the repo before detaching
+
+	u, err = user.FindOneById("me")
+	assert.NoError(t, err)
+	assert.NotNil(t, u)
+	assert.NotContains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
 }
 
 ////////////////////////////////////////////////////////////////////////

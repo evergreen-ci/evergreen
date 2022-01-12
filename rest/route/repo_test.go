@@ -310,17 +310,15 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	settings, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{branchProject.Owner}
-	projectHandler := projectIDPatchHandler{
-		sc:       &data.DBConnector{},
-		settings: settings,
+	attachProjectHandler := attachProjectToRepoHandler{
+		sc: &data.DBConnector{},
 	}
 	// test that turning on repo settings doesn't impact existing restricted values
-	body := bytes.NewBuffer([]byte(`{"use_repo_settings": true}`))
-	req, _ := http.NewRequest("PATCH", "rest/v2/projects/branch2", body)
+	req, _ := http.NewRequest("POST", "rest/v2/projects/branch2/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch2"})
 
-	assert.NoError(t, projectHandler.Parse(ctx, req))
-	resp := projectHandler.Run(ctx)
+	assert.NoError(t, attachProjectHandler.Parse(ctx, req))
+	resp := attachProjectHandler.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.Status(), http.StatusOK)
 
@@ -361,7 +359,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.Equal(t, scope.Resources, []string{"branch2"})
 
 	// test that setting repo to restricted impacts the branch project
-	body = bytes.NewBuffer([]byte(`{"restricted": true}`))
+	body := bytes.NewBuffer([]byte(`{"restricted": true}`))
 	req, _ = http.NewRequest("PATCH", fmt.Sprintf("rest/v2/repos/%s", repoId), body)
 	req = gimlet.SetURLVars(req, map[string]string{"repo_id": repoId})
 
@@ -404,10 +402,22 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 
 	// test that setting branch explicitly not-restricted impacts that branch, even though it's using repo settings
-	body = bytes.NewBuffer([]byte(`{"restricted": false, "use_repo_settings": true}`))
+	req, _ = http.NewRequest("POST", "rest/v2/projects/branch1/attach_to_repo", nil)
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
+
+	assert.NoError(t, attachProjectHandler.Parse(ctx, req))
+	resp = attachProjectHandler.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, resp.Status(), http.StatusOK)
+
+	body = bytes.NewBuffer([]byte(`{"restricted": false}`))
 	req, _ = http.NewRequest("PATCH", "rest/v2/projects/branch1", body)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
 
+	projectHandler := projectIDPatchHandler{
+		sc:       &data.DBConnector{},
+		settings: settings,
+	}
 	assert.NoError(t, projectHandler.Parse(ctx, req))
 	resp = projectHandler.Run(ctx)
 	assert.NotNil(t, resp)

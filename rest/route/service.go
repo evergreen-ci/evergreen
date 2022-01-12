@@ -152,6 +152,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(requireUser, addProject, viewProjectSettings).RouteHandler(makeGetProjectByID(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(sc, env.Settings()))
+	app.AddRoute("/projects/{project_id}/attach_to_repo").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeAttachProjectToRepoHandler(sc))
+	app.AddRoute("/projects/{project_id}/detach_from_repo").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeDetachProjectFromRepoHandler(sc))
 	app.AddRoute("/projects/{project_id}/repotracker").Version(2).Post().Wrap(requireUser, addProject).RouteHandler(makeRunRepotrackerForProject(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(createProject).RouteHandler(makePutProjectByID(sc))
 	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(requireUser, addProject, createProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeCopyProject(sc))
