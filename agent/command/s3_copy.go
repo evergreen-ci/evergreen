@@ -203,6 +203,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 	client.Timeout = 10 * time.Minute
 	defer utility.PutHTTPClient(client)
 	for _, s3CopyFile := range c.S3CopyFiles {
+		timer.Reset(0)
 
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
@@ -220,13 +221,11 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 		if newPushLog.TaskId == "" {
 			logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
-			timer.Reset(backoffCounter.Duration())
 			continue
 		}
 
 		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
 			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
-			timer.Reset(backoffCounter.Duration())
 			continue
 		}
 
