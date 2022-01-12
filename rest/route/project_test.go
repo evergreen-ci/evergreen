@@ -140,9 +140,10 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
+	s.Require().Equal("EVG", s.sc.MockProjectConnector.CachedProjects[0].BuildBaronSettings.TicketCreateProject)
 }
 
-func (s *ProjectPatchByIDSuite) TestRunWithInavlidBbConfig() {
+func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
