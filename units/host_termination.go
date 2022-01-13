@@ -143,19 +143,36 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"message":  "terminating host already marked terminated in the db",
 	})
 
-	// host may still be an intent host
-	if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuildingFailed {
-		if err = j.host.Terminate(evergreen.User, j.Reason); err != nil {
-			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
+	// Intent hosts are just marked terminated in the DB without further
+	// processing, because it's not possible for an intent host to run tasks,
+	// nor is the intent host associated with any instance in the cloud that
+	// we're aware of.
+	switch j.host.Status {
+	case evergreen.HostUninitialized, evergreen.HostBuildingFailed:
+		if err := j.host.Terminate(evergreen.User, j.Reason); err != nil {
+			j.AddError(errors.Wrap(err, "terminating intent host in DB"))
 			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "problem terminating intent host in DB",
 				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"job_type": j.Type().Name,
 				"job":      j.ID(),
-				"message":  "problem terminating intent host in db",
 			}))
 		}
 		return
+	case evergreen.HostTerminated:
+		if host.IsIntentHostId(j.host.Id) {
+			return
+		}
+	default:
+		grip.WarningWhen(host.IsIntentHostId(j.host.Id), message.Fields{
+			"message":     "Intent host has a status that should not be possible when preparing to terminate it. This is potentially a host lifecycle logical error.",
+			"host_id":     j.host.Id,
+			"host_status": j.host.Status,
+			"provider":    j.host.Distro.Provider,
+			"job_type":    j.Type().Name,
+			"job":         j.ID(),
+		})
 	}
 
 	// clear the running task of the host in case one has been assigned.

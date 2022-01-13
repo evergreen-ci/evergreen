@@ -297,11 +297,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// GenerateName generates a unique instance name for a distro.
+// GenerateName generates a unique instance name for a host in a distro.
 func (d *Distro) GenerateName() string {
-	// gceMaxNameLength is the maximum length of an instance name permitted by GCE.
-	const gceMaxNameLength = 63
-
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
 		return "static"
@@ -312,6 +309,9 @@ func (d *Distro) GenerateName() string {
 	name := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
 
 	if d.Provider == evergreen.ProviderNameGce {
+		// gceMaxNameLength is the maximum length of an instance name permitted by GCE.
+		const gceMaxNameLength = 63
+
 		// Ensure all characters in tags are on the allowlist
 		r, _ := regexp.Compile("[^a-z0-9_-]+")
 		name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))

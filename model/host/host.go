@@ -424,6 +424,9 @@ func (h *Host) NeedsPortBindings() bool {
 	return h.DockerOptions.PublishPorts && h.PortBindings == nil
 }
 
+// IsIntentHostId returns whether or not the host ID is for an intent host
+// backed by an ephemeral cloud host. This function does not work for intent
+// hosts representing Docker containers.
 func IsIntentHostId(id string) bool {
 	return strings.HasPrefix(id, "evg-")
 }
@@ -758,6 +761,7 @@ func (h *Host) ResetLastCommunicated() error {
 	return nil
 }
 
+// Terminate marks a host as terminated and sets the termination time.
 func (h *Host) Terminate(user, reason string) error {
 	err := h.SetTerminated(user, reason)
 	if err != nil {
