@@ -591,3 +591,23 @@ func TestClientURL(t *testing.T) {
 	expected = "www.example.com/clients/linux_amd64/evergreen"
 	assert.Equal(t, expected, d.ClientURL(settings))
 }
+
+func TestGetAuthorizedKeysFile(t *testing.T) {
+	t.Run("ReturnsDistroAuthorizedKeysFile", func(t *testing.T) {
+		expected := "/path/to/authorized_keys"
+		d := Distro{
+			User:               "user",
+			Arch:               evergreen.ArchLinuxAmd64,
+			AuthorizedKeysFile: expected,
+		}
+		assert.Equal(t, expected, d.GetAuthorizedKeysFile())
+	})
+	t.Run("DefaultsToDistroHomeDirectoryAuthorizedKeysFileIfDistroAuthorizedKeysIsUnset", func(t *testing.T) {
+		expected := "/home/user/.ssh/authorized_keys"
+		d := Distro{
+			User: "user",
+			Arch: evergreen.ArchLinuxAmd64,
+		}
+		assert.Equal(t, expected, d.GetAuthorizedKeysFile())
+	})
+}

@@ -831,12 +831,20 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	}
 
 	if opts.AddKey != "" {
-		if err := h.AddPubKey(ctx, opts.AddKey); err != nil {
-			catcher.Wrapf(err, "can't add key to host '%s'", h.Id)
+		if err := addPublicKey(ctx, h, opts.AddKey); err != nil {
+			catcher.Wrapf(err, "adding key to host '%s'", h.Id)
 		}
 	}
 
 	return catcher.Resolve()
+}
+
+// addPublicKey adds a public key to the authorized keys for SSH.
+func addPublicKey(ctx context.Context, h *host.Host, key string) error {
+	if logs, err := h.RunSSHCommand(ctx, h.AddPublicKeyScript(key)); err != nil {
+		return errors.Wrap(err, logs)
+	}
+	return nil
 }
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
