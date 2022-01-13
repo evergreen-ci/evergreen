@@ -397,17 +397,19 @@ const (
 	MetStatusUnmet   MetStatus = "UNMET"
 	MetStatusMet     MetStatus = "MET"
 	MetStatusPending MetStatus = "PENDING"
+	MetStatusStarted MetStatus = "STARTED"
 )
 
 var AllMetStatus = []MetStatus{
 	MetStatusUnmet,
 	MetStatusMet,
 	MetStatusPending,
+	MetStatusStarted,
 }
 
 func (e MetStatus) IsValid() bool {
 	switch e {
-	case MetStatusUnmet, MetStatusMet, MetStatusPending:
+	case MetStatusUnmet, MetStatusMet, MetStatusPending, MetStatusStarted:
 		return true
 	}
 	return false
