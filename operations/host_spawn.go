@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -1029,26 +1030,32 @@ func printHosts(hosts []*restModel.APIHost) {
 }
 
 func printHostsJSON(hosts []*restModel.APIHost) {
-	var output strings.Builder
-	output.WriteString("[")
-	for i, h := range hosts {
-		output.WriteString("{")
-		output.WriteString(fmt.Sprintf(`"id": "%s", "name": "%s", "distro": "%s", "status": "%s", "hostName": "%s", "user": "%s", "availabilityZone": "%s"`,
-			utility.FromStringPtr(h.Id),
-			utility.FromStringPtr(h.DisplayName),
-			utility.FromStringPtr(h.Distro.Id),
-			utility.FromStringPtr(h.Status),
-			utility.FromStringPtr(h.HostURL),
-			utility.FromStringPtr(h.User),
-			utility.FromStringPtr(h.AvailabilityZone)))
-		if i < len(hosts)-1 {
-			output.WriteString("}, ")
-		} else {
-			output.WriteString("}")
-		}
+	type hostResult struct {
+		Id               string `json:"id"`
+		Name             string `json:"name"`
+		Distro           string `json:"distro"`
+		Status           string `json:"status"`
+		HostName         string `json:"hostName"`
+		User             string `json:"user"`
+		AvailabilityZone string `json:"availabilityZone"`
 	}
-	output.WriteString("]")
-	grip.Infof(output.String())
+	hostResults := []hostResult{}
+	for _, h := range hosts {
+		hostResults = append(hostResults, hostResult{
+			Id:               utility.FromStringPtr(h.Id),
+			Name:             utility.FromStringPtr(h.DisplayName),
+			Distro:           utility.FromStringPtr(h.Distro.Id),
+			Status:           utility.FromStringPtr(h.Status),
+			HostName:         utility.FromStringPtr(h.HostURL),
+			User:             utility.FromStringPtr(h.User),
+			AvailabilityZone: utility.FromStringPtr(h.AvailabilityZone),
+		})
+	}
+	h, err := json.MarshalIndent(hostResults, "", "\t")
+	if err != nil {
+		return
+	}
+	grip.Infof(string(h))
 }
 
 func hostTerminate() cli.Command {
