@@ -196,8 +196,9 @@ func getDistrosForProject(projectID string) (ids []string, aliases []string, err
 }
 
 // verify that the project configuration semantics is valid
-func CheckProjectWarnings(project *model.Project) ValidationErrors {
+func CheckProjectWarnings(project *model.Project, yamlBytes []byte) ValidationErrors {
 	validationErrs := ValidationErrors{}
+	validationErrs = append(validationErrs, CheckYamlStrict(yamlBytes)...)
 	for _, projectWarningValidator := range projectWarningValidators {
 		validationErrs = append(validationErrs,
 			projectWarningValidator(project)...)

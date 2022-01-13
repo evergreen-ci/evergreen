@@ -1788,7 +1788,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 
 			_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
-			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
+			So(CheckProjectWarnings(project, []byte{}), ShouldResemble, ValidationErrors{})
 		})
 
 		Reset(func() {
@@ -2214,12 +2214,10 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	syntaxErrs := CheckProjectErrors(&proj, false)
-	assert.Len(syntaxErrs, 0)
-	semanticErrs := CheckProjectWarnings(&proj)
-	assert.Len(semanticErrs, 0)
-	strictErrs := CheckYamlStrict([]byte(exampleYml))
-	assert.Len(strictErrs, 0)
+	errors := CheckProjectErrors(&proj, false)
+	assert.Len(errors, 0)
+	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	assert.Len(warnings, 0)
 }
 
 func TestYamlStrict(t *testing.T) {
@@ -2249,14 +2247,12 @@ buildvariants:
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
-	syntaxErrs := CheckProjectErrors(&proj, false)
-	assert.Len(syntaxErrs, 0)
-	semanticErrs := CheckProjectWarnings(&proj)
-	assert.Len(semanticErrs, 0)
-	strictErrs := CheckYamlStrict([]byte(exampleYml))
-	assert.Len(strictErrs, 1)
-	assert.Contains(strictErrs[0].Message, "field not_a_field not found")
-	assert.Equal(strictErrs[0].Level, Warning)
+	errors := CheckProjectErrors(&proj, false)
+	assert.Len(errors, 0)
+	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	assert.Len(warnings, 1)
+	assert.Contains(warnings[0].Message, "field not_a_field not found")
+	assert.Equal(warnings[0].Level, Warning)
 
 	yamlWithVariables := `
 variables:
@@ -2316,13 +2312,11 @@ buildvariants:
 	assert.Len(tg.Tasks, 1)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
-	syntaxErrs := CheckProjectErrors(&proj, false)
-	assert.Len(syntaxErrs, 1)
-	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
-	semanticErrs := CheckProjectWarnings(&proj)
-	assert.Len(semanticErrs, 0)
-	strictErrs := CheckYamlStrict([]byte(exampleYml))
-	assert.Len(strictErrs, 0)
+	errors := CheckProjectErrors(&proj, false)
+	assert.Len(errors, 1)
+	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", errors[0].Error())
+	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	assert.Len(warnings, 0)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
@@ -2368,15 +2362,13 @@ buildvariants:
 	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
 
-	syntaxErrs := CheckProjectErrors(&proj, false)
-	assert.Len(syntaxErrs, 1)
-	assert.Equal(syntaxErrs[0].Level, Error)
+	errors := CheckProjectErrors(&proj, false)
+	assert.Len(errors, 1)
+	assert.Equal(errors[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
-		syntaxErrs[0].Message)
-	semanticErrs := CheckProjectWarnings(&proj)
-	assert.Len(semanticErrs, 0)
-	strictErrs := CheckYamlStrict([]byte(exampleYml))
-	assert.Len(strictErrs, 0)
+		errors[0].Message)
+	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	assert.Len(warnings, 0)
 }
 
 func TestValidateCreateHosts(t *testing.T) {
@@ -2545,7 +2537,7 @@ tasks:
 	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs := checkLoggerConfig(project, &project.Tasks[0])
+	errs := checkTasks(project)
 	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
 	assert.Contains(errs.String(), "invalid task logger config: somethingElse is not a valid log sender")
 	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: commandLogger is not a valid log sender")
@@ -2604,7 +2596,7 @@ buildvariants:
 	assert.NotNil(pp)
 	errs := CheckProjectErrors(&proj, false)
 	assert.Len(errs, 0, "no errors were found")
-	errs = CheckProjectWarnings(&proj)
+	errs = CheckProjectWarnings(&proj, []byte(exampleYml))
 	assert.Len(errs, 2, "two warnings were found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 

@@ -618,7 +618,6 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	if catcher.HasErrors() {
 		return errors.Errorf("project validation failed: %s", catcher.Resolve())
 	}
-
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
 		return errors.Wrap(err, "can't marshall remote config file")
