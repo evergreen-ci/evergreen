@@ -1874,8 +1874,7 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 }
 
 // checkTasks checks whether project tasks contain warnings by checking if each task
-// has commannds, contains exec_timeout_sec, and has valid logger configs, dependencies and task names.
-// Also checks if project logger config is valid
+// has commands, contains exec_timeout_sec, and has valid logger configs, dependencies and task names.
 func checkTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	execTimeoutWarningAdded := false

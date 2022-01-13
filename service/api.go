@@ -671,15 +671,10 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
-		if len(errs) > 0 {
-			gimlet.WriteJSONError(w, errs)
-		} else {
-			gimlet.WriteJSON(w, validator.ValidationErrors{})
-		}
-		return
+	} else {
+		errs = append(errs, validator.CheckProjectWarnings(project, input.ProjectYaml)...)
 	}
 
-	errs = append(errs, validator.CheckProjectWarnings(project, input.ProjectYaml)...)
 	if len(errs) > 0 {
 		gimlet.WriteJSONError(w, errs)
 		return
