@@ -139,7 +139,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
-var longSyntaxValidators = []longValidator{
+var longErrorValidators = []longValidator{
 	validateTaskSyncCommands,
 }
 
@@ -212,7 +212,7 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 		validationErrs = append(validationErrs,
 			projectErrorValidator(project)...)
 	}
-	for _, longSyntaxValidator := range longSyntaxValidators {
+	for _, longSyntaxValidator := range longErrorValidators {
 		validationErrs = append(validationErrs,
 			longSyntaxValidator(project, includeLong)...)
 	}
@@ -255,7 +255,7 @@ func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
 	return validationErrs
 }
 
-// verify that the project configuration semantics and configuration syntax is valid
+// checks if the project configuration has errors
 func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
 	projectErrors := CheckProjectErrors(project, false)
@@ -782,12 +782,6 @@ func checkBVNames(project *model.Project, buildVariant *model.BuildVariant) Vali
 
 func checkLoggerConfig(project *model.Project, task *model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
-	if err := project.Loggers.IsValid(); err != nil {
-		errs = append(errs, ValidationError{
-			Message: errors.Wrap(err, "error in project-level logger config").Error(),
-			Level:   Warning,
-		})
-	}
 
 	for _, command := range task.Commands {
 		if err := command.Loggers.IsValid(); err != nil {
@@ -1289,7 +1283,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		if _, ok := names[tg.Name]; ok {
 			errs = append(errs, ValidationError{
 				Level:   Warning,
-				Message: fmt.Sprintf("task group '%s' is defined multiple times", tg.Name),
+				Message: fmt.Sprintf("task group '%s' is defined multiple times; only the first will be used", tg.Name),
 			})
 		}
 		names[tg.Name] = true
@@ -1878,6 +1872,9 @@ func parseS3PullParameters(c model.PluginCommandConf) (task, bv string, err erro
 	return task, bv, nil
 }
 
+// checkTasks checks whether project tasks contain warnings by checking if each task
+// has commannds, contains exec_timeout_sec, and has valid logger configs, dependencies and task names.
+// Also checks if project logger config is valid
 func checkTasks(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	execTimeoutWarningAdded := false
@@ -1893,7 +1890,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				},
 			)
 		}
-		if task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
+		if project.ExecTimeoutSecs == 0 && task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("project '%s' does not "+
@@ -1904,15 +1901,23 @@ func checkTasks(project *model.Project) ValidationErrors {
 			)
 			execTimeoutWarningAdded = true
 		}
-		if project.Loggers != nil {
-			errs = append(errs, checkLoggerConfig(project, &task)...)
-		}
+		errs = append(errs, checkLoggerConfig(project, &task)...)
 		errs = append(errs, checkTaskDependencies(project, &task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
+	}
+	if project.Loggers != nil {
+		if err := project.Loggers.IsValid(); err != nil {
+			errs = append(errs, ValidationError{
+				Message: errors.Wrap(err, "error in project-level logger config").Error(),
+				Level:   Warning,
+			})
+		}
 	}
 	return errs
 }
 
+// checkBuildVariants checks whether project build variants contain warnings by checking if each variant
+// has tasks, valid and non-duplicate names, and appropriate batch time settings.
 func checkBuildVariants(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	displayNames := map[string]int{}
