@@ -137,6 +137,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"NoopsWithAlreadyTerminatedIntentHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// The ID must be a valid intent host ID.
 			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
