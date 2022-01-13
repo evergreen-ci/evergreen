@@ -507,6 +507,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
+	err = dbModel.BbProjectIsValid(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error validating build baron config"))
+	}
+
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
 		if err = h.sc.UpdateProjectRevision(h.project, newRevision); err != nil {

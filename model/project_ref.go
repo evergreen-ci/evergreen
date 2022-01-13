@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -2253,6 +2254,53 @@ func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBar
 		return evergreen.BuildBaronSettings{}, false
 	}
 	return projectRef.BuildBaronSettings, true
+}
+
+func BbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error {
+	webHook, _, err := IsWebhookConfigured(projName, "")
+	if err != nil {
+		return err
+	}
+	webhookConfigured := webHook.Endpoint != ""
+
+	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
+		return nil
+	}
+	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
+		return errors.Errorf("Must provide projects to search")
+	}
+	if !webhookConfigured && proj.TicketCreateProject == "" {
+		return errors.Errorf("Must provide project to create tickets for")
+	}
+	if proj.BFSuggestionServer != "" {
+		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
+			return errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
+		}
+		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
+		}
+		if proj.BFSuggestionTimeoutSecs <= 0 {
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_timeout_secs must be positive", projName)
+		}
+	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
+	} else if proj.BFSuggestionTimeoutSecs != 0 {
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
+	}
+	// the webhook cannot be used if the default build baron creation and search is configured
+	if webhookConfigured {
+		if len(proj.TicketCreateProject) != 0 {
+			return errors.Errorf("The custom file ticket webhook and the build baron should not both be configured")
+		}
+		if _, err = url.Parse(webHook.Endpoint); err != nil {
+			return errors.Errorf("Failed to parse webhook endpoint for project")
+		}
+	}
+	return nil
 }
 
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
