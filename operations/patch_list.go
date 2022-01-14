@@ -15,7 +15,6 @@ func PatchList() cli.Command {
 	const (
 		numberFlagName      = "number"
 		showSummaryFlagName = "show-summary"
-		jsonFlagName        = "json"
 	)
 
 	return cli.Command{
