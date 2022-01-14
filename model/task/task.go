@@ -628,7 +628,7 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	}
 
 	if len(depIdsToQueryFor) > 0 {
-		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey, ActivatedKey))
+		newDeps, err := FindWithFields(ByIds(depIdsToQueryFor), StatusKey, DependsOnKey, ActivatedKey)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -806,8 +806,8 @@ func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, 
 	if len(statuses) == 0 {
 		statuses = evergreen.CompletedStatuses
 	}
-	return FindOne(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + RevisionOrderNumberKey}))
+	return FindOneWithSort(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes), []string{"-" + RevisionOrderNumberKey})
 }
 
 func (t *Task) cacheExpectedDuration() error {
@@ -939,7 +939,7 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 
 func GenerateNotRun() ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
-	return FindAll(db.Query(bson.M{
+	return FindAll(bson.M{
 		StatusKey:         evergreen.TaskStarted,                              // task is running
 		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
 		GenerateTaskKey:   true,                                               // task contains generate.tasks command
@@ -947,7 +947,7 @@ func GenerateNotRun() ([]Task, error) {
 		"$or": []bson.M{
 			bson.M{GeneratedJSONAsStringKey: bson.M{"$exists": true}}, // config has been posted by generate.tasks command
 		},
-	}))
+	})
 }
 
 // SetGeneratedJSON sets JSON data to generate tasks from.
@@ -1217,7 +1217,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		StatusKey: evergreen.TaskUndispatched,
 	}
 
-	tasks, err := FindAll(db.Query(q).WithFields(IdKey, DependsOnKey, ExecutionKey))
+	tasks, err := FindAllWithFields(q, IdKey, DependsOnKey, ExecutionKey)
 	if err != nil {
 		return errors.Wrap(err, "can't get tasks to deactivate")
 	}
@@ -1272,7 +1272,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 	missingTaskMap := make(map[string]Task)
 	if len(tasksToGet) > 0 {
 		var missingTasks []Task
-		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
+		missingTasks, err = FindAllWithFields(bson.M{IdKey: bson.M{"$in": tasksToGet}}, ActivatedKey)
 		if err != nil {
 			return errors.Wrap(err, "can't get missing tasks")
 		}
@@ -1673,9 +1673,9 @@ func (t *Task) SetDisabledPriority(user string) error {
 		return errors.Wrap(err, "can't update priority")
 	}
 
-	tasks, err := FindAll(db.Query(bson.M{
+	tasks, err := FindAllWithFields(bson.M{
 		IdKey: bson.M{"$in": ids},
-	}).WithFields(ExecutionKey))
+	}, ExecutionKey)
 	if err != nil {
 		return errors.Wrap(err, "can't find matching tasks")
 	}
@@ -1724,7 +1724,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := Find(ByIds(tasksToFind).WithFields(IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey))
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get dependencies")
 	}
@@ -1749,9 +1749,9 @@ func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Ta
 	}
 
 	// find the tasks that depend on these tasks
-	dependOnUsTasks, err := FindAll(db.Query(bson.M{
+	dependOnUsTasks, err := FindAllWithFields(bson.M{
 		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): bson.M{"$in": tasks},
-	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey))
+	}, IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get dependencies")
 	}
@@ -2302,7 +2302,7 @@ func FindSchedulable(distroID string) ([]Task, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	return Find(db.Query(query))
+	return Find(query)
 }
 
 func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
@@ -2336,7 +2336,7 @@ func FindSchedulableForAlias(id string) ([]Task, error) {
 	// group might be assigned to different hosts.
 	q[TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
 
-	return FindAll(db.Query(q))
+	return FindAll(q)
 }
 
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
@@ -2627,7 +2627,7 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	}
 	missingTaskMap := make(map[string]*Task)
 	if len(tasksToFetch) > 0 {
-		missingTasks, err := FindAll(ByIds(tasksToFetch).WithFields(DependsOnKey))
+		missingTasks, err := FindAllWithFields(ByIds(tasksToFetch), DependsOnKey)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get tasks missing from map")
 		}
@@ -2860,24 +2860,24 @@ func (t *Task) CircularDependencies() error {
 
 func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
 	okStatusSet := []string{AllStatuses, t.Status}
-	query := db.Query(bson.M{
+	query := bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
 			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
 			DependencyUnattainableKey: false,
 		},
-		}})
+		}}
 
 	return FindAll(query)
 }
 
 func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
-	query := db.Query(bson.M{
+	query := bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
 			DependencyTaskIdKey:       t.Id,
 			DependencyUnattainableKey: true,
 		},
-		}})
+		}}
 
 	return FindAll(query)
 }
@@ -3589,10 +3589,10 @@ func (t *Task) hasCedarResults() bool {
 		if t.Archived {
 			// This is a display task from the old task collection,
 			// we need to look there for its execution tasks.
-			execTasks, err = FindAllOld(db.Query(bson.M{
+			execTasks, err = FindAllOld(bson.M{
 				OldTaskIdKey: bson.M{"$in": t.ExecutionTasks},
 				ExecutionKey: t.Execution,
-			}))
+			})
 		} else {
 			execTasks, err = FindAll(ByIds(t.ExecutionTasks))
 		}

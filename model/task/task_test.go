@@ -1075,7 +1075,7 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(taskDoc.Archive())
 	taskDoc.Execution += 1
 
-	tasks, err := FindOld(ByOldTaskID("task"))
+	tasks, err := FindAllOldByIds([]string{"task"})
 	assert.NoError(err)
 	assert.Len(tasks, 2)
 	assert.Equal(0, tasks[0].Execution)
@@ -1099,7 +1099,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 	oldTask := Task{Id: MakeOldID("t1", 0)}
 	require.NoError(t, db.Insert(OldCollection, &oldTask))
 
-	foundTasks, err := FindAllFirstExecution(db.Query(nil))
+	foundTasks, err := FindAllFirstExecution(nil)
 	assert.NoError(t, err)
 	assert.Len(t, foundTasks, 3)
 	expectedIDs := []string{"t0", MakeOldID("t1", 0), "t2"}
@@ -1803,7 +1803,7 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 	}
 
 	q := scheduleableTasksQuery()
-	schedulableTasks, err := FindAll(db.Query(q))
+	schedulableTasks, err := FindAll(q)
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)
 }
@@ -2119,7 +2119,7 @@ func TestDeactivateDependencies(t *testing.T) {
 	err := DeactivateDependencies([]string{"t0"}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(db.Q{})
+	dbTasks, err := FindAll(nil)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
@@ -2155,7 +2155,7 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 	err := ActivateDeactivatedDependencies([]string{"t0"}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(db.Q{})
+	dbTasks, err := FindAll(nil)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
@@ -2215,7 +2215,7 @@ func TestActivateTasks(t *testing.T) {
 	err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(db.Q{})
+	dbTasks, err := FindAll(nil)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
@@ -2251,7 +2251,7 @@ func TestDeactivateTasks(t *testing.T) {
 	err := DeactivateTasks([]Task{tasks[0]}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(db.Q{})
+	dbTasks, err := FindAll(nil)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
@@ -2282,7 +2282,7 @@ func TestSetDisabledPriority(t *testing.T) {
 
 	assert.NoError(t, tasks[0].SetDisabledPriority(""))
 
-	dbTasks, err := FindAll(db.Q{})
+	dbTasks, err := FindAll(nil)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 3)
 
