@@ -223,7 +223,7 @@ func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request)
 	if err != nil {
 		return errors.Wrap(err, "error finding project")
 	}
-	if h.project.RepoRefId != "" {
+	if h.project.UseRepoSettings() {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "project is already attached to repo",
@@ -273,7 +273,7 @@ func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Reques
 	if err != nil {
 		return errors.Wrap(err, "error finding project")
 	}
-	if h.project.RepoRefId == "" {
+	if !h.project.UseRepoSettings() {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "project isn't attached to a repo",
