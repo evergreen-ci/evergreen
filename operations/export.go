@@ -23,7 +23,6 @@ func Export() cli.Command {
 		statFlagName        = "stat"
 		daysFlagName        = "days"
 		granularityFlagName = "granularity"
-		jsonFlagName        = "json"
 
 		statHostUtilization  = "host"
 		statScheduledToStart = "avg"

@@ -1018,7 +1018,7 @@ func hostList() cli.Command {
 
 func printHosts(hosts []*restModel.APIHost) {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
+		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
 			utility.FromStringPtr(h.Id),
 			utility.FromStringPtr(h.DisplayName),
 			utility.FromStringPtr(h.Distro.Id),
@@ -1035,9 +1035,9 @@ func printHostsJSON(hosts []*restModel.APIHost) {
 		Name             string `json:"name"`
 		Distro           string `json:"distro"`
 		Status           string `json:"status"`
-		HostName         string `json:"hostName"`
+		HostName         string `json:"host_name"`
 		User             string `json:"user"`
-		AvailabilityZone string `json:"availabilityZone"`
+		AvailabilityZone string `json:"availability_zone"`
 	}
 	hostResults := []hostResult{}
 	for _, h := range hosts {
