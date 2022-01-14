@@ -522,7 +522,6 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	if err = p.RemoveFromRepoScope(); err != nil {
 		return err
 	}
-	p.RepoRefId = ""
 
 	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
 	if err != nil {
@@ -616,7 +615,6 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		if err := p.RemoveFromRepoScope(); err != nil {
 			return errors.Wrapf(err, "error removing project from old repo scope")
 		}
-		p.RepoRefId = "" // will reassign this in add
 		if err := p.AddToRepoScope(u); err != nil {
 			return errors.Wrapf(err, "error addding project to new repo scope")
 		}
@@ -649,8 +647,11 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 	if err := removeViewRepoPermissionsFromBranchAdmins(p.RepoRefId, p.Admins); err != nil {
 		return errors.Wrap(err, "error removing view repo permissions from branch admins")
 	}
-	return errors.Wrapf(rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id),
-		"error removing from repo '%s' admin scope", p.Repo)
+	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+		return errors.Wrapf(err, "error removing from repo '%s' admin scope", p.Repo)
+	}
+	p.RepoRefId = ""
+	return nil
 }
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {

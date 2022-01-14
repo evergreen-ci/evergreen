@@ -192,6 +192,106 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// POST /rest/v2/projects/{project_id}/attach_to_repo
+
+type attachProjectToRepoHandler struct {
+	project *dbModel.ProjectRef
+	user    *user.DBUser
+
+	sc data.Connector
+}
+
+func makeAttachProjectToRepoHandler(sc data.Connector) gimlet.RouteHandler {
+	return &attachProjectToRepoHandler{
+		sc: sc,
+	}
+}
+
+func (h *attachProjectToRepoHandler) Factory() gimlet.RouteHandler {
+	return &attachProjectToRepoHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the project's identifier from the http request.
+func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request) error {
+	projectIdentifier := gimlet.GetVars(r)["project_id"]
+	h.user = MustHaveUser(ctx)
+
+	var err error
+	h.project, err = h.sc.FindProjectById(projectIdentifier, false, false)
+	if err != nil {
+		return errors.Wrap(err, "error finding project")
+	}
+	if h.project.UseRepoSettings() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "project is already attached to repo",
+		}
+	}
+	return nil
+}
+
+func (h *attachProjectToRepoHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := h.project.AttachToRepo(h.user); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/projects/{project_id}/detach_from_repo
+
+type detachProjectFromRepoHandler struct {
+	project *dbModel.ProjectRef
+	user    *user.DBUser
+
+	sc data.Connector
+}
+
+func makeDetachProjectFromRepoHandler(sc data.Connector) gimlet.RouteHandler {
+	return &detachProjectFromRepoHandler{
+		sc: sc,
+	}
+}
+
+func (h *detachProjectFromRepoHandler) Factory() gimlet.RouteHandler {
+	return &detachProjectFromRepoHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the project's identifier from the http request.
+func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Request) error {
+	projectIdentifier := gimlet.GetVars(r)["project_id"]
+	h.user = MustHaveUser(ctx)
+
+	var err error
+	h.project, err = h.sc.FindProjectById(projectIdentifier, false, false)
+	if err != nil {
+		return errors.Wrap(err, "error finding project")
+	}
+	if !h.project.UseRepoSettings() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "project isn't attached to a repo",
+		}
+	}
+	return nil
+}
+
+func (h *detachProjectFromRepoHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := h.project.DetachFromRepo(h.user); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // PATCH /rest/v2/projects/{project_id}
 
 type projectIDPatchHandler struct {
@@ -435,31 +535,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// if owner/repo has changed or we're toggling repo settings off, update scope
-	if h.newProjectRef.Owner != h.originalProject.Owner || h.newProjectRef.Repo != h.originalProject.Repo ||
-		(!h.newProjectRef.UseRepoSettings() && h.originalProject.UseRepoSettings()) {
+	// if owner/repo has changed and the project is attached to repo, update scope and repo accordingly
+	if h.newProjectRef.UseRepoSettings() && h.ownerRepoChanged() {
 		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project from old repo scope"))
 		}
-		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
+		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil { // will re-add using the new owner/repo
 			return gimlet.MakeJSONInternalErrorResponder(err)
-		}
-	}
-
-	// if the user explicitly set useRepoSettings, update the repo accordingly
-	if h.apiNewProjectRef.UseRepoSettings != nil {
-		useRepoSettings := utility.FromBoolPtr(h.apiNewProjectRef.UseRepoSettings)
-		// the user set it to false, and it was previously true - remove
-		if !useRepoSettings && h.newProjectRef.RepoRefId != "" {
-			if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(err)
-			}
-			h.newProjectRef.RepoRefId = ""
-			// the user set it to true, and it was previously false - add
-		} else if useRepoSettings && h.newProjectRef.RepoRefId == "" {
-			if err = h.newProjectRef.AddToRepoScope(h.user); err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(err)
-			}
 		}
 	}
 
@@ -516,6 +598,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
 	}
 	return responder
+}
+
+func (h projectIDPatchHandler) ownerRepoChanged() bool {
+	return h.newProjectRef.Owner != h.originalProject.Owner || h.newProjectRef.Repo != h.originalProject.Repo
 }
 
 // verify for a given alias that either the user has added a new definition or there is a pre-existing definition
