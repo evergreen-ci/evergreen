@@ -140,8 +140,8 @@ func GetTaskJSONById(taskId, name string) (TaskJSON, error) {
 // GetTaskJSONForVariant finds a task by name and variant and finds
 // the document in the json collection associated with that task's id.
 func GetTaskJSONForVariant(version, variantId, taskName, name string) (TaskJSON, error) {
-	foundTask, err := task.FindOne(db.Query(bson.M{task.VersionKey: version, task.BuildVariantKey: variantId,
-		task.DisplayNameKey: taskName}))
+	foundTask, err := task.FindOne(bson.M{task.VersionKey: version, task.BuildVariantKey: variantId,
+		task.DisplayNameKey: taskName})
 	if err != nil {
 		return TaskJSON{}, err
 	}

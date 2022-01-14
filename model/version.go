@@ -206,7 +206,7 @@ func (v *Version) UpdateStatus(newStatus string) error {
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
 func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
-	tasks, err := task.FindAllFirstExecution(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	tasks, err := task.FindAllFirstExecutionWithFields(task.ByVersion(v.Id), task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "can't get tasks for version '%s'", v.Id)
 	}

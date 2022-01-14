@@ -1034,7 +1034,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks1.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks2.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks3.InsertUnordered(context.Background()), ShouldBeNil)
-			dbTasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
+			dbTasks, err := task.FindWithSort(nil, []string{task.DisplayNameKey, task.BuildVariantKey})
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 9)
 
@@ -2197,7 +2197,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	// t0 should still be activated because it's a dependency of a task that is being activated
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t0"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAll(nil)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, task := range dbTasks {
@@ -2228,7 +2228,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t3"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAll(nil)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, dbTask := range dbTasks {
@@ -2263,7 +2263,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	// ignore tasks is ignored for deactivating
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, false, []string{"t0", "t1", "t2"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAll(nil)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 3)
 	for _, task := range dbTasks {

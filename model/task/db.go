@@ -1308,8 +1308,27 @@ func FindMergeTaskForVersion(versionId string) (*Task, error) {
 
 // FindOld returns all non-display tasks from the old tasks collection that
 // satisfy the given query.
-func FindOld(query db.Q) ([]Task, error) {
+func FindOld(filter bson.M) ([]Task, error) {
 	tasks := []Task{}
+	query := db.Query(filter)
+	err := db.FindAllQ(OldCollection, query, &tasks)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	// Remove display tasks from results.
+	for i := len(tasks) - 1; i >= 0; i-- {
+		t := tasks[i]
+		if t.DisplayOnly {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+		}
+	}
+	return tasks, err
+}
+
+func FindOldWithFields(filter bson.M, fields ...string) ([]Task, error) {
+	tasks := []Task{}
+	query := db.Query(filter).WithFields(fields...)
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1481,6 +1500,17 @@ func FindAllWithFields(filter bson.M, fields ...string) ([]Task, error) {
 	}
 	return tasks, err
 }
+
+func FindAllWithSort(filter bson.M, sort []string) ([]Task, error) {
+	tasks := []Task{}
+	query := db.Query(filter).Sort(sort)
+	err := db.FindAllQ(Collection, query, &tasks)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return tasks, err
+}
+
 
 // Find returns really all tasks that satisfy the query.
 func FindAllOld(filter bson.M) ([]Task, error) {

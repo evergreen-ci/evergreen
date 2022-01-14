@@ -1743,7 +1743,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.Len(t, cq.Queue, 1)
 
 	// check that all tasks are now in the correct state
-	tasks, err := task.FindAll(db.Q{})
+	tasks, err := task.FindAll(nil)
 	assert.NoError(t, err)
 	aborted := 0
 	finished := 0

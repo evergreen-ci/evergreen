@@ -100,14 +100,11 @@ func (ctx *Context) populateTaskBuildVersion(taskId, buildId, versionId string) 
 		ctx.Task, err = task.FindOneId(taskId)
 		if err != nil || ctx.Task == nil {
 			// if no task found, see if this is an old task
-			var tasks []task.Task
-			tasks, err = task.Findold(taskId)
+			task, err := task.FindOneOldId(taskId)
 			if err != nil {
 				return "", err
 			}
-			if len(tasks) == 1 {
-				ctx.Task = &tasks[0]
-			}
+			ctx.Task = task
 		}
 
 		if ctx.Task != nil {

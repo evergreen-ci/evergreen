@@ -260,7 +260,7 @@ func CreateAllHostUtilizationBuckets(daysBack, granularity int) ([]HostUtilizati
 	dynamicBuckets, _ := CreateHostBuckets(dynamicHosts, bounds)
 	staticBuckets, _ := CreateHostBuckets(staticHosts, bounds)
 
-	tasks, err := task.Find(task.ByTimeRun(bounds.StartTime, bounds.EndTime).WithFields(task.StartTimeKey, task.FinishTimeKey, task.HostIdKey))
+	tasks, err := task.FindWithFields(task.ByTimeRun(bounds.StartTime, bounds.EndTime), task.StartTimeKey, task.FinishTimeKey, task.HostIdKey)
 	if err != nil {
 		return nil, err
 	}

@@ -676,7 +676,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.Equal(5, pp.ConfigUpdateNumber)
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
-	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
+	tasks, err := task.FindAll(bson.M{task.VersionKey: v.Id}) // with display
 	s.NoError(err)
 	s.Len(builds, 2)
 	s.Len(tasks, 7)
