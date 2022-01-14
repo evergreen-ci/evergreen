@@ -548,21 +548,26 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 
 // Ensures that:
 // 1. a referenced task within a buildvariant task object exists in
-// the set of project tasks
+// the set of project tasks and is not referenced in the task group of the buildvariant
 // 2. any referenced distro exists within the current setting's distro directory
 func ensureReferentialIntegrity(project *model.Project, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
+	tgNameTasksMap := map[string][]string{}
 	for _, task := range project.Tasks {
 		allTaskNames[task.Name] = true
 	}
 	for _, taskGroup := range project.TaskGroups {
 		allTaskNames[taskGroup.Name] = true
+		tasks := []string{}
+		tasks = append(tasks, taskGroup.Tasks...) // extracts all tasks in a task group
+		tgNameTasksMap[taskGroup.Name] = tasks
 	}
 
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
+		revTgNameTasksMap := map[string]string{}
 		for _, task := range buildVariant.Tasks {
 			if _, ok := allTaskNames[task.Name]; !ok {
 				if task.Name == "" {
@@ -585,6 +590,28 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				}
 			}
 			buildVariantTasks[task.Name] = true
+
+			if task.IsGroup {
+				for _, tgTask := range tgNameTasksMap[task.Name] {
+					if _, ok := buildVariantTasks[tgTask]; ok {
+						errs = append(errs,
+							ValidationError{
+								Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in '%s' task group",
+									tgTask, buildVariant.Name, task.Name),
+							})
+					} else {
+						// store task for future look up - if the task exits after this task group
+						revTgNameTasksMap[tgTask] = task.Name
+					}
+				}
+			} else if tg, ok := revTgNameTasksMap[task.Name]; ok {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in '%s' task group",
+							task.Name, buildVariant.Name, tg),
+					})
+			}
+
 			for _, distro := range task.RunOn {
 				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
@@ -1236,9 +1263,7 @@ func validateParameters(p *model.Project) ValidationErrors {
 
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-
 	for _, tg := range p.TaskGroups {
-
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{

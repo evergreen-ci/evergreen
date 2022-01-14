@@ -3781,6 +3781,152 @@ func TestParseS3PullParameters(t *testing.T) {
 	}
 }
 
+func TestValidateTaskGroupsInBV(t *testing.T) {
+	tests := map[string]struct {
+		project        model.Project
+		expectErr      bool
+		expectedErrMsg string
+	}{
+		"Task group before task": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task1-and-task2", IsGroup: true},
+							{Name: "task1"},
+						},
+					},
+				},
+			},
+			expectErr:      true,
+			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in 'task1-and-task2' task group",
+		},
+		"Task group after task": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task2"},
+							{Name: "task1-and-task2", IsGroup: true},
+						},
+					},
+				},
+			},
+			expectErr:      true,
+			expectedErrMsg: "task 'task2' in build variant 'ubuntu' is already referenced in 'task1-and-task2' task group",
+		},
+		"Task group and task not in task group": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task3"},
+							{Name: "task1-and-task2", IsGroup: true},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		"No task group": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task3"},
+							{Name: "task1"},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+	}
+	for testName, testCase := range tests {
+		t.Run(testName, func(t *testing.T) {
+			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
+
+			if testCase.expectErr {
+				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
+			} else {
+				assert.Equal(t, len(errs), 0, "there was an error validating task group in build variant")
+			}
+		})
+	}
+}
+
 func TestBVsWithTasksThatCallCommand(t *testing.T) {
 	findCmdByDisplayName := func(cmds []model.PluginCommandConf, name string) *model.PluginCommandConf {
 		for _, cmd := range cmds {
