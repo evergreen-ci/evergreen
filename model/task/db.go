@@ -1439,7 +1439,7 @@ func Find(filter bson.M) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
-		filter[DisplayOnlyKey] = false
+		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter)
 	err := db.FindAllQ(Collection, query, &tasks)
@@ -1454,7 +1454,7 @@ func FindWithFields(filter bson.M, fields ...string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
-		filter[DisplayOnlyKey] = false
+		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).WithFields(fields...)
 	err := db.FindAllQ(Collection, query, &tasks)
@@ -1469,7 +1469,7 @@ func FindWithSort(filter bson.M, sort []string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
-		filter[DisplayOnlyKey] = false
+		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).Sort(sort)
 	err := db.FindAllQ(Collection, query, &tasks)
@@ -1510,7 +1510,6 @@ func FindAllWithSort(filter bson.M, sort []string) ([]Task, error) {
 	}
 	return tasks, err
 }
-
 
 // Find returns really all tasks that satisfy the query.
 func FindAllOld(filter bson.M) ([]Task, error) {
