@@ -1093,35 +1093,6 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
-func UpdateVersionStatusForTask(t *task.Task) error {
-	taskVersion, err := VersionFindOneId(t.Version)
-	if err != nil {
-		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
-	}
-	if taskVersion == nil {
-		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
-	}
-	newVersionStatus, err := UpdateVersionStatus(taskVersion)
-	if err != nil {
-		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
-	}
-
-	if evergreen.IsPatchRequester(taskVersion.Requester) {
-		p, err := patch.FindOneId(taskVersion.Id)
-		if err != nil {
-			return errors.Wrapf(err, "getting patch for version '%s'", taskVersion.Id)
-		}
-		if p == nil {
-			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
-		}
-		if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
-			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
-		}
-	}
-
-	return nil
-}
-
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
 func MarkStart(t *task.Task, updates *StatusChanges) error {
 	var err error

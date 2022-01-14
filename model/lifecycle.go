@@ -74,6 +74,13 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		return errors.Wrapf(err, "can't set activation for builds in '%s'", versionId)
 	}
 
+	for _, build := range builds {
+		_, err := UpdateBuildStatus(&build)
+		if err != nil {
+			return errors.Wrapf(err, "updating build '%s' status", build.Id)
+		}
+	}
+
 	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, nil, caller),
 		"can't set activation for tasks in version '%s'", versionId)
 }
@@ -356,12 +363,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 				restartIds = append(restartIds, t.ExecutionTasks...)
 			}
 		}
-	}
-	if len(tasksToRestart) > 0 {
-		if err := UpdateVersionStatusForTask(&tasksToRestart[0]); err != nil {
-			return errors.Wrap(err, "problem updating build and version status for task")
-		}
-
 	}
 
 	for tg, t := range taskGroupsToCheck {
