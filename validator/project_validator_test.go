@@ -3913,11 +3913,47 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 			},
 			expectErr: false,
 		},
+		"Multiple task group": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+					{
+						Name:  "task1-and-task3",
+						Tasks: []string{"task1", "task3"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task1-and-task2", IsGroup: true},
+							{Name: "task1-and-task3", IsGroup: true},
+						},
+					},
+				},
+			},
+			expectErr:      true,
+			expectedErrMsg: "task 'task1' in task group 'task1-and-task3' is referenced in 'task1-and-task2' task group in build variant 'ubuntu'",
+		},
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
 			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
-
+			fmt.Println("Errors: ", errs)
 			if testCase.expectErr {
 				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
 			} else {

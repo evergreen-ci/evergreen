@@ -568,6 +568,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		revTgNameTasksMap := map[string]string{}
+		taskInTaskGroup := map[string]string{}
 		for _, task := range buildVariant.Tasks {
 			if _, ok := allTaskNames[task.Name]; !ok {
 				if task.Name == "" {
@@ -576,6 +577,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 							Message: fmt.Sprintf("tasks for buildvariant '%s' "+
 								"in project '%s' must each have a name field",
 								project.Identifier, buildVariant.Name),
+							Level: Error,
 						},
 					)
 				} else {
@@ -585,6 +587,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 								"project '%s' references a non-existent "+
 								"task '%s'", buildVariant.Name,
 								project.Identifier, task.Name),
+							Level: Error,
 						},
 					)
 				}
@@ -598,17 +601,28 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 							ValidationError{
 								Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in '%s' task group",
 									tgTask, buildVariant.Name, task.Name),
+								Level: Error,
+							})
+					} else if tg, ok := taskInTaskGroup[tgTask]; ok {
+						errs = append(errs,
+							ValidationError{
+								Message: fmt.Sprintf("task '%s' in task group '%s' is referenced in '%s' task group in build variant '%s'",
+									tgTask, task.Name, tg, buildVariant.Name),
+								Level: Error,
 							})
 					} else {
 						// store task for future look up - if the task exits after this task group
 						revTgNameTasksMap[tgTask] = task.Name
+						// map used for look up if a variant has multiple task groups and a task exists in more than one group
+						taskInTaskGroup[tgTask] = task.Name
 					}
 				}
-			} else if tg, ok := revTgNameTasksMap[task.Name]; ok {
+			} else if taskGroupName, ok := revTgNameTasksMap[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in '%s' task group",
-							task.Name, buildVariant.Name, tg),
+							task.Name, buildVariant.Name, taskGroupName),
+						Level: Error,
 					})
 			}
 
