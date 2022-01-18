@@ -129,10 +129,6 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 		return errors.Wrapf(err, "can't set build activation to %t for build '%s'", active, buildId)
 	}
 
-	if err := UpdateVersionandPatchStatusForBuild([]string{buildId}); err != nil {
-		return errors.Wrapf(err, "can't update status for build '%s'", buildId)
-	}
-
 	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, nil, caller),
 		"can't set task activation for build '%s'", buildId)
 }
@@ -179,6 +175,10 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if err = task.DeactivateTasks(tasks, caller); err != nil {
 			return errors.Wrap(err, "can't deactivate tasks")
 		}
+	}
+
+	if err := UpdateVersionandPatchStatusForBuild(buildIds); err != nil {
+		return errors.Wrapf(err, "can't update status for builds in '%s'", buildIds)
 	}
 
 	return nil
