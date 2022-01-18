@@ -17,6 +17,7 @@ var (
 	CreateTimeKey = bsonutil.MustHaveTag(Entry{}, "CreateTime")
 	NameKey       = bsonutil.MustHaveTag(File{}, "Name")
 	LinkKey       = bsonutil.MustHaveTag(File{}, "Link")
+	AwsSecretKey  = "aws_secret"
 )
 
 type TaskIDAndExecution struct {
@@ -79,9 +80,9 @@ func ByBuildId(id string) db.Q {
 
 func BySecret(secret string) db.Q {
 	return db.Query(bson.M{
-		"files": bson.M{
+		FilesKey: bson.M{
 			"$elemMatch": bson.M{
-				"aws_secret": secret,
+				AwsSecretKey: secret,
 			},
 		},
 	})
@@ -115,37 +116,36 @@ func (e Entry) Upsert() error {
 }
 
 func (e Entry) Update() error {
-	err := db.Update(
-		Collection,
-		bson.M{
-			TaskIdKey:    e.TaskId,
-			TaskNameKey:  e.TaskDisplayName,
-			BuildIdKey:   e.BuildId,
-			ExecutionKey: e.Execution,
-		},
-		bson.M{
-			"$set": bson.M{
-				FilesKey: e.Files,
-			},
-			"$setOnInsert": bson.M{
-				ExecutionKey: e.Execution,
-			},
-		},
-	)
-	if err != nil && e.Execution == 0 {
+	var err error
+	if e.Execution == 0 {
 		err = db.Update(
 			Collection,
 			bson.M{
 				TaskIdKey:   e.TaskId,
 				TaskNameKey: e.TaskDisplayName,
 				BuildIdKey:  e.BuildId,
+				"$or": []bson.M{
+					bson.M{ExecutionKey: bson.M{"$exists": false}},
+					bson.M{ExecutionKey: 0},
+				},
 			},
 			bson.M{
 				"$set": bson.M{
 					FilesKey: e.Files,
 				},
-				"$setOnInsert": bson.M{
-					ExecutionKey: e.Execution,
+			})
+	} else {
+		err = db.Update(
+			Collection,
+			bson.M{
+				TaskIdKey:    e.TaskId,
+				TaskNameKey:  e.TaskDisplayName,
+				BuildIdKey:   e.BuildId,
+				ExecutionKey: e.Execution,
+			},
+			bson.M{
+				"$set": bson.M{
+					FilesKey: e.Files,
 				},
 			},
 		)

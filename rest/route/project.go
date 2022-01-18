@@ -1071,6 +1071,7 @@ type projectVarsPutInput struct {
 	ToReplace   string `json:"to_replace"`
 	Replacement string `json:"replacement"`
 	DryRun      bool   `json:"dry_run"`
+	RotateFiles bool   `json:"rotate_files"`
 }
 
 type projectVarsPutHandler struct {
@@ -1121,7 +1122,7 @@ func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error updating projects with matching keys"))
 	}
-	_, err = artifact.RotateSecrets(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.DryRun)
+	_, err = artifact.RotateSecrets(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.RotateFiles)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error updating artifact files with matching keys"))
