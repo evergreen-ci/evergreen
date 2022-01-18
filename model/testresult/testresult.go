@@ -178,7 +178,7 @@ type TestResultsFilterSortPaginateOpts struct {
 	TestName string
 }
 
-var testResultsIndex = bson.D{
+var TestResultsIndex = bson.D{
 	{
 		Key:   TaskIDKey,
 		Value: 1,
@@ -256,7 +256,7 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	if opts.Limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
-	err := db.AggregateWithHint(Collection, pipeline, testResultsIndex, &tests)
+	err := db.AggregateWithHint(Collection, pipeline, TestResultsIndex, &tests)
 	if err != nil {
 		return nil, err
 	}
