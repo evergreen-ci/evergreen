@@ -421,13 +421,15 @@ var (
 		ProviderNameDocker,
 	}
 
+	// ProviderSpotEc2Type includes all cloud provider types that manage EC2
+	// spot instances.
 	ProviderSpotEc2Type = []string{
 		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
 	}
 
-	// ProviderEC2Type includes all that cloud provider types that manage EC2
+	// ProviderEc2Type includes all cloud provider types that manage EC2
 	// instances.
 	ProviderEc2Type = []string{
 		ProviderNameEc2Auto,
