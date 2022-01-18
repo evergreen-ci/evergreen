@@ -554,14 +554,12 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
-	allTaskGroups := map[string]bool{}
 	tgNameTasksMap := map[string][]string{}
 	for _, task := range project.Tasks {
 		allTaskNames[task.Name] = true
 	}
 	for _, taskGroup := range project.TaskGroups {
 		allTaskNames[taskGroup.Name] = true
-		allTaskGroups[taskGroup.Name] = true
 		tasks := []string{}
 		tasks = append(tasks, taskGroup.Tasks...) // extracts all tasks in a task group
 		tgNameTasksMap[taskGroup.Name] = tasks
@@ -596,7 +594,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 			}
 			buildVariantTasks[task.Name] = true
 
-			if _, ok := allTaskGroups[task.Name]; !ok {
+			if _, ok := tgNameTasksMap[task.Name]; !ok {
 				for _, tgTask := range tgNameTasksMap[task.Name] {
 					if _, ok := buildVariantTasks[tgTask]; ok {
 						errs = append(errs,
