@@ -54,6 +54,50 @@ type VersionToRestart struct {
 	TaskIds   []string `json:"task_ids"`
 }
 
+func UpdateVersionandPatchStatusForBuild(buildIds []string) error {
+	builds, err := build.Find(build.ByIds(buildIds))
+	if err != nil {
+		return errors.Wrapf(err, "fetching builds")
+	}
+	for _, build := range builds {
+		buildStatusChanged, err := UpdateBuildStatus(&build)
+		if err != nil {
+			return errors.Wrapf(err, "updating build '%s' status", build.Id)
+		}
+		// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
+		if !buildStatusChanged {
+			continue
+		}
+
+		buildVersion, err := VersionFindOneId(build.Version)
+		if err != nil {
+			return errors.Wrapf(err, "getting version '%s' for build '%s'", build.Version, build.Id)
+		}
+		if buildVersion == nil {
+			return errors.Errorf("no version '%s' found for build '%s'", build.Version, build.Id)
+		}
+		newVersionStatus, err := UpdateVersionStatus(buildVersion)
+		if err != nil {
+			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
+		}
+
+		if evergreen.IsPatchRequester(buildVersion.Requester) {
+			p, err := patch.FindOneId(buildVersion.Id)
+			if err != nil {
+				return errors.Wrapf(err, "getting patch for version '%s'", buildVersion.Id)
+			}
+			if p == nil {
+				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
+			}
+			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
@@ -74,13 +118,6 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		return errors.Wrapf(err, "can't set activation for builds in '%s'", versionId)
 	}
 
-	for _, build := range builds {
-		_, err := UpdateBuildStatus(&build)
-		if err != nil {
-			return errors.Wrapf(err, "updating build '%s' status", build.Id)
-		}
-	}
-
 	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, nil, caller),
 		"can't set activation for tasks in version '%s'", versionId)
 }
@@ -90,6 +127,10 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 func SetBuildActivation(buildId string, active bool, caller string) error {
 	if err := build.UpdateActivation([]string{buildId}, active, caller); err != nil {
 		return errors.Wrapf(err, "can't set build activation to %t for build '%s'", active, buildId)
+	}
+
+	if err := UpdateVersionandPatchStatusForBuild([]string{buildId}); err != nil {
+		return errors.Wrapf(err, "can't update status for build '%s'", buildId)
 	}
 
 	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, nil, caller),
