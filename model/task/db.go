@@ -294,6 +294,12 @@ func ByOldTaskID(id string) bson.M {
 	}
 }
 
+func ByOldTaskIDs(ids []string) bson.M {
+	return bson.M{
+		OldTaskIdKey: bson.M{"$in": ids},
+	}
+}
+
 // ByIds creates a query that finds all tasks with the given ids.
 func ByIds(ids []string) bson.M {
 	return bson.M{
@@ -1185,7 +1191,7 @@ func FindOneOldWithFields(filter bson.M, fields ...string) (*Task, error) {
 
 func FindOneOldId(id string) (*Task, error) {
 	filter := bson.M{
-		OldTaskIdKey: id,
+		IdKey: id,
 	}
 	return FindOneOld(filter)
 }
@@ -1546,7 +1552,7 @@ func FindAllOld(filter bson.M) ([]Task, error) {
 
 func FindAllOldByIds(ids []string) ([]Task, error) {
 	tasks := []Task{}
-	query := db.Query(ByIds(ids))
+	query := db.Query(ByOldTaskIDs(ids))
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
