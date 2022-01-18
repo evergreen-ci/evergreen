@@ -1552,7 +1552,7 @@ func FindAllOld(filter bson.M) ([]Task, error) {
 
 func FindAllOldByIds(ids []string) ([]Task, error) {
 	tasks := []Task{}
-	query := db.Query(ByOldTaskIDs(ids))
+	query := db.Query(ByIds(ids))
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
