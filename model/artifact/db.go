@@ -132,12 +132,7 @@ func (e Entry) Update() error {
 
 	err := db.Update(
 		Collection,
-		bson.M{
-			TaskIdKey:    e.TaskId,
-			TaskNameKey:  e.TaskDisplayName,
-			BuildIdKey:   e.BuildId,
-			ExecutionKey: e.Execution,
-		},
+		update,
 		bson.M{
 			"$set": bson.M{
 				FilesKey: e.Files,

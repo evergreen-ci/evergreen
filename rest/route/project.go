@@ -1122,10 +1122,12 @@ func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error updating projects with matching keys"))
 	}
-	_, err = artifact.RotateSecrets(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.RotateFiles)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
-			"error updating artifact files with matching keys"))
+	if h.replaceVars.RotateFiles {
+		_, err = artifact.RotateSecrets(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.DryRun)
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
+				"error updating artifact files with matching keys"))
+		}
 	}
 	return gimlet.NewJSONResponse(res)
 }
