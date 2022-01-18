@@ -127,12 +127,12 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 
 	var tasks []task.Task
 	if e.EventType == event.BuildGithubCheckFinished {
-		tasks, err = task.FindAll(task.ByBuildIdAndGithubChecks(t.build.Id).WithFields(task.StatusKey, task.DependsOnKey))
+		tasks, err = task.FindAllWithFields(task.ByBuildIdAndGithubChecks(t.build.Id), task.StatusKey, task.DependsOnKey)
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch tasks for github check")
 		}
 	} else {
-		tasks, err = task.FindAll(task.ByBuildId(t.build.Id).WithFields(task.StatusKey, task.DependsOnKey))
+		tasks, err = task.FindAllWithFields(task.ByBuildId(t.build.Id), task.StatusKey, task.DependsOnKey)
 		if err != nil {
 			return errors.Wrap(err, "failed to fetch tasks")
 		}

@@ -532,7 +532,7 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 		return
 	}
 
-	tasks, err := task.FindAll(task.ByVersion(versionId).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	tasks, err := task.FindAllWithFields(task.ByVersion(versionId), task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding tasks for version '%v'", versionId)
 		grip.Errorf("%s: %+v", msg, err)

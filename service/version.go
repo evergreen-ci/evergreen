@@ -153,7 +153,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
-	dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+	dbTasks, err := task.FindAllWithFields(task.ByVersion(projCtx.Version.Id), task.StatusFields...)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -278,7 +278,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+	dbTasks, err := task.FindAllWithFields(task.ByVersion(projCtx.Version.Id), task.StatusFields...)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -382,7 +382,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		dbTasks, err := task.FindAll(task.ByVersion(projCtx.Version.Id).WithFields(task.StatusFields...))
+		dbTasks, err := task.FindAllWithFields(task.ByVersion(projCtx.Version.Id), task.StatusFields...)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

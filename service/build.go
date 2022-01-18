@@ -414,7 +414,7 @@ func getTaskMapForBuilds(builds []build.Build) (map[string]task.Task, error) {
 	for _, b := range builds {
 		buildIds = append(buildIds, b.Id)
 	}
-	tasksForBuilds, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey))
+	tasksForBuilds, err := task.FindAllWithFields(task.ByBuildIds(buildIds), task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get tasks for builds")
 	}

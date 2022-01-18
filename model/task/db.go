@@ -1172,6 +1172,17 @@ func FindOneOld(filter bson.M) (*Task, error) {
 	}
 	return task, err
 }
+
+func FindOneOldWithFields(filter bson.M, fields ...string) (*Task, error) {
+	task := &Task{}
+	query := db.Query(filter).WithFields(fields...)
+	err := db.FindOneQ(OldCollection, query, task)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return task, err
+}
+
 func FindOneOldId(id string) (*Task, error) {
 	filter := bson.M{
 		OldTaskIdKey: id,
@@ -1346,8 +1357,9 @@ func FindOldWithFields(filter bson.M, fields ...string) ([]Task, error) {
 
 // FindOldWithDisplayTasks returns all display and execution tasks from the old
 // collection that satisfy the given query.
-func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
+func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
 	tasks := []Task{}
+	query := db.Query(filter)
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1504,6 +1516,16 @@ func FindAllWithFields(filter bson.M, fields ...string) ([]Task, error) {
 func FindAllWithSort(filter bson.M, sort []string) ([]Task, error) {
 	tasks := []Task{}
 	query := db.Query(filter).Sort(sort)
+	err := db.FindAllQ(Collection, query, &tasks)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return tasks, err
+}
+
+func FindAllWithLimitSortFields(filter bson.M, limit int, sort []string, fields ...string) ([]Task, error) {
+	tasks := []Task{}
+	query := db.Query(filter).Limit(limit).Sort(sort).WithFields(fields...)
 	err := db.FindAllQ(Collection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil

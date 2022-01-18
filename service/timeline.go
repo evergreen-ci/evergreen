@@ -188,7 +188,7 @@ func getBuildInfo(buildIds []string) ([]BuildInfo, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get builds")
 	}
-	dbTasks, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.DisplayNameKey, task.StatusKey, task.DetailsKey))
+	dbTasks, err := task.FindAllWithFields(task.ByBuildIds(buildIds), task.DisplayNameKey, task.StatusKey, task.DetailsKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get tasks")
 	}
