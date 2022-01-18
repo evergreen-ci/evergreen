@@ -110,7 +110,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.NotEqual(t, evergreen.HostRunning, dbHost.Status)
 		},
-		"TerminatesUninitializedIntentHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"MarksUninitializedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostUninitialized
 			require.NoError(t, h.Insert())
 
@@ -123,8 +123,23 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
-		"TerminatesBuildingFailedIntentHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
+			require.NoError(t, h.Insert())
+
+			j := NewHostTerminationJob(env, h, true, "foo")
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+		},
+		"NoopsWithAlreadyTerminatedIntentHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// The ID must be a valid intent host ID.
+			h.Id = h.Distro.GenerateName()
+			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
 			j := NewHostTerminationJob(env, h, true, "foo")

@@ -421,16 +421,27 @@ var (
 		ProviderNameDocker,
 	}
 
-	SystemVersionRequesterTypes = []string{
-		RepotrackerVersionRequester,
-		TriggerRequester,
-		GitTagRequester,
-	}
-
+	// ProviderSpotEc2Type includes all cloud provider types that manage EC2
+	// spot instances.
 	ProviderSpotEc2Type = []string{
 		ProviderNameEc2Auto,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Fleet,
+	}
+
+	// ProviderEc2Type includes all cloud provider types that manage EC2
+	// instances.
+	ProviderEc2Type = []string{
+		ProviderNameEc2Auto,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Fleet,
+		ProviderNameEc2OnDemand,
+	}
+
+	SystemVersionRequesterTypes = []string{
+		RepotrackerVersionRequester,
+		TriggerRequester,
+		GitTagRequester,
 	}
 )
 

@@ -176,16 +176,14 @@ func (a *Agent) Start(ctx context.Context) error {
 		tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
 
-	a.getEC2InstanceID(ctx)
-
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
 
-// getEC2InstanceID sets the agent's instance ID based on the EC2 instance
-// metadata service if it's an EC2 instance. If it's not an EC2 instance, this
-// is a no-op.
-func (a *Agent) getEC2InstanceID(ctx context.Context) {
-	if !utility.StringSliceContains(evergreen.ProviderSpotEc2Type, a.opts.CloudProvider) {
+// populateEC2InstanceID sets the agent's instance ID based on the EC2 instance
+// metadata service if it's an EC2 instance. If it's not an EC2 instance or the
+// EC2 instance ID has already been populated, this is a no-op.
+func (a *Agent) populateEC2InstanceID(ctx context.Context) {
+	if a.ec2InstanceID != "" || !utility.StringSliceContains(evergreen.ProviderEc2Type, a.opts.CloudProvider) {
 		return
 	}
 
@@ -250,6 +248,8 @@ LOOP:
 				}
 				return errors.Wrap(err, "cannot connect to cedar")
 			}
+
+			a.populateEC2InstanceID(ctx)
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
 				TaskGroup:     tc.taskGroup,
 				AgentRevision: evergreen.AgentVersion,
