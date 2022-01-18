@@ -367,9 +367,12 @@ func TestBuildMarkAborted(t *testing.T) {
 }
 
 func TestSetVersionActivation(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vID := "abcdef"
+	v := &Version{Id: vID}
+	require.NoError(t, v.Insert())
+
 	builds := []build.Build{
 		{Id: "b0", Version: vID, Activated: true},
 		{Id: "b1", Version: vID, Activated: true},
@@ -406,7 +409,7 @@ func TestSetVersionActivation(t *testing.T) {
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection),
 			"Error clearing test collection")
 
 		Convey("when changing the activated status of the build to true", func() {
@@ -414,11 +417,15 @@ func TestBuildSetActivated(t *testing.T) {
 				" tasks that are part of it should be set", func() {
 
 				user := "differentUser"
+				vID := "abcdef"
+				v := &Version{Id: vID}
+				require.NoError(t, v.Insert())
 
 				b := &build.Build{
 					Id:           "build",
 					Activated:    true,
 					BuildVariant: "bv",
+					Version:      vID,
 				}
 				So(b.Insert(), ShouldBeNil)
 
@@ -510,11 +517,23 @@ func TestBuildSetActivated(t *testing.T) {
 
 			Convey("if a build is activated by a user it should not be able to be deactivated by evergreen", func() {
 				user := "differentUser"
+				vID := "abcdef"
+				v := &Version{
+					Id: vID,
+					BuildVariants: []VersionBuildStatus{
+						{
+							BuildVariant:     "bv",
+							ActivationStatus: ActivationStatus{Activated: true},
+						},
+					},
+				}
+				require.NoError(t, v.Insert())
 
 				b := &build.Build{
 					Id:           "anotherBuild",
 					Activated:    true,
 					BuildVariant: "bv",
+					Version:      vID,
 				}
 
 				So(b.Insert(), ShouldBeNil)
@@ -2155,8 +2174,13 @@ func TestShouldSyncTask(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
-	build := build.Build{Id: "b0"}
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
+
+	vId := "v"
+	v := &Version{Id: vId}
+	require.NoError(t, v.Insert())
+
+	build := build.Build{Id: "b0", Version: vId}
 	require.NoError(t, build.Insert())
 
 	tasks := []task.Task{
@@ -2182,9 +2206,13 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
-	build := build.Build{Id: "b0"}
+	vId := "v"
+	v := &Version{Id: vId}
+	require.NoError(t, v.Insert())
+
+	build := build.Build{Id: "b0", Version: vId}
 	require.NoError(t, build.Insert())
 
 	tasks := []task.Task{
@@ -2213,8 +2241,13 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
-	build := build.Build{Id: "b0"}
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
+
+	vId := "v"
+	v := &Version{Id: vId}
+	require.NoError(t, v.Insert())
+
+	build := build.Build{Id: "b0", Version: vId}
 	require.NoError(t, build.Insert())
 
 	tasks := []task.Task{

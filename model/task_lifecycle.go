@@ -1093,6 +1093,55 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
+func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
+	builds, err := build.Find(build.ByIds(buildIds))
+	if err != nil {
+		return errors.Wrapf(err, "fetching builds")
+	}
+
+	versionsToUpdate := make(map[string]string)
+	for _, build := range builds {
+		buildStatusChanged, err := UpdateBuildStatus(&build)
+		if err != nil {
+			return errors.Wrapf(err, "updating build '%s' status", build.Id)
+		}
+		// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
+		if !buildStatusChanged {
+			continue
+		}
+
+		versionsToUpdate[build.Version] = build.Id
+	}
+	for versionId, buildId := range versionsToUpdate {
+		buildVersion, err := VersionFindOneId(versionId)
+		if err != nil {
+			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildId)
+		}
+		if buildVersion == nil {
+			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildId)
+		}
+		newVersionStatus, err := UpdateVersionStatus(buildVersion)
+		if err != nil {
+			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
+		}
+
+		if evergreen.IsPatchRequester(buildVersion.Requester) {
+			p, err := patch.FindOneId(buildVersion.Id)
+			if err != nil {
+				return errors.Wrapf(err, "getting patch for version '%s'", buildVersion.Id)
+			}
+			if p == nil {
+				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
+			}
+			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+			}
+		}
+	}
+
+	return nil
+}
+
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
 func MarkStart(t *task.Task, updates *StatusChanges) error {
 	var err error
