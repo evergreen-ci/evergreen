@@ -1838,7 +1838,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
 	assert.NoError(resetTask("displayTask", "caller", false))
-	archivedTasks, err := task.FindOldWithDisplayTasks(task.All)
+	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
 	foundDisplayTask := false
