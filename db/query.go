@@ -48,22 +48,6 @@ func (q Q) WithoutFields(fields ...string) Q {
 	return q
 }
 
-func WithFields(fields ...string) interface{} {
-	projection := map[string]int{}
-	for _, f := range fields {
-		projection[f] = 1
-	}
-	return projection
-}
-
-func WithoutFields(fields ...string) interface{} {
-	projection := map[string]int{}
-	for _, f := range fields {
-		projection[f] = 0
-	}
-	return projection
-}
-
 func (q Q) Sort(sort []string) Q {
 	q.sort = sort
 	return q

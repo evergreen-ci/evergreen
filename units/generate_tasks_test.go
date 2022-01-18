@@ -204,7 +204,7 @@ func TestGenerateTasks(t *testing.T) {
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks))
+	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByBuildId("sample_build_id")), &tasks))
 	assert.Len(tasks, 4)
 	all_tasks := map[string]bool{
 		"sample_task":     false,
