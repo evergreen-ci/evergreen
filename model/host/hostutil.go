@@ -1012,7 +1012,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 	}
 }
 
-// AgentMonitorOptions  assembles the input to a Jasper request to start the
+// AgentMonitorOptions assembles the input to a Jasper request to start the
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create {
 	clientPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
@@ -1035,12 +1035,16 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	}
 }
 
-func (h *Host) AddPubKey(ctx context.Context, pubKey string) error {
-	if logs, err := h.RunSSHCommand(ctx, fmt.Sprintf("grep -qxF \"%s\" ~/.ssh/authorized_keys || echo \"%s\" >> ~/.ssh/authorized_keys", pubKey, pubKey)); err != nil {
-		return errors.Wrapf(err, "could not run SSH command to add to authorized keys on '%s'. Logs: '%s'", h.Id, logs)
-	}
+// AddPublicKeyScript returns the shell script to add a public key to the
+// authorized keys file on the host. If the public key already exists on the
+// host, the authorized keys file will not be modified.
+func (h *Host) AddPublicKeyScript(pubKey string) string {
+	authorizedKeysFile := h.Distro.GetAuthorizedKeysFile()
+	// Any trailing/leading newlines have to be removed from the public key or
+	// else the shell script may not work as intended.
+	pubKey = strings.TrimSpace(pubKey)
 
-	return nil
+	return fmt.Sprintf("grep -qxF \"%s\" %s || echo \"\n%s\" >> %s", pubKey, authorizedKeysFile, pubKey, authorizedKeysFile)
 }
 
 // SpawnHostSetupCommands returns the commands to handle setting up a spawn

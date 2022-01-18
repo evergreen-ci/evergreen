@@ -1154,6 +1154,31 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 }
 
+func TestAddPublicKeyScript(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, h *Host){
+		"CreatesExpectedScript": func(t *testing.T, h *Host) {
+			expected := "grep -qxF \"public_key\" /home/user/.ssh/authorized_keys || echo \"\npublic_key\" >> /home/user/.ssh/authorized_keys"
+			actual := h.AddPublicKeyScript("public_key")
+			assert.Equal(t, expected, actual)
+		},
+		"TrimsPublicKeysWithNewlinesToSingleLinePublicKey": func(t *testing.T, h *Host) {
+			expected := "grep -qxF \"public_key\" /home/user/.ssh/authorized_keys || echo \"\npublic_key\" >> /home/user/.ssh/authorized_keys"
+			actual := h.AddPublicKeyScript("\npublic_key\n")
+			assert.Equal(t, expected, actual)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					User: "user",
+				},
+			}
+			tCase(t, h)
+		})
+	}
+}
+
 func TestCheckUserDataProvisioningStartedCommand(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"CreatesExpectedCommand": func(t *testing.T, h *Host) {

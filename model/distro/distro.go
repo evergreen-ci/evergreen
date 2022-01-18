@@ -463,6 +463,16 @@ func (d *Distro) HomeDir() string {
 	return filepath.Join("/home", d.User)
 }
 
+// GetAuthorizedKeysFile returns the path to the SSH authorized keys file for
+// the distro. If not explicitly set for the distro, it returns the default
+// location of the SSH authorized keys file in the home directory.
+func (d *Distro) GetAuthorizedKeysFile() string {
+	if d.AuthorizedKeysFile == "" {
+		return filepath.Join(d.HomeDir(), ".ssh", "authorized_keys")
+	}
+	return d.AuthorizedKeysFile
+}
+
 // IsParent returns whether the distro is the parent distro for any container pool
 func (d *Distro) IsParent(s *evergreen.Settings) bool {
 	for _, p := range s.ContainerPools.Pools {
