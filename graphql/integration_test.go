@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -63,6 +65,9 @@ func (s *graphQLSuite) SetupSuite() {
 	s.url = server.URL
 	s.apiKey = apiKey
 	s.apiUser = apiUser
+
+	s.Require().NoError(db.EnsureIndex(testresult.Collection, mongo.IndexModel{
+		Keys: testresult.TestResultsIndex}))
 }
 
 func (s *graphQLSuite) TestQueries() {
