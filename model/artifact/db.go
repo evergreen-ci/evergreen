@@ -116,40 +116,35 @@ func (e Entry) Upsert() error {
 }
 
 func (e Entry) Update() error {
-	var err error
-	if e.Execution == 0 {
-		err = db.Update(
-			Collection,
-			bson.M{
-				TaskIdKey:   e.TaskId,
-				TaskNameKey: e.TaskDisplayName,
-				BuildIdKey:  e.BuildId,
-				"$or": []bson.M{
-					bson.M{ExecutionKey: bson.M{"$exists": false}},
-					bson.M{ExecutionKey: 0},
-				},
-			},
-			bson.M{
-				"$set": bson.M{
-					FilesKey: e.Files,
-				},
-			})
-	} else {
-		err = db.Update(
-			Collection,
-			bson.M{
-				TaskIdKey:    e.TaskId,
-				TaskNameKey:  e.TaskDisplayName,
-				BuildIdKey:   e.BuildId,
-				ExecutionKey: e.Execution,
-			},
-			bson.M{
-				"$set": bson.M{
-					FilesKey: e.Files,
-				},
-			},
-		)
+	update := bson.M{
+		TaskIdKey:   e.TaskId,
+		TaskNameKey: e.TaskDisplayName,
+		BuildIdKey:  e.BuildId,
 	}
+	if e.Execution == 0 {
+		update["$or"] = []bson.M{
+			bson.M{ExecutionKey: bson.M{"$exists": false}},
+			bson.M{ExecutionKey: 0},
+		}
+	} else {
+		update[ExecutionKey] = e.Execution
+	}
+
+	err := db.Update(
+		Collection,
+		bson.M{
+			TaskIdKey:    e.TaskId,
+			TaskNameKey:  e.TaskDisplayName,
+			BuildIdKey:   e.BuildId,
+			ExecutionKey: e.Execution,
+		},
+		bson.M{
+			"$set": bson.M{
+				FilesKey: e.Files,
+			},
+		},
+	)
+
 	return err
 }
 
