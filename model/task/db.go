@@ -1041,29 +1041,8 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 // DB Boilerplate
 
 // FindOne returns a single task that satisfies the query.
-func FindOne(filter bson.M) (*Task, error) {
+func FindOne(query db.Q) (*Task, error) {
 	task := &Task{}
-	query := db.Query(filter)
-	err := db.FindOneQ(Collection, query, task)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return task, err
-}
-
-func FindOneWithFields(filter bson.M, fields ...string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(filter).WithFields(fields...)
-	err := db.FindOneQ(Collection, query, task)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return task, err
-}
-
-func FindOneWithSort(filter bson.M, sort []string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(filter).Sort(sort)
 	err := db.FindOneQ(Collection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1249,11 +1228,11 @@ func findAllTaskIDs(q db.Q) ([]string, error) {
 // FindStuckDispatching returns all "stuck" tasks. A task is considered stuck
 // if it has a "dispatched" status for more than 30 minutes.
 func FindStuckDispatching() ([]Task, error) {
-	tasks, err := FindAll(bson.M{
+	tasks, err := FindAll(db.Query(bson.M{
 		StatusKey:       evergreen.TaskDispatched,
 		DispatchTimeKey: bson.M{"$gt": time.Now().Add(30 * time.Minute)},
 		StartTimeKey:    utility.ZeroTime,
-	})
+	}))
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1295,10 +1274,10 @@ func FindTasksFromVersions(versionIds []string) ([]Task, error) {
 }
 
 func CountActivatedTasksForVersion(versionId string) (int, error) {
-	return Count(bson.M{
+	return Count(db.Query(bson.M{
 		VersionKey:   versionId,
 		ActivatedKey: true,
-	})
+	}))
 }
 
 func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
@@ -1327,37 +1306,31 @@ func FindMergeTaskForVersion(versionId string) (*Task, error) {
 // satisfy the given query.
 func FindOld(filter bson.M) ([]Task, error) {
 	tasks := []Task{}
+	_, exists := filter[DisplayOnlyKey]
+	if !exists {
+		filter[DisplayOnlyKey] = bson.M{"$ne": true}
+	}
 	query := db.Query(filter)
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
-	// Remove display tasks from results.
-	for i := len(tasks) - 1; i >= 0; i-- {
-		t := tasks[i]
-		if t.DisplayOnly {
-			tasks = append(tasks[:i], tasks[i+1:]...)
-		}
-	}
 	return tasks, err
 }
 
 func FindOldWithFields(filter bson.M, fields ...string) ([]Task, error) {
 	tasks := []Task{}
+	_, exists := filter[DisplayOnlyKey]
+	if !exists {
+		filter[DisplayOnlyKey] = bson.M{"$ne": true}
+	}
 	query := db.Query(filter).WithFields(fields...)
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
-	// Remove display tasks from results.
-	for i := len(tasks) - 1; i >= 0; i-- {
-		t := tasks[i]
-		if t.DisplayOnly {
-			tasks = append(tasks[:i], tasks[i+1:]...)
-		}
-	}
 	return tasks, err
 }
 
@@ -1400,8 +1373,8 @@ func MakeOldID(taskID string, execution int) string {
 	return fmt.Sprintf("%s_%d", taskID, execution)
 }
 
-func FindAllFirstExecution(filter bson.M) ([]Task, error) {
-	existingTasks, err := FindAll(filter)
+func FindAllFirstExecution(query db.Q) ([]Task, error) {
+	existingTasks, err := FindAll(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get current tasks")
 	}
@@ -1416,33 +1389,7 @@ func FindAllFirstExecution(filter bson.M) ([]Task, error) {
 	}
 
 	if len(oldIDs) > 0 {
-		oldTasks, err := FindAllOldByIds(oldIDs)
-		if err != nil {
-			return nil, errors.Wrap(err, "can't get old tasks")
-		}
-		tasks = append(tasks, oldTasks...)
-	}
-
-	return tasks, nil
-}
-
-func FindAllFirstExecutionWithFields(filter bson.M, fields ...string) ([]Task, error) {
-	existingTasks, err := FindAllWithFields(filter, fields...)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get current tasks")
-	}
-	tasks := []Task{}
-	oldIDs := []string{}
-	for _, t := range existingTasks {
-		if t.Execution == 0 {
-			tasks = append(tasks, t)
-		} else {
-			oldIDs = append(oldIDs, MakeOldID(t.Id, 0))
-		}
-	}
-
-	if len(oldIDs) > 0 {
-		oldTasks, err := FindAllOldByIds(oldIDs)
+		oldTasks, err := FindAllOld(db.Query(ByIds(oldIDs)))
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get old tasks")
 		}
@@ -1499,39 +1446,8 @@ func FindWithSort(filter bson.M, sort []string) ([]Task, error) {
 }
 
 // Find returns really all tasks that satisfy the query.
-func FindAll(filter bson.M) ([]Task, error) {
+func FindAll(query db.Q) ([]Task, error) {
 	tasks := []Task{}
-	query := db.Query(filter)
-	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return tasks, err
-}
-
-func FindAllWithFields(filter bson.M, fields ...string) ([]Task, error) {
-	tasks := []Task{}
-	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return tasks, err
-}
-
-func FindAllWithSort(filter bson.M, sort []string) ([]Task, error) {
-	tasks := []Task{}
-	query := db.Query(filter).Sort(sort)
-	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return tasks, err
-}
-
-func FindAllWithLimitSortFields(filter bson.M, limit int, sort []string, fields ...string) ([]Task, error) {
-	tasks := []Task{}
-	query := db.Query(filter).Limit(limit).Sort(sort).WithFields(fields...)
 	err := db.FindAllQ(Collection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1540,19 +1456,8 @@ func FindAllWithLimitSortFields(filter bson.M, limit int, sort []string, fields 
 }
 
 // Find returns really all tasks that satisfy the query.
-func FindAllOld(filter bson.M) ([]Task, error) {
+func FindAllOld(query db.Q) ([]Task, error) {
 	tasks := []Task{}
-	query := db.Query(filter)
-	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return tasks, err
-}
-
-func FindAllOldByIds(ids []string) ([]Task, error) {
-	tasks := []Task{}
-	query := db.Query(ByIds(ids))
 	err := db.FindAllQ(OldCollection, query, &tasks)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1600,13 +1505,13 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(filter bson.M) (int, error) {
-	query := db.Query(filter)
+func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
 func FindProjectForTask(taskID string) (string, error) {
-	t, err := FindOneWithFields(ById(taskID), ProjectKey)
+	query := db.Query(ById(taskID)).WithFields(ProjectKey)
+	t, err := FindOne(query)
 	if err != nil {
 		return "", err
 	}

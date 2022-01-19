@@ -61,7 +61,7 @@ func TestSetActiveState(t *testing.T) {
 		So(v.Insert(), ShouldBeNil)
 		Convey("activating the task should set the task state to active and mark the version as activated", func() {
 			So(SetActiveState(testTask, "randomUser", true), ShouldBeNil)
-			testTask, err = task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldBeTrue)
 			So(testTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
@@ -71,38 +71,38 @@ func TestSetActiveState(t *testing.T) {
 			So(utility.FromBoolPtr(version.Activated), ShouldBeTrue)
 			Convey("deactivating an active task as a normal user should deactivate the task", func() {
 				So(SetActiveState(testTask, userName, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(testTask.Activated, ShouldBeFalse)
 			})
 		})
 		Convey("when deactivating an active task as evergreen", func() {
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, true), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
 			Convey("if the task is activated by stepback user, the task should not deactivate", func() {
 				So(SetActiveState(testTask, evergreen.StepbackTaskActivator, true), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
 				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
 			})
 			Convey("if the task is not activated by evergreen, the task should not deactivate", func() {
 				So(SetActiveState(testTask, userName, true), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
 				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
 			})
@@ -112,31 +112,31 @@ func TestSetActiveState(t *testing.T) {
 			u := "test_user"
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(testTask, evergreen.DefaultTaskActivator, true), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 				So(SetActiveState(testTask, u, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
 			Convey("if the task is activated by stepback user, the task should deactivate", func() {
 				So(SetActiveState(testTask, evergreen.StepbackTaskActivator, true), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
 				So(SetActiveState(testTask, u, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
 			Convey("if the task is not activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(testTask, userName, true), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
 				So(SetActiveState(testTask, u, false), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
@@ -201,17 +201,17 @@ func TestSetActiveState(t *testing.T) {
 
 		Convey("activating the task should activate the tasks it depends on", func() {
 			So(SetActiveState(&testTask, userName, true), ShouldBeNil)
-			depTask, err := task.FindOne(task.ById(dep1.Id))
+			depTask, err := task.FindOne(db.Query(task.ById(dep1.Id)))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeTrue)
 
-			depTask, err = task.FindOne(task.ById(dep2.Id))
+			depTask, err = task.FindOne(db.Query(task.ById(dep2.Id)))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeTrue)
 
 			Convey("deactivating the task should not deactive the tasks it depends on", func() {
 				So(SetActiveState(&testTask, userName, false), ShouldBeNil)
-				depTask, err = task.FindOne(task.ById(depTask.Id))
+				depTask, err = task.FindOne(db.Query(task.ById(depTask.Id)))
 				So(err, ShouldBeNil)
 				So(depTask.Activated, ShouldBeTrue)
 			})
@@ -222,11 +222,11 @@ func TestSetActiveState(t *testing.T) {
 			So(testTask.SetOverrideDependencies(userName), ShouldBeNil)
 
 			So(SetActiveState(&testTask, userName, true), ShouldBeNil)
-			depTask, err := task.FindOne(task.ById(dep1.Id))
+			depTask, err := task.FindOne(db.Query(task.ById(dep1.Id)))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeFalse)
 
-			depTask, err = task.FindOne(task.ById(dep2.Id))
+			depTask, err = task.FindOne(db.Query(task.ById(dep2.Id)))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeFalse)
 		})
@@ -261,20 +261,20 @@ func TestSetActiveState(t *testing.T) {
 		So(t1.Insert(), ShouldBeNil)
 		Convey("that should not restart", func() {
 			So(SetActiveState(dt, "test", true), ShouldBeNil)
-			t1FromDb, err := task.FindOne(task.ById(t1.Id))
+			t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 			So(err, ShouldBeNil)
 			So(t1FromDb.Activated, ShouldBeTrue)
-			dtFromDb, err := task.FindOne(task.ById(dt.Id))
+			dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 			So(err, ShouldBeNil)
 			So(dtFromDb.Activated, ShouldBeTrue)
 		})
 		Convey("that should restart", func() {
 			dt.DispatchTime = time.Now()
 			So(SetActiveState(dt, "test", true), ShouldBeNil)
-			t1FromDb, err := task.FindOne(task.ById(t1.Id))
+			t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 			So(err, ShouldBeNil)
 			So(t1FromDb.Activated, ShouldBeTrue)
-			dtFromDb, err := task.FindOne(task.ById(dt.Id))
+			dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 			So(err, ShouldBeNil)
 			So(dtFromDb.Activated, ShouldBeTrue)
 		})
@@ -419,7 +419,7 @@ func TestActivatePreviousTask(t *testing.T) {
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
 			So(activatePreviousTask(currentTask.Id, "", nil), ShouldBeNil)
-			t, err := task.FindOne(task.ById(previousTask.Id))
+			t, err := task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(t.Activated, ShouldBeTrue)
 		})
@@ -471,7 +471,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		Convey("activating a previous task should set the previous task's active field to true", func() {
 			So(DeactivatePreviousTasks(currentTask, userName), ShouldBeNil)
 			var err error
-			previousTask, err = task.FindOne(task.ById(previousTask.Id))
+			previousTask, err = task.FindOne(db.Query(task.ById(previousTask.Id)))
 			So(err, ShouldBeNil)
 			So(previousTask.Activated, ShouldBeFalse)
 		})
@@ -608,21 +608,21 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		So(et4.Insert(), ShouldBeNil)
 		Convey("deactivating a display task should deactivate its child tasks", func() {
 			So(DeactivatePreviousTasks(dt2, userName), ShouldBeNil)
-			dbTask, err := task.FindOne(task.ById(dt1.Id))
+			dbTask, err := task.FindOne(db.Query(task.ById(dt1.Id)))
 			So(err, ShouldBeNil)
 			So(dbTask.Activated, ShouldBeFalse)
-			dbTask, err = task.FindOne(task.ById(et1.Id))
+			dbTask, err = task.FindOne(db.Query(task.ById(et1.Id)))
 			So(err, ShouldBeNil)
 			So(dbTask.Activated, ShouldBeFalse)
 			Convey("but should not touch any tasks that have started", func() {
-				dbTask, err = task.FindOne(task.ById(dt3.Id))
+				dbTask, err = task.FindOne(db.Query(task.ById(dt3.Id)))
 				So(err, ShouldBeNil)
 				So(dbTask.Activated, ShouldBeTrue)
-				dbTask, err = task.FindOne(task.ById(et3.Id))
+				dbTask, err = task.FindOne(db.Query(task.ById(et3.Id)))
 				So(err, ShouldBeNil)
 				So(dbTask.Activated, ShouldBeTrue)
 				So(dbTask.Status, ShouldEqual, evergreen.TaskUndispatched)
-				dbTask, err = task.FindOne(task.ById(et4.Id))
+				dbTask, err = task.FindOne(db.Query(task.ById(et4.Id)))
 				So(err, ShouldBeNil)
 				So(dbTask.Activated, ShouldBeTrue)
 				So(dbTask.Status, ShouldEqual, evergreen.TaskStarted)
@@ -923,7 +923,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 
-			taskData, err := task.FindOne(task.ById(testTask.Id))
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
 			So(reflect.DeepEqual(taskData.Logs, detail.Logs), ShouldBeTrue)
@@ -954,7 +954,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 
-			taskData, err := task.FindOne(task.ById(testTask.Id))
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
 		})
@@ -979,7 +979,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
 
-			taskData, err := task.FindOne(task.ById(testTask.Id))
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 		})
@@ -1000,7 +1000,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
 
-			taskData, err := task.FindOne(task.ById(testTask.Id))
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 		})
@@ -1020,7 +1020,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 
-			taskData, err := task.FindOne(task.ById(testTask.Id))
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
 		})
@@ -1041,7 +1041,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 
-			taskData, err := task.FindOne(task.ById(testTask.Id))
+			taskData, err := task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
 		})
@@ -1150,10 +1150,10 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskSucceeded,
 		}
 		So(MarkEnd(t1, "test", time.Now(), detail, false), ShouldBeNil)
-		t1FromDb, err := task.FindOne(task.ById(t1.Id))
+		t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskSucceeded)
-		dtFromDb, err := task.FindOne(task.ById(dt.Id))
+		dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskSucceeded)
 	})
@@ -1304,7 +1304,7 @@ func TestTryResetTask(t *testing.T) {
 			So(v.Insert(), ShouldBeNil)
 			Convey("should reset and add a task to the old tasks collection", func() {
 				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -1372,19 +1372,19 @@ func TestTryResetTask(t *testing.T) {
 
 			Convey("should reset if ui package tries to reset", func() {
 				So(TryResetTask(testTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 			})
 			Convey("should not reset if an origin other than the ui package tries to reset", func() {
 				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
-				testTask, err = task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldNotResemble, *detail)
 				So(testTask.Status, ShouldNotEqual, detail.Status)
 			})
 			Convey("should reset and use detail information if the UI package passes in a detail ", func() {
 				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
-				a, err := task.FindOne(task.ById(anotherTask.Id))
+				a, err := task.FindOne(db.Query(task.ById(anotherTask.Id)))
 				So(err, ShouldBeNil)
 				So(a.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(a.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -1426,10 +1426,10 @@ func TestTryResetTask(t *testing.T) {
 		So(t1.Insert(), ShouldBeNil)
 
 		So(TryResetTask(dt.Id, "user", "test", nil), ShouldBeNil)
-		t1FromDb, err := task.FindOne(task.ById(t1.Id))
+		t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
-		dtFromDb, err := task.FindOne(task.ById(dt.Id))
+		dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
 	})
@@ -1559,7 +1559,7 @@ func TestAbortTask(t *testing.T) {
 		var err error
 		Convey("with a task that has started, aborting a task should work", func() {
 			So(AbortTask(testTask.Id, userName), ShouldBeNil)
-			testTask, err = task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldEqual, false)
 			So(testTask.Aborted, ShouldEqual, true)
@@ -1743,7 +1743,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.Len(t, cq.Queue, 1)
 
 	// check that all tasks are now in the correct state
-	tasks, err := task.FindAll(nil)
+	tasks, err := task.FindAll(task.All)
 	assert.NoError(t, err)
 	aborted := 0
 	finished := 0
@@ -1924,7 +1924,7 @@ func TestMarkStart(t *testing.T) {
 			So(updates.BuildNewStatus, ShouldBeEmpty)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(err, ShouldBeNil)
-			testTask, err = task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 			b, err = build.FindOne(build.ById(b.Id))
@@ -1969,10 +1969,10 @@ func TestMarkStart(t *testing.T) {
 		So(t1.Insert(), ShouldBeNil)
 
 		So(MarkStart(t1, &StatusChanges{}), ShouldBeNil)
-		t1FromDb, err := task.FindOne(task.ById(t1.Id))
+		t1FromDb, err := task.FindOne(db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskStarted)
-		dtFromDb, err := task.FindOne(task.ById(dt.Id))
+		dtFromDb, err := task.FindOne(db.Query(task.ById(dt.Id)))
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskStarted)
 	})
@@ -2009,7 +2009,7 @@ func TestMarkUndispatched(t *testing.T) {
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
 			var err error
 			So(MarkTaskUndispatched(testTask), ShouldBeNil)
-			testTask, err = task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 		})
@@ -2048,7 +2048,7 @@ func TestMarkDispatched(t *testing.T) {
 			}
 			So(MarkTaskDispatched(testTask, sampleHost), ShouldBeNil)
 			var err error
-			testTask, err = task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(testTask.HostId, ShouldEqual, "testHost")
@@ -2256,19 +2256,19 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.Equal(0, len(results.ItemsErrored))
 	assert.Equal(2, len(results.ItemsRestarted))
 	assert.Equal(testTask1.Id, results.ItemsRestarted[0])
-	dbTask, err := task.FindOne(task.ById(testTask1.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(testTask1.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
 	assert.True(dbTask.Execution > 1)
-	dbTask, err = task.FindOne(task.ById(testTask2.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask2.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskSucceeded)
 	assert.Equal(1, dbTask.Execution)
-	dbTask, err = task.FindOne(task.ById(testTask3.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask3.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskFailed)
 	assert.Equal(1, dbTask.Execution)
-	dbTask, err = task.FindOne(task.ById(testTask4.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask4.Id)))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
 	assert.Equal(2, dbTask.Execution)
@@ -2373,19 +2373,19 @@ func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
 	assert.Nil(results.ItemsErrored)
 	assert.Equal(2, len(results.ItemsRestarted)) // not all are included in items restarted
 	// but all tasks are restarted
-	dbTask, err := task.FindOne(task.ById(testTask1.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(testTask1.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
-	dbTask, err = task.FindOne(task.ById(testTask2.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask2.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
-	dbTask, err = task.FindOne(task.ById(testTask3.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask3.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
-	dbTask, err = task.FindOne(task.ById(testTask4.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask4.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
-	dbTask, err = task.FindOne(task.ById(testTask5.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(testTask5.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 }
@@ -2569,16 +2569,16 @@ func TestStepback(t *testing.T) {
 	assert.NoError(v3.Insert())
 	// test stepping back a regular task
 	assert.NoError(doStepback(t3))
-	dbTask, err := task.FindOne(task.ById(t2.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(t2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
 
 	// test stepping back a display task
 	assert.NoError(doStepback(dt3))
-	dbTask, err = task.FindOne(task.ById(dt2.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
-	dbTask, err = task.FindOne(task.ById(dt2.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
 }
@@ -2744,18 +2744,18 @@ func TestStepbackWithGenerators(t *testing.T) {
 
 	// test stepping back where an existing generated task needs to be activated
 	assert.NoError(t, doStepback(taskToStepback))
-	dbTask, err := task.FindOne(task.ById(t1.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(t1.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
 
 	// test stepping back where the generator needs to be activated
 	assert.NoError(t, doStepback(taskToStepback2))
-	dbTask, err = task.FindOne(task.ById(genPrevious.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(genPrevious.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
 	assert.Equal(t, dbTask.GeneratedTasksToActivate[taskToStepback2.BuildVariant], []string{taskToStepback2.DisplayName})
 	// verify dependency is activated as well
-	dbTask, err = task.FindOne(task.ById(depTask.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(depTask.Id)))
 	assert.NoError(t, err)
 	assert.True(t, dbTask.Activated)
 }
@@ -3068,7 +3068,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 	assert.NoError(v.Insert())
 
 	assert.NoError(ClearAndResetStrandedTask(h))
-	runningTask, err := task.FindOne(task.ById("t"))
+	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
 }
@@ -3154,7 +3154,7 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	assert.NoError(b.Insert())
 
 	assert.NoError(ClearAndResetStrandedTask(h))
-	runningTask, err := task.FindOne(task.ById("t"))
+	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
 	assert.Equal("system", runningTask.Details.Type)
@@ -3202,10 +3202,10 @@ func TestClearAndResetExecTask(t *testing.T) {
 	assert.NoError(t, v.Insert())
 
 	assert.NoError(t, ClearAndResetStrandedTask(h))
-	restartedDisplayTask, err := task.FindOne(task.ById("dt"))
+	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
-	restartedExecutionTask, err := task.FindOne(task.ById("et"))
+	restartedExecutionTask, err := task.FindOne(db.Query(task.ById("et")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
 }
@@ -3328,7 +3328,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(UpdateDisplayTaskForTask(&task1))
-	dbTask, err := task.FindOne(task.ById(dt.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
@@ -3343,7 +3343,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 
 	// test that a display task with a finished + unstarted task is "started"
 	assert.NoError(UpdateDisplayTaskForTask(&task5))
-	dbTask, err = task.FindOne(task.ById(dt2.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
@@ -3358,7 +3358,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 
 	// a blocked execution task + unblocked unfinshed tasks should still be "started"
 	assert.NoError(UpdateDisplayTaskForTask(&task7))
-	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(blockedDt.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
@@ -3366,7 +3366,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	// a blocked execution task should not contribute to the status
 	assert.NoError(task10.MarkFailed())
 	assert.NoError(UpdateDisplayTaskForTask(&task8))
-	dbTask, err = task.FindOne(task.ById(blockedDt.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(blockedDt.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
@@ -3407,7 +3407,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 
 	// test that updating the status + activated from execution tasks shows started
 	assert.NoError(UpdateDisplayTaskForTask(&task1))
-	dbTask, err := task.FindOne(task.ById(dt.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
@@ -3459,17 +3459,17 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 
 	// request that the task restarts when it's done
 	assert.NoError(dt.SetResetWhenFinished())
-	dbTask, err := task.FindOne(task.ById(dt.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.ResetWhenFinished)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
 	// end the final task so that it restarts
 	assert.NoError(checkResetDisplayTask(&dt))
-	dbTask, err = task.FindOne(task.ById(dt.Id))
+	dbTask, err = task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
-	dbTask2, err := task.FindOne(task.ById(task2.Id))
+	dbTask2, err := task.FindOne(db.Query(task.ById(task2.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask2.Status)
 
@@ -3538,7 +3538,7 @@ func TestDisplayTaskFailedExecTasks(t *testing.T) {
 	assert.NoError(execTask1.Insert())
 
 	assert.NoError(UpdateDisplayTaskForTask(&execTask0))
-	dbTask, err := task.FindOne(task.ById(dt.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(evergreen.CommandTypeSystem, dbTask.Details.Type)
@@ -3570,7 +3570,7 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	assert.NoError(execTask1.Insert())
 
 	assert.NoError(UpdateDisplayTaskForTask(&execTask0))
-	dbTask, err := task.FindOne(task.ById(dt.Id))
+	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(evergreen.CommandTypeSetup, dbTask.Details.Type)

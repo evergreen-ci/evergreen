@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	graphql "github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -296,7 +297,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if putParams.UseTaskConfig {
-		t, err := task.FindOne(task.ById(putParams.Task))
+		t, err := task.FindOne(db.Query(task.ById(putParams.Task)))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error finding task"))
 			return

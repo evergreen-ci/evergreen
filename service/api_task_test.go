@@ -868,7 +868,7 @@ func TestNextTask(t *testing.T) {
 					taskResp := apimodels.NextTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
 					So(taskResp.TaskId, ShouldEqual, "task1")
-					nextTask, err := task.FindOne(task.ById(taskResp.TaskId))
+					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 					So(err, ShouldBeNil)
 					So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 				})
@@ -1224,7 +1224,7 @@ func TestNextTask(t *testing.T) {
 							taskResp := apimodels.NextTaskResponse{}
 							So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
 							So(taskResp.TaskId, ShouldEqual, "existingTask")
-							nextTask, err := task.FindOne(task.ById(taskResp.TaskId))
+							nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 							So(err, ShouldBeNil)
 							So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 						})
@@ -1259,7 +1259,7 @@ func TestNextTask(t *testing.T) {
 								taskResp := apimodels.NextTaskResponse{}
 								So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
 								So(taskResp.TaskId, ShouldEqual, t1.Id)
-								nextTask, err := task.FindOne(task.ById(taskResp.TaskId))
+								nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
 								So(err, ShouldBeNil)
 								So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 							})
@@ -1487,7 +1487,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				So(h.RunningTask, ShouldEqual, "")
 				Convey("the task should be marked as succeeded and the task end details"+
 					"should be added to the task document", func() {
-					t, err := task.FindOne(task.ById(task1.Id))
+					t, err := task.FindOne(db.Query(task.ById(task1.Id)))
 					So(err, ShouldBeNil)
 					So(t.Status, ShouldEqual, evergreen.TaskSucceeded)
 					So(t.Details.Status, ShouldEqual, evergreen.TaskSucceeded)
@@ -1498,7 +1498,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
-			testTask, err := task.FindOne(task.ById(task1.Id))
+			testTask, err := task.FindOne(db.Query(task.ById(task1.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 			resp := getEndTaskEndpoint(t, as, hostId, task1.Id, details)
@@ -1517,7 +1517,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				So(h.RunningTask, ShouldEqual, "")
 				Convey("the task should be marked as succeeded and the task end details"+
 					"should be added to the task document", func() {
-					t, err := task.FindOne(task.ById(task1.Id))
+					t, err := task.FindOne(db.Query(task.ById(task1.Id)))
 					So(err, ShouldBeNil)
 					So(t.Status, ShouldEqual, evergreen.TaskFailed)
 					So(t.Details.Status, ShouldEqual, evergreen.TaskFailed)
@@ -1549,7 +1549,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskUndispatched,
 			}
-			testTask, err := task.FindOne(task.ById(task1.Id))
+			testTask, err := task.FindOne(db.Query(task.ById(task1.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 			resp := getEndTaskEndpoint(t, as, sampleHost.Id, task2.Id, details)
@@ -1616,7 +1616,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				})
 			})
 			Convey("the display task should be updated correctly", func() {
-				dbTask, err := task.FindOne(task.ById(displayTask.Id))
+				dbTask, err := task.FindOne(db.Query(task.ById(displayTask.Id)))
 				So(err, ShouldBeNil)
 				So(dbTask.Status, ShouldEqual, evergreen.TaskFailed)
 			})

@@ -377,16 +377,16 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					// because of minor differences between how mongo
 					// and golang store dates. The date from the db
 					// can be interpreted as being a few nanoseconds off
-					t0, err := FindOne(ById("t0"))
+					t0, err := FindOne(db.Query(ById("t0")))
 					So(err, ShouldBeNil)
 					So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-					t1, err := FindOne(ById("t1"))
+					t1, err := FindOne(db.Query(ById("t1")))
 					So(err, ShouldBeNil)
 					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
-					t2, err := FindOne(ById("t2"))
+					t2, err := FindOne(db.Query(ById("t2")))
 					So(err, ShouldBeNil)
 					So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-					t3, err := FindOne(ById("t3"))
+					t3, err := FindOne(db.Query(ById("t3")))
 					So(err, ShouldBeNil)
 					So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 				})
@@ -397,16 +397,16 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
 
 					Convey("only unset scheduled times should be updated", func() {
-						t0, err := FindOne(ById("t0"))
+						t0, err := FindOne(db.Query(ById("t0")))
 						So(err, ShouldBeNil)
 						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-						t1, err := FindOne(ById("t1"))
+						t1, err := FindOne(db.Query(ById("t1")))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
-						t2, err := FindOne(ById("t2"))
+						t2, err := FindOne(db.Query(ById("t2")))
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-						t3, err := FindOne(ById("t3"))
+						t3, err := FindOne(db.Query(ById("t3")))
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 					})
@@ -488,7 +488,7 @@ func TestDisplayTasksByVersion(t *testing.T) {
 				So(task.Insert(), ShouldBeNil)
 			}
 
-			dbTasks, err := FindAll(DisplayTasksByVersion("v1"))
+			dbTasks, err := FindAll(db.Query(DisplayTasksByVersion("v1")))
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 4)
 			So(dbTasks[0].Id, ShouldNotEqual, "execution_task_one")
@@ -606,13 +606,13 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 	for _, task := range tasks {
 		assert.NoError(t, task.Insert())
 	}
-	dbTasks, err := FindAll(ByBuildIdAndGithubChecks("b1"))
+	dbTasks, err := FindAll(db.Query(ByBuildIdAndGithubChecks("b1")))
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 1)
-	dbTasks, err = FindAll(ByBuildIdAndGithubChecks("b2"))
+	dbTasks, err = FindAll(db.Query(ByBuildIdAndGithubChecks("b2")))
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 2)
-	dbTasks, err = FindAll(ByBuildIdAndGithubChecks("b3"))
+	dbTasks, err = FindAll(db.Query(ByBuildIdAndGithubChecks("b3")))
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 0)
 }
@@ -736,7 +736,7 @@ func TestEndingTask(t *testing.T) {
 			}
 
 			So(t.MarkEnd(now, details), ShouldBeNil)
-			t, err := FindOne(ById(t.Id))
+			t, err := FindOne(db.Query(ById(t.Id)))
 			So(err, ShouldBeNil)
 			So(t.Status, ShouldEqual, evergreen.TaskFailed)
 			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
@@ -758,7 +758,7 @@ func TestEndingTask(t *testing.T) {
 					Status: evergreen.TaskFailed,
 				}
 				So(t.MarkEnd(now, details), ShouldBeNil)
-				t, err := FindOne(ById(t.Id))
+				t, err := FindOne(db.Query(ById(t.Id)))
 				So(err, ShouldBeNil)
 				So(t.StartTime.Unix(), ShouldEqual, t.IngestTime.Unix())
 				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
@@ -775,7 +775,7 @@ func TestEndingTask(t *testing.T) {
 					Status: evergreen.TaskFailed,
 				}
 				So(t.MarkEnd(now, details), ShouldBeNil)
-				t, err := FindOne(ById(t.Id))
+				t, err := FindOne(db.Query(ById(t.Id)))
 				So(err, ShouldBeNil)
 				startTime := now.Add(-2 * time.Hour)
 				So(t.StartTime.Unix(), ShouldEqual, startTime.Unix())
@@ -1075,7 +1075,7 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(taskDoc.Archive())
 	taskDoc.Execution += 1
 
-	tasks, err := FindAllOld(ByOldTaskID("task"))
+	tasks, err := FindOld(ByOldTaskID("task"))
 	assert.NoError(err)
 	assert.Len(tasks, 2)
 	assert.Equal(0, tasks[0].Execution)
@@ -1099,7 +1099,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 	oldTask := Task{Id: MakeOldID("t1", 0)}
 	require.NoError(t, db.Insert(OldCollection, &oldTask))
 
-	foundTasks, err := FindAllFirstExecution(nil)
+	foundTasks, err := FindAllFirstExecution(All)
 	assert.NoError(t, err)
 	assert.Len(t, foundTasks, 3)
 	expectedIDs := []string{"t0", MakeOldID("t1", 0), "t2"}
@@ -1802,7 +1802,7 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	q := scheduleableTasksQuery()
+	q := db.Query(scheduleableTasksQuery())
 	schedulableTasks, err := FindAll(q)
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)
@@ -2119,7 +2119,7 @@ func TestDeactivateDependencies(t *testing.T) {
 	err := DeactivateDependencies([]string{"t0"}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(nil)
+	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
@@ -2155,7 +2155,7 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 	err := ActivateDeactivatedDependencies([]string{"t0"}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(nil)
+	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
@@ -2215,7 +2215,7 @@ func TestActivateTasks(t *testing.T) {
 	err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(nil)
+	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
@@ -2251,7 +2251,7 @@ func TestDeactivateTasks(t *testing.T) {
 	err := DeactivateTasks([]Task{tasks[0]}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(nil)
+	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
@@ -2282,7 +2282,7 @@ func TestSetDisabledPriority(t *testing.T) {
 
 	assert.NoError(t, tasks[0].SetDisabledPriority(""))
 
-	dbTasks, err := FindAll(nil)
+	dbTasks, err := FindAll(All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 3)
 
@@ -2626,7 +2626,7 @@ func TestArchiveMany(t *testing.T) {
 	tasks := []Task{t1, t2, dt}
 	err := ArchiveMany(tasks)
 	assert.NoError(t, err)
-	currentTasks, err := FindAll(ByVersion("v"))
+	currentTasks, err := FindAll(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
 	assert.Len(t, currentTasks, 4)
 	for _, task := range currentTasks {
@@ -2636,7 +2636,7 @@ func TestArchiveMany(t *testing.T) {
 			assert.Equal(t, 3, task.Restarts)
 		}
 	}
-	oldTasks, err := FindAllOld(ByVersion("v"))
+	oldTasks, err := FindAllOld(db.Query(ByVersion("v")))
 	assert.NoError(t, err)
 	assert.Len(t, oldTasks, 4)
 	for _, task := range oldTasks {

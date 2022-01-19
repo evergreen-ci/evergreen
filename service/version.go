@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -153,7 +154,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
-	dbTasks, err := task.FindAllWithFields(task.ByVersion(projCtx.Version.Id), task.StatusFields...)
+	query := db.Query(task.ByVersion(projCtx.Version.Id)).WithFields(task.StatusFields...)
+	dbTasks, err := task.FindAll(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -278,7 +280,9 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	dbTasks, err := task.FindAllWithFields(task.ByVersion(projCtx.Version.Id), task.StatusFields...)
+
+	query := db.Query(task.ByVersion(projCtx.Version.Id)).WithFields(task.StatusFields...)
+	dbTasks, err := task.FindAll(query)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -382,7 +386,8 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		dbTasks, err := task.FindAllWithFields(task.ByVersion(projCtx.Version.Id), task.StatusFields...)
+		query := db.Query(task.ByVersion(projCtx.Version.Id)).WithFields(task.StatusFields...)
+		dbTasks, err := task.FindAll(query)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -95,7 +95,7 @@ func TestCleanupTask(t *testing.T) {
 				So(cleanUpTimedOutTask(ctx, env, t.Name(), newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
-				newTask, err := task.FindOne(task.ById(tID))
+				newTask, err := task.FindOne(db.Query(task.ById(tID)))
 				So(err, ShouldBeNil)
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(newTask.Restarts, ShouldEqual, 2)

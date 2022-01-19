@@ -106,7 +106,7 @@ func GetDistinctTagNames(projectId string) ([]TaskJSONTag, error) {
 // GetTags finds TaskJSONs that have tags in the project associated with a
 // given task.
 func GetTaskJSONTags(taskId string) ([]TagContainer, error) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(db.Query(task.ById(taskId)))
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +140,8 @@ func GetTaskJSONById(taskId, name string) (TaskJSON, error) {
 // GetTaskJSONForVariant finds a task by name and variant and finds
 // the document in the json collection associated with that task's id.
 func GetTaskJSONForVariant(version, variantId, taskName, name string) (TaskJSON, error) {
-	foundTask, err := task.FindOne(bson.M{task.VersionKey: version, task.BuildVariantKey: variantId,
-		task.DisplayNameKey: taskName})
+	foundTask, err := task.FindOne(db.Query(bson.M{task.VersionKey: version, task.BuildVariantKey: variantId,
+		task.DisplayNameKey: taskName}))
 	if err != nil {
 		return TaskJSON{}, err
 	}
@@ -250,7 +250,7 @@ func GetTaskJSONTagsForTask(project, buildVariant, taskName, name string) ([]Tas
 }
 
 func DeleteTaskJSONTagFromTask(taskId, name string) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(db.Query(task.ById(taskId)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -263,7 +263,7 @@ func DeleteTaskJSONTagFromTask(taskId, name string) error {
 }
 
 func SetTaskJSONTagForTask(taskId, name, tag string) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(db.Query(task.ById(taskId)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
