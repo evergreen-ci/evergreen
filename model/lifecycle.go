@@ -133,6 +133,10 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		}
 	}
 
+	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
+		return errors.Wrapf(err, "can't update status for builds in '%s'", buildIds)
+	}
+
 	return nil
 }
 
