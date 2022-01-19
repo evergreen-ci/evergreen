@@ -125,11 +125,14 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 }
 
 func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
-	if obj.HomeVolumeID != nil && *obj.HomeVolumeID != "" {
-		volId := *obj.HomeVolumeID
+	if utility.FromStringPtr(obj.HomeVolumeID) == "" {
+		volId := utility.FromStringPtr(obj.HomeVolumeID)
 		volume, err := r.sc.FindVolumeById(volId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
+		}
+		if volume == nil {
+			return nil, nil
 		}
 		apiVolume := &restModel.APIVolume{}
 		err = apiVolume.BuildFromService(volume)
