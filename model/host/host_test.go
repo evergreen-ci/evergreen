@@ -4829,6 +4829,91 @@ func TestSetNewSSHKeys(t *testing.T) {
 	assert.Subset(t, dbHost.SSHKeyNames, []string{"foo", "bar"})
 }
 
+func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		t                *task.Task
+		h                *Host
+		newIntentCreated bool
+		hostDetailsSet   bool
+	}{
+		"TaskStillRunning": {
+			t: &task.Task{
+				Id:        "t0",
+				Execution: 0,
+				Status:    evergreen.TaskStarted,
+			},
+			h: &Host{
+				Id: "h0",
+				SpawnOptions: SpawnOptions{
+					SpawnedByTask:       true,
+					TaskID:              "t0",
+					TaskExecutionNumber: 0,
+				},
+			},
+			newIntentCreated: true,
+			hostDetailsSet:   false,
+		},
+		"TaskAborted": {
+			t: &task.Task{
+				Id:        "t0",
+				Execution: 0,
+				Status:    evergreen.TaskStarted,
+				Aborted:   true,
+			},
+			h: &Host{
+				Id: "h0",
+				SpawnOptions: SpawnOptions{
+					SpawnedByTask:       true,
+					TaskID:              "t0",
+					TaskExecutionNumber: 0,
+				},
+			},
+			newIntentCreated: false,
+			hostDetailsSet:   true,
+		},
+		"HostNotSpawnedByTask": {
+			t: &task.Task{
+				Id: "t0",
+			},
+			h: &Host{
+				Id: "h0",
+				SpawnOptions: SpawnOptions{
+					SpawnedByTask: false,
+				},
+			},
+			newIntentCreated: false,
+			hostDetailsSet:   false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, task.Collection))
+			require.NoError(t, testCase.t.Insert())
+
+			assert.NoError(t, testCase.h.HandleTerminatedHostSpawnedByTask())
+
+			intent, err := FindOne(db.Query(nil))
+			require.NoError(t, err)
+			if testCase.newIntentCreated {
+				require.NotNil(t, intent)
+				assert.Contains(t, intent.Id, "evg")
+				assert.Equal(t, evergreen.HostUninitialized, intent.Status)
+			} else {
+				assert.Nil(t, intent)
+			}
+
+			t0, err := task.FindOneId(testCase.t.Id)
+			require.NoError(t, err)
+			require.NotNil(t, t0)
+			if testCase.hostDetailsSet {
+				require.Len(t, t0.HostCreateDetails, 1)
+				assert.Equal(t, testCase.h.Id, t0.HostCreateDetails[0].HostId)
+			} else {
+				assert.Nil(t, t0.HostCreateDetails)
+			}
+		})
+	}
+}
+
 func TestUpdateCachedDistroProviderSettings(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 

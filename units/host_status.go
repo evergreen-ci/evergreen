@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -185,8 +184,8 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 
 		catcher := grip.NewBasicCatcher()
 		if h.SpawnOptions.SpawnedByTask {
-			if err := task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")); err != nil {
-				catcher.Wrap(err, "error adding host create error details")
+			if err := h.HandleTerminatedHostSpawnedByTask(); err != nil {
+				catcher.Wrap(err, "handling task host that was terminating before it was running")
 			}
 		}
 		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")

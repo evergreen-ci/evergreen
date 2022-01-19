@@ -78,6 +78,37 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 	return intentHost
 }
 
+func newIntentFromHost(h *Host) *Host {
+	newID := h.Distro.GenerateName()
+	intentHost := &Host{
+		Id:                    newID,
+		Tag:                   newID,
+		CreationTime:          time.Now(),
+		Status:                evergreen.HostUninitialized,
+		TerminationTime:       utility.ZeroTime,
+		User:                  h.User,
+		Distro:                h.Distro,
+		Provider:              h.Provider,
+		StartedBy:             h.StartedBy,
+		UserHost:              h.UserHost,
+		HasContainers:         h.HasContainers,
+		ParentID:              h.ParentID,
+		ContainerPoolSettings: h.ContainerPoolSettings,
+		SpawnOptions:          h.SpawnOptions,
+		DockerOptions:         h.DockerOptions,
+		InstanceTags:          h.InstanceTags,
+		InstanceType:          h.InstanceType,
+		IsVirtualWorkstation:  h.IsVirtualWorkstation,
+		HomeVolumeSize:        h.HomeVolumeSize,
+		HomeVolumeID:          h.HomeVolumeID,
+		NoExpiration:          h.NoExpiration,
+		ExpirationTime:        h.ExpirationTime,
+		ProvisionOptions:      h.ProvisionOptions,
+	}
+
+	return intentHost
+}
+
 // partitionParents will split parent hosts based on those that already have/will have the image for this distro
 // it does not handle scenarios where the image for a distro has changed recently or multiple app servers calling this
 // and racing each other, on the assumption that having to download a small number of extra images is not a big deal
