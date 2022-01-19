@@ -1617,6 +1617,14 @@ func (h *Host) HandleTerminatedHostSpawnedByTask() error {
 
 	if h.Status == evergreen.HostStarting && t.Status == evergreen.TaskStarted && !t.Aborted {
 		intent := newIntentFromHost(h)
+		grip.Info(message.Fields{
+			"message":              "inserting a host intent to replace a terminated host for a task",
+			"original_host":        h.Id,
+			"original_host_status": h.Status,
+			"new_host":             intent.Id,
+			"task":                 t.Id,
+			"task_execution":       t.Execution,
+		})
 		return intent.Insert()
 	}
 
