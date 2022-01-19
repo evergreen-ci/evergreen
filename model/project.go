@@ -1412,14 +1412,16 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // BuildProjectTVPairs resolves the build variants and tasks into which build
 // variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.GetRequester(), alias, true)
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
-func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+	bvs := patchDoc.BuildVariants
+	tasks := patchDoc.Tasks
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
@@ -1454,6 +1456,14 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 		catcher := grip.NewBasicCatcher()
 		vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
 		catcher.Add(errors.Wrap(err, "can't get alias from project"))
+		if len(vars) == 0 && len(patchDoc.PatchedProjectConfig) > 0 {
+			projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+			catcher.Add(errors.Wrap(err, "can't retrieve aliases from patched config"))
+			if err == nil {
+				projectConfigAliases := aliasesToMap(getFullProjectConfigAliases(projectConfig))
+				vars = projectConfigAliases[alias]
+			}
+		}
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {

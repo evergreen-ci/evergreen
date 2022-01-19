@@ -148,6 +148,10 @@ func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias,
 		return nil, nil
 	}
 
+	return findAliasFromProjectConfig(projectConfig, alias)
+}
+
+func findAliasFromProjectConfig(projectConfig *ProjectConfig, alias string) ([]ProjectAlias, error) {
 	projectConfigAliases := aliasesToMap(getFullProjectConfigAliases(projectConfig))
 	return projectConfigAliases[alias], nil
 }
@@ -207,6 +211,23 @@ func FindAliasInProjectOrRepo(projectID, alias string) ([]ProjectAlias, error) {
 		return aliases, nil
 	}
 	return findMatchingAliasForProjectConfig(projectID, alias)
+}
+
+// FindAliasInProjectOrPatchedConfig finds all aliases with a given name for a project.
+// If the project has no aliases, the patched config string is checked for the alias as well.
+func FindAliasInProjectOrPatchedConfig(projectID, alias, patchedConfig string) ([]ProjectAlias, error) {
+	aliases, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
+	if err != nil {
+		return nil, errors.Wrap(err, "error checking for existing aliases")
+	}
+	if len(aliases) > 0 || shouldExit || patchedConfig == "" {
+		return aliases, nil
+	}
+	projectConfig, err := createProjectConfig([]byte(patchedConfig))
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving aliases from patched config")
+	}
+	return findAliasFromProjectConfig(projectConfig, alias)
 }
 
 // FindAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.

@@ -118,7 +118,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"project":      patchDoc.Project,
 				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
-				"config_size":  len(patchDoc.PatchedParserProject),
+				"config_size":  len(patchDoc.PatchedParserProject) + len(patchDoc.PatchedProjectConfig),
 				"num_modules":  len(patchDoc.Patches),
 			}))
 		}
@@ -278,6 +278,24 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
+	alias := j.intent.GetAlias()
+
+	if alias != "" {
+		validAlias := false
+		aliases, err := model.FindAliasInProjectOrPatchedConfig(pref.Id, alias, patchDoc.PatchedProjectConfig)
+		if err != nil {
+			return errors.Wrap(err, "error contacting API server")
+		}
+		for _, al := range aliases {
+			if al.Alias == alias {
+				validAlias = true
+				break
+			}
+		}
+		if !validAlias {
+			return errors.Errorf("%s is not a valid alias", alias)
+		}
+	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
 		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project)
@@ -298,7 +316,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+		project.BuildProjectTVPairs(patchDoc, alias)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
