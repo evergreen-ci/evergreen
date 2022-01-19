@@ -49,9 +49,19 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
-			tasksToActivate = append(tasksToActivate, deps...)
+			for _, dep := range deps {
+				// if tasks are in the same task group, activate any finished tasks
+				if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
+					if err = resetTask(dep.Id, caller, false); err != nil {
+						return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+					}
+				} else {
+					tasksToActivate = append(tasksToActivate, deps...)
+				}
+			}
 		}
 
+		// Investigating strange dispatch state as part of EVG-13144
 		if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 			if err := resetTask(t.Id, caller, false); err != nil {
 				return errors.Wrap(err, "error resetting task")
