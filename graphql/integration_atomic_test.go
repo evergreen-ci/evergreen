@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -29,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -111,6 +113,10 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 	}
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
+	require.NoError(t, env.DB().CreateCollection(ctx, testresult.Collection))
+	require.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
+		Keys: testresult.TestResultsIndex}))
+
 	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
 	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
 	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
