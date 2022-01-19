@@ -1615,7 +1615,7 @@ func (h *Host) HandleTerminatedHostSpawnedByTask() error {
 		return errors.Errorf("host '%s' created by task '%s' execution '%d' that does not exist", h.Id, h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
 	}
 
-	if t.Status == evergreen.TaskStarted && !t.Aborted {
+	if h.Status == evergreen.HostStarting && t.Status == evergreen.TaskStarted && !t.Aborted {
 		intent := newIntentFromHost(h)
 		return intent.Insert()
 	}
