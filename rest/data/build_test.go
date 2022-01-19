@@ -25,12 +25,15 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 	s.mock = false
 
-	assert.NoError(t, db.Clear(build.Collection))
+	assert.NoError(t, db.ClearCollections(build.Collection, model.VersionCollection, model.ProjectRefCollection))
 
-	build1 := &build.Build{Id: "build1"}
-	build2 := &build.Build{Id: "build2"}
+	vId := "v"
+	version := &model.Version{Id: vId}
+	build1 := &build.Build{Id: "build1", Version: vId}
+	build2 := &build.Build{Id: "build2", Version: vId}
 	pr := &model.ProjectRef{Repo: "project", Id: "branch"}
 
+	assert.NoError(t, version.Insert())
 	assert.NoError(t, build1.Insert())
 	assert.NoError(t, build2.Insert())
 	assert.NoError(t, pr.Insert())
@@ -84,13 +87,16 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 
 	s.ctx = &DBConnector{}
 
-	assert.NoError(t, db.Clear(build.Collection))
+	assert.NoError(t, db.ClearCollections(build.Collection, model.VersionCollection))
 
-	build1 := &build.Build{Id: "build1"}
-	build2 := &build.Build{Id: "build2"}
+	vId := "v"
+	version := &model.Version{Id: vId}
+	build1 := &build.Build{Id: "build1", Version: vId}
+	build2 := &build.Build{Id: "build2", Version: vId}
 
 	assert.NoError(t, build1.Insert())
 	assert.NoError(t, build2.Insert())
+	assert.NoError(t, version.Insert())
 
 	s.mock = false
 	suite.Run(t, s)
@@ -157,10 +163,14 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 	s.mock = false
 
-	assert.NoError(t, db.Clear(build.Collection))
+	assert.NoError(t, db.ClearCollections(build.Collection, model.VersionCollection))
 
-	build1 := &build.Build{Id: "build1"}
+	vId := "v"
+	version := &model.Version{Id: vId}
+	build1 := &build.Build{Id: "build1", Version: vId}
+
 	assert.NoError(t, build1.Insert())
+	assert.NoError(t, version.Insert())
 
 	suite.Run(t, s)
 }
@@ -211,13 +221,16 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 
 	s.ctx = &DBConnector{}
 
-	assert.NoError(t, db.Clear(build.Collection))
+	assert.NoError(t, db.ClearCollections(build.Collection, model.VersionCollection))
 
-	build1 := &build.Build{Id: "build1"}
-	build2 := &build.Build{Id: "build2"}
+	vId := "v"
+	version := &model.Version{Id: vId}
+	build1 := &build.Build{Id: "build1", Version: vId}
+	build2 := &build.Build{Id: "build2", Version: vId}
 
 	assert.NoError(t, build1.Insert())
 	assert.NoError(t, build2.Insert())
+	assert.NoError(t, version.Insert())
 
 	s.mock = false
 	suite.Run(t, s)
