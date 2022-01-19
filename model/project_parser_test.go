@@ -1952,10 +1952,11 @@ func TestMergeUniqueFail(t *testing.T) {
 }
 
 func TestMergeBuildVariant(t *testing.T) {
+	bvExisting := "a_variant"
 	main := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: "a_variant",
+				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name:      "say-bye",
@@ -1971,11 +1972,12 @@ func TestMergeBuildVariant(t *testing.T) {
 			},
 		},
 	}
-
+	bvNew1 := "another_variant"
+	bvNew2 := "one_more_variant"
 	add := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: "a_variant",
+				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "add this task",
@@ -1983,7 +1985,7 @@ func TestMergeBuildVariant(t *testing.T) {
 				},
 			},
 			parserBV{
-				Name:      "another_variant",
+				Name:      bvNew1,
 				BatchTime: &bvBatchTime,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2001,13 +2003,31 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 			},
+			parserBV{
+				Name: bvNew2,
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
+					},
+				},
+			},
 		},
 	}
 
 	err := main.mergeBuildVariant(add)
 	assert.NoError(t, err)
-	assert.Equal(t, len(main.BuildVariants), 2)
-	assert.Equal(t, len(main.BuildVariants[0].Tasks), 2)
+	require.Equal(t, len(main.BuildVariants), 3)
+	bvNames := []string{}
+	for _, bv := range main.BuildVariants {
+		if bv.Name == bvNew1 {
+			assert.Equal(t, len(bv.Tasks), 2)
+		}
+		bvNames = append(bvNames, bv.Name)
+	}
+	assert.Contains(t, bvNames, bvExisting)
+	assert.Contains(t, bvNames, bvNew1)
+	assert.Contains(t, bvNames, bvNew2)
 }
 
 func TestMergeBuildVariantFail(t *testing.T) {
