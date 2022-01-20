@@ -235,7 +235,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 2)
-				tasks, err := task.FindAll(task.All)
+				tasks, err := task.Find(nil)
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 2)
 			})

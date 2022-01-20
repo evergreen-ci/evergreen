@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -585,7 +584,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			return nil, false, nil
 		}
 
-		nextTask, err := task.FindOne(db.Query(task.ById(queueItem.Id)))
+		nextTask, err := task.FindOneId(queueItem.Id)
 		if err != nil {
 			grip.DebugWhen(queueItem.Group != "", message.Fields{
 				"message":            "error retrieving next task",

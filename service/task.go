@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -706,7 +705,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(db.Query(task.ById(projCtx.Task.Id)))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -719,7 +718,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(db.Query(task.ById(projCtx.Task.Id)))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -739,7 +738,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(db.Query(task.ById(projCtx.Task.Id)))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -765,7 +764,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(db.Query(task.ById(projCtx.Task.Id)))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}

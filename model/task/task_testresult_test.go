@@ -74,7 +74,7 @@ func (s *TaskTestResultSuite) SetupTest() {
 }
 
 func (s *TaskTestResultSuite) TestNoOldNoNewTestResults() {
-	t, err := FindOne(db.Query(ById(s.tasks[2].Id)))
+	t, err := FindOneId(s.tasks[2].Id)
 	s.NoError(err)
 
 	s.NoError(t.PopulateTestResults())
