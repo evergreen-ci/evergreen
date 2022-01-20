@@ -486,12 +486,20 @@ func TestGetUsersForResourceId(t *testing.T) {
 		},
 	}
 	u3 := user.DBUser{
-		Id: "nobody",
+		Id:      "nobody",
+		OnlyAPI: false,
 		SystemRoles: []string{
 			"other_project_access",
 		},
 	}
-	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3))
+	u4 := user.DBUser{ // should never be returned
+		Id:      "Data",
+		OnlyAPI: true,
+		SystemRoles: []string{
+			"bot_access",
+		},
+	}
+	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3, u4))
 	basicRole := gimlet.Role{
 		ID:    "basic_project_access",
 		Scope: "some_projects",
@@ -517,9 +525,17 @@ func TestGetUsersForResourceId(t *testing.T) {
 			evergreen.PermissionTasks: evergreen.TasksView.Value,
 		},
 	}
+	botRole := gimlet.Role{
+		ID:    "bot_access",
+		Scope: "all_projects",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value,
+		},
+	}
 	assert.NoError(t, rm.UpdateRole(basicRole))
 	assert.NoError(t, rm.UpdateRole(superRole))
 	assert.NoError(t, rm.UpdateRole(otherRole))
+	assert.NoError(t, rm.UpdateRole(botRole))
 	someScope := gimlet.Scope{
 		ID:        "some_projects",
 		Type:      evergreen.ProjectResourceType,
