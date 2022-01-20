@@ -236,6 +236,13 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	body, err := ioutil.ReadAll(resp.Body)
 	s.Require().NoError(err)
 
+	s.NoError(db.ClearCollections(model.ProjectAliasCollection))
+
+	s.NoError((&model.ProjectAlias{
+		ProjectID: s.project,
+		Alias:     evergreen.CommitQueueAlias,
+	}).Upsert())
+
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:         s.user,
 		Project:      s.project,

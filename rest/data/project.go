@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"net/http"
 	"time"
 
@@ -419,7 +420,7 @@ func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias str
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
 		requester := getRequesterFromAlias(projectAlias.Alias)
-		_, _, variantTasks := p.ResolvePatchVTs(nil, requester, projectAlias.Alias, includeDeps)
+		_, _, variantTasks := p.ResolvePatchVTs(&patch.Patch{}, requester, projectAlias.Alias, includeDeps)
 		for _, variantTask := range variantTasks {
 			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 		}
