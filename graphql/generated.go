@@ -7883,7 +7883,7 @@ input BuildBaronSettingsInput {
 
 input TaskAnnotationSettingsInput {
   jiraCustomFields: [JiraFieldInput!]
-  fileTicketWebhook: WebhookInput!
+  fileTicketWebhook: WebhookInput
 }
 
 input JiraFieldInput {
@@ -40964,7 +40964,7 @@ func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx contex
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileTicketWebhook"))
-			it.FileTicketWebhook, err = ec.unmarshalNWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx, v)
+			it.FileTicketWebhook, err = ec.unmarshalOWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -51272,11 +51272,6 @@ func (ec *executionContext) marshalNWebhookHeader2ᚕgithubᚗcomᚋevergreenᚑ
 	return ret
 }
 
-func (ec *executionContext) unmarshalNWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, v interface{}) (model.APIWebHook, error) {
-	res, err := ec.unmarshalInputWebhookInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationConfig) graphql.Marshaler {
 	return ec._WorkstationConfig(ctx, sel, &v)
 }
@@ -53709,6 +53704,11 @@ func (ec *executionContext) marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 
 func (ec *executionContext) marshalOWebhookHeader2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeader(ctx context.Context, sel ast.SelectionSet, v model.APIWebhookHeader) graphql.Marshaler {
 	return ec._WebhookHeader(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, v interface{}) (model.APIWebHook, error) {
+	res, err := ec.unmarshalInputWebhookInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOWebhookSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIWebhookSubscriber) graphql.Marshaler {

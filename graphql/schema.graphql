@@ -570,7 +570,7 @@ input BuildBaronSettingsInput {
 
 input TaskAnnotationSettingsInput {
   jiraCustomFields: [JiraFieldInput!]
-  fileTicketWebhook: WebhookInput!
+  fileTicketWebhook: WebhookInput
 }
 
 input JiraFieldInput {
