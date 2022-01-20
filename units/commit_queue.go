@@ -675,6 +675,7 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 
 	// Refresh the cached project config
 	patchDoc.PatchedParserProject = ""
+	patchDoc.PatchedProjectConfig = ""
 	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get updated project config")

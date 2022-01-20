@@ -278,23 +278,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	alias := j.intent.GetAlias()
-
-	if alias != "" {
-		validAlias := false
-		aliases, err := model.FindAliasInProjectOrPatchedConfig(pref.Id, alias, patchDoc.PatchedProjectConfig)
-		if err != nil {
-			return errors.Wrap(err, "error contacting API server")
-		}
-		for _, al := range aliases {
-			if al.Alias == alias {
-				validAlias = true
-				break
-			}
-		}
-		if !validAlias {
-			return errors.Errorf("%s is not a valid alias", alias)
-		}
+	if err = j.verifyValidAlias(pref.Id, patchDoc); err != nil {
+		return err
 	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
@@ -316,7 +301,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(patchDoc, alias)
+		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
@@ -831,6 +816,27 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 				})
 				break
 			}
+		}
+	}
+	return nil
+}
+
+func (j *patchIntentProcessor) verifyValidAlias(projectId string, patchDoc *patch.Patch) error {
+	alias := j.intent.GetAlias()
+	if alias != "" {
+		validAlias := false
+		aliases, err := model.FindAliasInProjectOrPatchedConfig(projectId, alias, patchDoc.PatchedProjectConfig)
+		if err != nil {
+			return errors.Wrapf(err, "error retrieving aliases for project %s", projectId)
+		}
+		for _, al := range aliases {
+			if al.Alias == alias {
+				validAlias = true
+				break
+			}
+		}
+		if !validAlias {
+			return errors.Errorf("alias %s is not set on project %s", alias, projectId)
 		}
 	}
 	return nil

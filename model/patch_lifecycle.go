@@ -303,7 +303,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.Id = p.Id.Hex()
 	if config != nil {
-		config.Identifier = p.Project
+		config.Project = p.Project
 		config.Id = p.Id.Hex()
 	}
 

@@ -219,33 +219,47 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
 	}
 	s.NoError(projectConfig.Insert())
 
-	projectAliases, err := FindAliasInProjectOrRepo("project-1", evergreen.CommitQueueAlias)
+	projectAliases, err := FindAliasInProjectRepoOrConfig("project-1", evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 2)
 
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubPRAlias)
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", evergreen.GithubChecksAlias)
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", evergreen.GithubChecksAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-0")
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-0")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-2")
 	s.NoError(err)
 	s.Len(projectAliases, 0)
 
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", "alias-2")
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-2")
 	s.NoError(err)
 	s.Len(projectAliases, 0)
 
-	projectAliases, err = FindAliasInProjectOrRepo("project-1", "nonexistent")
+	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "nonexistent")
 	s.NoError(err)
 	s.Len(projectAliases, 0)
+}
+
+func (s *ProjectAliasSuite) TestFindAliasInProjectOrPatchedConfig() {
+	projYml := `
+patch_aliases:
+  - alias: "test"
+    variant: "^ubuntu1604$"
+    task: "^test.*$"
+    remote_path: ""
+`
+	projectAliases, err := FindAliasInProjectOrPatchedConfig("", "test", projYml)
+	s.NoError(err)
+	s.Len(projectAliases, 1)
+	s.Equal("^ubuntu1604$", projectAliases[0].Variant)
 }
 
 func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
@@ -295,27 +309,27 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrRepo() {
 	}
 
 	// Test project with aliases
-	found, err := FindAliasInProjectOrRepo(pRef1.Id, "alias-3")
+	found, err := FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-3")
 	s.NoError(err)
 	s.Len(found, 3)
 
 	// Test project without aliases; parent repo has aliases
-	found, err = FindAliasInProjectOrRepo(pRef2.Id, "alias-1")
+	found, err = FindAliasInProjectRepoOrConfig(pRef2.Id, "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 
 	// Test project doesn't match alias but other patch aliases are defined so we don't continue to repo
-	found, err = FindAliasInProjectOrRepo(pRef1.Id, "alias-1")
+	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-1")
 	s.NoError(err)
 	s.Len(found, 0)
 
 	// Test non-existent project
-	found, err = FindAliasInProjectOrRepo("bad-project", "alias-1")
+	found, err = FindAliasInProjectRepoOrConfig("bad-project", "alias-1")
 	s.Error(err)
 	s.Len(found, 0)
 
 	// Test no aliases found
-	found, err = FindAliasInProjectOrRepo(pRef1.Id, "alias-5")
+	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-5")
 	s.NoError(err)
 	s.Len(found, 0)
 }

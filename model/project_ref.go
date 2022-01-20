@@ -2296,7 +2296,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProjectOrRepo(definition.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectRepoOrConfig(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return definition, errors.Wrap(err, "problem fetching aliases for project")
 			}

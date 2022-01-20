@@ -1454,15 +1454,21 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
-		catcher.Add(errors.Wrap(err, "can't get alias from project"))
-		if len(vars) == 0 && len(patchDoc.PatchedProjectConfig) > 0 {
+		var vars []ProjectAlias
+		var err error
+		if len(patchDoc.PatchedProjectConfig) > 0 {
 			projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
-			catcher.Add(errors.Wrap(err, "can't retrieve aliases from patched config"))
+			catcher.Wrap(err, "can't retrieve aliases from patched config")
 			if err == nil {
-				projectConfigAliases := aliasesToMap(getFullProjectConfigAliases(projectConfig))
-				vars = projectConfigAliases[alias]
+				vars, err = findAliasFromProjectConfig(projectConfig, alias)
+				if err != nil {
+					catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+				}
 			}
+		}
+		if len(vars) == 0 {
+			vars, err = FindAliasInProjectRepoOrConfig(p.Identifier, alias)
+			catcher.Wrap(err, "can't get alias from project")
 		}
 
 		var aliasPairs, displayTaskPairs []TVPair
@@ -1667,7 +1673,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 	for _, definition := range definitions {
 		for _, specifier := range definition.TaskSpecifiers {
 			if specifier.PatchAlias != "" {
-				aliases, err := FindAliasInProjectOrRepo(p.Identifier, specifier.PatchAlias)
+				aliases, err := FindAliasInProjectRepoOrConfig(p.Identifier, specifier.PatchAlias)
 				if err != nil {
 					return nil, errors.Wrap(err, "can't get alias from project")
 				}
