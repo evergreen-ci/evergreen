@@ -25,6 +25,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -235,7 +236,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 2)
-				tasks, err := task.Find(nil)
+				tasks, err := task.Find(bson.M{})
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 2)
 			})
