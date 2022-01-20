@@ -49,15 +49,19 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
-			for _, dep := range deps {
-				// if tasks are in the same task group, activate any finished tasks
-				if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-					if err = resetTask(dep.Id, caller, false); err != nil {
-						return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+			if t.IsPartOfSingleHostTaskGroup() {
+				for _, dep := range deps {
+					// reset any already finished tasks in the same task group
+					if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
+						if err = resetTask(dep.Id, caller, false); err != nil {
+							return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+						}
+					} else {
+						tasksToActivate = append(tasksToActivate, dep)
 					}
-				} else {
-					tasksToActivate = append(tasksToActivate, deps...)
 				}
+			} else {
+				tasksToActivate = append(tasksToActivate, deps...)
 			}
 		}
 
