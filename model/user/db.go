@@ -189,11 +189,15 @@ func FindByRole(role string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "error finding users with role '%s'", role)
 }
 
-func FindByRoles(roles []string) ([]DBUser, error) {
+// FindUsersByRoles returns only real users (i.e. omits API only users).
+func FindUsersByRoles(roles []string) ([]DBUser, error) {
 	res := []DBUser{}
 	err := db.FindAllQ(
 		Collection,
-		db.Query(bson.M{RolesKey: bson.M{"$in": roles}}),
+		db.Query(bson.M{
+			RolesKey:   bson.M{"$in": roles},
+			OnlyAPIKey: bson.M{"$ne": true},
+		}),
 		&res,
 	)
 	return res, errors.Wrapf(err, "error finding users with roles '%v'", roles)
