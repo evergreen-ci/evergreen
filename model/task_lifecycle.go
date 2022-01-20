@@ -1599,15 +1599,17 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		return errors.Wrapf(err, "can't get task group for task '%s'", t.Id)
 	}
 	taskSet := map[string]bool{}
-	for _, t := range tasks {
-		taskSet[t.Id] = true
-		for _, dep := range t.DependsOn {
+	for _, tgTask := range tasks {
+		taskSet[tgTask.Id] = true
+		for _, dep := range tgTask.DependsOn {
 			if taskSet[dep.TaskId] && dep.Unattainable {
-				grip.Info(message.Fields{
-					"message": "task group task was blocked on an earlier task group task after reset",
-					"task":    t.Id,
-					"ticket":  "EVG-12923",
-				})
+				grip.Debug(message.WrapError(errors.New(
+					"task group task was blocked on an earlier task group task after reset"), message.Fields{
+					"blocked_task":            tgTask.Id,
+					"new_execution":           tgTask.Execution,
+					"unattainable_dependency": dep.TaskId,
+					"ticket":                  "EVG-12923",
+				}))
 			}
 		}
 	}
