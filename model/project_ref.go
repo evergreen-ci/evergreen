@@ -307,6 +307,10 @@ func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
 }
 
+func (p *ProjectRef) IsVersionControlEnabled() bool {
+	return utility.FromBoolPtr(p.VersionControlEnabled)
+}
+
 func (p *ProjectRef) IsPerfEnabled() bool {
 	return utility.FromBoolPtr(p.PerfEnabled)
 }
@@ -757,7 +761,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeProjectConfig && *pRef.VersionControlEnabled {
+	if includeProjectConfig && pRef.IsVersionControlEnabled() {
 		err = pRef.MergeWithProjectConfig(version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
