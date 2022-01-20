@@ -189,8 +189,8 @@ func FindByRole(role string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "error finding users with role '%s'", role)
 }
 
-// FindUsersByRoles returns only real users (i.e. omits API only users).
-func FindUsersByRoles(roles []string) ([]DBUser, error) {
+// FindHumanUsersByRoles returns human users that have any of the given roles.
+func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 	res := []DBUser{}
 	err := db.FindAllQ(
 		Collection,
