@@ -49,9 +49,23 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
-			tasksToActivate = append(tasksToActivate, deps...)
+			if t.IsPartOfSingleHostTaskGroup() {
+				for _, dep := range deps {
+					// reset any already finished tasks in the same task group
+					if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
+						if err = resetTask(dep.Id, caller, false); err != nil {
+							return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+						}
+					} else {
+						tasksToActivate = append(tasksToActivate, dep)
+					}
+				}
+			} else {
+				tasksToActivate = append(tasksToActivate, deps...)
+			}
 		}
 
+		// Investigating strange dispatch state as part of EVG-13144
 		if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 			if err := resetTask(t.Id, caller, false); err != nil {
 				return errors.Wrap(err, "error resetting task")
@@ -84,12 +98,19 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		// If the task was not activated by step back, and either the caller is not evergreen
 		// or the task was originally activated by evergreen, deactivate the task
 	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
-		// We are trying to deactivate this task
-		// So we check if the person trying to deactivate is evergreen.
-		// If it is not, then we can deactivate it.
-		// Otherwise, if it was originally activated by evergreen, anything can
-		// deactivate it.
 		var err error
+		// deactivate later tasks in the group as well, since they won't succeed without this one
+		if t.IsPartOfSingleHostTaskGroup() {
+			tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			if err != nil {
+				return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+			}
+			for _, taskInGroup := range tasksInGroup {
+				if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
+					originalTasks = append(originalTasks, taskInGroup)
+				}
+			}
+		}
 		err = task.DeactivateTasks(originalTasks, caller)
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")

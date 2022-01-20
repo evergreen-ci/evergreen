@@ -279,6 +279,107 @@ func TestSetActiveState(t *testing.T) {
 			So(dtFromDb.Activated, ShouldBeTrue)
 		})
 	})
+	Convey("with a task that is part of a task group", t, func() {
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
+			"Error clearing task and build collections")
+		b := &build.Build{
+			Id:      "build",
+			Version: "version",
+		}
+		So(b.Insert(), ShouldBeNil)
+		taskDef := &task.Task{ // should restart
+			Id:                "task1",
+			Activated:         true,
+			BuildId:           b.Id,
+			Status:            evergreen.TaskFailed,
+			DistroId:          "arch",
+			Version:           "version",
+			TaskGroup:         "tg",
+			TaskGroupMaxHosts: 1,
+			TaskGroupOrder:    1,
+		}
+		So(taskDef.Insert(), ShouldBeNil)
+
+		taskDef.Id = "task2"
+		taskDef.Activated = false
+		taskDef.Status = evergreen.TaskUndispatched
+		taskDef.TaskGroupOrder = 2
+		So(taskDef.Insert(), ShouldBeNil) // should be scheduled
+
+		taskDef.Id = "task4"
+		taskDef.TaskGroupOrder = 4
+		So(taskDef.Insert(), ShouldBeNil) //should not be activated
+
+		taskDef.Id = "task3"
+		taskDef.TaskGroupOrder = 3
+		So(taskDef.Insert(), ShouldBeNil) // the task we're activating
+
+		So(SetActiveState(taskDef, "test", true), ShouldBeNil)
+
+		taskGroup, err := task.FindTaskGroupFromBuild(b.Id, taskDef.TaskGroup)
+		So(err, ShouldBeNil)
+		So(taskGroup, ShouldHaveLength, 4)
+		for _, t := range taskGroup {
+			if t.TaskGroupOrder < 4 {
+				So(t.Activated, ShouldBeTrue)
+				So(t.Status, ShouldEqual, evergreen.TaskUndispatched)
+			} else {
+				So(t.Activated, ShouldBeFalse)
+			}
+			if t.TaskGroupOrder == 1 { // the first task should be restarted
+				So(t.Execution, ShouldEqual, 1)
+			} else {
+				So(t.Execution, ShouldEqual, 0)
+			}
+		}
+	})
+	Convey("deactivating an early task group task", t, func() {
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
+			"Error clearing task and build collections")
+		b := &build.Build{
+			Id:      "build",
+			Version: "version",
+		}
+		So(b.Insert(), ShouldBeNil)
+		taskDef := &task.Task{
+			Id:                "task1",
+			Activated:         true,
+			BuildId:           b.Id,
+			Status:            evergreen.TaskSucceeded,
+			DistroId:          "arch",
+			Version:           "version",
+			TaskGroup:         "tg",
+			TaskGroupMaxHosts: 1,
+			TaskGroupOrder:    1,
+		}
+		So(taskDef.Insert(), ShouldBeNil)
+
+		taskDef.Id = "task2"
+		taskDef.TaskGroupOrder = 2
+		taskDef.Status = evergreen.TaskDispatched
+		So(taskDef.Insert(), ShouldBeNil) // should not be unscheduled
+
+		taskDef.Id = "task4"
+		taskDef.TaskGroupOrder = 4
+		So(taskDef.Insert(), ShouldBeNil) // task should also be deactivated
+
+		taskDef.Id = "task3"
+		taskDef.TaskGroupOrder = 3
+		So(taskDef.Insert(), ShouldBeNil) // task to deactivate
+
+		So(SetActiveState(taskDef, "test", false), ShouldBeNil)
+
+		taskGroup, err := task.FindTaskGroupFromBuild(b.Id, taskDef.TaskGroup)
+		So(err, ShouldBeNil)
+		So(taskGroup, ShouldHaveLength, 4)
+		for _, t := range taskGroup {
+			if t.TaskGroupOrder >= 3 {
+				So(t.Activated, ShouldBeFalse)
+			} else {
+				So(t.Activated, ShouldBeTrue)
+			}
+		}
+	})
 }
 
 func TestActivatePreviousTask(t *testing.T) {
