@@ -650,8 +650,8 @@ type PatchOpts struct {
 	env   evergreen.Environment
 }
 
-// UpdateNewFile modifies ReadFileInto to read from the patch diff
-// if the included file has been modified
+// UpdateNewFile modifies ReadFileFrom to read from the patch diff
+// if the included file has been modified.
 func (opts *GetProjectOpts) UpdateForFile(path string) {
 	if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
 		if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ShouldPatchFileWithDiff(path) {
