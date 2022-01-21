@@ -587,7 +587,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		// read from the patch diff if a change has been made in any of the include files
 		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
-			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
+			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ShouldPatchFileWithDiff(path.FileName) {
 				opts.ReadFileFrom = ReadFromPatchDiff
 			} else {
 				opts.ReadFileFrom = ReadFromPatch

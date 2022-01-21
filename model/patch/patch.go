@@ -712,6 +712,12 @@ func (p *Patch) IsParent() bool {
 	return len(p.Triggers.ChildPatches) > 0
 }
 
+// ShouldPatchFileWithDiff returns true if the patch should read locally
+// (i.e. is not a PR or CQ patch) and the config has changed.
+func (p *Patch) ShouldPatchFileWithDiff(path string) bool {
+	return !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path)
+}
+
 func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 	if !p.IsChild() {
 		return -1, nil

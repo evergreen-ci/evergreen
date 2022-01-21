@@ -155,7 +155,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	// apply remote configuration patch if needed
-	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path) {
+	if p.ShouldPatchFileWithDiff(path) {
 		opts.ReadFileFrom = ReadFromPatchDiff
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
