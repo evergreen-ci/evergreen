@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -2237,7 +2237,7 @@ buildvariants:
 }
 
 func TestUpdateForFile(t *testing.T) {
-	project_parser_test.gop := &patch.Patch{
+	p := &patch.Patch{
 		Id: "p1",
 		Patches: []patch.ModulePatch{
 			{
