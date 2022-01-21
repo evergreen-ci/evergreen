@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
@@ -86,12 +87,13 @@ func taskFinishedTwoOrMoreDaysAgo(taskID string, sub *event.Subscription) (bool,
 	if renotify == "" || err != nil || !found {
 		renotifyInterval = 48
 	}
-	t, err := task.FindOne(task.ById(taskID).WithFields(task.FinishTimeKey))
+	query := db.Query(task.ById(taskID)).WithFields(task.FinishTimeKey)
+	t, err := task.FindOne(query)
 	if err != nil {
 		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
 	}
 	if t == nil {
-		t, err = task.FindOneOld(task.ById(taskID).WithFields(task.FinishTimeKey))
+		t, err = task.FindOneOldWithFields(task.ById(taskID), task.FinishTimeKey)
 		if err != nil {
 			return false, errors.Wrapf(err, "error finding old task '%s'", taskID)
 		}
@@ -606,8 +608,9 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 		return false, nil, nil
 	}
 
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
+		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+	previousTask, err := task.FindOne(query)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
@@ -858,8 +861,9 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	catcher := grip.NewBasicCatcher()
-	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+	previousCompleteTask, err := task.FindOne(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
@@ -1060,8 +1064,9 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.TriggerID != "" && sub.Owner != "" { // don't notify committer for a triggered build
 		return nil, nil
 	}
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+	previousTask, err := task.FindOne(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -56,7 +57,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
-					testTask, err := task.FindOne(task.ById(conf.Task.Id))
+					testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
 					require.NoError(t, err, "Couldn't find task")
 					So(testTask, ShouldNotBeNil)
 				}
@@ -71,7 +72,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 // dBTests are the database verification tests for standard one file execution
 func dBTests(taskId string) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(db.Query(task.ById(taskId)))
 	So(err, ShouldBeNil)
 	So(t, ShouldNotBeNil)
 	So(len(t.LocalTestResults), ShouldNotEqual, 0)
@@ -90,7 +91,7 @@ func dBTests(taskId string) {
 
 // dBTestsWildcard are the database verification tests for globbed file execution
 func dBTestsWildcard(taskId string) {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(db.Query(task.ById(taskId)))
 	So(err, ShouldBeNil)
 	So(len(t.LocalTestResults), ShouldEqual, TotalResultCount)
 

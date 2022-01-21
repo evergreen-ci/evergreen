@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -37,7 +38,7 @@ type FailingTaskData struct {
 func BbFileTicket(context context.Context, taskId string, execution int) (bool, error) {
 	taskNotFound := false
 	// Find information about the task
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(db.Query(task.ById(taskId)))
 	if err != nil {
 		return taskNotFound, err
 	}

@@ -132,7 +132,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// find all the relevant tasks
-		tasks, err = task.Find(task.ByIds(taskIds).WithFields(task.VersionKey, task.BuildIdKey))
+		tasks, err = task.FindWithFields(task.ByIds(taskIds), task.VersionKey, task.BuildIdKey)
 		if err != nil {
 			msg := fmt.Sprintf("Error finding tasks: %v", err)
 			grip.Error(msg)

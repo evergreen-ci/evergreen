@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
@@ -284,8 +285,8 @@ func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*
 		depIds = append(depIds, dep.TaskId)
 	}
 
-	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
-		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	dependencyTasks, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
 	}
@@ -352,8 +353,8 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 		depIds = append(depIds, dep.TaskId)
 	}
 
-	dependencyTasks, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
-		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	dependencyTasks, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
 	}
@@ -1309,7 +1310,8 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 }
 
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
-	tasks, err := task.FindAllFirstExecution(task.ByVersion(*obj.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	query := db.Query(task.ByVersion(*obj.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
+	tasks, err := task.FindAllFirstExecution(query)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1362,7 +1364,7 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 }
 
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
+	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for patch %s: %s", *obj.Id, err.Error()))
 	}
@@ -1832,7 +1834,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 	if len(tasks) == 0 {
 		return nil, nil
 	}
-	dbTasks, err := task.FindAll(task.ByIds(tasks))
+	dbTasks, err := task.FindAll(db.Query(task.ByIds(tasks)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", tasks, err))
 	}
@@ -3820,7 +3822,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 }
 
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(task.DisplayTasksByVersion(*obj.Id))
+	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task count for version `%s`: %s", *obj.Id, err.Error()))
 	}

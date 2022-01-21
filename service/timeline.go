@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -188,7 +189,8 @@ func getBuildInfo(buildIds []string) ([]BuildInfo, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get builds")
 	}
-	dbTasks, err := task.FindAll(task.ByBuildIds(buildIds).WithFields(task.DisplayNameKey, task.StatusKey, task.DetailsKey))
+	query := db.Query(task.ByBuildIds(buildIds)).WithFields(task.DisplayNameKey, task.StatusKey, task.DetailsKey)
+	dbTasks, err := task.FindAll(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get tasks")
 	}

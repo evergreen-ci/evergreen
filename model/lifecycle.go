@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -24,6 +23,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -179,7 +179,7 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 		depIDs = append(depIDs, depTask.Id)
 	}
 
-	tasks, err := task.FindAll(db.Query(bson.M{
+	query := db.Query(bson.M{
 		"$or": []bson.M{
 			{task.IdKey: bson.M{"$in": ids}},
 			{
@@ -187,7 +187,8 @@ func SetTaskPriority(t task.Task, priority int64, caller string) error {
 				task.PriorityKey: bson.M{"$lt": priority},
 			},
 		},
-	}).WithFields(ExecutionKey))
+	}).WithFields(ExecutionKey)
+	tasks, err := task.FindAll(query)
 	if err != nil {
 		return errors.Wrap(err, "can't find matching tasks")
 	}
@@ -229,8 +230,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
-		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).
-			WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: buildId}).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for build '%s'", buildId)
 		}
@@ -255,8 +255,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 	// negative priority - these tasks should never run, so unschedule now
 	if priority < 0 {
 		var tasks []task.Task
-		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).
-			WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err = task.FindAll(db.Query(bson.M{task.VersionKey: versionId}).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrapf(err, "can't get tasks for version '%s'", versionId)
 		}
@@ -294,7 +293,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
-	finishedTasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	finishedTasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -410,7 +409,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	// restart all the 'not in-progress' tasks for the build
-	tasks, err := task.FindAll(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses))
+	tasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -426,7 +425,7 @@ func RestartAllBuildTasks(buildId string, caller string) error {
 		return errors.WithStack(err)
 	}
 
-	allTasks, err := task.FindAll(task.ByBuildId(buildId))
+	allTasks, err := task.FindAll(db.Query(task.ByBuildId(buildId)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -493,7 +492,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindAll(task.ByBuildId(buildId))
+	tasks, err := task.FindAll(db.Query(task.ByBuildId(buildId)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1116,7 +1115,7 @@ func RecomputeNumDependents(t task.Task) error {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
 
-	versionTasks, err := task.FindAll(task.ByVersion(t.Version))
+	versionTasks, err := task.FindAll(db.Query(task.ByVersion(t.Version)))
 	if err != nil {
 		return errors.Wrap(err, "error getting tasks in version")
 	}
@@ -1644,7 +1643,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	for _, b := range builds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey, task.ActivatedKey))
+		tasksInBuild, err := task.FindWithFields(task.ByBuildId(b.Id), task.DisplayNameKey, task.ActivatedKey)
 		if err != nil {
 			return nil, err
 		}
@@ -1727,7 +1726,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 func getTaskIdTables(v *Version, p *Project, newPairs TaskVariantPairs, projectName string) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
 	taskIdTable := NewPatchTaskIdTable(p, v, newPairs, projectName)
-	existingTasks, err := task.FindAll(task.ByVersion(v.Id).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
+	existingTasks, err := task.FindAll(db.Query(task.ByVersion(v.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "can't get existing task ids")
 	}

@@ -778,25 +778,25 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	projection := bson.M{
-		task.DisplayNameKey:         1,
-		task.BuildVariantKey:        1,
-		task.StatusKey:              1,
-		task.RevisionKey:            1,
-		task.IdKey:                  1,
-		task.ExecutionKey:           1,
-		task.RevisionOrderNumberKey: 1,
-		task.OldTaskIdKey:           1,
-		task.StartTimeKey:           1,
-		task.FinishTimeKey:          1,
-		task.ProjectKey:             1,
-		task.DetailsKey:             1,
+	projection := []string{
+		task.DisplayNameKey,
+		task.BuildVariantKey,
+		task.StatusKey,
+		task.RevisionKey,
+		task.IdKey,
+		task.ExecutionKey,
+		task.RevisionOrderNumberKey,
+		task.OldTaskIdKey,
+		task.StartTimeKey,
+		task.FinishTimeKey,
+		task.ProjectKey,
+		task.DetailsKey,
 	}
-	tasks, err := task.Find(db.Query(tasksQuery).Project(projection))
+	tasks, err := task.FindWithFields(tasksQuery, projection...)
 	if err != nil {
 		return nil, err
 	}
-	oldTasks, err := task.FindOld(db.Query(tasksQuery).Project(projection))
+	oldTasks, err := task.FindOldWithFields(tasksQuery, projection...)
 	if err != nil {
 		return nil, err
 	}
@@ -1090,14 +1090,14 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 			"$in": params.BuildVariants,
 		}
 	}
-	projection := bson.M{
-		"_id":           1,
-		"status":        1,
-		"activated":     1,
-		"time_taken":    1,
-		"build_variant": 1,
+	projection := []string{
+		"_id",
+		"status",
+		"activated",
+		"time_taken",
+		"build_variant",
 	}
-	last, err := task.Find(db.Query(query).Project(projection))
+	last, err := task.FindWithFields(query, projection...)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying tasks")
 	}

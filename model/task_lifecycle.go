@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -180,7 +181,9 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// find previous task limiting to just the last one
-	prevTask, err := task.FindOne(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester))
+	filter, sort := task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
+	query := db.Query(filter).Sort(sort)
+	prevTask, err := task.FindOne(query)
 	if err != nil {
 		return errors.Wrap(err, "Error finding previous task")
 	}
@@ -216,7 +219,7 @@ func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
 func resetTask(taskId, caller string, logIDs bool) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -241,7 +244,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 
 // TryResetTask resets a task
 func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -367,13 +370,15 @@ func AbortTask(taskId, caller string) error {
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.FindAll(task.ByActivatedBeforeRevisionWithStatuses(
+	filter, sort := task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
 		t.DisplayName,
 		t.Project,
-	))
+	)
+	query := db.Query(filter).Sort(sort)
+	allTasks, err := task.FindAll(query)
 	if err != nil {
 		return errors.Wrapf(err, "error finding tasks to deactivate for task %s", t.Id)
 	}
@@ -927,7 +932,7 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
 // Returns true if the build's status has changed.
 func UpdateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.Find(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1254,7 +1259,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 }
 
 func MarkTasksReset(taskIds []string) error {
-	tasks, err := task.FindAll(task.ByIds(taskIds))
+	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1303,7 +1308,7 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.FindAll(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindAll(db.Query(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes)))
 	if err != nil {
 		return results, errors.WithStack(err)
 	}
@@ -1538,7 +1543,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	}
 
 	// refresh task status from db in case of race
-	taskWithStatus, err := task.FindOne(task.ById(dt.Id).WithFields(task.StatusKey))
+	taskWithStatus, err := task.FindOneIdWithFields(dt.Id, task.StatusKey)
 	if err != nil {
 		return errors.Wrap(err, "error refreshing task status from db")
 	}

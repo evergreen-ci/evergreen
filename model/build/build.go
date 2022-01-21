@@ -251,7 +251,8 @@ func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 }
 
 func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
-	tasks, err := task.FindAllFirstExecution(task.ByBuildId(b.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey))
+	query := db.Query(task.ByBuildId(b.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
+	tasks, err := task.FindAllFirstExecution(query)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "can't get tasks")
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -201,7 +202,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 	if t.data.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
-	failedTasks, err := task.FindAll(task.FailedTasksByVersion(t.version.Id))
+	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersion(t.version.Id)))
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting failed tasks in version")
 	}
@@ -297,7 +298,7 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	versionTasks, err := task.FindAll(task.ByVersion(t.version.Id))
+	versionTasks, err := task.FindAll(db.Query(task.ByVersion(t.version.Id)))
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving tasks for version")
 	}

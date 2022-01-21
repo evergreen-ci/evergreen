@@ -291,7 +291,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	j.logTasks(tasks, "undispatched task has a heartbeat, on running host")
 
-	tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff).WithFields(task.IdKey, task.ExecutionKey))
+	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.HeartbeatPastCutoff), task.IdKey, task.ExecutionKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
 		return
@@ -300,7 +300,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		taskIDs[t.Id] = t.Execution
 	}
 	j.logTasks(tasks, "heartbeat past cutoff")
-	tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch).WithFields(task.IdKey, task.ExecutionKey))
+	tasks, err = task.FindWithFields(task.ByStaleRunningTask(heartbeatTimeoutThreshold, task.NoHeartbeatSinceDispatch), task.IdKey, task.ExecutionKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
 		return

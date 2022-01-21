@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -1776,7 +1777,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 	}
 
 	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
-	tasksFromDb, err := task.FindAll(task.NonExecutionTasksByVersions(versionIds).WithFields(task.StatusFields...))
+	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}

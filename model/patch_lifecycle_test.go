@@ -25,6 +25,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -235,7 +236,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 2)
-				tasks, err := task.Find(task.All)
+				tasks, err := task.Find(bson.M{})
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 2)
 			})
@@ -263,7 +264,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 1)
-				tasks, err := task.Find(task.All)
+				tasks, err := task.FindAll(task.All)
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 1)
 			})
@@ -674,7 +675,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Len(dbBuild.Tasks, 2)
 
 	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
-	dbTasks, err := task.FindAll(task.ByBuildId(dbBuild.Id))
+	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)
@@ -747,7 +748,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.Len(dbBuild.Tasks, 2)
 
 	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
-	dbTasks, err := task.FindAll(task.ByBuildId(dbBuild.Id))
+	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)
