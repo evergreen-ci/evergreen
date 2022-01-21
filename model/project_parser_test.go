@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -2233,4 +2234,40 @@ buildvariants:
 	}
 	err = p1.mergeMultipleParserProjects(p3)
 	assert.Error(t, err)
+}
+
+func TestUpdateForFile(t *testing.T) {
+	p := &patch.Patch{
+		Id: "p1",
+		Patches: []patch.ModulePatch{
+			{
+				PatchSet: patch.PatchSet{
+					Summary: []thirdparty.Summary{
+						{
+							Name: "small.yml",
+						},
+					},
+				},
+			},
+		},
+	}
+	opts := &GetProjectOpts{
+		Token:        "token",
+		RemotePath:   "main.yml",
+		ReadFileFrom: ReadFromPatch,
+		PatchOpts: &PatchOpts{
+			patch: p,
+		},
+	}
+	opts.UpdateForFile("small.yml")
+	assert.Equal(t, opts.ReadFileFrom, ReadFromPatchDiff) // should be changed to patch diff bc it's not a github patch
+	p.GithubPatchData = thirdparty.GithubPatch{
+		HeadOwner: "me", // indicates this is a github PR patch
+	}
+	opts.UpdateForFile("small.yml")
+	assert.Equal(t, opts.ReadFileFrom, ReadFromPatch) // should be changed to patch bc it is a github patch
+
+	opts.UpdateForFile("nonexistent.yml")
+	// should be changed to patch diff because it's not a modified file
+
 }
