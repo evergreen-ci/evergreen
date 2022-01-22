@@ -74,6 +74,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		PatchingDisabled:      utility.FalsePtr(),
 		RepotrackerDisabled:   utility.TruePtr(),
 		DeactivatePrevious:    utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
 		PRTestingEnabled:      nil,
 		GitTagVersionsEnabled: nil,
 		GitTagAuthorizedTeams: []string{},
