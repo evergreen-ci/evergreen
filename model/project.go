@@ -1454,21 +1454,24 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		var vars []ProjectAlias
-		var err error
-		if len(patchDoc.PatchedProjectConfig) > 0 {
-			projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
-			catcher.Wrap(err, "can't retrieve aliases from patched config")
-			if err == nil {
-				vars, err = findAliasFromProjectConfig(projectConfig, alias)
+		vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
+		catcher.Wrap(err, "can't get alias from project")
+		if !shouldExit && len(vars) == 0 {
+			if len(patchDoc.PatchedProjectConfig) > 0 {
+				projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+				catcher.Wrap(err, "can't retrieve aliases from patched config")
+				if err == nil {
+					vars, err = findAliasFromProjectConfig(projectConfig, alias)
+					if err != nil {
+						catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+					}
+				}
+			} else {
+				vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
 				if err != nil {
 					catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
 				}
 			}
-		}
-		if len(vars) == 0 {
-			vars, err = FindAliasInProjectRepoOrConfig(p.Identifier, alias)
-			catcher.Wrap(err, "can't get alias from project")
 		}
 
 		var aliasPairs, displayTaskPairs []TVPair

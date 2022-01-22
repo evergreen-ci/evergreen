@@ -823,23 +823,19 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 
 func (j *patchIntentProcessor) verifyValidAlias(projectId string, patchDoc *patch.Patch) error {
 	alias := j.intent.GetAlias()
-	if alias != "" {
-		validAlias := false
-		aliases, err := model.FindAliasInProjectOrPatchedConfig(projectId, alias, patchDoc.PatchedProjectConfig)
-		if err != nil {
-			return errors.Wrapf(err, "error retrieving aliases for project %s", projectId)
-		}
-		for _, al := range aliases {
-			if al.Alias == alias {
-				validAlias = true
-				break
-			}
-		}
-		if !validAlias {
-			return errors.Errorf("alias %s is not set on project %s", alias, projectId)
+	if alias == "" {
+		return nil
+	}
+	aliases, err := model.FindAliasInProjectOrPatchedConfig(projectId, alias, patchDoc.PatchedProjectConfig)
+	if err != nil {
+		return errors.Wrapf(err, "error retrieving aliases for project %s", projectId)
+	}
+	for _, a := range aliases {
+		if a.Alias == alias {
+			return nil
 		}
 	}
-	return nil
+	return errors.Errorf("alias %s is not set on project %s", alias, projectId)
 }
 
 func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
