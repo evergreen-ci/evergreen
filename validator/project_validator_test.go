@@ -3817,7 +3817,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 				},
 			},
 			expectErr:      true,
-			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in a task group",
+			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in task group 'task1-and-task2'",
 		},
 		"Task group after task": {
 			project: model.Project{
@@ -3849,7 +3849,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 				},
 			},
 			expectErr:      true,
-			expectedErrMsg: "task 'task2' in build variant 'ubuntu' is already referenced in a task group",
+			expectedErrMsg: "task 'task2' in build variant 'ubuntu' is already referenced in task group 'task1-and-task2'",
 		},
 		"Task group and task not in task group": {
 			project: model.Project{
@@ -3912,7 +3912,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 				},
 			},
 			expectErr:      true,
-			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in a task group",
+			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in task group 'task1-and-task2'",
 		},
 		"Multiple task group": {
 			project: model.Project{

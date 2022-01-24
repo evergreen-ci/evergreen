@@ -547,21 +547,21 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 }
 
 // Ensures that:
-// 1. a referenced task within a buildvariant task object exists in
-// the set of project tasks and is not referenced in the task group of the buildvariant
-// 2. any referenced distro exists within the current setting's distro directory
+// 1. A referenced task within a buildvariant task object exists in the set of project
+// tasks and is not referenced in the task group of the buildvariant.
+// 2. Any referenced distro exists within the current setting's distro directory
 func ensureReferentialIntegrity(project *model.Project, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
-	taskGroupTaskSet := map[string]bool{}
+	taskGroupTaskSet := map[string]string{}
 	for _, task := range project.Tasks {
 		allTaskNames[task.Name] = true
 	}
 	for _, taskGroup := range project.TaskGroups {
 		allTaskNames[taskGroup.Name] = true
 		for _, task := range taskGroup.Tasks {
-			taskGroupTaskSet[task] = true
+			taskGroupTaskSet[task] = taskGroup.Name
 		}
 	}
 
@@ -595,8 +595,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 			if _, ok := taskGroupTaskSet[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in a task group",
-							task.Name, buildVariant.Name),
+						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in task group '%s'",
+							task.Name, buildVariant.Name, taskGroupTaskSet[task.Name]),
 						Level: Warning,
 					})
 			}
