@@ -1454,24 +1454,9 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
-		catcher.Wrap(err, "can't get alias from project")
-		if !shouldExit && len(vars) == 0 {
-			if len(patchDoc.PatchedProjectConfig) > 0 {
-				projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
-				catcher.Wrap(err, "can't retrieve aliases from patched config")
-				if err == nil {
-					vars, err = findAliasFromProjectConfig(projectConfig, alias)
-					if err != nil {
-						catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
-					}
-				}
-			} else {
-				vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
-				if err != nil {
-					catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
-				}
-			}
+		vars, err := p.findAliasesForPatch(alias, patchDoc, catcher)
+		if err != nil {
+			catcher.Wrapf(err, "error retrieving alias '%s' for patch '%s'", alias, patchDoc.Id.Hex())
 		}
 
 		var aliasPairs, displayTaskPairs []TVPair
@@ -1564,6 +1549,25 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 func (p *Project) IsGenerateTask(taskName string) bool {
 	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
 	return ok
+}
+
+func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch, catcher grip.Catcher) ([]ProjectAlias, error) {
+	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
+	catcher.Wrap(err, "can't get alias from project")
+	if !shouldExit && len(vars) == 0 {
+		if len(patchDoc.PatchedProjectConfig) > 0 {
+			projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+			catcher.Wrap(err, "can't retrieve aliases from patched config")
+			if err == nil {
+				vars, err = findAliasFromProjectConfig(projectConfig, alias)
+				catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+			}
+		} else {
+			vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
+			catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+		}
+	}
+	return vars, nil
 }
 
 // extractDisplayTasks adds display tasks and all their execution tasks when

@@ -213,9 +213,9 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	return findMatchingAliasForProjectConfig(projectID, alias)
 }
 
-// FindAliasInProjectOrPatchedConfig finds all aliases with a given name for a project.
+// FindAliasInProjectRepoOrPatchedConfig finds all aliases with a given name for a project.
 // If the project has no aliases, the patched config string is checked for the alias as well.
-func FindAliasInProjectOrPatchedConfig(projectID, alias, patchedConfig string) ([]ProjectAlias, error) {
+func FindAliasInProjectRepoOrPatchedConfig(projectID, alias, patchedConfig string) ([]ProjectAlias, error) {
 	aliases, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking for existing aliases")
