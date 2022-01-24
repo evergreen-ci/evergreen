@@ -1454,10 +1454,8 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, err := p.findAliasesForPatch(alias, patchDoc, catcher)
-		if err != nil {
-			catcher.Wrapf(err, "error retrieving alias '%s' for patch '%s'", alias, patchDoc.Id.Hex())
-		}
+		vars, err := p.findAliasesForPatch(alias, patchDoc)
+		catcher.Wrapf(err, "error retrieving alias '%s' for patch '%s'", alias, patchDoc.Id.Hex())
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
@@ -1551,20 +1549,26 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch, catcher grip.Catcher) ([]ProjectAlias, error) {
+func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
 	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
-	catcher.Wrap(err, "can't get alias from project")
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get alias from project")
+	}
 	if !shouldExit && len(vars) == 0 {
 		if len(patchDoc.PatchedProjectConfig) > 0 {
 			projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
-			catcher.Wrap(err, "can't retrieve aliases from patched config")
-			if err == nil {
-				vars, err = findAliasFromProjectConfig(projectConfig, alias)
-				catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+			if err != nil {
+				return nil, errors.Wrap(err, "can't retrieve aliases from patched config")
+			}
+			vars, err = findAliasFromProjectConfig(projectConfig, alias)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error retrieving alias '%s' from project config", alias)
 			}
 		} else {
 			vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
-			catcher.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+			}
 		}
 	}
 	return vars, nil
