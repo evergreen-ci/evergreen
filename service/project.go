@@ -303,6 +303,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PatchingDisabled        bool                           `json:"patching_disabled"`
 		RepotrackerDisabled     bool                           `json:"repotracker_disabled"`
 		DispatchingDisabled     bool                           `json:"dispatching_disabled"`
+		VersionControlEnabled   bool                           `json:"version_control_enabled"`
 		AlertConfig             map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -627,6 +628,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.TaskAnnotationSettings = taskannotationsConfig
 	projectRef.PatchingDisabled = &responseRef.PatchingDisabled
 	projectRef.DispatchingDisabled = &responseRef.DispatchingDisabled
+	projectRef.VersionControlEnabled = &responseRef.VersionControlEnabled
 	projectRef.RepotrackerDisabled = &responseRef.RepotrackerDisabled
 	projectRef.NotifyOnBuildFailure = &responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
