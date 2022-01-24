@@ -391,7 +391,7 @@ mciModule.controller(
               var data_put = resp.data;
               item = Object.assign({}, $scope.settingsFormData);
               item.identifier = $scope.newProject.identifier;
-              item.pr_testing_enabled = false;
+              item.auto_pr_testing_enabled = false;
               item.commit_queue.enabled = false;
               item.commit_queue.require_signed = false;
               item.git_tag_versions_enabled = false;
@@ -460,7 +460,7 @@ mciModule.controller(
           $scope.githubChecksConflicts =
             data.github_checks_conflicting_refs || [];
           $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
-          $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
+          $scope.autoPrTestingEnabled = data.ProjectRef.auto_pr_testing_enabled || false;
           $scope.commitQueueConflicts =
             data.commit_queue_conflicting_refs || [];
           $scope.project_triggers = data.ProjectRef.triggers || [];
@@ -512,7 +512,7 @@ mciModule.controller(
             git_tag_authorized_users: $scope.projectRef.git_tag_authorized_users || [],
             git_tag_authorized_teams: $scope.projectRef.git_tag_authorized_teams || [],
             tracks_push_events: data.ProjectRef.tracks_push_events || false,
-            pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
+            auto_pr_testing_enabled: data.ProjectRef.auto_pr_testing_enabled || false,
             git_tag_versions_enabled: data.ProjectRef.git_tag_versions_enabled || false,
             github_checks_enabled: data.ProjectRef.github_checks_enabled || false,
             commit_queue: data.ProjectRef.commit_queue || {},

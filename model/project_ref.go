@@ -55,7 +55,7 @@ type ProjectRef struct {
 	PatchingDisabled     *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled  *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled  *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
-	PRTestingEnabled     *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
+	AutoPRTestingEnabled *bool               `bson:"auto_pr_testing_enabled,omitempty" json:"auto_pr_testing_enabled,omitempty" yaml:"auto_pr_testing_enabled"`
 	GithubChecksEnabled  *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
 	BatchTime            int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
 	DeactivatePrevious   *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
@@ -219,7 +219,7 @@ var (
 	projectRefTracksPushEventsKey        = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefDefaultLoggerKey           = bsonutil.MustHaveTag(ProjectRef{}, "DefaultLogger")
 	projectRefCedarTestResultsEnabledKey = bsonutil.MustHaveTag(ProjectRef{}, "CedarTestResultsEnabled")
-	projectRefPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefAutoPRTestingEnabledKey    = bsonutil.MustHaveTag(ProjectRef{}, "AutoPRTestingEnabled")
 	projectRefGithubChecksEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
 	projectRefGitTagVersionsEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
 	projectRefRepotrackerDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
@@ -267,7 +267,11 @@ func (p *ProjectRef) IsDispatchingDisabled() bool {
 }
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
-	return utility.FromBoolPtr(p.PRTestingEnabled)
+	return p.IsAutoPRTestingEnabled() // && comment test enabled
+}
+
+func (p *ProjectRef) IsAutoPRTestingEnabled() bool {
+	return utility.FromBoolPtr(p.AutoPRTestingEnabled)
 }
 
 func (p *ProjectRef) IsGithubChecksEnabled() bool {
@@ -423,7 +427,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		pRefToMerge := ProjectRef{
 			DeactivatePrevious:    projectConfig.DeactivatePrevious,
 			PerfEnabled:           projectConfig.PerfEnabled,
-			PRTestingEnabled:      projectConfig.PRTestingEnabled,
+			AutoPRTestingEnabled:  projectConfig.AutoPRTestingEnabled,
 			GithubChecksEnabled:   projectConfig.GithubChecksEnabled,
 			GitTagVersionsEnabled: projectConfig.GitTagVersionsEnabled,
 			PeriodicBuilds:        projectConfig.PeriodicBuilds,
@@ -1200,14 +1204,14 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 
 // FindOneProjectRefByRepoAndBranchWithPRTesting finds a single ProjectRef with matching
 // repo/branch that is enabled and setup for PR testing.
-func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (*ProjectRef, error) {
+func FindOneProjectRefByRepoAndBranchWithAutoPRTesting(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
 	}
 	for _, p := range projectRefs {
-		if p.IsPRTestingEnabled() {
+		if p.IsAutoPRTestingEnabled() {
 			p.checkDefaultLogger()
 			return &p, nil
 		}
@@ -1599,7 +1603,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPRTestingEnabledKey:      p.PRTestingEnabled,
+					projectRefAutoPRTestingEnabledKey:  p.AutoPRTestingEnabled,
 					projectRefGithubChecksEnabledKey:   p.GithubChecksEnabled,
 					projectRefGithubTriggerAliasesKey:  p.PatchTriggerAliases,
 					projectRefGitTagVersionsEnabledKey: p.GitTagVersionsEnabled,

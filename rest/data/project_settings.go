@@ -47,7 +47,7 @@ func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*
 	oldIdentifier := projectToCopy.Identifier
 	projectToCopy.Identifier = opts.NewProjectIdentifier
 	projectToCopy.Enabled = utility.FalsePtr()
-	projectToCopy.PRTestingEnabled = utility.FalsePtr()
+	projectToCopy.AutoPRTestingEnabled = utility.FalsePtr()
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := sc.CreateProject(projectToCopy, u); err != nil {
@@ -231,7 +231,7 @@ func (sc *MockConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) 
 	oldIdentifier := projectToCopy.Identifier
 	projectToCopy.Identifier = opts.NewProjectIdentifier
 	projectToCopy.Enabled = utility.FalsePtr()
-	projectToCopy.PRTestingEnabled = nil
+	projectToCopy.AutoPRTestingEnabled = nil
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	if err := sc.CreateProject(projectToCopy, u); err != nil {

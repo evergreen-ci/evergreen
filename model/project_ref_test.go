@@ -74,7 +74,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		PatchingDisabled:      utility.FalsePtr(),
 		RepotrackerDisabled:   utility.TruePtr(),
 		DeactivatePrevious:    utility.TruePtr(),
-		PRTestingEnabled:      nil,
+		AutoPRTestingEnabled:  nil,
 		GitTagVersionsEnabled: nil,
 		GitTagAuthorizedTeams: []string{},
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
@@ -94,7 +94,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		Enabled:               utility.TruePtr(),
 		PatchingDisabled:      nil,
 		GitTagVersionsEnabled: utility.FalsePtr(),
-		PRTestingEnabled:      utility.TruePtr(),
+		AutoPRTestingEnabled:  utility.TruePtr(),
 		GitTagAuthorizedTeams: []string{"my team"},
 		GitTagAuthorizedUsers: []string{"my user"},
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
@@ -368,7 +368,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NotNil(t, pRefFromDB)
 			assert.False(t, pRefFromDB.UseRepoSettings())
 			assert.Empty(t, pRefFromDB.RepoRefId)
-			assert.NotNil(t, pRefFromDB.PRTestingEnabled)
+			assert.NotNil(t, pRefFromDB.AutoPRTestingEnabled)
 			assert.False(t, pRefFromDB.IsPRTestingEnabled())
 			assert.NotNil(t, pRefFromDB.GitTagVersionsEnabled)
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
@@ -518,7 +518,7 @@ func TestDetachFromRepo(t *testing.T) {
 				RepoRefId: "myRepo",
 
 				PeriodicBuilds:        []PeriodicBuildDefinition{}, // also shouldn't be overwritten
-				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
+				AutoPRTestingEnabled:  utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
 				//GithubTriggerAliases:  nil,
@@ -529,7 +529,7 @@ func TestDetachFromRepo(t *testing.T) {
 				Id:                    pRef.RepoRefId,
 				Owner:                 pRef.Owner,
 				Repo:                  pRef.Repo,
-				PRTestingEnabled:      utility.TruePtr(),
+				AutoPRTestingEnabled:  utility.TruePtr(),
 				GitTagVersionsEnabled: utility.FalsePtr(),
 				GithubChecksEnabled:   utility.TruePtr(),
 				GithubTriggerAliases:  []string{"my_trigger"},
@@ -620,7 +620,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
-			assert.Nil(t, pRefFromDb.PRTestingEnabled)
+			assert.Nil(t, pRefFromDb.AutoPRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
 			aliases, err = FindAliasesForProjectFromDb(id)
@@ -706,7 +706,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				Private:               utility.TruePtr(),
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
-				PRTestingEnabled:      utility.TruePtr(),
+				AutoPRTestingEnabled:  utility.TruePtr(),
 				GithubChecksEnabled:   utility.FalsePtr(),
 				GitTagAuthorizedUsers: []string{"anna"},
 				NotifyOnBuildFailure:  utility.FalsePtr(),
@@ -806,13 +806,13 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Empty(projectRefs)
 
 	projectRef := &ProjectRef{
-		Owner:            "mongodb",
-		Repo:             "mci",
-		Branch:           "main",
-		Enabled:          utility.FalsePtr(),
-		BatchTime:        10,
-		Id:               "iden_",
-		PRTestingEnabled: utility.TruePtr(),
+		Owner:                "mongodb",
+		Repo:                 "mci",
+		Branch:               "main",
+		Enabled:              utility.FalsePtr(),
+		BatchTime:            10,
+		Id:                   "iden_",
+		AutoPRTestingEnabled: utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
 	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
@@ -875,7 +875,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		Enabled:               utility.TruePtr(),
 		FilesIgnoredFromCache: []string{"file1", "file2"},
 		Admins:                []string{"bob", "other bob"},
-		PRTestingEnabled:      utility.TruePtr(),
+		AutoPRTestingEnabled:  utility.TruePtr(),
 		RemotePath:            "evergreen.yml",
 		NotifyOnBuildFailure:  utility.TruePtr(),
 		CommitQueue:           CommitQueueParams{Message: "my message"},
@@ -890,7 +890,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		Enabled:               utility.TruePtr(),
 		FilesIgnoredFromCache: []string{"file2"},
 		Admins:                []string{"bob", "other bob"},
-		PRTestingEnabled:      utility.TruePtr(),
+		AutoPRTestingEnabled:  utility.TruePtr(),
 		RemotePath:            "evergreen.yml",
 		NotifyOnBuildFailure:  utility.FalsePtr(),
 		GithubChecksEnabled:   utility.TruePtr(),
@@ -1055,7 +1055,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NotContains(t, scope.Resources, doc1.Id)
 }
 
-func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
+func TestFindOneProjectRefByRepoAndBranchWithAutoPRTesting(t *testing.T) {
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)   //nolint
 	require := require.New(t) //nolint
@@ -1064,40 +1064,40 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
-	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
+	projectRef, err := FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:            "mongodb",
-		Repo:             "mci",
-		Branch:           "main",
-		Enabled:          utility.FalsePtr(),
-		BatchTime:        10,
-		Id:               "ident0",
-		PRTestingEnabled: utility.FalsePtr(),
+		Owner:                "mongodb",
+		Repo:                 "mci",
+		Branch:               "main",
+		Enabled:              utility.FalsePtr(),
+		BatchTime:            10,
+		Id:                   "ident0",
+		AutoPRTestingEnabled: utility.FalsePtr(),
 	}
 	require.NoError(doc.Insert())
 
 	// 1 disabled document = no match
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// 2 docs, 1 enabled, but the enabled one has pr testing disabled = no match
 	doc.Id = "ident_"
-	doc.PRTestingEnabled = utility.FalsePtr()
+	doc.AutoPRTestingEnabled = utility.FalsePtr()
 	doc.Enabled = utility.TruePtr()
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	require.Nil(projectRef)
 
 	// 3 docs, 2 enabled, but only 1 has pr testing enabled = match
 	doc.Id = "ident1"
-	doc.PRTestingEnabled = utility.TruePtr()
+	doc.AutoPRTestingEnabled = utility.TruePtr()
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Id)
@@ -1106,7 +1106,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// 2 matching documents, we just return one of those projects
 	doc.Id = "ident2"
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 
@@ -1125,58 +1125,58 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	}
 	assert.NoError(doc.Insert())
 	doc2 := &ProjectRef{
-		Id:               "hidden_project",
-		Owner:            "mongodb",
-		Repo:             "mci",
-		Branch:           "mine",
-		RepoRefId:        repoDoc.Id,
-		Enabled:          utility.FalsePtr(),
-		PRTestingEnabled: utility.FalsePtr(),
-		Hidden:           utility.TruePtr(),
+		Id:                   "hidden_project",
+		Owner:                "mongodb",
+		Repo:                 "mci",
+		Branch:               "mine",
+		RepoRefId:            repoDoc.Id,
+		Enabled:              utility.FalsePtr(),
+		AutoPRTestingEnabled: utility.FalsePtr(),
+		Hidden:               utility.TruePtr(),
 	}
 	assert.NoError(doc2.Insert())
 
 	// repo doesn't have PR testing enabled, so no project returned
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.Enabled = utility.TruePtr()
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	repoDoc.PRTestingEnabled = utility.TruePtr()
+	repoDoc.AutoPRTestingEnabled = utility.TruePtr()
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("defaulting_project", projectRef.Id)
 
 	// project PR testing explicitly disabled
-	doc.PRTestingEnabled = utility.FalsePtr()
+	doc.AutoPRTestingEnabled = utility.FalsePtr()
 	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// project explicitly disabled
 	doc.Enabled = utility.FalsePtr()
-	doc.PRTestingEnabled = utility.TruePtr()
+	doc.AutoPRTestingEnabled = utility.TruePtr()
 	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "mine")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// branch with no project doesn't work if repo not configured right
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "yours")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "yours")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("yours", projectRef.Branch)
@@ -1184,7 +1184,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	firstAttemptId := projectRef.Id
 
 	// verify we return the same hidden project
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithAutoPRTesting("mongodb", "mci", "yours")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal(firstAttemptId, projectRef.Id)
@@ -1841,7 +1841,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 		Id:                    "version1",
 		PerfEnabled:           utility.TruePtr(),
 		DeactivatePrevious:    utility.TruePtr(),
-		PRTestingEnabled:      utility.TruePtr(),
+		AutoPRTestingEnabled:  utility.TruePtr(),
 		GitTagVersionsEnabled: utility.TruePtr(),
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
@@ -1876,7 +1876,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 
 	assert.False(t, *projectRef.DeactivatePrevious)
 	assert.True(t, *projectRef.PerfEnabled)
-	assert.True(t, *projectRef.PRTestingEnabled)
+	assert.True(t, *projectRef.AutoPRTestingEnabled)
 	assert.True(t, *projectRef.GitTagVersionsEnabled)
 	assert.Equal(t, "random1", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.True(t, *projectRef.WorkstationConfig.GitClone)

@@ -564,6 +564,7 @@ type ComplexityRoot struct {
 
 	Project struct {
 		Admins                  func(childComplexity int) int
+		AutoPRTestingEnabled    func(childComplexity int) int
 		BatchTime               func(childComplexity int) int
 		Branch                  func(childComplexity int) int
 		BuildBaronSettings      func(childComplexity int) int
@@ -587,7 +588,6 @@ type ComplexityRoot struct {
 		IsFavorite              func(childComplexity int) int
 		NotifyOnBuildFailure    func(childComplexity int) int
 		Owner                   func(childComplexity int) int
-		PRTestingEnabled        func(childComplexity int) int
 		PatchTriggerAliases     func(childComplexity int) int
 		Patches                 func(childComplexity int, patchesInput PatchesInput) int
 		PatchingDisabled        func(childComplexity int) int
@@ -736,6 +736,7 @@ type ComplexityRoot struct {
 
 	RepoRef struct {
 		Admins                  func(childComplexity int) int
+		AutoPRTestingEnabled    func(childComplexity int) int
 		BatchTime               func(childComplexity int) int
 		Branch                  func(childComplexity int) int
 		BuildBaronSettings      func(childComplexity int) int
@@ -756,7 +757,6 @@ type ComplexityRoot struct {
 		Id                      func(childComplexity int) int
 		NotifyOnBuildFailure    func(childComplexity int) int
 		Owner                   func(childComplexity int) int
-		PRTestingEnabled        func(childComplexity int) int
 		PatchTriggerAliases     func(childComplexity int) int
 		PatchingDisabled        func(childComplexity int) int
 		PerfEnabled             func(childComplexity int) int
@@ -3888,6 +3888,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Admins(childComplexity), true
 
+	case "Project.autoPrTestingEnabled":
+		if e.complexity.Project.AutoPRTestingEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.AutoPRTestingEnabled(childComplexity), true
+
 	case "Project.batchTime":
 		if e.complexity.Project.BatchTime == nil {
 			break
@@ -4048,13 +4055,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Owner(childComplexity), true
-
-	case "Project.prTestingEnabled":
-		if e.complexity.Project.PRTestingEnabled == nil {
-			break
-		}
-
-		return e.complexity.Project.PRTestingEnabled(childComplexity), true
 
 	case "Project.patchTriggerAliases":
 		if e.complexity.Project.PatchTriggerAliases == nil {
@@ -4943,6 +4943,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.Admins(childComplexity), true
 
+	case "RepoRef.autoPrTestingEnabled":
+		if e.complexity.RepoRef.AutoPRTestingEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.AutoPRTestingEnabled(childComplexity), true
+
 	case "RepoRef.batchTime":
 		if e.complexity.RepoRef.BatchTime == nil {
 			break
@@ -5082,13 +5089,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.Owner(childComplexity), true
-
-	case "RepoRef.prTestingEnabled":
-		if e.complexity.RepoRef.PRTestingEnabled == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.PRTestingEnabled(childComplexity), true
 
 	case "RepoRef.patchTriggerAliases":
 		if e.complexity.RepoRef.PatchTriggerAliases == nil {
@@ -7311,7 +7311,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "graphql/schema.graphql", Input: `directive @requireSuperUser on FIELD_DEFINITION 
+	{Name: "graphql/schema.graphql", Input: `directive @requireSuperUser on FIELD_DEFINITION
 
 type Query {
   task(taskId: String!, execution: Int): Task
@@ -7350,7 +7350,8 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
-  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]! @deprecated(reason: "Use version.buildVariants instead")
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
+    @deprecated(reason: "Use version.buildVariants instead")
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
@@ -7385,9 +7386,15 @@ type Query {
   taskQueueDistros: [TaskQueueDistro!]!
   buildBaron(taskId: String!, execution: Int!): BuildBaron!
   bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
-  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
+  mainlineCommits(
+    options: MainlineCommitsOptions!
+    buildVariantOptions: BuildVariantOptions
+  ): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
-  buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
+  buildVariantsForTaskName(
+    projectId: String!
+    taskName: String!
+  ): [BuildVariantTuple]
   projectSettings(identifier: String!): ProjectSettings!
   repoSettings(id: String!): RepoSettings!
   projectEvents(
@@ -7395,11 +7402,7 @@ type Query {
     limit: Int = 0
     before: Time
   ): ProjectEvents!
-  repoEvents(
-    id: String!
-    limit: Int = 0
-    before: Time
-  ): RepoEvents!
+  repoEvents(id: String!, limit: Int = 0, before: Time): RepoEvents!
   hasVersion(id: String!): Boolean!
 }
 
@@ -7409,20 +7412,32 @@ type Mutation {
   createProject(project: CreateProjectInput!): Project! @requireSuperUser
   copyProject(project: CopyProjectInput!): Project! @requireSuperUser
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  saveProjectSettingsForSection(
+    projectSettings: ProjectSettingsInput
+    section: ProjectSettingsSection!
+  ): ProjectSettings!
+  saveRepoSettingsForSection(
+    repoSettings: RepoSettingsInput
+    section: ProjectSettingsSection!
+  ): RepoSettings!
   attachProjectToRepo(projectId: String!): Project!
   detachProjectFromRepo(projectId: String!): Project!
   forceRepotrackerRun(projectId: String!): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
-  restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated(reason: "restartPatch deprecated, Use restartVersions instead")
+  restartVersions(
+    versionId: String!
+    abort: Boolean!
+    versionsToRestart: [VersionToRestart!]!
+  ): [Version!]
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+    @deprecated(reason: "restartPatch deprecated, Use restartVersions instead")
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
-  scheduleTask(taskId: String!): Task! @deprecated(reason: "scheduleTask deprecated, Use scheduleTasks instead")
+  scheduleTask(taskId: String!): Task!
+    @deprecated(reason: "scheduleTask deprecated, Use scheduleTasks instead")
   scheduleTasks(taskIds: [String!]!): [Task!]!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -7535,7 +7550,10 @@ type Version {
   patch: Patch
   childVersions: [Version]
   taskCount: Int
-  baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
+  baseVersionID: String
+    @deprecated(
+      reason: "baseVersionId is deprecated, use baseVersion.id instead"
+    )
   baseVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
@@ -7756,7 +7774,7 @@ input ProjectInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
-  prTestingEnabled: Boolean
+  autoPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -7787,7 +7805,6 @@ input ProjectInput {
   useRepoSettings: Boolean
 }
 
-
 input RepoSettingsInput {
   githubWebhooksEnabled: Boolean
   projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
@@ -7809,7 +7826,7 @@ input RepoRefInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
-  prTestingEnabled: Boolean
+  autoPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -8016,7 +8033,8 @@ type TaskQueueItem {
 
 type TaskQueueDistro {
   id: ID!
-  queueCount: Int! @deprecated(reason: "queueCount is deprecated, use taskCount instead")
+  queueCount: Int!
+    @deprecated(reason: "queueCount is deprecated, use taskCount instead")
   taskCount: Int!
   hostCount: Int!
 }
@@ -8157,7 +8175,8 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
+  version: String!
+    @deprecated(reason: "version is deprecated, use versionFull.id instead")
   versionFull: Version
   status: String!
   variants: [String!]!
@@ -8296,7 +8315,10 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
-  displayTestName: String @deprecated(reason: "displayTestName deprecated, use testFile instead (EVG-15379)")
+  displayTestName: String
+    @deprecated(
+      reason: "displayTestName deprecated, use testFile instead (EVG-15379)"
+    )
   logs: TestLog!
   exitCode: Int
   startTime: Time
@@ -8319,7 +8341,8 @@ type Dependency {
   requiredStatus: RequiredStatus!
   buildVariant: String!
   taskId: String!
-  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
+  uiLink: String!
+    @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
 type PatchMetadata {
@@ -8351,7 +8374,8 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
+  baseTaskMetadata: BaseTaskMetadata
+    @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
@@ -8388,13 +8412,17 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   patch: Patch
-  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
+  patchMetadata: PatchMetadata!
+    @deprecated(
+      reason: "patchMetadata is deprecated. Use versionMetadata instead."
+    )
   patchNumber: Int
   priority: Int
   project: Project
   projectId: String!
   projectIdentifier: String
-  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
+  reliesOn: [Dependency!]!
+    @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
   requester: String!
@@ -8408,7 +8436,8 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
+  version: String!
+    @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
 }
 
@@ -8418,8 +8447,9 @@ type BaseTaskInfo {
 }
 
 type GroupedProjects {
-  groupDisplayName: String! 
-  name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
+  groupDisplayName: String!
+  name: String!
+    @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
 }
@@ -8488,7 +8518,7 @@ type ProjectSubscription {
   subscriber: ProjectSubscriber
   ownerType: String!
   triggerData: StringMap
- }
+}
 
 type Selector {
   type: String!
@@ -8498,7 +8528,6 @@ type Selector {
 type ProjectSubscriber {
   type: String!
   subscriber: Subscriber!
-
 }
 
 type Subscriber {
@@ -8554,7 +8583,7 @@ type Project {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
-  prTestingEnabled: Boolean
+  autoPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
   deactivatePrevious: Boolean
@@ -8606,7 +8635,7 @@ type RepoRef {
   patchingDisabled: Boolean!
   repotrackerDisabled: Boolean!
   dispatchingDisabled: Boolean!
-  prTestingEnabled: Boolean!
+  autoPrTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
   deactivatePrevious: Boolean!
@@ -8649,7 +8678,6 @@ type TriggerAlias {
   command: String!
   alias: String!
 }
-
 
 type PeriodicBuild {
   id: String!
@@ -22258,7 +22286,7 @@ func (ec *executionContext) _Project_dispatchingDisabled(ctx context.Context, fi
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+func (ec *executionContext) _Project_autoPrTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -22276,7 +22304,7 @@ func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PRTestingEnabled, nil
+		return obj.AutoPRTestingEnabled, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26924,7 +26952,7 @@ func (ec *executionContext) _RepoRef_dispatchingDisabled(ctx context.Context, fi
 	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoRef_autoPrTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -26942,7 +26970,7 @@ func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PRTestingEnabled, nil
+		return obj.AutoPRTestingEnabled, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -39852,11 +39880,11 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-		case "prTestingEnabled":
+		case "autoPrTestingEnabled":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("prTestingEnabled"))
-			it.PRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoPrTestingEnabled"))
+			it.AutoPRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40296,11 +40324,11 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-		case "prTestingEnabled":
+		case "autoPrTestingEnabled":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("prTestingEnabled"))
-			it.PRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoPrTestingEnabled"))
+			it.AutoPRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -44310,8 +44338,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_repotrackerDisabled(ctx, field, obj)
 		case "dispatchingDisabled":
 			out.Values[i] = ec._Project_dispatchingDisabled(ctx, field, obj)
-		case "prTestingEnabled":
-			out.Values[i] = ec._Project_prTestingEnabled(ctx, field, obj)
+		case "autoPrTestingEnabled":
+			out.Values[i] = ec._Project_autoPrTestingEnabled(ctx, field, obj)
 		case "githubChecksEnabled":
 			out.Values[i] = ec._Project_githubChecksEnabled(ctx, field, obj)
 		case "batchTime":
@@ -45589,8 +45617,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "prTestingEnabled":
-			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
+		case "autoPrTestingEnabled":
+			out.Values[i] = ec._RepoRef_autoPrTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}

@@ -449,7 +449,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.DisplayName, utility.FromStringPtr(projectRef.DisplayName))
 	s.Equal(cachedProject.DeactivatePrevious, projectRef.DeactivatePrevious)
 	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
-	s.Equal(cachedProject.PRTestingEnabled, projectRef.PRTestingEnabled)
+	s.Equal(cachedProject.AutoPRTestingEnabled, projectRef.AutoPRTestingEnabled)
 	s.Equal(cachedProject.CommitQueue.Enabled, projectRef.CommitQueue.Enabled)
 	s.Equal(cachedProject.Hidden, projectRef.Hidden)
 	s.Equal(cachedProject.PatchingDisabled, projectRef.PatchingDisabled)
@@ -564,18 +564,18 @@ func getMockProjectsConnector() *data.MockConnector {
 		MockProjectConnector: data.MockProjectConnector{
 			CachedProjects: []serviceModel.ProjectRef{
 				{
-					Owner:              "dimoxinil",
-					Repo:               "dimoxinil-enterprise-repo",
-					Branch:             "main",
-					Enabled:            utility.FalsePtr(),
-					Private:            utility.TruePtr(),
-					BatchTime:          0,
-					RemotePath:         "evergreen.yml",
-					Id:                 "dimoxinil",
-					DisplayName:        "Dimoxinil",
-					DeactivatePrevious: utility.FalsePtr(),
-					TracksPushEvents:   utility.FalsePtr(),
-					PRTestingEnabled:   utility.FalsePtr(),
+					Owner:                "dimoxinil",
+					Repo:                 "dimoxinil-enterprise-repo",
+					Branch:               "main",
+					Enabled:              utility.FalsePtr(),
+					Private:              utility.TruePtr(),
+					BatchTime:            0,
+					RemotePath:           "evergreen.yml",
+					Id:                   "dimoxinil",
+					DisplayName:          "Dimoxinil",
+					DeactivatePrevious:   utility.FalsePtr(),
+					TracksPushEvents:     utility.FalsePtr(),
+					AutoPRTestingEnabled: utility.FalsePtr(),
 					CommitQueue: serviceModel.CommitQueueParams{
 						Enabled: utility.FalsePtr(),
 					},
@@ -684,7 +684,7 @@ func TestDeleteProject(t *testing.T) {
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			RepoRefId:            "repo_ref",
 			TracksPushEvents:     utility.TruePtr(),
-			PRTestingEnabled:     utility.TruePtr(),
+			AutoPRTestingEnabled: utility.TruePtr(),
 			Admins:               []string{"admin0", "admin1"},
 			NotifyOnBuildFailure: utility.TruePtr(),
 		}

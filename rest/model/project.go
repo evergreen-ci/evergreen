@@ -447,7 +447,7 @@ type APIProjectRef struct {
 	DisplayName                 *string                   `json:"display_name"`
 	DeactivatePrevious          *bool                     `json:"deactivate_previous"`
 	TracksPushEvents            *bool                     `json:"tracks_push_events"`
-	PRTestingEnabled            *bool                     `json:"pr_testing_enabled"`
+	AutoPRTestingEnabled        *bool                     `json:"auto_pr_testing_enabled"`
 	GitTagVersionsEnabled       *bool                     `json:"git_tag_versions_enabled"`
 	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
 	CedarTestResultsEnabled     *bool                     `json:"cedar_test_results_enabled"`
@@ -545,7 +545,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		DeactivatePrevious:      utility.BoolPtrCopy(p.DeactivatePrevious),
 		TracksPushEvents:        utility.BoolPtrCopy(p.TracksPushEvents),
 		DefaultLogger:           utility.FromStringPtr(p.DefaultLogger),
-		PRTestingEnabled:        utility.BoolPtrCopy(p.PRTestingEnabled),
+		AutoPRTestingEnabled:    utility.BoolPtrCopy(p.AutoPRTestingEnabled),
 		GitTagVersionsEnabled:   utility.BoolPtrCopy(p.GitTagVersionsEnabled),
 		GithubChecksEnabled:     utility.BoolPtrCopy(p.GithubChecksEnabled),
 		CedarTestResultsEnabled: utility.BoolPtrCopy(p.CedarTestResultsEnabled),
@@ -648,7 +648,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
 	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
-	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
+	p.AutoPRTestingEnabled = utility.BoolPtrCopy(projectRef.AutoPRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
 	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
 	p.CedarTestResultsEnabled = utility.BoolPtrCopy(projectRef.CedarTestResultsEnabled)

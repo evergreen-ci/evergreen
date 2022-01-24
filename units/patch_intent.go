@@ -694,7 +694,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
 	}
 
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithAutoPRTesting(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 	if err != nil {
 		return false, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",

@@ -13,11 +13,11 @@ import (
 func TestRepoBuildFromService(t *testing.T) {
 
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-		Id:                  "project",
-		Owner:               "my_owner",
-		Repo:                "my_repo",
-		GithubChecksEnabled: utility.TruePtr(),
-		PRTestingEnabled:    utility.FalsePtr(),
+		Id:                   "project",
+		Owner:                "my_owner",
+		Repo:                 "my_repo",
+		GithubChecksEnabled:  utility.TruePtr(),
+		AutoPRTestingEnabled: utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
 			MergeMethod: "Squash", // being partially populated shouldn't prevent enabled from being defaulted
 		}},
@@ -32,7 +32,7 @@ func TestRepoBuildFromService(t *testing.T) {
 
 	apiRef.DefaultUnsetBooleans()
 	assert.True(t, *apiRef.GithubChecksEnabled)
-	assert.False(t, *apiRef.PRTestingEnabled)
+	assert.False(t, *apiRef.AutoPRTestingEnabled)
 	require.NotNil(t, apiRef.GitTagVersionsEnabled) // should default
 	assert.False(t, *apiRef.GitTagVersionsEnabled)
 

@@ -294,7 +294,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Admins                  []string                       `json:"admins"`
 		GitTagAuthorizedUsers   []string                       `json:"git_tag_authorized_users,omitempty"`
 		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams,omitempty"`
-		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
+		AutoPRTestingEnabled    bool                           `json:"auto_pr_testing_enabled"`
 		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
 		Hidden                  bool                           `json:"hidden"`
@@ -431,7 +431,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	var aliasesDefined bool
 	var conflictingRefs []model.ProjectRef
 	if responseRef.Enabled {
-		if responseRef.PRTestingEnabled || responseRef.GithubChecksEnabled {
+		if responseRef.AutoPRTestingEnabled || responseRef.GithubChecksEnabled {
 			conflictingRefs, err = model.FindMergedEnabledProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -439,7 +439,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if responseRef.PRTestingEnabled {
+		if responseRef.AutoPRTestingEnabled {
 			if hook == nil {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
 				return
@@ -619,7 +619,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.GitTagVersionsEnabled = &responseRef.GitTagVersionsEnabled
 	projectRef.Hidden = &responseRef.Hidden
 	projectRef.Identifier = responseRef.Identifier
-	projectRef.PRTestingEnabled = &responseRef.PRTestingEnabled
+	projectRef.AutoPRTestingEnabled = &responseRef.AutoPRTestingEnabled
 	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync
