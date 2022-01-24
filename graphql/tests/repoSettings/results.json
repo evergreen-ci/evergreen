@@ -15,7 +15,7 @@
               "periodicBuilds": null,
               "githubChecksEnabled": false,
               "patchingDisabled": false,
-              "prTestingEnabled": true,
+              "autoPrTestingEnabled": true,
               "batchTime": 2,
               "gitTagAuthorizedUsers": [
                 "ablack12"

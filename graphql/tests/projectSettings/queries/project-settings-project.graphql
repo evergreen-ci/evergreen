@@ -1,66 +1,66 @@
 {
-    projectSettings(identifier: "sandbox") {
-        gitHubWebhooksEnabled
-        projectRef {
-            id
-            identifier
-            restricted
-            commitQueue {
-                enabled
-                mergeMethod
-            }
-            periodicBuilds {
-                alias
-                message
-            }
-            githubChecksEnabled
-            patchingDisabled
-            prTestingEnabled
-            batchTime
+  projectSettings(identifier: "sandbox") {
+    gitHubWebhooksEnabled
+    projectRef {
+      id
+      identifier
+      restricted
+      commitQueue {
+        enabled
+        mergeMethod
+      }
+      periodicBuilds {
+        alias
+        message
+      }
+      githubChecksEnabled
+      patchingDisabled
+      autoPrTestingEnabled
+      batchTime
 
-            gitTagAuthorizedUsers
-            gitTagAuthorizedTeams
+      gitTagAuthorizedUsers
+      gitTagAuthorizedTeams
 
-            triggers {
-                project
-                taskRegex
-            }
-            patchTriggerAliases {
-                alias
-                childProject
-                taskSpecifiers {
-                    taskRegex
-                    variantRegex
-                }
-            }
-            perfEnabled
-            buildBaronSettings {
-                ticketCreateProject
-                ticketSearchProjects
-                bfSuggestionFeaturesURL
-                bfSuggestionPassword
-                bfSuggestionServer
-                bfSuggestionTimeoutSecs
-                bfSuggestionUsername
-            }
-
-            taskAnnotationSettings {
-                jiraCustomFields {
-                    displayText
-                    field
-                }
-                fileTicketWebhook {
-                    endpoint
-                    secret
-                }
-            }
-
-            taskSync {
-                configEnabled
-                patchEnabled
-            }
-
-            validDefaultLoggers
+      triggers {
+        project
+        taskRegex
+      }
+      patchTriggerAliases {
+        alias
+        childProject
+        taskSpecifiers {
+          taskRegex
+          variantRegex
         }
+      }
+      perfEnabled
+      buildBaronSettings {
+        ticketCreateProject
+        ticketSearchProjects
+        bfSuggestionFeaturesURL
+        bfSuggestionPassword
+        bfSuggestionServer
+        bfSuggestionTimeoutSecs
+        bfSuggestionUsername
+      }
+
+      taskAnnotationSettings {
+        jiraCustomFields {
+          displayText
+          field
+        }
+        fileTicketWebhook {
+          endpoint
+          secret
+        }
+      }
+
+      taskSync {
+        configEnabled
+        patchEnabled
+      }
+
+      validDefaultLoggers
     }
+  }
 }
