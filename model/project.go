@@ -32,7 +32,7 @@ const (
 	// differentiate between setup related commands and actual testing commands.
 	DefaultCommandType = evergreen.CommandTypeTest
 
-	waterfallTasksQueryMaxTime = time.Minute
+	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
 type Project struct {
