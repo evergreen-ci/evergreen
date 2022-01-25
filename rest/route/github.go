@@ -144,7 +144,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "pr accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin()); err != nil {
+			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin(), patch.CalledAutomatically); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -249,7 +249,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"user":      *event.Sender.Login,
 					"message":   "retry triggered",
 				})
-				if err := gh.retryPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber()); err != nil {
+				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), patch.CalledManually, event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "github hook",
 						"msg_id":    gh.msgID,
@@ -258,7 +258,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 						"repo":      *event.Repo.FullName,
 						"pr_number": *event.Issue.Number,
 						"user":      *event.Sender.Login,
-						"message":   "can't retry PR",
+						"message":   "can't create PR",
 					}))
 					return gimlet.MakeJSONErrorResponder(err)
 				}
@@ -289,7 +289,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, prNumber int) error {
+func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
 	settings, err := gh.sc.GetEvergreenSettings()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
@@ -304,11 +304,11 @@ func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, p
 		return errors.Wrapf(err, "can't get PR for repo %s:%s, PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(pr, pr.User.GetLogin())
+	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
 }
 
-func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner string) error {
-	ghi, err := patch.NewGithubIntent(gh.msgID, owner, pr)
+func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy string) error {
+	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, pr)
 	if err != nil {
 		return errors.Wrap(err, "failed to create intent")
 	}

@@ -87,6 +87,10 @@ func (t *TriggerIntent) RequesterIdentity() string {
 	return t.Requester
 }
 
+func (t *TriggerIntent) IsCalledBy() string {
+	return ""
+}
+
 type TriggerIntentOptions struct {
 	Requester      string
 	Author         string

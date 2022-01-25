@@ -169,6 +169,10 @@ func (g *cliIntent) RequesterIdentity() string {
 	return evergreen.PatchVersionRequester
 }
 
+func (g *cliIntent) IsCalledBy() string {
+	return ""
+}
+
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{

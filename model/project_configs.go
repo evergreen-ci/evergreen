@@ -30,6 +30,7 @@ type ProjectConfig struct {
 	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
 	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
 	PRTestingEnabled       *bool                          `yaml:"pr_testing_enabled,omitempty" bson:"pr_testing_enabled,omitempty"`
+	ManualPRTestingEnabled *bool                          `yaml:"manual_pr_testing_enabled,omitempty" bson:"manual_pr_testing_enabled,omitempty"`
 	GithubChecksEnabled    *bool                          `yaml:"github_checks_enabled,omitempty" bson:"github_checks_enabled,omitempty"`
 	GitTagVersionsEnabled  *bool                          `yaml:"git_tag_versions_enabled,omitempty" bson:"git_tag_versions_enabled,omitempty"`
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`

@@ -24,6 +24,12 @@ const (
 	GithubIntentType = "github"
 )
 
+// CalledBy can be either auto or manual.
+const (
+	CalledAutomatically = "auto"
+	CalledManually      = "manual"
+)
+
 // githubIntent represents an intent to create a patch build as a result of a
 // PullRequestEvent webhook. These intents are processed asynchronously by an
 // amboy queue.
@@ -77,6 +83,9 @@ type githubIntent struct {
 
 	// IntentType indicates the type of the patch intent, e.g. GithubIntentType
 	IntentType string `bson:"intent_type"`
+
+	// CalledBy indicates what created the intent
+	CalledBy string `bson:"called_by"`
 }
 
 // BSON fields for the patches
@@ -95,11 +104,12 @@ var (
 	processedKey    = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	processedAtKey  = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
 	intentTypeKey   = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
+	calledByKey     = "CalledBy"
 )
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID, patchOwner string, pr *github.PullRequest) (Intent, error) {
+func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
 		pr.Head == nil || pr.Head.Repo == nil || pr.Head.Repo.PushedAt == nil ||
@@ -150,6 +160,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner string, pr *github.PullRequest) (
 		Title:        pr.GetTitle(),
 		IntentType:   GithubIntentType,
 		PushedAt:     pr.Head.Repo.PushedAt.Time.UTC(),
+		CalledBy:     calledBy,
 	}, nil
 }
 
@@ -211,6 +222,10 @@ func (g *githubIntent) ReusePreviousPatchDefinition() bool {
 
 func (g *githubIntent) RequesterIdentity() string {
 	return evergreen.GithubPRRequester
+}
+
+func (g *githubIntent) IsCalledBy() string {
+	return g.CalledBy
 }
 
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.

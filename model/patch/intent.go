@@ -42,6 +42,9 @@ type Intent interface {
 	// in patches, versions, builds, and tasks to denote the origin of the
 	// patch
 	RequesterIdentity() string
+
+	// CalledBy indicates what created the intent
+	IsCalledBy() string
 }
 
 // FindIntent returns an intent of the specified type from the database
