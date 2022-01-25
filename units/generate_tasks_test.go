@@ -128,11 +128,11 @@ var sampleGeneratedProject = []string{`
       "name": "lint-rest-route"
     },
     {
-	  "name": "task-group-task1"
-	},
-	{
-	  "name": "task-group-task2"
-	}
+      "name": "task-group-task1"
+    },
+    {
+      "name": "task-group-task2"
+    }
   ],
   "task_groups": [
       {
