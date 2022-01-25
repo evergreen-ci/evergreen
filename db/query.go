@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -12,6 +14,7 @@ type Q struct {
 	skip       int
 	limit      int
 	hint       interface{} // should be bson.D of the index keys or string name of the hint
+	maxTime    time.Duration
 }
 
 // Query creates a db.Q for the given MongoDB query. The filter
@@ -63,6 +66,12 @@ func (q Q) Limit(limit int) Q {
 	return q
 }
 
+// MaxTime sets the maxTime for a query to time out the query on the db server.
+func (q Q) MaxTime(maxTime time.Duration) Q {
+	q.maxTime = maxTime
+	return q
+}
+
 // Hint sets the hint for a query to determine what index will be used. The hint
 // can be either the index as an ordered document of the keys or a
 func (q Q) Hint(hint interface{}) Q {
@@ -86,6 +95,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 		Skip(q.skip).
 		Limit(1).
 		Hint(q.hint).
+		MaxTime(q.maxTime).
 		One(out)
 }
 
@@ -104,6 +114,7 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 		Skip(q.skip).
 		Limit(q.limit).
 		Hint(q.hint).
+		MaxTime(q.maxTime).
 		All(out)
 }
 
