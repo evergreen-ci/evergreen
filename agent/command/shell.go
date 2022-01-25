@@ -82,6 +82,10 @@ func (*shellExec) Name() string { return evergreen.ShellExecCommandName }
 
 // ParseParams reads in the command's parameters.
 func (c *shellExec) ParseParams(params map[string]interface{}) error {
+	if params == nil {
+		return errors.New("params cannot be nil")
+	}
+
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrapf(err, "error decoding %v params", c.Name())
