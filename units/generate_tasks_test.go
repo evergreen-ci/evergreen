@@ -127,7 +127,7 @@ var sampleGeneratedProject = []string{`
       ],
       "name": "lint-rest-route"
     },
-	{
+    {
 	  "name": "task-group-task1"
 	},
 	{
