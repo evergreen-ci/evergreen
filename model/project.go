@@ -1455,7 +1455,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
 		vars, err := p.findAliasesForPatch(alias, patchDoc)
-		catcher.Wrapf(err, "error retrieving alias '%s' for patch '%s'", alias, patchDoc.Id.Hex())
+		catcher.Wrapf(err, "error retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
