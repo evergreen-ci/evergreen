@@ -80,7 +80,7 @@ func PatchList() cli.Command {
 					if err != nil {
 						return errors.Wrap(err, "error trying to build APIPatch from service")
 					}
-					api.PatchedConfig = nil
+					api.PatchedParserProject = nil
 					display = append(display, api)
 				}
 

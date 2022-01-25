@@ -52,9 +52,9 @@ func TestAPIPatch(t *testing.T) {
 		Patches: []patch.ModulePatch{
 			patch.ModulePatch{},
 		},
-		Activated:     true,
-		PatchedConfig: "config",
-		Alias:         "__github",
+		Activated:            true,
+		PatchedParserProject: "config",
+		Alias:                "__github",
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",

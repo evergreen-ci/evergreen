@@ -14,7 +14,7 @@ const (
 
 var (
 	ProjectConfigIdKey         = bsonutil.MustHaveTag(ProjectConfig{}, "Id")
-	ProjectConfigIdentifierKey = bsonutil.MustHaveTag(ProjectConfig{}, "Identifier")
+	ProjectConfigProjectKey    = bsonutil.MustHaveTag(ProjectConfig{}, "Project")
 	ProjectConfigCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "CreateTime")
 )
 
@@ -29,7 +29,7 @@ func FindProjectConfigToMerge(projectId, id string) (*ProjectConfig, error) {
 // FindLastKnownGoodProjectConfig retrieves the most recent project config for the given project.
 func FindLastKnownGoodProjectConfig(projectId string) (*ProjectConfig, error) {
 	q := bson.M{
-		ProjectConfigIdentifierKey: projectId,
+		ProjectConfigProjectKey: projectId,
 	}
 	pc, err := ProjectConfigFindOne(db.Query(q).Sort([]string{"-" + ProjectConfigCreateTimeKey}))
 	if err != nil {
