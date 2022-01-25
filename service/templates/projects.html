@@ -457,7 +457,7 @@ Evergreen Projects
         </div>
       </div>
       <!-- GITHUB PATCH DEFINITIONS -->
-      <div ng-show="settingsFormData.pr_testing_enabled === true && prTestingConflicts.length === 0">
+      <div ng-show="(settingsFormData.pr_testing_enabled === true || settingsFormData.manual_pr_testing_enabled === true) && prTestingConflicts.length === 0">
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h4> GitHub Patch Definitions </h4>

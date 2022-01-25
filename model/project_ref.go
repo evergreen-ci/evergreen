@@ -1229,6 +1229,11 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 				p.checkDefaultLogger()
 				return &p, nil
 			}
+		case patch.CalledAutomatically:
+			if p.IsAutoPRTestingEnabled() {
+				p.checkDefaultLogger()
+				return &p, nil
+			}
 		default:
 			if p.IsPRTestingEnabled() {
 				p.checkDefaultLogger()

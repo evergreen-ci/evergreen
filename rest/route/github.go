@@ -32,6 +32,7 @@ const (
 	commitUnsigned          = "unsigned"
 
 	retryComment = "evergreen retry"
+	patchComment = "evergreen patch"
 	refTags      = "refs/tags/"
 )
 
@@ -239,7 +240,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					return gimlet.MakeJSONErrorResponder(err)
 				}
 			}
-			if triggersRetry(*event.Action, *event.Comment.Body) {
+			if triggersPatch(*event.Action, *event.Comment.Body) {
 				grip.Info(message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -247,7 +248,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.Repo.FullName,
 					"pr_number": *event.Issue.Number,
 					"user":      *event.Sender.Login,
-					"message":   "retry triggered",
+					"message":   "patch triggered",
 				})
 				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), patch.CalledManually, event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
@@ -705,12 +706,12 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	return nil
 }
 
-func triggersRetry(action, comment string) bool {
+func triggersPatch(action, comment string) bool {
 	if action == "deleted" {
 		return false
 	}
 	comment = strings.TrimSpace(comment)
-	return comment == retryComment
+	return comment == retryComment || comment == patchComment
 }
 
 func isTag(ref string) bool {
