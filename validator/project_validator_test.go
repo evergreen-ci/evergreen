@@ -3953,7 +3953,6 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
 			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
-			fmt.Println("Errors: ", errs)
 			if testCase.expectErr {
 				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
 			} else {
