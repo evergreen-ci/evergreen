@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -24,7 +25,7 @@ type attachResults struct {
 }
 
 func attachResultsFactory() Command   { return &attachResults{} }
-func (c *attachResults) Name() string { return "attach.results" }
+func (c *attachResults) Name() string { return evergreen.AttachResultsCommandName }
 
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an AttachPlugin command; this is required

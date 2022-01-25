@@ -1271,7 +1271,7 @@ func validateTaskGroups(p *model.Project) ValidationErrors {
 		// validate that attach commands aren't used in the teardown_group phase
 		if tg.TeardownGroup != nil {
 			for _, cmd := range tg.TeardownGroup.List() {
-				if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
+				if utility.StringSliceContains(evergreen.AttachCommands, cmd.Command) {
 					errs = append(errs, ValidationError{
 						Message: fmt.Sprintf("%s cannot be used in the group teardown stage", cmd.Command),
 						Level:   Error,
