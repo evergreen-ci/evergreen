@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -241,6 +242,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				}
 			}
 			if triggersPatch(*event.Action, *event.Comment.Body) {
+				msg := fmt.Sprintf("%s triggered", *event.Comment.Body)
+
 				grip.Info(message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -248,7 +251,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.Repo.FullName,
 					"pr_number": *event.Issue.Number,
 					"user":      *event.Sender.Login,
-					"message":   "patch triggered",
+					"message":   msg,
 				})
 				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), patch.CalledManually, event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
