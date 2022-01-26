@@ -63,10 +63,9 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, project1.Insert())
 
 	repoVars := ProjectVars{
-		Id:             repo.Id,
-		Vars:           map[string]string{"hello": "world", "world": "hello", "beep": "boop"},
-		PrivateVars:    map[string]bool{"world": true},
-		RestrictedVars: map[string]bool{"beep": true},
+		Id:          repo.Id,
+		Vars:        map[string]string{"hello": "world", "world": "hello", "beep": "boop"},
+		PrivateVars: map[string]bool{"world": true},
 	}
 	project0Vars := ProjectVars{
 		Id:   project0.Id,
@@ -77,10 +76,9 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	// Testing merging of project vars and repo vars
 	expectedMergedVars := ProjectVars{
-		Id:             project0.Id,
-		Vars:           map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var"},
-		PrivateVars:    map[string]bool{},
-		RestrictedVars: map[string]bool{"beep": true},
+		Id:          project0.Id,
+		Vars:        map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var"},
+		PrivateVars: map[string]bool{},
 	}
 	mergedVars, err := FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
@@ -100,7 +98,6 @@ func TestFindMergedProjectVars(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(project0Vars.Vars, mergedVars.Vars)
 	assert.Equal(0, len(mergedVars.PrivateVars))
-	assert.Equal(0, len(mergedVars.RestrictedVars))
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""

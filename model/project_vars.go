@@ -136,9 +136,8 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				projectVarsMapKey:    projectVars.Vars,
-				privateVarsMapKey:    projectVars.PrivateVars,
-				restrictedVarsMapKey: projectVars.RestrictedVars,
+				projectVarsMapKey: projectVars.Vars,
+				privateVarsMapKey: projectVars.PrivateVars,
 			},
 		},
 	)
@@ -155,8 +154,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
 	update := bson.M{}
-	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.RestrictedVars) == 0 && len(varsToDelete) == 0 {
+	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
 	for key, val := range projectVars.Vars {
@@ -164,9 +162,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	}
 	for key, val := range projectVars.PrivateVars {
 		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
-	}
-	for key, val := range projectVars.RestrictedVars {
-		setUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, key)] = val
 	}
 	if len(setUpdate) > 0 {
 		update["$set"] = setUpdate
@@ -193,33 +188,10 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
-	restrictedVars := map[string]string{}
-
-	for k, v := range projectVars.Vars {
-		if projectVars.RestrictedVars[k] {
-			restrictedVars[k] = v
-		}
-	}
-	return restrictedVars
-}
-
-func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
-	safeVars := map[string]string{}
-
-	for k, v := range projectVars.Vars {
-		if !projectVars.RestrictedVars[k] {
-			safeVars[k] = v
-		}
-	}
-	return safeVars
-}
-
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
-		Vars:           map[string]string{},
-		PrivateVars:    map[string]bool{},
-		RestrictedVars: projectVars.RestrictedVars,
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
 	}
 	if projectVars == nil {
 		return res
@@ -266,9 +238,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.PrivateVars == nil {
 		projectVars.PrivateVars = map[string]bool{}
 	}
-	if projectVars.RestrictedVars == nil {
-		projectVars.RestrictedVars = map[string]bool{}
-	}
 	if repoVars == nil {
 		return
 	}
@@ -278,9 +247,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			projectVars.Vars[key] = val
 			if v, ok := repoVars.PrivateVars[key]; ok {
 				projectVars.PrivateVars[key] = v
-			}
-			if v, ok := repoVars.RestrictedVars[key]; ok {
-				projectVars.RestrictedVars[key] = v
 			}
 		}
 	}

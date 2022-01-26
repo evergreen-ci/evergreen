@@ -752,7 +752,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		projectVars.Vars = responseRef.ProjVarsMap
 		projectVars.PrivateVars = responseRef.PrivateVars
-		projectVars.RestrictedVars = responseRef.RestrictedVars
 	}
 
 	_, err = projectVars.Upsert()

@@ -118,9 +118,8 @@ func (p *APIProjectVars) ToService() (interface{}, error) {
 		privateVars[each] = true
 	}
 	return &model.ProjectVars{
-		Vars:           p.Vars,
-		RestrictedVars: p.RestrictedVars,
-		PrivateVars:    privateVars,
+		Vars:        p.Vars,
+		PrivateVars: privateVars,
 	}, nil
 }
 
@@ -129,7 +128,6 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 	case *model.ProjectVars:
 		p.PrivateVars = v.PrivateVars
 		p.Vars = v.Vars
-		p.RestrictedVars = v.RestrictedVars
 	default:
 		return errors.New("Invalid type of the argument")
 	}
