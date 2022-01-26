@@ -2106,36 +2106,6 @@ func TestTaskGroupValidation(t *testing.T) {
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "foo is used as a name for both a task and task group")
 
-	// check that yml with a task group named the same as a task errors
-	attachInGroupTeardownYml := `
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_group:
-  - command: attach.results
-  tasks:
-  - example_task_1
-  - example_task_2
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  tasks:
-  - name: example_task_group
-`
-	pp, _, err = model.LoadProjectInto(ctx, []byte(attachInGroupTeardownYml), nil, "", &proj)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
-	validationErrs = validateTaskGroups(&proj)
-	assert.Len(validationErrs, 1)
-	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
-
 	largeMaxHostYml := `
 tasks:
 - name: example_task_1
@@ -2162,6 +2132,47 @@ buildvariants:
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")
 	assert.Equal(validationErrs[0].Level, Warning)
+}
+
+func TestTaskGroupTeardownValidation(t *testing.T) {
+	baseYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+
+buildvariants:
+- name: "bv"
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+task_groups:
+- name: example_task_group
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+`
+
+	var proj model.Project
+	ctx := context.Background()
+	// verify that attach commands can't be used in teardown group
+	for _, commandName := range evergreen.AttachCommands {
+		attachCommand := fmt.Sprintf(`
+  teardown_group:
+  - command: %s
+`, commandName)
+		attachTeardownYml := fmt.Sprintf("%s\n%s", baseYml, attachCommand)
+		pp, _, err := model.LoadProjectInto(ctx, []byte(attachTeardownYml), nil, "", &proj)
+		assert.NotNil(t, proj)
+		assert.NotNil(t, pp)
+		assert.NoError(t, err)
+		validationErrs := validateTaskGroups(&proj)
+		assert.Len(t, validationErrs, 1)
+		assert.Contains(t, validationErrs[0].Message, fmt.Sprintf("%s cannot be used in the group teardown stage", commandName))
+	}
 
 }
 
