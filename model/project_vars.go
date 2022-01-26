@@ -11,10 +11,9 @@ import (
 )
 
 var (
-	projectVarIdKey      = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	privateVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	restrictedVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "RestrictedVars")
+	projectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 )
 
 const (
@@ -170,7 +169,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	for _, val := range varsToDelete {
 		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
-		unsetUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, val)] = 1
 	}
 	if len(unsetUpdate) > 0 {
 		update["$unset"] = unsetUpdate
