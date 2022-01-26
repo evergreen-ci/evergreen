@@ -547,18 +547,22 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 }
 
 // Ensures that:
-// 1. a referenced task within a buildvariant task object exists in
-// the set of project tasks
-// 2. any referenced distro exists within the current setting's distro directory
+// 1. A referenced task within a buildvariant task object exists in the set of project
+// tasks and is not referenced in the task group of the buildvariant.
+// 2. Any referenced distro exists within the current setting's distro directory
 func ensureReferentialIntegrity(project *model.Project, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
+	taskGroupTaskSet := map[string]string{}
 	for _, task := range project.Tasks {
 		allTaskNames[task.Name] = true
 	}
 	for _, taskGroup := range project.TaskGroups {
 		allTaskNames[taskGroup.Name] = true
+		for _, task := range taskGroup.Tasks {
+			taskGroupTaskSet[task] = taskGroup.Name
+		}
 	}
 
 	for _, buildVariant := range project.BuildVariants {
@@ -571,6 +575,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 							Message: fmt.Sprintf("tasks for buildvariant '%s' "+
 								"in project '%s' must each have a name field",
 								project.Identifier, buildVariant.Name),
+							Level: Error,
 						},
 					)
 				} else {
@@ -580,11 +585,22 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 								"project '%s' references a non-existent "+
 								"task '%s'", buildVariant.Name,
 								project.Identifier, task.Name),
+							Level: Error,
 						},
 					)
 				}
 			}
 			buildVariantTasks[task.Name] = true
+
+			if _, ok := taskGroupTaskSet[task.Name]; ok {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("task '%s' in build variant '%s' is already referenced in task group '%s'",
+							task.Name, buildVariant.Name, taskGroupTaskSet[task.Name]),
+						Level: Warning,
+					})
+			}
+
 			for _, distro := range task.RunOn {
 				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
@@ -1236,9 +1252,7 @@ func validateParameters(p *model.Project) ValidationErrors {
 
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-
 	for _, tg := range p.TaskGroups {
-
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{

@@ -49,7 +49,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshall project and get project variants and tasks
-	variantsAndTasksFromProject, err := graphql.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedConfig, projCtx.Patch.Project)
+	variantsAndTasksFromProject, err := graphql.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedParserProject, projCtx.Patch.Project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 	}

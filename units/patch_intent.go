@@ -118,7 +118,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				"project":      patchDoc.Project,
 				"alias":        patchDoc.Alias,
 				"patch_id":     patchDoc.Id.Hex(),
-				"config_size":  len(patchDoc.PatchedConfig),
+				"config_size":  len(patchDoc.PatchedParserProject) + len(patchDoc.PatchedProjectConfig),
 				"num_modules":  len(patchDoc.Patches),
 			}))
 		}
@@ -234,7 +234,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	validationCatcher := grip.NewBasicCatcher()
 	// Get and validate patched config
-	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
 		if strings.Contains(err.Error(), model.EmptyConfigurationError) {
 			j.gitHubError = EmptyConfig
@@ -262,7 +262,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
 
-	patchDoc.PatchedConfig = projectYaml
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	for _, modulePatch := range patchDoc.Patches {
 		if modulePatch.ModuleName != "" {
@@ -276,6 +277,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				return errors.Errorf("no module named '%s'", modulePatch.ModuleName)
 			}
 		}
+	}
+	if err = j.verifyValidAlias(pref.Id, patchDoc); err != nil {
+		return err
 	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
@@ -793,7 +797,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 	}
 
 	patchDoc.Githash = v.Revision
-	patchDoc.PatchedConfig = string(yamlBytes)
+	patchDoc.PatchedParserProject = string(yamlBytes)
 	patchDoc.VariantsTasks = matchingTasks
 
 	if intent.ParentAsModule != "" {
@@ -815,6 +819,23 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 		}
 	}
 	return nil
+}
+
+func (j *patchIntentProcessor) verifyValidAlias(projectId string, patchDoc *patch.Patch) error {
+	alias := j.intent.GetAlias()
+	if alias == "" {
+		return nil
+	}
+	aliases, err := model.FindAliasInProjectRepoOrPatchedConfig(projectId, alias, patchDoc.PatchedProjectConfig)
+	if err != nil {
+		return errors.Wrapf(err, "error retrieving aliases for project %s", projectId)
+	}
+	for _, a := range aliases {
+		if a.Alias == alias {
+			return nil
+		}
+	}
+	return errors.Errorf("alias %s is not set on project %s", alias, projectId)
 }
 
 func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {

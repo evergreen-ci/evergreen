@@ -212,7 +212,7 @@ func (s *CommitQueueSuite) TestCreatePatchForMerge() {
 			Username: "octocat",
 			Email:    "octocat @github.com",
 		},
-		PatchedConfig: `
+		PatchedParserProject: `
 tasks:
   - name: t0
 buildvariants:

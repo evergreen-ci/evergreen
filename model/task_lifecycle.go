@@ -385,10 +385,13 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	extraTasks := []task.Task{}
 	if t.DisplayOnly {
 		for _, dt := range allTasks {
+			if len(dt.ExecutionTasks) == 0 { // previous display tasks may not have execution tasks added yet
+				continue
+			}
 			var execTasks []task.Task
 			execTasks, err = task.Find(task.ByIds(dt.ExecutionTasks))
 			if err != nil {
-				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
+				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", dt.Id)
 			}
 			canDeactivate := true
 			for _, et := range execTasks {

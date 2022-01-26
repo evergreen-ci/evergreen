@@ -389,7 +389,7 @@ func (s *CliIntentSuite) TestNewPatch() {
 	s.Empty(patchDoc.VariantsTasks)
 	s.Empty(patchDoc.Patches)
 	s.False(patchDoc.Activated)
-	s.Empty(patchDoc.PatchedConfig)
+	s.Empty(patchDoc.PatchedParserProject)
 	s.Equal(s.alias, patchDoc.Alias)
 	s.Equal(s.syncBVs, patchDoc.SyncAtEndOpts.BuildVariants)
 	s.Equal(s.syncTasks, patchDoc.SyncAtEndOpts.Tasks)

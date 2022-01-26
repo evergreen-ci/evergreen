@@ -234,7 +234,7 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Empty(patchDoc.VariantsTasks)
 	s.Empty(patchDoc.Patches)
 	s.False(patchDoc.Activated)
-	s.Empty(patchDoc.PatchedConfig)
+	s.Empty(patchDoc.PatchedParserProject)
 	s.Equal(evergreen.GithubPRAlias, patchDoc.Alias)
 	s.Equal(5, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("evergreen-ci", patchDoc.GithubPatchData.BaseOwner)
