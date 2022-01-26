@@ -135,11 +135,11 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError((&distro.Distro{Id: "ubuntu1404-test"}).Insert())
 	s.NoError((&distro.Distro{Id: "macos-1012"}).Insert())
 
-	s.repo = "evergreen-ci/evergreen"
+	s.repo = "hadjri/evergreen"
 	s.headRepo = "tychoish/evergreen"
 	s.prNumber = 448
 	s.user = evergreen.GithubPatchUser
-	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
+	s.hash = "8b9b7ee42ef46d40e391910e3afd00e187a9dae8"
 	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
 	s.githubPatchData = thirdparty.GithubPatch{
 		PRNumber:   448,
