@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -26,7 +27,7 @@ type xunitResults struct {
 }
 
 func xunitResultsFactory() Command   { return &xunitResults{} }
-func (c *xunitResults) Name() string { return "attach.xunit_results" }
+func (c *xunitResults) Name() string { return evergreen.AttachXUnitResultsCommandName }
 
 // ParseParams reads and validates the command parameters. This is required
 // to satisfy the 'Command' interface
