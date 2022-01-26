@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -30,6 +31,8 @@ const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
 	DefaultCommandType = evergreen.CommandTypeTest
+
+	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
 type Project struct {
@@ -1809,7 +1812,8 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 	}
 
 	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
-	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...))
+	// maxTime ensures the query won't go on indefinitely when the request is cancelled.
+	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}
