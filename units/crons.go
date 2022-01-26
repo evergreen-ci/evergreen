@@ -1095,6 +1095,8 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(queue.Put(ctx, NewJasperManagerCleanup(utility.RoundPartOfMinute(0).Format(TSFormat), env)))
+		catcher.Add(queue.Put(ctx, NewPprofCheckJob(utility.RoundPartOfMinute(0).Format(TSFormat))))
+
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
