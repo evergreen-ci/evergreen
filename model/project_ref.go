@@ -956,7 +956,6 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	// add in project variables and aliases here
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
-	commonRestricted := map[string]bool{}
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
 		if err != nil {
@@ -972,19 +971,13 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			if vars.PrivateVars != nil {
 				commonPrivate = vars.PrivateVars
 			}
-			if vars.RestrictedVars != nil {
-				commonRestricted = vars.RestrictedVars
-			}
 			continue
 		}
 		for key, val := range commonProjectVariables {
-			// if the key is private/restricted in any of the projects, make it private/restricted in the repo
+			// if the key is private in any of the projects, make it private in the repo
 			if vars.Vars[key] == val {
 				if vars.PrivateVars[key] {
 					commonPrivate[key] = true
-				}
-				if vars.RestrictedVars[key] {
-					commonRestricted[key] = true
 				}
 			} else {
 				// remove any variables from the common set that aren't in all the project refs
@@ -993,9 +986,8 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 		}
 	}
 	return &ProjectVars{
-		Vars:           commonProjectVariables,
-		PrivateVars:    commonPrivate,
-		RestrictedVars: commonRestricted,
+		Vars:        commonProjectVariables,
+		PrivateVars: commonPrivate,
 	}, nil
 }
 
@@ -1680,9 +1672,8 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$unset": bson.M{
-					projectVarsMapKey:    1,
-					privateVarsMapKey:    1,
-					restrictedVarsMapKey: 1,
+					projectVarsMapKey: 1,
+					privateVarsMapKey: 1,
 				},
 			})
 		if err == nil {

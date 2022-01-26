@@ -27,10 +27,9 @@ type APIProjectSettings struct {
 }
 
 type APIProjectVars struct {
-	Vars           map[string]string `json:"vars"`
-	PrivateVars    map[string]bool   `json:"private_vars"`
-	RestrictedVars map[string]bool   `json:"restricted_vars"`
-	VarsToDelete   []string          `json:"vars_to_delete,omitempty"`
+	Vars         map[string]string `json:"vars"`
+	PrivateVars  map[string]bool   `json:"private_vars"`
+	VarsToDelete []string          `json:"vars_to_delete,omitempty"`
 
 	// to use for the UI
 	PrivateVarsList []string `json:"-"`

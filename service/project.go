@@ -285,7 +285,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DefaultLogger           string                         `json:"default_logger"`
 		CedarTestResultsEnabled bool                           `json:"cedar_test_results_enabled"`
 		PrivateVars             map[string]bool                `json:"private_vars"`
-		RestrictedVars          map[string]bool                `json:"restricted_vars"`
 		Enabled                 bool                           `json:"enabled"`
 		Private                 bool                           `json:"private"`
 		Restricted              bool                           `json:"restricted"`

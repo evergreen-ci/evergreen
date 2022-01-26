@@ -38,9 +38,6 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
-
-	//RestrictedVars keeps track of variables that are restricted to commands that can't leak them
-	RestrictedVars map[string]bool `bson:"restricted_vars" json:"restricted_vars"`
 }
 
 type AWSSSHKey struct {
