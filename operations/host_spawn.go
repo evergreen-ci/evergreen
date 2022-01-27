@@ -582,7 +582,6 @@ Examples:
 * SSH into a host (i-abcdef12345) and pass additional arguments to the SSH binary to use verbose mode (-vvv) and run a command (echo hello world):
 	evergreen host ssh --host i-abcdef12345 -- -vvv "echo hello world"
 `,
-		ArgsUsage: "[-- other_ssh_arguments]",
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(identityFlagName, "i"),
