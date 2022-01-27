@@ -1475,7 +1475,7 @@ mciModule.directive("adminNewProject", function () {
         '<div class="col-lg-12">' +
           "Optionally enter immutable project ID " +
           '<div class="muted small">' +
-            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason. Cannot be changed!)" +
+            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason, such as if the project will be using performance tooling. Cannot be changed!)" +
           '</div>' +
           '<div class="warning-text" ng-show="newProject.copyProject && projectRef.perf_enabled">' +
                "When copying a project using performance, the immutable project ID should be set to match the identifier." +
