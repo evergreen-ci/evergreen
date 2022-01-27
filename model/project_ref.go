@@ -281,6 +281,17 @@ func (p *ProjectRef) IsManualPRTestingEnabled() bool {
 	return utility.FromBoolPtr(p.ManualPRTestingEnabled)
 }
 
+func (p *ProjectRef) IsPRTestingEnabledByCaller(caller string) bool {
+	switch caller {
+	case patch.ManualCaller:
+		return p.IsManualPRTestingEnabled()
+	case patch.AutomatedCaller:
+		return p.IsAutoPRTestingEnabled()
+	default:
+		return p.IsPRTestingEnabled()
+	}
+}
+
 func (p *ProjectRef) IsGithubChecksEnabled() bool {
 	return utility.FromBoolPtr(p.GithubChecksEnabled)
 }
@@ -1223,22 +1234,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			owner, repo, branch)
 	}
 	for _, p := range projectRefs {
-		switch calledBy {
-		case patch.ManualCaller:
-			if p.IsManualPRTestingEnabled() {
-				p.checkDefaultLogger()
-				return &p, nil
-			}
-		case patch.AutomatedCaller:
-			if p.IsAutoPRTestingEnabled() {
-				p.checkDefaultLogger()
-				return &p, nil
-			}
-		default:
-			if p.IsPRTestingEnabled() {
-				p.checkDefaultLogger()
-				return &p, nil
-			}
+		if p.IsPRTestingEnabledByCaller(calledBy) {
+			p.checkDefaultLogger()
+			return &p, nil
 		}
 	}
 	if len(projectRefs) > 0 {
@@ -1257,7 +1255,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
-	if repoRef == nil || !repoRef.IsEnabled() || !repoRef.IsPRTestingEnabled() || repoRef.RemotePath == "" {
+	if repoRef == nil || !repoRef.IsEnabled() || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
 		grip.Debug(message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",

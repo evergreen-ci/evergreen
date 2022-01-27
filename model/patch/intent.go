@@ -43,7 +43,8 @@ type Intent interface {
 	// patch
 	RequesterIdentity() string
 
-	// CalledBy indicates what created the intent
+	// GetCalledBy indicates whether the intent was created automatically
+	// by Evergreen or manually by the user.
 	GetCalledBy() string
 }
 

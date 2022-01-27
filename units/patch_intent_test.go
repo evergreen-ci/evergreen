@@ -480,7 +480,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", "", patch.AutomatedCaller, testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -511,7 +511,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", "", patch.AutomatedCaller, testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

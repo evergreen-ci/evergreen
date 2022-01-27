@@ -250,7 +250,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.Repo.FullName,
 					"pr_number": *event.Issue.Number,
 					"user":      *event.Sender.Login,
-					"message":   fmt.Sprintf("%s triggered", *event.Comment.Body),
+					"message":   fmt.Sprintf("'%s' triggered", *event.Comment.Body),
 				})
 				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
@@ -261,7 +261,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 						"repo":      *event.Repo.FullName,
 						"pr_number": *event.Issue.Number,
 						"user":      *event.Sender.Login,
-						"message":   "can't create PR",
+						"message":   fmt.Sprintf("can't create PR for '%s'", *event.Comment.Body),
 					}))
 					return gimlet.MakeJSONErrorResponder(err)
 				}
@@ -714,8 +714,6 @@ func triggersPatch(action, comment string) (bool, string) {
 	}
 	comment = strings.TrimSpace(comment)
 	switch comment {
-	case retryComment:
-		return true, patch.AutomatedCaller
 	case patchComment:
 		return true, patch.ManualCaller
 	default:

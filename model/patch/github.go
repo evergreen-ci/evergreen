@@ -104,7 +104,7 @@ var (
 	processedKey    = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	processedAtKey  = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
 	intentTypeKey   = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
-	calledByKey     = "CalledBy"
+	calledByKey     = bsonutil.MustHaveTag(githubIntent{}, "CalledBy")
 )
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,

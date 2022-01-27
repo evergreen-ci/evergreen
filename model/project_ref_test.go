@@ -1065,7 +1065,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
-	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", patch.AutomatedCaller)
+	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -1081,7 +1081,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	require.NoError(doc.Insert())
 
 	// 1 disabled document = no match
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -1090,7 +1090,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.Enabled = utility.TruePtr()
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
 	assert.NoError(err)
 	require.Nil(projectRef)
 
@@ -1098,7 +1098,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	doc.Id = "ident1"
 	doc.PRTestingEnabled = utility.TruePtr()
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Id)
@@ -1107,7 +1107,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// 2 matching documents, we just return one of those projects
 	doc.Id = "ident2"
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 
@@ -1138,46 +1138,81 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(doc2.Insert())
 
 	// repo doesn't have PR testing enabled, so no project returned
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.Enabled = utility.TruePtr()
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.PRTestingEnabled = utility.TruePtr()
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("defaulting_project", projectRef.Id)
 
 	// project PR testing explicitly disabled
 	doc.PRTestingEnabled = utility.FalsePtr()
+	doc.ManualPRTestingEnabled = utility.FalsePtr()
 	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(err)
+	assert.Nil(projectRef)
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
 	assert.NoError(err)
 	assert.Nil(projectRef)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.ManualCaller)
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	// project auto PR testing enabled, manual disabled
+	doc.PRTestingEnabled = utility.TruePtr()
+	doc.ManualPRTestingEnabled = utility.FalsePtr()
+	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(err)
+	assert.NotNil(projectRef)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	assert.NoError(err)
+	assert.NotNil(projectRef)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.ManualCaller)
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	// project auto PR testing disabled, manual enabled
+	doc.PRTestingEnabled = utility.FalsePtr()
+	doc.ManualPRTestingEnabled = utility.TruePtr()
+	assert.NoError(doc.Upsert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(err)
+	assert.NotNil(projectRef)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	assert.NoError(err)
+	assert.Nil(projectRef)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.ManualCaller)
+	assert.NoError(err)
+	assert.NotNil(projectRef)
 
 	// project explicitly disabled
 	doc.Enabled = utility.FalsePtr()
 	doc.PRTestingEnabled = utility.TruePtr()
 	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// branch with no project doesn't work if repo not configured right
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
 	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("yours", projectRef.Branch)
@@ -1185,7 +1220,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	firstAttemptId := projectRef.Id
 
 	// verify we return the same hidden project
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal(firstAttemptId, projectRef.Id)
