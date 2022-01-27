@@ -20,7 +20,7 @@ type DBPatchIntentConnector struct{}
 func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 	patchDoc := intent.NewPatch()
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch, intent.IsCalledBy())
+		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch, intent.GetCalledBy())
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

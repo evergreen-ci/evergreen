@@ -87,7 +87,8 @@ func (t *TriggerIntent) RequesterIdentity() string {
 	return t.Requester
 }
 
-func (t *TriggerIntent) IsCalledBy() string {
+func (t *TriggerIntent) GetCalledBy() string {
+	// not relevant to trigger intents
 	return ""
 }
 

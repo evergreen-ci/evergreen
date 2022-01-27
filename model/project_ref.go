@@ -1224,12 +1224,12 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	}
 	for _, p := range projectRefs {
 		switch calledBy {
-		case patch.CalledManually:
+		case patch.ManualCaller:
 			if p.IsManualPRTestingEnabled() {
 				p.checkDefaultLogger()
 				return &p, nil
 			}
-		case patch.CalledAutomatically:
+		case patch.AutomatedCaller:
 			if p.IsAutoPRTestingEnabled() {
 				p.checkDefaultLogger()
 				return &p, nil

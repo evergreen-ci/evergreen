@@ -169,7 +169,8 @@ func (g *cliIntent) RequesterIdentity() string {
 	return evergreen.PatchVersionRequester
 }
 
-func (g *cliIntent) IsCalledBy() string {
+func (g *cliIntent) GetCalledBy() string {
+	// not relevant to CLI intents
 	return ""
 }
 

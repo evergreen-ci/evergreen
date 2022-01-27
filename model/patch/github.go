@@ -26,8 +26,8 @@ const (
 
 // CalledBy can be either auto or manual.
 const (
-	CalledAutomatically = "auto"
-	CalledManually      = "manual"
+	AutomatedCaller = "auto"
+	ManualCaller    = "manual"
 )
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -84,7 +84,7 @@ type githubIntent struct {
 	// IntentType indicates the type of the patch intent, e.g. GithubIntentType
 	IntentType string `bson:"intent_type"`
 
-	// CalledBy indicates what created the intent
+	// CalledBy indicates whether the intent was created automatically by Evergreen or by a user
 	CalledBy string `bson:"called_by"`
 }
 
@@ -224,7 +224,7 @@ func (g *githubIntent) RequesterIdentity() string {
 	return evergreen.GithubPRRequester
 }
 
-func (g *githubIntent) IsCalledBy() string {
+func (g *githubIntent) GetCalledBy() string {
 	return g.CalledBy
 }
 

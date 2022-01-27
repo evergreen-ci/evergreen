@@ -44,7 +44,7 @@ type Intent interface {
 	RequesterIdentity() string
 
 	// CalledBy indicates what created the intent
-	IsCalledBy() string
+	GetCalledBy() string
 }
 
 // FindIntent returns an intent of the specified type from the database

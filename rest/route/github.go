@@ -146,7 +146,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "pr accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin(), patch.CalledAutomatically); err != nil {
+			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -241,9 +241,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					return gimlet.MakeJSONErrorResponder(err)
 				}
 			}
-			if triggersPatch(*event.Action, *event.Comment.Body) {
-				msg := fmt.Sprintf("%s triggered", *event.Comment.Body)
-
+			triggerPatch, callerType := triggersPatch(*event.Action, *event.Comment.Body)
+			if triggerPatch {
 				grip.Info(message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -251,9 +250,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.Repo.FullName,
 					"pr_number": *event.Issue.Number,
 					"user":      *event.Sender.Login,
-					"message":   msg,
+					"message":   fmt.Sprintf("%s triggered", *event.Comment.Body),
 				})
-				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), patch.CalledManually, event.Issue.GetNumber()); err != nil {
+				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "github hook",
 						"msg_id":    gh.msgID,
@@ -709,12 +708,19 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	return nil
 }
 
-func triggersPatch(action, comment string) bool {
+func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
-		return false
+		return false, ""
 	}
 	comment = strings.TrimSpace(comment)
-	return comment == retryComment || comment == patchComment
+	switch comment {
+	case retryComment:
+		return true, patch.AutomatedCaller
+	case patchComment:
+		return true, patch.ManualCaller
+	default:
+		return false, ""
+	}
 }
 
 func isTag(ref string) bool {
