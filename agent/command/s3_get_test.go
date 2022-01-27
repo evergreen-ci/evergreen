@@ -137,7 +137,6 @@ func TestExpandS3GetParams(t *testing.T) {
 
 				cmd.AwsKey = "${aws_key}"
 				cmd.AwsSecret = "${aws_secret}"
-				cmd.RemoteFile = "${remote_file}"
 				cmd.Bucket = "${bucket}"
 
 				conf.Expansions.Update(
@@ -150,9 +149,6 @@ func TestExpandS3GetParams(t *testing.T) {
 				So(cmd.expandParams(conf), ShouldBeNil)
 				So(cmd.AwsKey, ShouldEqual, "key")
 				So(cmd.AwsSecret, ShouldEqual, "secret")
-				So(cmd.RemoteFile, ShouldEqual, "remote")
-				So(cmd.Bucket, ShouldEqual, "bck")
-
 			})
 
 		})
