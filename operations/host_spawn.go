@@ -635,7 +635,7 @@ Examples:
 			}
 
 			if dryRun {
-				fmt.Printf("Going to execute the following command: %s\n", strings.Join(args, " "))
+				fmt.Printf("Going to execute the following command:\n%s\n", strings.Join(args, " "))
 				return nil
 			}
 
@@ -1548,7 +1548,7 @@ func hostFindBy() cli.Command {
 			hostUser := utility.FromStringPtr(host.StartedBy)
 			link := fmt.Sprintf("%s/host/%s", conf.UIServerHost, hostId)
 			fmt.Printf(`
-		 ID : %s
+	     ID : %s
 	   Link : %s
 	   User : %s
 `, hostId, link, hostUser)
@@ -1714,7 +1714,7 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 		cmdWithoutDryRun := make([]string, len(args[:dryRunIndex]), len(args)-1)
 		_ = copy(cmdWithoutDryRun, args[:dryRunIndex])
 		cmdWithoutDryRun = append(cmdWithoutDryRun, args[dryRunIndex+1:]...)
-		fmt.Printf("Going to execute the following command: %s\n", strings.Join(cmdWithoutDryRun, " "))
+		fmt.Printf("Going to execute the following command:\n%s\n", strings.Join(cmdWithoutDryRun, " "))
 	}
 	logLevel := level.Info
 	stdout, err := send.NewPlainLogger("stdout", send.LevelInfo{Threshold: logLevel, Default: logLevel})
