@@ -1321,7 +1321,7 @@ mciModule.controller(
       };
     }
 
-    function comebineDateTime(date, time) {
+    function combineDateTime(date, time) {
       date.setHours(time.getHours());
       date.setMinutes(time.getMinutes());
 
@@ -1347,7 +1347,7 @@ mciModule.controller(
         if (update.delete) {
           $scope.periodic_builds.splice(update.periodicBuildIndex, 1);
         } else {
-          update.periodic_build.next_run_time = comebineDateTime(
+          update.periodic_build.next_run_time = combineDateTime(
             update.periodic_build.start_date,
             update.periodic_build.start_time
           );
@@ -1476,6 +1476,9 @@ mciModule.directive("adminNewProject", function () {
           "Optionally enter immutable project ID " +
           '<div class="muted small">' +
             "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason. Cannot be changed!)" +
+          '</div>' +
+          '<div class="warning-text" ng-show="newProject.copyProject && projectRef.perf_enabled">' +
+               "When copying a project using performance, the immutable project ID should be set to match the identifier." +
           '</div>' +
           '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
         '</div>' +
