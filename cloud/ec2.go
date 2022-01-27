@@ -1162,12 +1162,12 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 	if err != nil {
 		// fetch the instance to get the current status, since it may have changed
 		// since we saved the previous status
-		instance, err = m.client.GetInstanceInfo(ctx, h.Id)
+		currentStatus, err := m.GetInstanceStatus(ctx, h)
 		if err != nil {
-			return errors.Wrap(err, "error getting instance info after stopping error")
+			return errors.Wrap(err, "error getting instance status after stopping error")
 		}
-		currentStatus := *instance.State.Name
-		if err2 := h.SetStatus(currentStatus, user, ""); err2 != nil {
+
+		if err2 := h.SetStatus(currentStatus.String(), user, ""); err2 != nil {
 			return errors.Wrapf(err2, "failed to revert status from stopping to '%s'", currentStatus)
 		}
 		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
@@ -1192,12 +1192,11 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		})
 
 	if err != nil {
-		instance, err = m.client.GetInstanceInfo(ctx, h.Id)
+		currentStatus, err := m.GetInstanceStatus(ctx, h)
 		if err != nil {
-			return errors.Wrap(err, "error getting instance info after stopping error")
+			return errors.Wrap(err, "error getting instance status after stopping error")
 		}
-		currentStatus := *instance.State.Name
-		if err2 := h.SetStatus(currentStatus, user, ""); err2 != nil {
+		if err2 := h.SetStatus(currentStatus.String(), user, ""); err2 != nil {
 			return errors.Wrapf(err2, "failed to revert status from stopping to '%s'", currentStatus)
 		}
 		return errors.Wrap(err, "error checking if spawnhost stopped")
