@@ -2106,36 +2106,6 @@ func TestTaskGroupValidation(t *testing.T) {
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "foo is used as a name for both a task and task group")
 
-	// check that yml with a task group named the same as a task errors
-	attachInGroupTeardownYml := `
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_group:
-  - command: attach.results
-  tasks:
-  - example_task_1
-  - example_task_2
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  tasks:
-  - name: example_task_group
-`
-	pp, _, err = model.LoadProjectInto(ctx, []byte(attachInGroupTeardownYml), nil, "", &proj)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
-	validationErrs = validateTaskGroups(&proj)
-	assert.Len(validationErrs, 1)
-	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
-
 	largeMaxHostYml := `
 tasks:
 - name: example_task_1
@@ -2162,6 +2132,47 @@ buildvariants:
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 4 greater than the number of tasks 3")
 	assert.Equal(validationErrs[0].Level, Warning)
+}
+
+func TestTaskGroupTeardownValidation(t *testing.T) {
+	baseYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+
+buildvariants:
+- name: "bv"
+  display_name: "bv_display"
+  tasks:
+  - name: example_task_group
+task_groups:
+- name: example_task_group
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+`
+
+	var proj model.Project
+	ctx := context.Background()
+	// verify that attach commands can't be used in teardown group
+	for _, commandName := range evergreen.AttachCommands {
+		attachCommand := fmt.Sprintf(`
+  teardown_group:
+  - command: %s
+`, commandName)
+		attachTeardownYml := fmt.Sprintf("%s\n%s", baseYml, attachCommand)
+		pp, _, err := model.LoadProjectInto(ctx, []byte(attachTeardownYml), nil, "", &proj)
+		assert.NotNil(t, proj)
+		assert.NotNil(t, pp)
+		assert.NoError(t, err)
+		validationErrs := validateTaskGroups(&proj)
+		assert.Len(t, validationErrs, 1)
+		assert.Contains(t, validationErrs[0].Message, fmt.Sprintf("%s cannot be used in the group teardown stage", commandName))
+	}
 
 }
 
@@ -3776,6 +3787,187 @@ func TestParseS3PullParameters(t *testing.T) {
 				} else {
 					assert.Empty(t, bv)
 				}
+			}
+		})
+	}
+}
+
+func TestValidateTaskGroupsInBV(t *testing.T) {
+	tests := map[string]struct {
+		project        model.Project
+		expectErr      bool
+		expectedErrMsg string
+	}{
+		"Task group before task": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task1-and-task2", IsGroup: true},
+							{Name: "task1"},
+						},
+					},
+				},
+			},
+			expectErr:      true,
+			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in task group 'task1-and-task2'",
+		},
+		"Task group after task": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task2"},
+							{Name: "task1-and-task2", IsGroup: true},
+						},
+					},
+				},
+			},
+			expectErr:      true,
+			expectedErrMsg: "task 'task2' in build variant 'ubuntu' is already referenced in task group 'task1-and-task2'",
+		},
+		"Task group and task not in task group": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task3"},
+							{Name: "task1-and-task2", IsGroup: true},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+		"No task group": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task3"},
+							{Name: "task1"},
+						},
+					},
+				},
+			},
+			expectErr:      true,
+			expectedErrMsg: "task 'task1' in build variant 'ubuntu' is already referenced in task group 'task1-and-task2'",
+		},
+		"Multiple task group": {
+			project: model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "task1",
+					},
+					{
+						Name: "task2",
+					},
+					{
+						Name: "task3",
+					},
+				},
+				TaskGroups: []model.TaskGroup{
+					model.TaskGroup{
+						Name:  "task1-and-task2",
+						Tasks: []string{"task1", "task2"},
+					},
+					{
+						Name:  "task1-and-task3",
+						Tasks: []string{"task1", "task3"},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					model.BuildVariant{
+						Name: "ubuntu",
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "task1-and-task2", IsGroup: true},
+							{Name: "task1-and-task3", IsGroup: true},
+						},
+					},
+				},
+			},
+			expectErr: false,
+		},
+	}
+	for testName, testCase := range tests {
+		t.Run(testName, func(t *testing.T) {
+			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
+			if testCase.expectErr {
+				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
+			} else {
+				assert.Equal(t, len(errs), 0, "there was an error validating task group in build variant")
 			}
 		})
 	}

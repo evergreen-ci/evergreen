@@ -44,24 +44,25 @@ type ProjectRef struct {
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
-	DisplayName          string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
-	Enabled              *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
-	Private              *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
-	Restricted           *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
-	Owner                string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo                 string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch               string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RemotePath           string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled     *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
-	RepotrackerDisabled  *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
-	DispatchingDisabled  *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
-	PRTestingEnabled     *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled  *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
-	BatchTime            int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious   *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
-	DefaultLogger        string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
-	Triggers             []TriggerDefinition `bson:"triggers" json:"triggers"`
+	DisplayName           string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
+	Enabled               *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Private               *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
+	Restricted            *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
+	Owner                 string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo                  string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch                string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	RemotePath            string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled      *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
+	RepotrackerDisabled   *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
+	DispatchingDisabled   *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	VersionControlEnabled *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
+	PRTestingEnabled      *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled   *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
+	BatchTime             int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	DeactivatePrevious    *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
+	DefaultLogger         string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+	NotifyOnBuildFailure  *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
+	Triggers              []TriggerDefinition `bson:"triggers" json:"triggers"`
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// all PatchTriggerAliases applied to github patch intents
@@ -304,6 +305,10 @@ func (p *ProjectRef) UseRepoSettings() bool {
 
 func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
+}
+
+func (p *ProjectRef) IsVersionControlEnabled() bool {
+	return utility.FromBoolPtr(p.VersionControlEnabled)
 }
 
 func (p *ProjectRef) IsPerfEnabled() bool {
@@ -756,7 +761,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeProjectConfig {
+	if includeProjectConfig && pRef.IsVersionControlEnabled() {
 		err = pRef.MergeWithProjectConfig(version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
@@ -2336,7 +2341,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProjectOrRepo(definition.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectRepoOrConfig(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return definition, errors.Wrap(err, "problem fetching aliases for project")
 			}

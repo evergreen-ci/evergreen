@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -30,6 +31,8 @@ const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
 	DefaultCommandType = evergreen.CommandTypeTest
+
+	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
 type Project struct {
@@ -75,6 +78,11 @@ type ProjectInfo struct {
 	Project             *Project
 	IntermediateProject *ParserProject
 	Config              *ProjectConfig
+}
+
+type PatchConfig struct {
+	PatchedParserProject string
+	PatchedProjectConfig string
 }
 
 func (p *ProjectInfo) NotPopulated() bool {
@@ -1408,14 +1416,16 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // BuildProjectTVPairs resolves the build variants and tasks into which build
 // variants will run and which tasks will run on each build variant.
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.GetRequester(), alias, true)
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of
 // all build variants that will run, a list of all tasks that will run, and a
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
-func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+	bvs := patchDoc.BuildVariants
+	tasks := patchDoc.Tasks
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
@@ -1448,8 +1458,8 @@ func (p *Project) ResolvePatchVTs(bvs, tasks []string, requester, alias string, 
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		vars, err := FindAliasInProjectOrRepo(p.Identifier, alias)
-		catcher.Add(errors.Wrap(err, "can't get alias from project"))
+		vars, err := p.findAliasesForPatch(alias, patchDoc)
+		catcher.Wrapf(err, "error retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
@@ -1541,6 +1551,31 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 func (p *Project) IsGenerateTask(taskName string) bool {
 	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
 	return ok
+}
+
+func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
+	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get alias from project")
+	}
+	if !shouldExit && len(vars) == 0 {
+		if len(patchDoc.PatchedProjectConfig) > 0 {
+			projectConfig, err := createProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+			if err != nil {
+				return nil, errors.Wrap(err, "can't retrieve aliases from patched config")
+			}
+			vars, err = findAliasFromProjectConfig(projectConfig, alias)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+			}
+		} else {
+			vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+			}
+		}
+	}
+	return vars, nil
 }
 
 // extractDisplayTasks adds display tasks and all their execution tasks when
@@ -1653,7 +1688,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 	for _, definition := range definitions {
 		for _, specifier := range definition.TaskSpecifiers {
 			if specifier.PatchAlias != "" {
-				aliases, err := FindAliasInProjectOrRepo(p.Identifier, specifier.PatchAlias)
+				aliases, err := FindAliasInProjectRepoOrConfig(p.Identifier, specifier.PatchAlias)
 				if err != nil {
 					return nil, errors.Wrap(err, "can't get alias from project")
 				}
@@ -1777,7 +1812,8 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 	}
 
 	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
-	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...))
+	// maxTime ensures the query won't go on indefinitely when the request is cancelled.
+	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
 	}

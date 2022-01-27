@@ -10,6 +10,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -408,7 +409,7 @@ func (pc *DBProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.Pr
 }
 
 func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
-	projectAliases, err := model.FindAliasInProjectOrRepo(p.Identifier, alias)
+	projectAliases, err := model.FindAliasInProjectRepoOrConfig(p.Identifier, alias)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -418,7 +419,7 @@ func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias str
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
 		requester := getRequesterFromAlias(projectAlias.Alias)
-		_, _, variantTasks := p.ResolvePatchVTs(nil, nil, requester, projectAlias.Alias, includeDeps)
+		_, _, variantTasks := p.ResolvePatchVTs(&patch.Patch{}, requester, projectAlias.Alias, includeDeps)
 		for _, variantTask := range variantTasks {
 			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 		}

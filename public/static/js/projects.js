@@ -501,6 +501,7 @@ mciModule.controller(
             restricted: $scope.projectRef.restricted,
             patching_disabled: $scope.projectRef.patching_disabled,
             dispatching_disabled: $scope.projectRef.dispatching_disabled,
+            version_control_enabled: $scope.projectRef.version_control_enabled,
             task_sync: $scope.projectRef.task_sync,
             repotracker_disabled: $scope.projectRef.repotracker_disabled,
             alert_config: $scope.projectRef.alert_config || {},

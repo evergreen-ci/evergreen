@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -31,7 +32,7 @@ type attachArtifacts struct {
 }
 
 func attachArtifactsFactory() Command   { return &attachArtifacts{} }
-func (c *attachArtifacts) Name() string { return "attach.artifacts" }
+func (c *attachArtifacts) Name() string { return evergreen.AttachArtifactsCommandName }
 
 func (c *attachArtifacts) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {

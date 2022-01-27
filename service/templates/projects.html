@@ -312,6 +312,21 @@ Evergreen Projects
         </div>
       </div>
     </div>
+    <div class="variables">
+      <div class="form-group">
+        <div class="col-header col-lg-8 form-control-static">
+          <h3>Version Control</h3>
+        </div>
+      </div>
+      <div id="version-control-enabled" class="form-group">
+        <div class="col-lg-6">
+          <input type="checkbox" id="version-control-enabled-checkbox" ng-model="settingsFormData.version_control_enabled" />
+          <label for="version-control-enabled-checkbox">Enable Config Version Control</label>
+          <!--        todo: write documentation and provide link below-->
+          <div class="muted small">Allow defining of <a href="https://github.com/evergreen-ci/evergreen/wiki/Project-and-Distro-Settings#version-control">these properties</a> on this page in config yaml rather than exclusively in this UI.</div>
+        </div>
+      </div>
+    </div>
     <div ng-include="'static/partials/subscription_list.html'">
     </div>
     <div class="variables" ng-show="trackedProjects.length>0">
