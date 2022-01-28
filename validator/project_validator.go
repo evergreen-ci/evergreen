@@ -95,6 +95,7 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 	return errs
 }
 
+// HasError returns true if any of the errors are at the error level.
 func (v ValidationErrors) HasError() bool {
 	for _, err := range v {
 		if err.Level == Error {

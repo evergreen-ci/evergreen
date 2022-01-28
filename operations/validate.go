@@ -147,6 +147,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	return nil
 }
 
+// loadProjectIntoWithValidation returns a warning (instead of an error) if there's an error with unmarshalling strictly
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
 	project *model.Project) (*model.ParserProject, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
