@@ -95,6 +95,15 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 	return errs
 }
 
+func (v ValidationErrors) HasError() bool {
+	for _, err := range v {
+		if err.Level == Error {
+			return true
+		}
+	}
+	return false
+}
+
 type ValidationInput struct {
 	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
 	Quiet       bool   `json:"quiet" yaml:"quiet"`

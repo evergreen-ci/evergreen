@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -118,10 +119,12 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	if !quiet {
 		opts.UnmarshalStrict = true
 	}
-	pp, _, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
-	if err != nil {
-		return errors.Wrapf(err, "%s is an invalid configuration", path)
+	pp, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, project)
+	grip.Info(validationErrs)
+	if validationErrs.HasError() {
+		return errors.Errorf("%s is an invalid configuration", path)
 	}
+
 	projectYaml, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "Could not marshal parser project into yaml")
@@ -132,26 +135,39 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		return nil
 	}
 
-	if len(projErrors) != 0 {
-		grip.Info(projErrors)
-	}
-	hasErrs := false
-	hasWarnings := false
-	for _, projErr := range projErrors {
-		if projErr.Level == validator.Error {
-			hasErrs = true
-		} else if projErr.Level == validator.Warning {
-			hasWarnings = true
-		}
-	}
-
-	if hasErrs {
+	grip.Info(projErrors)
+	if projErrors.HasError() {
 		return errors.Errorf("%s is an invalid configuration", path)
-	} else if hasWarnings {
+	} else if len(projErrors) > 0 {
 		grip.Infof("%s is valid with warnings", path)
 	} else {
 		grip.Infof("%s is valid", path)
 	}
 
 	return nil
+}
+
+func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
+	project *model.Project) (*model.ParserProject, validator.ValidationErrors) {
+	errs := validator.ValidationErrors{}
+	pp, _, err := model.LoadProjectInto(ctx, data, opts, "", project)
+	if err != nil {
+		if opts.UnmarshalStrict {
+			// try it without unmarshal strict; if the error is from being strict, warn but don't error.
+			opts.UnmarshalStrict = false
+			pp, _, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
+			if err2 == nil {
+				errs = append(errs, validator.ValidationError{
+					Level:   validator.Warning,
+					Message: fmt.Sprintf("error unmarshalling strictly: %s", err.Error()),
+				})
+				return pp, errs
+			}
+		}
+		errs = append(errs, validator.ValidationError{
+			Level:   validator.Error,
+			Message: err.Error(),
+		})
+	}
+	return pp, errs
 }
