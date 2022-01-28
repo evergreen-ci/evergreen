@@ -563,15 +563,33 @@ func hostStart() cli.Command {
 func hostSSH() cli.Command {
 	const (
 		identityFlagName = "identity_file"
+		dryRunFlagName   = "dry-run"
 	)
 
 	return cli.Command{
 		Name:  "ssh",
 		Usage: "ssh into a spawn host",
+		UsageText: `
+SSH into a host by its ID and optionally pass arbitrary additional parameters to the SSH binary.
+
+Examples:
+* SSH into a host (i-abcdef12345) by ID:
+	evergreen host ssh --host i-abcdef12345
+
+* As a special case, if you pass a single argument, it will be interpreted as the host ID:
+	evergreen host ssh i-abcdef12345
+
+* SSH into a host (i-abcdef12345) and pass additional arguments to the SSH binary to use verbose mode (-vvv) and run a command (echo hello world):
+	evergreen host ssh --host i-abcdef12345 -- -vvv "echo hello world"
+`,
 		Flags: addHostFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(identityFlagName, "i"),
 				Usage: "Path to a specific identity (private key), for ssh -i",
+			},
+			cli.BoolFlag{
+				Name:  dryRunFlagName,
+				Usage: "show the SSH command that would run if executed, but do not actually execute it",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
@@ -580,6 +598,7 @@ func hostSSH() cli.Command {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)
+			dryRun := c.Bool(dryRunFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -607,6 +626,18 @@ func hostSSH() cli.Command {
 			if key != "" {
 				args = append(args, "-i", key)
 			}
+
+			// Append the arbitrary additional SSH args unless it's the special
+			// case where it's a single arg and it's the host ID.
+			if c.NArg() > 1 || c.NArg() == 1 && c.Args().Get(0) != hostID {
+				args = append(args, c.Args()...)
+			}
+
+			if dryRun {
+				fmt.Printf("Going to execute the following command:\n%s\n", strings.Join(args, " "))
+				return nil
+			}
+
 			return jasper.NewCommand().Add(args).SetErrorWriter(os.Stderr).SetOutputWriter(os.Stdout).SetInput(os.Stdin).Run(ctx)
 		},
 	}
@@ -1682,7 +1713,7 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 		cmdWithoutDryRun := make([]string, len(args[:dryRunIndex]), len(args)-1)
 		_ = copy(cmdWithoutDryRun, args[:dryRunIndex])
 		cmdWithoutDryRun = append(cmdWithoutDryRun, args[dryRunIndex+1:]...)
-		fmt.Printf("Going to execute the following command: %s\n", strings.Join(cmdWithoutDryRun, " "))
+		fmt.Printf("Going to execute the following command:\n%s\n", strings.Join(cmdWithoutDryRun, " "))
 	}
 	logLevel := level.Info
 	stdout, err := send.NewPlainLogger("stdout", send.LevelInfo{Threshold: logLevel, Default: logLevel})
