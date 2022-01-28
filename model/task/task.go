@@ -1039,6 +1039,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // operation will select tasks from all distros.
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
+	hint := "distro_1_status_1_activated_1_priority_1"
 
 	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
@@ -1053,7 +1054,8 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 		},
 	}
 
-	info, err := UpdateAll(query, update)
+	q := db.Query(query).Hint(hint)
+	info, err := UpdateAll(q, update)
 	if err != nil {
 		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
 	}
