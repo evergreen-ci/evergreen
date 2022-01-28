@@ -92,6 +92,36 @@
                 "timestamp": "2019-12-07T13:31:19-05:00",
                 "version": 1
               }
+            ],
+            "allLogs": [
+              {
+                "type": "T",
+                "severity": "I",
+                "message": "      [jar] Building MANIFEST-only jar: C:\\data\\mci\\fd27d777b88be249b1059d842a975a6d\\mms\\server\\build\\classpath.all.jar",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              },
+              {
+                "type": "T",
+                "severity": "I",
+                "message": "    [javac] 9 warnings",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              },
+              {
+                "type": "E",
+                "severity": "I",
+                "message": "    [javac]                    ^",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              },
+              {
+                "type": "S",
+                "severity": "I",
+                "message": "    [javac]     protected void finalize() {",
+                "timestamp": "2019-12-07T13:31:19-05:00",
+                "version": 1
+              }
             ]
           }
         }
