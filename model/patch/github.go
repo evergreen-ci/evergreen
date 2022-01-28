@@ -28,6 +28,7 @@ const (
 const (
 	AutomatedCaller = "auto"
 	ManualCaller    = "manual"
+	AllCallers      = ""
 )
 
 // githubIntent represents an intent to create a patch build as a result of a

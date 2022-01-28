@@ -89,7 +89,7 @@ func (t *TriggerIntent) RequesterIdentity() string {
 
 func (t *TriggerIntent) GetCalledBy() string {
 	// not relevant to trigger intents
-	return ""
+	return AllCallers
 }
 
 type TriggerIntentOptions struct {

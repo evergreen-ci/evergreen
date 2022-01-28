@@ -171,7 +171,7 @@ func (g *cliIntent) RequesterIdentity() string {
 
 func (g *cliIntent) GetCalledBy() string {
 	// not relevant to CLI intents
-	return ""
+	return AllCallers
 }
 
 // NewPatch creates a patch from the intent
