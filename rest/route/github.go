@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ const (
 	commitUnsigned          = "unsigned"
 
 	retryComment = "evergreen retry"
+	patchComment = "evergreen patch"
 	refTags      = "refs/tags/"
 )
 
@@ -144,7 +146,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "pr accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin()); err != nil {
+			if err := gh.AddIntentForPR(event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -239,7 +241,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					return gimlet.MakeJSONErrorResponder(err)
 				}
 			}
-			if triggersRetry(*event.Action, *event.Comment.Body) {
+			triggerPatch, callerType := triggersPatch(*event.Action, *event.Comment.Body)
+			if triggerPatch {
 				grip.Info(message.Fields{
 					"source":    "github hook",
 					"msg_id":    gh.msgID,
@@ -247,9 +250,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"repo":      *event.Repo.FullName,
 					"pr_number": *event.Issue.Number,
 					"user":      *event.Sender.Login,
-					"message":   "retry triggered",
+					"message":   fmt.Sprintf("'%s' triggered", *event.Comment.Body),
 				})
-				if err := gh.retryPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber()); err != nil {
+				if err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber()); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"source":    "github hook",
 						"msg_id":    gh.msgID,
@@ -258,7 +261,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 						"repo":      *event.Repo.FullName,
 						"pr_number": *event.Issue.Number,
 						"user":      *event.Sender.Login,
-						"message":   "can't retry PR",
+						"message":   fmt.Sprintf("can't create PR for '%s'", *event.Comment.Body),
 					}))
 					return gimlet.MakeJSONErrorResponder(err)
 				}
@@ -289,7 +292,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, prNumber int) error {
+func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
 	settings, err := gh.sc.GetEvergreenSettings()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
@@ -304,11 +307,11 @@ func (gh *githubHookApi) retryPRPatch(ctx context.Context, owner, repo string, p
 		return errors.Wrapf(err, "can't get PR for repo %s:%s, PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(pr, pr.User.GetLogin())
+	return gh.AddIntentForPR(pr, pr.User.GetLogin(), calledBy)
 }
 
-func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner string) error {
-	ghi, err := patch.NewGithubIntent(gh.msgID, owner, pr)
+func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy string) error {
+	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, pr)
 	if err != nil {
 		return errors.Wrap(err, "failed to create intent")
 	}
@@ -705,12 +708,21 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	return nil
 }
 
-func triggersRetry(action, comment string) bool {
+// The bool value returns whether the patch should be created or not.
+// The string value returns the correct caller for the command.
+func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
-		return false
+		return false, ""
 	}
 	comment = strings.TrimSpace(comment)
-	return comment == retryComment
+	switch comment {
+	case patchComment:
+		return true, patch.ManualCaller
+	case retryComment:
+		return true, patch.AllCallers
+	default:
+		return false, ""
+	}
 }
 
 func isTag(ref string) bool {

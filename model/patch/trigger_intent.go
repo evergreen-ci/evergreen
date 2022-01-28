@@ -87,6 +87,11 @@ func (t *TriggerIntent) RequesterIdentity() string {
 	return t.Requester
 }
 
+func (t *TriggerIntent) GetCalledBy() string {
+	// not relevant to trigger intents
+	return AllCallers
+}
+
 type TriggerIntentOptions struct {
 	Requester      string
 	Author         string
