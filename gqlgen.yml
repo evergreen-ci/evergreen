@@ -329,3 +329,5 @@ models:
         resolver: true
       agentLogs:
         resolver: true
+      allLogs:
+        resolver: true
