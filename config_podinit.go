@@ -12,7 +12,8 @@ var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit")
 
 // PodInitConfig holds logging settings for the pod init process.
 type PodInitConfig struct {
-	S3BaseURL string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	S3BaseURL              string `bson:"s3_base_url" json:"s3_base_url" yaml:"s3_base_url"`
+	MaxParallelPodRequests int    `bson:"max_parallel_pod_requests" json:"max_parallel_pod_requests" yaml:"max_parallel_pod_requests"`
 }
 
 func (c *PodInitConfig) SectionId() string { return "pod_init" }
@@ -46,7 +47,8 @@ func (c *PodInitConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			podInitS3BaseURLKey: c.S3BaseURL,
+			podInitS3BaseURLKey:       c.S3BaseURL,
+			MaxParallelPodRequestsKey: c.MaxParallelPodRequests,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -54,5 +56,9 @@ func (c *PodInitConfig) Set() error {
 }
 
 func (c *PodInitConfig) ValidateAndDefault() error {
+	if c.MaxParallelPodRequests <= 0 {
+		// TODO: Determine empirically if this is indeed reasonable
+		c.MaxParallelPodRequests = 2000
+	}
 	return nil
 }

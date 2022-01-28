@@ -57,6 +57,11 @@ const (
 	StatusTerminated Status = "terminated"
 )
 
+var ActiveStatus = []string{
+	StatusStarting,
+	StatusRunning,
+}
+
 // Validate checks that the pod status is recognized.
 func (s Status) Validate() error {
 	switch s {

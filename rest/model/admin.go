@@ -893,13 +893,15 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 }
 
 type APIPodInitConfig struct {
-	S3BaseURL *string `json:"s3_base_url"`
+	S3BaseURL              *string `json:"s3_base_url"`
+	MaxParallelPodRequests int     `json:"max_parallel_pod_requests"`
 }
 
 func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.PodInitConfig:
 		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
+		a.MaxParallelPodRequests = v.MaxParallelPodRequests
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -908,7 +910,8 @@ func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
 
 func (a *APIPodInitConfig) ToService() (interface{}, error) {
 	return evergreen.PodInitConfig{
-		S3BaseURL: utility.FromStringPtr(a.S3BaseURL),
+		S3BaseURL:              utility.FromStringPtr(a.S3BaseURL),
+		MaxParallelPodRequests: a.MaxParallelPodRequests,
 	}, nil
 }
 

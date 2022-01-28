@@ -97,6 +97,23 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+// Count returns the number of pods that satisfy the given query.
+func Count(query db.Q) (int, error) {
+	return db.CountQ(Collection, query)
+}
+
+// IsActive is a query that returns all
+func IsActive() bson.M {
+	return bson.M{
+		StatusKey: bson.M{"$in": pod.ActiveStatus},
+	}
+}
+
+func CountActiveHosts() (int, error) {
+	num, err := Count(db.Query(IsActive()))
+	return num, errors.Wrap(err, "problem finding active hosts")
+}
+
 // FindByNeedsTermination finds all pods running agents that need to be
 // terminated, which includes:
 // * Pods that have been provisioning for too long.
