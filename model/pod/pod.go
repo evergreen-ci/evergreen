@@ -57,6 +57,7 @@ const (
 	StatusTerminated Status = "terminated"
 )
 
+// ActiveStatus is a slice of statuses that are considered active, that is, not inactive.
 var ActiveStatus = []Status{
 	StatusStarting,
 	StatusRunning,

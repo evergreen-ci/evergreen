@@ -47,8 +47,8 @@ func (c *PodInitConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			podInitS3BaseURLKey:       c.S3BaseURL,
-			maxParallelPodRequestsKey: c.MaxParallelPodRequests,
+			podInitS3BaseURLKey:              c.S3BaseURL,
+			podInitMaxParallelPodRequestsKey: c.MaxParallelPodRequests,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -57,7 +57,7 @@ func (c *PodInitConfig) Set() error {
 
 func (c *PodInitConfig) ValidateAndDefault() error {
 	if c.MaxParallelPodRequests <= 0 {
-		// TODO: Determine empirically if this is indeed reasonable
+		// TODO: (EVG-16217) Determine empirically if this is indeed reasonable
 		c.MaxParallelPodRequests = 2000
 	}
 	return nil
