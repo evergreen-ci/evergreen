@@ -13,7 +13,7 @@ import (
 func UnmarshalYAMLWithFallback(in []byte, out interface{}) error {
 	err := yaml.Unmarshal(in, out)
 	if err != nil {
-		// try the older version of yaml before erroring, in case it's just an oudated yaml
+		// try the older version of yaml before erroring, in case it's just an outdated yaml
 		if err2 := yaml2.Unmarshal(in, out); err2 != nil {
 			return err
 		}

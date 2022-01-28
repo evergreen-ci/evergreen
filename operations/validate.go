@@ -115,6 +115,9 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		LocalModules: localModuleMap,
 		ReadFileFrom: model.ReadFromLocal,
 	}
+	if !quiet {
+		opts.UnmarshalStrict = true
+	}
 	pp, _, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
 	if err != nil {
 		return errors.Wrapf(err, "%s is an invalid configuration", path)
