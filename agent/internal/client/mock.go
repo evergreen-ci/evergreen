@@ -411,14 +411,6 @@ func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patch
 	return nil
 }
 
-func (c *Mock) NewPush(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) (*serviceModel.PushLog, error) {
-	return nil, nil
-}
-
-func (c *Mock) UpdatePushStatus(ctx context.Context, td TaskData, pushlog *serviceModel.PushLog) error {
-	return nil
-}
-
 // SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
 func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.TestLog) (string, error) {
@@ -431,6 +423,10 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.T
 
 func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
 	return &manifest.Manifest{}, nil
+}
+
+func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) (string, error) {
+	return "", nil
 }
 
 func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyVal) error {
