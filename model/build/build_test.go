@@ -576,27 +576,27 @@ func TestAllTasksFinished(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	tasks, err := task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err := task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[0].MarkFailed())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[1].MarkFailed())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[2].MarkFailed())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 
 	assert.NoError(tasks[3].MarkFailed())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.True(b.AllUnblockedTasksFinished(tasks))
 
@@ -623,11 +623,11 @@ func TestAllTasksFinished(t *testing.T) {
 	for _, task := range tasks {
 		assert.NoError(task.Insert())
 	}
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.False(b.AllUnblockedTasksFinished(tasks))
 	assert.NoError(tasks[0].MarkFailed())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	assert.True(b.AllUnblockedTasksFinished(tasks))
 
@@ -640,7 +640,7 @@ func TestAllTasksFinished(t *testing.T) {
 		Activated: false,
 	}
 	assert.NoError(task1.Insert())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	complete, status, err := b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
@@ -698,7 +698,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.NoError(d0.Insert())
 	assert.NoError(e0.Insert())
 	assert.NoError(e1.Insert())
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)
@@ -706,7 +706,7 @@ func TestAllTasksFinished(t *testing.T) {
 
 	// inactive build should not be complete
 	b.Activated = false
-	tasks, err = task.Find(task.ByVersion(b.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err = task.FindWithFields(task.ByVersion(b.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 	require.NoError(t, err)
 	complete, _, err = b.AllUnblockedTasksFinished(tasks)
 	assert.NoError(err)

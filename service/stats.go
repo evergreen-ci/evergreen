@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -214,16 +215,17 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			tasks, err = task.FindAll(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
-				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).Sort([]string{"-" + task.CreateTimeKey}).WithFields(fields...))
+			query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
+				buildVariant, taskName, project.Identifier, []string{request})).Limit(limit).Sort([]string{"-" + task.CreateTimeKey}).WithFields(fields...)
+			tasks, err = task.FindAll(query)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
 			}
 
 		} else {
-			tasks, err = task.FindAll(task.ByStatuses(statuses,
-				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.CreateTimeKey}))
+			query := db.Query(task.ByStatuses(statuses, buildVariant, taskName, project.Identifier, request)).Limit(limit).Sort([]string{"-" + task.CreateTimeKey}).WithFields(fields...)
+			tasks, err = task.FindAll(query)
 
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)

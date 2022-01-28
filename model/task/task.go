@@ -628,7 +628,7 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	}
 
 	if len(depIdsToQueryFor) > 0 {
-		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey, DependsOnKey, ActivatedKey))
+		newDeps, err := FindWithFields(ByIds(depIdsToQueryFor), StatusKey, DependsOnKey, ActivatedKey)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -773,7 +773,7 @@ func (t *Task) HasFailedTests() (bool, error) {
 
 // FindTaskOnBaseCommit returns the task that is on the base commit.
 func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
-	return FindOne(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester))
+	return FindOne(db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
 }
 
 // FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
@@ -796,8 +796,8 @@ func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
 // same display name, and in other buildvariants, that have failed in the same
 // revision
 func (t *Task) CountSimilarFailingTasks() (int, error) {
-	return Count(ByDifferentFailedBuildVariants(t.Revision, t.BuildVariant, t.DisplayName,
-		t.Project, t.Requester))
+	return Count(db.Query(ByDifferentFailedBuildVariants(t.Revision, t.BuildVariant, t.DisplayName,
+		t.Project, t.Requester)))
 }
 
 // Find the previously completed task for the same project +
@@ -806,8 +806,9 @@ func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, 
 	if len(statuses) == 0 {
 		statuses = evergreen.CompletedStatuses
 	}
-	return FindOne(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, project, evergreen.SystemVersionRequesterTypes).Sort([]string{"-" + RevisionOrderNumberKey}))
+	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
+	return FindOne(query)
 }
 
 func (t *Task) cacheExpectedDuration() error {
@@ -1212,12 +1213,12 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error 
 }
 
 func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
-	q := bson.M{
+	q := db.Query(bson.M{
 		IdKey:     bson.M{"$in": ids},
 		StatusKey: evergreen.TaskUndispatched,
-	}
+	})
 
-	tasks, err := FindAll(db.Query(q).WithFields(IdKey, DependsOnKey, ExecutionKey))
+	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey))
 	if err != nil {
 		return errors.Wrap(err, "can't get tasks to deactivate")
 	}
@@ -1673,9 +1674,10 @@ func (t *Task) SetDisabledPriority(user string) error {
 		return errors.Wrap(err, "can't update priority")
 	}
 
-	tasks, err := FindAll(db.Query(bson.M{
+	query := db.Query(bson.M{
 		IdKey: bson.M{"$in": ids},
-	}).WithFields(ExecutionKey))
+	}).WithFields(ExecutionKey)
+	tasks, err := FindAll(query)
 	if err != nil {
 		return errors.Wrap(err, "can't find matching tasks")
 	}
@@ -1724,7 +1726,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := Find(ByIds(tasksToFind).WithFields(IdKey, DependsOnKey, ExecutionKey, BuildIdKey))
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get dependencies")
 	}
@@ -1749,9 +1751,10 @@ func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Ta
 	}
 
 	// find the tasks that depend on these tasks
-	dependOnUsTasks, err := FindAll(db.Query(bson.M{
+	query := db.Query(bson.M{
 		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): bson.M{"$in": tasks},
-	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey))
+	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey)
+	dependOnUsTasks, err := FindAll(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get dependencies")
 	}
@@ -2017,7 +2020,7 @@ func (t *Task) Insert() error {
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		execTasks, err := FindAll(ByIds(t.ExecutionTasks))
+		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
 		if err != nil {
 			return errors.Wrap(err, "error retrieving execution tasks")
 		}
@@ -2083,7 +2086,7 @@ func ArchiveMany(tasks []Task) error {
 		}
 	}
 	if len(additionalTasks) > 0 {
-		toAdd, err := FindAll(ByIds((additionalTasks)))
+		toAdd, err := FindAll(db.Query(ByIds((additionalTasks))))
 		if err != nil {
 			return errors.Wrap(err, "unable to find execution tasks")
 		}
@@ -2302,7 +2305,7 @@ func FindSchedulable(distroID string) ([]Task, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	return Find(db.Query(query))
+	return Find(query)
 }
 
 func addApplicableDistroFilter(id string, fieldName string, query bson.M) error {
@@ -2592,7 +2595,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 		if dtId != "" {
 			dt, err = FindOneId(dtId)
 		} else {
-			dt, err = FindOne(ByExecutionTask(t.Id))
+			dt, err = FindOne(db.Query(ByExecutionTask(t.Id)))
 			if dt != nil {
 				dtId = dt.Id
 			}
@@ -2627,7 +2630,7 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	}
 	missingTaskMap := make(map[string]*Task)
 	if len(tasksToFetch) > 0 {
-		missingTasks, err := FindAll(ByIds(tasksToFetch).WithFields(DependsOnKey))
+		missingTasks, err := FindAll(db.Query(ByIds(tasksToFetch)).WithFields(DependsOnKey))
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get tasks missing from map")
 		}
@@ -2866,8 +2869,8 @@ func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
 			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
 			DependencyUnattainableKey: false,
 		},
-		}})
-
+		}},
+	)
 	return FindAll(query)
 }
 
@@ -2877,8 +2880,8 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 			DependencyTaskIdKey:       t.Id,
 			DependencyUnattainableKey: true,
 		},
-		}})
-
+		}},
+	)
 	return FindAll(query)
 }
 
@@ -3412,7 +3415,7 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	parents, err := FindAll(ByExecutionTasks(taskIDs))
+	parents, err := FindAll(db.Query(ByExecutionTasks(taskIDs)))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding parent tasks")
 	}
@@ -3594,7 +3597,7 @@ func (t *Task) hasCedarResults() bool {
 				ExecutionKey: t.Execution,
 			}))
 		} else {
-			execTasks, err = FindAll(ByIds(t.ExecutionTasks))
+			execTasks, err = FindAll(db.Query(ByIds(t.ExecutionTasks)))
 		}
 		if err != nil {
 			return false

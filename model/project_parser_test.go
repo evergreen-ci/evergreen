@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1952,10 +1953,11 @@ func TestMergeUniqueFail(t *testing.T) {
 }
 
 func TestMergeBuildVariant(t *testing.T) {
+	bvExisting := "a_variant"
 	main := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: "a_variant",
+				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name:      "say-bye",
@@ -1971,11 +1973,12 @@ func TestMergeBuildVariant(t *testing.T) {
 			},
 		},
 	}
-
+	bvNew1 := "another_variant"
+	bvNew2 := "one_more_variant"
 	add := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: "a_variant",
+				Name: bvExisting,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "add this task",
@@ -1983,7 +1986,7 @@ func TestMergeBuildVariant(t *testing.T) {
 				},
 			},
 			parserBV{
-				Name:      "another_variant",
+				Name:      bvNew1,
 				BatchTime: &bvBatchTime,
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
@@ -2001,13 +2004,31 @@ func TestMergeBuildVariant(t *testing.T) {
 					},
 				},
 			},
+			parserBV{
+				Name: bvNew2,
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
+					},
+				},
+			},
 		},
 	}
 
 	err := main.mergeBuildVariant(add)
 	assert.NoError(t, err)
-	assert.Equal(t, len(main.BuildVariants), 2)
-	assert.Equal(t, len(main.BuildVariants[0].Tasks), 2)
+	require.Equal(t, len(main.BuildVariants), 3)
+	bvNames := []string{}
+	for _, bv := range main.BuildVariants {
+		if bv.Name == bvNew1 {
+			assert.Equal(t, len(bv.Tasks), 2)
+		}
+		bvNames = append(bvNames, bv.Name)
+	}
+	assert.Contains(t, bvNames, bvExisting)
+	assert.Contains(t, bvNames, bvNew1)
+	assert.Contains(t, bvNames, bvNew2)
 }
 
 func TestMergeBuildVariantFail(t *testing.T) {
@@ -2213,4 +2234,40 @@ buildvariants:
 	}
 	err = p1.mergeMultipleParserProjects(p3)
 	assert.Error(t, err)
+}
+
+func TestUpdateForFile(t *testing.T) {
+	p := &patch.Patch{
+		Id: "p1",
+		Patches: []patch.ModulePatch{
+			{
+				PatchSet: patch.PatchSet{
+					Summary: []thirdparty.Summary{
+						{
+							Name: "small.yml",
+						},
+					},
+				},
+			},
+		},
+	}
+	opts := &GetProjectOpts{
+		Token:        "token",
+		RemotePath:   "main.yml",
+		ReadFileFrom: ReadFromPatch,
+		PatchOpts: &PatchOpts{
+			patch: p,
+		},
+	}
+	opts.UpdateForFile("small.yml")
+	assert.Equal(t, opts.ReadFileFrom, ReadFromPatchDiff) // should be changed to patch diff bc it's not a github patch
+	p.GithubPatchData = thirdparty.GithubPatch{
+		HeadOwner: "me", // indicates this is a github PR patch
+	}
+	opts.UpdateForFile("small.yml")
+	assert.Equal(t, opts.ReadFileFrom, ReadFromPatch) // should be changed to patch bc it is a github patch
+
+	opts.UpdateForFile("nonexistent.yml")
+	// should be changed to patch diff because it's not a modified file
+
 }

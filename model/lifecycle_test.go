@@ -14,6 +14,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func taskIdInSlice(tasks []task.Task, id string) bool {
@@ -74,34 +75,34 @@ func TestTaskSetPriority(t *testing.T) {
 
 			So(SetTaskPriority(tasks[0], 1, "user"), ShouldBeNil)
 
-			t, err := task.FindOne(task.ById("one"))
+			t, err := task.FindOne(db.Query(task.ById("one")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(task.ById("two"))
+			t, err = task.FindOne(db.Query(task.ById("two")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 5)
 
-			t, err = task.FindOne(task.ById("three"))
+			t, err = task.FindOne(db.Query(task.ById("three")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(task.ById("four"))
+			t, err = task.FindOne(db.Query(task.ById("four")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "four")
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(task.ById("five"))
+			t, err = task.FindOne(db.Query(task.ById("five")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "five")
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(task.ById("six"))
+			t, err = task.FindOne(db.Query(task.ById("six")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
@@ -114,39 +115,39 @@ func TestTaskSetPriority(t *testing.T) {
 			So(tasks[0].Activated, ShouldEqual, true)
 			So(SetTaskPriority(tasks[0], -1, "user"), ShouldBeNil)
 
-			t, err := task.FindOne(task.ById("one"))
+			t, err := task.FindOne(db.Query(task.ById("one")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, -1)
 			So(t.Activated, ShouldEqual, false)
 
-			t, err = task.FindOne(task.ById("two"))
+			t, err = task.FindOne(db.Query(task.ById("two")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 5)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(task.ById("three"))
+			t, err = task.FindOne(db.Query(task.ById("three")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 1)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(task.ById("four"))
+			t, err = task.FindOne(db.Query(task.ById("four")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "four")
 			So(t.Priority, ShouldEqual, 1)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(task.ById("five"))
+			t, err = task.FindOne(db.Query(task.ById("five")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "five")
 			So(t.Priority, ShouldEqual, 1)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(task.ById("six"))
+			t, err = task.FindOne(db.Query(task.ById("six")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
@@ -229,10 +230,10 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.Activated, ShouldEqual, true)
-			taskOne, err = task.FindOne(task.ById("task1"))
+			taskOne, err = task.FindOne(db.Query(task.ById("task1")))
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
-			taskTwo, err = task.FindOne(task.ById("task2"))
+			taskTwo, err = task.FindOne(db.Query(task.ById("task2")))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
 		})
@@ -269,10 +270,10 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
-			taskThree, err = task.FindOne(task.ById("task3"))
+			taskThree, err = task.FindOne(db.Query(task.ById("task3")))
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
-			taskFour, err = task.FindOne(task.ById("task4"))
+			taskFour, err = task.FindOne(db.Query(task.ById("task4")))
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
@@ -367,9 +368,12 @@ func TestBuildMarkAborted(t *testing.T) {
 }
 
 func TestSetVersionActivation(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vID := "abcdef"
+	v := &Version{Id: vID}
+	require.NoError(t, v.Insert())
+
 	builds := []build.Build{
 		{Id: "b0", Version: vID, Activated: true},
 		{Id: "b1", Version: vID, Activated: true},
@@ -406,7 +410,7 @@ func TestSetVersionActivation(t *testing.T) {
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection),
 			"Error clearing test collection")
 
 		Convey("when changing the activated status of the build to true", func() {
@@ -414,11 +418,15 @@ func TestBuildSetActivated(t *testing.T) {
 				" tasks that are part of it should be set", func() {
 
 				user := "differentUser"
+				vID := "abcdef"
+				v := &Version{Id: vID}
+				require.NoError(t, v.Insert())
 
 				b := &build.Build{
 					Id:           "build",
 					Activated:    true,
 					BuildVariant: "bv",
+					Version:      vID,
 				}
 				So(b.Insert(), ShouldBeNil)
 
@@ -497,7 +505,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
 
 				// task with the different user activating should be activated with that user
-				differentUserTask, err := task.FindOne(task.ById(differentUser.Id))
+				differentUserTask, err := task.FindOne(db.Query(task.ById(differentUser.Id)))
 				So(err, ShouldBeNil)
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
@@ -510,11 +518,23 @@ func TestBuildSetActivated(t *testing.T) {
 
 			Convey("if a build is activated by a user it should not be able to be deactivated by evergreen", func() {
 				user := "differentUser"
+				vID := "abcdef"
+				v := &Version{
+					Id: vID,
+					BuildVariants: []VersionBuildStatus{
+						{
+							BuildVariant:     "bv",
+							ActivationStatus: ActivationStatus{Activated: true},
+						},
+					},
+				}
+				require.NoError(t, v.Insert())
 
 				b := &build.Build{
 					Id:           "anotherBuild",
 					Activated:    true,
 					BuildVariant: "bv",
+					Version:      vID,
 				}
 
 				So(b.Insert(), ShouldBeNil)
@@ -539,13 +559,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(SetBuildActivation(b.Id, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
-				task1, err := task.FindOne(task.ById(matching.Id))
+				task1, err := task.FindOne(db.Query(task.ById(matching.Id)))
 				So(err, ShouldBeNil)
 				So(task1.Activated, ShouldBeTrue)
 				So(task1.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task2, err := task.FindOne(task.ById(matching2.Id))
+				task2, err := task.FindOne(db.Query(task.ById(matching2.Id)))
 				So(err, ShouldBeNil)
 				So(task2.Activated, ShouldBeTrue)
 				So(task2.ActivatedBy, ShouldEqual, user)
@@ -566,13 +586,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task1, err = task.FindOne(task.ById(matching.Id))
+				task1, err = task.FindOne(db.Query(task.ById(matching.Id)))
 				So(err, ShouldBeNil)
 				So(task1.Activated, ShouldBeTrue)
 				So(task1.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task2, err = task.FindOne(task.ById(matching2.Id))
+				task2, err = task.FindOne(db.Query(task.ById(matching2.Id)))
 				So(err, ShouldBeNil)
 				So(task2.Activated, ShouldBeTrue)
 				So(task2.ActivatedBy, ShouldEqual, user)
@@ -1015,7 +1035,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks1.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks2.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks3.InsertUnordered(context.Background()), ShouldBeNil)
-			dbTasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
+			dbTasks, err := task.FindWithSort(bson.M{}, []string{task.DisplayNameKey, task.BuildVariantKey})
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 9)
 
@@ -1764,7 +1784,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	taskIds = []string{"task2"}
 	assert.NoError(RestartVersion("version", taskIds, true, "test"))
-	dbTask, err := task.FindOne(task.ById("task2"))
+	dbTask, err := task.FindOne(db.Query(task.ById("task2")))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.True(dbTask.Aborted)
@@ -1779,7 +1799,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	taskIds = []string{"task2"}
 	assert.NoError(RestartVersion("version", taskIds, false, "test"))
-	dbTask, err = task.FindOne(task.ById("task2"))
+	dbTask, err = task.FindOne(db.Query(task.ById("task2")))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.False(dbTask.Aborted)
@@ -1797,7 +1817,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a version
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
-	tasks, err := task.FindAll(task.ByIds(allTasks))
+	tasks, err := task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1808,7 +1828,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a build
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
-	tasks, err = task.FindAll(task.ByIds(allTasks))
+	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1819,7 +1839,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
 	assert.NoError(resetTask("displayTask", "caller", false))
-	archivedTasks, err := task.FindOldWithDisplayTasks(task.All)
+	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
 	foundDisplayTask := false
@@ -1829,7 +1849,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	assert.True(foundDisplayTask)
-	tasks, err = task.FindAll(task.ByIds(allTasks))
+	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -1844,7 +1864,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion("version", allTasks, false, "test"))
-	tasks, err = task.FindAll(task.ByIds(allTasks))
+	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2049,7 +2069,7 @@ func TestMarkAsDispatched(t *testing.T) {
 			So(taskDoc.HostId, ShouldEqual, hostId)
 			So(taskDoc.AgentVersion, ShouldEqual, agentVersion)
 			So(taskDoc.LastHeartbeat, ShouldResemble, taskDoc.DispatchTime)
-			taskDoc, err := task.FindOne(task.ById(taskId))
+			taskDoc, err := task.FindOne(db.Query(task.ById(taskId)))
 			So(err, ShouldBeNil)
 			So(taskDoc.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(taskDoc.Status, ShouldEqual, evergreen.TaskDispatched)
@@ -2155,8 +2175,13 @@ func TestShouldSyncTask(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
-	build := build.Build{Id: "b0"}
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
+
+	vId := "v"
+	v := &Version{Id: vId}
+	require.NoError(t, v.Insert())
+
+	build := build.Build{Id: "b0", Version: vId}
 	require.NoError(t, build.Insert())
 
 	tasks := []task.Task{
@@ -2173,7 +2198,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	// t0 should still be activated because it's a dependency of a task that is being activated
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t0"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, task := range dbTasks {
@@ -2182,9 +2207,13 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
-	build := build.Build{Id: "b0"}
+	vId := "v"
+	v := &Version{Id: vId}
+	require.NoError(t, v.Insert())
+
+	build := build.Build{Id: "b0", Version: vId}
 	require.NoError(t, build.Insert())
 
 	tasks := []task.Task{
@@ -2200,7 +2229,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t3"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, dbTask := range dbTasks {
@@ -2213,8 +2242,13 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
-	build := build.Build{Id: "b0"}
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
+
+	vId := "v"
+	v := &Version{Id: vId}
+	require.NoError(t, v.Insert())
+
+	build := build.Build{Id: "b0", Version: vId}
 	require.NoError(t, build.Insert())
 
 	tasks := []task.Task{
@@ -2230,7 +2264,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	// ignore tasks is ignored for deactivating
 	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, false, []string{"t0", "t1", "t2"}, ""))
 
-	dbTasks, err := task.FindAll(db.Q{})
+	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 3)
 	for _, task := range dbTasks {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -166,7 +165,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	}
 
 	// modify the setup script to add the user's public key
-	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, filepath.Join(d.HomeDir(), ".ssh", "authorized_keys"))
+	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, d.GetAuthorizedKeysFile())
 
 	// fake out replacing spot instances with on-demand equivalents
 	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {

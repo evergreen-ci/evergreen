@@ -609,7 +609,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	project.Tasks = append(project.Tasks, mergeTask)
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
-	validationErrors := validator.CheckProjectSyntax(project, true)
+	validationErrors := validator.CheckProjectErrors(project, true)
 	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range validationErrors.AtLevel(validator.Error) {
@@ -618,13 +618,12 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	if catcher.HasErrors() {
 		return errors.Errorf("project validation failed: %s", catcher.Resolve())
 	}
-
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
 		return errors.Wrap(err, "can't marshall remote config file")
 	}
 
-	patchDoc.PatchedConfig = string(yamlBytes)
+	patchDoc.PatchedParserProject = string(yamlBytes)
 	patchDoc.BuildVariants = append(patchDoc.BuildVariants, evergreen.MergeTaskVariant)
 	patchDoc.Tasks = append(patchDoc.Tasks, evergreen.MergeTaskName)
 	patchDoc.VariantsTasks = append(patchDoc.VariantsTasks, patch.VariantTasks{
@@ -674,12 +673,14 @@ func updatePatch(ctx context.Context, githubToken string, projectRef *model.Proj
 	patchDoc.Githash = sha
 
 	// Refresh the cached project config
-	patchDoc.PatchedConfig = ""
-	project, projectYaml, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	patchDoc.PatchedParserProject = ""
+	patchDoc.PatchedProjectConfig = ""
+	project, patchConfig, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get updated project config")
 	}
-	patchDoc.PatchedConfig = projectYaml
+	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
+	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
 	// Update module githashes
 	for i, mod := range patchDoc.Patches {

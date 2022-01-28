@@ -39,7 +39,7 @@ func (as *APIServer) gitServePatch(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error retrieving builds for task"))
 			return
 		}
-		tasks, err := task.Find(task.ByVersion(p.Version).WithFields(task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey))
+		tasks, err := task.FindWithFields(task.ByVersion(p.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "problem finding tasks for version"))
 			return

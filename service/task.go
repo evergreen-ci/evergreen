@@ -469,8 +469,8 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
-	dependencies, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
-		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	dependencies, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -705,7 +705,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -718,7 +718,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -738,7 +738,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -764,7 +764,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}

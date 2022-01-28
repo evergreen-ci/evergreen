@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -58,6 +59,11 @@ func insertFileDocsToDb(ctx context.Context, fn string, catcher grip.Catcher, db
 	// task_logg collection belongs to the logs db
 	if collName == model.TaskLogCollection {
 		collection = logsDb.Collection(collName)
+	}
+	if collName == testresult.Collection { // add the necessary test results index
+		_, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+			Keys: testresult.TestResultsIndex})
+		catcher.Add(err)
 	}
 	scanner := bufio.NewScanner(file)
 	count := 0

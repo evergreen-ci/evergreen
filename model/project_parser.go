@@ -585,14 +585,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			grip.Critical(message.NewError(errors.WithStack(err)))
 			return nil, nil, errors.Wrapf(err, LoadProjectError)
 		}
-		// read from the patch diff if a change has been made in any of the include files
-		if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
-			if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ConfigChanged(path.FileName) {
-				opts.ReadFileFrom = ReadFromPatchDiff
-			} else {
-				opts.ReadFileFrom = ReadFromPatch
-			}
-		}
+		opts.UpdateForFile(path.FileName)
+
 		var yaml []byte
 		opts.Identifier = identifier
 		opts.RemotePath = path.FileName
@@ -628,7 +622,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	}
 	project.Identifier = identifier
 	if config != nil {
-		config.Identifier = identifier
+		config.Project = identifier
 	}
 	return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 }
@@ -654,6 +648,19 @@ type GetProjectOpts struct {
 type PatchOpts struct {
 	patch *patch.Patch
 	env   evergreen.Environment
+}
+
+// UpdateNewFile modifies ReadFileFrom to read from the patch diff
+// if the included file has been modified.
+func (opts *GetProjectOpts) UpdateForFile(path string) {
+	if opts.ReadFileFrom == ReadFromPatch || opts.ReadFileFrom == ReadFromPatchDiff {
+		if opts.PatchOpts.patch != nil && opts.PatchOpts.patch.ShouldPatchFileWithDiff(path) {
+			opts.ReadFileFrom = ReadFromPatchDiff
+		} else {
+			opts.ReadFileFrom = ReadFromPatch
+		}
+	}
+	return
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -68,8 +69,8 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 		Diff: StatusDiff{original.Status, patch.Status},
 	}
 
-	tasks, err := task.FindAll(
-		task.ByBuildIds([]string{original.Id, patch.Id}).WithFields(task.BuildIdKey, task.StatusKey, task.DetailsKey, task.DisplayNameKey))
+	query := db.Query(task.ByBuildIds([]string{original.Id, patch.Id})).WithFields(task.BuildIdKey, task.StatusKey, task.DetailsKey, task.DisplayNameKey)
+	tasks, err := task.FindAll(query)
 	if err != nil {
 		return BuildStatusDiff{}, errors.Wrap(err, "can't get tasks")
 	}

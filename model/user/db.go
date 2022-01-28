@@ -189,11 +189,15 @@ func FindByRole(role string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "error finding users with role '%s'", role)
 }
 
-func FindByRoles(roles []string) ([]DBUser, error) {
+// FindHumanUsersByRoles returns human users that have any of the given roles.
+func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 	res := []DBUser{}
 	err := db.FindAllQ(
 		Collection,
-		db.Query(bson.M{RolesKey: bson.M{"$in": roles}}),
+		db.Query(bson.M{
+			RolesKey:   bson.M{"$in": roles},
+			OnlyAPIKey: bson.M{"$ne": true},
+		}),
 		&res,
 	)
 	return res, errors.Wrapf(err, "error finding users with roles '%v'", roles)

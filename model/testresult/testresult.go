@@ -148,36 +148,6 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 		results)
 }
 
-// TestResultsQuery is a query for returning test results to the REST v2 API.
-func TestResultsQuery(taskIds []string, testId, testName, status string, limit, execution int) db.Q {
-	match := bson.M{
-		TaskIDKey:    bson.M{"$in": taskIds},
-		ExecutionKey: execution,
-	}
-	if status != "" {
-		match[StatusKey] = status
-	}
-	if testName != "" {
-		match[TestFileKey] = testName
-	}
-	if testId != "" {
-		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(testId)}
-	}
-
-	q := db.Query(match).Project(bson.M{
-		TaskIDKey:    0,
-		ExecutionKey: 0,
-	})
-
-	// Don't sort if unlimited EVG-13965.
-	if limit > 0 {
-		q = q.Limit(limit)
-		q = q.Sort([]string{IDKey})
-	}
-
-	return q
-}
-
 func TestResultCount(taskIds []string, testName string, statuses []string, execution int) (int, error) {
 	filter := bson.M{
 		TaskIDKey:    bson.M{"$in": taskIds},
@@ -206,6 +176,17 @@ type TestResultsFilterSortPaginateOpts struct {
 	TaskIDs  []string
 	TestID   string
 	TestName string
+}
+
+var TestResultsIndex = bson.D{
+	{
+		Key:   TaskIDKey,
+		Value: 1,
+	},
+	{
+		Key:   ExecutionKey,
+		Value: 1,
+	},
 }
 
 // TestResultsFilterSortPaginate is a query for returning test results from supplied TaskIDs.
@@ -275,7 +256,7 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	if opts.Limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
-	err := db.Aggregate(Collection, pipeline, &tests)
+	err := db.AggregateWithHint(Collection, pipeline, TestResultsIndex, &tests)
 	if err != nil {
 		return nil, err
 	}

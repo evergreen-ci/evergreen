@@ -203,3 +203,18 @@ func (s *TestArtifactFileSuite) TestFindByIds() {
 	s.NoError(err)
 	s.Len(entries, 3)
 }
+
+func (s *TestArtifactFileSuite) TestRotateSecret() {
+	changes, err := RotateSecrets("secret", "changedSecret", true)
+	s.NoError(err)
+	s.Len(changes, 3)
+	entryFromDb, err := FindOne(ByTaskId("task1"))
+	s.NoError(err)
+	s.Equal(entryFromDb.Files[0].AwsSecret, "secret")
+	changes, err = RotateSecrets("secret", "changedSecret", false)
+	s.NoError(err)
+	s.Len(changes, 3)
+	entryFromDb, err = FindOne(ByTaskId("task1"))
+	s.NoError(err)
+	s.Equal(entryFromDb.Files[0].AwsSecret, "changedSecret")
+}

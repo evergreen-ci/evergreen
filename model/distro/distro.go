@@ -297,11 +297,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// GenerateName generates a unique instance name for a distro.
+// GenerateName generates a unique instance name for a host in a distro.
 func (d *Distro) GenerateName() string {
-	// gceMaxNameLength is the maximum length of an instance name permitted by GCE.
-	const gceMaxNameLength = 63
-
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
 		return "static"
@@ -312,6 +309,9 @@ func (d *Distro) GenerateName() string {
 	name := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
 
 	if d.Provider == evergreen.ProviderNameGce {
+		// gceMaxNameLength is the maximum length of an instance name permitted by GCE.
+		const gceMaxNameLength = 63
+
 		// Ensure all characters in tags are on the allowlist
 		r, _ := regexp.Compile("[^a-z0-9_-]+")
 		name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))
@@ -461,6 +461,16 @@ func (d *Distro) HomeDir() string {
 		return filepath.Join("/Users", d.User)
 	}
 	return filepath.Join("/home", d.User)
+}
+
+// GetAuthorizedKeysFile returns the path to the SSH authorized keys file for
+// the distro. If not explicitly set for the distro, it returns the default
+// location of the SSH authorized keys file in the home directory.
+func (d *Distro) GetAuthorizedKeysFile() string {
+	if d.AuthorizedKeysFile == "" {
+		return filepath.Join(d.HomeDir(), ".ssh", "authorized_keys")
+	}
+	return d.AuthorizedKeysFile
 }
 
 // IsParent returns whether the distro is the parent distro for any container pool

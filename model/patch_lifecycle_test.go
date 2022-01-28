@@ -25,6 +25,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -169,9 +170,9 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch := resetPatchSetup(t, configFilePath)
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, projectYaml, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				So(projectYaml, ShouldNotBeEmpty)
+				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
 			})
 
@@ -179,9 +180,9 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch := resetProjectlessPatchSetup(t)
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, projectYaml, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				So(projectYaml, ShouldNotBeEmpty)
+				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
 			})
 
@@ -195,9 +196,9 @@ func TestGetPatchedProject(t *testing.T) {
 
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, projectYaml, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				So(projectYaml, ShouldNotBeEmpty)
+				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
 			})
 
@@ -220,10 +221,10 @@ func TestFinalizePatch(t *testing.T) {
 			Convey("a patched config should drive version creation", func() {
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, projectYaml, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
-				configPatch.PatchedConfig = projectYaml
+				configPatch.PatchedParserProject = patchConfig.PatchedParserProject
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
 				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
@@ -235,7 +236,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 2)
-				tasks, err := task.Find(task.All)
+				tasks, err := task.Find(bson.M{})
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 2)
 			})
@@ -246,10 +247,10 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch := resetPatchSetup(t, patchedConfigFile)
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, projectYaml, err := GetPatchedProject(ctx, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, configPatch, token)
 				So(project, ShouldNotBeNil)
 				So(err, ShouldBeNil)
-				configPatch.PatchedConfig = projectYaml
+				configPatch.PatchedParserProject = patchConfig.PatchedParserProject
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
 				version, err := FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
@@ -263,7 +264,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 1)
-				tasks, err := task.Find(task.All)
+				tasks, err := task.FindAll(task.All)
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 1)
 			})
@@ -674,7 +675,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Len(dbBuild.Tasks, 2)
 
 	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
-	dbTasks, err := task.FindAll(task.ByBuildId(dbBuild.Id))
+	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)
@@ -747,7 +748,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.Len(dbBuild.Tasks, 2)
 
 	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
-	dbTasks, err := task.FindAll(task.ByBuildId(dbBuild.Id))
+	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)

@@ -109,22 +109,26 @@ func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Vers
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
 // and applying the patch to the latest remote configuration. Also returns the condensed yaml string for storage.
 // The error returned can be a validation error.
-func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, string, error) {
+func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, *PatchConfig, error) {
 	if p.Version != "" {
-		return nil, "", errors.Errorf("Patch %v already finalized", p.Version)
+		return nil, nil, errors.Errorf("Patch %v already finalized", p.Version)
 	}
 
 	project := &Project{}
 	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
 	if err != nil {
-		return nil, "", errors.Wrap(err, "Error fetching project opts for patch")
+		return nil, nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
 	// if the patched config exists, use that as the project file bytes.
-	if p.PatchedConfig != "" {
-		if _, _, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project); err != nil {
-			return nil, "", errors.WithStack(err)
+	if p.PatchedParserProject != "" {
+		if _, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project); err != nil {
+			return nil, nil, errors.WithStack(err)
 		}
-		return project, p.PatchedConfig, nil
+		patchConfig := &PatchConfig{
+			PatchedParserProject: p.PatchedParserProject,
+			PatchedProjectConfig: p.PatchedProjectConfig,
+		}
+		return project, patchConfig, nil
 	}
 
 	var cancel context.CancelFunc
@@ -151,27 +155,36 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	opts.PatchOpts.env = env
 	projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "could not fetch remote configuration file")
+		return nil, nil, errors.Wrapf(err, "could not fetch remote configuration file")
 	}
 
 	// apply remote configuration patch if needed
-	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path) {
+	if p.ShouldPatchFileWithDiff(path) {
 		opts.ReadFileFrom = ReadFromPatchDiff
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "Could not patch remote configuration file")
+			return nil, nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	pp, _, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, pc, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
-		return nil, "", errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
-	// TODO: EVG-16000 Introduce new variable for patches to store patched config
-	out, err := yaml.Marshal(pp)
+	ppOut, err := yaml.Marshal(pp)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "Could not marshal parser project into yaml")
+		return nil, nil, errors.Wrapf(err, "Could not marshal parser project into yaml")
 	}
-	return project, string(out), nil
+	patchConfig := &PatchConfig{
+		PatchedParserProject: string(ppOut),
+	}
+	if pc != nil {
+		pcOut, err := yaml.Marshal(pc)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "Could not marshal project config into yaml")
+		}
+		patchConfig.PatchedProjectConfig = string(pcOut)
+	}
+	return project, patchConfig, nil
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
@@ -265,7 +278,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 	return nil, errors.New("no patch on project")
 }
 
-// Finalizes a patch:
+// FinalizePatch Finalizes a patch:
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
@@ -276,7 +289,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	intermediateProject, config, err := LoadProjectInto(ctx, []byte(p.PatchedConfig), opts, p.Project, project)
+	intermediateProject, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+	if err != nil {
+		return nil, errors.Wrapf(err,
+			"Error marshaling patched parser project from repository revision “%v”",
+			p.Githash)
+	}
+	config, err := createProjectConfig([]byte(p.PatchedProjectConfig))
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -284,6 +303,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 	intermediateProject.Id = p.Id.Hex()
 	if config != nil {
+		config.Project = p.Project
 		config.Id = p.Id.Hex()
 	}
 
@@ -717,19 +737,19 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	project := &Project{}
-	if _, _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedConfig), nil, existingPatch.Project, project); err != nil {
+	if _, _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedParserProject), nil, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 
 	patchDoc := &patch.Patch{
-		Id:            mgobson.NewObjectId(),
-		Author:        existingPatch.Author,
-		Project:       existingPatch.Project,
-		Githash:       existingPatch.Githash,
-		Status:        evergreen.PatchCreated,
-		Alias:         evergreen.CommitQueueAlias,
-		PatchedConfig: existingPatch.PatchedConfig,
-		CreateTime:    time.Now(),
+		Id:                   mgobson.NewObjectId(),
+		Author:               existingPatch.Author,
+		Project:              existingPatch.Project,
+		Githash:              existingPatch.Githash,
+		Status:               evergreen.PatchCreated,
+		Alias:                evergreen.CommitQueueAlias,
+		PatchedParserProject: existingPatch.PatchedParserProject,
+		CreateTime:           time.Now(),
 	}
 
 	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {

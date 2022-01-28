@@ -60,7 +60,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			}
 
 			Convey("and the tests in the task should be updated", func() {
-				updatedTask, err := task.FindOne(task.ById(modelData.Task.Id))
+				updatedTask, err := task.FindOne(db.Query(task.ById(modelData.Task.Id)))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
 				So(len(updatedTask.LocalTestResults), ShouldEqual, 5)
@@ -123,7 +123,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			}
 
 			Convey("and the tests in the task should be updated", func() {
-				updatedTask, err := task.FindOne(task.ById(modelData.Task.Id))
+				updatedTask, err := task.FindOne(db.Query(task.ById(modelData.Task.Id)))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
 				So(len(updatedTask.LocalTestResults), ShouldEqual, 2)

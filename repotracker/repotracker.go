@@ -727,7 +727,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	v.Activated = utility.FalsePtr()
 
 	// validate the project
-	verrs := validator.CheckProjectSyntax(projectInfo.Project, true)
+	verrs := validator.CheckProjectErrors(projectInfo.Project, true)
 	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref)...)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have errors in the project.
@@ -773,7 +773,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			"aliases":            aliases,
 		})
 	} else if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProjectOrRepo(projectInfo.Ref.Id, metadata.Alias)
+		aliases, err = model.FindAliasInProjectRepoOrConfig(projectInfo.Ref.Id, metadata.Alias)
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")
 		}
@@ -975,7 +975,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	debuggingData := map[string]string{}
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
-		githubCheckAliases, err = model.FindAliasInProjectOrRepo(v.Identifier, evergreen.GithubChecksAlias)
+		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(v.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",
 			"project": projectInfo.Project.Identifier,

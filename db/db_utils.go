@@ -348,3 +348,22 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 
 	return errors.WithStack(pipe.All(out))
 }
+
+// AggregateWithHint runs aggregate and takes in a hint (example structure: {key: 1, key2: 1})
+func AggregateWithHint(collection string, pipeline interface{}, hint interface{}, out interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		err = errors.Wrap(err, "error establishing db connection")
+		grip.Error(err)
+		return err
+	}
+	defer session.Close()
+
+	// NOTE: with the legacy driver, this function unset the
+	// socket timeout, which isn't really an option here. (other
+	// operations had a 90s timeout, which is no longer specified)
+
+	pipe := db.C(collection).Pipe(pipeline).Hint(hint)
+
+	return errors.WithStack(pipe.All(out))
+}

@@ -463,6 +463,7 @@ type APIProjectRef struct {
 	PatchingDisabled            *bool                     `json:"patching_disabled"`
 	RepotrackerDisabled         *bool                     `json:"repotracker_disabled"`
 	DispatchingDisabled         *bool                     `json:"dispatching_disabled"`
+	VersionControlEnabled       *bool                     `json:"version_control_enabled"`
 	DisabledStatsCache          *bool                     `json:"disabled_stats_cache"`
 	FilesIgnoredFromCache       []*string                 `json:"files_ignored_from_cache"`
 	Admins                      []*string                 `json:"admins"`

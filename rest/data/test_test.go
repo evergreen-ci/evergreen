@@ -6,6 +6,8 @@ import (
 	"sort"
 	"testing"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -145,7 +147,8 @@ func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 func TestFindTestsByTaskId(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
-
+	assert.NoError(db.EnsureIndex(testresult.Collection, mongo.IndexModel{
+		Keys: testresult.TestResultsIndex}))
 	serviceContext := &DBConnector{}
 
 	emptyTask := &task.Task{
@@ -167,7 +170,6 @@ func TestFindTestsByTaskId(t *testing.T) {
 	}
 	last := len(testObjects) - 1
 	sort.StringSlice(testObjects).Sort()
-
 	for i := 0; i < numTasks; i++ {
 		id := fmt.Sprintf("task_%d", i)
 		testTask := &task.Task{

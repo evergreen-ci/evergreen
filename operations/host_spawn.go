@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -972,12 +973,17 @@ func hostList() cli.Command {
 				Name:  regionFlagName,
 				Usage: "list hosts in specified region",
 			},
+			cli.BoolFlag{
+				Name:  jsonFlagName,
+				Usage: "list hosts in json format",
+			},
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
 			region := c.String(regionFlagName)
+			showJSON := c.Bool(jsonFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -998,7 +1004,12 @@ func hostList() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem getting hosts")
 			}
-			printHosts(hosts)
+
+			if showJSON {
+				printHostsJSON(hosts)
+			} else {
+				printHosts(hosts)
+			}
 
 			return nil
 		},
@@ -1007,7 +1018,7 @@ func hostList() cli.Command {
 
 func printHosts(hosts []*restModel.APIHost) {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s, Availability Zone: %s",
+		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
 			utility.FromStringPtr(h.Id),
 			utility.FromStringPtr(h.DisplayName),
 			utility.FromStringPtr(h.Distro.Id),
@@ -1016,6 +1027,35 @@ func printHosts(hosts []*restModel.APIHost) {
 			utility.FromStringPtr(h.User),
 			utility.FromStringPtr(h.AvailabilityZone))
 	}
+}
+
+func printHostsJSON(hosts []*restModel.APIHost) {
+	type hostResult struct {
+		Id               string `json:"id"`
+		Name             string `json:"name"`
+		Distro           string `json:"distro"`
+		Status           string `json:"status"`
+		HostName         string `json:"host_name"`
+		User             string `json:"user"`
+		AvailabilityZone string `json:"availability_zone"`
+	}
+	hostResults := []hostResult{}
+	for _, h := range hosts {
+		hostResults = append(hostResults, hostResult{
+			Id:               utility.FromStringPtr(h.Id),
+			Name:             utility.FromStringPtr(h.DisplayName),
+			Distro:           utility.FromStringPtr(h.Distro.Id),
+			Status:           utility.FromStringPtr(h.Status),
+			HostName:         utility.FromStringPtr(h.HostURL),
+			User:             utility.FromStringPtr(h.User),
+			AvailabilityZone: utility.FromStringPtr(h.AvailabilityZone),
+		})
+	}
+	h, err := json.MarshalIndent(hostResults, "", "\t")
+	if err != nil {
+		return
+	}
+	grip.Infof(string(h))
 }
 
 func hostTerminate() cli.Command {

@@ -126,6 +126,12 @@ var sampleGeneratedProject = []string{`
         }
       ],
       "name": "lint-rest-route"
+    },
+    {
+      "name": "task-group-task1"
+    },
+    {
+      "name": "task-group-task2"
     }
   ],
   "task_groups": [
@@ -133,8 +139,8 @@ var sampleGeneratedProject = []string{`
           "name": "my_task_group",
           "max_hosts": 1,
           "tasks": [
-            "lint-command",
-            "lint-rest-route",
+            "task-group-task1",
+            "task-group-task2",
           ]
       },
   ]
@@ -204,7 +210,7 @@ func TestGenerateTasks(t *testing.T) {
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 	tasks := []task.Task{}
-	assert.NoError(db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks))
+	assert.NoError(db.FindAllQ(task.Collection, db.Query(task.ByBuildId("sample_build_id")), &tasks))
 	assert.Len(tasks, 4)
 	all_tasks := map[string]bool{
 		"sample_task":     false,
@@ -243,7 +249,7 @@ func TestGenerateTasks(t *testing.T) {
 	p = projectInfo.Project
 	assert.NoError(err)
 	require.NotNil(p)
-	assert.Len(p.Tasks, 4)
+	assert.Len(p.Tasks, 6)
 	require.Len(p.BuildVariants, 2)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 4)
@@ -266,7 +272,7 @@ func TestParseProjects(t *testing.T) {
 	assert.Equal("lint-command", parsed[0].BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
 	assert.Equal("lint-rest-route", parsed[0].BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
 	assert.Len(parsed[0].BuildVariants[0].DisplayTasks, 1)
-	assert.Len(parsed[0].Tasks, 2)
+	assert.Len(parsed[0].Tasks, 4)
 	assert.Equal(parsed[0].Tasks[0].Name, "lint-command")
 	assert.Equal(parsed[0].Tasks[1].Name, "lint-rest-route")
 }

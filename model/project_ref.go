@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -43,24 +44,25 @@ type ProjectRef struct {
 	// Identifier must be unique, but is modifiable. Used by users.
 	Identifier string `bson:"identifier" json:"identifier" yaml:"identifier"`
 
-	DisplayName          string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
-	Enabled              *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
-	Private              *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
-	Restricted           *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
-	Owner                string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo                 string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch               string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RemotePath           string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	PatchingDisabled     *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
-	RepotrackerDisabled  *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
-	DispatchingDisabled  *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
-	PRTestingEnabled     *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
-	GithubChecksEnabled  *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
-	BatchTime            int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious   *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
-	DefaultLogger        string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
-	NotifyOnBuildFailure *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
-	Triggers             []TriggerDefinition `bson:"triggers" json:"triggers"`
+	DisplayName           string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
+	Enabled               *bool               `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Private               *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
+	Restricted            *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
+	Owner                 string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo                  string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch                string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	RemotePath            string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	PatchingDisabled      *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
+	RepotrackerDisabled   *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
+	DispatchingDisabled   *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	VersionControlEnabled *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
+	PRTestingEnabled      *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
+	GithubChecksEnabled   *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
+	BatchTime             int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	DeactivatePrevious    *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
+	DefaultLogger         string              `bson:"default_logger" json:"default_logger" yaml:"default_logger"`
+	NotifyOnBuildFailure  *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
+	Triggers              []TriggerDefinition `bson:"triggers" json:"triggers"`
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// all PatchTriggerAliases applied to github patch intents
@@ -305,6 +307,10 @@ func (p *ProjectRef) DoesTrackPushEvents() bool {
 	return utility.FromBoolPtr(p.TracksPushEvents)
 }
 
+func (p *ProjectRef) IsVersionControlEnabled() bool {
+	return utility.FromBoolPtr(p.VersionControlEnabled)
+}
+
 func (p *ProjectRef) IsPerfEnabled() bool {
 	return utility.FromBoolPtr(p.PerfEnabled)
 }
@@ -521,7 +527,6 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	if err = p.RemoveFromRepoScope(); err != nil {
 		return err
 	}
-	p.RepoRefId = ""
 
 	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
 	if err != nil {
@@ -615,7 +620,6 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		if err := p.RemoveFromRepoScope(); err != nil {
 			return errors.Wrapf(err, "error removing project from old repo scope")
 		}
-		p.RepoRefId = "" // will reassign this in add
 		if err := p.AddToRepoScope(u); err != nil {
 			return errors.Wrapf(err, "error addding project to new repo scope")
 		}
@@ -648,8 +652,11 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 	if err := removeViewRepoPermissionsFromBranchAdmins(p.RepoRefId, p.Admins); err != nil {
 		return errors.Wrap(err, "error removing view repo permissions from branch admins")
 	}
-	return errors.Wrapf(rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id),
-		"error removing from repo '%s' admin scope", p.Repo)
+	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+		return errors.Wrapf(err, "error removing from repo '%s' admin scope", p.Repo)
+	}
+	p.RepoRefId = ""
+	return nil
 }
 
 func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
@@ -754,7 +761,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
-	if includeProjectConfig {
+	if includeProjectConfig && pRef.IsVersionControlEnabled() {
 		err = pRef.MergeWithProjectConfig(version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
@@ -2254,6 +2261,53 @@ func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBar
 	return projectRef.BuildBaronSettings, true
 }
 
+func BbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error {
+	webHook, _, err := IsWebhookConfigured(projName, "")
+	if err != nil {
+		return err
+	}
+	webhookConfigured := webHook.Endpoint != ""
+
+	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
+		return nil
+	}
+	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
+		return errors.Errorf("Must provide projects to search")
+	}
+	if !webhookConfigured && proj.TicketCreateProject == "" {
+		return errors.Errorf("Must provide project to create tickets for")
+	}
+	if proj.BFSuggestionServer != "" {
+		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
+			return errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
+		}
+		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
+		}
+		if proj.BFSuggestionTimeoutSecs <= 0 {
+			return errors.Errorf("Failed validating configuration for project '%s': "+
+				"bf_suggestion_timeout_secs must be positive", projName)
+		}
+	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
+	} else if proj.BFSuggestionTimeoutSecs != 0 {
+		return errors.Errorf("Failed validating configuration for project '%s': "+
+			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
+	}
+	// the webhook cannot be used if the default build baron creation and search is configured
+	if webhookConfigured {
+		if len(proj.TicketCreateProject) != 0 {
+			return errors.Errorf("The custom file ticket webhook and the build baron should not both be configured")
+		}
+		if _, err = url.Parse(webHook.Endpoint); err != nil {
+			return errors.Errorf("Failed to parse webhook endpoint for project")
+		}
+	}
+	return nil
+}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -2296,7 +2350,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProjectOrRepo(definition.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectRepoOrConfig(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return definition, errors.Wrap(err, "problem fetching aliases for project")
 			}

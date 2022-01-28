@@ -39,7 +39,7 @@ type APIPatch struct {
 	GithubPatchData         githubPatch          `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges       []APIModulePatch     `json:"module_code_changes"`
 	Parameters              []APIParameter       `json:"parameters"`
-	PatchedConfig           *string              `json:"patched_config"`
+	PatchedParserProject    *string              `json:"patched_config"`
 	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
 	ChildPatches            []APIPatch           `json:"child_patches"`
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
@@ -188,7 +188,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		apiPatch.ModuleCodeChanges = codeChanges
 	}
 
-	apiPatch.PatchedConfig = utility.ToStringPtr(v.PatchedConfig)
+	apiPatch.PatchedParserProject = utility.ToStringPtr(v.PatchedParserProject)
 	apiPatch.CanEnqueueToCommitQueue = v.HasValidGitInfo()
 
 	downstreamTasks, childPatches, err := getChildPatchesData(v)

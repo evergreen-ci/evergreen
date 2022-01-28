@@ -188,27 +188,27 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 func (pp *ParserProject) mergeBuildVariant(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
-	bvs := map[string]*parserBV{}
+	bvs := map[string]parserBV{}
 	for _, bv := range pp.BuildVariants {
 		newBv := bv
-		bvs[bv.Name] = &newBv
+		bvs[bv.Name] = newBv
 	}
 	for _, bv := range toMerge.BuildVariants {
-		if _, ok := bvs[bv.Name]; ok {
+		if currentBV, ok := bvs[bv.Name]; ok {
 			if !bv.canMerge() {
 				catcher.Errorf("build variant '%s' has been declared already", bv.Name)
 			} else {
-				bvs[bv.Name].Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
-				bvs[bv.Name].DisplayTasks = append(bvs[bv.Name].DisplayTasks, bv.DisplayTasks...)
+				currentBV.Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
+				currentBV.DisplayTasks = append(bvs[bv.Name].DisplayTasks, bv.DisplayTasks...)
+				bvs[bv.Name] = currentBV
 			}
 		} else {
-			pp.BuildVariants = append(pp.BuildVariants, bv)
-			bvs[bv.Name] = &bv
+			bvs[bv.Name] = bv
 		}
 	}
 	pp.BuildVariants = make([]parserBV, 0, len(bvs))
 	for _, bv := range bvs {
-		pp.BuildVariants = append(pp.BuildVariants, *bv)
+		pp.BuildVariants = append(pp.BuildVariants, bv)
 	}
 
 	return catcher.Resolve()

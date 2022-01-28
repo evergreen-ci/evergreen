@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -51,7 +52,8 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks, err := task.FindAll(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
+	tasks, err := task.FindAll(query)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return
@@ -102,7 +104,8 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks, err := task.FindAll(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey))
+	query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
+	tasks, err := task.FindAll(query)
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return

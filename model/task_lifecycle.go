@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -49,9 +50,23 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 			if err != nil {
 				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 			}
-			tasksToActivate = append(tasksToActivate, deps...)
+			if t.IsPartOfSingleHostTaskGroup() {
+				for _, dep := range deps {
+					// reset any already finished tasks in the same task group
+					if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
+						if err = resetTask(dep.Id, caller, false); err != nil {
+							return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+						}
+					} else {
+						tasksToActivate = append(tasksToActivate, dep)
+					}
+				}
+			} else {
+				tasksToActivate = append(tasksToActivate, deps...)
+			}
 		}
 
+		// Investigating strange dispatch state as part of EVG-13144
 		if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 			if err := resetTask(t.Id, caller, false); err != nil {
 				return errors.Wrap(err, "error resetting task")
@@ -84,12 +99,19 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		// If the task was not activated by step back, and either the caller is not evergreen
 		// or the task was originally activated by evergreen, deactivate the task
 	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
-		// We are trying to deactivate this task
-		// So we check if the person trying to deactivate is evergreen.
-		// If it is not, then we can deactivate it.
-		// Otherwise, if it was originally activated by evergreen, anything can
-		// deactivate it.
 		var err error
+		// deactivate later tasks in the group as well, since they won't succeed without this one
+		if t.IsPartOfSingleHostTaskGroup() {
+			tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			if err != nil {
+				return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+			}
+			for _, taskInGroup := range tasksInGroup {
+				if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
+					originalTasks = append(originalTasks, taskInGroup)
+				}
+			}
+		}
 		err = task.DeactivateTasks(originalTasks, caller)
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
@@ -159,7 +181,9 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// find previous task limiting to just the last one
-	prevTask, err := task.FindOne(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester))
+	filter, sort := task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
+	query := db.Query(filter).Sort(sort)
+	prevTask, err := task.FindOne(query)
 	if err != nil {
 		return errors.Wrap(err, "Error finding previous task")
 	}
@@ -195,7 +219,7 @@ func resetManyTasks(tasks []task.Task, caller string, logIDs bool) error {
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
 func resetTask(taskId, caller string, logIDs bool) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -220,7 +244,7 @@ func resetTask(taskId, caller string, logIDs bool) error {
 
 // TryResetTask resets a task
 func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -346,23 +370,28 @@ func AbortTask(taskId, caller string) error {
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.FindAll(task.ByActivatedBeforeRevisionWithStatuses(
+	filter, sort := task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
 		t.DisplayName,
 		t.Project,
-	))
+	)
+	query := db.Query(filter).Sort(sort)
+	allTasks, err := task.FindAll(query)
 	if err != nil {
 		return errors.Wrapf(err, "error finding tasks to deactivate for task %s", t.Id)
 	}
 	extraTasks := []task.Task{}
 	if t.DisplayOnly {
 		for _, dt := range allTasks {
+			if len(dt.ExecutionTasks) == 0 { // previous display tasks may not have execution tasks added yet
+				continue
+			}
 			var execTasks []task.Task
 			execTasks, err = task.Find(task.ByIds(dt.ExecutionTasks))
 			if err != nil {
-				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
+				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", dt.Id)
 			}
 			canDeactivate := true
 			for _, et := range execTasks {
@@ -906,7 +935,7 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
 // Returns true if the build's status has changed.
 func UpdateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.Find(task.ByBuildId(b.Id).WithFields(task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey))
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1093,6 +1122,55 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	return nil
 }
 
+func UpdateVersionAndPatchStatusForBuilds(buildIds []string) error {
+	builds, err := build.Find(build.ByIds(buildIds))
+	if err != nil {
+		return errors.Wrapf(err, "fetching builds")
+	}
+
+	versionsToUpdate := make(map[string]string)
+	for _, build := range builds {
+		buildStatusChanged, err := UpdateBuildStatus(&build)
+		if err != nil {
+			return errors.Wrapf(err, "updating build '%s' status", build.Id)
+		}
+		// If no build has changed status, then we can assume the version and patch statuses have also stayed the same.
+		if !buildStatusChanged {
+			continue
+		}
+
+		versionsToUpdate[build.Version] = build.Id
+	}
+	for versionId, buildId := range versionsToUpdate {
+		buildVersion, err := VersionFindOneId(versionId)
+		if err != nil {
+			return errors.Wrapf(err, "getting version '%s' for build '%s'", versionId, buildId)
+		}
+		if buildVersion == nil {
+			return errors.Errorf("no version '%s' found for build '%s'", versionId, buildId)
+		}
+		newVersionStatus, err := UpdateVersionStatus(buildVersion)
+		if err != nil {
+			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
+		}
+
+		if evergreen.IsPatchRequester(buildVersion.Requester) {
+			p, err := patch.FindOneId(buildVersion.Id)
+			if err != nil {
+				return errors.Wrapf(err, "getting patch for version '%s'", buildVersion.Id)
+			}
+			if p == nil {
+				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
+			}
+			if err = UpdatePatchStatus(p, newVersionStatus); err != nil {
+				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
+			}
+		}
+	}
+
+	return nil
+}
+
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
 func MarkStart(t *task.Task, updates *StatusChanges) error {
 	var err error
@@ -1184,7 +1262,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 }
 
 func MarkTasksReset(taskIds []string) error {
-	tasks, err := task.FindAll(task.ByIds(taskIds))
+	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1233,7 +1311,7 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.FindAll(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
+	tasksToRestart, err := task.FindAll(db.Query(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes)))
 	if err != nil {
 		return results, errors.WithStack(err)
 	}
@@ -1468,7 +1546,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	}
 
 	// refresh task status from db in case of race
-	taskWithStatus, err := task.FindOne(task.ById(dt.Id).WithFields(task.StatusKey))
+	taskWithStatus, err := task.FindOneIdWithFields(dt.Id, task.StatusKey)
 	if err != nil {
 		return errors.Wrap(err, "error refreshing task status from db")
 	}
@@ -1529,15 +1607,17 @@ func checkResetSingleHostTaskGroup(t *task.Task, caller string) error {
 		return errors.Wrapf(err, "can't get task group for task '%s'", t.Id)
 	}
 	taskSet := map[string]bool{}
-	for _, t := range tasks {
-		taskSet[t.Id] = true
-		for _, dep := range t.DependsOn {
+	for _, tgTask := range tasks {
+		taskSet[tgTask.Id] = true
+		for _, dep := range tgTask.DependsOn {
 			if taskSet[dep.TaskId] && dep.Unattainable {
-				grip.Info(message.Fields{
-					"message": "task group task was blocked on an earlier task group task after reset",
-					"task":    t.Id,
-					"ticket":  "EVG-12923",
-				})
+				grip.Debug(message.WrapError(errors.New(
+					"task group task was blocked on an earlier task group task after reset"), message.Fields{
+					"blocked_task":            tgTask.Id,
+					"new_execution":           tgTask.Execution,
+					"unattainable_dependency": dep.TaskId,
+					"ticket":                  "EVG-12923",
+				}))
 			}
 		}
 	}

@@ -245,24 +245,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return nil, err
 	}
 
-	// Validate the alias exists
-	if p.Alias != "" {
-		validAlias := false
-		aliases, err := comm.ListAliases(ctx, ref.Id)
-		if err != nil {
-			return nil, errors.Wrap(err, "error contacting API server")
-		}
-		for _, alias := range aliases {
-			if alias.Alias == p.Alias {
-				validAlias = true
-				break
-			}
-		}
-		if !validAlias {
-			return nil, errors.Errorf("%s is not a valid alias", p.Alias)
-		}
-	}
-
 	// Validate trigger aliases exist
 	if len(p.TriggerAliases) > 0 {
 		validTriggerAliases, err := comm.ListPatchTriggerAliases(ctx, p.Project)

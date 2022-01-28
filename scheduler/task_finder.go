@@ -179,7 +179,7 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 		taskIds = append(taskIds, t)
 	}
 
-	tasksToCache, err := task.Find(task.ByIds(taskIds).WithFields(task.StatusKey, task.DependsOnKey))
+	tasksToCache, err := task.FindWithFields(task.ByIds(taskIds), task.StatusKey, task.DependsOnKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding task dependencies")
 	}

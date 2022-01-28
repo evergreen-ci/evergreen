@@ -74,7 +74,7 @@ func (s *TaskTestResultSuite) SetupTest() {
 }
 
 func (s *TaskTestResultSuite) TestNoOldNoNewTestResults() {
-	t, err := FindOne(ById(s.tasks[2].Id))
+	t, err := FindOneId(s.tasks[2].Id)
 	s.NoError(err)
 
 	s.NoError(t.PopulateTestResults())
@@ -126,7 +126,7 @@ func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 		s.NoError(err)
 	}
 
-	t, err = FindOne(ById("taskid-10"))
+	t, err = FindOne(db.Query(ById("taskid-10")))
 	s.NoError(err)
 
 	s.NoError(t.PopulateTestResults())
