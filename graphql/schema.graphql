@@ -1436,6 +1436,7 @@ type TaskLogs {
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!
   agentLogs: [LogMessage!]!
+  allLogs: [LogMessage!]!
 }
 
 type TaskEventLogData {

@@ -2129,6 +2129,46 @@ func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apim
 
 	return taskLogPointers, nil
 }
+func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
+	const logMessageCount = 100
+
+	var allLogs []apimodels.LogMessage
+
+	// get logs from cedar
+	if obj.DefaultLogger == model.BuildloggerLogSender {
+
+		opts := apimodels.GetBuildloggerLogsOptions{
+			BaseURL:       evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:        obj.TaskID,
+			Execution:     utility.ToIntPtr(obj.Execution),
+			PrintPriority: true,
+			Tail:          logMessageCount,
+			LogType:       apimodels.AllTaskLevelLogs,
+		}
+
+		// all logs
+		allLogReader, err := apimodels.GetBuildloggerLogs(ctx, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+
+		allLogs = apimodels.ReadBuildloggerToSlice(ctx, obj.TaskID, allLogReader)
+
+	} else {
+		var err error
+		// all logs
+		allLogs, err = model.FindMostRecentLogMessages(obj.TaskID, obj.Execution, logMessageCount, []string{}, []string{})
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding all logs for task %s: %s", obj.TaskID, err.Error()))
+		}
+	}
+
+	allLogPointers := []*apimodels.LogMessage{}
+	for i := range allLogs {
+		allLogPointers = append(allLogPointers, &allLogs[i])
+	}
+	return allLogPointers, nil
+}
 
 func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*GroupedBuildVariant, error) {
 	patch, err := r.sc.FindPatchById(patchID)

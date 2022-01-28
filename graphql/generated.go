@@ -966,6 +966,7 @@ type ComplexityRoot struct {
 
 	TaskLogs struct {
 		AgentLogs     func(childComplexity int) int
+		AllLogs       func(childComplexity int) int
 		DefaultLogger func(childComplexity int) int
 		EventLogs     func(childComplexity int) int
 		Execution     func(childComplexity int) int
@@ -1406,6 +1407,7 @@ type TaskLogsResolver interface {
 	TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
 	SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
 	AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
+	AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error)
 }
 type TaskQueueItemResolver interface {
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
@@ -6154,6 +6156,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskLogs.AgentLogs(childComplexity), true
 
+	case "TaskLogs.allLogs":
+		if e.complexity.TaskLogs.AllLogs == nil {
+			break
+		}
+
+		return e.complexity.TaskLogs.AllLogs(childComplexity), true
+
 	case "TaskLogs.defaultLogger":
 		if e.complexity.TaskLogs.DefaultLogger == nil {
 			break
@@ -8749,6 +8758,7 @@ type TaskLogs {
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!
   agentLogs: [LogMessage!]!
+  allLogs: [LogMessage!]!
 }
 
 type TaskEventLogData {
@@ -32561,6 +32571,41 @@ func (ec *executionContext) _TaskLogs_agentLogs(ctx context.Context, field graph
 	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskLogs_allLogs(ctx context.Context, field graphql.CollectedField, obj *TaskLogs) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskLogs",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.TaskLogs().AllLogs(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*apimodels.LogMessage)
+	fc.Result = res
+	return ec.marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskQueueDistro_id(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -46950,6 +46995,20 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 					}
 				}()
 				res = ec._TaskLogs_agentLogs(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "allLogs":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._TaskLogs_allLogs(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
