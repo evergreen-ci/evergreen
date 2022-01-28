@@ -8,10 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	podInitConfigKey          = bsonutil.MustHaveTag(Settings{}, "PodInit")
-	maxParallelPodRequestsKey = bsonutil.MustHaveTag(Settings{}, "MaxParallelPodRequests")
-)
+var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit")
 
 // PodInitConfig holds logging settings for the pod init process.
 type PodInitConfig struct {
