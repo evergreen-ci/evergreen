@@ -708,8 +708,8 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	return nil
 }
 
-// The bool value returns whether the patch should be created or not
-// The string value returns the correct caller for the command
+// The bool value returns whether the patch should be created or not.
+// The string value returns the correct caller for the command.
 func triggersPatch(action, comment string) (bool, string) {
 	if action == "deleted" {
 		return false, ""
