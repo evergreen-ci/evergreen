@@ -147,7 +147,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
 	s.EqualValues(testSettings.HostInit.S3BaseURL, settingsFromConnector.HostInit.S3BaseURL)
 	s.EqualValues(testSettings.PodInit.S3BaseURL, settingsFromConnector.PodInit.S3BaseURL)
-	s.EqualValues(testSettings.PodInit.MaxParallelPodRequests, settingsFromConnector.MaxParallelPodRequests)
+	s.EqualValues(testSettings.PodInit.MaxParallelPodRequests, settingsFromConnector.PodInit.MaxParallelPodRequests)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 	// We have to check different cases because the mock connector does not set
 	// defaults for the settings.

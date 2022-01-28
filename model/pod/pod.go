@@ -57,7 +57,7 @@ const (
 	StatusTerminated Status = "terminated"
 )
 
-var ActiveStatus = []string{
+var ActiveStatus = []Status{
 	StatusStarting,
 	StatusRunning,
 }

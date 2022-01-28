@@ -149,7 +149,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		if info, exists = taskGroupInfosMap[name]; exists {
 			if !opts.IncludesDependencies || checkDependenciesMet(&task, depCache) {
 				info.Count++
-				task.AddDurationToInfo(info, duration)
+				info.ExpectedDuration += duration
 			}
 		} else {
 			info = &model.TaskGroupInfo{
