@@ -8,7 +8,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit")
+var (
+	podInitConfigKey          = bsonutil.MustHaveTag(Settings{}, "PodInit")
+	maxParallelPodRequestsKey = bsonutil.MustHaveTag(Settings{}, "MaxParallelPodRequests")
+)
 
 // PodInitConfig holds logging settings for the pod init process.
 type PodInitConfig struct {
@@ -48,7 +51,7 @@ func (c *PodInitConfig) Set() error {
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			podInitS3BaseURLKey:       c.S3BaseURL,
-			MaxParallelPodRequestsKey: c.MaxParallelPodRequests,
+			maxParallelPodRequestsKey: c.MaxParallelPodRequests,
 		},
 	}, options.Update().SetUpsert(true))
 
