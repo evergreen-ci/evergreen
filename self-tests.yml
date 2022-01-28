@@ -528,8 +528,6 @@ tasks:
   - name: s3-fake-destination-optional
     commands:
       - func: copy-fake-destination-optional
-    commands:
-      - func: copy-fake-destination-optional
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
