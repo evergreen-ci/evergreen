@@ -148,6 +148,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))
 	s.EqualValues(testSettings.PodInit.S3BaseURL, settings.PodInit.S3BaseURL)
+	s.EqualValues(testSettings.PodInit.MaxParallelPodRequests, settings.PodInit.MaxParallelPodRequests)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settings.Providers.GCE.ClientEmail)

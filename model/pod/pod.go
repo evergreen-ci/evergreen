@@ -57,7 +57,8 @@ const (
 	StatusTerminated Status = "terminated"
 )
 
-// ActiveStatus is a slice of statuses that are considered active, that is, not inactive.
+// ActiveStatus are statuses representing containers that exist in the cloud provider
+// and could accept tasks in the near future.
 var ActiveStatus = []Status{
 	StatusStarting,
 	StatusRunning,
