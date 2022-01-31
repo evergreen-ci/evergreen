@@ -1452,6 +1452,9 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, &t.Details), "problem resetting task")
 }
 
+// ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
+// from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
+// Marks display tasks as reset when finished and then check if it can be reset immediately.
 func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels.TaskEndDetail) error {
 	taskToReset := *t
 	if taskToReset.IsPartOfDisplay() { // if given an execution task, attempt to restart the full display task
