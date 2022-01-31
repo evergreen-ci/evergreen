@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -61,20 +62,26 @@ func (c *HostInitConfig) Set() error {
 }
 
 func (c *HostInitConfig) ValidateAndDefault() error {
-	if c.HostThrottle <= 0 {
+	catcher := grip.NewSimpleCatcher()
+	if c.HostThrottle == 0 {
 		c.HostThrottle = defaultHostThrottle
 	}
+	catcher.NewWhen(c.HostThrottle < 0, "HostThrottle cannot be negative")
 
-	if c.ProvisioningThrottle <= 0 {
+	if c.ProvisioningThrottle == 0 {
 		c.ProvisioningThrottle = 200
 	}
+	catcher.NewWhen(c.ProvisioningThrottle < 0, "ProvisioningThrottle cannot be negative")
 
-	if c.CloudStatusBatchSize <= 0 {
+	if c.CloudStatusBatchSize == 0 {
 		c.CloudStatusBatchSize = 500
 	}
+	catcher.NewWhen(c.CloudStatusBatchSize < 0, "CloudStatusBatchSize cannot be negative")
 
-	if c.MaxTotalDynamicHosts <= 0 {
+	if c.MaxTotalDynamicHosts == 0 {
 		c.MaxTotalDynamicHosts = 5000
 	}
-	return nil
+	catcher.NewWhen(c.MaxTotalDynamicHosts < 0, "MaxTotalDynamicHosts cannot be negative")
+
+	return catcher.Resolve()
 }
