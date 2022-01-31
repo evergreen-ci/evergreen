@@ -448,6 +448,7 @@ type APIProjectRef struct {
 	DeactivatePrevious          *bool                     `json:"deactivate_previous"`
 	TracksPushEvents            *bool                     `json:"tracks_push_events"`
 	PRTestingEnabled            *bool                     `json:"pr_testing_enabled"`
+	ManualPRTestingEnabled      *bool                     `json:"manual_pr_testing_enabled"`
 	GitTagVersionsEnabled       *bool                     `json:"git_tag_versions_enabled"`
 	GithubChecksEnabled         *bool                     `json:"github_checks_enabled"`
 	CedarTestResultsEnabled     *bool                     `json:"cedar_test_results_enabled"`
@@ -547,6 +548,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		TracksPushEvents:        utility.BoolPtrCopy(p.TracksPushEvents),
 		DefaultLogger:           utility.FromStringPtr(p.DefaultLogger),
 		PRTestingEnabled:        utility.BoolPtrCopy(p.PRTestingEnabled),
+		ManualPRTestingEnabled:  utility.BoolPtrCopy(p.ManualPRTestingEnabled),
 		GitTagVersionsEnabled:   utility.BoolPtrCopy(p.GitTagVersionsEnabled),
 		GithubChecksEnabled:     utility.BoolPtrCopy(p.GithubChecksEnabled),
 		CedarTestResultsEnabled: utility.BoolPtrCopy(p.CedarTestResultsEnabled),
@@ -650,6 +652,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
 	p.DefaultLogger = utility.ToStringPtr(projectRef.DefaultLogger)
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
+	p.ManualPRTestingEnabled = utility.BoolPtrCopy(projectRef.ManualPRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
 	p.GithubChecksEnabled = utility.BoolPtrCopy(projectRef.GithubChecksEnabled)
 	p.CedarTestResultsEnabled = utility.BoolPtrCopy(projectRef.CedarTestResultsEnabled)

@@ -261,6 +261,7 @@ type TaskLogs struct {
 	TaskLogs      []*apimodels.LogMessage       `json:"taskLogs"`
 	SystemLogs    []*apimodels.LogMessage       `json:"systemLogs"`
 	AgentLogs     []*apimodels.LogMessage       `json:"agentLogs"`
+	AllLogs       []*apimodels.LogMessage       `json:"allLogs"`
 }
 
 type TaskQueueDistro struct {

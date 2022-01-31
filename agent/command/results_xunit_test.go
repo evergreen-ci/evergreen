@@ -163,7 +163,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 		assert.NoError(logger.Close())
 
 		messages := comm.GetMockMessages()[conf.Task.Id]
-		successMessage := "Attach test logs succeeded for 201 of 201 files"
+		successMessage := "Attach test logs succeeded for 12 of 12 files"
 		found := false
 		for _, message := range messages {
 			if successMessage == message.Message {
@@ -191,7 +191,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 					assert.NotEmpty(r.TestName)
 					assert.NotEmpty(r.DisplayTestName)
 					assert.NotEmpty(r.LogTestName)
-					if r.Status != evergreen.TestSucceededStatus {
+					if r.Status == evergreen.TestFailedStatus {
 						assert.NotEqual(r.DisplayTestName, r.LogTestName)
 					}
 					assert.NotEmpty(r.Status)

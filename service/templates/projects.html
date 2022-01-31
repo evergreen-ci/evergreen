@@ -447,13 +447,18 @@ Evergreen Projects
         </div>
       </div>
       <div id="patch-variants-list-header" class="form-group" ng-show="prTestingEnabled || prTestingConflicts.length === 0">
-        <div class="col-lg-6">
+        <div class="col-lg-5">
           <input type="checkbox" id="prtesting-checkbox" ng-model="settingsFormData.pr_testing_enabled" />
-          <label for="prtesting-checkbox">Enable Github PR Testing</label>
+          <label for="prtesting-checkbox">Enable Automatic Github PR Testing</label>
+        </div>
+        <div class="col-lg-5">
+          <input type="checkbox" id="manualprtesting-checkbox" ng-model="settingsFormData.manual_pr_testing_enabled" />
+          <label for="prtesting-checkbox">Enable Manual Github PR Testing</label>
+          <div class="muted small">Patches can be run manually by commenting 'evergreen patch' on the PR even if automated testing isn't enabled.</div>
         </div>
       </div>
       <!-- GITHUB PATCH DEFINITIONS -->
-      <div ng-show="settingsFormData.pr_testing_enabled === true && prTestingConflicts.length === 0">
+      <div ng-show="(settingsFormData.pr_testing_enabled === true || settingsFormData.manual_pr_testing_enabled === true) && prTestingConflicts.length === 0">
         <div class="form-group">
           <div class="col-header col-lg-6 form-control-static">
             <h4> GitHub Patch Definitions </h4>

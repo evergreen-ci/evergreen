@@ -34,6 +34,7 @@ type GithubWebhookRouteSuite struct {
 	pushBody               []byte
 	commitQueueCommentBody []byte
 	retryCommentBody       []byte
+	patchCommentBody       []byte
 	h                      *githubHookApi
 	queue                  amboy.Queue
 	env                    evergreen.Environment
@@ -109,6 +110,9 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.retryCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "retry_comment_event.json"))
 	s.NoError(err)
 	s.Len(s.retryCommentBody, 11468)
+	s.patchCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "patch_comment_event.json"))
+	s.NoError(err)
+	s.Len(s.patchCommentBody, 11468)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
@@ -262,11 +266,28 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	commentString := issueComment.Comment.GetBody()
 	s.Equal(retryComment, commentString)
 
-	s.True(triggersRetry("created", commentString))
-	s.False(triggersRetry("deleted", commentString))
+	s.True(triggersPatch("created", commentString))
+	s.False(triggersPatch("deleted", commentString))
 
 	//test whitespace trimming
-	s.True(triggersRetry("created", "  evergreen retry "))
+	s.True(triggersPatch("created", "  evergreen retry "))
+}
+
+func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
+	event, err := github.ParseWebHook("issue_comment", s.patchCommentBody)
+	s.NoError(err)
+	s.NotNil(event)
+
+	issueComment, ok := event.(*github.IssueCommentEvent)
+	s.True(ok)
+	commentString := issueComment.Comment.GetBody()
+	s.Equal(patchComment, commentString)
+
+	s.True(triggersPatch("created", commentString))
+	s.False(triggersPatch("deleted", commentString))
+
+	//test whitespace trimming
+	s.True(triggersPatch("created", "  evergreen patch "))
 }
 
 func (s *GithubWebhookRouteSuite) TestUnknownEventType() {
