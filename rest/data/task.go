@@ -202,10 +202,17 @@ func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool)
 		"Erorr setting task active")
 }
 
-// ResetTask sets the task to be in an unexecuted state and prepares it to be
-// run again.
+// ResetTask sets the task to be in an unexecuted state and prepares it to be run again.
+// If given an execution task, marks the display task for reset.
 func (tc *DBTaskConnector) ResetTask(taskId, username string) error {
-	return errors.Wrap(serviceModel.TryResetTask(taskId, username, evergreen.RESTV2Package, nil),
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding task '%s'", t)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", t.Id)
+	}
+	return errors.Wrap(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil),
 		"Reset task error")
 }
 

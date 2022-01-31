@@ -1873,6 +1873,31 @@ func TestDisplayTaskRestart(t *testing.T) {
 	}
 }
 
+func TestResetTaskOrDisplayTask(t *testing.T) {
+	assert.NoError(t, resetTaskData())
+	et, err := task.FindOneId("task5")
+	assert.NoError(t, err)
+	require.NotNil(t, et)
+
+	// restarting execution tasks should restart the whole display task if it's complete
+	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, nil))
+	dt, err := task.FindOneId("displayTask")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
+	assert.Equal(t, dt.Execution, 1)
+	assert.False(t, dt.ResetWhenFinished)
+
+	// restarting display task should mark the display task for restart if it's not complete
+	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, nil))
+	dt, err = task.FindOneId("displayTask")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
+	assert.Equal(t, dt.Execution, 1)
+	assert.True(t, dt.ResetWhenFinished)
+}
+
 func resetTaskData() error {
 	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection); err != nil {
 		return err
