@@ -61,8 +61,7 @@ func (c *PodInitConfig) ValidateAndDefault() error {
 	if c.MaxParallelPodRequests == 0 {
 		// TODO: (EVG-16217) Determine empirically if this is indeed reasonable
 		c.MaxParallelPodRequests = 2000
-	} else if c.MaxParallelPodRequests < 0 {
-		catcher.Add(errors.New("MaxParallelPodRequests cannot be negative"))
 	}
+	catcher.NewWhen(c.MaxParallelPodRequests < 0, "MaxParallelPodRequests cannot be negative")
 	return catcher.Resolve()
 }

@@ -65,27 +65,23 @@ func (c *HostInitConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	if c.HostThrottle == 0 {
 		c.HostThrottle = defaultHostThrottle
-	} else if c.HostThrottle < 0 {
-		catcher.Add(errors.New("HostThrottle cannot be negative"))
 	}
+	catcher.NewWhen(c.HostThrottle < 0, "HostThrottle cannot be negative")
 
 	if c.ProvisioningThrottle == 0 {
 		c.ProvisioningThrottle = 200
-	} else if c.ProvisioningThrottle < 0 {
-		catcher.Add(errors.New("ProvisioningThrottle cannot be negative"))
 	}
+	catcher.NewWhen(c.ProvisioningThrottle < 0, "ProvisioningThrottle cannot be negative")
 
 	if c.CloudStatusBatchSize == 0 {
 		c.CloudStatusBatchSize = 500
-	} else if c.CloudStatusBatchSize < 0 {
-		catcher.Add(errors.New("CloudStatusBatchSize cannot be negative"))
 	}
+	catcher.NewWhen(c.CloudStatusBatchSize < 0, "CloudStatusBatchSize cannot be negative")
 
 	if c.MaxTotalDynamicHosts == 0 {
 		c.MaxTotalDynamicHosts = 5000
-	} else if c.MaxTotalDynamicHosts < 0 {
-		catcher.Add(errors.New("MaxTotalDynamicHosts cannot be negative"))
 	}
+	catcher.NewWhen(c.MaxTotalDynamicHosts < 0, "MaxTotalDynamicHosts cannot be negative")
 
 	return catcher.Resolve()
 }
