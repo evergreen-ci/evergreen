@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,9 +57,12 @@ func (c *PodInitConfig) Set() error {
 }
 
 func (c *PodInitConfig) ValidateAndDefault() error {
-	if c.MaxParallelPodRequests <= 0 {
+	catcher := grip.NewSimpleCatcher()
+	if c.MaxParallelPodRequests == 0 {
 		// TODO: (EVG-16217) Determine empirically if this is indeed reasonable
 		c.MaxParallelPodRequests = 2000
+	} else if c.MaxParallelPodRequests < 0 {
+		catcher.Add(errors.New("MaxParallelPodRequests cannot be negative"))
 	}
-	return nil
+	return catcher.Resolve()
 }

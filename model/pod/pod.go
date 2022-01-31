@@ -57,13 +57,6 @@ const (
 	StatusTerminated Status = "terminated"
 )
 
-// ActiveStatus are statuses representing containers that exist in the cloud provider
-// and could accept tasks in the near future.
-var ActiveStatus = []Status{
-	StatusStarting,
-	StatusRunning,
-}
-
 // Validate checks that the pod status is recognized.
 func (s Status) Validate() error {
 	switch s {
