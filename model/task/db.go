@@ -1482,6 +1482,18 @@ func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
+func UpdateAllWithHint(query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	res, err := env.DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &adb.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
+}
+
 // Remove deletes the task of the given id from the database
 func Remove(id string) error {
 	return db.Remove(

@@ -1471,12 +1471,27 @@ func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
+	t2 := Task{
+		Id:            "t2",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+	}
+	assert.NoError(t2.Insert())
+
 	_, err := UnscheduleStaleUnderwaterTasks("")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
 	assert.EqualValues(-1, dbTask.Priority)
+
+	dbTask, err = FindOneId("t2")
+	assert.NoError(err)
+	assert.False(dbTask.Activated)
+	assert.EqualValues(-1, dbTask.Priority)
+
 }
 
 func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
