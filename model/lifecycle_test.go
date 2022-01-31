@@ -956,6 +956,26 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		})
 
+		Convey("execution mode should be populated for execution tasks", func() {
+			args := BuildCreateArgs{
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar1.Name,
+				ActivateBuild: false,
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			for _, t := range tasks {
+				if t.DisplayOnly {
+					So(t.Execution, ShouldBeZeroValue)
+				} else {
+					So(t.ExecutionMode, ShouldEqual, task.ExecutionModeHost)
+				}
+			}
+		})
+
 		Convey("the build should contain task caches that correspond exactly"+
 			" to the tasks created", func() {
 
