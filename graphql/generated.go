@@ -7793,7 +7793,6 @@ input ProjectInput {
   taskAnnotationSettings: TaskAnnotationSettingsInput
 
   hidden: Boolean
-  useRepoSettings: Boolean
 }
 
 
@@ -40102,14 +40101,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hidden"))
 			it.Hidden, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "useRepoSettings":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useRepoSettings"))
-			it.UseRepoSettings, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
