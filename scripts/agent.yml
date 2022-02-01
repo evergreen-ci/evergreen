@@ -196,7 +196,6 @@ tasks:
                 'destination': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy', 'bucket': 'mciuploads'}}
               - {'source': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-2', 'bucket': 'mciuploads'},
                 'destination': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy-2', 'bucket': 'mciuploads'}}
-
 buildvariants:
   - name: localhost
     display_name: localhost

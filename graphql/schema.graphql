@@ -469,9 +469,6 @@ input ProjectInput {
   perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
-
-  hidden: Boolean
-  useRepoSettings: Boolean
 }
 
 
