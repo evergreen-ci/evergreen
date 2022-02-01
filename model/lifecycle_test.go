@@ -971,7 +971,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				if t.DisplayOnly {
 					So(t.Execution, ShouldBeZeroValue)
 				} else {
-					So(t.ExecutionMode, ShouldEqual, task.ExecutionModeHost)
+					So(t.ExecutionPlatform, ShouldEqual, task.ExecutionPlatformHost)
 				}
 			}
 		})

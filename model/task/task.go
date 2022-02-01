@@ -117,8 +117,8 @@ type Task struct {
 	// The host the task was run on. This value is empty for display tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
-	// ExecutionMode determines the execution environment that the task runs in.
-	ExecutionMode ExecutionMode `bson:"execution_mode,omitempty" json:"execution_mode,omitempty"`
+	// ExecutionPlatform determines the execution environment that the task runs in.
+	ExecutionPlatform ExecutionPlatform `bson:"execution_mode,omitempty" json:"execution_mode,omitempty"`
 
 	// The version of the agent this task was run on.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
@@ -217,14 +217,14 @@ type Task struct {
 	testResultsPopulated bool
 }
 
-// ExecutionMode indicates the type of environment that the task runs in.
-type ExecutionMode string
+// ExecutionPlatform indicates the type of environment that the task runs in.
+type ExecutionPlatform string
 
 const (
-	// ExecutionModeHost indicates that the task runs in a host.
-	ExecutionModeHost ExecutionMode = "host"
-	// ExecutionModeContainer indicates that the task runs in a container.
-	ExecutionModeContainer ExecutionMode = "container"
+	// ExecutionPlatformHost indicates that the task runs in a host.
+	ExecutionPlatformHost ExecutionPlatform = "host"
+	// ExecutionPlatformContainer indicates that the task runs in a container.
+	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
