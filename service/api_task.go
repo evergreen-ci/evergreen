@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -348,10 +347,8 @@ func (as *APIServer) fixIntentHostRunningAgent(ctx context.Context, h *host.Host
 	switch h.Status {
 	case evergreen.HostBuilding:
 		return errors.Wrap(as.transitionIntentHostToStarting(ctx, h, instanceID), "starting intent host that actually succeeded")
-	case evergreen.HostBuildingFailed:
-		return errors.Wrap(as.transitionIntentHostToDecommissioned(ctx, h, instanceID), "decommissioning intent host that failed to build")
-	case evergreen.HostTerminated:
-		return errors.Wrap(as.terminateIntentGhost(ctx, h, instanceID), "terminating lingering intent host")
+	case evergreen.HostBuildingFailed, evergreen.HostTerminated:
+		return errors.Wrap(as.transitionIntentHostToDecommissioned(ctx, h, instanceID), "decommissioning intent host")
 	default:
 		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when the agent is running", h.Status)
 	}
@@ -399,43 +396,8 @@ func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but it's already considered a failed building host")
+	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but intent host is already considered a failure")
 
-	return nil
-}
-
-// terminateIntentGhost terminates a lingering intent host that's still alive in
-// the cloud. This can happen if an intent host failed to transition to a real
-// host and was marked as terminated, but the instance eventually started after
-// it was already marked as terminated.
-func (as *APIServer) terminateIntentGhost(ctx context.Context, h *host.Host, instanceID string) error {
-	grip.Notice(message.Fields{
-		"message":     "DB-EC2 state mismatch - found EC2 instance running an agent, but Evergreen believes the host is already terminated",
-		"host_id":     h.Id,
-		"instance_id": instanceID,
-		"host_status": h.Status,
-	})
-
-	intentHostID := h.Id
-	h.Id = instanceID
-	oldStatus := h.Status
-	h.Status = evergreen.HostTerminated
-	if err := host.UnsafeReplace(ctx, as.env, intentHostID, h); err != nil {
-		return errors.Wrap(err, "replacing intent host with real host")
-	}
-
-	event.LogHostStatusChanged(h.Id, oldStatus, h.Status, evergreen.User, "host started agent but it's already considered terminated")
-
-	return errors.Wrap(as.terminateGhost(ctx, h, "lingering instance came up after the host document was marked terminated"), "terminating intent ghost")
-}
-
-// terminateGhost sends a host which should already have been terminated but
-// whose instance is still alive to be terminated again.
-func (as *APIServer) terminateGhost(ctx context.Context, h *host.Host, reason string) error {
-	j := units.NewHostTerminationJob(as.env, h, true, reason)
-	if err := amboy.EnqueueUniqueJob(ctx, as.env.RemoteQueue(), j); err != nil {
-		return errors.Wrap(err, "enqueueing host termination job")
-	}
 	return nil
 }
 
@@ -461,11 +423,19 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 		return true, nil
 	case evergreen.HostTerminated:
 		// The host should already be terminated but somehow it's still alive in
-		// the cloud, so terminate it again.
-		if err := as.terminateGhost(ctx, h, "host should already have been terminated, but is still alive"); err != nil {
-			return false, errors.Wrap(err, "terminating ghost")
+		// the cloud. If the host was terminated very recently, it may simply
+		// need time for the cloud instance to actually be terminated and fully
+		// cleaned up. Beyond this short grace period, there's likely a state
+		// mismatch where Evergreen has marked the host terminated but the host
+		// has clearly not been terminated in the cloud.
+		const waitingForTerminationGracePeriod = 10 * time.Minute
+		if time.Now().Sub(h.TerminationTime) > waitingForTerminationGracePeriod {
+			grip.Error(message.Fields{
+				"message": "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
+				"host_id": h.Id,
+				"distro":  h.Distro.Id,
+			})
 		}
-
 		return true, nil
 	case evergreen.HostDecommissioned:
 		return true, nil

@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -1033,7 +1032,7 @@ func TestNextTask(t *testing.T) {
 					So(realHost, ShouldNotBeNil)
 					So(realHost.Status, ShouldEqual, evergreen.HostDecommissioned)
 				})
-				Convey("should convert a terminated intent host into a real host and try to terminate it again", func() {
+				Convey("should convert a terminated intent host into a decommissioned real host", func() {
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
@@ -1058,13 +1057,7 @@ func TestNextTask(t *testing.T) {
 						realHost, err := host.FindOneId(instanceID)
 						So(err, ShouldBeNil)
 						So(realHost, ShouldNotBeNil)
-						So(realHost.Status, ShouldEqual, evergreen.HostTerminated)
-
-						qStats := as.env.RemoteQueue().Stats(ctx)
-						require.Equal(t, qStats.Total, 1)
-						j := as.env.RemoteQueue().Next(ctx)
-						require.NotZero(t, j)
-						assert.Contains(t, j.ID(), units.HostTerminationJobName)
+						So(realHost.Status, ShouldEqual, evergreen.HostDecommissioned)
 					})
 				})
 			})
@@ -1086,56 +1079,20 @@ func TestNextTask(t *testing.T) {
 				}
 				So(nonLegacyHost.Insert(), ShouldBeNil)
 
-				Convey("should exit when it is quarantined", func() {
-					So(nonLegacyHost.SetStatus(evergreen.HostQuarantined, evergreen.User, ""), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
-					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
-					respDetails := &apimodels.NextTaskResponse{}
-					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
-					So(respDetails.ShouldExit, ShouldBeTrue)
-					So(respDetails.TaskId, ShouldBeEmpty)
-					dbHost, err := host.FindOneId(nonLegacyHost.Id)
-					So(err, ShouldBeNil)
-					So(dbHost.Status, ShouldEqual, evergreen.HostQuarantined)
-				})
-				Convey("should exit when it is decommissioned", func() {
-					So(nonLegacyHost.SetStatus(evergreen.HostDecommissioned, evergreen.User, ""), ShouldBeNil)
-					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
-					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
-					respDetails := &apimodels.NextTaskResponse{}
-					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
-					So(respDetails.ShouldExit, ShouldBeTrue)
-					So(respDetails.TaskId, ShouldBeEmpty)
-					dbHost, err := host.FindOneId(nonLegacyHost.Id)
-					So(err, ShouldBeNil)
-					So(dbHost.Status, ShouldEqual, evergreen.HostDecommissioned)
-				})
-				Convey("should attempt to re-terminate a supposedly terminated but actually alive host", func() {
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
-
-					withMockEnv(ctx, t, as, func(as *APIServer) {
-						So(nonLegacyHost.SetStatus(evergreen.HostTerminated, evergreen.User, ""), ShouldBeNil)
+				for _, status := range []string{evergreen.HostQuarantined, evergreen.HostDecommissioned, evergreen.HostTerminated} {
+					Convey(fmt.Sprintf("should exit when it is %s", status), func() {
+						So(nonLegacyHost.SetStatus(status, evergreen.User, ""), ShouldBeNil)
 						reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 						resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
-
 						respDetails := &apimodels.NextTaskResponse{}
 						So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
 						So(respDetails.ShouldExit, ShouldBeTrue)
 						So(respDetails.TaskId, ShouldBeEmpty)
-
 						dbHost, err := host.FindOneId(nonLegacyHost.Id)
 						So(err, ShouldBeNil)
-						So(dbHost, ShouldNotBeNil)
-						So(dbHost.Status, ShouldEqual, evergreen.HostTerminated)
-
-						qStats := as.env.RemoteQueue().Stats(ctx)
-						require.Equal(t, qStats.Total, 1)
-						j := as.env.RemoteQueue().Next(ctx)
-						require.NotZero(t, j)
-						assert.Contains(t, j.ID(), units.HostTerminationJobName)
+						So(dbHost.Status, ShouldEqual, status)
 					})
-				})
+				}
 			})
 			Convey("with a non-legacy host with an old agent revision in the database", func() {
 				nonLegacyHost := host.Host{
