@@ -7791,8 +7791,6 @@ input ProjectInput {
   perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
-
-  hidden: Boolean
 }
 
 
@@ -40093,14 +40091,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskAnnotationSettings"))
 			it.TaskAnnotationSettings, err = ec.unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "hidden":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hidden"))
-			it.Hidden, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
