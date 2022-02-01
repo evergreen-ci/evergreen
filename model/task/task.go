@@ -117,8 +117,9 @@ type Task struct {
 	// The host the task was run on. This value is empty for display tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
-	// ExecutionPlatform determines the execution environment that the task runs in.
-	ExecutionPlatform ExecutionPlatform `bson:"execution_mode,omitempty" json:"execution_mode,omitempty"`
+	// ExecutionPlatform determines the execution environment that the task runs
+	// in.
+	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
 
 	// The version of the agent this task was run on.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
