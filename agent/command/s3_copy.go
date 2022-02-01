@@ -189,100 +189,107 @@ func (c *s3copy) Execute(ctx context.Context,
 
 }
 
-func (c *s3copy) copyWithRetry(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (c *s3copy) copyWithRetry(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	backoffCounter := getS3OpBackoff()
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	var foundDottedBucketName bool
+	var (
+		foundDottedBucketName bool
+		uploadedFiles         int
+	)
 
 	client := utility.GetHTTPClient()
 	client.Timeout = 10 * time.Minute
 	defer utility.PutHTTPClient(client)
-	for _, s3CopyFile := range c.S3CopyFiles {
-		timer.Reset(0)
 
-		s3CopyReq := apimodels.S3CopyRequest{
-			S3SourceRegion:      s3CopyFile.Source.Region,
-			S3SourceBucket:      s3CopyFile.Source.Bucket,
-			S3SourcePath:        s3CopyFile.Source.Path,
-			S3DestinationRegion: s3CopyFile.Destination.Region,
-			S3DestinationBucket: s3CopyFile.Destination.Bucket,
-			S3DestinationPath:   s3CopyFile.Destination.Path,
-			S3DisplayName:       s3CopyFile.DisplayName,
-			S3Permissions:       s3CopyFile.Permissions,
-		}
-		newPushLog, err := comm.NewPush(ctx, td, &s3CopyReq)
-		if err != nil {
-			return errors.Wrap(err, "error adding pushlog")
-		}
-		if newPushLog.TaskId == "" {
-			logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
-			continue
-		}
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
-		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
-			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
-			continue
-		}
+retryLoop:
+	for i := 1; i <= maxS3OpAttempts; i++ {
 
-		if ctx.Err() != nil {
-			return errors.New("s3copy operation received was canceled")
-		}
+		select {
+		case <-ctx.Done():
+			return errors.New("s3 copy operation canceled")
+		case <-timer.C:
+			logger.Task().Infof("copying files: (attempt %d of %d)",
+				i, maxS3OpAttempts)
 
-		logger.Execution().Infof("Making API push copy call to "+
-			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
-			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
-			s3CopyFile.Destination.Path)
+		uploadLoop:
+			for _, s3CopyFile := range c.S3CopyFiles {
+				if ctx.Err() != nil {
+					return errors.New("s3 copy operation canceled")
+				}
 
-		s3CopyReq.AwsKey = c.AwsKey
-		s3CopyReq.AwsSecret = c.AwsSecret
+				s3CopyReq := apimodels.S3CopyRequest{
+					S3SourceRegion:      s3CopyFile.Source.Region,
+					S3SourceBucket:      s3CopyFile.Source.Bucket,
+					S3SourcePath:        s3CopyFile.Source.Path,
+					S3DestinationRegion: s3CopyFile.Destination.Region,
+					S3DestinationBucket: s3CopyFile.Destination.Bucket,
+					S3DestinationPath:   s3CopyFile.Destination.Path,
+					S3DisplayName:       s3CopyFile.DisplayName,
+					S3Permissions:       s3CopyFile.Permissions,
+				}
+				newPushLog, err := comm.NewPush(ctx, td, &s3CopyReq)
+				if err != nil {
+					return errors.Wrap(err, "error adding pushlog")
+				}
+				if newPushLog.TaskId == "" {
+					logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
+					continue
+				}
 
-		// Now copy the file into the permanent location
-		srcOpts := pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
-			Region:      s3CopyReq.S3SourceRegion,
-			Name:        s3CopyReq.S3SourceBucket,
-			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
-		}
+				if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
+					s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
+					continue
+				}
 
-		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
-		if err != nil {
-			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
-			logger.Task().Error(connectionErr)
-			return connectionErr
-		}
+				logger.Execution().Infof("Making API push copy call to "+
+					"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
+					s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
+					s3CopyFile.Destination.Path)
 
-		if err := srcBucket.Check(ctx); err != nil {
-			return errors.Wrap(err, "invalid bucket")
-		}
-		destOpts := pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
-			Region:      s3CopyReq.S3DestinationRegion,
-			Name:        s3CopyReq.S3DestinationBucket,
-			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
-		}
-		destBucket, err := pail.NewS3MultiPartBucket(destOpts)
-		if err != nil {
-			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
-			logger.Task().Error(connectionErr)
-			return connectionErr
-		}
-	retryLoop:
-		for i := 0; i < maxS3OpAttempts; i++ {
-			select {
-			case <-ctx.Done():
-				return errors.New("s3 copy operation canceled")
-			case <-timer.C:
+				s3CopyReq.AwsKey = c.AwsKey
+				s3CopyReq.AwsSecret = c.AwsSecret
+
+				// Now copy the file into the permanent location
+				srcOpts := pail.S3Options{
+					Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
+					Region:      s3CopyReq.S3SourceRegion,
+					Name:        s3CopyReq.S3SourceBucket,
+					Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
+				}
+
+				srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
+				if err != nil {
+					connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
+					logger.Task().Error(connectionErr)
+					return connectionErr
+				}
+
+				if err := srcBucket.Check(ctx); err != nil {
+					return errors.Wrap(err, "invalid bucket")
+				}
+				destOpts := pail.S3Options{
+					Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
+					Region:      s3CopyReq.S3DestinationRegion,
+					Name:        s3CopyReq.S3DestinationBucket,
+					Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
+				}
+				destBucket, err := pail.NewS3MultiPartBucket(destOpts)
+				if err != nil {
+					connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
+					logger.Task().Error(connectionErr)
+					return connectionErr
+				}
 				copyOpts := pail.CopyOptions{
 					SourceKey:         s3CopyReq.S3SourcePath,
 					DestinationKey:    s3CopyReq.S3DestinationPath,
 					DestinationBucket: destBucket,
 				}
 				err = srcBucket.Copy(ctx, copyOpts)
+
 				if err != nil {
 					newPushLog.Status = pushLogFailed
 					if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
@@ -291,32 +298,35 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 					if s3CopyFile.Optional {
 						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %v",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
-						timer.Reset(backoffCounter.Duration())
-						continue retryLoop
-					} else {
-						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error",
-							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						continue uploadLoop
 					}
-				} else {
-					newPushLog.Status = pushLogSuccess
-					if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
-						return errors.Wrap(err, "updating pushlog status success for task")
-					}
-					if err = c.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
-						return errors.WithStack(err)
-					}
-					break retryLoop
+					// in all other cases, log an error and retry after an interval.
+					logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is not optional, will retry \n error: %v",
+						s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
+					timer.Reset(backoffCounter.Duration())
+					continue retryLoop
 				}
-			}
-		}
-		if !foundDottedBucketName && strings.Contains(s3CopyReq.S3DestinationBucket, ".") {
-			logger.Task().Warning("destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
-			foundDottedBucketName = true
-		}
+				uploadedFiles += 1
+				newPushLog.Status = pushLogSuccess
+				if err := comm.UpdatePushStatus(ctx, td, newPushLog); err != nil {
+					return errors.Wrap(err, "updating pushlog status success for task")
+				}
+				if err = c.attachFiles(ctx, comm, logger, td, s3CopyReq); err != nil {
+					return errors.WithStack(err)
+				}
 
-		logger.Task().Infof("successfully copied '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
+				if !foundDottedBucketName && strings.Contains(s3CopyReq.S3DestinationBucket, ".") {
+					logger.Task().Warning("destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs")
+					foundDottedBucketName = true
+				}
+				logger.Task().Infof("successfully copied '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Path)
+			}
+
+			break retryLoop
+		}
 	}
 
+	logger.Task().Infof("attempted to upload %d files, %d successfully uploaded", len(c.S3CopyFiles), uploadedFiles)
 	return nil
 }
 
