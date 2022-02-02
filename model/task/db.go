@@ -21,6 +21,15 @@ const (
 )
 
 var (
+	Distro_1_status_1_activated_1_priority_1 = bson.D{
+		{Key: DistroIdKey, Value: 1},
+		{Key: StatusKey, Value: 1},
+		{Key: ActivatedKey, Value: 1},
+		{Key: PriorityKey, Value: 1},
+	}
+)
+
+var (
 	// BSON fields for the task struct
 	IdKey                       = bsonutil.MustHaveTag(Task{}, "Id")
 	SecretKey                   = bsonutil.MustHaveTag(Task{}, "Secret")
