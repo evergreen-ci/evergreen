@@ -428,8 +428,7 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 		// cleaned up. Beyond this short grace period, there's likely a state
 		// mismatch where Evergreen has marked the host terminated but the host
 		// has clearly not been terminated in the cloud.
-		const waitingForTerminationGracePeriod = 10 * time.Minute
-		if time.Now().Sub(h.TerminationTime) > waitingForTerminationGracePeriod {
+		if time.Now().Sub(h.TerminationTime) > 10*time.Minute {
 			grip.Error(message.Fields{
 				"message": "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
 				"host_id": h.Id,

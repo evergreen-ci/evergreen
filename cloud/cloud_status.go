@@ -14,16 +14,17 @@ const (
 	// fulfilled, but it's not yet done booting up.
 	StatusInitializing
 
-	// StatusFailed indicates that an attempt to start the instance has failed;
-	// Could be due to billing, lack of capacity, etc.
+	// StatusFailed indicates that an attempt to start the instance has failed.
+	// This could be due to billing, lack of capacity, etc.
 	StatusFailed
 
 	// StatusRunning means the machine is done booting, and active.
 	StatusRunning
 
-	// StatusStopped indicates that the instance is in the processing of
+	// StatusStopping indicates that the instance is in the processing of
 	// stopping but has not yet stopped completely.
 	StatusStopping
+
 	// StatusStopped indicates that the instance is shut down, but can be
 	// started again.
 	StatusStopped
