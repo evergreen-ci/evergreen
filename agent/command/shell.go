@@ -85,6 +85,9 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 	if params == nil {
 		return errors.New("params cannot be nil")
 	}
+	if params["script"] == nil {
+		return errors.Errorf("command '%s' specified without a script", evergreen.ShellExecCommandName)
+	}
 
 	err := mapstructure.Decode(params, c)
 	if err != nil {
