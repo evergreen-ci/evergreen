@@ -293,6 +293,7 @@ var TaskUnstartedStatuses []string = []string{
 	TaskInactive,
 	TaskUnstarted,
 	TaskUndispatched,
+	TaskContainerAllocated,
 }
 
 func IsUnstartedTaskStatus(status string) bool {
@@ -677,9 +678,9 @@ var (
 	}
 
 	// constant arrays for db update logic
-	AbortableStatuses   = []string{TaskStarted, TaskDispatched}
+	AbortableStatuses   = []string{TaskStarted, TaskDispatched, TaskContainerAllocated}
 	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
-	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict}
+	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskContainerAllocated}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
