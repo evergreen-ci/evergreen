@@ -30,21 +30,17 @@ func (t *buildTriggers) taskStatusToDesc() string {
 	other := 0
 	noReport := 0
 	for _, t := range t.tasks {
-		switch t.Status {
-		case evergreen.TaskSucceeded:
+		switch {
+		case t.Status == evergreen.TaskSucceeded:
 			success++
 
-		case evergreen.TaskFailed:
+		case t.Status == evergreen.TaskFailed:
 			failed++
 
-		case evergreen.TaskSystemFailed, evergreen.TaskTimedOut,
-			evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut,
-			evergreen.TaskTestTimedOut:
+		case utility.StringSliceContains(evergreen.TaskSystemFailureStatuses, t.Status):
 			systemError++
 
-		case evergreen.TaskStarted, evergreen.TaskUnstarted,
-			evergreen.TaskUndispatched, evergreen.TaskDispatched,
-			evergreen.TaskConflict, evergreen.TaskInactive:
+		case utility.StringSliceContains(evergreen.UncompletedStatuses, t.Status):
 			noReport++
 
 		default:

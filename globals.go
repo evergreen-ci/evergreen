@@ -279,15 +279,16 @@ var InternalAliases []string = []string{
 	GitTagAlias,
 }
 
-var TaskFailureStatuses []string = []string{
+var TaskSystemFailureStatuses []string = []string{
 	TaskTimedOut,
-	TaskFailed,
 	TaskSystemFailed,
 	TaskTestTimedOut,
 	TaskSetupFailed,
 	TaskSystemUnresponse,
 	TaskSystemTimedOut,
 }
+
+var TaskFailureStatuses []string = append([]string{TaskFailed}, TaskSystemFailureStatuses...)
 
 var TaskUnstartedStatuses []string = []string{
 	TaskInactive,
@@ -680,7 +681,7 @@ var (
 	// constant arrays for db update logic
 	AbortableStatuses   = []string{TaskStarted, TaskDispatched, TaskContainerAllocated}
 	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
-	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskContainerAllocated}
+	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskInactive, TaskContainerAllocated}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
