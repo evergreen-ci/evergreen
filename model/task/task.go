@@ -1053,8 +1053,8 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 		},
 	}
 
-	// force the query to use 'distro_1_status_1_activated_1_priority_1'
-	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1'
+	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	hint := bson.D{
 		{Key: DistroIdKey, Value: 1},
 		{Key: StatusKey, Value: 1},
