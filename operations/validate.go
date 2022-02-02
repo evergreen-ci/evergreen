@@ -8,12 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 func Validate() cli.Command {
@@ -152,9 +154,11 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 	project *model.Project) (*model.ParserProject, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
 	pp, _, err := model.LoadProjectInto(ctx, data, opts, "", project)
+
 	if err != nil {
-		if opts.UnmarshalStrict {
-			// try it without unmarshal strict; if the error is from being strict, warn but don't error.
+		// If the error came from unmarshalling strict, try it again without strict to verify if
+		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
+		if strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
 			pp, _, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
 			if err2 == nil {

@@ -3,9 +3,12 @@ package util
 import (
 	"bytes"
 
+	"github.com/pkg/errors"
 	yaml2 "gopkg.in/yaml.v2"
 	"gopkg.in/yaml.v3"
 )
+
+const UnmarshalStrictError = "error unmarshalling yaml strict"
 
 // UnmarshalYAMLWithFallback attempts to use yaml v3 to unmarshal, but on failure attempts yaml v2. If this
 // succeeds then we can assume in is outdated yaml and requires v2, otherwise we only return the error relevant to the
@@ -29,7 +32,7 @@ func UnmarshalYAMLStrictWithFallback(in []byte, out interface{}) error {
 	d.KnownFields(true)
 	if err := d.Decode(out); err != nil {
 		if err2 := yaml2.UnmarshalStrict(in, out); err2 != nil {
-			return err
+			return errors.Wrap(err, UnmarshalStrictError)
 		}
 	}
 	return nil
