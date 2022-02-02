@@ -57,13 +57,16 @@ const (
 	TaskUnscheduled  = "unscheduled"
 	// TaskWillRun is a subset of TaskUndispatched and is only used in the UI
 	TaskWillRun = "will-run"
-
-	// TaskStarted indicates a task is running on an agent
-	TaskStarted = "started"
+	// TaskContainerAllocated indicates that a tasks's container has been requested
+	// from the cloud provider but hasn't started yet
+	TaskContainerAllocated = "container-allocated"
 
 	// TaskDispatched indicates that an agent has received the task, but
 	// the agent has not yet told Evergreen that it's running the task
 	TaskDispatched = "dispatched"
+
+	// TaskStarted indicates a task is running on an agent
+	TaskStarted = "started"
 
 	// The task statuses below indicate that a task has finished.
 	TaskSucceeded = "success"
