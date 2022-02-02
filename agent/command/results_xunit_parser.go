@@ -122,7 +122,6 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig) (task.Test
 		log = tc.Error.toBasicTestLog("ERROR")
 	case tc.Skipped != nil:
 		res.Status = evergreen.TestSkippedStatus
-		log = tc.Skipped.toBasicTestLog("SKIPPED")
 	default:
 		res.Status = evergreen.TestSucceededStatus
 	}

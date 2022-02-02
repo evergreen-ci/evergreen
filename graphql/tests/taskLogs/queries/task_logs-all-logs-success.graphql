@@ -37,5 +37,12 @@ query {
       timestamp
       version
     }
+    allLogs {
+      type
+      severity
+      message
+      timestamp
+      version
+    }
   }
 }

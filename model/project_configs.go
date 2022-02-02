@@ -14,7 +14,7 @@ import (
 
 type ProjectConfig struct {
 	Id         string    `yaml:"_id" bson:"_id"`
-	Identifier string    `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	Project    string    `yaml:"project,omitempty" bson:"project,omitempty"`
 	CreateTime time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
@@ -28,8 +28,9 @@ type ProjectConfig struct {
 	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
 	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
 	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
-	DeactivatePrevious     *bool                          `yaml:"deactivate_previous" bson:"deactivate_previous,omitempty"`
+	DeactivatePrevious     *bool                          `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
 	PRTestingEnabled       *bool                          `yaml:"pr_testing_enabled,omitempty" bson:"pr_testing_enabled,omitempty"`
+	ManualPRTestingEnabled *bool                          `yaml:"manual_pr_testing_enabled,omitempty" bson:"manual_pr_testing_enabled,omitempty"`
 	GithubChecksEnabled    *bool                          `yaml:"github_checks_enabled,omitempty" bson:"github_checks_enabled,omitempty"`
 	GitTagVersionsEnabled  *bool                          `yaml:"git_tag_versions_enabled,omitempty" bson:"git_tag_versions_enabled,omitempty"`
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`

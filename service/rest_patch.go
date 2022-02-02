@@ -62,6 +62,6 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(projCtx.Patch.PatchedConfig))
+	_, err := w.Write([]byte(projCtx.Patch.PatchedParserProject))
 	grip.Warning(err)
 }

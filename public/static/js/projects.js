@@ -392,6 +392,7 @@ mciModule.controller(
               item = Object.assign({}, $scope.settingsFormData);
               item.identifier = $scope.newProject.identifier;
               item.pr_testing_enabled = false;
+              item.manual_pr_testing_enabled = false;
               item.commit_queue.enabled = false;
               item.commit_queue.require_signed = false;
               item.git_tag_versions_enabled = false;
@@ -461,6 +462,7 @@ mciModule.controller(
             data.github_checks_conflicting_refs || [];
           $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
           $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
+          $scope.manualPrTestingEnabled = data.ProjectRef.manual_pr_testing_enabled || false;
           $scope.commitQueueConflicts =
             data.commit_queue_conflicting_refs || [];
           $scope.project_triggers = data.ProjectRef.triggers || [];
@@ -514,6 +516,7 @@ mciModule.controller(
             git_tag_authorized_teams: $scope.projectRef.git_tag_authorized_teams || [],
             tracks_push_events: data.ProjectRef.tracks_push_events || false,
             pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
+            manual_pr_testing_enabled: data.ProjectRef.manual_pr_testing_enabled || false,
             git_tag_versions_enabled: data.ProjectRef.git_tag_versions_enabled || false,
             github_checks_enabled: data.ProjectRef.github_checks_enabled || false,
             commit_queue: data.ProjectRef.commit_queue || {},
@@ -1321,7 +1324,7 @@ mciModule.controller(
       };
     }
 
-    function comebineDateTime(date, time) {
+    function combineDateTime(date, time) {
       date.setHours(time.getHours());
       date.setMinutes(time.getMinutes());
 
@@ -1347,7 +1350,7 @@ mciModule.controller(
         if (update.delete) {
           $scope.periodic_builds.splice(update.periodicBuildIndex, 1);
         } else {
-          update.periodic_build.next_run_time = comebineDateTime(
+          update.periodic_build.next_run_time = combineDateTime(
             update.periodic_build.start_date,
             update.periodic_build.start_time
           );
@@ -1475,7 +1478,10 @@ mciModule.directive("adminNewProject", function () {
         '<div class="col-lg-12">' +
           "Optionally enter immutable project ID " +
           '<div class="muted small">' +
-            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason. Cannot be changed!)" +
+            "(Used by Evergreen internally and defaults to a random hash; should only be user-specified with good reason, such as if the project will be using performance tooling. Cannot be changed!)" +
+          '</div>' +
+          '<div class="warning-text" ng-show="newProject.copyProject && projectRef.perf_enabled">' +
+               "When copying a project using performance, the immutable project ID should be set to match the identifier." +
           '</div>' +
           '<input type="text" id="project-name" placeholder="immutable project ID" ng-model="newProject.id">' +
         '</div>' +

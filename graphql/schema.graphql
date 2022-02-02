@@ -469,9 +469,6 @@ input ProjectInput {
   perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
-
-  hidden: Boolean
-  useRepoSettings: Boolean
 }
 
 
@@ -1436,6 +1433,7 @@ type TaskLogs {
   taskLogs: [LogMessage!]!
   systemLogs: [LogMessage!]!
   agentLogs: [LogMessage!]!
+  allLogs: [LogMessage!]!
 }
 
 type TaskEventLogData {

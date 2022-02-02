@@ -467,12 +467,21 @@ const (
 )
 
 const (
-	GenerateTasksCommandName = "generate.tasks"
-	HostCreateCommandName    = "host.create"
-	S3PushCommandName        = "s3.push"
-	S3PullCommandName        = "s3.pull"
-	ShellExecCommandName     = "shell.exec"
+	GenerateTasksCommandName      = "generate.tasks"
+	HostCreateCommandName         = "host.create"
+	S3PushCommandName             = "s3.push"
+	S3PullCommandName             = "s3.pull"
+	ShellExecCommandName          = "shell.exec"
+	AttachResultsCommandName      = "attach.results"
+	AttachArtifactsCommandName    = "attach.artifacts"
+	AttachXUnitResultsCommandName = "attach.xunit_results"
 )
+
+var AttachCommands = []string{
+	AttachResultsCommandName,
+	AttachArtifactsCommandName,
+	AttachXUnitResultsCommandName,
+}
 
 type SenderKey int
 

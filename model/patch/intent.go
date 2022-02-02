@@ -42,6 +42,10 @@ type Intent interface {
 	// in patches, versions, builds, and tasks to denote the origin of the
 	// patch
 	RequesterIdentity() string
+
+	// GetCalledBy indicates whether the intent was created automatically
+	// by Evergreen or manually by the user.
+	GetCalledBy() string
 }
 
 // FindIntent returns an intent of the specified type from the database

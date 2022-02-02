@@ -295,6 +295,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		GitTagAuthorizedUsers   []string                       `json:"git_tag_authorized_users,omitempty"`
 		GitTagAuthorizedTeams   []string                       `json:"git_tag_authorized_teams,omitempty"`
 		PRTestingEnabled        bool                           `json:"pr_testing_enabled"`
+		ManualPRTestingEnabled  bool                           `json:"manual_pr_testing_enabled"`
 		GithubChecksEnabled     bool                           `json:"github_checks_enabled"`
 		GitTagVersionsEnabled   bool                           `json:"git_tag_versions_enabled"`
 		Hidden                  bool                           `json:"hidden"`
@@ -432,7 +433,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	var aliasesDefined bool
 	var conflictingRefs []model.ProjectRef
 	if responseRef.Enabled {
-		if responseRef.PRTestingEnabled || responseRef.GithubChecksEnabled {
+		if responseRef.PRTestingEnabled || responseRef.ManualPRTestingEnabled || responseRef.GithubChecksEnabled {
 			conflictingRefs, err = model.FindMergedEnabledProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -440,7 +441,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if responseRef.PRTestingEnabled {
+		if responseRef.PRTestingEnabled || responseRef.ManualPRTestingEnabled {
 			if hook == nil {
 				uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
 				return
@@ -621,6 +622,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Hidden = &responseRef.Hidden
 	projectRef.Identifier = responseRef.Identifier
 	projectRef.PRTestingEnabled = &responseRef.PRTestingEnabled
+	projectRef.ManualPRTestingEnabled = &responseRef.ManualPRTestingEnabled
 	projectRef.GithubChecksEnabled = &responseRef.GithubChecksEnabled
 	projectRef.CommitQueue = commitQueueParams
 	projectRef.TaskSync = taskSync

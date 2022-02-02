@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/logger"
@@ -371,23 +372,24 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
+	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = false
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
 	opts.SampleSize = e.settings.Amboy.SampleSize
+	opts.Client = e.client
 
-	args := queue.MongoDBQueueCreationOptions{
-		Size:      e.settings.Amboy.PoolSizeRemote,
-		Name:      e.settings.Amboy.Name,
-		Ordered:   false,
-		Client:    e.client,
-		MDB:       opts,
-		Retryable: e.settings.Amboy.Retry.RetryableQueueOptions(),
+	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
+	queueOpts := queue.MongoDBQueueOptions{
+		NumWorkers: utility.ToIntPtr(e.settings.Amboy.PoolSizeRemote),
+		Ordered:    utility.FalsePtr(),
+		DB:         &opts,
+		Retryable:  &retryOpts,
 	}
 
-	rq, err := queue.NewMongoDBQueue(ctx, args)
+	rq, err := queue.NewMongoDBQueue(ctx, queueOpts)
 	if err != nil {
 		return errors.Wrap(err, "problem setting main queue backend")
 	}
@@ -408,24 +410,31 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
+	opts.Collection = e.settings.Amboy.Name
 	opts.Priority = e.settings.Amboy.RequireRemotePriority
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
 	opts.UseGroups = true
 	opts.GroupName = e.settings.Amboy.Name
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
+	opts.Client = e.client
+
+	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
+	queueOpts := queue.MongoDBQueueOptions{
+		NumWorkers: utility.ToIntPtr(e.settings.Amboy.GroupDefaultWorkers),
+		DB:         &opts,
+		Ordered:    utility.FalsePtr(),
+		Retryable:  &retryOpts,
+	}
 
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
-		Prefix:                    e.settings.Amboy.Name,
-		DefaultWorkers:            e.settings.Amboy.GroupDefaultWorkers,
-		Ordered:                   false,
+		Queue:                     queueOpts,
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
-		Retryable:                 e.settings.Amboy.Retry.RetryableQueueOptions(),
 	}
 
-	remoteQueueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, remoteQueueGroupOpts, e.client, opts)
+	remoteQueueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, remoteQueueGroupOpts)
 	if err != nil {
 		return errors.Wrap(err, "problem constructing remote queue group")
 	}
