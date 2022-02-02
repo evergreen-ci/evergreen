@@ -2237,60 +2237,6 @@ buildvariants:
 	assert.Len(warnings, 0)
 }
 
-func TestYamlStrict(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.Clear(distro.Collection))
-	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
-	exampleYml := `
-exec_timeout_secs: 100
-tasks:
-- name: task1
-  exec_timeout_secs: 100
-  commands:
-  - command: shell.exec
-    params:
-      script: echo test
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  run_on: "example_distro"
-  not_a_field: true
-  tasks:
-  - name: task1
-`
-	proj := model.Project{}
-	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
-	errors := CheckProjectErrors(&proj, false)
-	assert.Len(errors, 0)
-	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
-	assert.Len(warnings, 1)
-	assert.Contains(warnings[0].Message, "field not_a_field not found")
-	assert.Equal(warnings[0].Level, Warning)
-
-	yamlWithVariables := `
-variables:
-tasks:
-- name: task1
-  commands:
-  - command: shell.exec
-    params:
-      script: echo test
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  run_on: "example_distro"
-  tasks:
-  - name: task1
-`
-	assert.Empty(CheckYamlStrict([]byte(yamlWithVariables)))
-}
-
 func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

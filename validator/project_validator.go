@@ -95,6 +95,16 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 	return errs
 }
 
+// HasError returns true if any of the errors are at the error level.
+func (v ValidationErrors) HasError() bool {
+	for _, err := range v {
+		if err.Level == Error {
+			return true
+		}
+	}
+	return false
+}
+
 type ValidationInput struct {
 	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
 	Quiet       bool   `json:"quiet" yaml:"quiet"`
@@ -199,7 +209,6 @@ func getDistrosForProject(projectID string) (ids []string, aliases []string, err
 // verify that the project configuration semantics is valid
 func CheckProjectWarnings(project *model.Project, yamlBytes []byte) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	validationErrs = append(validationErrs, CheckYamlStrict(yamlBytes)...)
 	for _, projectWarningValidator := range projectWarningValidators {
 		validationErrs = append(validationErrs,
 			projectWarningValidator(project)...)
@@ -236,25 +245,6 @@ func CheckProjectSettings(p *model.Project, ref *model.ProjectRef) ValidationErr
 		errs = append(errs, validateSettings(p, ref)...)
 	}
 	return errs
-}
-
-func CheckYamlStrict(yamlBytes []byte) ValidationErrors {
-	validationErrs := ValidationErrors{}
-	// check strict yaml, i.e warn if there are missing fields
-	strictProjectWithVariables := struct {
-		model.ParserProject `yaml:"pp,inline"`
-		// Variables is only used to suppress yaml unmarshalling errors related
-		// to a non-existent variables field.
-		Variables interface{} `yaml:"variables,omitempty" bson:"-"`
-	}{}
-
-	if err := util.UnmarshalYAMLStrictWithFallback(yamlBytes, &strictProjectWithVariables); err != nil {
-		validationErrs = append(validationErrs, ValidationError{
-			Level:   Warning,
-			Message: err.Error(),
-		})
-	}
-	return validationErrs
 }
 
 // checks if the project configuration has errors
