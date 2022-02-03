@@ -1459,7 +1459,7 @@ tasks:
 			validationErrs := validatePluginCommands(project)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
 			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
-			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "specified without a script")
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "script cannot be nil")
 		})
 		Convey("an error should not be thrown if a shell.exec command is defined with a script", func() {
 			project := &model.Project{
