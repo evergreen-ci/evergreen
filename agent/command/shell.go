@@ -85,9 +85,7 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 	if params == nil {
 		return errors.New("params cannot be nil")
 	}
-	if params["script"] == nil {
-		return errors.New("script cannot be nil")
-	}
+	// Existing projects rely on having a missing script breaking the validation, so we will not error on that case
 
 	err := mapstructure.Decode(params, c)
 	if err != nil {
