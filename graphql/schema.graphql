@@ -1,4 +1,5 @@
 directive @requireSuperUser on FIELD_DEFINITION 
+directive @requireProjectAdmin on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 type Query {
   task(taskId: String!, execution: Int): Task
@@ -75,8 +76,8 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!): ProjectSettings!
-  repoSettings(id: String!): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAdmin): ProjectSettings!
+  repoSettings(id: String! @requireProjectAdmin): RepoSettings!
   projectEvents(
     identifier: String!
     limit: Int = 0
@@ -430,7 +431,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String!
+  id: String! @requireProjectAdmin
   identifier: String
   displayName: String
   enabled: Boolean

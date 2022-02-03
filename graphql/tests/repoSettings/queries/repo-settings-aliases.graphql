@@ -1,5 +1,5 @@
 {
-    repoSettings(id: "1234") {
+    repoSettings(id: "repo_id") {
         aliases {
             id
             alias

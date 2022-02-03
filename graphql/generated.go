@@ -65,7 +65,8 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	RequireSuperUser func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireProjectAdmin func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireSuperUser    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -7321,6 +7322,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "graphql/schema.graphql", Input: `directive @requireSuperUser on FIELD_DEFINITION 
+directive @requireProjectAdmin on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 type Query {
   task(taskId: String!, execution: Int): Task
@@ -7397,8 +7399,8 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!): ProjectSettings!
-  repoSettings(id: String!): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAdmin): ProjectSettings!
+  repoSettings(id: String! @requireProjectAdmin): RepoSettings!
   projectEvents(
     identifier: String!
     limit: Int = 0
@@ -7752,7 +7754,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String!
+  id: String! @requireProjectAdmin
   identifier: String
   displayName: String
   enabled: Boolean
@@ -10457,9 +10459,22 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 	var arg0 string
 	if tmp, ok := rawArgs["identifier"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RequireProjectAdmin == nil {
+				return nil, errors.New("directive requireProjectAdmin is not implemented")
+			}
+			return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["identifier"] = arg0
@@ -10520,9 +10535,22 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 	var arg0 string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RequireProjectAdmin == nil {
+				return nil, errors.New("directive requireProjectAdmin is not implemented")
+			}
+			return ec.directives.RequireProjectAdmin(ctx, rawArgs, directive0)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["id"] = arg0
@@ -39794,9 +39822,25 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RequireProjectAdmin == nil {
+					return nil, errors.New("directive requireProjectAdmin is not implemented")
+				}
+				return ec.directives.RequireProjectAdmin(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
 			if err != nil {
-				return it, err
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Id = data
+			} else if tmp == nil {
+				it.Id = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "identifier":
 			var err error

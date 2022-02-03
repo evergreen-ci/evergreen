@@ -4081,5 +4081,23 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
+	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+		args, isStringMap := obj.(map[string]interface{})
+
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project not specified"))
+		}
+
+		if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+			pid, err := model.GetIdForProject(identifier)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+			}
+			return HasProjectAdminPermission(ctx, pid, next)
+		} else if id, hasId := args["id"].(string); hasId {
+			return HasProjectAdminPermission(ctx, id, next)
+		}
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project"))
+	}
 	return c
 }

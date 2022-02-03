@@ -168,7 +168,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		ID:          "superuser",
 		Name:        "superuser",
 		Scope:       "superuser_scope",
-		Permissions: map[string]int{"admin_settings": 10, "project_create": 10, "distro_create": 10, "modify_roles": 10},
+		Permissions: map[string]int{"admin_settings": 10, "project_settings": 20, "project_create": 10, "distro_create": 10, "modify_roles": 10},
 	}
 	err = roleManager.UpdateRole(superUserRole)
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		ID:        "superuser_scope",
 		Name:      "superuser scope",
 		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{"super_user"},
+		Resources: []string{"super_user", "sandbox_project_id", "repo_id"},
 	}
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)

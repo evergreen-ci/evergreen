@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -49,9 +50,26 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 	}
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
+
+	adminRole := gimlet.Role{
+		ID:          "admin_project",
+		Scope:       "project_scope",
+		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
+	}
+	err = roleManager.UpdateRole(adminRole)
+	require.NoError(t, err)
+
+	adminScope := gimlet.Scope{
+		ID:        "project_scope",
+		Name:      "project scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"project_id", "repo_id"},
+	}
+	err = roleManager.AddScope(adminScope)
+	require.NoError(t, err)
 }
 
-func TestSuperUser(t *testing.T) {
+func TestRequireSuperUser(t *testing.T) {
 	setupPermissions(t, &atomicGraphQLState{})
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -88,4 +106,96 @@ func TestSuperUser(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
+}
+
+func setupUser() (*user.DBUser, error) {
+	const email = "testuser@mongodb.com"
+	const accessToken = "access_token"
+	const refreshToken = "refresh_token"
+	return user.GetOrCreateUser(apiUser, "Evergreen User", email, accessToken, refreshToken, []string{})
+}
+
+func TestRequireProjectAdmin(t *testing.T) {
+	setupPermissions(t, &atomicGraphQLState{})
+	config := graphql.New("/graphql")
+	require.NotNil(t, config)
+	ctx := context.Background()
+	obj := interface{}(nil)
+
+	// callCount keeps track of how many times the function is called
+	callCount := 0
+	next := func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		callCount++
+		return nil, nil
+	}
+
+	usr, err := setupUser()
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+
+	projectRef := model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+	}
+	err = projectRef.Insert()
+	require.NoError(t, err)
+
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+		Id: "repo_id",
+	}}
+	err = repoRef.Upsert()
+	require.NoError(t, err)
+
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
+	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: Project not specified")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	obj = interface{}(map[string]interface{}(nil))
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: Could not find project")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	obj = interface{}(map[string]interface{}{"identifier": "invalid_identifier"})
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: Could not find project with identifier: invalid_identifier")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access settings for the project project_id")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	obj = interface{}(map[string]interface{}{"id": "project_id"})
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.EqualError(t, err, "input: user testuser does not have permission to access settings for the project project_id")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	err = usr.AddRole("admin_project")
+	require.NoError(t, err)
+
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 1, callCount)
+
+	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 2, callCount)
+
+	obj = interface{}(map[string]interface{}{"id": "repo_id"})
+	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
 }
