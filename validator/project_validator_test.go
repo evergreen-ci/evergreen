@@ -173,8 +173,8 @@ func TestValidateTaskDependencies(t *testing.T) {
 				},
 			}
 			allTasks := p.FindAllTasksMap()
-			errs := checkTaskDependencies(&p, &p.Tasks[0], allTasks)
-			errs = append(errs, checkTaskDependencies(&p, &p.Tasks[1], allTasks)...)
+			errs := checkTaskDependencies(&p.Tasks[0], allTasks)
+			errs = append(errs, checkTaskDependencies(&p.Tasks[1], allTasks)...)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
 			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
@@ -959,7 +959,7 @@ func TestValidateBVNames(t *testing.T) {
 					},
 				}
 				buildVariant := project.BuildVariants[0]
-				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
+				So(len(checkBVNames(&buildVariant)), ShouldEqual, 1)
 			})
 			Convey("Is the same as the all-dependencies syntax", func() {
 				project := &model.Project{
@@ -968,14 +968,14 @@ func TestValidateBVNames(t *testing.T) {
 					},
 				}
 				buildVariant := project.BuildVariants[0]
-				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
+				So(len(checkBVNames(&buildVariant)), ShouldEqual, 1)
 			})
 			Convey("Is 'all'", func() {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
 				}
 				buildVariant := project.BuildVariants[0]
-				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
+				So(len(checkBVNames(&buildVariant)), ShouldEqual, 1)
 			})
 		})
 	})
@@ -1072,7 +1072,7 @@ func TestValidateBVBatchTimes(t *testing.T) {
 	// warning if activated to true with batchtime
 	p.BuildVariants[0].Activate = utility.TruePtr()
 	bv := p.BuildVariants[0]
-	assert.Len(t, checkBVBatchTimes(p, &bv), 1)
+	assert.Len(t, checkBVBatchTimes(&bv), 1)
 
 }
 
@@ -2534,7 +2534,7 @@ tasks:
 	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = checkLoggerConfig(project, &project.Tasks[0])
+	errs = checkLoggerConfig(&project.Tasks[0])
 	assert.Len(errs, 0)
 }
 
