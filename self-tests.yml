@@ -630,7 +630,7 @@ buildvariants:
     expansions:
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2-4.2.18.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-4.2.18.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
