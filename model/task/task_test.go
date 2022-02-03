@@ -1464,7 +1464,7 @@ func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	require.NoError(t, db.EnsureIndex(Collection,
-		mongo.IndexModel{Keys: Distro_1_status_1_activated_1_priority_1}))
+		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
 	t1 := Task{
 		Id:            "t1",
@@ -1502,7 +1502,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 	require.NoError(t, db.EnsureIndex(Collection,
-		mongo.IndexModel{Keys: Distro_1_status_1_activated_1_priority_1}))
+		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
 	t1 := Task{
 		Id:            "t1",
@@ -1531,7 +1531,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 	require.NoError(t, db.EnsureIndex(Collection,
-		mongo.IndexModel{Keys: Distro_1_status_1_activated_1_priority_1}))
+		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
 	t1 := Task{
 		Id:            "t1",
