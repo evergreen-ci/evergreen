@@ -65,7 +65,7 @@ const (
 	// the agent has not yet told Evergreen that it's running the task
 	TaskDispatched = "dispatched"
 
-	// TaskStarted indicates a task is running on an agent
+	// TaskStarted indicates a task is running on an agent.
 	TaskStarted = "started"
 
 	// The task statuses below indicate that a task has finished.
@@ -272,14 +272,15 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
-var InternalAliases []string = []string{
+var InternalAliases = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
 	GithubChecksAlias,
 	GitTagAlias,
 }
 
-var TaskSystemFailureStatuses []string = []string{
+// TaskNonGenericFailureStatuses represents some kind of specific abnormal failure mode.
+var TaskNonGenericFailureStatuses = []string{
 	TaskTimedOut,
 	TaskSystemFailed,
 	TaskTestTimedOut,
@@ -288,9 +289,11 @@ var TaskSystemFailureStatuses []string = []string{
 	TaskSystemTimedOut,
 }
 
-var TaskFailureStatuses []string = append([]string{TaskFailed}, TaskSystemFailureStatuses...)
+// TaskFailureStatuses represents all the ways that a task can fail, inclusive of system failures
+// and task failures.
+var TaskFailureStatuses = append(TaskNonGenericFailureStatuses, TaskFailed)
 
-var TaskUnstartedStatuses []string = []string{
+var TaskUnstartedStatuses = []string{
 	TaskInactive,
 	TaskUnstarted,
 	TaskUndispatched,
@@ -679,9 +682,13 @@ var (
 	}
 
 	// constant arrays for db update logic
-	AbortableStatuses   = []string{TaskStarted, TaskDispatched, TaskContainerAllocated}
-	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
-	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskInactive, TaskContainerAllocated}
+	// TaskAbortableStatuses have been picked up by an agent but may or may not have started.
+	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
+	// TaskCompletedStatuses have not experienced some sort of system failure and
+	// are in a finished state.
+	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
+	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
+	TaskUncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskInactive, TaskContainerAllocated}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 

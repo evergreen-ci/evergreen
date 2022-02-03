@@ -37,10 +37,10 @@ func (t *buildTriggers) taskStatusToDesc() string {
 		case t.Status == evergreen.TaskFailed:
 			failed++
 
-		case utility.StringSliceContains(evergreen.TaskSystemFailureStatuses, t.Status):
+		case utility.StringSliceContains(evergreen.TaskNonGenericFailureStatuses, t.Status):
 			systemError++
 
-		case utility.StringSliceContains(evergreen.UncompletedStatuses, t.Status):
+		case utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status):
 			noReport++
 
 		default:

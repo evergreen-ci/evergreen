@@ -453,7 +453,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if t.data.Status != evergreen.TaskSucceeded && !isFailedTaskStatus(t.data.Status) {
+	if t.data.Status != evergreen.TaskSucceeded && !evergreen.IsFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -469,7 +469,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if !isFailedTaskStatus(t.data.Status) {
+	if !evergreen.IsFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -609,7 +609,7 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 	}
 
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+		evergreen.TaskCompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousTask, err := task.FindOne(query)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
@@ -761,7 +761,7 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 }
 
 func isFailedTaskStatus(status string) bool {
-	return utility.StringSliceContains(evergreen.TaskFailureStatuses, status)
+	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
 }
 
 func isTestStatusRegression(oldStatus, newStatus string) bool {
@@ -849,7 +849,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, errors.Wrap(err, "populating test results for task")
 	}
 
-	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
+	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !evergreen.IsFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
@@ -862,7 +862,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	catcher := grip.NewBasicCatcher()
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousCompleteTask, err := task.FindOne(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
@@ -1065,7 +1065,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousTask, err := task.FindOne(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")

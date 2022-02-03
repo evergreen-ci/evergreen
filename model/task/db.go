@@ -1544,7 +1544,7 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1566,7 +1566,7 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 		bson.M{
 			VersionKey: versionId,
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,

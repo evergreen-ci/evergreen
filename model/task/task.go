@@ -804,7 +804,7 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 // build variant + display name combination as the specified task
 func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
-		statuses = evergreen.CompletedStatuses
+		statuses = evergreen.TaskCompletedStatuses
 	}
 	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
@@ -1921,7 +1921,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 func AbortBuild(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -1959,7 +1959,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 func AbortVersion(versionId string, reason AbortInfo) error {
 	q := bson.M{
 		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2415,7 +2415,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 							{"$and": []bson.M{
 								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
 								{"$or": []bson.M{
-									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.CompletedStatuses}},
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.TaskCompletedStatuses}},
 									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
 								}},
 							}},

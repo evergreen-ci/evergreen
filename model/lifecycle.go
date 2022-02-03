@@ -293,7 +293,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
-	finishedTasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses)))
+	finishedTasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.TaskCompletedStatuses)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -409,7 +409,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	}
 
 	// restart all the 'not in-progress' tasks for the build
-	tasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.CompletedStatuses)))
+	tasks, err := task.FindAll(db.Query(task.ByIdsAndStatus(taskIds, evergreen.TaskCompletedStatuses)))
 	if err != nil {
 		return errors.WithStack(err)
 	}

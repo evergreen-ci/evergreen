@@ -189,7 +189,7 @@ func CheckStuckHosts() ([]StuckHostInconsistency, error) {
 		{"$lookup": bson.M{"from": task.Collection, "localField": host.RunningTaskKey,
 			"foreignField": task.IdKey, "as": HostTaskKey}},
 		{"$unwind": "$" + HostTaskKey},
-		{"$match": bson.M{HostTaskKey + "." + task.StatusKey: bson.M{"$in": evergreen.CompletedStatuses}}},
+		{"$match": bson.M{HostTaskKey + "." + task.StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses}}},
 		{"$project": bson.M{
 			StuckHostKey:            "$" + host.IdKey,
 			StuckHostRunningTaskKey: "$" + host.RunningTaskKey,

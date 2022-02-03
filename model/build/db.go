@@ -211,7 +211,7 @@ func ByRecentlyFinishedWithMakespans(limit int) db.Q {
 		},
 		PredictedMakespanKey: bson.M{"$gt": 0},
 		ActualMakespanKey:    bson.M{"$gt": 0},
-		StatusKey:            bson.M{"$in": evergreen.CompletedStatuses},
+		StatusKey:            bson.M{"$in": evergreen.TaskCompletedStatuses},
 	}).Sort([]string{RevisionOrderNumberKey}).Limit(limit)
 }
 
