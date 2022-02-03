@@ -761,7 +761,7 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 }
 
 func isFailedTaskStatus(status string) bool {
-	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
+	return utility.StringSliceContains(evergreen.TaskFailureStatuses, status)
 }
 
 func isTestStatusRegression(oldStatus, newStatus string) bool {
