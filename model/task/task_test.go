@@ -1462,10 +1462,6 @@ func TestBulkInsert(t *testing.T) {
 func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-
-	require.NoError(t, db.EnsureIndex(Collection,
-		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
-
 	t1 := Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
@@ -1475,35 +1471,16 @@ func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	t2 := Task{
-		Id:            "t2",
-		Status:        evergreen.TaskUndispatched,
-		Activated:     true,
-		Priority:      0,
-		ActivatedTime: time.Time{},
-	}
-	assert.NoError(t2.Insert())
-
 	_, err := UnscheduleStaleUnderwaterTasks("")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
 	assert.EqualValues(-1, dbTask.Priority)
-
-	dbTask, err = FindOneId("t2")
-	assert.NoError(err)
-	assert.False(dbTask.Activated)
-	assert.EqualValues(-1, dbTask.Priority)
-
 }
 
 func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
-
-	require.NoError(t, db.EnsureIndex(Collection,
-		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
-
 	t1 := Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
@@ -1529,10 +1506,6 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 
 func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
-
-	require.NoError(t, db.EnsureIndex(Collection,
-		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
-
 	t1 := Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
