@@ -1470,14 +1470,16 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) Validatio
 	var errs ValidationErrors
 	if s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName); len(s3PushCalls) != 0 {
 		errs = append(errs, ValidationError{
-			Level:   Error,
-			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PushCommandName),
+			Level: Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project '%s' settings",
+				ref.Identifier, evergreen.S3PushCommandName),
 		})
 	}
 	if s3PullCalls := p.TasksThatCallCommand(evergreen.S3PullCommandName); len(s3PullCalls) != 0 {
 		errs = append(errs, ValidationError{
-			Level:   Error,
-			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
+			Level: Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project '%s' settings",
+				ref.Identifier, evergreen.S3PullCommandName),
 		})
 	}
 	return errs
