@@ -290,6 +290,10 @@ tasks:
     patch_only: true
     commands:
     - command: shell.exec
+      params:
+        shell: bash
+        script: |
+          echo "how you doing"
   - name: new_task
     depends_on:
     - name: "*"

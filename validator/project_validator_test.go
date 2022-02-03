@@ -1421,6 +1421,80 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
+		Convey("an error should be thrown if a shell.exec command has misspelled params", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  exec_timeout_secs: 100
+  commands:
+  - command: shell.exec
+    parms:
+      script: echo test
+`
+			proj := model.Project{}
+			ctx := context.Background()
+			pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
+		})
+		Convey("an warning should return if a shell.exec command is missing a script", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Type:    "system",
+							Params: map[string]interface{}{
+								"files": []interface{}{"test"},
+							},
+						},
+					},
+				},
+			}
+			validationErrs := validatePluginCommands(project)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Warning)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Warning)[0].Message, ShouldContainSubstring, "specified without a script")
+		})
+		Convey("an error should not be thrown if a shell.exec command is defined with a script", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Type:    "system",
+							Params: map[string]interface{}{
+								"script": "echo hi",
+							},
+						},
+					},
+				},
+			}
+			validationErrs := validatePluginCommands(project)
+			So(validationErrs, ShouldResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 0)
+		})
+		Convey("an error should be thrown if a shell.exec command is missing params", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Type:    "system",
+						},
+					},
+				},
+			}
+			validationErrs := validatePluginCommands(project)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
+		})
 		Convey("an error should be thrown if both a function and a plugin command are referenced", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
