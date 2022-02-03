@@ -115,7 +115,7 @@ func (c *s3copy) ParseParams(params map[string]interface{}) error {
 	return c.validate()
 }
 
-// validateParams is a helper function that ensures all
+// validate is a helper function that ensures all
 // the fields necessary for carrying out an S3 copy operation are present
 func (c *s3copy) validate() error {
 	catcher := grip.NewSimpleCatcher()
@@ -157,16 +157,15 @@ func (c *s3copy) validate() error {
 	return catcher.Resolve()
 }
 
-// Implementation of Execute.  Expands the parameters, and then copies the
+// Execute expands the parameters, and then copies the
 // resource from one s3 bucket to another one.
 func (c *s3copy) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	// expand necessary params
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
-	// re-validate command here, in case an expansion is not defined
+	// Re-validate the command here, in case an expansion is not defined.
 	if err := c.validate(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -241,7 +240,6 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		s3CopyReq.AwsKey = c.AwsKey
 		s3CopyReq.AwsSecret = c.AwsSecret
 
-		// Now copy the file into the permanent location
 		srcOpts := pail.S3Options{
 			Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 			Region:      s3CopyReq.S3SourceRegion,
@@ -267,9 +265,9 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 		destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 		if err != nil {
-			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
-			logger.Task().Error(connectionErr)
-			return connectionErr
+			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
+			logger.Task().Error(bucketErr)
+			return bucketErr
 		}
 	retryLoop:
 		for i := 0; i < maxS3OpAttempts; i++ {
@@ -289,12 +287,12 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 						return errors.Wrap(err, "updating pushlog status failed for task")
 					}
 					if s3CopyFile.Optional {
-						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %v",
-							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err)
+						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s'. File is optional, continuing \n error: %s",
+							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket, err.Error())
 						timer.Reset(backoffCounter.Duration())
 						continue retryLoop
 					} else {
-						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error",
+						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'. File is not optional, exiting \n error:",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 					}
 				} else {

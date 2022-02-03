@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO: <EVG-16254> remove this code
 const (
 	s3CopyRetryMinDelay = 5 * time.Second
 	s3CopyAttempts      = 5
