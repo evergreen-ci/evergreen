@@ -4081,5 +4081,33 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
+	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
+		var permissionLevel int
+		if access == ProjectSettingsAccessEdit {
+			permissionLevel = evergreen.ProjectSettingsEdit.Value
+		} else if access == ProjectSettingsAccessView {
+			permissionLevel = evergreen.ProjectSettingsView.Value
+		} else {
+			return nil, Forbidden.Send(ctx, "Permission not specified")
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
+		}
+
+		if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+			pid, err := model.GetIdForProject(identifier)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+			}
+			return hasProjectPermission(ctx, pid, next, permissionLevel)
+		} else if id, hasId := args["id"].(string); hasId {
+			return hasProjectPermission(ctx, id, next, permissionLevel)
+		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+			return hasProjectPermission(ctx, projectId, next, permissionLevel)
+		}
+		return nil, ResourceNotFound.Send(ctx, "Could not find project")
+	}
 	return c
 }

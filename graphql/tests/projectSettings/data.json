@@ -1,7 +1,7 @@
 {
   "project_ref": [
     {
-      "_id" : "1234",
+      "_id" : "sandbox_project_id",
       "identifier" : "sandbox",
       "display_name" : "Sandbox",
       "enabled" : null,
@@ -79,7 +79,7 @@
       "_id" : { "$oid": "5ffe393097b1d3759dd3c1aa"},
       "alias" : "__commit_queue",
       "git_tag" : "",
-      "project_id" : "1234",
+      "project_id" : "sandbox_project_id",
       "remote_path" : "",
       "tags" : [ ],
       "task" : "unit_tests",
@@ -90,14 +90,14 @@
       "_id" : { "$oid": "5ffe393097b1d3759dd3c1ac"},
       "alias" : "__git_tag",
       "git_tag" : ".*",
-      "project_id" : "1234",
+      "project_id" : "sandbox_project_id",
       "remote_path" : "release.yml"
     },
     {
       "_id" : { "$oid": "5ffe393097b1d3759dd3c1ab"},
       "alias" : "test_alias",
       "git_tag" : "",
-      "project_id" : "1234",
+      "project_id" : "sandbox_project_id",
       "remote_path" : "",
       "tags" : ["git"],
       "variant_tags" : ["tag"]
@@ -105,7 +105,7 @@
   ],
   "project_vars": [
     {
-    "_id": "1234",
+    "_id": "sandbox_project_id",
     "vars": {"hello": "world", "foo":  "bar"},
     "private_vars": {"hello":  true, "foo":  false}
     }
@@ -130,7 +130,7 @@
         "type" : "slack",
         "target" : "@me"
       },
-      "owner" : "1234",
+      "owner" : "sandbox_project_id",
       "owner_type" : "project",
       "trigger_data" : {
         "requester" : "gitter_request"
@@ -141,7 +141,7 @@
       "selectors" : [
         {
           "type" : "project",
-          "data" : "1234"
+          "data" : "sandbox_project_id"
         },
         {
           "type" : "requester",
@@ -156,7 +156,7 @@
           "issue_type" : "1212"
         }
       },
-      "owner" : "1234",
+      "owner" : "sandbox_project_id",
       "owner_type" : "project",
       "trigger_data" : {
         "requester" : "patch_request"
@@ -184,7 +184,7 @@
           ]
         }
       },
-      "owner" : "1234",
+      "owner" : "sandbox_project_id",
       "owner_type" : "project",
       "trigger_data" : {
         "task-duration-secs" : "10"

@@ -2,7 +2,7 @@ mutation {
     saveRepoSettingsForSection(
         repoSettings: {
             projectRef: {
-                id: "myRepo"
+                id: "repo_id"
                 enabled: true,
                 remotePath: "my_path_is_new"
             }

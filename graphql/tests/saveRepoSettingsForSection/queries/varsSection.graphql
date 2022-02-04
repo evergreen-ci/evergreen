@@ -2,7 +2,7 @@ mutation {
     saveRepoSettingsForSection(
         repoSettings: {
             projectRef: {
-                id: "myRepo"
+                id: "repo_id"
             }
             vars: {
                 vars: {goodbye: "now"},

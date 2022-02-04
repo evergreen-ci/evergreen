@@ -7,7 +7,7 @@
           "projectSettings": {
             "gitHubWebhooksEnabled": false,
             "projectRef": {
-              "id": "1234",
+              "id": "sandbox_project_id",
               "identifier": "sandbox",
               "restricted": true,
               "commitQueue": {
@@ -170,7 +170,7 @@
                 "selectors": [
                   {
                     "type": "project",
-                    "data": "1234"
+                    "data": "sandbox_project_id"
                   },
                   {
                     "type": "requester",
@@ -254,9 +254,10 @@
         "data": null,
         "errors": [
           {
-            "message": "project doesn't exist",
+            "message": "Could not find project with identifier: evergreen",
             "path": [
-              "projectSettings"
+              "projectSettings",
+              "identifier"
             ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
