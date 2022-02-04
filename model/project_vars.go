@@ -43,7 +43,7 @@ type ProjectVars struct {
 	//RestrictedVars keeps track of variables that are restricted to commands that can't leak them
 	RestrictedVars map[string]bool `bson:"restricted_vars" json:"restricted_vars"`
 
-	// AdminOnlyVars keeps track of variables that are only accessable by project admins
+	// AdminOnlyVars keeps track of variables that are only accessible by project admins
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
 }
 
