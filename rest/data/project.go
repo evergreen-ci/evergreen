@@ -288,6 +288,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
 	varsModel.RestrictedVars = vars.RestrictedVars
+	varsModel.AdminOnlyVars = vars.AdminOnlyVars
 	varsModel.VarsToDelete = []string{}
 	return nil
 }
@@ -695,6 +696,7 @@ func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId strin
 			newVars.Vars = v.Vars
 			newVars.PrivateVars = v.PrivateVars
 			newVars.RestrictedVars = v.RestrictedVars
+			newVars.AdminOnlyVars = v.AdminOnlyVars
 			pc.CachedVars = append(pc.CachedVars, &newVars)
 			return nil
 		}

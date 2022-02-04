@@ -15,6 +15,7 @@ var (
 	projectVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 	privateVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 	restrictedVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "RestrictedVars")
+	adminOnlyVarsMapKey  = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
 )
 
 const (
@@ -41,6 +42,9 @@ type ProjectVars struct {
 
 	//RestrictedVars keeps track of variables that are restricted to commands that can't leak them
 	RestrictedVars map[string]bool `bson:"restricted_vars" json:"restricted_vars"`
+
+	// AdminOnlyVars keeps track of variables that are only accessable by project admins
+	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
 }
 
 type AWSSSHKey struct {
@@ -142,6 +146,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 				projectVarsMapKey:    projectVars.Vars,
 				privateVarsMapKey:    projectVars.PrivateVars,
 				restrictedVarsMapKey: projectVars.RestrictedVars,
+				adminOnlyVarsMapKey:  projectVars.AdminOnlyVars,
 			},
 		},
 	)
@@ -159,7 +164,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	unsetUpdate := bson.M{}
 	update := bson.M{}
 	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.RestrictedVars) == 0 && len(varsToDelete) == 0 {
+		len(projectVars.RestrictedVars) == 0 && len(projectVars.AdminOnlyVars) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
 	for key, val := range projectVars.Vars {
@@ -171,6 +176,9 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	for key, val := range projectVars.RestrictedVars {
 		setUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, key)] = val
 	}
+	for key, val := range projectVars.AdminOnlyVars {
+		setUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, key)] = val
+	}
 	if len(setUpdate) > 0 {
 		update["$set"] = setUpdate
 	}
@@ -179,6 +187,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, val)] = 1
+		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
 	}
 	if len(unsetUpdate) > 0 {
 		update["$unset"] = unsetUpdate
@@ -272,6 +281,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.RestrictedVars == nil {
 		projectVars.RestrictedVars = map[string]bool{}
 	}
+	if projectVars.AdminOnlyVars == nil {
+		projectVars.AdminOnlyVars = map[string]bool{}
+	}
 	if repoVars == nil {
 		return
 	}
@@ -284,6 +296,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 			if v, ok := repoVars.RestrictedVars[key]; ok {
 				projectVars.RestrictedVars[key] = v
+			}
+			if v, ok := repoVars.AdminOnlyVars[key]; ok {
+				projectVars.AdminOnlyVars[key] = v
 			}
 		}
 	}
