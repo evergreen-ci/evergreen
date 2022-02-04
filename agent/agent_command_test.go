@@ -114,42 +114,6 @@ func (s *CommandSuite) TestShellExec() {
 	s.Equal(s.tc.task.Secret, taskData.Secret)
 }
 
-func (s *CommandSuite) TestS3Copy() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	taskID := "s3copy"
-	s.tc.task.ID = taskID
-	s.Require().NoError(s.a.startLogging(ctx, s.tc))
-	defer s.a.removeTaskDirectory(s.tc)
-	_, err := s.a.runTask(ctx, s.tc)
-	s.Require().NoError(err)
-
-	s.Require().NoError(s.tc.logger.Close())
-	messages := s.mockCommunicator.GetMockMessages()
-	s.Len(messages, 1)
-	foundSuccessLogMessage := false
-	foundS3CopyLogMessage := false
-	for _, msg := range messages[taskID] {
-		if msg.Message == "Task completed - SUCCESS." {
-			foundSuccessLogMessage = true
-		}
-		if strings.HasPrefix(msg.Message, "Finished 's3Copy.copy'") {
-			foundS3CopyLogMessage = true
-		}
-	}
-	s.True(foundSuccessLogMessage)
-	s.True(foundS3CopyLogMessage)
-
-	detail := s.mockCommunicator.GetEndTaskDetail()
-	s.Equal("success", detail.Status)
-	s.False(detail.TimedOut)
-
-	taskData := s.mockCommunicator.EndTaskResult.TaskData
-	s.Equal(taskID, taskData.ID)
-	s.Equal(s.tc.task.Secret, taskData.Secret)
-}
-
 func TestEndTaskSyncCommands(t *testing.T) {
 	s3PushFound := func(cmds *model.YAMLCommandSet) bool {
 		for _, cmd := range cmds.List() {
