@@ -1391,7 +1391,7 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 	return groupsArr, nil
 }
 
-func HasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel evergreen.PermissionLevel) (res interface{}, err error) {
+func hasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel int) (res interface{}, err error) {
 	user := gimlet.GetUser(ctx)
 	if user == nil {
 		return nil, Forbidden.Send(ctx, "user not logged in")
@@ -1400,7 +1400,7 @@ func HasProjectPermission(ctx context.Context, resource string, next graphql.Res
 		Resource:      resource,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: permissionLevel.Value,
+		RequiredLevel: permissionLevel,
 	}
 	if user.HasPermission(opts) {
 		return next(ctx)

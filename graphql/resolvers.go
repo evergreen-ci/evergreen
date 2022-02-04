@@ -4082,13 +4082,13 @@ func New(apiURL string) Config {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
 	}
 	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
-		var permissionLevel evergreen.PermissionLevel
+		var permissionLevel int
 		if access == ProjectSettingsAccessEdit {
-			permissionLevel = evergreen.ProjectSettingsEdit
+			permissionLevel = evergreen.ProjectSettingsEdit.Value
 		} else if access == ProjectSettingsAccessView {
-			permissionLevel = evergreen.ProjectSettingsView
+			permissionLevel = evergreen.ProjectSettingsView.Value
 		} else {
-			permissionLevel = evergreen.ProjectSettingsNone
+			return nil, Forbidden.Send(ctx, "Permission not specified")
 		}
 
 		args, isStringMap := obj.(map[string]interface{})
@@ -4101,11 +4101,11 @@ func New(apiURL string) Config {
 			if err != nil {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
 			}
-			return HasProjectPermission(ctx, pid, next, permissionLevel)
+			return hasProjectPermission(ctx, pid, next, permissionLevel)
 		} else if id, hasId := args["id"].(string); hasId {
-			return HasProjectPermission(ctx, id, next, permissionLevel)
+			return hasProjectPermission(ctx, id, next, permissionLevel)
 		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-			return HasProjectPermission(ctx, projectId, next, permissionLevel)
+			return hasProjectPermission(ctx, projectId, next, permissionLevel)
 		}
 		return nil, ResourceNotFound.Send(ctx, "Could not find project")
 	}
