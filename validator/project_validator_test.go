@@ -161,7 +161,7 @@ func TestValidateTaskDependencies(t *testing.T) {
 					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "tg", IsGroup: true}}},
 				},
 			}
-			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "project '' contains a non-existent task name 'nonexistent' in dependencies for task '3'")
+			So(validateTaskDependencies(p)[0].Message, ShouldResemble, "non-existent task name 'nonexistent' in dependencies for task '3'")
 		})
 		Convey("depending on a non-patchable task should generate a warning", func() {
 			p := model.Project{
@@ -173,8 +173,8 @@ func TestValidateTaskDependencies(t *testing.T) {
 				},
 			}
 			allTasks := p.FindAllTasksMap()
-			errs := checkTaskDependencies(&p, &p.Tasks[0], allTasks)
-			errs = append(errs, checkTaskDependencies(&p, &p.Tasks[1], allTasks)...)
+			errs := checkTaskDependencies(&p.Tasks[0], allTasks)
+			errs = append(errs, checkTaskDependencies(&p.Tasks[1], allTasks)...)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Level, ShouldEqual, Warning)
 			So(errs[0].Message, ShouldEqual, "Task 't1' depends on non-patchable task 't2'. Neither will run in patches")
@@ -959,7 +959,7 @@ func TestValidateBVNames(t *testing.T) {
 					},
 				}
 				buildVariant := project.BuildVariants[0]
-				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
+				So(len(checkBVNames(&buildVariant)), ShouldEqual, 1)
 			})
 			Convey("Is the same as the all-dependencies syntax", func() {
 				project := &model.Project{
@@ -968,14 +968,14 @@ func TestValidateBVNames(t *testing.T) {
 					},
 				}
 				buildVariant := project.BuildVariants[0]
-				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
+				So(len(checkBVNames(&buildVariant)), ShouldEqual, 1)
 			})
 			Convey("Is 'all'", func() {
 				project := &model.Project{
 					BuildVariants: []model.BuildVariant{{Name: "all", DisplayName: "display_name"}},
 				}
 				buildVariant := project.BuildVariants[0]
-				So(len(checkBVNames(project, &buildVariant)), ShouldEqual, 1)
+				So(len(checkBVNames(&buildVariant)), ShouldEqual, 1)
 			})
 		})
 	})
@@ -1072,7 +1072,7 @@ func TestValidateBVBatchTimes(t *testing.T) {
 	// warning if activated to true with batchtime
 	p.BuildVariants[0].Activate = utility.TruePtr()
 	bv := p.BuildVariants[0]
-	assert.Len(t, checkBVBatchTimes(p, &bv), 1)
+	assert.Len(t, checkBVBatchTimes(&bv), 1)
 
 }
 
@@ -1251,7 +1251,7 @@ func TestCheckTaskCommands(t *testing.T) {
 			errs := checkTasks(project)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 2)
-			assert.Contains(t, errs.String(), "task 'compile' in project '' does not "+
+			assert.Contains(t, errs.String(), "task 'compile' does not "+
 				"contain any commands")
 		})
 		Convey("ensure tasks that have at least one command do not throw any errors",
@@ -1862,7 +1862,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 
 			_, project, err := model.FindLatestVersionWithValidProject(projectRef.Id)
 			So(err, ShouldBeNil)
-			So(CheckProjectWarnings(project, []byte{}), ShouldResemble, ValidationErrors{})
+			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Reset(func() {
@@ -1897,7 +1897,7 @@ func (s *validateProjectFieldsuite) TestBatchTimeValueMustNonNegative() {
 	validationError := validateProjectFields(&s.project)
 
 	s.Len(validationError, 1)
-	s.Contains(validationError[0].Message, "non-negative 'batchtime'",
+	s.Contains(validationError[0].Message, "'batchtime' must be non-negative",
 		"Project 'batchtime' must not be negative")
 }
 
@@ -2085,7 +2085,7 @@ func TestValidateBVFields(t *testing.T) {
 			}
 			So(validateBVFields(project),
 				ShouldResemble, ValidationErrors{
-					{Level: Error, Message: "buildvariant 'bv1' in project '' must either specify run_on field or have every task specify run_on."},
+					{Level: Error, Message: "buildvariant 'bv1' must either specify run_on field or have every task specify run_on"},
 				})
 		})
 	})
@@ -2307,7 +2307,7 @@ buildvariants:
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
 	errors := CheckProjectErrors(&proj, false)
 	assert.Len(errors, 0)
-	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	warnings := CheckProjectWarnings(&proj)
 	assert.Len(warnings, 0)
 }
 
@@ -2360,7 +2360,7 @@ buildvariants:
 	errors := CheckProjectErrors(&proj, false)
 	assert.Len(errors, 1)
 	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", errors[0].Error())
-	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	warnings := CheckProjectWarnings(&proj)
 	assert.Len(warnings, 0)
 }
 
@@ -2419,7 +2419,7 @@ buildvariants:
 	assert.Equal(errors[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
 		errors[0].Message)
-	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
+	warnings := CheckProjectWarnings(&proj)
 	assert.Len(warnings, 0)
 }
 
@@ -2608,7 +2608,7 @@ tasks:
 	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
-	errs = checkLoggerConfig(project, &project.Tasks[0])
+	errs = checkLoggerConfig(&project.Tasks[0])
 	assert.Len(errs, 0)
 }
 
@@ -2654,7 +2654,7 @@ buildvariants:
 	assert.NotNil(pp)
 	errs := CheckProjectErrors(&proj, false)
 	assert.Len(errs, 0, "no errors were found")
-	errs = CheckProjectWarnings(&proj, []byte(exampleYml))
+	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 

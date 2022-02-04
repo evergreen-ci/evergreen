@@ -855,7 +855,7 @@ tasks:
 	s.NoError(err)
 	s.Equal(v.Config, dbVersion.Config)
 	s.Require().Len(dbVersion.Errors, 1)
-	s.Equal("buildvariant 'bv' in project 'mci' must either specify run_on field or have every task specify run_on.", dbVersion.Errors[0])
+	s.Equal("buildvariant 'bv' must either specify run_on field or have every task specify run_on", dbVersion.Errors[0])
 
 	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
 	s.NoError(err)
