@@ -663,12 +663,14 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 		Note:          &restModel.APINote{Message: utility.ToStringPtr("task-1-note_0")},
 		Issues: []restModel.APIIssueLink{
 			{
-				URL:      utility.ToStringPtr("some_url_0"),
-				IssueKey: utility.ToStringPtr("some key 0"),
+				URL:             utility.ToStringPtr("some_url_0"),
+				IssueKey:        utility.ToStringPtr("some key 0"),
+				ConfidenceScore: utility.ToFloat32Ptr(12.34),
 			},
 			{
-				URL:      utility.ToStringPtr("some_url_1"),
-				IssueKey: utility.ToStringPtr("some key 1"),
+				URL:             utility.ToStringPtr("some_url_1"),
+				IssueKey:        utility.ToStringPtr("some key 1"),
+				ConfidenceScore: utility.ToFloat32Ptr(12.34),
 			},
 		},
 	}
@@ -691,12 +693,27 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "test_annotation_user", annotation.Note.Source.Author)
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
+	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Equal(t, float32(12.34), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float32(12.34), annotation.Issues[1].ConfidenceScore)
 
 	//test update
 	h.annotation = &restModel.APITaskAnnotation{
 		TaskId:        utility.ToStringPtr("t1"),
 		TaskExecution: &execution0,
 		Note:          &restModel.APINote{Message: utility.ToStringPtr("task-1-note_0_updated")},
+		Issues: []restModel.APIIssueLink{
+			{
+				URL:             utility.ToStringPtr("some_url_0"),
+				IssueKey:        utility.ToStringPtr("some key 0"),
+				ConfidenceScore: utility.ToFloat32Ptr(43.21),
+			},
+			{
+				URL:             utility.ToStringPtr("some_url_1"),
+				IssueKey:        utility.ToStringPtr("some key 1"),
+				ConfidenceScore: utility.ToFloat32Ptr(43.21),
+			},
+		},
 	}
 
 	resp = h.Run(ctx)
@@ -709,6 +726,9 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	// suspected issues and issues don't get updated when not defined
 	require.Nil(t, annotation.SuspectedIssues)
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
+	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Equal(t, float32(43.21), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float32(43.21), annotation.Issues[1].ConfidenceScore)
 
 	//test that it can update old executions
 	h.annotation = &restModel.APITaskAnnotation{
