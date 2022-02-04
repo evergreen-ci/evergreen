@@ -956,6 +956,26 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		})
 
+		Convey("execution mode should be populated for execution tasks", func() {
+			args := BuildCreateArgs{
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar1.Name,
+				ActivateBuild: false,
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			for _, t := range tasks {
+				if t.DisplayOnly {
+					So(t.Execution, ShouldBeZeroValue)
+				} else {
+					So(t.ExecutionPlatform, ShouldEqual, task.ExecutionPlatformHost)
+				}
+			}
+		})
+
 		Convey("the build should contain task caches that correspond exactly"+
 			" to the tasks created", func() {
 
@@ -1871,6 +1891,31 @@ func TestDisplayTaskRestart(t *testing.T) {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
 	}
+}
+
+func TestResetTaskOrDisplayTask(t *testing.T) {
+	assert.NoError(t, resetTaskData())
+	et, err := task.FindOneId("task5")
+	assert.NoError(t, err)
+	require.NotNil(t, et)
+
+	// restarting execution tasks should restart the whole display task if it's complete
+	assert.NoError(t, ResetTaskOrDisplayTask(et, "me", evergreen.StepbackTaskActivator, nil))
+	dt, err := task.FindOneId("displayTask")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
+	assert.Equal(t, dt.Execution, 1)
+	assert.False(t, dt.ResetWhenFinished)
+
+	// restarting display task should mark the display task for restart if it's not complete
+	assert.NoError(t, ResetTaskOrDisplayTask(dt, "me", evergreen.StepbackTaskActivator, nil))
+	dt, err = task.FindOneId("displayTask")
+	assert.NoError(t, err)
+	require.NotNil(t, dt)
+	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
+	assert.Equal(t, dt.Execution, 1)
+	assert.True(t, dt.ResetWhenFinished)
 }
 
 func resetTaskData() error {

@@ -2,17 +2,20 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 func Validate() cli.Command {
@@ -115,10 +118,15 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		LocalModules: localModuleMap,
 		ReadFileFrom: model.ReadFromLocal,
 	}
-	pp, _, err := model.LoadProjectInto(ctx, confFile, opts, "", project)
-	if err != nil {
-		return errors.Wrapf(err, "%s is an invalid configuration", path)
+	if !quiet {
+		opts.UnmarshalStrict = true
 	}
+	pp, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, project)
+	grip.Info(validationErrs)
+	if validationErrs.HasError() {
+		return errors.Errorf("%s is an invalid configuration", path)
+	}
+
 	projectYaml, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "Could not marshal parser project into yaml")
@@ -129,26 +137,42 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		return nil
 	}
 
-	if len(projErrors) != 0 {
-		grip.Info(projErrors)
-	}
-	hasErrs := false
-	hasWarnings := false
-	for _, projErr := range projErrors {
-		if projErr.Level == validator.Error {
-			hasErrs = true
-		} else if projErr.Level == validator.Warning {
-			hasWarnings = true
-		}
-	}
-
-	if hasErrs {
+	grip.Info(projErrors)
+	if projErrors.HasError() {
 		return errors.Errorf("%s is an invalid configuration", path)
-	} else if hasWarnings {
+	} else if len(projErrors) > 0 {
 		grip.Infof("%s is valid with warnings", path)
 	} else {
 		grip.Infof("%s is valid", path)
 	}
 
 	return nil
+}
+
+// loadProjectIntoWithValidation returns a warning (instead of an error) if there's an error with unmarshalling strictly
+func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
+	project *model.Project) (*model.ParserProject, validator.ValidationErrors) {
+	errs := validator.ValidationErrors{}
+	pp, _, err := model.LoadProjectInto(ctx, data, opts, "", project)
+
+	if err != nil {
+		// If the error came from unmarshalling strict, try it again without strict to verify if
+		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
+		if strings.Contains(err.Error(), util.UnmarshalStrictError) {
+			opts.UnmarshalStrict = false
+			pp, _, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
+			if err2 == nil {
+				errs = append(errs, validator.ValidationError{
+					Level:   validator.Warning,
+					Message: fmt.Sprintf("error unmarshalling strictly: %s", err.Error()),
+				})
+				return pp, errs
+			}
+		}
+		errs = append(errs, validator.ValidationError{
+			Level:   validator.Error,
+			Message: err.Error(),
+		})
+	}
+	return pp, errs
 }

@@ -135,12 +135,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError((&distro.Distro{Id: "ubuntu1404-test"}).Insert())
 	s.NoError((&distro.Distro{Id: "macos-1012"}).Insert())
 
-	s.repo = "evergreen-ci/evergreen"
+	s.repo = "hadjri/evergreen"
 	s.headRepo = "tychoish/evergreen"
-	s.prNumber = 448
+	s.prNumber = 5290
 	s.user = evergreen.GithubPatchUser
-	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
-	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
+	s.hash = "8b9b7ee42ef46d40e391910e3afd00e187a9dae8"
+	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/5290.diff"
 	s.githubPatchData = thirdparty.GithubPatch{
 		PRNumber:   448,
 		BaseOwner:  "evergreen-ci",
@@ -518,7 +518,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

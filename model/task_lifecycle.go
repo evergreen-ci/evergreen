@@ -1449,18 +1449,32 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), &t.Details, false))
 	}
 
-	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
+	return errors.Wrap(ResetTaskOrDisplayTask(t, evergreen.User, evergreen.MonitorPackage, &t.Details), "problem resetting task")
+}
+
+// ResetTaskOrDisplayTask is a wrapper for TryResetTask that handles execution and display tasks that are restarted
+// from sources separate from marking the task finished. If an execution task, attempts to restart the display task instead.
+// Marks display tasks as reset when finished and then check if it can be reset immediately.
+func ResetTaskOrDisplayTask(t *task.Task, user, origin string, detail *apimodels.TaskEndDetail) error {
+	taskToReset := *t
+	if taskToReset.IsPartOfDisplay() { // if given an execution task, attempt to restart the full display task
+		dt, err := taskToReset.GetDisplayTask()
 		if err != nil {
 			return errors.Wrap(err, "error getting display task")
 		}
-		if err = dt.SetResetWhenFinished(); err != nil {
+		if dt != nil {
+			taskToReset = *dt
+		}
+	}
+	if taskToReset.DisplayOnly {
+		if err := taskToReset.SetResetWhenFinished(); err != nil {
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
-		return errors.Wrap(checkResetDisplayTask(dt), "can't check display task reset")
+		return errors.Wrap(checkResetDisplayTask(&taskToReset), "can't check display task reset")
 	}
 
-	return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.MonitorPackage, &t.Details), "problem resetting task")
+	return errors.Wrap(TryResetTask(t.Id, user, origin, detail),
+		"reset task error")
 }
 
 // UpdateDisplayTaskForTask updates the status of the given execution task's display task
@@ -1639,7 +1653,7 @@ func checkResetDisplayTask(t *task.Task) error {
 		}
 	}
 	details := &t.Details
-	if details == nil {
+	if details == nil && !t.IsFinished() {
 		details = &apimodels.TaskEndDetail{
 			Type:   evergreen.CommandTypeSystem,
 			Status: evergreen.TaskFailed,

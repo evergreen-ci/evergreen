@@ -1421,6 +1421,80 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
+		Convey("an error should be thrown if a shell.exec command has misspelled params", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  exec_timeout_secs: 100
+  commands:
+  - command: shell.exec
+    parms:
+      script: echo test
+`
+			proj := model.Project{}
+			ctx := context.Background()
+			pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
+		})
+		Convey("an warning should return if a shell.exec command is missing a script", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Type:    "system",
+							Params: map[string]interface{}{
+								"files": []interface{}{"test"},
+							},
+						},
+					},
+				},
+			}
+			validationErrs := validatePluginCommands(project)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Warning)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Warning)[0].Message, ShouldContainSubstring, "specified without a script")
+		})
+		Convey("an error should not be thrown if a shell.exec command is defined with a script", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Type:    "system",
+							Params: map[string]interface{}{
+								"script": "echo hi",
+							},
+						},
+					},
+				},
+			}
+			validationErrs := validatePluginCommands(project)
+			So(validationErrs, ShouldResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 0)
+		})
+		Convey("an error should be thrown if a shell.exec command is missing params", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Type:    "system",
+						},
+					},
+				},
+			}
+			validationErrs := validatePluginCommands(project)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
+		})
 		Convey("an error should be thrown if both a function and a plugin command are referenced", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
@@ -2235,60 +2309,6 @@ buildvariants:
 	assert.Len(errors, 0)
 	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
 	assert.Len(warnings, 0)
-}
-
-func TestYamlStrict(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.Clear(distro.Collection))
-	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
-	exampleYml := `
-exec_timeout_secs: 100
-tasks:
-- name: task1
-  exec_timeout_secs: 100
-  commands:
-  - command: shell.exec
-    params:
-      script: echo test
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  run_on: "example_distro"
-  not_a_field: true
-  tasks:
-  - name: task1
-`
-	proj := model.Project{}
-	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
-	errors := CheckProjectErrors(&proj, false)
-	assert.Len(errors, 0)
-	warnings := CheckProjectWarnings(&proj, []byte(exampleYml))
-	assert.Len(warnings, 1)
-	assert.Contains(warnings[0].Message, "field not_a_field not found")
-	assert.Equal(warnings[0].Level, Warning)
-
-	yamlWithVariables := `
-variables:
-tasks:
-- name: task1
-  commands:
-  - command: shell.exec
-    params:
-      script: echo test
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  run_on: "example_distro"
-  tasks:
-  - name: task1
-`
-	assert.Empty(CheckYamlStrict([]byte(yamlWithVariables)))
 }
 
 func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {

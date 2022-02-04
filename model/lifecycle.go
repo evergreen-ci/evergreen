@@ -1291,6 +1291,9 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 		IsGithubCheck:       isGithubCheck,
 		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
+		// TODO (EVG-16169): set ExecutionPlatform based on whether or not the task
+		// is running in a host or container.
+		ExecutionPlatform: task.ExecutionPlatformHost,
 	}
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
