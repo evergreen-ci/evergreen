@@ -51,21 +51,29 @@ func setupPermissions(t *testing.T, state *atomicGraphQLState) {
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
-	adminRole := gimlet.Role{
+	projectAdminRole := gimlet.Role{
 		ID:          "admin_project",
 		Scope:       "project_scope",
 		Permissions: map[string]int{"project_settings": 20, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
 	}
-	err = roleManager.UpdateRole(adminRole)
+	err = roleManager.UpdateRole(projectAdminRole)
 	require.NoError(t, err)
 
-	adminScope := gimlet.Scope{
+	projectViewRole := gimlet.Role{
+		ID:          "view_project",
+		Scope:       "project_scope",
+		Permissions: map[string]int{"project_settings": 10, "project_tasks": 30, "project_patches": 10, "project_logs": 10},
+	}
+	err = roleManager.UpdateRole(projectViewRole)
+	require.NoError(t, err)
+
+	projectScope := gimlet.Scope{
 		ID:        "project_scope",
 		Name:      "project scope",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"project_id", "repo_id"},
 	}
-	err = roleManager.AddScope(adminScope)
+	err = roleManager.AddScope(projectScope)
 	require.NoError(t, err)
 }
 
@@ -115,7 +123,7 @@ func setupUser() (*user.DBUser, error) {
 	return user.GetOrCreateUser(apiUser, "Evergreen User", email, accessToken, refreshToken, []string{})
 }
 
-func TestRequireProjectAdmin(t *testing.T) {
+func TestRequireProjectAccess(t *testing.T) {
 	setupPermissions(t, &atomicGraphQLState{})
 	config := graphql.New("/graphql")
 	require.NotNil(t, config)
@@ -150,52 +158,65 @@ func TestRequireProjectAdmin(t *testing.T) {
 	ctx = gimlet.AttachUser(ctx, usr)
 	require.NotNil(t, ctx)
 
-	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.EqualError(t, err, "input: Project not specified")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	obj = interface{}(map[string]interface{}(nil))
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.EqualError(t, err, "input: Could not find project")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	obj = interface{}(map[string]interface{}{"identifier": "invalid_identifier"})
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.EqualError(t, err, "input: Could not find project with identifier: invalid_identifier")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.EqualError(t, err, "input: user testuser does not have permission to access settings for the project project_id")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	obj = interface{}(map[string]interface{}{"id": "project_id"})
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.EqualError(t, err, "input: user testuser does not have permission to access settings for the project project_id")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	err = usr.AddRole("admin_project")
+	err = usr.AddRole("view_project")
 	require.NoError(t, err)
 
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
+	require.EqualError(t, err, "input: user testuser does not have permission to access settings for the project project_id")
+	require.Nil(t, res)
+	require.Equal(t, 0, callCount)
+
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessView)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
 
-	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	err = usr.AddRole("admin_project")
+	require.NoError(t, err)
+
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
-	obj = interface{}(map[string]interface{}{"id": "repo_id"})
-	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
+	obj = interface{}(map[string]interface{}{"identifier": "project_identifier"})
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
+
+	obj = interface{}(map[string]interface{}{"id": "repo_id"})
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, graphql.ProjectSettingsAccessEdit)
+	require.NoError(t, err)
+	require.Nil(t, res)
+	require.Equal(t, 4, callCount)
 }

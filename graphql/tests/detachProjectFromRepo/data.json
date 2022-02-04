@@ -1,7 +1,7 @@
 {
   "project_ref": [
     {
-      "_id" : "1234",
+      "_id" : "sandbox_project_id",
       "identifier" : "sandbox",
       "display_name" : "Sandbox",
       "enabled" : null,
@@ -10,19 +10,19 @@
       "branch_name" : "main",
       "admins": ["me"],
       "use_repo_settings" : true,
-      "repo_ref_id": "myRepo"
+      "repo_ref_id": "repo_id"
     }
   ],
   "repo_ref":[
     {
-      "_id": "myRepo",
+      "_id": "repo_id",
       "owner_name": "evergreen-ci",
       "repo_name": "commit-queue-sandbox"
     }
   ],
   "project_vars": [
     {
-      "_id": "1234",
+      "_id": "sandbox_project_id",
       "vars": {"hello": "world", "foo":  "bar"},
       "private_vars": {"hello":  true, "foo":  false}
     }
