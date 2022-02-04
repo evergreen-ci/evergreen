@@ -249,9 +249,9 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 
 		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
 		if err != nil {
-			connectionErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
-			logger.Task().Error(connectionErr)
-			return connectionErr
+			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
+			logger.Task().Error(bucketErr)
+			return bucketErr
 		}
 
 		if err := srcBucket.Check(ctx); err != nil {
