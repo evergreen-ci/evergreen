@@ -291,7 +291,7 @@ var TaskNonGenericFailureStatuses = []string{
 
 // TaskFailureStatuses represents all the ways that a task can fail, inclusive of system failures
 // and task failures.
-var TaskFailureStatuses = append(TaskNonGenericFailureStatuses, TaskFailed)
+var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
 
 var TaskUnstartedStatuses = []string{
 	TaskInactive,
