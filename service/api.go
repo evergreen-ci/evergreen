@@ -550,12 +550,13 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	project := &model.Project{}
+	projectConfig := &model.ProjectConfig{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
@@ -587,7 +588,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = append(errs, validationErr)
 	}
 
-	errs = append(errs, validator.CheckProjectErrors(project, input.IncludeLong)...)
+	errs = append(errs, validator.CheckProjectErrors(project, projectConfig, input.IncludeLong)...)
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)

@@ -2648,7 +2648,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
@@ -2656,7 +2656,7 @@ buildvariants:
 	assert.Len(errs, 0, "no errors were found")
 	errs = CheckProjectWarnings(&proj, []byte(exampleYml))
 	assert.Len(errs, 2, "two warnings were found")
-	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}, pc), "no errors are reported because they are warnings")
 
 	exampleYml = `
 tasks:
@@ -2671,11 +2671,11 @@ buildvariants:
     tasks:
       - name: taskA
 `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, pc, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotNil(pp)
 	assert.NotEmpty(proj)
-	assert.Error(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}))
+	assert.Error(CheckProjectConfigurationIsValid(&proj, &model.ProjectRef{}, pc))
 }
 
 func TestGetDistrosForProject(t *testing.T) {

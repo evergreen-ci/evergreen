@@ -609,7 +609,14 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	project.Tasks = append(project.Tasks, mergeTask)
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
-	validationErrors := validator.CheckProjectErrors(project, true)
+	var projectConfig *model.ProjectConfig
+	if len(patchDoc.PatchedProjectConfig) > 0 {
+		projectConfig, err = model.CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+		if err != nil {
+			return errors.Wrap(err, "Error marshaling patched project config")
+		}
+	}
+	validationErrors := validator.CheckProjectErrors(project, projectConfig, true)
 	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range validationErrors.AtLevel(validator.Error) {

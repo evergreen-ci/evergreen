@@ -247,7 +247,14 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		return errors.Wrap(err, "can't get patched config")
 	}
-	if errs := validator.CheckProjectErrors(project, false); len(errs) != 0 {
+	var projectConfig *model.ProjectConfig
+	if len(patchDoc.PatchedProjectConfig) > 0 {
+		projectConfig, err = model.CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+		if err != nil {
+			return errors.Wrap(err, "Error marshaling patched project config")
+		}
+	}
+	if errs := validator.CheckProjectErrors(project, projectConfig, false); len(errs) != 0 {
 		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
 			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 		}
