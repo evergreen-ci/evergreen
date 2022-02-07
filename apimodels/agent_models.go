@@ -90,6 +90,7 @@ type GetNextTaskDetails struct {
 type ExpansionVars struct {
 	Vars           map[string]string `json:"vars"`
 	RestrictedVars map[string]string `json:"restricted_vars"`
+	AdminOnlyVars  map[string]string `json:"admin_only_vars"`
 	PrivateVars    map[string]bool   `json:"private_vars"`
 }
 
