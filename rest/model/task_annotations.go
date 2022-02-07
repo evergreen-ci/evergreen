@@ -197,13 +197,14 @@ func GetJiraTicketFromURL(URL string) (*thirdparty.JiraTicket, error) {
 	return nil, nil
 }
 
-func ValidateIssues(catcher grip.Catcher, issues []APIIssueLink) grip.Catcher {
+func ValidateIssues(issues []APIIssueLink) error {
+	catcher := grip.NewBasicCatcher()
 	for _, issue := range issues {
 		catcher.Add(util.CheckURL(utility.FromStringPtr(issue.URL)))
 		score := utility.FromFloat32Ptr(issue.ConfidenceScore)
-		if score <= 0 || score >= 100 {
-			catcher.Errorf("invalid confidence score '%f'", score)
+		if score < 0 || score > 100 {
+			catcher.Errorf("confidence score '%f' must be between 0 and 100", score)
 		}
 	}
-	return catcher
+	return catcher.Resolve()
 }
