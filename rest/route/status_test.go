@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -75,7 +75,7 @@ func (s *StatusSuite) SetupTest() {
 		},
 	}
 	for _, t := range tasks {
-		t.Insert()
+		s.NoError(t.Insert())
 	}
 	s.h = &recentTasksGetHandler{sc: s.sc}
 }

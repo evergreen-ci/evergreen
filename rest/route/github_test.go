@@ -3,8 +3,6 @@ package route
 import (
 	"bytes"
 	"context"
-	"github.com/evergreen-ci/evergreen/model/patch"
-	"go.mongodb.org/mongo-driver/bson"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -14,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -24,6 +23,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GithubWebhookRouteSuite struct {
@@ -297,6 +297,12 @@ func (s *GithubWebhookRouteSuite) TestUnknownEventType() {
 
 func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+	projectRef := &model.ProjectRef{
+		Id: "bth",
+	}
+	s.NoError(projectRef.Insert())
+	cq := &commitqueue.CommitQueue{ProjectID: "bth"}
+	s.NoError(commitqueue.InsertQueue(cq))
 
 	owner := "baxterthehacker"
 	repo := "public-repo"
