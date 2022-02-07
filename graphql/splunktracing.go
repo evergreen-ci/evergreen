@@ -37,7 +37,8 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 		duration := end.Sub(start)
 		grip.Info(message.Fields{
 			"message":     "graphql tracing",
-			"query":       rc.Operation.Name,
+			"ui_query":    rc.Operation.Name,
+			"operation":   rc.Operation.Operation,
 			"variables":   rc.Variables,
 			"duration_ms": duration.Milliseconds(),
 			"request":     gimlet.GetRequestID(ctx),
