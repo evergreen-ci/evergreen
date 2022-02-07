@@ -107,10 +107,10 @@ type Task struct {
 	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// DistroAliases refer to the optional secondary distros that can be
-	// associated with a task. This is used for running tasks in case there
-	// is excess capcacity in a distro. Despite the variable name, this is a
-	// distinct concept from actual distro aliases (i.e. alternative distro
-	// names).
+	// associated with a task. This is used for running tasks in case there are
+	// idle hosts in a distro with an empty primary queue. Despite the variable
+	// name, this is a distinct concept from actual distro aliases (i.e.
+	// alternative distro names).
 	// TODO (EVG-15148): rename this to represent secondary distros.
 	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
@@ -1052,8 +1052,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// Removes host tasks older than the unscheduable threshold (e.g. one weeks)
-// from the scheduler queue.
+// Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// the scheduler queue.
 //
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
