@@ -484,6 +484,7 @@ func makeRandomTasks() []task.Task {
 		evergreen.TaskSystemTimedOut,
 		evergreen.TaskTestTimedOut,
 		evergreen.TaskConflict,
+		evergreen.TaskContainerAllocated,
 	}
 
 	numTasks := rand.Intn(10) + 10

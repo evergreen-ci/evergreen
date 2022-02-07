@@ -3278,7 +3278,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return obj.Activated && *obj.Status == evergreen.TaskUndispatched, nil
+	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched) || *obj.Status == evergreen.TaskContainerAllocated, nil
 }
 
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {

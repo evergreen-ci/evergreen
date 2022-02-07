@@ -157,7 +157,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	if onlySuccessful == "true" {
 		statuses = []string{evergreen.TaskSucceeded}
 	} else {
-		statuses = evergreen.CompletedStatuses
+		statuses = evergreen.TaskCompletedStatuses
 	}
 
 	// if its all tasks find the build
