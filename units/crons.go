@@ -93,7 +93,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateEventAlertProcessing(env evergreen.Environment) amboy.QueueOperation {
+func PopulateEventSendJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -109,17 +109,24 @@ func PopulateEventAlertProcessing(env evergreen.Environment) amboy.QueueOperatio
 			return nil
 		}
 
-		err = dispatchUnprocessedNotifications(ctx, queue, flags)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to dispatch unprocessed notifications",
-		}))
-		notifySettings := env.Settings().Notify
-		if err = notifySettings.Get(env); err != nil {
-			return errors.Wrap(err, "unable to get notify settings")
+		return dispatchUnprocessedNotifications(ctx, queue, flags)
+	}
+}
+
+func PopulateEventNotifierJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
 		}
-		limit := notifySettings.EventProcessingLimit
-		if limit <= 0 {
-			limit = evergreen.DefaultEventProcessingLimit
+
+		if flags.EventProcessingDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "alerts disabled",
+				"impact":  "not processing alerts for notifications",
+				"mode":    "degraded",
+			})
+			return nil
 		}
 
 		events, err := event.FindUnprocessedEvents(-1)
@@ -129,28 +136,26 @@ func PopulateEventAlertProcessing(env evergreen.Environment) amboy.QueueOperatio
 		grip.Info(message.Fields{
 			"message": "unprocessed event count",
 			"pending": len(events),
-			"limit":   limit,
 			"source":  "events-processing",
 		})
-		if len(events) == 0 {
-			return nil
+
+		catcher := grip.NewBasicCatcher()
+		for _, evt := range events {
+			if err := amboy.EnqueueUniqueJob(ctx, queue, NewEventNotifierJob(env, env.RemoteQueue(), evt.ID, utility.RoundPartOfMinute(0).Format(TSFormat))); err != nil {
+				catcher.Wrapf(err, "event '%s'", evt.ID)
+			}
 		}
 
-		eventIDs := []string{}
-		for i, evt := range events {
-			eventIDs = append(eventIDs, evt.ID)
-			if (i+1)%limit == 0 || i+1 == len(events) {
-				err = queue.Put(ctx, NewEventNotifierJob(env, queue, sha256sum(eventIDs), eventIDs))
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "unable to queue event notifier job",
-				}))
-				eventIDs = []string{}
-			}
+		if catcher.HasErrors() {
+			return message.WrapError(catcher.Resolve(), message.Fields{
+				"message":  "unable to queue event notifier jobs",
+				"count":    len(catcher.Errors()),
+				"job_type": eventNotifierName,
+			})
 		}
 
 		return nil
 	}
-
 }
 
 func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
