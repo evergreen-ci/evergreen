@@ -31,18 +31,6 @@ func TestUpdateConnector(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockUpdateConnector(t *testing.T) {
-	s := &cliUpdateConnectorSuite{
-		ctx: &MockConnector{},
-	}
-	s.setup = func() {
-	}
-	s.degrade = func() {
-		s.ctx.(*MockConnector).MockCLIUpdateConnector.degradedModeOn = true
-	}
-	suite.Run(t, s)
-}
-
 func (s *cliUpdateConnectorSuite) SetupSuite() {
 	s.setup()
 }

@@ -47,27 +47,29 @@ type MockConnector struct {
 	MockUserConnector
 	MockTaskConnector
 	MockContextConnector
-	MockDistroConnector
 	MockHostConnector
 	MockPodConnector
 	MockTestConnector
 	MockBuildConnector
 	MockVersionConnector
 	MockPatchConnector
-	MockPatchIntentConnector
+	MockStatsConnector
+	MockSubscriptionConnector
+	MockTaskReliabilityConnector
+	MockCommitQueueConnector
 	MockProjectConnector
+
+	//The below mock connectors have been removed from all unit tests and are no longer used
+	MockPatchIntentConnector
 	MockAdminConnector
 	MockStatusConnector
 	MockAliasConnector
 	MockRepoTrackerConnector
 	MockCLIUpdateConnector
 	MockGenerateConnector
-	MockSubscriptionConnector
+	MockDistroConnector
 	MockNotificationConnector
 	MockCreateHostConnector
-	MockStatsConnector
-	MockTaskReliabilityConnector
-	MockCommitQueueConnector
 	MockSchedulerConnector
 }
 

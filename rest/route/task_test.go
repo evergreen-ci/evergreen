@@ -277,21 +277,65 @@ func TestGetDisplayTask(t *testing.T) {
 }
 
 func TestGetTaskSyncReadCredentials(t *testing.T) {
-	creds := evergreen.S3Credentials{
-		Key:    "key",
-		Secret: "secret",
-		Bucket: "bucket",
+	creds := model.APIS3Credentials{
+		Key:    utility.ToStringPtr("key"),
+		Secret: utility.ToStringPtr("secret"),
+		Bucket: utility.ToStringPtr("bucket"),
 	}
-	rh := makeTaskSyncReadCredentialsGetHandler(&data.MockConnector{
-		MockAdminConnector: data.MockAdminConnector{
-			MockSettings: &evergreen.Settings{
-				Providers: evergreen.CloudProviders{
-					AWS: evergreen.AWSConfig{
-						TaskSyncRead: creds,
-					},
-				},
+	connector := data.DBAdminConnector{}
+	u := &user.DBUser{
+		Id: evergreen.ParentPatchUser,
+	}
+	newSettings := &model.APIAdminSettings{
+		ApiUrl:    utility.ToStringPtr("test"),
+		ConfigDir: utility.ToStringPtr("test"),
+		AuthConfig: &model.APIAuthConfig{
+			Github: &model.APIGithubAuthConfig{
+				Organization: utility.ToStringPtr("test"),
 			},
 		},
+		Ui: &model.APIUIConfig{
+			Secret:         utility.ToStringPtr("test"),
+			Url:            utility.ToStringPtr("test"),
+			DefaultProject: utility.ToStringPtr("test"),
+		},
+		Providers: &model.APICloudProviders{
+			AWS: &model.APIAWSConfig{
+				Pod: &model.APIAWSPodConfig{
+					ECS: &model.APIECSConfig{},
+				},
+				TaskSyncRead: &creds,
+			},
+			Docker: &model.APIDockerConfig{
+				APIVersion:    utility.ToStringPtr(""),
+				DefaultDistro: utility.ToStringPtr(""),
+			},
+			GCE: &model.APIGCEConfig{
+				ClientEmail:  utility.ToStringPtr("gce_email"),
+				PrivateKey:   utility.ToStringPtr("gce_key"),
+				PrivateKeyID: utility.ToStringPtr("gce_key_id"),
+				TokenURI:     utility.ToStringPtr("gce_token"),
+			},
+			OpenStack: &model.APIOpenStackConfig{
+				IdentityEndpoint: utility.ToStringPtr("endpoint"),
+				Username:         utility.ToStringPtr("username"),
+				Password:         utility.ToStringPtr("password"),
+				DomainName:       utility.ToStringPtr("domain"),
+				ProjectName:      utility.ToStringPtr("project"),
+				ProjectID:        utility.ToStringPtr("project_id"),
+				Region:           utility.ToStringPtr("region"),
+			},
+			VSphere: &model.APIVSphereConfig{
+				Host:     utility.ToStringPtr("host"),
+				Username: utility.ToStringPtr("vsphere"),
+				Password: utility.ToStringPtr("vsphere_pass"),
+			},
+		},
+	}
+	_, err := connector.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
+	require.NoError(t, err)
+	rh := makeTaskSyncReadCredentialsGetHandler(&data.DBConnector{
+		DBAdminConnector: connector,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -299,7 +343,9 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 	require.NotNil(t, resp)
 	respCreds, ok := resp.Data().(evergreen.S3Credentials)
 	require.True(t, ok)
-	assert.Equal(t, creds, respCreds)
+	assert.Equal(t, *creds.Secret, respCreds.Secret)
+	assert.Equal(t, *creds.Key, respCreds.Key)
+	assert.Equal(t, *creds.Bucket, respCreds.Bucket)
 }
 
 func TestGetTaskSyncPath(t *testing.T) {
