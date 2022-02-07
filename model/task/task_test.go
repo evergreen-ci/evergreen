@@ -1459,7 +1459,7 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
-func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
+func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	t1 := Task{
@@ -1471,7 +1471,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("")
+	_, err := UnscheduleStaleUnderwaterTasks("")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
@@ -1479,7 +1479,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert.EqualValues(-1, dbTask.Priority)
 }
 
-func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
+func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	t1 := Task{
 		Id:            "t1",
@@ -1496,7 +1496,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
+	_, err := UnscheduleStaleUnderwaterTasks("d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1504,7 +1504,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	assert.EqualValues(t, -1, dbTask.Priority)
 }
 
-func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
+func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	t1 := Task{
 		Id:            "t1",
@@ -1522,7 +1522,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
+	_, err := UnscheduleStaleUnderwaterTasks("d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1748,7 +1748,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert.Len(unattainableTasks, 1)
 }
 
-func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
+func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
@@ -1802,7 +1802,7 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	q := db.Query(schedulableHostTasksQuery())
+	q := db.Query(scheduleableTasksQuery())
 	schedulableTasks, err := FindAll(q)
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)

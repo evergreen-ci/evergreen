@@ -321,7 +321,7 @@ func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.H
 
 // pass the empty string to unschedule all distros.
 func underwaterUnschedule(distroID string) error {
-	num, err := task.UnscheduleStaleUnderwaterHostTasks(distroID)
+	num, err := task.UnscheduleStaleUnderwaterTasks(distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
