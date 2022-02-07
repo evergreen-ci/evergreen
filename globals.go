@@ -58,7 +58,7 @@ const (
 	// TaskWillRun is a subset of TaskUndispatched and is only used in the UI
 	TaskWillRun = "will-run"
 	// TaskContainerAllocated indicates that a tasks's container has been requested
-	// from the cloud provider but hasn't started yet
+	// from the cloud provider but hasn't started yet.
 	TaskContainerAllocated = "container-allocated"
 
 	// TaskDispatched indicates that an agent has received the task, but

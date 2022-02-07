@@ -770,8 +770,7 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	nonrestartableStatuses := evergreen.TaskUncompletedStatuses
-	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
 	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
 	if err != nil {
 		return nil, err
