@@ -240,10 +240,9 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 	}
 
 	sort := bson.D{}
+	// This should only be used from the UI, because the rest route relies on ID pagination for performance.
 	if opts.SortBy != "" {
 		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
-	} else if opts.Limit > 0 { // Don't sort TaskID if unlimited EVG-13965.
-		sort = append(sort, primitive.E{Key: TaskIDKey, Value: 1})
 	}
 
 	sort = append(sort, primitive.E{Key: "_id", Value: 1})
