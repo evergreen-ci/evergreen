@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -193,4 +195,15 @@ func GetJiraTicketFromURL(URL string) (*thirdparty.JiraTicket, error) {
 	}
 
 	return nil, nil
+}
+
+func ValidateIssues(catcher grip.Catcher, issues []APIIssueLink) grip.Catcher {
+	for _, issue := range issues {
+		catcher.Add(util.CheckURL(utility.FromStringPtr(issue.URL)))
+		score := utility.FromFloat32Ptr(issue.ConfidenceScore)
+		if score <= 0 || score >= 100 {
+			catcher.Errorf("invalid confidence score '%f'", score)
+		}
+	}
+	return catcher
 }
