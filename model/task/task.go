@@ -106,12 +106,6 @@ type Task struct {
 	NumDependents            int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
-	// DistroAliases refer to the optional secondary distros that can be
-	// associated with a task. This is used for running tasks in case there are
-	// idle hosts in a distro with an empty primary queue. Despite the variable
-	// name, this is a distinct concept from actual distro aliases (i.e.
-	// alternative distro names).
-	// TODO (EVG-15148): rename this to represent secondary distros.
 	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
 	// Human-readable name
@@ -1052,13 +1046,13 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// Removes host tasks older than the unscheduable threshold (e.g. one week) from
-// the scheduler queue.
+// Removes tasks older than the unscheduable threshold (e.g. one
+// weeks) from the scheduler queue.
 //
-// If you pass an empty string as an argument to this function, this operation
-// will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
-	query := schedulableHostTasksQuery()
+// If you pass an empty string as an argument to this function, this
+// operation will select tasks from all distros.
+func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
+	query := scheduleableTasksQuery()
 
 	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
@@ -2318,10 +2312,8 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	return out, nil
 }
 
-// FindHostSchedulable finds all tasks that can be scheduled for a distro
-// primary queue.
-func FindHostSchedulable(distroID string) ([]Task, error) {
-	query := schedulableHostTasksQuery()
+func FindSchedulable(distroID string) ([]Task, error) {
+	query := scheduleableTasksQuery()
 
 	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
@@ -2349,10 +2341,8 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 	return nil
 }
 
-// FindHostSchedulableForAlias finds all tasks that can be scheduled for a
-// distro secondary queue.
-func FindHostSchedulableForAlias(id string) ([]Task, error) {
-	q := schedulableHostTasksQuery()
+func FindSchedulableForAlias(id string) ([]Task, error) {
+	q := scheduleableTasksQuery()
 
 	if err := addApplicableDistroFilter(id, DistroAliasesKey, q); err != nil {
 		return nil, errors.WithStack(err)
@@ -2366,11 +2356,8 @@ func FindHostSchedulableForAlias(id string) ([]Task, error) {
 	return FindAll(db.Query(q))
 }
 
-// FindHostRunnable finds all hosts that can be scheduled for a distro with an
-// additional consideration for whether the task's dependencies are met. If
-// removeDeps is true, tasks with unmet dependencies are excluded.
-func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
-	match := schedulableHostTasksQuery()
+func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
+	match := scheduleableTasksQuery()
 	var d distro.Distro
 	var err error
 	if distroID != "" {

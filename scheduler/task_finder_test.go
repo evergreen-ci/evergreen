@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -37,7 +36,7 @@ type TaskFinderSuite struct {
 
 func TestDBTaskFinder(t *testing.T) {
 	s := new(TaskFinderSuite)
-	s.FindRunnableTasks = func(d distro.Distro) ([]task.Task, error) { return task.FindHostRunnable(d.Id, true) }
+	s.FindRunnableTasks = func(d distro.Distro) ([]task.Task, error) { return task.FindRunnable(d.Id, true) }
 
 	suite.Run(t, s)
 }
@@ -117,15 +116,6 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	// finding the runnable tasks should return four tasks
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 4)
-}
-
-func (s *TaskFinderSuite) TestContainerTasksAreExcluded() {
-	s.tasks[3].ExecutionPlatform = task.ExecutionPlatformContainer
-	s.insertTasks()
-
-	runnableTasks, err := s.FindRunnableTasks(s.distro)
-	s.Require().NoError(err)
 	s.Len(runnableTasks, 4)
 }
 
@@ -271,10 +261,10 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	defer cancel()
 	_, err := env.DB().Collection(task.Collection).Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{Key: task.ActivatedKey, Value: 1}, {Key: task.StatusKey, Value: 1}, {Key: task.PriorityKey, Value: 1}},
+			Keys: bson.D{{Key: "activated", Value: 1}, {Key: "status", Value: 1}, {Key: "priority", Value: 1}},
 		},
 		{
-			Keys: bson.D{{Key: bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), Value: 1}},
+			Keys: bson.D{{Key: "depends_on._id", Value: 1}},
 		},
 	})
 	s.Require().NoError(err)

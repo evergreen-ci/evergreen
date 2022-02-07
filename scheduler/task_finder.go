@@ -31,14 +31,14 @@ func GetTaskFinder(version string) TaskFinder {
 }
 
 func RunnableTasksPipeline(d distro.Distro) ([]task.Task, error) {
-	return task.FindHostRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
+	return task.FindRunnable(d.Id, d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
 func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.FindHostSchedulable(d.Id)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 }
 
 func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindHostSchedulable(d.Id)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -274,15 +274,15 @@ func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
 
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-		"runner":            RunnerName,
-		"schedulable_tasks": len(undispatchedTasks),
+		"runner":             RunnerName,
+		"scheduleable_tasks": len(undispatchedTasks),
 	}))
 
 	return runnabletasks, nil
 }
 
 func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindHostSchedulable(d.Id)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -421,9 +421,9 @@ func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
 		runnabletasks = append(runnabletasks, t)
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
-		"runner":            RunnerName,
-		"planner":           d.PlannerSettings.Version,
-		"schedulable_tasks": len(undispatchedTasks),
+		"runner":             RunnerName,
+		"planner":            d.PlannerSettings.Version,
+		"scheduleable_tasks": len(undispatchedTasks),
 	}))
 
 	return runnabletasks, nil
@@ -443,9 +443,8 @@ func getProjectRefCache() (map[string]model.ProjectRef, error) {
 	return out, nil
 }
 
-// FilterTasksWithVersionCache finds tasks whose versions have already been
-// created, and returns those tasks, as well as a map of version IDs to
-// versions.
+// GetRunnableTasksAndVersions finds tasks whose versions have already been
+// created, and returns those tasks, as well as a map of version IDs to versions.
 func FilterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]model.Version, error) {
 	ids := make(map[string]struct{})
 
