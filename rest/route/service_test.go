@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -666,47 +665,23 @@ func TestTaskByBuildPaginator(t *testing.T) {
 func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.DBConnector{
+		serviceContext := data.MockConnector{
 			URL: "http://evergreen.example.net/",
 		}
-		var suffix string
 		Convey("and there are tasks with tests to be found", func() {
-			assert.NoError(t, db.ClearCollections(testresult.Collection))
-			assert.NoError(t, db.ClearCollections(task.Collection))
-			assert.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
-				Keys: testresult.TestResultsIndex}))
-			t1 := task.Task{
-				Id:        "t1",
-				Execution: 1,
-			}
-			assert.NoError(t, t1.Insert())
 			cachedTests := []testresult.TestResult{}
 			for i := 0; i < numTests; i++ {
 				status := "pass"
 				if i%2 == 0 {
 					status = "fail"
 				}
-				if i < 10 {
-					suffix = "___"
-				} else if i < 100 {
-					suffix = "__"
-				} else {
-					suffix = "_"
-				}
 				nextTest := testresult.TestResult{
-					ID:        mgobson.ObjectId(fmt.Sprintf("object%sid%d", suffix, i)),
-					Status:    status,
-					TaskID:    "t1",
-					StartTime: float64(time.Now().Add(-1 * time.Hour).Unix()),
-					EndTime:   float64(time.Now().Unix()),
+					ID:     mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)
 			}
-			for _, cachedTest := range cachedTests {
-				err := cachedTest.Insert()
-				So(err, ShouldBeNil)
-			}
-			//serviceContext.DBTestConnector.CachedTests = cachedTests
+			serviceContext.MockTestConnector.CachedTests = cachedTests
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				testToStartAt := 100
@@ -715,12 +690,12 @@ func TestTestPaginator(t *testing.T) {
 				for i := testToStartAt; i < testToStartAt+limit; i++ {
 					nextModelTest := &model.APITest{}
 					_ = nextModelTest.BuildFromService(&cachedTests[i])
-					_ = nextModelTest.BuildFromService("t1")
+					_ = nextModelTest.BuildFromService("")
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("object_id%d", testToStartAt+limit),
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -730,10 +705,9 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					limit:  limit,
-					taskID: "t1",
-					key:    fmt.Sprintf("object_id%d", testToStartAt),
-					sc:     &serviceContext,
+					limit: limit,
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -751,7 +725,7 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("objectid%d", testToStartAt+50) + "_",
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+50),
 						Limit:           50,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -762,7 +736,7 @@ func TestTestPaginator(t *testing.T) {
 
 				handler := &testGetHandler{
 					limit: 50,
-					key:   fmt.Sprintf("objectid%d", testToStartAt) + "_",
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
 				}
 
@@ -781,7 +755,7 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("objectid%d", testToStartAt+limit) + "_",
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -791,7 +765,7 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					key:   fmt.Sprintf("objectid%d", testToStartAt) + "__",
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
 					sc:    &serviceContext,
 				}
@@ -811,7 +785,7 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("objectid%d", testToStartAt+limit),
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -821,7 +795,7 @@ func TestTestPaginator(t *testing.T) {
 				}
 
 				handler := &testGetHandler{
-					key:   fmt.Sprintf("objectid%d", testToStartAt),
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					sc:    &serviceContext,
 					limit: limit,
 				}

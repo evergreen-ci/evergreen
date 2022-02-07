@@ -70,35 +70,6 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.sc = &data.DBConnector{
 		DBPatchIntentConnector: data.DBPatchIntentConnector{},
 	}
-	//s.sc = &data.MockConnector{
-	//	//MockPatchIntentConnector: data.MockPatchIntentConnector{
-	//	//	CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
-	//	//},
-	//	MockProjectConnector: data.MockProjectConnector{
-	//		CachedProjects: []model.ProjectRef{
-	//			model.ProjectRef{
-	//				Id:          "bth",
-	//				Enabled:     utility.TruePtr(),
-	//				Owner:       "baxterthehacker",
-	//				Repo:        "public-repo",
-	//				Branch:      "main",
-	//				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-	//			},
-	//		},
-	//	},
-	//	MockCommitQueueConnector: data.MockCommitQueueConnector{
-	//		Queue: map[string][]restModel.APICommitQueueItem{
-	//			"bth": []restModel.APICommitQueueItem{},
-	//		},
-	//		UserPermissions: map[data.UserRepoInfo]string{
-	//			data.UserRepoInfo{
-	//				Username: "baxterthehacker",
-	//				Owner:    "baxterthehacker",
-	//				Repo:     "public-repo",
-	//			}: "write",
-	//		},
-	//	},
-	//}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 
