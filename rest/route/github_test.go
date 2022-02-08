@@ -298,7 +298,14 @@ func (s *GithubWebhookRouteSuite) TestUnknownEventType() {
 func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
 	projectRef := &model.ProjectRef{
-		Id: "bth",
+		Id:      "bth",
+		Owner:   "baxterthehacker",
+		Repo:    "public-repo",
+		Branch:  "main",
+		Enabled: utility.TruePtr(),
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
 	}
 	s.NoError(projectRef.Insert())
 	cq := &commitqueue.CommitQueue{ProjectID: "bth"}
