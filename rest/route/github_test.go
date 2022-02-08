@@ -100,7 +100,7 @@ func TestGithubWebhookRouteSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *GithubWebhookRouteSuite) TestAddIntent() {
+func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.NoError(db.Clear(model.ProjectRefCollection))
 	s.NoError(db.Clear(patch.IntentCollection))
 	doc := &model.ProjectRef{
@@ -126,16 +126,10 @@ func (s *GithubWebhookRouteSuite) TestAddIntent() {
 	count, err := db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(count, 1)
-}
 
-func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
-	s.TestAddIntent()
-
-	ctx := context.Background()
-
-	resp := s.h.Run(ctx)
+	resp = s.h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	count, err := db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
+	count, err = db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(count, 1)
 }
