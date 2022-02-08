@@ -72,14 +72,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 		return "", err
 	}
 
-	var config *model.ProjectConfig
-	if len(patchDoc.PatchedProjectConfig) > 0 {
-		config, err = model.CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig))
-		if err != nil {
-			return "", errors.Wrap(err, "Error marshaling patched project config")
-		}
-	}
-	errs := validator.CheckProjectErrors(projectConfig, config, false)
+	errs := validator.CheckProjectErrors(projectConfig, false)
 	errs = append(errs, validator.CheckProjectSettings(projectConfig, &projectRef)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range errs.AtLevel(validator.Error) {

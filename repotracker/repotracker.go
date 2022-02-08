@@ -727,7 +727,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	v.Activated = utility.FalsePtr()
 
 	// validate the project
-	verrs := validator.CheckProjectErrors(projectInfo.Project, projectInfo.Config, true)
+	verrs := validator.CheckProjectErrors(projectInfo.Project, true)
 	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref)...)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have errors in the project.

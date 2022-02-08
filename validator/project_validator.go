@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -140,8 +139,8 @@ var projectErrorValidators = []projectValidator{
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
 var projectConfigErrorValidators = []projectConfigValidator{
-	validatePcAliases,
-	validatePlugins,
+	validateProjectConfigAliases,
+	validateProjectConfigPlugins,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -226,7 +225,7 @@ func CheckProjectWarnings(project *model.Project, yamlBytes []byte) ValidationEr
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectErrors(project *model.Project, projectConfig *model.ProjectConfig, includeLong bool) ValidationErrors {
+func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
@@ -236,12 +235,6 @@ func CheckProjectErrors(project *model.Project, projectConfig *model.ProjectConf
 		validationErrs = append(validationErrs,
 			longSyntaxValidator(project, includeLong)...)
 	}
-	if projectConfig != nil {
-		for _, projectConfigErrorValidator := range projectConfigErrorValidators {
-			validationErrs = append(validationErrs,
-				projectConfigErrorValidator(projectConfig)...)
-		}
-	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
 	distroIDs, distroAliases, err := getDistrosForProject(project.Identifier)
@@ -249,6 +242,16 @@ func CheckProjectErrors(project *model.Project, projectConfig *model.ProjectConf
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
+	return validationErrs
+}
+
+// verify that the project configuration syntax is valid
+func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, projectConfigErrorValidator := range projectConfigErrorValidators {
+		validationErrs = append(validationErrs,
+			projectConfigErrorValidator(projectConfig)...)
+	}
 	return validationErrs
 }
 
@@ -263,9 +266,9 @@ func CheckProjectSettings(p *model.Project, ref *model.ProjectRef) ValidationErr
 }
 
 // checks if the project configuration has errors
-func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef, projectConfig *model.ProjectConfig) error {
+func CheckProjectConfigurationIsValid(project *model.Project, pref *model.ProjectRef) error {
 	catcher := grip.NewBasicCatcher()
-	projectErrors := CheckProjectErrors(project, projectConfig, false)
+	projectErrors := CheckProjectErrors(project, false)
 	if len(projectErrors) != 0 {
 		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))
@@ -404,7 +407,7 @@ func dependencyCycleExists(node model.TVPair, allNodes []model.TVPair, visited m
 	return nil
 }
 
-func validatePcAliases(pc *model.ProjectConfig) ValidationErrors {
+func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	errs := []string{}
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "Github Checks Aliases")...)
@@ -422,86 +425,20 @@ func validatePcAliases(pc *model.ProjectConfig) ValidationErrors {
 	return validationErrs
 }
 
-func validatePlugins(pc *model.ProjectConfig) ValidationErrors {
+func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	webHook, _, err := model.IsWebhookConfigured(pc.Project, "")
-	if err != nil {
-		return errs
+	annotationSettings := pc.TaskAnnotationSettings
+	var webhook *evergreen.WebHook
+	if annotationSettings != nil {
+		webhook = &annotationSettings.FileTicketWebhook
 	}
-	webhookConfigured := webHook.Endpoint != ""
-
-	if !webhookConfigured && pc.BuildBaronSettings.TicketCreateProject == "" && len(pc.BuildBaronSettings.TicketSearchProjects) == 0 {
-		return errs
-	}
-	if !webhookConfigured && len(pc.BuildBaronSettings.TicketSearchProjects) == 0 {
+	buildBaronErrs := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook, false)
+	for _, errMsg := range buildBaronErrs {
 		errs = append(errs,
 			ValidationError{
-				Message: "Must provide projects to search",
+				Message: errMsg,
 			},
 		)
-	}
-	if !webhookConfigured && pc.BuildBaronSettings.TicketCreateProject == "" {
-		errs = append(errs,
-			ValidationError{
-				Message: "Must provide project to create tickets for",
-			},
-		)
-	}
-	if pc.BuildBaronSettings.BFSuggestionServer != "" {
-		if _, err = url.Parse(pc.BuildBaronSettings.BFSuggestionServer); err != nil {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("Failed to parse bf_suggestion_server for project '%s'", pc.Project),
-				},
-			)
-		}
-		if pc.BuildBaronSettings.BFSuggestionUsername == "" && pc.BuildBaronSettings.BFSuggestionPassword != "" {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("Failed validating configuration for project '%s': "+
-						"bf_suggestion_password must be blank if bf_suggestion_username is blank", pc.Project),
-				},
-			)
-		}
-		if pc.BuildBaronSettings.BFSuggestionTimeoutSecs <= 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("Failed validating configuration for project '%s': "+
-						"bf_suggestion_timeout_secs must be positive", pc.Project),
-				},
-			)
-		}
-	} else if pc.BuildBaronSettings.BFSuggestionUsername != "" || pc.BuildBaronSettings.BFSuggestionPassword != "" {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("Failed validating configuration for project '%s': "+
-					"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", pc.Project),
-			},
-		)
-	} else if pc.BuildBaronSettings.BFSuggestionTimeoutSecs != 0 {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("Failed validating configuration for project '%s': "+
-					"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", pc.Project),
-			},
-		)
-	}
-	// the webhook cannot be used if the default build baron creation and search is configured
-	if webhookConfigured {
-		if len(pc.BuildBaronSettings.TicketCreateProject) != 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: "The custom file ticket webhook and the build baron should not both be configured",
-				},
-			)
-		}
-		if _, err = url.Parse(webHook.Endpoint); err != nil {
-			errs = append(errs,
-				ValidationError{
-					Message: "Failed to parse webhook endpoint for project",
-				},
-			)
-		}
 	}
 	return errs
 }

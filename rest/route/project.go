@@ -508,9 +508,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	err = dbModel.BbProjectIsValid(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error validating build baron config"))
+	errs := dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, nil, true)
+	for _, errMsg := range errs {
+		catcher.Add(errors.New(errMsg))
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating build baron config"))
 	}
 
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
