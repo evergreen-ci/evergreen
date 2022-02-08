@@ -9,14 +9,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-type (
-	SplunkTracing struct{}
-)
-
-var _ interface {
-	graphql.HandlerExtension
-	graphql.ResponseInterceptor
-} = SplunkTracing{}
+type SplunkTracing struct{}
 
 func (SplunkTracing) ExtensionName() string {
 	return "SplunkTracing"
