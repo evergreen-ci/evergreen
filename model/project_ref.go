@@ -1078,6 +1078,21 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 	return projectRef, nil
 }
 
+// FindAllMergedTrackedEnabledProjectRefs returns all enabled project refs in the db
+// that are currently being tracked (i.e. their project files
+// still exist and the project is not hidden).
+// Can't hide a repo without hiding the branches, so don't need to aggregate here.
+func FindAllMergedTrackedEnabledProjectRefs() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}, ProjectRefEnabledKey: bson.M{"$ne": false}})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	if err != nil {
+		return nil, err
+	}
+
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
 // FindAllMergedTrackedProjectRefs returns all project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden).
