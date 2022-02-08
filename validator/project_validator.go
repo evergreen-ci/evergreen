@@ -141,6 +141,7 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
+	validateProjectConfigPeriodicBuilds,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -405,6 +406,19 @@ func dependencyCycleExists(node model.TVPair, allNodes []model.TVPair, visited m
 
 	// no cycle found
 	return nil
+}
+
+func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, periodicBuild := range pc.PeriodicBuilds {
+		if err := periodicBuild.Validate(); err != nil {
+			validationErrs = append(validationErrs, ValidationError{
+				Message: err.Error(),
+				Level:   Error,
+			})
+		}
+	}
+	return validationErrs
 }
 
 func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
