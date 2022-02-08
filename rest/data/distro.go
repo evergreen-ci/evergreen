@@ -89,7 +89,6 @@ func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
 func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 	d, err := distro.FindByID(distroId)
 	if err != nil {
-		fmt.Println("MALIK1")
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("problem finding distro '%s'", distroId),
@@ -102,21 +101,18 @@ func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 		}
 	}
 	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
-		fmt.Println("MALIK2")
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("hosts for distro with id '%s' were not terminated", distroId),
 		}
 	}
 	if err = distro.Remove(distroId); err != nil {
-		fmt.Println("MALIK3")
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
 		}
 	}
 	if err = model.ClearTaskQueue(distroId); err != nil {
-		fmt.Println("MALIK4")
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("failed to clear task queue for distro '%s'", distroId),
