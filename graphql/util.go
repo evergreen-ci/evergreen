@@ -30,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -884,6 +885,8 @@ func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
 	return publicKeys
 }
 
+var errHostStatusChangeConflict = errors.New("conflicting host status modification is in progress")
+
 // To be moved to a better home when we restructure the resolvers.go file
 // TerminateSpawnHost is a shared utility function to terminate a spawn host
 func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, r *http.Request) (*host.Host, int, error) {
@@ -892,10 +895,16 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.
 		return nil, http.StatusBadRequest, err
 	}
 
-	if err := cloud.TerminateSpawnHost(ctx, env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
+
 	return h, http.StatusOK, nil
 }
 
@@ -911,10 +920,12 @@ func StopSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		return nil, http.StatusBadRequest, err
 	}
 
-	// Stop the host
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
 	if err := env.RemoteQueue().Put(ctx, stopJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
@@ -929,10 +940,13 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host
 		return nil, http.StatusBadRequest, err
 
 	}
-	// Start the host
+
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
 	if err := env.RemoteQueue().Put(ctx, startJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
