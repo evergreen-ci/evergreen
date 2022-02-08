@@ -1,0 +1,25 @@
+mutation {
+    saveProjectSettingsForSection(
+        projectSettings: {
+            projectRef: {
+                id: "1234"
+                commitQueue: {
+                    enabled: true
+                    requireSigned: true
+                }
+            }
+        },
+        section: GITHUB_AND_COMMIT_QUEUE
+    ) {
+        projectRef {
+            commitQueue {
+                enabled ## unchanged
+                requireSigned
+
+}
+        }
+        vars {
+            vars ## should be unchanged
+        }
+    }
+}

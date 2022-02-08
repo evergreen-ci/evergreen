@@ -552,6 +552,7 @@ input PeriodicBuildInput {
 
 input CommitQueueParamsInput {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String
   message: String
 }
@@ -1352,12 +1353,14 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String!
   message: String!
 }
 
 type RepoCommitQueueParams {
   enabled: Boolean!
+  requireSigned: Boolean!
   mergeMethod: String!
   message: String!
 }
