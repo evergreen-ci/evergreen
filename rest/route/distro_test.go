@@ -13,12 +13,13 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -121,7 +122,7 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("New set-up script"))
 }
@@ -212,16 +213,16 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(resp.Status(), http.StatusOK)
 	s.NotNil(resp.Data())
 
-	d, ok := (resp.Data()).(*model.APIDistro)
+	d, ok := (resp.Data()).(*restModel.APIDistro)
 
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("distro1"), d.Name)
 
 	s.Equal(5, d.HostAllocatorSettings.MinimumHosts)
 	s.Equal(10, d.HostAllocatorSettings.MaximumHosts)
-	s.Equal(model.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
+	s.Equal(restModel.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
-	s.Equal(model.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
+	s.Equal(restModel.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
@@ -620,7 +621,7 @@ func TestDistroDeleteSuite(t *testing.T) {
 }
 
 func (s *DistroDeleteByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(distro.Collection))
+	s.NoError(db.ClearCollections(distro.Collection, model.TaskAliasQueuesCollection))
 	s.data = data.DBDistroConnector{}
 	s.sc = &data.DBConnector{
 		DBDistroConnector: s.data,
@@ -792,7 +793,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSpawnAllowed() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.UserSpawnAllowed, true)
 }
@@ -809,7 +810,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Provider, utility.ToStringPtr("mock"))
 }
@@ -837,7 +838,7 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 
 	s.Require().Len(apiDistro.ProviderSettingsList, 1)
@@ -865,7 +866,7 @@ func (s *DistroPatchByIDSuite) TestRunValidArch() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Arch, utility.ToStringPtr("linux_amd64"))
 }
@@ -882,7 +883,7 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.WorkDir, utility.ToStringPtr("/tmp"))
 }
@@ -899,7 +900,7 @@ func (s *DistroPatchByIDSuite) TestRunValidHostAllocatorSettingsMaximumHosts() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 50)
 }
@@ -916,7 +917,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.SetupAsSudo, false)
 }
@@ -933,7 +934,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSetup() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("New Set-up string"))
 }
@@ -950,7 +951,7 @@ func (s *DistroPatchByIDSuite) TestRunValidUser() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.User, utility.ToStringPtr("user101"))
 }
@@ -967,7 +968,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.SSHKey, utility.ToStringPtr("New SSH Key"))
 }
@@ -984,7 +985,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.SSHOptions, []string{"BatchMode=no"})
 }
@@ -1001,10 +1002,10 @@ func (s *DistroPatchByIDSuite) TestRunValidExpansions() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	expansion := model.APIExpansion{Key: utility.ToStringPtr("key1"), Value: utility.ToStringPtr("value1")}
-	s.Equal(apiDistro.Expansions, []model.APIExpansion{expansion})
+	expansion := restModel.APIExpansion{Key: utility.ToStringPtr("key1"), Value: utility.ToStringPtr("value1")}
+	s.Equal(apiDistro.Expansions, []restModel.APIExpansion{expansion})
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
@@ -1019,7 +1020,7 @@ func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Disabled, true)
 }
@@ -1036,7 +1037,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.ContainerPool, utility.ToStringPtr(""))
 	s.Equal(apiDistro.PlannerSettings.Version, utility.ToStringPtr("legacy"))
@@ -1079,7 +1080,7 @@ func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr("tunable"), apiDistro.PlannerSettings.Version)
 }
@@ -1121,7 +1122,7 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr("legacy"), apiDistro.PlannerSettings.Version)
 }
@@ -1138,7 +1139,7 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 }
@@ -1168,7 +1169,7 @@ func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 }
@@ -1200,7 +1201,7 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
@@ -1262,7 +1263,7 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodUserData), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodSSH), apiDistro.BootstrapSettings.Communication)
@@ -1285,7 +1286,7 @@ func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 }
@@ -1402,7 +1403,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	resp := s.rm.Run(ctx)
 	s.Equal(resp.Status(), http.StatusOK)
 	s.NotNil(resp.Data())
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Disabled, false)
 	s.Equal(apiDistro.Name, utility.ToStringPtr("fedora8"))
@@ -1431,7 +1432,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(utility.ToStringPtr("service_user"), apiDistro.BootstrapSettings.ServiceUser)
 	s.Equal(utility.ToStringPtr("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
 	s.Equal(utility.ToStringPtr("/new/root/dir"), apiDistro.BootstrapSettings.RootDir)
-	s.Equal([]model.APIEnvVar{{Key: utility.ToStringPtr("envKey"), Value: utility.ToStringPtr("envValue")}}, apiDistro.BootstrapSettings.Env)
+	s.Equal([]restModel.APIEnvVar{{Key: utility.ToStringPtr("envKey"), Value: utility.ToStringPtr("envValue")}}, apiDistro.BootstrapSettings.Env)
 	s.Equal(1, apiDistro.BootstrapSettings.ResourceLimits.NumFiles)
 	s.Equal(2, apiDistro.BootstrapSettings.ResourceLimits.NumProcesses)
 	s.Equal(3, apiDistro.BootstrapSettings.ResourceLimits.NumTasks)
@@ -1445,7 +1446,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal([]string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"}, apiDistro.SSHOptions)
 	s.False(apiDistro.UserSpawnAllowed)
 
-	s.Equal(apiDistro.Expansions, []model.APIExpansion{
+	s.Equal(apiDistro.Expansions, []restModel.APIExpansion{
 		{Key: utility.ToStringPtr("~decompress"), Value: utility.ToStringPtr("~tar zxvf")},
 		{Key: utility.ToStringPtr("~ps"), Value: utility.ToStringPtr("~ps aux")},
 		{Key: utility.ToStringPtr("~kill_pid"), Value: utility.ToStringPtr("~kill -- -$(ps opgid= %v)")},
@@ -1617,7 +1618,7 @@ func (s *distroExecuteSuite) TestParse() {
 
 func (s *distroExecuteSuite) TestRunWithDistroID() {
 	s.rh.distro = "distro1"
-	s.rh.opts = model.APIDistroScriptOptions{
+	s.rh.opts = restModel.APIDistroScriptOptions{
 		Script:           "echo foobar",
 		IncludeTaskHosts: true,
 	}
@@ -1630,7 +1631,7 @@ func (s *distroExecuteSuite) TestRunWithDistroID() {
 
 func (s *distroExecuteSuite) TestRunWithDistroAlias() {
 	s.rh.distro = "alias1"
-	s.rh.opts = model.APIDistroScriptOptions{
+	s.rh.opts = restModel.APIDistroScriptOptions{
 		Script:           "echo foobar",
 		IncludeTaskHosts: true,
 	}
