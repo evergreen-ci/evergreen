@@ -550,7 +550,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	project := &model.Project{}
-	projectConfig := &model.ProjectConfig{}
+	var projectConfig *model.ProjectConfig
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		ReadFileFrom: model.ReadFromLocal,
