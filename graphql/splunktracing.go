@@ -21,7 +21,10 @@ func (SplunkTracing) Validate(graphql.ExecutableSchema) error {
 
 func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 	rc := graphql.GetOperationContext(ctx)
-
+	if rc == nil {
+		// There was an invalid operation context, so we can't do anything
+		return next(ctx)
+	}
 	start := graphql.Now()
 
 	defer func() {
@@ -29,7 +32,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 
 		duration := end.Sub(start)
 		grip.Info(message.Fields{
-			"message":     "graphql tracing",
+			"message":     "graphql.tracing",
 			"query":       rc.Operation.Name,
 			"operation":   rc.Operation.Operation,
 			"variables":   rc.Variables,
@@ -38,6 +41,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 			"start":       start,
 			"end":         end,
 		})
+
 	}()
 	return next(ctx)
 }
