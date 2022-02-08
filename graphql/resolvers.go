@@ -1595,12 +1595,17 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
-	allProjs, err := model.FindAllMergedTrackedEnabledProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-
-	groupedProjects, err := GroupProjects(allProjs, false)
+	enabledProj := []model.ProjectRef{}
+	for _, p := range allProjs {
+		if p.IsEnabled() {
+			enabledProj = append(enabledProj, p)
+		}
+	}
+	groupedProjects, err := GroupProjects(enabledProj, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
