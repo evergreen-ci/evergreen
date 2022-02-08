@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -422,10 +421,7 @@ func ClearTaskQueue(distroId string) error {
 			"message": "alias task queue not found, skipping",
 			"distro":  distroId,
 		})
-		err = catcher.Resolve()
-		fmt.Println("malik")
-		fmt.Println(err)
-		return err
+		return catcher.Resolve()
 	}
 	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
 	if err != nil {

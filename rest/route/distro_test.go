@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -621,7 +622,7 @@ func TestDistroDeleteSuite(t *testing.T) {
 }
 
 func (s *DistroDeleteByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(distro.Collection, model.TaskAliasQueuesCollection))
+	s.NoError(db.ClearCollections(distro.Collection, model.TaskAliasQueuesCollection, model.TaskQueuesCollection))
 	s.data = data.DBDistroConnector{}
 	s.sc = &data.DBConnector{
 		DBDistroConnector: s.data,
@@ -654,6 +655,13 @@ func (s *DistroDeleteByIDSuite) TestParse() {
 
 func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 	ctx := context.Background()
+
+	now := time.Now().Round(time.Millisecond).UTC()
+	taskQueue := &model.TaskQueue{
+		Distro:      "distro1",
+		GeneratedAt: now,
+	}
+	s.NoError(db.Insert(model.TaskQueuesCollection, taskQueue))
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroID = "distro1"
 
