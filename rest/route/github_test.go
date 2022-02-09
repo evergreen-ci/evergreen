@@ -27,7 +27,6 @@ import (
 )
 
 type GithubWebhookRouteSuite struct {
-	ss                     *data.MockConnector
 	sc                     *data.DBConnector
 	rm                     gimlet.RouteHandler
 	canceler               context.CancelFunc
@@ -101,8 +100,7 @@ func TestGithubWebhookRouteSuite(t *testing.T) {
 }
 
 func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
-	s.NoError(db.Clear(model.ProjectRefCollection))
-	s.NoError(db.Clear(patch.IntentCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.IntentCollection))
 	doc := &model.ProjectRef{
 		Owner:            "baxterthehacker",
 		Repo:             "public-repo",
