@@ -10,7 +10,11 @@
       "branch_name" : "main",
       "use_repo_settings" : false,
       "admins": ["me"],
-      "spawn_host_script_path": "spawn_script"
+      "spawn_host_script_path": "spawn_script",
+      "commit_queue" : {
+        "enabled" : false,
+        "require_signed": true
+      }
     }
   ],
   "repo_ref":[

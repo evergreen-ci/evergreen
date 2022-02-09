@@ -2,7 +2,7 @@ mutation {
     saveProjectSettingsForSection(
         projectSettings: {
             projectRef: {
-                id: "sandbox_project_id"
+                    id: "sandbox_project_id"
             }
             vars: {
                 vars: {goodbye: "now"},

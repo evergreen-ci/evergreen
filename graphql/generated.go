@@ -177,9 +177,10 @@ type ComplexityRoot struct {
 	}
 
 	CommitQueueParams struct {
-		Enabled     func(childComplexity int) int
-		MergeMethod func(childComplexity int) int
-		Message     func(childComplexity int) int
+		Enabled       func(childComplexity int) int
+		MergeMethod   func(childComplexity int) int
+		Message       func(childComplexity int) int
+		RequireSigned func(childComplexity int) int
 	}
 
 	Dependency struct {
@@ -718,9 +719,10 @@ type ComplexityRoot struct {
 	}
 
 	RepoCommitQueueParams struct {
-		Enabled     func(childComplexity int) int
-		MergeMethod func(childComplexity int) int
-		Message     func(childComplexity int) int
+		Enabled       func(childComplexity int) int
+		MergeMethod   func(childComplexity int) int
+		Message       func(childComplexity int) int
+		RequireSigned func(childComplexity int) int
 	}
 
 	RepoEventLogEntry struct {
@@ -1884,6 +1886,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
+
+	case "CommitQueueParams.requireSigned":
+		if e.complexity.CommitQueueParams.RequireSigned == nil {
+			break
+		}
+
+		return e.complexity.CommitQueueParams.RequireSigned(childComplexity), true
 
 	case "Dependency.buildVariant":
 		if e.complexity.Dependency.BuildVariant == nil {
@@ -4897,6 +4906,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoCommitQueueParams.Message(childComplexity), true
 
+	case "RepoCommitQueueParams.requireSigned":
+		if e.complexity.RepoCommitQueueParams.RequireSigned == nil {
+			break
+		}
+
+		return e.complexity.RepoCommitQueueParams.RequireSigned(childComplexity), true
+
 	case "RepoEventLogEntry.after":
 		if e.complexity.RepoEventLogEntry.After == nil {
 			break
@@ -7875,6 +7891,7 @@ input PeriodicBuildInput {
 
 input CommitQueueParamsInput {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String
   message: String
 }
@@ -8675,12 +8692,14 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String!
   message: String!
 }
 
 type RepoCommitQueueParams {
   enabled: Boolean!
+  requireSigned: Boolean!
   mergeMethod: String!
   message: String!
 }
@@ -12921,6 +12940,38 @@ func (ec *executionContext) _CommitQueueParams_enabled(ctx context.Context, fiel
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "CommitQueueParams",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequireSigned, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26344,6 +26395,41 @@ func (ec *executionContext) _RepoCommitQueueParams_enabled(ctx context.Context, 
 	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _RepoCommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoCommitQueueParams",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequireSigned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _RepoCommitQueueParams_mergeMethod(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -39007,6 +39093,14 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 			if err != nil {
 				return it, err
 			}
+		case "requireSigned":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireSigned"))
+			it.RequireSigned, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "mergeMethod":
 			var err error
 
@@ -42308,6 +42402,8 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			out.Values[i] = graphql.MarshalString("CommitQueueParams")
 		case "enabled":
 			out.Values[i] = ec._CommitQueueParams_enabled(ctx, field, obj)
+		case "requireSigned":
+			out.Values[i] = ec._CommitQueueParams_requireSigned(ctx, field, obj)
 		case "mergeMethod":
 			out.Values[i] = ec._CommitQueueParams_mergeMethod(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -45617,6 +45713,11 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 			out.Values[i] = graphql.MarshalString("RepoCommitQueueParams")
 		case "enabled":
 			out.Values[i] = ec._RepoCommitQueueParams_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "requireSigned":
+			out.Values[i] = ec._RepoCommitQueueParams_requireSigned(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
