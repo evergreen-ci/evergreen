@@ -23,6 +23,14 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 	rc := graphql.GetOperationContext(ctx)
 	if rc == nil {
 		// There was an invalid operation context, so we can't do anything
+		grip.Critical(message.Fields{
+			"message": "no operation context found",
+		})
+		return next(ctx)
+	}
+
+	if rc.Operation == nil {
+		// There was an invalid operation this is likely the result of a bad query
 		return next(ctx)
 	}
 	start := graphql.Now()
