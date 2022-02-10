@@ -1561,8 +1561,6 @@ func (t *Task) displayTaskPriority() int {
 		return 80
 	case evergreen.TaskContainerUnallocated:
 		return 80
-	case evergreen.TaskContainerAllocated:
-		return 81
 	case evergreen.TaskInactive:
 		return 90
 	case evergreen.TaskSucceeded:

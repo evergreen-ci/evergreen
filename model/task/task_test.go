@@ -2502,7 +2502,8 @@ func TestDisplayStatus(t *testing.T) {
 		Activated: true,
 	}
 	assert.NoError(t, t14.Insert())
-	checkStatuses(t, evergreen.TaskWillRun, t13)
+	checkStatuses(t, evergreen.TaskContainerUnallocated, t13)
+	checkStatuses(t, evergreen.TaskContainerAllocated, t14)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
