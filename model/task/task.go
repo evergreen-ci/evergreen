@@ -3128,6 +3128,92 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 	return StatusCount, nil
 }
 
+type GroupedStatusCount struct {
+	Variant      string         `bson:"variant"`
+	DisplayName  string         `bson:"display_name"`
+	StatusCounts []*StatusCount `bson:"status_counts"`
+}
+
+func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedStatusCount, error) {
+	StatusCount := []*GroupedStatusCount{}
+	pipeline := getTasksByVersionPipeline(versionID, opts)
+	project := bson.M{"$project": bson.M{
+		BuildVariantKey:            "$" + BuildVariantKey,
+		BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+		DisplayStatusKey:           "$" + DisplayStatusKey,
+	}}
+	pipeline = append(pipeline, project)
+	variantStatusesKey := "variant_statuses"
+	groupByStatusPipeline := []bson.M{
+		{
+			"$group": bson.M{
+				"_id": "$" + BuildVariantKey,
+				variantStatusesKey: bson.M{
+					"$push": bson.M{
+						DisplayStatusKey:           "$" + DisplayStatusKey,
+						BuildVariantKey:            "$" + BuildVariantKey,
+						BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+					},
+				},
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$" + variantStatusesKey,
+				"preserveNullAndEmptyArrays": false,
+			},
+		},
+		{
+			"$project": bson.M{
+				variantStatusesKey: 1,
+				"_id":              0,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					DisplayStatusKey:           "$" + bsonutil.GetDottedKeyName(variantStatusesKey, DisplayStatusKey),
+					BuildVariantKey:            "$" + bsonutil.GetDottedKeyName(variantStatusesKey, BuildVariantKey),
+					BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(variantStatusesKey, BuildVariantDisplayNameKey),
+				},
+				"count": bson.M{"$sum": 1},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{BuildVariantKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey), BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey)},
+				"status_counts": bson.M{
+					"$push": bson.M{
+						"status": "$" + bsonutil.GetDottedKeyName("_id", DisplayStatusKey),
+						"count":  "$count",
+					},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"variant":       "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey),
+				"display_name":  "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey),
+				"status_counts": 1,
+			},
+		},
+	}
+	pipeline = append(pipeline, groupByStatusPipeline...)
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting grouped task stats")
+	}
+	err = cursor.All(ctx, &StatusCount)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting task stats")
+	}
+	return StatusCount, nil
+
+}
+
 type HasMatchingTasksOptions struct {
 	TaskNames []string
 	Variants  []string
