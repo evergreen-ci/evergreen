@@ -2495,7 +2495,7 @@ func TestDisplayStatus(t *testing.T) {
 		Activated: true,
 	}
 	assert.NoError(t, t13.Insert())
-	checkStatuses(t, evergreen.TaskWillRun, t12)
+	// No CheckStatuses for t12 to avoid paradox
 	t14 := Task{
 		Id:        "t14",
 		Status:    evergreen.TaskContainerAllocated,
