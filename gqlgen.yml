@@ -319,6 +319,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
+  GroupedStatusCount:
+    model: github.com/evergreen-ci/evergreen/model/task.GroupedStatusCount
   TaskLogs:
     fields:
       eventLogs:
