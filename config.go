@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -500,28 +501,17 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 		retryConf.MaxRetries = 10
 		client := utility.GetHTTPRetryableClient(retryConf)
 
-		sender, err = send.NewSplunkLoggerWithClient("", s.Splunk, grip.GetSender().Level(), client)
-		if err == nil {
-			if err = sender.SetLevel(levelInfo); err != nil {
-				utility.PutHTTPClient(client)
-				return nil, errors.Wrap(err, "problem setting level")
-			}
-			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-				utility.PutHTTPClient(client)
-				return nil, errors.Wrap(err, "problem setting error handler")
-			}
-			senders = append(senders,
-				send.NewBufferedSender(sender,
-					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
-					s.LoggerConfig.Buffer.Count))
-
-			env.RegisterCloser("splunk-http-client", false, func(_ context.Context) error {
-				utility.PutHTTPClient(client)
-				return nil
-			})
-		} else {
+		splunkSender, err := s.makeSplunkSender(ctx, client, levelInfo, fallback)
+		if err != nil {
 			utility.PutHTTPClient(client)
+			return nil, errors.Wrap(err, "configuring splunk logger")
 		}
+
+		env.RegisterCloser("splunk-http-client", false, func(_ context.Context) error {
+			utility.PutHTTPClient(client)
+			return nil
+		})
+		senders = append(senders, splunkSender)
 	}
 
 	// the slack logging service is only for logging very high level alerts.
@@ -550,6 +540,30 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
+}
+
+func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, levelInfo send.LevelInfo, fallback send.Sender) (send.Sender, error) {
+	sender, err := send.NewSplunkLoggerWithClient("", s.Splunk, grip.GetSender().Level(), client)
+	if err != nil {
+		return nil, errors.Wrap(err, "making splunk logger")
+	}
+
+	if err = sender.SetLevel(levelInfo); err != nil {
+		return nil, errors.Wrap(err, "problem setting splunk level")
+	}
+
+	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+		return nil, errors.Wrap(err, "setting splunk error handler")
+	}
+
+	opts := send.BufferedAsyncSenderOptions{}
+	opts.FlushInterval = time.Duration(s.LoggerConfig.Buffer.DurationSeconds) * time.Second
+	opts.BufferSize = s.LoggerConfig.Buffer.Count
+	if sender, err = send.NewBufferedAsyncSender(ctx, sender, opts); err != nil {
+		return nil, errors.Wrap(err, "making splunk buffered sender")
+	}
+
+	return sender, nil
 }
 
 func (s *Settings) GetGithubOauthStrings() ([]string, error) {
