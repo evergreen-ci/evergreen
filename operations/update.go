@@ -53,96 +53,99 @@ func Update() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			client := conf.getRestCommunicator(ctx)
-			defer client.Close()
-
-			update, err := checkUpdate(client, false, forceUpdate)
-			if err != nil {
-				return err
-			}
-			if !update.needsUpdate || len(update.binaries) == 0 {
-				return nil
-			}
-
-			updatedBin, err := tryAllPrepareUpdate(update)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if doInstall {
-					grip.Error(os.Remove(updatedBin))
-				}
-			}()
-
-			if doInstall {
-				grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
-
-				var binaryDest string
-				binaryDest, err = osext.Executable()
-				if err != nil {
-					return errors.Errorf("Failed to get installation path: %s", err)
-				}
-
-				winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
-				winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
-				if runtime.GOOS == "windows" {
-					grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
-					if err = os.Rename(binaryDest, winTempDest); err != nil {
-						return err
-					}
-				} else {
-					grip.Infoln("Unlinking existing binary at", binaryDest)
-					if err = syscall.Unlink(binaryDest); err != nil {
-						return err
-					}
-				}
-
-				grip.Infoln("Moving upgraded binary to", binaryDest)
-				err = copyFile(binaryDest, updatedBin)
-				if err != nil {
-					return err
-				}
-
-				grip.Info("Setting binary permissions...")
-				err = os.Chmod(binaryDest, 0755)
-				if err != nil {
-					return err
-				}
-				grip.Info("Upgrade complete!")
-
-				if runtime.GOOS == "windows" {
-					grip.Infoln("Deleting old binary", winTempDest)
-					// Source: https://stackoverflow.com/a/19748576
-					// Since Windows does not allow a binary that's currently in
-					// use to be deleted, wait 2 seconds for the CLI process to
-					// exit and then delete it.
-					cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping localhost -n 3 > nul & del %s", winTempDest))
-					if err = cmd.Start(); err != nil {
-						return err
-					}
-				}
-
-				return nil
-			}
-
-			grip.Infoln("New binary downloaded (but not installed) to path:", updatedBin)
-
-			// Attempt to generate a command that the user can copy/paste to complete the install.
-			binaryDest, err := osext.Executable()
-			if err != nil {
-				// osext not working on this platform so we can't generate command, give up (but ignore err)
-				return nil
-			}
-			installCommand := fmt.Sprintf("\tmv %s %s", updatedBin, binaryDest)
-			if runtime.GOOS == "windows" {
-				installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
-			}
-			grip.Infoln("To complete the install, run the following command:", installCommand)
-
-			return nil
+			return DoUpdate(conf, ctx, doInstall, forceUpdate)
 		},
 	}
+}
+
+func DoUpdate(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool) error {
+	client := conf.getRestCommunicator(ctx)
+	defer client.Close()
+
+	update, err := checkUpdate(client, false, forceUpdate)
+	if err != nil {
+		return err
+	}
+	if !update.needsUpdate || len(update.binaries) == 0 {
+		return nil
+	}
+
+	updatedBin, err := tryAllPrepareUpdate(update)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if doInstall {
+			grip.Error(os.Remove(updatedBin))
+		}
+	}()
+
+	if doInstall {
+		grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
+
+		var binaryDest string
+		binaryDest, err = osext.Executable()
+		if err != nil {
+			return errors.Errorf("Failed to get installation path: %s", err)
+		}
+
+		winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
+		winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
+		if runtime.GOOS == "windows" {
+			grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
+			if err = os.Rename(binaryDest, winTempDest); err != nil {
+				return err
+			}
+		} else {
+			grip.Infoln("Unlinking existing binary at", binaryDest)
+			if err = syscall.Unlink(binaryDest); err != nil {
+				return err
+			}
+		}
+
+		grip.Infoln("Moving upgraded binary to", binaryDest)
+		err = copyFile(binaryDest, updatedBin)
+		if err != nil {
+			return err
+		}
+
+		grip.Info("Setting binary permissions...")
+		err = os.Chmod(binaryDest, 0755)
+		if err != nil {
+			return err
+		}
+		grip.Info("Upgrade complete!")
+
+		if runtime.GOOS == "windows" {
+			grip.Infoln("Deleting old binary", winTempDest)
+			// Source: https://stackoverflow.com/a/19748576
+			// Since Windows does not allow a binary that's currently in
+			// use to be deleted, wait 2 seconds for the CLI process to
+			// exit and then delete it.
+			cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping localhost -n 3 > nul & del %s", winTempDest))
+			if err = cmd.Start(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	grip.Infoln("New binary downloaded (but not installed) to path:", updatedBin)
+
+	// Attempt to generate a command that the user can copy/paste to complete the install.
+	binaryDest, err := osext.Executable()
+	if err != nil {
+		// osext not working on this platform so we can't generate command, give up (but ignore err)
+		return nil
+	}
+	installCommand := fmt.Sprintf("\tmv %s %s", updatedBin, binaryDest)
+	if runtime.GOOS == "windows" {
+		installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
+	}
+	grip.Infoln("To complete the install, run the following command:", installCommand)
+
+	return nil
 }
 
 func copyFile(dst, src string) error {

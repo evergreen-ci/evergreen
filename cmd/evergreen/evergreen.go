@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,6 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -100,6 +102,19 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
+		confPath := c.String("conf")
+		conf, err := operations.NewClientSettings(confPath)
+		if err != nil {
+			return errors.Wrap(err, "problem loading configuration")
+		}
+		if conf.AutoUpgradeCli {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			err = operations.DoUpdate(conf, ctx, true, false)
+			if err != nil {
+				return errors.Wrap(err, "problem auto updating CLI")
+			}
+		}
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
