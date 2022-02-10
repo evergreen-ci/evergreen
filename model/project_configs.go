@@ -29,12 +29,7 @@ type ProjectConfig struct {
 	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
 	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
 	DeactivatePrevious     *bool                          `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
-	PRTestingEnabled       *bool                          `yaml:"pr_testing_enabled,omitempty" bson:"pr_testing_enabled,omitempty"`
-	ManualPRTestingEnabled *bool                          `yaml:"manual_pr_testing_enabled,omitempty" bson:"manual_pr_testing_enabled,omitempty"`
-	GithubChecksEnabled    *bool                          `yaml:"github_checks_enabled,omitempty" bson:"github_checks_enabled,omitempty"`
-	GitTagVersionsEnabled  *bool                          `yaml:"git_tag_versions_enabled,omitempty" bson:"git_tag_versions_enabled,omitempty"`
 	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
-	CommitQueue            *CommitQueueParams             `yaml:"commit_queue,omitempty" bson:"commit_queue,omitempty"`
 	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
 	GithubTriggerAliases   []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
 	PeriodicBuilds         []PeriodicBuildDefinition      `yaml:"periodic_builds,omitempty" bson:"periodic_builds,omitempty"`
