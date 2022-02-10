@@ -217,6 +217,18 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerAllocated},
+					},
+					"then": evergreen.TaskContainerAllocated,
+				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerUnallocated},
+					},
+					"then": evergreen.TaskContainerUnallocated,
+				},
 				// A task will be unscheduled if it is not activated
 				{
 					"case": bson.M{

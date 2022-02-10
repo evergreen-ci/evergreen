@@ -1559,6 +1559,10 @@ func (t *Task) displayTaskPriority() int {
 		return 70
 	case evergreen.TaskUndispatched:
 		return 80
+	case evergreen.TaskContainerUnallocated:
+		return 80
+	case evergreen.TaskContainerAllocated:
+		return 81
 	case evergreen.TaskInactive:
 		return 90
 	case evergreen.TaskSucceeded:
@@ -1593,6 +1597,7 @@ func ResetTasks(taskIds []string) error {
 	return err
 }
 
+//TODO: might have to create container version of this
 func resetTaskUpdate(t *Task) bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
@@ -2752,13 +2757,15 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 // TaskStatusCount holds counts for task statuses
 type TaskStatusCount struct {
-	Succeeded    int `json:"succeeded"`
-	Failed       int `json:"failed"`
-	Started      int `json:"started"`
-	Undispatched int `json:"undispatched"`
-	Inactive     int `json:"inactive"`
-	Dispatched   int `json:"dispatched"`
-	TimedOut     int `json:"timed_out"`
+	Succeeded            int `json:"succeeded"`
+	Failed               int `json:"failed"`
+	Started              int `json:"started"`
+	Undispatched         int `json:"undispatched"`
+	Inactive             int `json:"inactive"`
+	Dispatched           int `json:"dispatched"`
+	ContainerUnallocated int `json:"container_unallocated"`
+	ContainerAllocated   int `json:"container_allocated"`
+	TimedOut             int `json:"timed_out"`
 }
 
 func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
@@ -2777,6 +2784,10 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 		tsc.Undispatched++
 	case evergreen.TaskInactive:
 		tsc.Inactive++
+	case evergreen.TaskContainerUnallocated:
+		tsc.ContainerUnallocated++
+	case evergreen.TaskContainerAllocated:
+		tsc.ContainerAllocated++
 	}
 }
 
