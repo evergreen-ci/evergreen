@@ -2942,6 +2942,102 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 
 }
 
+func TestGetGroupedTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		BuildVariant: "bv1",
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv1",
+	}
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		Execution:    1,
+		Status:       evergreen.TaskSucceeded,
+		BuildVariant: "bv1",
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		Execution:    1,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv2",
+	}
+	t5 := Task{
+		Id:           "t5",
+		Version:      "v1",
+		Execution:    2,
+		Status:       evergreen.TaskStatusPending,
+		BuildVariant: "bv2",
+	}
+	t6 := Task{
+		Id:           "t6",
+		Version:      "v1",
+		Execution:    2,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv2",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	opts := GetTasksByVersionOptions{}
+	variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(variants))
+	expectedValues := []GroupedStatusCount{
+		{
+			Variant:     "bv1",
+			DisplayName: "",
+			StatusCounts: []*StatusCount{
+				{
+					Status: evergreen.TaskFailed,
+					Count:  1,
+				},
+				{
+					Status: evergreen.TaskSucceeded,
+					Count:  2,
+				},
+			},
+		},
+		{
+			Variant:     "bv2",
+			DisplayName: "",
+			StatusCounts: []*StatusCount{
+				{
+					Status: evergreen.TaskFailed,
+					Count:  2,
+				},
+				{
+					Status: evergreen.TaskStatusPending,
+					Count:  1,
+				},
+			},
+		},
+	}
+	// I tried using reflect.DeepEqual here, but it was failing because of the slice ptr values for StatusCounts
+	// Loop through expected values and compare to actual values
+	for i, expected := range expectedValues {
+		actual := variants[i]
+		assert.Equal(t, expected.Variant, actual.Variant)
+		assert.Equal(t, expected.DisplayName, actual.DisplayName)
+		assert.Equal(t, len(expected.StatusCounts), len(actual.StatusCounts))
+		for j, expectedCount := range expected.StatusCounts {
+			actualCount := actual.StatusCounts[j]
+			assert.Equal(t, expectedCount.Status, actualCount.Status)
+			assert.Equal(t, expectedCount.Count, actualCount.Count)
+		}
+	}
+
+}
+
 func TestHasMatchingTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{

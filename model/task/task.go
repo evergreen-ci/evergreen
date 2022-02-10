@@ -3180,6 +3180,11 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 			},
 		},
 		{
+			"$sort": bson.M{
+				bsonutil.GetDottedKeyName("_id", DisplayStatusKey): 1,
+			},
+		},
+		{
 			"$group": bson.M{
 				"_id": bson.M{BuildVariantKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey), BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey)},
 				"status_counts": bson.M{
@@ -3195,6 +3200,11 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 				"variant":       "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey),
 				"display_name":  "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey),
 				"status_counts": 1,
+			},
+		},
+		{
+			"$sort": bson.M{
+				"variant": 1,
 			},
 		},
 	}
