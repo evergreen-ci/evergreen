@@ -569,7 +569,11 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, *ProjectConfig, error) {
-	intermediateProject, err := createIntermediateProject(data)
+	unmarshalStrict := false
+	if opts != nil {
+		unmarshalStrict = opts.UnmarshalStrict
+	}
+	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -582,7 +586,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	for _, path := range intermediateProject.Include {
 		if opts == nil {
 			err = errors.New("Trying to open include files with empty opts")
-			grip.Critical(message.NewError(errors.WithStack(err)))
 			return nil, nil, errors.Wrapf(err, LoadProjectError)
 		}
 		opts.UpdateForFile(path.FileName)
@@ -604,7 +607,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		if err != nil {
 			return intermediateProject, config, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
 		}
-		add, err := createIntermediateProject(yaml)
+		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
 		if err != nil {
 			return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 		}
@@ -635,14 +638,15 @@ const (
 )
 
 type GetProjectOpts struct {
-	Ref          *ProjectRef
-	PatchOpts    *PatchOpts
-	LocalModules map[string]string
-	RemotePath   string
-	Revision     string
-	Token        string
-	ReadFileFrom string
-	Identifier   string
+	Ref             *ProjectRef
+	PatchOpts       *PatchOpts
+	LocalModules    map[string]string
+	RemotePath      string
+	Revision        string
+	Token           string
+	ReadFileFrom    string
+	Identifier      string
+	UnmarshalStrict bool
 }
 
 type PatchOpts struct {
@@ -795,17 +799,33 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // createIntermediateProject marshals the supplied YAML into our
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
-func createIntermediateProject(yml []byte) (*ParserProject, error) {
-	p := &ParserProject{}
-	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
-		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-		return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
+// If unmarshalStrict is true, use the strict version of unmarshalling.
+func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, error) {
+	p := ParserProject{}
+	if unmarshalStrict {
+		strictProjectWithVariables := struct {
+			ParserProject `yaml:"pp,inline"`
+			// Variables is only used to suppress yaml unmarshalling errors related
+			// to a non-existent variables field.
+			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
+		}{}
+
+		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
+			return nil, err
+		}
+		p = strictProjectWithVariables.ParserProject
+	} else {
+		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
+			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+			return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
+		}
 	}
+
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
 
-	return p, nil
+	return &p, nil
 }
 
 // TranslateProject converts our intermediate project representation into

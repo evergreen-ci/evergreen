@@ -1702,7 +1702,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	return &patchTasks, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory,
+	sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id %s", taskID))
@@ -1712,6 +1713,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task %s: %s", taskID, err))
 	}
 
+	limitNum := utility.FromIntPtr(limit)
 	var sortBy, cedarSortBy string
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1731,6 +1733,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			cedarSortBy = apimodels.CedarTestResultsSortByBaseStatus
 			sortBy = "base_status"
 		}
+	} else if limitNum > 0 { // Don't sort TaskID if unlimited EVG-13965.
+		sortBy = testresult.TaskIDKey
 	}
 
 	if dbTask.HasCedarResults {
@@ -1744,7 +1748,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			GroupID:      utility.FromStringPtr(groupID),
 			SortBy:       cedarSortBy,
 			SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
-			Limit:        utility.FromIntPtr(limit),
+			Limit:        limitNum,
 			Page:         utility.FromIntPtr(page),
 		}
 		if baseTask != nil && baseTask.HasCedarResults {
@@ -1794,7 +1798,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		SortBy:    sortBy,
 		SortDir:   sortDir,
 		GroupID:   utility.FromStringPtr(groupID),
-		Limit:     utility.FromIntPtr(limit),
+		Limit:     limitNum,
 		Page:      utility.FromIntPtr(page),
 	})
 	if err != nil {
@@ -1831,6 +1835,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 }
 
 func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, testFilters []*TestFilter) ([]*TaskTestResultSample, error) {
+	const testSampleLimit = 10
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -1875,7 +1880,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 				Execution: t.Execution,
 				TestName:  regexFilter,
 				Statuses:  []string{evergreen.TestFailedStatus},
-				Limit:     10,
+				SortBy:    testresult.TaskIDKey,
+				Limit:     testSampleLimit,
+				SortDir:   1,
 				Page:      0,
 			})
 			if err != nil {
@@ -4080,6 +4087,34 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
+	}
+	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
+		var permissionLevel int
+		if access == ProjectSettingsAccessEdit {
+			permissionLevel = evergreen.ProjectSettingsEdit.Value
+		} else if access == ProjectSettingsAccessView {
+			permissionLevel = evergreen.ProjectSettingsView.Value
+		} else {
+			return nil, Forbidden.Send(ctx, "Permission not specified")
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
+		}
+
+		if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+			pid, err := model.GetIdForProject(identifier)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+			}
+			return hasProjectPermission(ctx, pid, next, permissionLevel)
+		} else if id, hasId := args["id"].(string); hasId {
+			return hasProjectPermission(ctx, id, next, permissionLevel)
+		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+			return hasProjectPermission(ctx, projectId, next, permissionLevel)
+		}
+		return nil, ResourceNotFound.Send(ctx, "Could not find project")
 	}
 	return c
 }

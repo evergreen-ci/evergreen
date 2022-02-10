@@ -1,4 +1,5 @@
 directive @requireSuperUser on FIELD_DEFINITION 
+directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 type Query {
   task(taskId: String!, execution: Int): Task
@@ -75,8 +76,8 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!): ProjectSettings!
-  repoSettings(id: String!): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
+  repoSettings(id: String! @requireProjectAccess(access: VIEW)): RepoSettings!
   projectEvents(
     identifier: String!
     limit: Int = 0
@@ -98,9 +99,9 @@ type Mutation {
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
-  attachProjectToRepo(projectId: String!): Project!
-  detachProjectFromRepo(projectId: String!): Project!
-  forceRepotrackerRun(projectId: String!): Boolean!
+  attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -270,6 +271,11 @@ type BuildVariantTuple {
   displayName: String!
 }
 
+enum ProjectSettingsAccess {
+  EDIT
+  VIEW
+}
+
 enum SpawnHostStatusActions {
   START
   STOP
@@ -416,7 +422,7 @@ input CopyProjectInput {
 }
 
 input MoveProjectInput {
-  projectId: String!
+  projectId: String! @requireProjectAccess(access: EDIT)
   newOwner: String!
   newRepo: String!
 }
@@ -430,7 +436,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String!
+  id: String! @requireProjectAccess(access: EDIT)
   identifier: String
   displayName: String
   enabled: Boolean
@@ -469,9 +475,6 @@ input ProjectInput {
   perfEnabled: Boolean
   buildBaronSettings: BuildBaronSettingsInput
   taskAnnotationSettings: TaskAnnotationSettingsInput
-
-  hidden: Boolean
-  useRepoSettings: Boolean
 }
 
 
@@ -484,7 +487,7 @@ input RepoSettingsInput {
 }
 
 input RepoRefInput {
-  id: String!
+  id: String! @requireProjectAccess(access: EDIT)
   displayName: String
   enabled: Boolean
   private: Boolean
@@ -549,6 +552,7 @@ input PeriodicBuildInput {
 
 input CommitQueueParamsInput {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String
   message: String
 }
@@ -1349,12 +1353,14 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String!
   message: String!
 }
 
 type RepoCommitQueueParams {
   enabled: Boolean!
+  requireSigned: Boolean!
   mergeMethod: String!
   message: String!
 }

@@ -64,9 +64,10 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	repoVars := ProjectVars{
 		Id:             repo.Id,
-		Vars:           map[string]string{"hello": "world", "world": "hello", "beep": "boop"},
+		Vars:           map[string]string{"hello": "world", "world": "hello", "beep": "boop", "admin": "only"},
 		PrivateVars:    map[string]bool{"world": true},
 		RestrictedVars: map[string]bool{"beep": true},
+		AdminOnlyVars:  map[string]bool{"admin": true},
 	}
 	project0Vars := ProjectVars{
 		Id:   project0.Id,
@@ -78,9 +79,10 @@ func TestFindMergedProjectVars(t *testing.T) {
 	// Testing merging of project vars and repo vars
 	expectedMergedVars := ProjectVars{
 		Id:             project0.Id,
-		Vars:           map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var"},
+		Vars:           map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var", "admin": "only"},
 		PrivateVars:    map[string]bool{},
 		RestrictedVars: map[string]bool{"beep": true},
+		AdminOnlyVars:  map[string]bool{"admin": true},
 	}
 	mergedVars, err := FindMergedProjectVars(project0.Id)
 	assert.NoError(err)

@@ -286,6 +286,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		CedarTestResultsEnabled bool                           `json:"cedar_test_results_enabled"`
 		PrivateVars             map[string]bool                `json:"private_vars"`
 		RestrictedVars          map[string]bool                `json:"restricted_vars"`
+		AdminOnlyVars           map[string]bool                `json:"admin_only_vars"`
 		Enabled                 bool                           `json:"enabled"`
 		Private                 bool                           `json:"private"`
 		Restricted              bool                           `json:"restricted"`
@@ -758,6 +759,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		projectVars.Vars = responseRef.ProjVarsMap
 		projectVars.PrivateVars = responseRef.PrivateVars
 		projectVars.RestrictedVars = responseRef.RestrictedVars
+		projectVars.AdminOnlyVars = responseRef.AdminOnlyVars
 	}
 
 	_, err = projectVars.Upsert()

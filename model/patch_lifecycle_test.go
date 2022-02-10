@@ -683,8 +683,13 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Equal(dbTasks[1].DisplayName, "task1")
 	assert.Equal(dbTasks[2].DisplayName, "task2")
 	assert.Equal(dbTasks[3].DisplayName, "task3")
-	for _, task := range dbTasks {
-		assert.Equal(task.CreateTime.UTC(), baseCommitTime)
+	for _, t := range dbTasks {
+		if t.DisplayOnly {
+			assert.Zero(t.ExecutionPlatform)
+		} else {
+			assert.Equal(task.ExecutionPlatformHost, t.ExecutionPlatform)
+		}
+		assert.Equal(t.CreateTime.UTC(), baseCommitTime)
 	}
 }
 

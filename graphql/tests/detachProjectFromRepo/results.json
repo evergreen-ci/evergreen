@@ -17,12 +17,13 @@
         "data": null,
         "errors": [
           {
-            "message": "error finding project nonexistent: 404 (Not Found): project with id 'nonexistent' not found",
+            "message": "user testuser does not have permission to access settings for the project nonexistent",
             "path": [
-              "detachProjectFromRepo"
+              "detachProjectFromRepo",
+              "projectId"
             ],
             "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+              "code": "FORBIDDEN"
             }
           }
         ]

@@ -7,9 +7,10 @@
           "repoSettings": {
             "gitHubWebhooksEnabled": false,
             "projectRef": {
-              "id": "1234",
+              "id": "repo_id",
               "commitQueue": {
                 "enabled": true,
+                "requireSigned": false,
                 "mergeMethod": "squash"
               },
               "periodicBuilds": null,
@@ -167,7 +168,7 @@
                 "selectors": [
                   {
                     "type": "project",
-                    "data": "1234"
+                    "data": "repo_id"
                   },
                   {
                     "type": "requester",
@@ -251,12 +252,13 @@
         "data": null,
         "errors": [
           {
-            "message": "repo doesn't exist",
+            "message": "user testuser does not have permission to access settings for the project evergreen",
             "path": [
-              "repoSettings"
+              "repoSettings",
+              "id"
             ],
             "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+              "code": "FORBIDDEN"
             }
           }
         ]
