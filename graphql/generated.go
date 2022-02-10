@@ -258,6 +258,12 @@ type ComplexityRoot struct {
 		Repo             func(childComplexity int) int
 	}
 
+	GroupedStatusCount struct {
+		DisplayName  func(childComplexity int) int
+		StatusCounts func(childComplexity int) int
+		Variant      func(childComplexity int) int
+	}
+
 	Host struct {
 		AvailabilityZone      func(childComplexity int) int
 		DisplayName           func(childComplexity int) int
@@ -1131,6 +1137,7 @@ type ComplexityRoot struct {
 		BaseVersion       func(childComplexity int) int
 		BaseVersionID     func(childComplexity int) int
 		Branch            func(childComplexity int) int
+		BuildVariantStats func(childComplexity int, options *BuildVariantOptions) int
 		BuildVariants     func(childComplexity int, options *BuildVariantOptions) int
 		ChildVersions     func(childComplexity int) int
 		CreateTime        func(childComplexity int) int
@@ -1427,6 +1434,7 @@ type VersionResolver interface {
 
 	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error)
 	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
+	BuildVariantStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.GroupedStatusCount, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Patch(ctx context.Context, obj *model.APIVersion) (*model.APIPatch, error)
 	ChildVersions(ctx context.Context, obj *model.APIVersion) ([]*model.APIVersion, error)
@@ -2185,6 +2193,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GroupedProjects.Repo(childComplexity), true
+
+	case "GroupedStatusCount.displayName":
+		if e.complexity.GroupedStatusCount.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.GroupedStatusCount.DisplayName(childComplexity), true
+
+	case "GroupedStatusCount.statusCounts":
+		if e.complexity.GroupedStatusCount.StatusCounts == nil {
+			break
+		}
+
+		return e.complexity.GroupedStatusCount.StatusCounts(childComplexity), true
+
+	case "GroupedStatusCount.variant":
+		if e.complexity.GroupedStatusCount.Variant == nil {
+			break
+		}
+
+		return e.complexity.GroupedStatusCount.Variant(childComplexity), true
 
 	case "Host.availabilityZone":
 		if e.complexity.Host.AvailabilityZone == nil {
@@ -6911,6 +6940,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.Branch(childComplexity), true
 
+	case "Version.buildVariantStats":
+		if e.complexity.Version.BuildVariantStats == nil {
+			break
+		}
+
+		args, err := ec.field_Version_buildVariantStats_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.BuildVariantStats(childComplexity, args["options"].(*BuildVariantOptions)), true
+
 	case "Version.buildVariants":
 		if e.complexity.Version.BuildVariants == nil {
 			break
@@ -7542,6 +7583,7 @@ type Version {
   activated: Boolean
   taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  buildVariantStats(options: BuildVariantOptions): [GroupedStatusCount!]
   isPatch: Boolean!
   patch: Patch
   childVersions: [Version]
@@ -7573,6 +7615,12 @@ type VersionTiming {
 type StatusCount {
   status: String!
   count: Int!
+}
+# Returns task counts grouped by status for a build variant
+type GroupedStatusCount {
+  variant: String!
+  displayName: String!
+  statusCounts: [StatusCount!]!
 }
 
 input BuildVariantOptions {
@@ -10900,6 +10948,21 @@ func (ec *executionContext) field_User_patches_args(ctx context.Context, rawArgs
 		}
 	}
 	args["patchesInput"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_buildVariantStats_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *BuildVariantOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
 	return args, nil
 }
 
@@ -14456,6 +14519,111 @@ func (ec *executionContext) _GroupedProjects_projects(ctx context.Context, field
 	res := resTmp.([]*model.APIProjectRef)
 	fc.Result = res
 	return ec.marshalNProject2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRefᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedStatusCount_variant(ctx context.Context, field graphql.CollectedField, obj *task.GroupedStatusCount) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GroupedStatusCount",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Variant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedStatusCount_displayName(ctx context.Context, field graphql.CollectedField, obj *task.GroupedStatusCount) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GroupedStatusCount",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GroupedStatusCount_statusCounts(ctx context.Context, field graphql.CollectedField, obj *task.GroupedStatusCount) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GroupedStatusCount",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StatusCounts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*task.StatusCount)
+	fc.Result = res
+	return ec.marshalNStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Host_homeVolume(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
@@ -36508,6 +36676,45 @@ func (ec *executionContext) _Version_buildVariants(ctx context.Context, field gr
 	return ec.marshalOGroupedBuildVariant2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedBuildVariant(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_buildVariantStats(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Version_buildVariantStats_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().BuildVariantStats(rctx, obj, args["options"].(*BuildVariantOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*task.GroupedStatusCount)
+	fc.Result = res
+	return ec.marshalOGroupedStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐGroupedStatusCountᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_isPatch(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -42735,6 +42942,43 @@ func (ec *executionContext) _GroupedProjects(ctx context.Context, sel ast.Select
 	return out
 }
 
+var groupedStatusCountImplementors = []string{"GroupedStatusCount"}
+
+func (ec *executionContext) _GroupedStatusCount(ctx context.Context, sel ast.SelectionSet, obj *task.GroupedStatusCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupedStatusCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GroupedStatusCount")
+		case "variant":
+			out.Values[i] = ec._GroupedStatusCount_variant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._GroupedStatusCount_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "statusCounts":
+			out.Values[i] = ec._GroupedStatusCount_statusCounts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var hostImplementors = []string{"Host"}
 
 func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj *model.APIHost) graphql.Marshaler {
@@ -48097,6 +48341,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 				res = ec._Version_buildVariants(ctx, field, obj)
 				return res
 			})
+		case "buildVariantStats":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_buildVariantStats(ctx, field, obj)
+				return res
+			})
 		case "isPatch":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -49234,6 +49489,16 @@ func (ec *executionContext) marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergre
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) marshalNGroupedStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐGroupedStatusCount(ctx context.Context, sel ast.SelectionSet, v *task.GroupedStatusCount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._GroupedStatusCount(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v model.APIHost) graphql.Marshaler {
@@ -50595,6 +50860,50 @@ func (ec *executionContext) marshalNSpawnHostStatusActions2githubᚗcomᚋevergr
 func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSpawnVolumeInput(ctx context.Context, v interface{}) (SpawnVolumeInput, error) {
 	res, err := ec.unmarshalInputSpawnVolumeInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*task.StatusCount) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v *task.StatusCount) graphql.Marshaler {
@@ -52260,6 +52569,53 @@ func (ec *executionContext) marshalOGroupedProjects2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._GroupedProjects(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOGroupedStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐGroupedStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*task.GroupedStatusCount) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGroupedStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐGroupedStatusCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHost(ctx context.Context, sel ast.SelectionSet, v *model.APIHost) graphql.Marshaler {
