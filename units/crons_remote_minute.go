@@ -74,7 +74,8 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		catcher.Add(op(ctx, queue))
 	}
 
-	// Create dedicated queues for host creation and commit queue jobs
+	// Create dedicated queues for host creation, event notifier, and commit
+	// queue jobs.
 	appCtx, _ := j.env.Context()
 	hcqueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.host.create")
 	if err != nil {

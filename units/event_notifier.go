@@ -131,16 +131,16 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	totalDuration := endTime.Sub(startTime)
 
 	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job_type":   j.Type().Name,
-		"operation":  "events-processing",
-		"message":    "event-stats",
-		"event_id":   j.EventID,
-		"start_time": startTime.String(),
-		"end_time":   endTime.String(),
-		"duration":   totalDuration.Seconds(),
-		"has_errors": catcher.HasErrors(),
-		"num_errors": catcher.Len(),
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
+		"operation":     "events-processing",
+		"message":       "event-stats",
+		"event_id":      j.EventID,
+		"start_time":    startTime.String(),
+		"end_time":      endTime.String(),
+		"duration_secs": totalDuration.Seconds(),
+		"has_errors":    catcher.HasErrors(),
+		"num_errors":    catcher.Len(),
 	})
 
 	return catcher.Resolve()
@@ -176,7 +176,7 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
 		"notifications": len(n),
-		"duration":      time.Now().Sub(startDebug).Seconds(),
+		"duration_secs": time.Now().Sub(startDebug).Seconds(),
 		"stat":          "notifications-from-event",
 	})
 
@@ -191,14 +191,14 @@ func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []not
 
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job_type":   j.Type().Name,
-		"source":     "events-processing",
-		"message":    "project triggers evaluated",
-		"event_id":   e.ID,
-		"event_type": e.ResourceType,
-		"duration":   time.Now().Sub(startDebug).Seconds(),
-		"stat":       "eval-project-triggers",
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
+		"source":        "events-processing",
+		"message":       "project triggers evaluated",
+		"event_id":      e.ID,
+		"event_type":    e.ResourceType,
+		"duration_secs": time.Now().Sub(startDebug).Seconds(),
+		"stat":          "eval-project-triggers",
 	})
 	versions := []string{}
 	for _, version := range v {
