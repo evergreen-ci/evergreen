@@ -102,7 +102,7 @@ func PopulateEventSendJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		if flags.EventProcessingDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "alerts disabled",
+				"message": "notifications disabled",
 				"impact":  "not processing alerts for notifications",
 				"mode":    "degraded",
 			})
@@ -122,8 +122,8 @@ func PopulateEventNotifierJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		if flags.EventProcessingDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "alerts disabled",
-				"impact":  "not processing alerts for notifications",
+				"message": "event processing disabled",
+				"impact":  "not processing events",
 				"mode":    "degraded",
 			})
 			return nil

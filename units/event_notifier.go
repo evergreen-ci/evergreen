@@ -113,7 +113,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	catcher.Add(logger.MarkProcessed(e))
 
 	if err = notification.InsertMany(n...); err != nil {
-		// consider that duplicate key errors are expected
+		// Consider that duplicate key errors are expected.
 		shouldLogError := !db.IsDuplicateKey(err)
 		grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{
 			"job_id":        j.ID(),
