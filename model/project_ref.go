@@ -465,8 +465,8 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
 		recursivelySetUndefinedFields(reflectedRef, reflectedConfig)
-		p.PerfEnabled = projectConfig.PerfEnabled
-		p.DeactivatePrevious = projectConfig.DeactivatePrevious
+		p.PerfEnabled = utility.ToBoolPtr(utility.FromBoolPtr(projectConfig.PerfEnabled) || utility.FromBoolPtr(p.PerfEnabled))
+		p.DeactivatePrevious = utility.ToBoolPtr(utility.FromBoolPtr(projectConfig.DeactivatePrevious) || utility.FromBoolPtr(p.DeactivatePrevious))
 	}
 	return err
 }
