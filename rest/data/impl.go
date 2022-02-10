@@ -48,7 +48,6 @@ type MockConnector struct {
 	MockTaskConnector
 	MockContextConnector
 	MockHostConnector
-	MockPodConnector
 	MockTestConnector
 	MockBuildConnector
 	MockVersionConnector
@@ -60,6 +59,7 @@ type MockConnector struct {
 	MockProjectConnector
 
 	//The below mock connectors have been removed from all unit tests and are no longer used
+	MockPodConnector
 	MockPatchIntentConnector
 	MockAdminConnector
 	MockStatusConnector
