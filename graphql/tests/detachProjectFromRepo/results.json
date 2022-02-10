@@ -5,8 +5,7 @@
       "result": {
         "data": {
           "detachProjectFromRepo": {
-            "repoRefId": "",
-            "useRepoSettings": false
+            "repoRefId": ""
           }
         }
       }
