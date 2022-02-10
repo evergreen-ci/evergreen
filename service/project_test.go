@@ -48,25 +48,25 @@ func TestValidateBbProject(t *testing.T) {
 	assert.Empty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
-	}, nil, true))
+	}, nil))
 
 	assert.Empty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
-	}, nil, true))
+	}, nil))
 
 	assert.Empty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject: "BFG",
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketSearchProjects: []string{"BF", "BFG"},
-	}, nil, true))
+	}, nil))
 }
 
 func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
@@ -83,34 +83,34 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		BFSuggestionUsername:    "user",
 		BFSuggestionPassword:    "pass",
 		BFSuggestionTimeoutSecs: 10,
-	}, nil, true))
+	}, nil))
 
 	assert.Empty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 10,
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 		BFSuggestionUsername: "user",
 		BFSuggestionPassword: "pass",
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionTimeoutSecs: 10,
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 10,
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
@@ -118,19 +118,19 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionPassword:    "pass",
 		BFSuggestionTimeoutSecs: 10,
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 0,
-	}, nil, true))
+	}, nil))
 
 	assert.NotEmpty(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: -1,
-	}, nil, true))
+	}, nil))
 }

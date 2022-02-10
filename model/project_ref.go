@@ -2284,58 +2284,57 @@ func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBar
 	return projectRef.BuildBaronSettings, true
 }
 
-func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook, lookupProjectRef bool) []string {
-	errs := []string{}
+func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
+	catcher := grip.NewBasicCatcher()
 	var err error
 	var webhookConfigured bool
-	if lookupProjectRef {
+	if webhook == nil {
 		pRefWebHook, _, err := IsWebhookConfigured(projName, "")
 		if err != nil {
-			errs = append(errs, "")
-			return errs
+			return nil
 		}
 		webhook = &pRefWebHook
-		webhookConfigured = webhook.Endpoint != ""
+		webhookConfigured = webhook != nil && webhook.Endpoint != ""
 	}
 
 	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
 		return nil
 	}
 	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
-		errs = append(errs, "Must provide projects to search")
+		catcher.Add(errors.Errorf("Must provide projects to search"))
 	}
 	if !webhookConfigured && proj.TicketCreateProject == "" {
-		errs = append(errs, "Must provide project to create tickets for")
+		catcher.Add(errors.Errorf("Must provide project to create tickets for"))
 	}
 	if proj.BFSuggestionServer != "" {
 		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
-			errs = append(errs, fmt.Sprintf("Failed to parse bf_suggestion_server for project '%s'", projName))
+			catcher.Add(errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName))
 		}
 		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-			errs = append(errs, fmt.Sprintf("Failed validating configuration for project '%s': "+
+			catcher.Add(errors.Errorf("Failed validating configuration for project '%s': "+
 				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName))
 		}
 		if proj.BFSuggestionTimeoutSecs <= 0 {
-			errs = append(errs, fmt.Sprintf("Failed validating configuration for project '%s': "+
+			catcher.Add(errors.Errorf("Failed validating configuration for project '%s': "+
 				"bf_suggestion_timeout_secs must be positive", projName))
 		}
 	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-		errs = append(errs, fmt.Sprintf("Failed validating configuration for project '%s': "+
+		catcher.Add(errors.Errorf("Failed validating configuration for project '%s': "+
 			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName))
 	} else if proj.BFSuggestionTimeoutSecs != 0 {
-		errs = append(errs, fmt.Sprintf("Failed validating configuration for project '%s': "+
+		catcher.Add(errors.Errorf("Failed validating configuration for project '%s': "+
 			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName))
 	}
 	// the webhook cannot be used if the default build baron creation and search is configured
 	if webhookConfigured {
 		if len(proj.TicketCreateProject) != 0 {
-			errs = append(errs, fmt.Sprintf("The custom file ticket webhook and the build baron should not both be configured"))
+			catcher.Add(errors.Errorf("The custom file ticket webhook and the build baron should not both be configured"))
 		}
 		if _, err = url.Parse(webhook.Endpoint); err != nil {
-			errs = append(errs, fmt.Sprintf("Failed to parse webhook endpoint for project"))
+			catcher.Add(errors.Errorf("Failed to parse webhook endpoint for project"))
 		}
 	}
-	return errs
+	return catcher.Resolve()
 }
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {

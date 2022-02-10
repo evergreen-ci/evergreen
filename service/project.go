@@ -567,15 +567,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
 		return
 	}
-	catcher := grip.NewSimpleCatcher()
-	errs = model.ValidateBbProject(projectRef.Id, buildbaronConfig, nil, true)
-	for _, errMsg := range errs {
-		catcher.Add(errors.New(errMsg))
-	}
-	if catcher.HasErrors() {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(catcher.Resolve(), "error validating build baron config input"))
-		return
-	}
 
 	i, err = responseRef.TaskAnnotationSettings.ToService()
 	if err != nil {
@@ -588,7 +579,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	catcher = grip.NewSimpleCatcher()
+	err = model.ValidateBbProject(projectRef.Id, buildbaronConfig, &taskannotationsConfig.FileTicketWebhook)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
+		return
+	}
+
+	catcher := grip.NewSimpleCatcher()
 	for i := range responseRef.Triggers {
 		catcher.Add(responseRef.Triggers[i].Validate(id))
 	}

@@ -446,11 +446,11 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	if annotationSettings != nil {
 		webhook = &annotationSettings.FileTicketWebhook
 	}
-	buildBaronErrs := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook, false)
-	for _, errMsg := range buildBaronErrs {
+	err := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook)
+	if err != nil {
 		errs = append(errs,
 			ValidationError{
-				Message: errMsg,
+				Message: errors.Wrap(err, "error validating build baron config").Error(),
 			},
 		)
 	}
