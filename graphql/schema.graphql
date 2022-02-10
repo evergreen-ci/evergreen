@@ -1273,7 +1273,6 @@ type Project {
   taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
-  useRepoSettings: Boolean!
   repoRefId: String!
 
   isFavorite: Boolean!
