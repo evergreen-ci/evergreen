@@ -10,6 +10,7 @@
               "id": "repo_id",
               "commitQueue": {
                 "enabled": true,
+                "requireSigned": false,
                 "mergeMethod": "squash"
               },
               "periodicBuilds": null,

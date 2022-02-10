@@ -7,6 +7,7 @@
             restricted
             commitQueue {
                 enabled
+                requireSigned
                 mergeMethod
             }
             periodicBuilds {

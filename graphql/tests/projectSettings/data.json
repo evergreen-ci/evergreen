@@ -30,6 +30,7 @@
       ],
       "commit_queue" : {
         "enabled" : true,
+        "require_signed": false,
         "merge_method" : "squash",
         "message" : "hmmm"
       },

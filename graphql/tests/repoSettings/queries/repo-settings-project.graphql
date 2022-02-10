@@ -5,6 +5,7 @@
             id
             commitQueue {
                 enabled
+                requireSigned
                 mergeMethod
             }
             periodicBuilds {
