@@ -222,7 +222,6 @@ func TestBuildRestart(t *testing.T) {
 				Status:      evergreen.TaskDispatched,
 				Activated:   true,
 			}
-			// TODO: abortion doesn't apply for container tasks, so I think this should not be modified
 			So(taskTwo.Insert(), ShouldBeNil)
 
 			So(RestartBuild(b.Id, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)

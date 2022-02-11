@@ -1609,7 +1609,6 @@ func ResetTasks(taskIds []string) error {
 	return err
 }
 
-//TODO: (EVG-16305): create container version of this
 func resetTaskUpdate(t *Task) bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
