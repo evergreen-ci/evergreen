@@ -451,6 +451,7 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 		errs = append(errs,
 			ValidationError{
 				Message: errors.Wrap(err, "error validating build baron config").Error(),
+				Level:   Error,
 			},
 		)
 	}
