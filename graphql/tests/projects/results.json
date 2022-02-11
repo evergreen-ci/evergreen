@@ -1,0 +1,24 @@
+  { 
+     "tests": [{
+      "query_file": "projects.graphql",
+      "result": {
+        "data": {
+          "projects": [
+            {
+              "groupDisplayName": "evergreen-ci/evergreen",
+              "projects": [
+                {
+                  "identifier": "mci",
+                  "repo": "evergreen",
+                  "owner": "evergreen-ci",
+                  "displayName": "Evergreen Self-Tests",
+                  "isFavorite": false
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
