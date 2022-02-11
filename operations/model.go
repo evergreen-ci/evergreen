@@ -82,7 +82,6 @@ type ClientSettings struct {
 	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
 	User                  string              `json:"user" yaml:"user,omitempty"`
 	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
-	AutoUpgradeCli        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
 	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
