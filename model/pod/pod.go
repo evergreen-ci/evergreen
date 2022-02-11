@@ -27,8 +27,9 @@ type Pod struct {
 	// TimeInfo contains timing information for the pod's lifecycle.
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
-	Resources   ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
-	RunningTask string       `bson:"running_task,omitempty" json:"running_task,omitempty"`
+	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
+	// RunningTask is the ID of the task currently running on the pod
+	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 }
 
 // Type is the type of pod.
