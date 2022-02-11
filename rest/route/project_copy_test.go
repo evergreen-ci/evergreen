@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"testing"
 
@@ -17,8 +18,8 @@ import (
 )
 
 type ProjectCopySuite struct {
-	data  data.MockProjectConnector
-	sc    *data.MockConnector
+	data  data.DBProjectConnector
+	sc    *data.DBConnector
 	route *projectCopyHandler
 
 	suite.Suite
@@ -29,39 +30,44 @@ func TestProjectCopySuite(t *testing.T) {
 }
 
 func (s *ProjectCopySuite) SetupSuite() {
-	s.data = data.MockProjectConnector{
-		CachedProjects: []model.ProjectRef{
-			{
-				Id:         "12345",
-				Identifier: "projectA",
-				Branch:     "abcd",
-				Enabled:    utility.TruePtr(),
-				Admins:     []string{"my-user"},
-			},
-			{
-				Id:         "23456",
-				Identifier: "projectB",
-				Branch:     "bcde",
-				Enabled:    utility.TruePtr(),
-				Admins:     []string{"my-user"},
-			},
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
+	s.data = data.DBProjectConnector{
+		//CachedVars: []*model.ProjectVars{
+		//	{
+		//		Id:          "12345",
+		//		Vars:        map[string]string{"a": "1", "b": "2"},
+		//		PrivateVars: map[string]bool{"b": true},
+		//	},
+		//},
+	}
+	pRefs := []model.ProjectRef{
+		{
+			Id:         "12345",
+			Identifier: "projectA",
+			Branch:     "abcd",
+			Enabled:    utility.TruePtr(),
+			Admins:     []string{"my-user"},
 		},
-		CachedVars: []*model.ProjectVars{
-			{
-				Id:          "12345",
-				Vars:        map[string]string{"a": "1", "b": "2"},
-				PrivateVars: map[string]bool{"b": true},
-			},
+		{
+			Id:         "23456",
+			Identifier: "projectB",
+			Branch:     "bcde",
+			Enabled:    utility.TruePtr(),
+			Admins:     []string{"my-user"},
 		},
 	}
+	for _, pRef := range pRefs {
+		s.NoError(pRef.Insert())
+	}
 
-	s.sc = &data.MockConnector{
-		URL:                  "https://evergreen.example.net",
-		MockProjectConnector: s.data,
+	s.sc = &data.DBConnector{
+		URL:                "https://evergreen.example.net",
+		DBProjectConnector: s.data,
 	}
 }
 
 func (s *ProjectCopySuite) SetupTest() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	s.route = &projectCopyHandler{sc: s.sc}
 }
 
@@ -116,8 +122,8 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 }
 
 type copyVariablesSuite struct {
-	data  data.MockProjectConnector
-	sc    *data.MockConnector
+	data  data.DBProjectConnector
+	sc    *data.DBConnector
 	route *copyVariablesHandler
 
 	suite.Suite
@@ -128,42 +134,48 @@ func TestCopyVariablesSuite(t *testing.T) {
 }
 
 func (s *copyVariablesSuite) SetupSuite() {
-	s.data = data.MockProjectConnector{
-		CachedProjects: []model.ProjectRef{
-			{
-				Id:      "projectA",
-				Branch:  "abcd",
-				Enabled: utility.TruePtr(),
-				Admins:  []string{"my-user"},
-			},
-			{
-				Id:      "projectB",
-				Branch:  "bcde",
-				Enabled: utility.TruePtr(),
-				Admins:  []string{"my-user"},
-			},
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
+	pRefs := []model.ProjectRef{
+		{
+			Id:      "projectA",
+			Branch:  "abcd",
+			Enabled: utility.TruePtr(),
+			Admins:  []string{"my-user"},
 		},
-		CachedVars: []*model.ProjectVars{
-			{
-				Id:          "projectA",
-				Vars:        map[string]string{"apple": "red", "hello": "world"},
-				PrivateVars: map[string]bool{"hello": true},
-			},
-			{
-				Id:          "projectB",
-				Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
-				PrivateVars: map[string]bool{},
-			},
+		{
+			Id:      "projectB",
+			Branch:  "bcde",
+			Enabled: utility.TruePtr(),
+			Admins:  []string{"my-user"},
 		},
 	}
+	for _, pRef := range pRefs {
+		s.NoError(pRef.Insert())
+	}
+	s.data = data.DBProjectConnector{
 
-	s.sc = &data.MockConnector{
-		URL:                  "https://evergreen.example.net",
-		MockProjectConnector: s.data,
+		//CachedVars: []*model.ProjectVars{
+		//	{
+		//		Id:          "projectA",
+		//		Vars:        map[string]string{"apple": "red", "hello": "world"},
+		//		PrivateVars: map[string]bool{"hello": true},
+		//	},
+		//	{
+		//		Id:          "projectB",
+		//		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
+		//		PrivateVars: map[string]bool{},
+		//	},
+		//},
+	}
+
+	s.sc = &data.DBConnector{
+		URL:                "https://evergreen.example.net",
+		DBProjectConnector: s.data,
 	}
 }
 
 func (s *copyVariablesSuite) SetupTest() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	s.route = &copyVariablesHandler{sc: s.sc}
 }
 
@@ -195,22 +207,22 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		DryRun:         true,
 		IncludePrivate: true,
 	}
-	delete(s.data.CachedVars[1].Vars, "hello")
-	delete(s.data.CachedVars[1].Vars, "apple")
+	//delete(s.data.CachedVars[1].Vars, "hello")
+	//delete(s.data.CachedVars[1].Vars, "apple")
 
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.data.CachedVars[1].Vars, 1)
+	//s.Len(s.data.CachedVars[1].Vars, 1)
 
 	s.route.opts.DryRun = false
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.data.CachedVars[1].Vars, 3)
-	s.Equal("world", s.data.CachedVars[1].Vars["hello"])
-	s.Equal("red", s.data.CachedVars[1].Vars["apple"])
-	s.True(s.data.CachedVars[1].PrivateVars["hello"])
+	//s.Len(s.data.CachedVars[1].Vars, 3)
+	//s.Equal("world", s.data.CachedVars[1].Vars["hello"])
+	//s.Equal("red", s.data.CachedVars[1].Vars["apple"])
+	//s.True(s.data.CachedVars[1].PrivateVars["hello"])
 }
 
 func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
@@ -233,12 +245,12 @@ func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.data.CachedVars[1].Vars, 3)
-	s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
-	s.True(s.data.CachedVars[1].PrivateVars["hello"])
-	s.Equal("red", s.data.CachedVars[1].Vars["apple"])
-	s.False(s.data.CachedVars[1].PrivateVars["apple"])
-	s.Equal("yellow", s.data.CachedVars[1].Vars["banana"]) // unchanged
+	//s.Len(s.data.CachedVars[1].Vars, 3)
+	//s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
+	//s.True(s.data.CachedVars[1].PrivateVars["hello"])
+	//s.Equal("red", s.data.CachedVars[1].Vars["apple"])
+	//s.False(s.data.CachedVars[1].PrivateVars["apple"])
+	//s.Equal("yellow", s.data.CachedVars[1].Vars["banana"]) // unchanged
 
 }
 
@@ -263,11 +275,11 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.data.CachedVars[1].Vars, 2)
-	s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
-	s.True(s.data.CachedVars[1].PrivateVars["hello"])
-	s.Equal("red", s.data.CachedVars[1].Vars["apple"])
-	s.False(s.data.CachedVars[1].PrivateVars["apple"])
-	_, ok := s.data.CachedVars[1].Vars["banana"] // no longer exists
-	s.False(ok)
+	//s.Len(s.data.CachedVars[1].Vars, 2)
+	//s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
+	//s.True(s.data.CachedVars[1].PrivateVars["hello"])
+	//s.Equal("red", s.data.CachedVars[1].Vars["apple"])
+	//s.False(s.data.CachedVars[1].PrivateVars["apple"])
+	//_, ok := s.data.CachedVars[1].Vars["banana"] // no longer exists
+	//s.False(ok)
 }

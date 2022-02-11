@@ -27,7 +27,7 @@ import (
 // Tests for PATCH /rest/v2/projects/{project_id}
 
 type ProjectPatchByIDSuite struct {
-	sc *data.MockConnector
+	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -40,14 +40,11 @@ func TestProjectPatchSuite(t *testing.T) {
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection))
-	s.sc = getMockProjectsConnector()
+	s.sc = getProjectsConnector()
+	s.NoError(getMockProjectRef().Insert())
 
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
-	ref := serviceModel.ProjectRef{
-		Id: "dimoxinil",
-	}
-	s.NoError(ref.Insert())
 	s.rm = makePatchProjectByID(s.sc, settings).(*projectIDPatchHandler)
 }
 
@@ -140,7 +137,9 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
-	s.Require().Equal("EVG", s.sc.MockProjectConnector.CachedProjects[0].BuildBaronSettings.TicketCreateProject)
+	pRef, err := s.sc.DBProjectConnector.FindProjectById("dimoxinil", false, false)
+	s.NoError(err)
+	s.Require().Equal("EVG", pRef.BuildBaronSettings.TicketCreateProject)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
@@ -293,7 +292,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 // Tests for PUT /rest/v2/projects/{project_id}
 
 type ProjectPutSuite struct {
-	sc *data.MockConnector
+	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -305,7 +304,9 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
-	s.sc = getMockProjectsConnector()
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	s.sc = getProjectsConnector()
+	s.NoError(getMockProjectRef().Insert())
 	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
 }
 
@@ -399,8 +400,7 @@ func (s *ProjectPutSuite) TestRunExistingFails() {
 // Tests for GET /rest/v2/projects/{project_id}
 
 type ProjectGetByIDSuite struct {
-	sc *data.MockConnector
-	// data data.MockProjectConnector
+	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -412,7 +412,9 @@ func TestProjectGetByIDSuite(t *testing.T) {
 }
 
 func (s *ProjectGetByIDSuite) SetupTest() {
-	s.sc = getMockProjectsConnector()
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	s.sc = getProjectsConnector()
+	s.NoError(getMockProjectRef().Insert())
 	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
 }
 
@@ -437,7 +439,8 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
-	cachedProject := s.sc.MockProjectConnector.CachedProjects[0]
+	cachedProject, err := s.sc.DBProjectConnector.FindProjectById(h.projectName, false, false)
+	s.NoError(err)
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
 	s.Equal(cachedProject.Branch, utility.FromStringPtr(projectRef.Branch))
@@ -464,8 +467,8 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
-	data  data.MockProjectConnector
-	sc    *data.MockConnector
+	data  data.DBProjectConnector
+	sc    *data.DBConnector
 	route *projectGetHandler
 
 	suite.Suite
@@ -476,20 +479,34 @@ func TestProjectGetSuite(t *testing.T) {
 }
 
 func (s *ProjectGetSuite) SetupSuite() {
-	s.data = data.MockProjectConnector{
-		CachedProjects: []serviceModel.ProjectRef{
-			{Id: "projectA"},
-			{Id: "projectB"},
-			{Id: "projectC"},
-			{Id: "projectD"},
-			{Id: "projectE"},
-			{Id: "projectF"},
+	s.data = data.DBProjectConnector{}
+
+	s.sc = &data.DBConnector{
+		URL:                "https://evergreen.example.net",
+		DBProjectConnector: s.data,
+	}
+	pRefs := []serviceModel.ProjectRef{
+		serviceModel.ProjectRef{
+			Id: "projectA",
+		},
+		serviceModel.ProjectRef{
+			Id: "projectB",
+		},
+		serviceModel.ProjectRef{
+			Id: "projectC",
+		},
+		serviceModel.ProjectRef{
+			Id: "projectD",
+		},
+		serviceModel.ProjectRef{
+			Id: "projectE",
+		},
+		serviceModel.ProjectRef{
+			Id: "projectF",
 		},
 	}
-
-	s.sc = &data.MockConnector{
-		URL:                  "https://evergreen.example.net",
-		MockProjectConnector: s.data,
+	for _, pRef := range pRefs {
+		s.NoError(pRef.Insert())
 	}
 }
 
@@ -559,43 +576,45 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
 }
 
-func getMockProjectsConnector() *data.MockConnector {
-	connector := data.MockConnector{
-		MockProjectConnector: data.MockProjectConnector{
-			CachedProjects: []serviceModel.ProjectRef{
-				{
-					Owner:              "dimoxinil",
-					Repo:               "dimoxinil-enterprise-repo",
-					Branch:             "main",
-					Enabled:            utility.FalsePtr(),
-					Private:            utility.TruePtr(),
-					BatchTime:          0,
-					RemotePath:         "evergreen.yml",
-					Id:                 "dimoxinil",
-					DisplayName:        "Dimoxinil",
-					DeactivatePrevious: utility.FalsePtr(),
-					TracksPushEvents:   utility.FalsePtr(),
-					PRTestingEnabled:   utility.FalsePtr(),
-					CommitQueue: serviceModel.CommitQueueParams{
-						Enabled: utility.FalsePtr(),
-					},
-					Hidden:                utility.FalsePtr(),
-					PatchingDisabled:      utility.FalsePtr(),
-					Admins:                []string{"langdon.alger"},
-					NotifyOnBuildFailure:  utility.FalsePtr(),
-					DisabledStatsCache:    utility.TruePtr(),
-					FilesIgnoredFromCache: []string{"ignored"},
-				},
-			},
-			CachedVars: []*serviceModel.ProjectVars{
-				{
-					Id:   "dimoxinil",
-					Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
-				},
-			},
+func getProjectsConnector() *data.DBConnector {
+	connector := data.DBConnector{
+		DBProjectConnector: data.DBProjectConnector{
+			//CachedVars: []*serviceModel.ProjectVars{
+			//	{
+			//		Id:   "dimoxinil",
+			//		Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
+			//	},
+			//},
 		},
 	}
 	return &connector
+}
+
+func getMockProjectRef() *serviceModel.ProjectRef {
+	return &serviceModel.ProjectRef{
+		Owner:      "dimoxinil",
+		Repo:       "dimoxinil-enterprise-repo",
+		Branch:     "main",
+		Enabled:    utility.FalsePtr(),
+		Private:    utility.TruePtr(),
+		BatchTime:  0,
+		RemotePath: "evergreen.yml",
+		Id:         "dimoxinil",
+		//	Identifier:         "dimoxinil",
+		DisplayName:        "Dimoxinil",
+		DeactivatePrevious: utility.FalsePtr(),
+		TracksPushEvents:   utility.FalsePtr(),
+		PRTestingEnabled:   utility.FalsePtr(),
+		CommitQueue: serviceModel.CommitQueueParams{
+			Enabled: utility.FalsePtr(),
+		},
+		Hidden:                utility.FalsePtr(),
+		PatchingDisabled:      utility.FalsePtr(),
+		Admins:                []string{"langdon.alger"},
+		NotifyOnBuildFailure:  utility.FalsePtr(),
+		DisabledStatsCache:    utility.TruePtr(),
+		FilesIgnoredFromCache: []string{"ignored"},
+	}
 }
 
 func TestGetProjectVersions(t *testing.T) {
@@ -716,7 +735,7 @@ func TestDeleteProject(t *testing.T) {
 
 	ctx := context.Background()
 	pdh := projectDeleteHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 
 	// Test cases:
@@ -913,7 +932,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 // Tests for PUT /rest/v2/projects/variables/rotate
 
 type ProjectPutRotateSuite struct {
-	sc *data.MockConnector
+	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -924,7 +943,9 @@ func TestProjectPutRotateSuite(t *testing.T) {
 }
 
 func (s *ProjectPutRotateSuite) SetupTest() {
-	s.sc = getMockProjectsConnector()
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	s.sc = getProjectsConnector()
+	s.NoError(getMockProjectRef().Insert())
 	s.rm = makeProjectVarsPut(s.sc).(*projectVarsPutHandler)
 }
 
@@ -957,7 +978,7 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	s.Contains(respMap["dimoxinil"], "banana")
 	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
-	s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
+	//s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
 
 	req, _ = http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunFalse))
 	err = s.rm.Parse(ctx, req)
@@ -971,5 +992,5 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	s.Contains(respMap["dimoxinil"], "banana")
 	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
-	s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
+	//s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }
