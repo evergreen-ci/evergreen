@@ -68,14 +68,15 @@ type Task struct {
 	// finish - the time the task was completed on the remote host
 	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
 	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
-	CreateTime          time.Time `bson:"create_time" json:"create_time"`
-	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime           time.Time `bson:"start_time" json:"start_time"`
-	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
+	CreateTime             time.Time `bson:"create_time" json:"create_time"`
+	IngestTime             time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime           time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime          time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime              time.Time `bson:"start_time" json:"start_time"`
+	FinishTime             time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime          time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
+	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
 	Version            string              `bson:"version" json:"version,omitempty"`
 	Project            string              `bson:"branch" json:"branch,omitempty"`
