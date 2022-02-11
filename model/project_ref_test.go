@@ -54,8 +54,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 		"Error clearing collection")
 
 	projectConfig := &ProjectConfig{
-		Id:                 "ident",
-		DeactivatePrevious: utility.FalsePtr(),
+		Id: "ident",
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
@@ -136,7 +135,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	assert.True(t, mergedProject.WorkstationConfig.ShouldGitClone())
 	assert.Len(t, mergedProject.WorkstationConfig.SetupCommands, 1)
-	assert.True(t, *mergedProject.DeactivatePrevious)
 	assert.Equal(t, "random2", mergedProject.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 }
 
@@ -1870,9 +1868,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 		},
 	}
 	projectConfig := &ProjectConfig{
-		Id:                 "version1",
-		PerfEnabled:        utility.TruePtr(),
-		DeactivatePrevious: utility.TruePtr(),
+		Id: "version1",
 		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
 			FileTicketWebhook: evergreen.WebHook{
 				Endpoint: "random2",
@@ -1901,8 +1897,6 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	require.NotNil(t, projectRef)
 	assert.Equal(t, "ident", projectRef.Id)
 
-	assert.True(t, *projectRef.DeactivatePrevious)
-	assert.True(t, *projectRef.PerfEnabled)
 	assert.Equal(t, "random1", projectRef.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
 	assert.True(t, *projectRef.WorkstationConfig.GitClone)
 	assert.Equal(t, "expeliarmus", projectRef.WorkstationConfig.SetupCommands[0].Command)
