@@ -53,12 +53,22 @@ func Update() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			return DoUpdate(conf, ctx, doInstall, forceUpdate)
+			if conf.AutoUpgradeCLI {
+				fmt.Println("Automatic CLI updates are already run before each command, get-update command is not necessary")
+				return nil
+			}
+			if !conf.AutoUpgradeCLI && confirm(fmt.Sprint("Automatic CLI updates are not set up, configure now? (Y/n):"), false) {
+				conf.SetAutoUpgradeCLI()
+				if err := conf.Write(""); err != nil {
+					return err
+				}
+			}
+			return CheckAndUpdateVersion(conf, ctx, doInstall, forceUpdate)
 		},
 	}
 }
 
-func DoUpdate(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool) error {
+func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool) error {
 	client := conf.getRestCommunicator(ctx)
 	defer client.Close()
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -107,12 +108,11 @@ func buildApp() *cli.App {
 		if err != nil {
 			return errors.Wrap(err, "problem loading configuration")
 		}
-		if conf.AutoUpgradeCli {
+		if conf.AutoUpgradeCLI {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			err = operations.DoUpdate(conf, ctx, true, false)
-			if err != nil {
-				return errors.Wrap(err, "problem auto updating CLI")
+			if err = operations.CheckAndUpdateVersion(conf, ctx, true, false); err != nil {
+				fmt.Println("Automatic CLI update failed, continuing command execution")
 			}
 		}
 		return loggingSetup(app.Name, c.String("level"))
