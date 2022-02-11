@@ -1278,7 +1278,7 @@ func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 
 func TestBlocked(t *testing.T) {
 	for name, test := range map[string]func(*testing.T){
-		"blocked": func(*testing.T) {
+		"Blocked": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1289,7 +1289,7 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.True(t, t1.Blocked())
 		},
-		"not blocked": func(*testing.T) {
+		"NotBlocked": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1300,7 +1300,7 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.False(t, t1.Blocked())
 		},
-		"blocked state cached": func(*testing.T) {
+		"BlockedStateCached": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1311,7 +1311,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusBlocked, state)
 		},
-		"blocked state pending": func(*testing.T) {
+		"BlockedStatePending": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1328,7 +1328,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusPending, state)
 		},
-		"blocked state all statuses": func(*testing.T) {
+		"BlockedStateAllStatuses": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1348,7 +1348,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "", state)
 		},
-		"blocked state container status": func(*testing.T) {
+		"BlockedStateContainerStatus": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{

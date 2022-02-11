@@ -217,6 +217,7 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
+				//TODO (PM-2620): Handle these statuses properly in the UI
 				{
 					"case": bson.M{
 						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerAllocated},
