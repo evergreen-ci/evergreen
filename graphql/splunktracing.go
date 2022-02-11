@@ -24,7 +24,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 	if rc == nil {
 		// There was an invalid operation context, so we can't do anything
 		grip.Critical(message.Fields{
-			"message": "no operation context found",
+			"message": "no operation context found for this graphql request",
 		})
 		return next(ctx)
 	}
@@ -36,6 +36,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 	start := graphql.Now()
 
 	defer func() {
+		usr := gimlet.GetUser(ctx)
 		end := graphql.Now()
 
 		duration := end.Sub(start)
@@ -48,6 +49,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 			"request":     gimlet.GetRequestID(ctx),
 			"start":       start,
 			"end":         end,
+			"user":        usr.Username(),
 		})
 
 	}()
