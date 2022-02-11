@@ -1263,6 +1263,14 @@ func TestValidatePeriodicBuilds(t *testing.T) {
 }
 
 func TestValidatePlugins(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.Clear(model.ProjectRefCollection),
+		"Error clearing collection")
+	projectRef := &model.ProjectRef{
+		Enabled: utility.TruePtr(),
+		Id:      "p1",
+	}
+	assert.Nil(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
 			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
