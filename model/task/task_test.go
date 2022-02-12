@@ -1209,10 +1209,14 @@ func TestTaskStatusCount(t *testing.T) {
 	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})
 	counts.IncrementStatus(evergreen.TaskDispatched, details)
 	counts.IncrementStatus(evergreen.TaskInactive, details)
+	counts.IncrementStatus(evergreen.TaskContainerUnallocated, details)
+	counts.IncrementStatus(evergreen.TaskContainerAllocated, details)
 	assert.Equal(1, counts.TimedOut)
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
+	assert.Equal(1, counts.ContainerAllocated)
+	assert.Equal(1, counts.ContainerUnallocated)
 }
 
 func TestFindOneIdOldOrNew(t *testing.T) {
@@ -1274,7 +1278,7 @@ func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 
 func TestBlocked(t *testing.T) {
 	for name, test := range map[string]func(*testing.T){
-		"blocked": func(*testing.T) {
+		"Blocked": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1285,7 +1289,7 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.True(t, t1.Blocked())
 		},
-		"not blocked": func(*testing.T) {
+		"NotBlocked": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1296,7 +1300,7 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.False(t, t1.Blocked())
 		},
-		"blocked state cached": func(*testing.T) {
+		"BlockedStateCached": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1307,7 +1311,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusBlocked, state)
 		},
-		"blocked state pending": func(*testing.T) {
+		"BlockedStatePending": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1324,7 +1328,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusPending, state)
 		},
-		"blocked state all statuses": func(*testing.T) {
+		"BlockedStateAllStatuses": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1334,6 +1338,26 @@ func TestBlocked(t *testing.T) {
 			t2 := Task{
 				Id:     "t2",
 				Status: evergreen.TaskUndispatched,
+				DependsOn: []Dependency{
+					{TaskId: "t3", Unattainable: true},
+				},
+			}
+			require.NoError(t, t2.Insert())
+			dependencies := map[string]*Task{t2.Id: &t2}
+			state, err := t1.BlockedState(dependencies)
+			assert.NoError(t, err)
+			assert.Equal(t, "", state)
+		},
+		"BlockedStateContainerStatus": func(*testing.T) {
+			t1 := Task{
+				Id: "t1",
+				DependsOn: []Dependency{
+					{TaskId: "t2", Status: AllStatuses},
+				},
+			}
+			t2 := Task{
+				Id:     "t2",
+				Status: evergreen.TaskContainerUnallocated,
 				DependsOn: []Dependency{
 					{TaskId: "t3", Unattainable: true},
 				},
@@ -2465,6 +2489,21 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t12.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t11)
+	t13 := Task{
+		Id:        "t13",
+		Status:    evergreen.TaskContainerUnallocated,
+		Activated: true,
+	}
+	assert.NoError(t, t13.Insert())
+	// No CheckStatuses for t12 to avoid paradox
+	t14 := Task{
+		Id:        "t14",
+		Status:    evergreen.TaskContainerAllocated,
+		Activated: true,
+	}
+	assert.NoError(t, t14.Insert())
+	checkStatuses(t, evergreen.TaskContainerUnallocated, t13)
+	checkStatuses(t, evergreen.TaskContainerAllocated, t14)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
