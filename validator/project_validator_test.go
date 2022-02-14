@@ -1258,8 +1258,8 @@ func TestValidatePeriodicBuilds(t *testing.T) {
 	}
 	validationErrs := validateProjectConfigPeriodicBuilds(projectConfig)
 	assert.Len(t, validationErrs, 2)
-	assert.Equal(t, validationErrs[0].Message, "Interval must be a positive integer")
-	assert.Equal(t, validationErrs[1].Message, "A config file must be specified")
+	assert.Contains(t, validationErrs[0].Message, "Interval must be a positive integer")
+	assert.Contains(t, validationErrs[1].Message, "A config file must be specified")
 }
 
 func TestValidatePlugins(t *testing.T) {
