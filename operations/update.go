@@ -25,7 +25,7 @@ import (
 func Update() cli.Command {
 	const installFlagName = "install"
 	const forceFlagName = "force"
-	const autoUpdateFlagName = "auto_update"
+	const autoUpgradeFlagName = "auto_update"
 
 	return cli.Command{
 		Name:    "get-update",
@@ -41,7 +41,7 @@ func Update() cli.Command {
 				Usage: "download a new CLI even if the current CLI is not out of date",
 			},
 			cli.BoolFlag{
-				Name:  joinFlagNames(autoUpdateFlagName, "a"),
+				Name:  joinFlagNames(autoUpgradeFlagName, "a"),
 				Usage: "setup automatic installations of a new CLI if the current CLI is out of date",
 			},
 		},
@@ -50,7 +50,7 @@ func Update() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			doInstall := c.Bool(installFlagName)
 			forceUpdate := c.Bool(forceFlagName)
-			autoUpdate := c.Bool(autoUpdateFlagName)
+			autoUpgrade := c.Bool(autoUpgradeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -59,21 +59,28 @@ func Update() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if conf.AutoUpgradeCLI && autoUpdate {
-				fmt.Printf("automatic CLI updates are already set up, %s flag is not necessary", autoUpdateFlagName)
+			if !conf.AutoUpgradeCLI && !autoUpgrade {
+				fmt.Printf("Automatic CLI upgrades are not set up, specifying the -%s (-a for short) flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName)
 			}
-			if !conf.AutoUpgradeCLI && autoUpdate {
+			if conf.AutoUpgradeCLI && autoUpgrade {
+				fmt.Printf("Automatic CLI upgrades are already set up, specifying the %s flag is not necessary.", autoUpgradeFlagName)
+			}
+			if !conf.AutoUpgradeCLI && autoUpgrade {
 				conf.SetAutoUpgradeCLI()
 				if err := conf.Write(""); err != nil {
 					return errors.Wrap(err, "error setting auto-upgrade CLI option")
 				}
-				fmt.Println("automatic CLI updates have successfully been setup")
+				fmt.Println("Automatic CLI upgrades have successfully been setup.")
 			}
 			return CheckAndUpdateVersion(conf, ctx, doInstall, forceUpdate, false)
 		},
 	}
 }
 
+// CheckAndUpdateVersion checks if the CLI is up to date, if there is no new CLI version it will simply notify that the current binary is up to date.
+// If there is a new version available, it will be downloaded, and if doInstall is set the new binary will automatically be replaced at the current path the old binary existed in.
+// Otherwise, it will simply be downloaded and a suggested 'mv' command will be printed so the user can replace the binary at their discretion.
+// Toggling forceUpdate will download a new CLI even if the current CLI is not out of date.
 func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
 	client := conf.getRestCommunicator(ctx)
 	defer client.Close()
