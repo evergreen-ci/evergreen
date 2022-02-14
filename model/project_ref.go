@@ -447,14 +447,8 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			DeactivatePrevious:     projectConfig.DeactivatePrevious,
-			PerfEnabled:            projectConfig.PerfEnabled,
-			PRTestingEnabled:       projectConfig.PRTestingEnabled,
-			ManualPRTestingEnabled: projectConfig.ManualPRTestingEnabled,
-			GithubChecksEnabled:    projectConfig.GithubChecksEnabled,
-			GitTagVersionsEnabled:  projectConfig.GitTagVersionsEnabled,
-			PeriodicBuilds:         projectConfig.PeriodicBuilds,
-			GithubTriggerAliases:   projectConfig.GithubTriggerAliases,
+			PeriodicBuilds:       projectConfig.PeriodicBuilds,
+			GithubTriggerAliases: projectConfig.GithubTriggerAliases,
 		}
 		if projectConfig.WorkstationConfig != nil {
 			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
@@ -464,9 +458,6 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		}
 		if projectConfig.TaskAnnotationSettings != nil {
 			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
-		}
-		if projectConfig.CommitQueue != nil {
-			pRefToMerge.CommitQueue = *projectConfig.CommitQueue
 		}
 		if projectConfig.TaskSync != nil {
 			pRefToMerge.TaskSync = *projectConfig.TaskSync
