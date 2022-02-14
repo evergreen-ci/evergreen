@@ -80,6 +80,11 @@ type ProjectInfo struct {
 	Config              *ProjectConfig
 }
 
+type ValidationConfigs struct {
+	ParserProjectYaml []byte
+	ProjectConfigYaml []byte
+}
+
 type PatchConfig struct {
 	PatchedParserProject string
 	PatchedProjectConfig string

@@ -121,18 +121,28 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	if !quiet {
 		opts.UnmarshalStrict = true
 	}
-	pp, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, project)
+	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, project)
 	grip.Info(validationErrs)
 	if validationErrs.HasError() {
 		return errors.Errorf("%s is an invalid configuration", path)
 	}
 
-	projectYaml, err := yaml.Marshal(pp)
+	parserProjectYaml, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "Could not marshal parser project into yaml")
 	}
 
-	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
+	projectConfigYaml, err := yaml.Marshal(pc)
+	if err != nil {
+		return errors.Wrapf(err, "Could not marshal project config into yaml")
+	}
+
+	validationInput := model.ValidationConfigs{
+		ProjectConfigYaml: projectConfigYaml,
+		ParserProjectYaml: parserProjectYaml,
+	}
+
+	projErrors, err := ac.ValidateLocalConfig(validationInput, quiet, includeLong, projectID)
 	if err != nil {
 		return nil
 	}
@@ -151,10 +161,11 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 
 // loadProjectIntoWithValidation returns a warning (instead of an error) if there's an error with unmarshalling strictly
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
-	project *model.Project) (*model.ParserProject, validator.ValidationErrors) {
+	project *model.Project) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
-	pp, _, err := model.LoadProjectInto(ctx, data, opts, "", project)
-
+	pp, pc, err := model.LoadProjectInto(ctx, data, opts, "", project)
+	fmt.Println("malik3")
+	fmt.Println(pc)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
@@ -166,7 +177,7 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 					Level:   validator.Warning,
 					Message: fmt.Sprintf("error unmarshalling strictly: %s", err.Error()),
 				})
-				return pp, errs
+				return pp, pc, errs
 			}
 		}
 		errs = append(errs, validator.ValidationError{
@@ -174,5 +185,5 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 			Message: err.Error(),
 		})
 	}
-	return pp, errs
+	return pp, pc, errs
 }

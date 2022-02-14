@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -616,19 +615,19 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-
-	bytes, err := ioutil.ReadAll(body)
+	validationConfigs := model.ValidationConfigs{}
+	err := json.NewDecoder(body).Decode(&validationConfigs)
 	if err != nil {
-		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Error while unmarshalling JSON body: %v", err))
 		return
 	}
 
 	input := validator.ValidationInput{}
-	if err := json.Unmarshal(bytes, &input); err != nil {
-		// try the legacy structure
-		input.ProjectYaml = bytes
-		input.IncludeLong = true // this is legacy behavior
-	}
+	//if err := json.Unmarshal(bytes, &input); err != nil {
+	//	// try the legacy structure
+	//	input.ValidationConfigs = bytes
+	//	input.IncludeLong = true // this is legacy behavior
+	//}
 
 	project := &model.Project{}
 	var projectConfig *model.ProjectConfig
@@ -637,11 +636,19 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, _, err = model.LoadProjectInto(ctx, input.ValidationConfigs.ParserProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
+	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ValidationConfigs.ProjectConfigYaml, opts, "", project); err != nil {
+		validationErr.Message = err.Error()
+		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
+		return
+	}
+	fmt.Println("malik")
+	fmt.Println(projectConfig)
+	fmt.Println(project)
 
 	errs := validator.ValidationErrors{}
 	if input.ProjectID != "" {
