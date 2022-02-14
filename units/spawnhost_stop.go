@@ -72,7 +72,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		j.CloudHostModification.UserID = j.UserID
 	}
 
-	if err := j.CloudHostModification.modifyHost(ctx, func(mgr cloud.Manager, h *host.Host, user string) error {
+	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StopInstance(ctx, h, user); err != nil {
 			event.LogHostStopFinished(h.Id, false)
 			return errors.Wrapf(err, "stopping spawn host '%s'", h.Id)
@@ -81,7 +81,8 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		event.LogHostStopFinished(h.Id, true)
 
 		return nil
-	}); err != nil {
+	}
+	if err := j.CloudHostModification.modifyHost(ctx, stopCloudHost); err != nil {
 		j.AddError(err)
 		return
 	}

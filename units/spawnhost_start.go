@@ -72,7 +72,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		j.CloudHostModification.UserID = j.UserID
 	}
 
-	if err := j.CloudHostModification.modifyHost(ctx, func(mgr cloud.Manager, h *host.Host, user string) error {
+	startCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
 			event.LogHostStartFinished(h.Id, false)
 			return errors.Wrapf(err, "starting spawn host '%s'", h.Id)
@@ -81,7 +81,8 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		event.LogHostStartFinished(h.Id, true)
 
 		return nil
-	}); err != nil {
+	}
+	if err := j.CloudHostModification.modifyHost(ctx, startCloudHost); err != nil {
 		j.AddError(err)
 		return
 	}

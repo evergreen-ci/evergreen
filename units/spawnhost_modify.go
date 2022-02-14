@@ -40,7 +40,7 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr clou
 			return errors.Wrap(err, "finding host")
 		}
 		if m.host == nil {
-			return errors.Wrap(err, "host not found")
+			return errors.New("host not found")
 		}
 	}
 
@@ -69,7 +69,7 @@ type spawnhostModifyJob struct {
 	// TODO (EVG-16066): remove HostID.
 	HostID                string                 `bson:"host_id" json:"host_id" yaml:"host_id"`
 	ModifyOptions         host.HostModifyOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
-	CloudHostModification `bson:"base_spawn_host_modification" json:"base_spawn_host_modification" yaml:"base_spawn_host_modification"`
+	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
 
 	env evergreen.Environment
@@ -106,7 +106,7 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 		j.CloudHostModification.HostID = j.HostID
 	}
 
-	if err := j.CloudHostModification.modifyHost(ctx, func(mgr cloud.Manager, h *host.Host, user string) error {
+	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
 			event.LogHostModifyFinished(h.Id, false)
 			return errors.Wrapf(err, "modifying spawn host '%s'", h.Id)
@@ -114,7 +114,8 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 
 		event.LogHostModifyFinished(h.Id, true)
 		return nil
-	}); err != nil {
+	}
+	if err := j.CloudHostModification.modifyHost(ctx, modifyCloudHost); err != nil {
 		j.AddError(err)
 		return
 	}

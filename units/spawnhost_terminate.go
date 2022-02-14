@@ -50,13 +50,14 @@ func NewSpawnHostTerminationJob(h *host.Host, user, ts string) amboy.Job {
 func (j *spawnHostTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if err := j.CloudHostModification.modifyHost(ctx, func(mgr cloud.Manager, h *host.Host, user string) error {
+	terminateCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.TerminateInstance(ctx, h, user, "user requested spawn host termination"); err != nil {
 			return err
 		}
 
 		return nil
-	}); err != nil {
+	}
+	if err := j.CloudHostModification.modifyHost(ctx, terminateCloudHost); err != nil {
 		j.AddError(err)
 		return
 	}
