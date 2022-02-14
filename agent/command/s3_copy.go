@@ -204,6 +204,15 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 	for _, s3CopyFile := range c.S3CopyFiles {
 		timer.Reset(0)
 
+		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
+			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
+			continue
+		}
+
+		if ctx.Err() != nil {
+			return errors.New("s3copy operation received was canceled")
+		}
+
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
 			S3SourceBucket:      s3CopyFile.Source.Bucket,
@@ -222,20 +231,6 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			logger.Task().Infof("noop, this version is currently in the process of trying to push, or has already succeeded in pushing the file: '%s/%s'", s3CopyFile.Destination.Bucket, s3CopyFile.Destination.Path)
 			continue
 		}
-
-		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
-			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
-			continue
-		}
-
-		if ctx.Err() != nil {
-			return errors.New("s3copy operation received was canceled")
-		}
-
-		logger.Execution().Infof("Making API push copy call to "+
-			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
-			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
-			s3CopyFile.Destination.Path)
 
 		s3CopyReq.AwsKey = c.AwsKey
 		s3CopyReq.AwsSecret = c.AwsSecret
@@ -269,6 +264,11 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			logger.Task().Error(bucketErr)
 			return bucketErr
 		}
+		logger.Execution().Infof("Making API push copy call to "+
+			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
+			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
+			s3CopyFile.Destination.Path)
+
 	retryLoop:
 		for i := 0; i < maxS3OpAttempts; i++ {
 			select {
