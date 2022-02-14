@@ -11,5 +11,5 @@ type PodDispatcher struct {
 	// PodIDs are the identifiers for the pods that run the tasks.
 	PodIDs []string `bson:"pod_ids" json:"pod_ids"`
 	// Tasks is the queue of tasks to run.
-	TaskIDs []string `bson:"tasks" json:"tasks"`
+	TaskIDs []string `bson:"task_ids" json:"task_ids"`
 }
