@@ -66,9 +66,9 @@ func (pc *ProjectConfig) isEmpty() bool {
 	return true
 }
 
-// createProjectConfig marshals the supplied YAML into our
+// CreateProjectConfig marshals the supplied YAML into our
 // intermediate configs representation.
-func createProjectConfig(yml []byte) (*ProjectConfig, error) {
+func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
 	p := &ProjectConfig{}
 	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
