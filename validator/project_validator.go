@@ -411,7 +411,7 @@ func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErro
 	for _, periodicBuild := range pc.PeriodicBuilds {
 		if err := periodicBuild.Validate(); err != nil {
 			validationErrs = append(validationErrs, ValidationError{
-				Message: err.Error(),
+				Message: errors.Wrap(err, "error validating periodic builds").Error(),
 				Level:   Error,
 			})
 		}
@@ -430,7 +430,7 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, errorMsg := range errs {
 		validationErrs = append(validationErrs, ValidationError{
-			Message: errorMsg,
+			Message: fmt.Sprintf("error validating aliases: %s", errorMsg),
 			Level:   Error,
 		})
 	}
