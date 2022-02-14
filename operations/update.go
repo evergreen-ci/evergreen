@@ -25,6 +25,7 @@ import (
 func Update() cli.Command {
 	const installFlagName = "install"
 	const forceFlagName = "force"
+	const autoUpdateFlagName = "auto_update"
 
 	return cli.Command{
 		Name:    "get-update",
@@ -39,12 +40,17 @@ func Update() cli.Command {
 				Name:  joinFlagNames(forceFlagName, "f"),
 				Usage: "download a new CLI even if the current CLI is not out of date",
 			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(autoUpdateFlagName, "a"),
+				Usage: "setup automatic installations of a new CLI if the current CLI is out of date",
+			},
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			doInstall := c.Bool(installFlagName)
 			forceUpdate := c.Bool(forceFlagName)
+			autoUpdate := c.Bool(autoUpdateFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -53,26 +59,26 @@ func Update() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if conf.AutoUpgradeCLI {
-				fmt.Println("Automatic CLI updates are already run before each command, get-update command is not necessary")
-				return nil
+			if conf.AutoUpgradeCLI && autoUpdate {
+				fmt.Printf("automatic CLI updates are already set up, %s flag is not necessary", autoUpdateFlagName)
 			}
-			if !conf.AutoUpgradeCLI && confirm(fmt.Sprint("Automatic CLI updates are not set up, configure now? (Y/n):"), false) {
+			if !conf.AutoUpgradeCLI && autoUpdate {
 				conf.SetAutoUpgradeCLI()
 				if err := conf.Write(""); err != nil {
-					return err
+					return errors.Wrap(err, "error setting auto-upgrade CLI option")
 				}
+				fmt.Println("automatic CLI updates have successfully been setup")
 			}
-			return CheckAndUpdateVersion(conf, ctx, doInstall, forceUpdate)
+			return CheckAndUpdateVersion(conf, ctx, doInstall, forceUpdate, false)
 		},
 	}
 }
 
-func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool) error {
+func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
 	client := conf.getRestCommunicator(ctx)
 	defer client.Close()
 
-	update, err := checkUpdate(client, false, forceUpdate)
+	update, err := checkUpdate(client, silent, forceUpdate)
 	if err != nil {
 		return err
 	}

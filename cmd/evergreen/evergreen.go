@@ -111,7 +111,7 @@ func buildApp() *cli.App {
 		if conf.AutoUpgradeCLI {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			if err = operations.CheckAndUpdateVersion(conf, ctx, true, false); err != nil {
+			if err = operations.CheckAndUpdateVersion(conf, ctx, true, false, true); err != nil {
 				fmt.Println("Automatic CLI update failed, continuing command execution")
 			}
 		}
