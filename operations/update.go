@@ -25,7 +25,7 @@ import (
 func Update() cli.Command {
 	const installFlagName = "install"
 	const forceFlagName = "force"
-	const autoUpgradeFlagName = "auto_update"
+	const autoUpgradeFlagName = "auto"
 
 	return cli.Command{
 		Name:    "get-update",
@@ -41,7 +41,7 @@ func Update() cli.Command {
 				Usage: "download a new CLI even if the current CLI is not out of date",
 			},
 			cli.BoolFlag{
-				Name:  joinFlagNames(autoUpgradeFlagName, "a"),
+				Name:  joinFlagNames(autoUpgradeFlagName),
 				Usage: "setup automatic installations of a new CLI if the current CLI is out of date",
 			},
 		},
@@ -60,7 +60,7 @@ func Update() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			if !conf.AutoUpgradeCLI && !autoUpgrade {
-				fmt.Printf("Automatic CLI upgrades are not set up, specifying the -%s (-a for short) flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName)
+				fmt.Printf("Automatic CLI upgrades are not set up; specifying the -%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName)
 			}
 			if conf.AutoUpgradeCLI && autoUpgrade {
 				fmt.Printf("Automatic CLI upgrades are already set up, specifying the %s flag is not necessary.", autoUpgradeFlagName)
@@ -77,10 +77,10 @@ func Update() cli.Command {
 	}
 }
 
-// CheckAndUpdateVersion checks if the CLI is up to date, if there is no new CLI version it will simply notify that the current binary is up to date.
+// CheckAndUpdateVersion checks if the CLI is up to date. If there is no new CLI version it will simply notify that the current binary is up to date.
 // If there is a new version available, it will be downloaded, and if doInstall is set the new binary will automatically be replaced at the current path the old binary existed in.
 // Otherwise, it will simply be downloaded and a suggested 'mv' command will be printed so the user can replace the binary at their discretion.
-// Toggling forceUpdate will download a new CLI even if the current CLI is not out of date.
+// Toggling forceUpdate will download a new CLI even if the current CLI does not have an out-of-date CLI version string.
 func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
 	client := conf.getRestCommunicator(ctx)
 	defer client.Close()
