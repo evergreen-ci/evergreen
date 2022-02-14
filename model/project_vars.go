@@ -216,11 +216,23 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 	return restrictedVars
 }
 
+func (projectVars *ProjectVars) GetAdminOnlyVars() map[string]string {
+	adminOnlyVars := map[string]string{}
+
+	for k, v := range projectVars.Vars {
+		if projectVars.AdminOnlyVars[k] {
+			adminOnlyVars[k] = v
+		}
+	}
+	return adminOnlyVars
+}
+
+// Returns non-restricted and non-admin only vars for now.
 func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
 	safeVars := map[string]string{}
 
 	for k, v := range projectVars.Vars {
-		if !projectVars.RestrictedVars[k] {
+		if !projectVars.RestrictedVars[k] && !projectVars.AdminOnlyVars[k] {
 			safeVars[k] = v
 		}
 	}

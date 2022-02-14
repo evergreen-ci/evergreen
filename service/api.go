@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -324,7 +325,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res := apimodels.ExpansionVars{
 		Vars:           map[string]string{},
 		RestrictedVars: map[string]string{},
-		AdminOnlyVars:  map[string]string{},
 		PrivateVars:    map[string]bool{},
 	}
 	if projectVars == nil {
@@ -335,6 +335,26 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res.RestrictedVars = projectVars.GetRestrictedVars()
 	if projectVars.PrivateVars != nil {
 		res.PrivateVars = projectVars.PrivateVars
+	}
+
+	u, err := user.FindOneById(t.ActivatedBy)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if u != nil {
+		// check if user is admin
+		authorized := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+		if authorized {
+			for k, v := range projectVars.GetAdminOnlyVars() {
+				res.Vars[k] = v
+			}
+		}
 	}
 
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
