@@ -57,13 +57,18 @@ const (
 	TaskUnscheduled  = "unscheduled"
 	// TaskWillRun is a subset of TaskUndispatched and is only used in the UI
 	TaskWillRun = "will-run"
-
-	// TaskStarted indicates a task is running on an agent
-	TaskStarted = "started"
+	// TaskContainerUnallocated indicates that a tasks's container has not been requested.
+	TaskContainerUnallocated = "container-unallocated"
+	// TaskContainerAllocated indicates that a tasks's container has been requested
+	// from the cloud provider but hasn't started yet.
+	TaskContainerAllocated = "container-allocated"
 
 	// TaskDispatched indicates that an agent has received the task, but
 	// the agent has not yet told Evergreen that it's running the task
 	TaskDispatched = "dispatched"
+
+	// TaskStarted indicates a task is running on an agent.
+	TaskStarted = "started"
 
 	// The task statuses below indicate that a task has finished.
 	TaskSucceeded = "success"
@@ -269,16 +274,16 @@ const (
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
 
-var InternalAliases []string = []string{
+var InternalAliases = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
 	GithubChecksAlias,
 	GitTagAlias,
 }
 
-var TaskFailureStatuses []string = []string{
+// TaskNonGenericFailureStatuses represents some kind of specific abnormal failure mode.
+var TaskNonGenericFailureStatuses = []string{
 	TaskTimedOut,
-	TaskFailed,
 	TaskSystemFailed,
 	TaskTestTimedOut,
 	TaskSetupFailed,
@@ -286,10 +291,15 @@ var TaskFailureStatuses []string = []string{
 	TaskSystemTimedOut,
 }
 
-var TaskUnstartedStatuses []string = []string{
+// TaskFailureStatuses represents all the ways that a task can fail, inclusive of system failures
+// and task failures.
+var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
+
+var TaskUnstartedStatuses = []string{
 	TaskInactive,
 	TaskUnstarted,
 	TaskUndispatched,
+	TaskContainerAllocated,
 }
 
 func IsUnstartedTaskStatus(status string) bool {
@@ -674,9 +684,13 @@ var (
 	}
 
 	// constant arrays for db update logic
-	AbortableStatuses   = []string{TaskStarted, TaskDispatched}
-	CompletedStatuses   = []string{TaskSucceeded, TaskFailed}
-	UncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict}
+	// TaskAbortableStatuses have been picked up by an agent but may or may not have started.
+	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
+	// TaskCompletedStatuses have not experienced some sort of system failure and
+	// are in a finished state.
+	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
+	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
+	TaskUncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskInactive, TaskContainerAllocated}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 

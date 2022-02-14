@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/event"
 
@@ -770,8 +771,7 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
-	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
 	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
 	if err != nil {
 		return nil, err
@@ -1388,4 +1388,21 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
 	})
 	return groupsArr, nil
+}
+
+func hasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel int) (res interface{}, err error) {
+	user := gimlet.GetUser(ctx)
+	if user == nil {
+		return nil, Forbidden.Send(ctx, "user not logged in")
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      resource,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: permissionLevel,
+	}
+	if user.HasPermission(opts) {
+		return next(ctx)
+	}
+	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
 }

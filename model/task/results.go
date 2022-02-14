@@ -11,7 +11,7 @@ import (
 )
 
 // ResultStatus returns the status for this task that should be displayed in the
-// UI. Itb uses a combination of the TaskEndDetails and the Task's status to
+// UI. It uses a combination of the TaskEndDetails and the Task's status to
 // determine the state of the task.
 func (t *Task) ResultStatus() string {
 	status := t.Status

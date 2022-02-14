@@ -457,6 +457,7 @@ mciModule.controller(
           $scope.projectVars = data.ProjectVars.vars || {};
           $scope.privateVars = data.ProjectVars.private_vars || {};
           $scope.restrictedVars = data.ProjectVars.restricted_vars || {};
+          $scope.adminOnlyVars = data.ProjectVars.adminS_only_vars || {};
           $scope.github_webhooks_enabled = data.github_webhooks_enabled;
           $scope.githubChecksConflicts =
             data.github_checks_conflicting_refs || [];
@@ -490,6 +491,7 @@ mciModule.controller(
             project_vars: $scope.projectVars,
             private_vars: $scope.privateVars,
             restricted_vars: $scope.restrictedVars,
+            admin_only_vars: $scope.adminOnlyVars,
             display_name: $scope.projectRef.display_name,
             default_logger: $scope.projectRef.default_logger,
             cedar_test_results_enabled: $scope.projectRef.cedar_test_results_enabled,
@@ -722,11 +724,16 @@ mciModule.controller(
         if ($scope.proj_var.is_restricted) {
           $scope.settingsFormData.restricted_vars[$scope.proj_var.name] = true;
         }
+        if ($scope.proj_var.is_admin_only) {
+          $scope.settingsFormData.admin_only_vars[$scope.proj_var.name] = true;
+        }
+
 
         $scope.proj_var.name = "";
         $scope.proj_var.value = "";
         $scope.proj_var.is_private = false;
         $scope.proj_var.is_restricted = false;
+        $scope.proj_var.is_admin_only = false;
       }
     };
 

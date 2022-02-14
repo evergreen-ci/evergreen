@@ -428,7 +428,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	}
 
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
-		Queue:                     queueOpts,
+		DefaultQueue:              queueOpts,
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,

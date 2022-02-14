@@ -65,7 +65,8 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	RequireSuperUser func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RequireProjectAccess func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error)
+	RequireSuperUser     func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -176,9 +177,10 @@ type ComplexityRoot struct {
 	}
 
 	CommitQueueParams struct {
-		Enabled     func(childComplexity int) int
-		MergeMethod func(childComplexity int) int
-		Message     func(childComplexity int) int
+		Enabled       func(childComplexity int) int
+		MergeMethod   func(childComplexity int) int
+		Message       func(childComplexity int) int
+		RequireSigned func(childComplexity int) int
 	}
 
 	Dependency struct {
@@ -717,9 +719,10 @@ type ComplexityRoot struct {
 	}
 
 	RepoCommitQueueParams struct {
-		Enabled     func(childComplexity int) int
-		MergeMethod func(childComplexity int) int
-		Message     func(childComplexity int) int
+		Enabled       func(childComplexity int) int
+		MergeMethod   func(childComplexity int) int
+		Message       func(childComplexity int) int
+		RequireSigned func(childComplexity int) int
 	}
 
 	RepoEventLogEntry struct {
@@ -1883,6 +1886,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
+
+	case "CommitQueueParams.requireSigned":
+		if e.complexity.CommitQueueParams.RequireSigned == nil {
+			break
+		}
+
+		return e.complexity.CommitQueueParams.RequireSigned(childComplexity), true
 
 	case "Dependency.buildVariant":
 		if e.complexity.Dependency.BuildVariant == nil {
@@ -4896,6 +4906,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoCommitQueueParams.Message(childComplexity), true
 
+	case "RepoCommitQueueParams.requireSigned":
+		if e.complexity.RepoCommitQueueParams.RequireSigned == nil {
+			break
+		}
+
+		return e.complexity.RepoCommitQueueParams.RequireSigned(childComplexity), true
+
 	case "RepoEventLogEntry.after":
 		if e.complexity.RepoEventLogEntry.After == nil {
 			break
@@ -7321,6 +7338,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "graphql/schema.graphql", Input: `directive @requireSuperUser on FIELD_DEFINITION 
+directive @requireProjectAccess(access: ProjectSettingsAccess!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
 type Query {
   task(taskId: String!, execution: Int): Task
@@ -7397,8 +7415,8 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits
   taskNamesForBuildVariant(projectId: String!, buildVariant: String!): [String!]
   buildVariantsForTaskName(projectId: String!, taskName: String!): [BuildVariantTuple]
-  projectSettings(identifier: String!): ProjectSettings!
-  repoSettings(id: String!): RepoSettings!
+  projectSettings(identifier: String! @requireProjectAccess(access: VIEW)): ProjectSettings!
+  repoSettings(id: String! @requireProjectAccess(access: VIEW)): RepoSettings!
   projectEvents(
     identifier: String!
     limit: Int = 0
@@ -7420,9 +7438,9 @@ type Mutation {
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
-  attachProjectToRepo(projectId: String!): Project!
-  detachProjectFromRepo(projectId: String!): Project!
-  forceRepotrackerRun(projectId: String!): Boolean!
+  attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
   schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
@@ -7592,6 +7610,11 @@ type BuildVariantTuple {
   displayName: String!
 }
 
+enum ProjectSettingsAccess {
+  EDIT
+  VIEW
+}
+
 enum SpawnHostStatusActions {
   START
   STOP
@@ -7738,7 +7761,7 @@ input CopyProjectInput {
 }
 
 input MoveProjectInput {
-  projectId: String!
+  projectId: String! @requireProjectAccess(access: EDIT)
   newOwner: String!
   newRepo: String!
 }
@@ -7752,7 +7775,7 @@ input ProjectSettingsInput {
 }
 
 input ProjectInput {
-  id: String!
+  id: String! @requireProjectAccess(access: EDIT)
   identifier: String
   displayName: String
   enabled: Boolean
@@ -7803,7 +7826,7 @@ input RepoSettingsInput {
 }
 
 input RepoRefInput {
-  id: String!
+  id: String! @requireProjectAccess(access: EDIT)
   displayName: String
   enabled: Boolean
   private: Boolean
@@ -7868,6 +7891,7 @@ input PeriodicBuildInput {
 
 input CommitQueueParamsInput {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String
   message: String
 }
@@ -8668,12 +8692,14 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String!
   message: String!
 }
 
 type RepoCommitQueueParams {
   enabled: Boolean!
+  requireSigned: Boolean!
   mergeMethod: String!
   message: String!
 }
@@ -9014,6 +9040,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 ProjectSettingsAccess
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg0, err = ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_abortTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -9107,9 +9148,26 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_args(ctx context.
 	var arg0 string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["projectId"] = arg0
@@ -9206,9 +9264,26 @@ func (ec *executionContext) field_Mutation_detachProjectFromRepo_args(ctx contex
 	var arg0 string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["projectId"] = arg0
@@ -9317,9 +9392,26 @@ func (ec *executionContext) field_Mutation_forceRepotrackerRun_args(ctx context.
 	var arg0 string
 	if tmp, ok := rawArgs["projectId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["projectId"] = arg0
@@ -10457,9 +10549,26 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 	var arg0 string
 	if tmp, ok := rawArgs["identifier"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["identifier"] = arg0
@@ -10520,9 +10629,26 @@ func (ec *executionContext) field_Query_repoSettings_args(ctx context.Context, r
 	var arg0 string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "VIEW")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireProjectAccess == nil {
+				return nil, errors.New("directive requireProjectAccess is not implemented")
+			}
+			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["id"] = arg0
@@ -12814,6 +12940,38 @@ func (ec *executionContext) _CommitQueueParams_enabled(ctx context.Context, fiel
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Enabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _CommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "CommitQueueParams",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequireSigned, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26237,6 +26395,41 @@ func (ec *executionContext) _RepoCommitQueueParams_enabled(ctx context.Context, 
 	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _RepoCommitQueueParams_requireSigned(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoCommitQueueParams",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequireSigned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _RepoCommitQueueParams_mergeMethod(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -38900,6 +39093,14 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 			if err != nil {
 				return it, err
 			}
+		case "requireSigned":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireSigned"))
+			it.RequireSigned, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "mergeMethod":
 			var err error
 
@@ -39338,9 +39539,27 @@ func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, 
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-			it.ProjectID, err = ec.unmarshalNString2string(ctx, v)
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
 			if err != nil {
-				return it, err
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "newOwner":
 			var err error
@@ -39794,9 +40013,29 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
 			if err != nil {
-				return it, err
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Id = data
+			} else if tmp == nil {
+				it.Id = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "identifier":
 			var err error
@@ -40230,9 +40469,29 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			it.Id, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
 			if err != nil {
-				return it, err
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Id = data
+			} else if tmp == nil {
+				it.Id = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "displayName":
 			var err error
@@ -42143,6 +42402,8 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			out.Values[i] = graphql.MarshalString("CommitQueueParams")
 		case "enabled":
 			out.Values[i] = ec._CommitQueueParams_enabled(ctx, field, obj)
+		case "requireSigned":
+			out.Values[i] = ec._CommitQueueParams_requireSigned(ctx, field, obj)
 		case "mergeMethod":
 			out.Values[i] = ec._CommitQueueParams_mergeMethod(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -45452,6 +45713,11 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 			out.Values[i] = graphql.MarshalString("RepoCommitQueueParams")
 		case "enabled":
 			out.Values[i] = ec._RepoCommitQueueParams_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "requireSigned":
+			out.Values[i] = ec._RepoCommitQueueParams_requireSigned(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -50108,6 +50374,16 @@ func (ec *executionContext) marshalNProjectSettings2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._ProjectSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx context.Context, v interface{}) (ProjectSettingsAccess, error) {
+	var res ProjectSettingsAccess
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProjectSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsAccess(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsAccess) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, v interface{}) (ProjectSettingsSection, error) {

@@ -3,16 +3,20 @@ mutation {
         repoSettings: {
             projectRef: {
                 id: "repo_id"
-                enabled: true,
-                remotePath: "my_path_is_new"
+                commitQueue: {
+                    enabled: true
+                    requireSigned: false
+                }
             }
         },
-        section: GENERAL
+        section: GITHUB_AND_COMMIT_QUEUE
     ) {
         projectRef {
-            enabled
-            remotePath
-            spawnHostScriptPath ## overwritten
+            commitQueue {
+                enabled
+                requireSigned
+
+            }
         }
         vars { ## should be unchanged
             vars

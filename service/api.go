@@ -324,6 +324,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res := apimodels.ExpansionVars{
 		Vars:           map[string]string{},
 		RestrictedVars: map[string]string{},
+		AdminOnlyVars:  map[string]string{},
 		PrivateVars:    map[string]bool{},
 	}
 	if projectVars == nil {
@@ -438,6 +439,86 @@ func (as *APIServer) SetDownstreamParams(w http.ResponseWriter, r *http.Request)
 	}
 
 	gimlet.WriteJSON(w, fmt.Sprintf("Downstream patches for %v have successfully been set", p.Id))
+}
+
+// NewPush updates when a task is pushing to s3 for s3 copy
+func (as *APIServer) NewPush(w http.ResponseWriter, r *http.Request) {
+	task := MustHaveTask(r)
+	s3CopyReq := &apimodels.S3CopyRequest{}
+
+	if err := utility.ReadJSON(utility.NewRequestReader(r), s3CopyReq); err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	// Get the version for this task, so we can check if it has
+	// any already-done pushes
+	v, err := model.VersionFindOne(model.VersionById(task.Version))
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "problem querying task %s with version id %s",
+				task.Id, task.Version))
+		return
+	}
+
+	// Check for an already-pushed file with this same file path,
+	// but from a conflicting or newer commit sequence num
+	if v == nil {
+		as.LoggedError(w, r, http.StatusNotFound,
+			errors.Errorf("no version found for '%s'", task.Id))
+		return
+	}
+
+	copyToLocation := strings.Join([]string{s3CopyReq.S3DestinationBucket, s3CopyReq.S3DestinationPath}, "/")
+
+	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "problem querying for push log at '%s' for '%s'",
+				copyToLocation, task.Id))
+		return
+	}
+	if newestPushLog != nil {
+		// the error is not being returned in order to avoid a retry
+		grip.Warningln("conflict with existing pushed file:", copyToLocation)
+		gimlet.WriteJSON(w, nil)
+		return
+	}
+
+	// It's now safe to put the file in its permanent location.
+	newPushLog := model.NewPushLog(v, task, copyToLocation)
+	if err = newPushLog.Insert(); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "failed to create new push log: %+v", newPushLog))
+	}
+	gimlet.WriteJSON(w, newPushLog)
+}
+
+// UpdatePushStatus updates the status for a file that a task is pushing to s3 for s3 copy
+func (as *APIServer) UpdatePushStatus(w http.ResponseWriter, r *http.Request) {
+	task := MustHaveTask(r)
+	pushLog := &model.PushLog{}
+	err := utility.ReadJSON(utility.NewRequestReader(r), pushLog)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
+	err = errors.Wrapf(pushLog.UpdateStatus(pushLog.Status),
+		"updating pushlog status failed for task %s", task.Id)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"task":      task.Id,
+			"project":   task.Project,
+			"version":   task.Version,
+			"execution": task.Execution,
+		}))
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrapf(err, "updating pushlog status failed for task %s", task.Id))
+		return
+	}
+
+	gimlet.WriteJSON(w, nil)
 }
 
 // AppendTaskLog appends the received logs to the task's internal logs.
@@ -596,7 +677,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
 	} else {
-		errs = append(errs, validator.CheckProjectWarnings(project, input.ProjectYaml)...)
+		errs = append(errs, validator.CheckProjectWarnings(project)...)
 	}
 
 	if len(errs) > 0 {
@@ -709,6 +790,8 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/parser_project").Wrap(requireTaskSecret).Handler(as.GetParserProject).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(requireTaskSecret).Handler(as.GetProjectRef).Get()
 	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(requireTask, requireHost).Handler(as.GetExpansions).Get()
+	app.Route().Version(2).Route("/task/{taskId}/new_push").Wrap(requireTaskSecret).Handler(as.NewPush).Post()
+	app.Route().Version(2).Route("/task/{taskId}/update_push_status").Wrap(requireTaskSecret).Handler(as.UpdatePushStatus).Post()
 
 	// plugins
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(requireTaskSecret).Handler(as.gitServePatchFile).Get()

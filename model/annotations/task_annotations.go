@@ -28,8 +28,9 @@ type TaskAnnotation struct {
 type IssueLink struct {
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
-	IssueKey string  `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source   *Source `bson:"source,omitempty" json:"source,omitempty"`
+	IssueKey        string  `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	Source          *Source `bson:"source,omitempty" json:"source,omitempty"`
+	ConfidenceScore float32 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 
 type Source struct {

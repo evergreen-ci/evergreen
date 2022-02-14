@@ -130,12 +130,13 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 		}
 	} else {
+		// we're going in here, and we've provided nothing so the limit is 101
 		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 			Execution: tgh.testExecution,
 			Limit:     tgh.limit + 1,
-			Statuses:  tgh.testStatus,
+			Statuses:  tgh.testStatus, // we haven't provided a status or execution or test name
 			TaskID:    tgh.taskID,
-			TestID:    tgh.key,
+			TestID:    tgh.key, // TESTID IS KEY
 			TestName:  tgh.testName,
 		})
 		if err != nil {

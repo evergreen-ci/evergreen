@@ -609,7 +609,7 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 	}
 
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+		evergreen.TaskCompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousTask, err := task.FindOne(query)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
@@ -862,7 +862,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	catcher := grip.NewBasicCatcher()
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousCompleteTask, err := task.FindOne(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
@@ -1065,7 +1065,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
-		evergreen.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
+		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	previousTask, err := task.FindOne(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")

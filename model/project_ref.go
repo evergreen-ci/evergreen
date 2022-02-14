@@ -984,6 +984,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
 	commonRestricted := map[string]bool{}
+	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
 		if err != nil {
@@ -1002,6 +1003,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			if vars.RestrictedVars != nil {
 				commonRestricted = vars.RestrictedVars
 			}
+			if vars.AdminOnlyVars != nil {
+				commonAdminOnly = vars.AdminOnlyVars
+			}
 			continue
 		}
 		for key, val := range commonProjectVariables {
@@ -1013,6 +1017,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 				if vars.RestrictedVars[key] {
 					commonRestricted[key] = true
 				}
+				if vars.AdminOnlyVars[key] {
+					commonAdminOnly[key] = true
+				}
 			} else {
 				// remove any variables from the common set that aren't in all the project refs
 				delete(commonProjectVariables, key)
@@ -1023,6 +1030,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 		Vars:           commonProjectVariables,
 		PrivateVars:    commonPrivate,
 		RestrictedVars: commonRestricted,
+		AdminOnlyVars:  commonAdminOnly,
 	}, nil
 }
 
@@ -1711,6 +1719,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 					projectVarsMapKey:    1,
 					privateVarsMapKey:    1,
 					restrictedVarsMapKey: 1,
+					adminOnlyVarsMapKey:  1,
 				},
 			})
 		if err == nil {

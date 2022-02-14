@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO: <EVG-16254> remove this code
 const (
 	s3CopyRetryMinDelay = 5 * time.Second
 	s3CopyAttempts      = 5
@@ -134,7 +135,8 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		})
 
 	if err != nil {
-		grip.Error(errors.Wrap(errors.WithStack(newPushLog.UpdateStatus(model.PushLogFailed)), "updating pushlog status failed"))
+		// this is not using a constant because the code will be removed soon
+		grip.Error(errors.Wrap(errors.WithStack(newPushLog.UpdateStatus("failed")), "updating pushlog status failed"))
 
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "S3 copy failed for task %s", task.Id))

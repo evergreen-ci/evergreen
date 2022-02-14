@@ -818,7 +818,7 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 // build variant + display name combination as the specified task
 func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
-		statuses = evergreen.CompletedStatuses
+		statuses = evergreen.TaskCompletedStatuses
 	}
 	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
@@ -1573,6 +1573,8 @@ func (t *Task) displayTaskPriority() int {
 		return 70
 	case evergreen.TaskUndispatched:
 		return 80
+	case evergreen.TaskContainerUnallocated:
+		return 80
 	case evergreen.TaskInactive:
 		return 90
 	case evergreen.TaskSucceeded:
@@ -1935,7 +1937,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 func AbortBuild(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -1973,7 +1975,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 func AbortVersion(versionId string, reason AbortInfo) error {
 	q := bson.M{
 		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2429,7 +2431,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 							{"$and": []bson.M{
 								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
 								{"$or": []bson.M{
-									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.CompletedStatuses}},
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.TaskCompletedStatuses}},
 									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
 								}},
 							}},
@@ -2766,13 +2768,15 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 // TaskStatusCount holds counts for task statuses
 type TaskStatusCount struct {
-	Succeeded    int `json:"succeeded"`
-	Failed       int `json:"failed"`
-	Started      int `json:"started"`
-	Undispatched int `json:"undispatched"`
-	Inactive     int `json:"inactive"`
-	Dispatched   int `json:"dispatched"`
-	TimedOut     int `json:"timed_out"`
+	Succeeded            int `json:"succeeded"`
+	Failed               int `json:"failed"`
+	Started              int `json:"started"`
+	Undispatched         int `json:"undispatched"`
+	Inactive             int `json:"inactive"`
+	Dispatched           int `json:"dispatched"`
+	ContainerUnallocated int `json:"container_unallocated"`
+	ContainerAllocated   int `json:"container_allocated"`
+	TimedOut             int `json:"timed_out"`
 }
 
 func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
@@ -2791,6 +2795,10 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 		tsc.Undispatched++
 	case evergreen.TaskInactive:
 		tsc.Inactive++
+	case evergreen.TaskContainerUnallocated:
+		tsc.ContainerUnallocated++
+	case evergreen.TaskContainerAllocated:
+		tsc.ContainerAllocated++
 	}
 }
 
