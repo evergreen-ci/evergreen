@@ -210,8 +210,13 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 
 		if ctx.Err() != nil {
-			return errors.New("s3copy operation received was canceled")
+			return errors.New("s3copy operation was canceled")
 		}
+
+		logger.Execution().Infof("Making API push copy call to "+
+			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
+			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
+			s3CopyFile.Destination.Path)
 
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
@@ -246,10 +251,22 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		if err != nil {
 			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
 			logger.Task().Error(bucketErr)
+
+			newPushLog.Status = pushLogFailed
+			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
+				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+bucketErr.Error())
+			}
+
 			return bucketErr
 		}
 
 		if err := srcBucket.Check(ctx); err != nil {
+
+			newPushLog.Status = pushLogFailed
+			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
+				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+err.Error())
+			}
+
 			return errors.Wrap(err, "invalid bucket")
 		}
 		destOpts := pail.S3Options{
@@ -262,12 +279,14 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		if err != nil {
 			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
 			logger.Task().Error(bucketErr)
+
+			newPushLog.Status = pushLogFailed
+			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
+				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+bucketErr.Error())
+			}
+
 			return bucketErr
 		}
-		logger.Execution().Infof("Making API push copy call to "+
-			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
-			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
-			s3CopyFile.Destination.Path)
 
 	retryLoop:
 		for i := 0; i < maxS3OpAttempts; i++ {
