@@ -407,17 +407,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 }
 
 func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
-	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Database.Url
-	opts.DB = e.settings.Amboy.DB
-	opts.Collection = e.settings.Amboy.Name
-	opts.Priority = e.settings.Amboy.RequireRemotePriority
-	opts.SkipQueueIndexBuilds = true
-	opts.SkipReportingIndexBuilds = true
-	opts.UseGroups = true
-	opts.GroupName = e.settings.Amboy.Name
-	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
-	opts.Client = e.client
+	opts := e.getRemoteQueueGroupDBOptions()
 
 	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
 	queueOpts := queue.MongoDBQueueOptions{
@@ -427,8 +417,24 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		Retryable:  &retryOpts,
 	}
 
+	// TODO (EVG-16210): make the event notifier options configurable from the
+	// admin settings instead of hard-coding them.
+	eventNotifierDBOpts := e.getRemoteQueueGroupDBOptions()
+	// Setting the sample size improves performance by reducing dispatch
+	// contention.
+	eventNotifierDBOpts.SampleSize = 300
+	eventNotifierQueueOpts := queue.MongoDBQueueOptions{
+		// Increase the workers for the event notifier queue since the event
+		// notifier has higher throughput requirements.
+		NumWorkers: utility.ToIntPtr(5),
+		DB:         &eventNotifierDBOpts,
+	}
+
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
-		DefaultQueue:              queueOpts,
+		DefaultQueue: queueOpts,
+		PerQueue: map[string]queue.MongoDBQueueOptions{
+			"service.event.notifier": eventNotifierQueueOpts,
+		},
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
@@ -445,6 +451,21 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	})
 
 	return nil
+}
+
+func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
+	opts := queue.DefaultMongoDBOptions()
+	opts.URI = e.settings.Database.Url
+	opts.DB = e.settings.Amboy.DB
+	opts.Collection = e.settings.Amboy.Name
+	opts.Priority = e.settings.Amboy.RequireRemotePriority
+	opts.SkipQueueIndexBuilds = true
+	opts.SkipReportingIndexBuilds = true
+	opts.UseGroups = true
+	opts.GroupName = e.settings.Amboy.Name
+	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
+	opts.Client = e.client
+	return opts
 }
 
 func (e *envState) createNotificationQueue(ctx context.Context) error {

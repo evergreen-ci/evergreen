@@ -217,6 +217,19 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
+				// TODO (PM-2620): Handle these statuses properly in the UI.
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerAllocated},
+					},
+					"then": evergreen.TaskContainerAllocated,
+				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerUnallocated},
+					},
+					"then": evergreen.TaskContainerUnallocated,
+				},
 				// A task will be unscheduled if it is not activated
 				{
 					"case": bson.M{

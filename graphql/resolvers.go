@@ -1595,12 +1595,18 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs()
+	allProjects, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-
-	groupedProjects, err := GroupProjects(allProjs, false)
+	// We have to iterate over the merged project refs to verify if they are enabled
+	enabledProjects := []model.ProjectRef{}
+	for _, p := range allProjects {
+		if p.IsEnabled() {
+			enabledProjects = append(enabledProjects, p)
+		}
+	}
+	groupedProjects, err := GroupProjects(enabledProjects, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
@@ -3816,6 +3822,19 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	return groupedBuildVariants, nil
 }
 
+func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		TaskNames: options.Tasks,
+		Variants:  options.Variants,
+		Statuses:  options.Statuses,
+	}
+	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
+	}
+
+	return stats, nil
+}
 func (r *versionResolver) IsPatch(ctx context.Context, v *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*v.Requester), nil
 }

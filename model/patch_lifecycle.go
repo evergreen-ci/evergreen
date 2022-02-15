@@ -295,7 +295,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			"Error marshaling patched parser project from repository revision “%v”",
 			p.Githash)
 	}
-	config, err := createProjectConfig([]byte(p.PatchedProjectConfig))
+	config, err := CreateProjectConfig([]byte(p.PatchedProjectConfig))
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",

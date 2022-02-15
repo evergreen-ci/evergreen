@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +17,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	pc, err := createProjectConfig([]byte(projYml))
+	pc, err := CreateProjectConfig([]byte(projYml))
 	assert.Nil(t, err)
 	assert.Nil(t, pc)
 
@@ -29,7 +28,6 @@ task_groups:
   - command: shell.exec
     params:
       script: "echo hi"
-deactivate_previous: true
 build_baron_settings:
   ticket_create_project: BF
   ticket_search_projects: ["BF"]
@@ -39,9 +37,8 @@ commit_queue_aliases:
     variant: ubuntu1604
 
 `
-	pc, err = createProjectConfig([]byte(projYml))
+	pc, err = CreateProjectConfig([]byte(projYml))
 	assert.Nil(t, err)
 	assert.NotNil(t, pc)
-	assert.True(t, utility.FromBoolPtr(pc.DeactivatePrevious))
 	assert.Equal(t, "BF", pc.BuildBaronSettings.TicketCreateProject)
 }
