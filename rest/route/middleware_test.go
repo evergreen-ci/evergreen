@@ -28,9 +28,11 @@ import (
 
 // PrefetchProjectContext gets the information related to the project that the request contains
 // and fetches the associated project context and attaches that to the request context.
-func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request) (context.Context, error) {
+func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request, input map[string]string) (context.Context, error) {
 	r = r.WithContext(ctx)
-
+	if input != nil {
+		r = gimlet.SetURLVars(r, input)
+	}
 	rw := httptest.NewRecorder()
 	NewProjectContextMiddleware(sc).ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
@@ -47,19 +49,26 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 }
 
 func TestPrefetchProject(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, user.Collection))
+	doc := &model.ProjectRef{
+		Id:      "mci",
+		Private: utility.TruePtr(),
+	}
+	require.NoError(t, doc.Insert())
+	patchDoc := &patch.Patch{
+		Id: bson.ObjectIdHex("aabbccddeeff112233445566"),
+	}
+	require.NoError(t, patchDoc.Insert())
+	testUser := &user.DBUser{Id: "test_user"}
+	require.NoError(t, testUser.Insert())
 	Convey("When there is a data and a request", t, func() {
-		serviceContext := &data.MockConnector{}
+		serviceContext := &data.DBConnector{}
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		Convey("When fetching the project context", func() {
 			ctx := context.Background()
 			Convey("should error if project is private and no user is set", func() {
-				opCtx := model.Context{}
-				opCtx.ProjectRef = &model.ProjectRef{
-					Private: utility.TruePtr(),
-				}
-				serviceContext.MockContextConnector.CachedContext = opCtx
-				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req, map[string]string{"project_id": "mci"})
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
 				errToResemble := gimlet.ErrorResponse{
@@ -71,8 +80,7 @@ func TestPrefetchProject(t *testing.T) {
 			Convey("should error if patch exists and no user is set", func() {
 				opCtx := model.Context{}
 				opCtx.Patch = &patch.Patch{}
-				serviceContext.MockContextConnector.CachedContext = opCtx
-				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req, map[string]string{"patch_id": "aabbccddeeff112233445566"})
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
 				errToResemble := gimlet.ErrorResponse{
@@ -85,10 +93,10 @@ func TestPrefetchProject(t *testing.T) {
 				opCtx := model.Context{}
 				opCtx.ProjectRef = &model.ProjectRef{
 					Private: utility.TruePtr(),
+					Id:      "mci",
 				}
 				ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
-				serviceContext.MockContextConnector.CachedContext = opCtx
-				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req, map[string]string{"project_id": "mci"})
 				So(err, ShouldBeNil)
 
 				So(ctx.Value(RequestContext), ShouldResemble, &opCtx)
@@ -129,7 +137,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
-	mockConnector := &data.MockConnector{}
+	mockConnector := &data.DBConnector{}
 	mw := NewProjectAdminMiddleware(mockConnector)
 	rw := httptest.NewRecorder()
 
@@ -187,7 +195,7 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		"item":       "1234",
 	})
 
-	mockDataConnector := &data.MockConnector{}
+	mockDataConnector := &data.DBConnector{}
 	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
 	rw := httptest.NewRecorder()
 
@@ -238,7 +246,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		"item":       "1234",
 	})
 
-	mockDataConnector := &data.MockConnector{}
+	mockDataConnector := &data.DBConnector{}
 	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
 	rw := httptest.NewRecorder()
 
@@ -314,7 +322,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 
 func TestTaskAuthMiddleware(t *testing.T) {
 	assert := assert.New(t)
-	m := NewTaskAuthMiddleware(&data.MockConnector{})
+	m := NewTaskAuthMiddleware(&data.DBConnector{})
 	r := &http.Request{
 		Header: http.Header{
 			evergreen.HostHeader:       []string{"host1"},

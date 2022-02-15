@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"testing"
 
@@ -21,8 +22,8 @@ import (
 // Tests for fetch build by id
 
 type BuildByIdSuite struct {
-	sc   *data.MockConnector
-	data data.MockBuildConnector
+	sc   *data.DBConnector
+	data data.DBBuildConnector
 	rm   gimlet.RouteHandler
 	suite.Suite
 }
@@ -32,18 +33,19 @@ func TestBuildSuite(t *testing.T) {
 }
 
 func (s *BuildByIdSuite) SetupSuite() {
-	s.data = data.MockBuildConnector{
-		CachedBuilds: []build.Build{
-			{Id: "build1", Project: "branch"},
-			{Id: "build2", Project: "notbranch"},
-		},
-		CachedProjects: map[string]*serviceModel.ProjectRef{
-			"branch": {Repo: "project", Id: "branch"},
-		},
-		CachedAborted: make(map[string]string),
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection))
+	s.data = data.DBBuildConnector{}
+	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
+	s.NoError(projRef.Insert())
+	builds := []build.Build{
+		{Id: "build1", Project: "branch"},
+		{Id: "build2", Project: "notbranch"},
 	}
-	s.sc = &data.MockConnector{
-		MockBuildConnector: s.data,
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
+	s.sc = &data.DBConnector{
+		DBBuildConnector: s.data,
 	}
 }
 
@@ -74,8 +76,8 @@ func (s *BuildByIdSuite) TestFindByIdFail() {
 // Tests for change build status by id
 
 type BuildChangeStatusSuite struct {
-	sc   *data.MockConnector
-	data data.MockBuildConnector
+	sc   *data.DBConnector
+	data data.DBBuildConnector
 	rm   gimlet.RouteHandler
 	suite.Suite
 }
@@ -85,14 +87,17 @@ func TestBuildChangeStatusSuite(t *testing.T) {
 }
 
 func (s *BuildChangeStatusSuite) SetupSuite() {
-	s.data = data.MockBuildConnector{
-		CachedBuilds: []build.Build{
-			{Id: "build1"},
-			{Id: "build2"},
-		},
+	s.NoError(db.ClearCollections(build.Collection))
+	s.data = data.DBBuildConnector{}
+	s.sc = &data.DBConnector{
+		DBBuildConnector: s.data,
 	}
-	s.sc = &data.MockConnector{
-		MockBuildConnector: s.data,
+	builds := []build.Build{
+		{Id: "build1"},
+		{Id: "build2"},
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
 	}
 	s.rm = makeChangeStatusForBuild(s.sc)
 }
@@ -142,19 +147,6 @@ func (s *BuildChangeStatusSuite) TestSetPriority() {
 	s.True(ok)
 }
 
-func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-
-	s.rm.(*buildChangeStatusHandler).buildId = "build1"
-	s.sc.FailOnChangePriority = true
-	tmpInt := int64(7)
-	s.rm.(*buildChangeStatusHandler).Priority = &tmpInt
-	resp := s.rm.Run(ctx)
-	s.NotEqual(http.StatusOK, resp.Status())
-	s.sc.FailOnChangePriority = false
-}
-
 func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
@@ -172,9 +164,9 @@ func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 // Tests for abort build route
 
 type BuildAbortSuite struct {
-	sc   *data.MockConnector
+	sc   *data.DBConnector
 	rm   gimlet.RouteHandler
-	data data.MockBuildConnector
+	data data.DBBuildConnector
 
 	suite.Suite
 }
@@ -184,18 +176,19 @@ func TestBuildAbortSuite(t *testing.T) {
 }
 
 func (s *BuildAbortSuite) SetupSuite() {
-	s.data = data.MockBuildConnector{
-		CachedBuilds: []build.Build{
-			{Id: "build1", Project: "branch"},
-			{Id: "build2", Project: "notbranch"},
-		},
-		CachedProjects: map[string]*serviceModel.ProjectRef{
-			"branch": {Repo: "project", Id: "branch"},
-		},
-		CachedAborted: make(map[string]string),
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection))
+	s.data = data.DBBuildConnector{}
+	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
+	s.NoError(projRef.Insert())
+	builds := []build.Build{
+		{Id: "build1", Project: "branch"},
+		{Id: "build2", Project: "notbranch"},
 	}
-	s.sc = &data.MockConnector{
-		MockBuildConnector: s.data,
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
+	s.sc = &data.DBConnector{
+		DBBuildConnector: s.data,
 	}
 }
 
@@ -212,29 +205,27 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 
-	s.Equal("user1", s.data.CachedAborted["build1"])
-	s.Equal("", s.data.CachedAborted["build2"])
+	build1, err := s.data.FindBuildById("build1")
+	s.NoError(err)
+	s.Equal("user1", build1.ActivatedBy)
+	build2, err := s.data.FindBuildById("build2")
+	s.NoError(err)
+	s.Equal("", build2.ActivatedBy)
 	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("build1"), b.Id)
 
 	res = s.rm.Run(ctx)
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted["build1"])
-	s.Equal("", s.data.CachedAborted["build2"])
+	build1, err = s.data.FindBuildById("build1")
+	s.NoError(err)
+	s.Equal("user1", build1.ActivatedBy)
+	build2, err = s.data.FindBuildById("build2")
+	s.NoError(err)
+	s.Equal("", build2.ActivatedBy)
 	b, ok = res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("build1"), b.Id)
-}
-
-func (s *BuildAbortSuite) TestAbortFail() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-
-	s.rm.(*buildAbortHandler).buildId = "build1"
-	s.sc.MockBuildConnector.FailOnAbort = true
-	resp := s.rm.Run(ctx)
-	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -242,9 +233,9 @@ func (s *BuildAbortSuite) TestAbortFail() {
 // Tests for restart build route
 
 type BuildRestartSuite struct {
-	sc   *data.MockConnector
+	sc   *data.DBConnector
 	rm   gimlet.RouteHandler
-	data data.MockBuildConnector
+	data data.DBBuildConnector
 
 	suite.Suite
 }
@@ -254,14 +245,16 @@ func TestBuildRestartSuite(t *testing.T) {
 }
 
 func (s *BuildRestartSuite) SetupSuite() {
-	s.data = data.MockBuildConnector{
-		CachedBuilds: []build.Build{
-			{Id: "build1", Project: "branch"},
-			{Id: "build2", Project: "notbranch"},
-		},
+	s.data = data.DBBuildConnector{}
+	builds := []build.Build{
+		{Id: "build1", Project: "branch"},
+		{Id: "build2", Project: "notbranch"},
 	}
-	s.sc = &data.MockConnector{
-		MockBuildConnector: s.data,
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
+	s.sc = &data.DBConnector{
+		DBBuildConnector: s.data,
 	}
 }
 
@@ -288,14 +281,4 @@ func (s *BuildRestartSuite) TestRestart() {
 	b, ok = res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("build1"), b.Id)
-}
-
-func (s *BuildRestartSuite) TestRestartFail() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-
-	s.rm.(*buildRestartHandler).buildId = "build1"
-	s.sc.FailOnRestart = true
-	resp := s.rm.Run(ctx)
-	s.NotEqual(http.StatusOK, resp.Status())
 }

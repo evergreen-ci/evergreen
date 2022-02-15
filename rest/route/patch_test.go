@@ -31,9 +31,9 @@ import (
 // Tests for fetch patch by id route
 
 type PatchByIdSuite struct {
-	sc     *data.MockConnector
+	sc     *data.DBConnector
 	objIds []string
-	data   data.MockPatchConnector
+	data   data.DBPatchConnector
 	route  *patchByIdHandler
 	suite.Suite
 }
@@ -43,17 +43,21 @@ func TestPatchByIdSuite(t *testing.T) {
 }
 
 func (s *PatchByIdSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection))
 	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0]},
-			{Id: &s.objIds[1]},
-		},
+	s.data = data.DBPatchConnector{}
+	patches := []patch.Patch{
+		{Id: mgobson.ObjectId(s.objIds[0])},
+		{Id: mgobson.ObjectId(s.objIds[1])},
 	}
-	s.sc = &data.MockConnector{
-		URL:                "https://evergreen.example.net",
-		MockPatchConnector: s.data,
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+
+	s.sc = &data.DBConnector{
+		URL:              "https://evergreen.example.net",
+		DBPatchConnector: s.data,
 	}
 }
 
@@ -87,8 +91,8 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 // Tests for fetch patch by project route
 
 type PatchesByProjectSuite struct {
-	sc    *data.MockConnector
-	data  data.MockPatchConnector
+	sc    *data.DBConnector
+	data  data.DBPatchConnector
 	now   time.Time
 	route *patchesByProjectHandler
 	suite.Suite
@@ -99,6 +103,7 @@ func TestPatchesByProjectSuite(t *testing.T) {
 }
 
 func (s *PatchesByProjectSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
 	proj1 := "project1"
 	proj1Identifier := "project_one"
@@ -111,24 +116,38 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 	nowPlus6 := s.now.Add(time.Second * 6)
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{ProjectId: &proj1, CreateTime: &s.now},
-			{ProjectId: &proj2, CreateTime: &nowPlus2},
-			{ProjectId: &proj1, CreateTime: &nowPlus4},
-			{ProjectId: &proj1, CreateTime: &nowPlus6},
-			{ProjectId: &proj2, CreateTime: &nowPlus8},
-			{ProjectId: &proj1, CreateTime: &nowPlus10},
+	s.data = data.DBPatchConnector{}
+	projects := []serviceModel.ProjectRef{
+		{
+			Id:         proj1,
+			Identifier: proj1Identifier,
 		},
-		CachedProjectRefs: []model.APIProjectRef{
-			{Id: &proj1, Identifier: &proj1Identifier},
-			{Id: &proj2, Identifier: &proj2Identifier},
-			{Id: &proj3, Identifier: &proj3Identifier},
+		{
+			Id:         proj2,
+			Identifier: proj2Identifier,
+		},
+		{
+			Id:         proj3,
+			Identifier: proj3Identifier,
 		},
 	}
-	s.sc = &data.MockConnector{
-		URL:                "https://evergreen.example.net",
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Project: proj1, CreateTime: s.now},
+		{Project: proj2, CreateTime: nowPlus2},
+		{Project: proj1, CreateTime: nowPlus4},
+		{Project: proj1, CreateTime: nowPlus6},
+		{Project: proj2, CreateTime: nowPlus8},
+		{Project: proj1, CreateTime: nowPlus10},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+	for _, proj := range projects {
+		s.NoError(proj.Insert())
+	}
+	s.sc = &data.DBConnector{
+		URL:              "https://evergreen.example.net",
+		DBPatchConnector: s.data,
 	}
 }
 
@@ -220,9 +239,9 @@ func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
 // Tests for abort patch route
 
 type PatchAbortSuite struct {
-	sc     *data.MockConnector
+	sc     *data.DBConnector
 	objIds []string
-	data   data.MockPatchConnector
+	data   data.DBPatchConnector
 
 	suite.Suite
 }
@@ -232,18 +251,20 @@ func TestPatchAbortSuite(t *testing.T) {
 }
 
 func (s *PatchAbortSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection))
 	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 	version1 := "version1"
 
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], Version: &version1},
-			{Id: &s.objIds[1]},
-		},
-		CachedAborted: make(map[string]string),
+	s.data = data.DBPatchConnector{}
+	s.sc = &data.DBConnector{
+		DBPatchConnector: s.data,
 	}
-	s.sc = &data.MockConnector{
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Id: mgobson.ObjectId(s.objIds[0]), Version: version1},
+		{Id: mgobson.ObjectId(s.objIds[1])},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
 	}
 }
 
@@ -257,8 +278,12 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0]])
-	s.Equal("", s.data.CachedAborted[s.objIds[1]])
+	abortedPatch0, err := s.data.FindPatchById(s.objIds[0])
+	s.NoError(err)
+	abortedPatch1, err := s.data.FindPatchById(s.objIds[1])
+	s.NoError(err)
+	s.Equal("user1", abortedPatch0.Requester)
+	s.Equal("", abortedPatch1.Requester)
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
@@ -266,8 +291,12 @@ func (s *PatchAbortSuite) TestAbort() {
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0]])
-	s.Equal("", s.data.CachedAborted[s.objIds[1]])
+	abortedPatch0, err = s.data.FindPatchById(s.objIds[0])
+	s.NoError(err)
+	abortedPatch1, err = s.data.FindPatchById(s.objIds[1])
+	s.NoError(err)
+	s.Equal("user1", abortedPatch0.Requester)
+	s.Equal("", abortedPatch1.Requester)
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
@@ -298,9 +327,9 @@ func (s *PatchAbortSuite) TestAbortFail() {
 // Tests for change patch status route
 
 type PatchesChangeStatusSuite struct {
-	sc     *data.MockConnector
+	sc     *data.DBConnector
 	objIds []string
-	data   data.MockPatchConnector
+	data   data.DBPatchConnector
 
 	suite.Suite
 }
@@ -310,18 +339,19 @@ func TestPatchesChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection))
 	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], ProjectId: utility.ToStringPtr("proj")},
-			{Id: &s.objIds[1], ProjectId: utility.ToStringPtr("proj")},
-		},
-		CachedAborted:  make(map[string]string),
-		CachedPriority: make(map[string]int64),
+	s.data = data.DBPatchConnector{}
+	s.sc = &data.DBConnector{
+		DBPatchConnector: s.data,
 	}
-	s.sc = &data.MockConnector{
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Id: mgobson.ObjectId(s.objIds[0]), Project: "proj"},
+		{Id: mgobson.ObjectId(s.objIds[1]), Project: "proj"},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
 	}
 }
 
@@ -338,8 +368,12 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	rm.Priority = &tmp_seven
 	res := rm.Run(ctx)
 	s.NotNil(res)
-	s.Equal(int64(7), s.data.CachedPriority[s.objIds[0]])
-	s.Equal(int64(0), s.data.CachedPriority[s.objIds[1]])
+	p1, err := s.sc.FindPatchById(s.objIds[0])
+	s.NoError(err)
+	p2, err := s.sc.FindPatchById(s.objIds[1])
+	s.NoError(err)
+	s.Equal(int64(7), p1.PatchNumber)
+	s.Equal(int64(0), p2.PatchNumber)
 	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
 	s.True(p.Activated)
@@ -350,10 +384,10 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 // Tests for restart patch by id route
 
 type PatchRestartSuite struct {
-	sc          *data.MockConnector
+	sc          *data.DBConnector
 	objIds      []string
-	patchData   data.MockPatchConnector
-	versionData data.MockVersionConnector
+	patchData   data.DBPatchConnector
+	versionData data.DBVersionConnector
 
 	suite.Suite
 }
@@ -363,26 +397,33 @@ func TestPatchRestartSuite(t *testing.T) {
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection))
 	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 	version1 := "version1"
 
-	s.patchData = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], Version: &version1},
-			{Id: &s.objIds[1]},
-		},
-		CachedAborted: make(map[string]string),
+	s.patchData = data.DBPatchConnector{}
+	s.versionData = data.DBVersionConnector{}
+	s.sc = &data.DBConnector{
+		DBPatchConnector:   s.patchData,
+		DBVersionConnector: s.versionData,
 	}
-	s.versionData = data.MockVersionConnector{
-		CachedVersions: []serviceModel.Version{
-			{Id: s.objIds[0]},
-			{Id: s.objIds[1]},
+	versions := []serviceModel.Version{
+		{
+			Id: s.objIds[0],
 		},
-		CachedRestartedVersions: make(map[string]string),
+		{
+			Id: s.objIds[1],
+		},
 	}
-	s.sc = &data.MockConnector{
-		MockPatchConnector:   s.patchData,
-		MockVersionConnector: s.versionData,
+	patches := []patch.Patch{
+		{Id: mgobson.ObjectId(s.objIds[0]), Version: version1},
+		{Id: mgobson.ObjectId(s.objIds[1])},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+	for _, v := range versions {
+		s.NoError(v.Insert())
 	}
 }
 
@@ -396,7 +437,9 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.NotNil(res)
 
 	s.Equal(http.StatusOK, res.Status())
-	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0]])
+	restartedPatch, err := s.sc.FindPatchById(s.objIds[0])
+	s.NoError(err)
+	s.Equal("user1", restartedPatch.Requester)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -404,8 +447,8 @@ func (s *PatchRestartSuite) TestRestart() {
 // Tests for fetch patches for current user
 
 type PatchesByUserSuite struct {
-	sc    *data.MockConnector
-	data  data.MockPatchConnector
+	sc    *data.DBConnector
+	data  data.DBPatchConnector
 	now   time.Time
 	route *patchesByUserHandler
 
@@ -414,6 +457,7 @@ type PatchesByUserSuite struct {
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
+	s.NoError(db.ClearCollections(patch.Collection))
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
 	user1 := "user1"
 	user2 := "user2"
@@ -422,19 +466,21 @@ func TestPatchesByUserSuite(t *testing.T) {
 	nowPlus6 := s.now.Add(time.Second * 6)
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Author: &user1, CreateTime: &s.now},
-			{Author: &user2, CreateTime: &nowPlus2},
-			{Author: &user1, CreateTime: &nowPlus4},
-			{Author: &user1, CreateTime: &nowPlus6},
-			{Author: &user2, CreateTime: &nowPlus8},
-			{Author: &user1, CreateTime: &nowPlus10},
-		},
+	s.data = data.DBPatchConnector{}
+	s.sc = &data.DBConnector{
+		URL:              "https://evergreen.example.net",
+		DBPatchConnector: s.data,
 	}
-	s.sc = &data.MockConnector{
-		URL:                "https://evergreen.example.net",
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Author: user1, CreateTime: s.now},
+		{Author: user2, CreateTime: nowPlus2},
+		{Author: user1, CreateTime: nowPlus4},
+		{Author: user1, CreateTime: nowPlus6},
+		{Author: user2, CreateTime: nowPlus8},
+		{Author: user1, CreateTime: nowPlus10},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
 	}
 
 	suite.Run(t, s)
@@ -521,13 +567,13 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 
 func TestPatchRawHandler(t *testing.T) {
 	route := &patchRawHandler{
-		sc: &data.MockConnector{
-			URL: "https://evergreen.example.net",
-			MockPatchConnector: data.MockPatchConnector{
-				CachedRawPatches: map[string]string{
-					"":        "main diff",
-					"module1": "module1 diff",
-				},
+		sc: &data.DBConnector{
+			URL:              "https://evergreen.example.net",
+			DBPatchConnector: data.DBPatchConnector{
+				//CachedRawPatches: map[string]string{
+				//	"":        "main diff",
+				//	"module1": "module1 diff",
+				//},
 			},
 		},
 	}

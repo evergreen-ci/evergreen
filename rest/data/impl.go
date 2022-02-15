@@ -43,22 +43,21 @@ func (ctx *DBConnector) SetPrefix(prefix string) { ctx.Prefix = prefix }
 type MockConnector struct {
 	URL    string
 	Prefix string
-
-	MockUserConnector
-	MockTaskConnector
-	MockContextConnector
-	MockHostConnector
-	MockTestConnector
-	MockBuildConnector
-	MockVersionConnector
-	MockPatchConnector
 	MockStatsConnector
-	MockSubscriptionConnector
 	MockTaskReliabilityConnector
 	MockCommitQueueConnector
-	MockProjectConnector
 
 	//The below mock connectors have been removed from all unit tests and are no longer used
+	MockContextConnector
+	MockBuildConnector
+	MockProjectConnector
+	MockTestConnector
+	MockSubscriptionConnector
+	MockVersionConnector
+	MockUserConnector
+	MockPatchConnector
+	MockHostConnector
+	MockTaskConnector
 	MockPodConnector
 	MockPatchIntentConnector
 	MockAdminConnector

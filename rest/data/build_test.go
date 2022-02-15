@@ -15,16 +15,13 @@ import (
 // Tests for fetch build by id route
 
 type BuildConnectorFetchByIdSuite struct {
-	ctx  Connector
-	mock bool
+	ctx Connector
 	suite.Suite
 }
 
 func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	s := new(BuildConnectorFetchByIdSuite)
 	s.ctx = &DBConnector{}
-	s.mock = false
-
 	assert.NoError(t, db.ClearCollections(build.Collection, model.VersionCollection, model.ProjectRefCollection))
 
 	vId := "v"
@@ -41,15 +38,19 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockBuildConnectorFetchByIdSuite(t *testing.T) {
+func TestDBBuildConnectorFetchByIdSuite(t *testing.T) {
 	s := new(BuildConnectorFetchByIdSuite)
-	s.ctx = &MockConnector{MockBuildConnector: MockBuildConnector{
-		CachedBuilds:   []build.Build{{Id: "build1"}, {Id: "build2"}},
-		CachedProjects: make(map[string]*model.ProjectRef),
-		CachedAborted:  make(map[string]string),
-	}}
-	s.mock = true
-	s.ctx.(*MockConnector).MockBuildConnector.CachedProjects["branch"] = &model.ProjectRef{Repo: "project", Id: "branch"}
+	s.NoError(db.ClearCollections(build.Collection, model.ProjectRefCollection))
+	s.ctx = &DBConnector{DBBuildConnector: DBBuildConnector{}}
+	builds := []build.Build{
+		{Id: "build1"},
+		{Id: "build2"},
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
+	projRef := model.ProjectRef{Repo: "project", Id: "branch"}
+	s.NoError(projRef.Insert())
 	suite.Run(t, s)
 }
 
@@ -102,15 +103,17 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockBuildConnectorChangeStatusSuite(t *testing.T) {
+func TestDBBuildConnectorChangeStatusSuite(t *testing.T) {
 	s := new(BuildConnectorChangeStatusSuite)
-
-	s.ctx = &MockConnector{MockBuildConnector: MockBuildConnector{
-		CachedBuilds: []build.Build{
-			{Id: "build1"},
-			{Id: "build2"},
-		},
-	}}
+	s.NoError(db.ClearCollections(build.Collection))
+	s.ctx = &DBConnector{DBBuildConnector: DBBuildConnector{}}
+	builds := []build.Build{
+		{Id: "build1"},
+		{Id: "build2"},
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
 
 	s.mock = true
 	suite.Run(t, s)
@@ -140,28 +143,18 @@ func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
 	s.NoError(err)
 }
 
-func (s *BuildConnectorChangeStatusSuite) TestSetPriorityFail() {
-	if s.mock {
-		s.ctx.(*MockConnector).MockBuildConnector.FailOnChangePriority = true
-		err := s.ctx.SetBuildPriority("build1", int64(2), "")
-		s.Error(err)
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for abort build by id route
 
 type BuildConnectorAbortSuite struct {
-	ctx  Connector
-	mock bool
+	ctx Connector
 	suite.Suite
 }
 
 func TestBuildConnectorAbortSuite(t *testing.T) {
 	s := new(BuildConnectorAbortSuite)
 	s.ctx = &DBConnector{}
-	s.mock = false
 
 	assert.NoError(t, db.ClearCollections(build.Collection, model.VersionCollection))
 
@@ -175,34 +168,25 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockBuildConnectorAbortSuite(t *testing.T) {
+func TestDBBuildConnectorAbortSuite(t *testing.T) {
 	s := new(BuildConnectorAbortSuite)
-	s.ctx = &MockConnector{MockBuildConnector: MockBuildConnector{
-		CachedBuilds:  []build.Build{{Id: "build1"}},
-		CachedAborted: make(map[string]string),
-	}}
-	s.mock = true
+	s.NoError(db.ClearCollections(build.Collection))
+	s.ctx = &DBConnector{DBBuildConnector: DBBuildConnector{}}
+	builds := []build.Build{
+		{Id: "build1"},
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
 	err := s.ctx.AbortBuild("build1", "user1")
 	s.NoError(err)
-	if s.mock {
-		s.Equal("user1", s.ctx.(*MockConnector).MockBuildConnector.CachedAborted["build1"])
-	} else {
-		b, err := build.FindOne(build.ById("build1"))
-		s.NoError(err)
-		s.Equal("user1", b.ActivatedBy)
-	}
-}
-
-func (s *BuildConnectorAbortSuite) TestAbortFail() {
-	if s.mock {
-		s.ctx.(*MockConnector).MockBuildConnector.FailOnAbort = true
-		err := s.ctx.AbortBuild("build1", "user1")
-		s.Error(err)
-	}
+	b, err := build.FindOne(build.ById("build1"))
+	s.NoError(err)
+	s.Equal("user1", b.ActivatedBy)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -210,9 +194,7 @@ func (s *BuildConnectorAbortSuite) TestAbortFail() {
 // Tests for restart build route
 
 type BuildConnectorRestartSuite struct {
-	ctx  Connector
-	mock bool
-
+	ctx Connector
 	suite.Suite
 }
 
@@ -231,22 +213,20 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 	assert.NoError(t, build1.Insert())
 	assert.NoError(t, build2.Insert())
 	assert.NoError(t, version.Insert())
-
-	s.mock = false
 	suite.Run(t, s)
 }
 
-func TestMockBuildConnectorRestartSuite(t *testing.T) {
+func TestDBBuildConnectorRestartSuite(t *testing.T) {
 	s := new(BuildConnectorRestartSuite)
-
-	s.ctx = &MockConnector{MockBuildConnector: MockBuildConnector{
-		CachedBuilds: []build.Build{
-			{Id: "build1"},
-			{Id: "build2"},
-		},
-	}}
-
-	s.mock = true
+	s.NoError(db.ClearCollections(build.Collection))
+	s.ctx = &DBConnector{DBBuildConnector: DBBuildConnector{}}
+	builds := []build.Build{
+		{Id: "build1"},
+		{Id: "build2"},
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
 	suite.Run(t, s)
 }
 
@@ -256,15 +236,4 @@ func (s *BuildConnectorRestartSuite) TestRestart() {
 
 	err = s.ctx.RestartBuild("build1", "user1")
 	s.NoError(err)
-}
-
-func (s *BuildConnectorRestartSuite) TestRestartFail() {
-	if s.mock {
-		s.ctx.(*MockConnector).FailOnRestart = true
-		err := s.ctx.RestartBuild("build1", "user1")
-		s.Error(err)
-
-		err = s.ctx.RestartBuild("build1", "user1")
-		s.Error(err)
-	}
 }

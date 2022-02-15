@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -13,9 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -72,8 +71,9 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
+func TestDBPatchConnectorFetchByProjectSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByProjectSuite)
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
 	s.setup = func() error {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
@@ -91,23 +91,39 @@ func TestMockPatchConnectorFetchByProjectSuite(t *testing.T) {
 		nowPlus8 := s.time.Add(time.Second * 8)
 		nowPlus10 := s.time.Add(time.Second * 10)
 		nowPlus12 := s.time.Add(time.Second * 12)
-		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []model.APIPatch{
-				{ProjectId: &proj1, CreateTime: &s.time},
-				{ProjectId: &proj2, CreateTime: &nowPlus2},
-				{ProjectId: &proj1, CreateTime: &nowPlus4},
-				{ProjectId: &proj1, CreateTime: &nowPlus6},
-				{ProjectId: &proj2, CreateTime: &nowPlus8},
-				{ProjectId: &proj1, CreateTime: &nowPlus10},
-				{ProjectId: &proj3, ProjectIdentifier: &proj3Identifier, CreateTime: &nowPlus12},
+		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
+		projects := []dbModel.ProjectRef{
+			{
+				Id:         proj1,
+				Identifier: proj1Identifier,
 			},
-			CachedProjectRefs: []model.APIProjectRef{
-				{Id: &proj1, Identifier: &proj1Identifier},
-				{Id: &proj2, Identifier: &proj2Identifier},
-				{Id: &proj3, Identifier: &proj3Identifier},
-				{Id: &proj4, Identifier: &proj4Identifier},
+			{
+				Id:         proj2,
+				Identifier: proj2Identifier,
 			},
-		},
+			{
+				Id:         proj3,
+				Identifier: proj3Identifier,
+			},
+			{
+				Id:         proj4,
+				Identifier: proj4Identifier,
+			},
+		}
+		patches := []patch.Patch{
+			{Project: proj1, CreateTime: s.time},
+			{Project: proj2, CreateTime: nowPlus2},
+			{Project: proj1, CreateTime: nowPlus4},
+			{Project: proj1, CreateTime: nowPlus6},
+			{Project: proj2, CreateTime: nowPlus8},
+			{Project: proj1, CreateTime: nowPlus10},
+			{Project: proj3, CreateTime: nowPlus12},
+		}
+		for _, p := range patches {
+			s.NoError(p.Insert())
+		}
+		for _, proj := range projects {
+			s.NoError(proj.Insert())
 		}
 
 		return nil
@@ -236,18 +252,20 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockPatchConnectorFetchByIdSuite(t *testing.T) {
+func TestDBPatchConnectorFetchByIdSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByIdSuite)
 	s.setup = func() error {
 
 		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
-		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []model.APIPatch{
-				{Id: &s.obj_ids[0]},
-				{Id: &s.obj_ids[1]},
-			},
-		}}
+		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
+		patches := []patch.Patch{
+			{Id: mgobson.ObjectId(s.obj_ids[0])},
+			{Id: mgobson.ObjectId(s.obj_ids[1])},
+		}
+		for _, p := range patches {
+			s.NoError(p.Insert())
+		}
 
 		return nil
 	}
@@ -287,7 +305,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 type PatchConnectorAbortByIdSuite struct {
 	ctx      Connector
 	obj_ids  []string
-	mock     bool
+	DB       bool
 	setup    func() error
 	teardown func() error
 	prBody   []byte
@@ -320,30 +338,31 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 		return db.Clear(patch.Collection)
 	}
 
-	s.mock = false
+	s.DB = false
 	suite.Run(t, s)
 }
 
-func TestMockPatchConnectorAbortByIdSuite(t *testing.T) {
+func TestDBPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
 	s.setup = func() error {
 
 		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
-		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []model.APIPatch{
-				{Id: &s.obj_ids[0], Version: utility.ToStringPtr("version1")},
-				{Id: &s.obj_ids[1]},
-			},
-			CachedAborted: make(map[string]string),
-		}}
+		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
+		patches := []patch.Patch{
+			{Id: mgobson.ObjectId(s.obj_ids[0]), Version: "version1"},
+			{Id: mgobson.ObjectId(s.obj_ids[1])},
+		}
+		for _, p := range patches {
+			s.NoError(p.Insert())
+		}
 
 		return nil
 	}
 
 	s.teardown = func() error { return nil }
 
-	s.mock = true
+	s.DB = true
 	suite.Run(t, s)
 }
 
@@ -366,8 +385,10 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
-	if s.mock {
-		s.Equal("user1", s.ctx.(*MockConnector).MockPatchConnector.CachedAborted[s.obj_ids[0]])
+	if s.DB {
+		abortedPatch, err := s.ctx.(*DBConnector).DBPatchConnector.FindPatchById(s.obj_ids[0])
+		s.NoError(err)
+		s.Equal("user1", abortedPatch.Requester)
 	}
 
 	err = s.ctx.AbortPatch(s.obj_ids[1], "user1")
@@ -432,7 +453,7 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 type PatchConnectorChangeStatusSuite struct {
 	ctx      Connector
 	obj_ids  []string
-	mock     bool
+	DB       bool
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -449,11 +470,13 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Version: s.obj_ids[0]},
 			{Id: mgobson.ObjectIdHex(s.obj_ids[1]), Version: s.obj_ids[1]},
 		}
-
+		task := task.Task{
+			Id:      "t1",
+			Version: s.obj_ids[0],
+		}
+		s.NoError(task.Insert())
 		for _, p := range patches {
-			if err := p.Insert(); err != nil {
-				return err
-			}
+			s.NoError(p.Insert())
 		}
 
 		return nil
@@ -463,31 +486,31 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 		return db.Clear(patch.Collection)
 	}
 
-	s.mock = false
+	s.DB = false
 	suite.Run(t, s)
 }
 
-func TestMockPatchConnectorChangeStatusSuite(t *testing.T) {
+func TestDBPatchConnectorChangeStatusSuite(t *testing.T) {
 	s := new(PatchConnectorChangeStatusSuite)
 	s.setup = func() error {
 
 		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
 
-		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-			CachedPatches: []model.APIPatch{
-				{Id: &s.obj_ids[0], Version: &s.obj_ids[0]},
-				{Id: &s.obj_ids[1], Version: &s.obj_ids[1]},
-			},
-			CachedAborted:  make(map[string]string),
-			CachedPriority: make(map[string]int64),
-		}}
+		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
+		patches := []patch.Patch{
+			{Id: mgobson.ObjectId(s.obj_ids[0]), Version: s.obj_ids[0]},
+			{Id: mgobson.ObjectId(s.obj_ids[1]), Version: s.obj_ids[1]},
+		}
+		for _, p := range patches {
+			s.NoError(p.Insert())
+		}
 
 		return nil
 	}
 
 	s.teardown = func() error { return nil }
 
-	s.mock = true
+	s.DB = true
 	suite.Run(t, s)
 }
 
@@ -500,17 +523,17 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
-	p, err := s.ctx.FindPatchById(s.obj_ids[0])
+	err := s.ctx.SetPatchPriority(s.obj_ids[0], 7, "")
 	s.NoError(err)
-	err = s.ctx.SetPatchPriority(s.obj_ids[0], 7, "")
-	s.NoError(err)
-	if s.mock {
-		s.Equal(int64(7), s.ctx.(*MockConnector).MockPatchConnector.CachedPriority[*p.Id])
+	if s.DB {
+		t, err := s.ctx.(*DBConnector).DBTaskConnector.FindTaskById("t1")
+		s.NoError(err)
+		s.Equal(int64(7), t.Priority)
 	}
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	settings := testutil.MockConfig()
+	settings := testutil.DBConfig()
 	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0])
@@ -559,7 +582,7 @@ func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockPatchConnectorFetchByUserSuite(t *testing.T) {
+func TestDBPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
 
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
@@ -570,16 +593,17 @@ func TestMockPatchConnectorFetchByUserSuite(t *testing.T) {
 	nowPlus6 := s.time.Add(time.Second * 6)
 	nowPlus8 := s.time.Add(time.Second * 8)
 	nowPlus10 := s.time.Add(time.Second * 10)
-	s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Author: &user1, CreateTime: &s.time},
-			{Author: &user2, CreateTime: &nowPlus2},
-			{Author: &user1, CreateTime: &nowPlus4},
-			{Author: &user1, CreateTime: &nowPlus6},
-			{Author: &user2, CreateTime: &nowPlus8},
-			{Author: &user1, CreateTime: &nowPlus10},
-		},
-	},
+	s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
+	patches := []patch.Patch{
+		{Author: user1, CreateTime: s.time},
+		{Author: user2, CreateTime: nowPlus2},
+		{Author: user1, CreateTime: nowPlus4},
+		{Author: user1, CreateTime: nowPlus6},
+		{Author: user2, CreateTime: nowPlus8},
+		{Author: user1, CreateTime: nowPlus10},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
 	}
 
 	suite.Run(t, s)

@@ -18,9 +18,7 @@ import (
 )
 
 type VersionConnectorSuite struct {
-	ctx    Connector
-	isMock bool
-
+	ctx Connector
 	suite.Suite
 }
 
@@ -31,28 +29,15 @@ func TestVersionConnectorSuite(t *testing.T) {
 	// Set up
 	s := new(VersionConnectorSuite)
 	s.ctx = &DBConnector{}
-
-	s.isMock = false
-
 	// Run the suite
 	suite.Run(t, s)
 }
 
-func TestMockVersionConnectorSuite(t *testing.T) {
+func TestDBVersionConnectorSuite(t *testing.T) {
 	s := new(VersionConnectorSuite)
-	s.ctx = &MockConnector{
-		MockVersionConnector: MockVersionConnector{
-			CachedVersions: []model.Version{{Id: "version1"}, {Id: "version2"}},
-			CachedTasks: []task.Task{
-				{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
-				{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
-				{Id: "task3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
-				{Id: "task4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
-			},
-			CachedRestartedVersions: make(map[string]string),
-		},
+	s.ctx = &DBConnector{
+		DBVersionConnector: DBVersionConnector{},
 	}
-	s.isMock = true
 	suite.Run(t, s)
 }
 
@@ -131,64 +116,41 @@ func (s *VersionConnectorSuite) TestAbortVersion() {
 	// Task1 and Task2, which are of the aborted version and tasks with abortable statuses
 	// should be aborted. Task3 have been already aborted. Task4 is of another version and should
 	// not have been aborted.
-	if s.isMock {
-		cachedTasks := s.ctx.(*MockConnector).MockVersionConnector.CachedTasks
-		s.Equal(true, cachedTasks[0].Aborted)
-		s.Equal(true, cachedTasks[1].Aborted)
-		s.Equal(true, cachedTasks[2].Aborted)
-		s.Equal(false, cachedTasks[3].Aborted)
-	} else {
-		t1, _ := s.ctx.FindTaskById("task1")
-		s.Equal(versionId, t1.Version)
-		s.Equal(true, t1.Aborted)
+	t1, _ := s.ctx.FindTaskById("task1")
+	s.Equal(versionId, t1.Version)
+	s.Equal(true, t1.Aborted)
 
-		t2, _ := s.ctx.FindTaskById("task2")
-		s.Equal(versionId, t2.Version)
-		s.Equal(true, t2.Aborted)
+	t2, _ := s.ctx.FindTaskById("task2")
+	s.Equal(versionId, t2.Version)
+	s.Equal(true, t2.Aborted)
 
-		t3, _ := s.ctx.FindTaskById("task3")
-		s.Equal(versionId, t3.Version)
-		s.Equal(true, t3.Aborted)
+	t3, _ := s.ctx.FindTaskById("task3")
+	s.Equal(versionId, t3.Version)
+	s.Equal(true, t3.Aborted)
 
-		t4, _ := s.ctx.FindTaskById("task4")
-		s.NotEqual(true, t4.Aborted)
-	}
+	t4, _ := s.ctx.FindTaskById("task4")
+	s.NotEqual(true, t4.Aborted)
 }
 
 func (s *VersionConnectorSuite) TestRestartVersion() {
-	if s.isMock {
-		// Testing with versions that have tasks under them should succeed.
-		err := s.ctx.RestartVersion("version1", "caller1")
-		s.NoError(err)
-		s.Equal(s.ctx.(*MockConnector).CachedRestartedVersions["version1"], "caller1")
+	versionId := "version3"
+	err := s.ctx.RestartVersion(versionId, "caller3")
+	s.NoError(err)
 
-		err = s.ctx.RestartVersion("version2", "caller2")
-		s.NoError(err)
-		s.Equal(s.ctx.(*MockConnector).CachedRestartedVersions["version2"], "caller2")
+	// When a version is restarted, all of its completed tasks should be reset.
+	// (task.Status should be undispatched)
+	t5, _ := s.ctx.FindTaskById("task5")
+	s.Equal(versionId, t5.Version)
+	s.Equal(evergreen.TaskUndispatched, t5.Status)
 
-	} else {
-		versionId := "version3"
-		err := s.ctx.RestartVersion(versionId, "caller3")
-		s.NoError(err)
-
-		// When a version is restarted, all of its completed tasks should be reset.
-		// (task.Status should be undispatched)
-		t5, _ := s.ctx.FindTaskById("task5")
-		s.Equal(versionId, t5.Version)
-		s.Equal(evergreen.TaskUndispatched, t5.Status)
-
-		// Build status for all builds containing the tasks that we touched
-		// should be updated.
-		b1, _ := s.ctx.FindBuildById("build1")
-		s.Equal(evergreen.BuildStarted, b1.Status)
-		s.Equal("caller3", b1.ActivatedBy)
-	}
+	// Build status for all builds containing the tasks that we touched
+	// should be updated.
+	b1, _ := s.ctx.FindBuildById("build1")
+	s.Equal(evergreen.BuildStarted, b1.Status)
+	s.Equal("caller3", b1.ActivatedBy)
 }
 
 func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
-	if s.isMock { // mock method not implemented
-		return
-	}
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 
 	projRef := model.ProjectRef{
