@@ -219,6 +219,7 @@ type Version {
   activated: Boolean
   taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
   isPatch: Boolean!
   patch: Patch
   childVersions: [Version]
@@ -250,6 +251,12 @@ type VersionTiming {
 type StatusCount {
   status: String!
   count: Int!
+}
+# Returns task counts grouped by status for a build variant
+type GroupedTaskStatusCount {
+  variant: String!
+  displayName: String!
+  statusCounts: [StatusCount!]!
 }
 
 input BuildVariantOptions {

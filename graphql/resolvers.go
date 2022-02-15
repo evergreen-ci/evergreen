@@ -3822,6 +3822,19 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	return groupedBuildVariants, nil
 }
 
+func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		TaskNames: options.Tasks,
+		Variants:  options.Variants,
+		Statuses:  options.Statuses,
+	}
+	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
+	}
+
+	return stats, nil
+}
 func (r *versionResolver) IsPatch(ctx context.Context, v *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*v.Requester), nil
 }
