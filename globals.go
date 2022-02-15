@@ -88,6 +88,9 @@ const (
 	// This is not an official task status; it is used by the front end to indicate that there is a linked issue in the annotation
 	TaskKnownIssue = "known-issue"
 
+	// This is not an official task status; it is used by the front end to indicate that the filter should apply to all of the tasks
+	TaskAll = "all"
+
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
@@ -271,6 +274,38 @@ const (
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
+
+var TaskStatuses = []string{
+	TaskStarted,
+	TaskSucceeded,
+	TaskFailed,
+	TaskSystemFailed,
+	TaskTestTimedOut,
+	TaskSetupFailed,
+	TaskAborted,
+	TaskStatusBlocked,
+	TaskStatusPending,
+	TaskKnownIssue,
+	TaskSystemUnresponse,
+	TaskSystemTimedOut,
+	TaskTimedOut,
+}
+
+// FilterValidTaskStatuses returns a slice of task statuses that are valid and are searchable.
+// It returns an empty array if emptyArrayForAll is true
+func FilterValidTaskStatuses(statuses []string, emptyArrayForAll bool) []string {
+	var filteredStatuses []string
+	if emptyArrayForAll && utility.StringSliceContains(statuses, TaskAll) {
+		return []string{}
+	}
+	for _, status := range statuses {
+		if !utility.StringSliceContains(TaskStatuses, status) {
+			continue
+		}
+		filteredStatuses = append(filteredStatuses, status)
+	}
+	return filteredStatuses
+}
 
 var InternalAliases = []string{
 	CommitQueueAlias,

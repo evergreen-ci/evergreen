@@ -483,7 +483,7 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
+		Statuses:         evergreen.FilterValidTaskStatuses(statuses, true),
 		Variants:         searchVariants,
 		TaskNames:        searchTasks,
 		Sorts:            defaultSort,

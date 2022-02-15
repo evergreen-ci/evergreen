@@ -3131,7 +3131,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 	options := GetTasksByVersionOptions{
 		TaskNames: opts.TaskNames,
 		Variants:  opts.Variants,
-		Statuses:  opts.Statuses,
+		Statuses:  evergreen.FilterValidTaskStatuses(opts.Statuses, true),
 	}
 	pipeline := getTasksByVersionPipeline(versionID, options)
 	pipeline = append(pipeline, bson.M{"$count": "count"})
@@ -3350,26 +3350,20 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(opts.Statuses) > 0 {
-		// If a user is filtering for all statuses, it is more performant to skip the status filter
-		if !utility.StringSliceContains(opts.Statuses, "all") {
-			pipeline = append(pipeline, bson.M{
-				"$match": bson.M{
-					DisplayStatusKey: bson.M{"$in": opts.Statuses},
-				},
-			})
-		}
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
+			},
+		})
 	}
 
 	if opts.IncludeBaseTasks {
 		if len(opts.BaseStatuses) > 0 {
-			// If we are filtering for all statuses it is more performant to not include the status filter
-			if !utility.StringSliceContains(opts.BaseStatuses, "all") {
-				pipeline = append(pipeline, bson.M{
-					"$match": bson.M{
-						BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-					},
-				})
-			}
+			pipeline = append(pipeline, bson.M{
+				"$match": bson.M{
+					BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+				},
+			})
 		}
 	}
 
