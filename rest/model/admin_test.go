@@ -102,6 +102,12 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.SampleSize, apiSettings.Amboy.SampleSize)
 	assert.EqualValues(testSettings.Amboy.RequireRemotePriority, apiSettings.Amboy.RequireRemotePriority)
 	assert.EqualValues(testSettings.Amboy.Retry, apiSettings.Amboy.Retry)
+	require.Equal(len(testSettings.Amboy.NamedQueues), len(apiSettings.Amboy.NamedQueues))
+	for i := range testSettings.Amboy.NamedQueues {
+		assert.Equal(testSettings.Amboy.NamedQueues[i].Name, utility.FromStringPtr(apiSettings.Amboy.NamedQueues[i].Name))
+		assert.Equal(testSettings.Amboy.NamedQueues[i].NumWorkers, apiSettings.Amboy.NamedQueues[i].NumWorkers)
+		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, apiSettings.Amboy.NamedQueues[i].SampleSize)
+	}
 	assert.EqualValues(testSettings.Api.HttpListenAddr, utility.FromStringPtr(apiSettings.Api.HttpListenAddr))
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, utility.FromStringPtr(apiSettings.AuthConfig.LDAP.URL))
@@ -196,6 +202,13 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, dbSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Amboy.LockTimeoutMinutes, dbSettings.Amboy.LockTimeoutMinutes)
 	assert.EqualValues(testSettings.Amboy.SampleSize, dbSettings.Amboy.SampleSize)
+	assert.EqualValues(testSettings.Amboy.Retry, dbSettings.Amboy.Retry)
+	require.Equal(len(testSettings.Amboy.NamedQueues), len(dbSettings.Amboy.NamedQueues))
+	for i := range testSettings.Amboy.NamedQueues {
+		assert.Equal(testSettings.Amboy.NamedQueues[i].Name, dbSettings.Amboy.NamedQueues[i].Name)
+		assert.Equal(testSettings.Amboy.NamedQueues[i].NumWorkers, dbSettings.Amboy.NamedQueues[i].NumWorkers)
+		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, dbSettings.Amboy.NamedQueues[i].SampleSize)
+	}
 	assert.EqualValues(testSettings.Api.HttpListenAddr, dbSettings.Api.HttpListenAddr)
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, dbSettings.AuthConfig.LDAP.URL)
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, dbSettings.AuthConfig.Naive.Users[0].Username)

@@ -114,6 +114,17 @@ func MockConfig() *evergreen.Settings {
 				RetryBackoffSeconds:                 10,
 				StaleRetryingMonitorIntervalSeconds: 30,
 			},
+			NamedQueues: []evergreen.AmboyNamedQueueConfig{
+				{
+					Name:       "queue0",
+					NumWorkers: 5,
+					SampleSize: 100,
+				},
+				{
+					Name:       "queue1",
+					SampleSize: 500,
+				},
+			},
 		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",

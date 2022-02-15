@@ -417,24 +417,9 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 		Retryable:  &retryOpts,
 	}
 
-	// TODO (EVG-16210): make the event notifier options configurable from the
-	// admin settings instead of hard-coding them.
-	eventNotifierDBOpts := e.getRemoteQueueGroupDBOptions()
-	// Setting the sample size improves performance by reducing dispatch
-	// contention.
-	eventNotifierDBOpts.SampleSize = 300
-	eventNotifierQueueOpts := queue.MongoDBQueueOptions{
-		// Increase the workers for the event notifier queue since the event
-		// notifier has higher throughput requirements.
-		NumWorkers: utility.ToIntPtr(5),
-		DB:         &eventNotifierDBOpts,
-	}
-
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
-		DefaultQueue: queueOpts,
-		PerQueue: map[string]queue.MongoDBQueueOptions{
-			"service.event.notifier": eventNotifierQueueOpts,
-		},
+		DefaultQueue:              queueOpts,
+		PerQueue:                  e.getNamedRemoteQueueOptions(),
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
@@ -466,6 +451,27 @@ func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
 	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
 	opts.Client = e.client
 	return opts
+}
+
+func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOptions {
+	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
+	for _, namedQueue := range e.settings.Amboy.NamedQueues {
+		dbOpts := e.getRemoteQueueGroupDBOptions()
+		if namedQueue.SampleSize != 0 {
+			dbOpts.SampleSize = namedQueue.SampleSize
+		}
+		var numWorkers int
+		if namedQueue.NumWorkers != 0 {
+			numWorkers = namedQueue.NumWorkers
+		} else {
+			numWorkers = e.settings.Amboy.GroupDefaultWorkers
+		}
+		perQueueOpts[namedQueue.Name] = queue.MongoDBQueueOptions{
+			NumWorkers: utility.ToIntPtr(numWorkers),
+			DB:         &dbOpts,
+		}
+	}
+	return perQueueOpts
 }
 
 func (e *envState) createNotificationQueue(ctx context.Context) error {

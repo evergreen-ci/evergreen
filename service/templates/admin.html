@@ -1390,23 +1390,6 @@ Admin Settings
 											Priority</md-checkbox>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Group default workers</label>
-										<input type="number" ng-model="Settings.amboy.group_default_workers">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%">
-										<label>Group background create frequency</label>
-										<input type="number"
-											ng-model="Settings.amboy.group_background_create_frequency">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px">
-										<label>Group prune frequency</label>
-										<input type="number" ng-model="Settings.amboy.group_prune_frequency">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Group TTL</label>
-										<input type="number" ng-model="Settings.amboy.group_ttl">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Lock timeout (minutes)</label>
 										<input type="number" ng-model="Settings.amboy.lock_timeout_minutes">
 									</md-input-container>
@@ -1438,6 +1421,77 @@ Admin Settings
 										<label>Frequency of Checking for Stale Retrying Jobs (Seconds)</label>
 										<input type="number" ng-model="Settings.amboy.retry.stale_retrying_monitor_interval_seconds">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Group default workers</label>
+										<input type="number" ng-model="Settings.amboy.group_default_workers">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%">
+										<label>Group background create frequency</label>
+										<input type="number"
+											ng-model="Settings.amboy.group_background_create_frequency">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px">
+										<label>Group prune frequency</label>
+										<input type="number" ng-model="Settings.amboy.group_prune_frequency">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Group TTL</label>
+										<input type="number" ng-model="Settings.amboy.group_ttl">
+									</md-input-container>
+									<md-card>
+										<md-card-title>
+											<md-card-title-text>
+												<span>Named Queue Config</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="amboy-named-queue" class="form-group" ng-repeat="(index, queue) in Settings.amboy.named_queues">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="queue.name" placeholder="Name">
+													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<input class="control" type="number" ng-model="queue.num_workers" placeholder="Number of Workers">
+													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<input class="control" type="number" ng-model="queue.sample_size" placeholder="Sample Size">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteAmboyNamedQueue(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_amboy_named_queue.name"
+														placeholder="Name">
+												</md-input-container>
+												<br />
+													<md-input-container class="control" flex=25>
+														<input class="control" type="number" ng-model="new_amboy_named_queue.num_workers" placeholder="Number of Workers">
+													</md-input-container>
+													<br />
+													<md-input-container class="control" flex=25>
+														<input class="control" type="number" ng-model="new_amboy_named_queue.sample_size" placeholder="Sample Size">
+													</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validAmboyNamedQueue(new_amboy_named_queue)" type="button"
+														style="float: left" ng-click="addAmboyNamedQueue()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidAmboyNamedQueue ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+								</md-card-content>
+							</md-card>
 
 								</md-card-content>
 							</md-card>
@@ -1692,79 +1746,79 @@ Admin Settings
 										<label>Pod ECS Execution Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.execution_role">
 									</md-input-container>
-                  <md-card-title>
-                    <md-card-title-text>
-                      <span>Pod ECS AWSVPC Subnets</span>
-                    </md-card-title-text>
-                  </md-card-title>
-                  <md-card-content>
-                    <div id="ecs-subnets" class="form-group"
-                      ng-repeat="subnet in Settings.providers.aws.pod.ecs.awsvpc.subnets track by $index">
-                      <section layout="row" flex>
-                        <md-input-container class="control" flex=50>
-                          <input class="control" type="text" ng-model="Settings.providers.aws.pod.ecs.awsvpc.subnets[$index]"
-                            placeholder="Subnet ID">
-                        </md-input-container>
-                        <div style="margin-top: 1%;">
-                          <button class="btn btn-default btn-danger" type="button"
-                            style="float: left" ng-click="deleteAWSVPCSubnet($index)">
-                            <i class="fa fa-trash"></i>
-                          </button>
-                        </div>
-                      </section>
-                    </div>
-                    <section layout="row" flex>
-                      <md-input-container class="control" flex=50>
-                        <input class="control" type="text" ng-model="new_awsvpc_subnet"
-                          placeholder="Subnet ID">
-                      </md-input-container>
-                      <div style="margin-top: 1%;">
-                        <button class="plus-button btn btn-primary"
-                          ng-disabled="!validAWSVPCSubnet(new_awsvpc_subnet)" type="button"
-                          style="float: left" ng-click="addAWSVPCSubnet()">
-                          <i class="fa fa-plus"></i>
-                        </button>
-                        <label class="control">[[ invalidAWSVPCSubnet ]]</label>
-                      </div>
-                    </section>
-                  </md-card-content>
+									<md-card-title>
+										<md-card-title-text>
+											<span>Pod ECS AWSVPC Subnets</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<div id="ecs-subnets" class="form-group"
+											ng-repeat="subnet in Settings.providers.aws.pod.ecs.awsvpc.subnets track by $index">
+											<section layout="row" flex>
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="Settings.providers.aws.pod.ecs.awsvpc.subnets[$index]"
+														placeholder="Subnet ID">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="btn btn-default btn-danger" type="button"
+														style="float: left" ng-click="deleteAWSVPCSubnet($index)">
+														<i class="fa fa-trash"></i>
+													</button>
+												</div>
+											</section>
+										</div>
+										<section layout="row" flex>
+											<md-input-container class="control" flex=50>
+												<input class="control" type="text" ng-model="new_awsvpc_subnet"
+													placeholder="Subnet ID">
+											</md-input-container>
+											<div style="margin-top: 1%;">
+												<button class="plus-button btn btn-primary"
+													ng-disabled="!validAWSVPCSubnet(new_awsvpc_subnet)" type="button"
+													style="float: left" ng-click="addAWSVPCSubnet()">
+													<i class="fa fa-plus"></i>
+												</button>
+												<label class="control">[[ invalidAWSVPCSubnet ]]</label>
+											</div>
+										</section>
+									</md-card-content>
 
-                  <md-card-title>
-                    <md-card-title-text>
-                      <span>Pod ECS AWSVPC Security Groups</span>
-                    </md-card-title-text>
-                  </md-card-title>
-                  <md-card-content>
-                    <div id="ecs-security-groups" class="form-group"
-                      ng-repeat="sg in Settings.providers.aws.pod.ecs.awsvpc.security_groups track by $index">
-                      <section layout="row" flex>
-                        <md-input-container class="control" flex=50>
-                          <input class="control" type="text" ng-model="Settings.providers.aws.pod.ecs.awsvpc.security_groups[$index]"
-                            placeholder="Security Group ID">
-                        </md-input-container>
-                        <div style="margin-top: 1%;">
-                          <button class="btn btn-default btn-danger" type="button"
-                            style="float: left" ng-click="deleteAWSVPCSecurityGroup($index)">
-                            <i class="fa fa-trash"></i>
-                          </button>
-                        </div>
-                      </section>
-                    </div>
-                    <section layout="row" flex>
-                      <md-input-container class="control" flex=50>
-                        <input class="control" type="text" ng-model="new_awsvpc_security_group"
-                          placeholder="Security Group ID">
-                      </md-input-container>
-                      <div style="margin-top: 1%;">
-                        <button class="plus-button btn btn-primary"
-                          ng-disabled="!validAWSVPCSecurityGroup(new_awsvpc_security_group)" type="button"
-                          style="float: left" ng-click="addAWSVPCSecurityGroup()">
-                          <i class="fa fa-plus"></i>
-                        </button>
-                        <label class="control">[[ invalidAWSVPCSecurityGroup ]]</label>
-                      </div>
-                    </section>
-                  </md-card-content>
+									<md-card-title>
+										<md-card-title-text>
+											<span>Pod ECS AWSVPC Security Groups</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<div id="ecs-security-groups" class="form-group"
+											ng-repeat="sg in Settings.providers.aws.pod.ecs.awsvpc.security_groups track by $index">
+											<section layout="row" flex>
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="Settings.providers.aws.pod.ecs.awsvpc.security_groups[$index]"
+														placeholder="Security Group ID">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="btn btn-default btn-danger" type="button"
+														style="float: left" ng-click="deleteAWSVPCSecurityGroup($index)">
+														<i class="fa fa-trash"></i>
+													</button>
+												</div>
+											</section>
+										</div>
+										<section layout="row" flex>
+											<md-input-container class="control" flex=50>
+												<input class="control" type="text" ng-model="new_awsvpc_security_group"
+													placeholder="Security Group ID">
+											</md-input-container>
+											<div style="margin-top: 1%;">
+												<button class="plus-button btn btn-primary"
+													ng-disabled="!validAWSVPCSecurityGroup(new_awsvpc_security_group)" type="button"
+													style="float: left" ng-click="addAWSVPCSecurityGroup()">
+													<i class="fa fa-plus"></i>
+												</button>
+												<label class="control">[[ invalidAWSVPCSecurityGroup ]]</label>
+											</div>
+										</section>
+									</md-card-content>
 
 									<md-card>
 										<md-card-title>
