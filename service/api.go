@@ -348,7 +348,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	var u *user.DBUser
 	if t.ActivatedBy == evergreen.StepbackTaskActivator {
 		u, err = user.FindOneById(v.Author)
-	} else {
+	} else if t.ActivatedBy != "" {
 		u, err = user.FindOneById(t.ActivatedBy)
 	}
 	if err != nil {
@@ -356,7 +356,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if u != nil {
-		// check if user is admin
+		// check if user is an admin
 		authorized := u.HasPermission(gimlet.PermissionOpts{
 			Resource:      t.Project,
 			ResourceType:  evergreen.ProjectResourceType,

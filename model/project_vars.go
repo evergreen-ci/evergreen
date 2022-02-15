@@ -227,7 +227,7 @@ func (projectVars *ProjectVars) GetAdminOnlyVars() map[string]string {
 	return adminOnlyVars
 }
 
-// Returns non-restricted and non-admin only vars for now.
+// GetUnrestrictedVars returns non-restricted and non-admin only vars until EVG-16045.
 func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
 	safeVars := map[string]string{}
 
