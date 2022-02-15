@@ -235,6 +235,9 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
 		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
 	}
+	if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+		return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
+	}
 
 	// update the description for both reconfigured and new patches
 	if err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {

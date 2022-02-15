@@ -314,6 +314,17 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func UpdateVersionMessage(versionId, message string) error {
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: versionId},
+		bson.M{
+			"$set": bson.M{
+				VersionMessageKey: message,
+			},
+		},
+	)
+}
+
 func AddGitTag(versionId string, tag GitTag) error {
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: versionId},
