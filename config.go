@@ -559,6 +559,7 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	opts := send.BufferedAsyncSenderOptions{}
 	opts.FlushInterval = time.Duration(s.LoggerConfig.Buffer.DurationSeconds) * time.Second
 	opts.BufferSize = s.LoggerConfig.Buffer.Count
+	opts.IncomingBufferFactor = s.LoggerConfig.Buffer.IncomingBufferFactor
 	if sender, err = send.NewBufferedAsyncSender(ctx, sender, opts); err != nil {
 		return nil, errors.Wrap(err, "making splunk buffered sender")
 	}

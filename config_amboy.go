@@ -111,6 +111,8 @@ func (c *AmboyConfig) Set() error {
 
 const (
 	defaultLogBufferingDuration                  = 20
+	defaultLogBufferingCount                     = 100
+	defaultLogBufferingIncomingFactor            = 10
 	defaultAmboyPoolSize                         = 2
 	defaultAmboyLocalStorageSize                 = 1024
 	defaultAmboyQueueName                        = "evg.service"

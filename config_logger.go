@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -67,10 +68,6 @@ func (c *LoggerConfig) Set() error {
 }
 
 func (c *LoggerConfig) ValidateAndDefault() error {
-	if c.Buffer.DurationSeconds == 0 {
-		c.Buffer.DurationSeconds = defaultLogBufferingDuration
-	}
-
 	if c.DefaultLevel == "" {
 		c.DefaultLevel = "info"
 	}
@@ -79,15 +76,43 @@ func (c *LoggerConfig) ValidateAndDefault() error {
 		c.ThresholdLevel = "debug"
 	}
 
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(c.Buffer.validateAndDefault())
+
 	info := c.Info()
 	if !info.Valid() {
-		return errors.Errorf("logging level configuration is not valid [%+v]", info)
+		catcher.Add(errors.Errorf("logging level configuration is not valid [%+v]", info))
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 type LogBuffering struct {
-	DurationSeconds int `bson:"duration_seconds" json:"duration_seconds" yaml:"duration_seconds"`
-	Count           int `bson:"count" json:"count" yaml:"count"`
+	DurationSeconds      int `bson:"duration_seconds" json:"duration_seconds" yaml:"duration_seconds"`
+	Count                int `bson:"count" json:"count" yaml:"count"`
+	IncomingBufferFactor int `bson:"incoming_buffer_factor" json:"incoming_buffer_factor" yaml:"incoming_buffer_factor"`
+}
+
+func (b *LogBuffering) validateAndDefault() error {
+	catcher := grip.NewBasicCatcher()
+
+	if b.DurationSeconds < 0 {
+		catcher.Add(errors.New("buffering duration seconds can not be negative"))
+	} else if b.DurationSeconds == 0 {
+		b.DurationSeconds = defaultLogBufferingDuration
+	}
+
+	if b.Count < 0 {
+		catcher.Add(errors.New("buffering count can not be negative"))
+	} else if b.Count == 0 {
+		b.Count = defaultLogBufferingCount
+	}
+
+	if b.IncomingBufferFactor < 0 {
+		catcher.Add(errors.New("incoming buffer factor can not be negative"))
+	} else if b.IncomingBufferFactor == 0 {
+		b.IncomingBufferFactor = defaultLogBufferingIncomingFactor
+	}
+
+	return catcher.Resolve()
 }
