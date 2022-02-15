@@ -39,7 +39,7 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
 	s.NoError(getMockProjectRef().Insert())
 
@@ -304,7 +304,7 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
 	s.NoError(getMockProjectRef().Insert())
 	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
@@ -412,7 +412,7 @@ func TestProjectGetByIDSuite(t *testing.T) {
 }
 
 func (s *ProjectGetByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
 	s.NoError(getMockProjectRef().Insert())
 	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
@@ -578,16 +578,16 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 
 func getProjectsConnector() *data.DBConnector {
 	connector := data.DBConnector{
-		DBProjectConnector: data.DBProjectConnector{
-			//CachedVars: []*serviceModel.ProjectVars{
-			//	{
-			//		Id:   "dimoxinil",
-			//		Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
-			//	},
-			//},
-		},
+		DBProjectConnector: data.DBProjectConnector{},
 	}
 	return &connector
+}
+
+func getMockVar() *serviceModel.ProjectVars {
+	return &serviceModel.ProjectVars{
+		Id:   "dimoxinil",
+		Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
+	}
 }
 
 func getMockProjectRef() *serviceModel.ProjectRef {
@@ -943,8 +943,9 @@ func TestProjectPutRotateSuite(t *testing.T) {
 }
 
 func (s *ProjectPutRotateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
+	s.NoError(getMockVar().Insert())
 	s.NoError(getMockProjectRef().Insert())
 	s.rm = makeProjectVarsPut(s.sc).(*projectVarsPutHandler)
 }
