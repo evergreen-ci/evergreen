@@ -2,6 +2,8 @@ package data
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"net/http"
 	"sort"
 	"testing"
@@ -528,23 +530,40 @@ type TaskConnectorAbortTaskSuite struct {
 	suite.Suite
 }
 
-func TestMockTaskConnectorAbortTaskSuite(t *testing.T) {
+func TestDBTaskConnectorAbortTaskSuite(t *testing.T) {
 	s := new(TaskConnectorAbortTaskSuite)
-	s.ctx = &MockConnector{MockTaskConnector: MockTaskConnector{
-		CachedTasks:   []task.Task{{Id: "task1"}},
-		CachedAborted: make(map[string]string),
-	}}
+	s.ctx = &DBConnector{
+		DBTaskConnector: DBTaskConnector{},
+	}
 	suite.Run(t, s)
 }
 
 func (s *TaskConnectorAbortTaskSuite) TestAbort() {
+	s.NoError(db.ClearCollections(task.Collection, user.Collection, build.Collection, model.VersionCollection))
+	taskToAbort := task.Task{Id: "task1", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"}
+	s.NoError(taskToAbort.Insert())
+	s.NoError((&build.Build{Id: "b1"}).Insert())
+	s.NoError((&model.Version{Id: "v1"}).Insert())
+	u := user.DBUser{
+		Id: "user1",
+	}
+	s.NoError(u.Insert())
 	err := s.ctx.AbortTask("task1", "user1")
 	s.NoError(err)
-	s.Equal("user1", s.ctx.(*MockConnector).MockTaskConnector.CachedAborted["task1"])
+	foundTask, err := s.ctx.(*DBConnector).DBTaskConnector.FindTaskById("task1")
+	s.NoError(err)
+	s.Equal("user1", foundTask.AbortInfo.User)
+	s.Equal(true, foundTask.Aborted)
 }
 
 func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
-	s.ctx.(*MockConnector).MockTaskConnector.FailOnAbort = true
+	s.NoError(db.ClearCollections(task.Collection, user.Collection))
+	taskToAbort := task.Task{Id: "task1", Status: evergreen.TaskStarted}
+	s.NoError(taskToAbort.Insert())
+	u := user.DBUser{
+		Id: "user1",
+	}
+	s.NoError(u.Insert())
 	err := s.ctx.AbortTask("task1", "user1")
 	s.Error(err)
 }

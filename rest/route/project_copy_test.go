@@ -135,7 +135,7 @@ func TestCopyVariablesSuite(t *testing.T) {
 }
 
 func (s *copyVariablesSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 	pRefs := []model.ProjectRef{
 		{
 			Id:      "projectA",
@@ -174,7 +174,6 @@ func (s *copyVariablesSuite) SetupSuite() {
 }
 
 func (s *copyVariablesSuite) SetupTest() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	s.route = &copyVariablesHandler{sc: s.sc}
 }
 
@@ -208,9 +207,13 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 	}
 	projectVars, err := model.FindOneProjectVars("projectB")
 	s.NoError(err)
-	delete(projectVars.Vars, "hello")
-	delete(projectVars.Vars, "apple")
-
+	newProjectVar := &model.ProjectVars{
+		Id:          "projectB",
+		Vars:        map[string]string{"banana": "yellow"},
+		PrivateVars: map[string]bool{},
+	}
+	_, err = newProjectVar.Upsert()
+	s.NoError(err)
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())

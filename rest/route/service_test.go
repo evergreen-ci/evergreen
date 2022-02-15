@@ -66,7 +66,7 @@ func TestHostParseAndValidate(t *testing.T) {
 func TestHostPaginator(t *testing.T) {
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are hosts to be found", func() {
@@ -80,7 +80,7 @@ func TestHostPaginator(t *testing.T) {
 				}
 				cachedHosts = append(cachedHosts, nextHost)
 			}
-			serviceContext.MockHostConnector.CachedHosts = cachedHosts
+			//serviceContext.DBHostConnector.CachedHosts = cachedHosts
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				hostToStartAt := 100
@@ -279,11 +279,17 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
+	p := &serviceModel.ProjectRef{
+		Id:         "project_1",
+		Identifier: "project_1",
+	}
+	assert.NoError(t, p.Insert())
 	numTasks := 300
 	projectName := "project_1"
 	commit := "commit_1"
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are tasks to be found", func() {
@@ -296,7 +302,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				}
 				cachedTasks = append(cachedTasks, nextTask)
 			}
-			serviceContext.MockTaskConnector.CachedTasks = cachedTasks
+			for _, cachedTask := range cachedTasks {
+				err := db.Insert(task.Collection, cachedTask)
+				So(err, ShouldBeNil)
+			}
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
@@ -455,9 +464,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are tasks to be found", func() {
@@ -478,8 +488,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				cachedOldTasks = append(cachedOldTasks, nextTask)
 			}
 
-			serviceContext.MockTaskConnector.CachedTasks = cachedTasks
-			serviceContext.MockTaskConnector.CachedOldTasks = cachedOldTasks
+			err := db.InsertMany(task.Collection, cachedTasks)
+			So(err, ShouldBeNil)
+			err = db.InsertMany(task.OldCollection, cachedOldTasks)
+			So(err, ShouldBeNil)
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
@@ -663,9 +675,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 }
 
 func TestTestPaginator(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(testresult.Collection))
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net/",
 		}
 		Convey("and there are tasks with tests to be found", func() {
@@ -681,7 +694,8 @@ func TestTestPaginator(t *testing.T) {
 				}
 				cachedTests = append(cachedTests, nextTest)
 			}
-			serviceContext.MockTestConnector.CachedTests = cachedTests
+			err := testresult.InsertMany(cachedTests)
+			So(err, ShouldBeNil)
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				testToStartAt := 100
@@ -910,14 +924,15 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
 	Convey("With a task in the DB and a Connector", t, func() {
-		sc := data.MockConnector{}
+		sc := data.DBConnector{}
 		testTask := task.Task{
 			Id:        "testTaskId",
 			Activated: false,
 			Priority:  10,
 		}
-		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
+		So(testTask.Insert(), ShouldBeNil)
 		ctx := context.Background()
 		Convey("then setting priority should change it's priority", func() {
 			act := true
@@ -990,20 +1005,24 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 	Convey("With test server with a handler and mock data", t, func() {
-		sc := &data.MockConnector{}
+		sc := &data.DBConnector{}
 		rm := makeGetTaskRoute(sc)
 		sc.SetPrefix("rest")
 
 		Convey("and task is in the service context", func() {
-			sc.MockTaskConnector.CachedTasks = []task.Task{
-				{Id: "testTaskId", Project: "testProject"},
+			newTask := task.Task{
+				Id:        "testTaskId",
+				Project:   "testProject",
+				Execution: 1,
 			}
-			sc.MockTaskConnector.CachedOldTasks = []task.Task{
-				{Id: "testTaskId_0",
-					OldTaskId: "testTaskId",
-				},
+			oldTask := task.Task{
+				Id:        "testTaskId_0",
+				OldTaskId: "testTaskId",
 			}
+			So(newTask.Insert(), ShouldBeNil)
+			So(oldTask.Insert(), ShouldBeNil)
 
 			app := gimlet.NewApp()
 			app.SetPrefix(sc.GetPrefix())
@@ -1029,8 +1048,6 @@ func TestTaskGetHandler(t *testing.T) {
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("and old tasks are available", func() {
-				sc.MockTaskConnector.CachedTasks[0].Execution = 1
-
 				Convey("a test that requests old executions should receive them", func() {
 					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
 					So(err, ShouldBeNil)
@@ -1064,8 +1081,9 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
 	Convey("With a task returned by the Connector", t, func() {
-		sc := data.MockConnector{}
+		sc := data.DBConnector{}
 		timeNow := time.Now()
 		testTask := task.Task{
 			Id:           "testTaskId",
@@ -1073,10 +1091,10 @@ func TestTaskResetExecute(t *testing.T) {
 			Secret:       "initialSecret",
 			DispatchTime: timeNow,
 		}
-		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
+		So(testTask.Insert(), ShouldBeNil)
 		ctx := context.Background()
 		Convey("and an error from the service function", func() {
-			sc.MockTaskConnector.StoredError = fmt.Errorf("could not reset task")
+			//sc.DBTaskConnector.StoredError = fmt.Errorf("could not reset task")
 
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
@@ -1116,7 +1134,7 @@ func TestTaskResetExecute(t *testing.T) {
 func TestParentTaskInfo(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
-	sc := data.MockConnector{
+	sc := data.DBConnector{
 		URL: "http://evergreen.example.net",
 	}
 	buildID := "test"
@@ -1141,7 +1159,9 @@ func TestParentTaskInfo(t *testing.T) {
 	}
 
 	assert.NoError(t, displayTask.Insert())
-	sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, displayTask, execTask0, execTask1, randomTask)
+	assert.NoError(t, execTask0.Insert())
+	assert.NoError(t, execTask1.Insert())
+	assert.NoError(t, randomTask.Insert())
 	ctx := context.Background()
 	tbh := &tasksByBuildHandler{
 		limit: 100,
