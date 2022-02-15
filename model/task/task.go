@@ -2990,11 +2990,14 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 
 	if len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
+		// If we are filtering for all statuses it is more performant to not include the status filter
+		if !utility.StringSliceContains(opts.BaseStatuses, "all") {
+			pipeline = append(pipeline, bson.M{
+				"$match": bson.M{
+					BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+				},
+			})
+		}
 	}
 
 	if len(opts.Sorts) > 0 {
@@ -3173,8 +3176,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 		match = bson.M{
 			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
 		}
 	}
@@ -3358,12 +3361,16 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
+		// If a user is filtering for all statuses, it is more performant to skip the status filter
+		if !utility.StringSliceContains(opts.Statuses, "all") {
+			pipeline = append(pipeline, bson.M{
+				"$match": bson.M{
+					DisplayStatusKey: bson.M{"$in": opts.Statuses},
+				},
+			})
+		}
 	}
+
 	return pipeline
 }
 
