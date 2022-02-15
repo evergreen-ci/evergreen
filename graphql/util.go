@@ -235,9 +235,6 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
 		return errors.Wrap(err, "Error setting description"), http.StatusInternalServerError, "", ""
 	}
-	if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
-		return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
-	}
 
 	// update the description for both reconfigured and new patches
 	if err = p.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
@@ -262,6 +259,17 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
+
+		v, err := model.VersionFindOneId(p.Version)
+		if err != nil {
+			return errors.Wrapf(err, "Couldn't find version for id `%s`", p.Version), http.StatusInternalServerError, "", ""
+		}
+		if v.Message != patchUpdateReq.Description {
+			if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+				return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
+			}
+		}
+
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {

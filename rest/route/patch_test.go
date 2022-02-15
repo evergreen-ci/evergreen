@@ -691,6 +691,10 @@ buildvariants:
 		PatchedParserProject: config,
 	}
 	require.NoError(t, unfinalized.Insert())
+	// version := serviceModel.Version{
+	// 	Id: unfinalized.Id.Hex(),
+	// }
+	// require.NoError(t, version.Insert())
 	ctx := context.Background()
 	handler := makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
 
