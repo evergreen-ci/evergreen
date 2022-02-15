@@ -3128,14 +3128,14 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 	return StatusCount, nil
 }
 
-type GroupedStatusCount struct {
+type GroupedTaskStatusCount struct {
 	Variant      string         `bson:"variant"`
 	DisplayName  string         `bson:"display_name"`
 	StatusCounts []*StatusCount `bson:"status_counts"`
 }
 
-func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedStatusCount, error) {
-	StatusCount := []*GroupedStatusCount{}
+func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	StatusCount := []*GroupedTaskStatusCount{}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,

@@ -2988,54 +2988,89 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		BuildVariant: "bv2",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
-	opts := GetTasksByVersionOptions{}
-	variants, err := GetGroupedTaskStatsByVersion("v1", opts)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(variants))
-	expectedValues := []GroupedStatusCount{
-		{
-			Variant:     "bv1",
-			DisplayName: "",
-			StatusCounts: []*StatusCount{
-				{
-					Status: evergreen.TaskFailed,
-					Count:  1,
-				},
-				{
-					Status: evergreen.TaskSucceeded,
-					Count:  2,
-				},
-			},
-		},
-		{
-			Variant:     "bv2",
-			DisplayName: "",
-			StatusCounts: []*StatusCount{
-				{
-					Status: evergreen.TaskFailed,
-					Count:  2,
-				},
-				{
-					Status: evergreen.TaskStatusPending,
-					Count:  1,
+
+	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{}
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
 				},
 			},
-		},
-	}
-	// I tried using reflect.DeepEqual here, but it was failing because of the slice ptr values for StatusCounts
-	// Loop through expected values and compare to actual values
-	for i, expected := range expectedValues {
-		actual := variants[i]
-		assert.Equal(t, expected.Variant, actual.Variant)
-		assert.Equal(t, expected.DisplayName, actual.DisplayName)
-		assert.Equal(t, len(expected.StatusCounts), len(actual.StatusCounts))
-		for j, expectedCount := range expected.StatusCounts {
-			actualCount := actual.StatusCounts[j]
+			{
+				Variant:     "bv2",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  2,
+					},
+					{
+						Status: evergreen.TaskStatusPending,
+						Count:  1,
+					},
+				},
+			},
+		}
+
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+	t.Run("Fetch GroupedTaskStats with filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{
+			Variants: []string{"bv1"},
+		}
+
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+		}
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+
+}
+
+func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTaskStatusCount) {
+	// reflect.DeepEqual does not work here, it was failing because of the slice ptr values for StatusCounts.
+	for i, e := range expected {
+		a := actual[i]
+		assert.Equal(t, e.Variant, a.Variant)
+		assert.Equal(t, e.DisplayName, a.DisplayName)
+		assert.Equal(t, len(e.StatusCounts), len(a.StatusCounts))
+		for j, expectedCount := range e.StatusCounts {
+			actualCount := a.StatusCounts[j]
 			assert.Equal(t, expectedCount.Status, actualCount.Status)
 			assert.Equal(t, expectedCount.Count, actualCount.Count)
 		}
 	}
-
 }
 
 func TestHasMatchingTasks(t *testing.T) {

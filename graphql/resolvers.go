@@ -3816,14 +3816,11 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	return groupedBuildVariants, nil
 }
 
-func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedStatusCount, error) {
+func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
 	opts := task.GetTasksByVersionOptions{
-		IncludeBaseTasks:      false,
-		IncludeExecutionTasks: false,
-		IncludeEmptyActivaton: false,
-		TaskNames:             options.Tasks,
-		Variants:              options.Variants,
-		Statuses:              options.Statuses,
+		TaskNames: options.Tasks,
+		Variants:  options.Variants,
+		Statuses:  options.Statuses,
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
 	if err != nil {
