@@ -3144,6 +3144,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	}}
 	pipeline = append(pipeline, project)
 	variantStatusesKey := "variant_statuses"
+	statusCountsKey := "status_counts"
 	groupByStatusPipeline := []bson.M{
 		{
 			"$group": bson.M{
@@ -3187,7 +3188,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 		{
 			"$group": bson.M{
 				"_id": bson.M{BuildVariantKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey), BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey)},
-				"status_counts": bson.M{
+				statusCountsKey: bson.M{
 					"$push": bson.M{
 						"status": "$" + bsonutil.GetDottedKeyName("_id", DisplayStatusKey),
 						"count":  "$count",
@@ -3199,7 +3200,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 			"$project": bson.M{
 				"variant":       "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey),
 				"display_name":  "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey),
-				"status_counts": 1,
+				statusCountsKey: 1,
 			},
 		},
 		{
