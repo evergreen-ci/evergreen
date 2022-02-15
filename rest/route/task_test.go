@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -27,8 +29,8 @@ import (
 // Tests for abort task route
 
 type TaskAbortSuite struct {
-	sc   *data.MockConnector
-	data data.MockTaskConnector
+	sc   *data.DBConnector
+	data data.DBTaskConnector
 
 	suite.Suite
 }
@@ -38,15 +40,21 @@ func TestTaskAbortSuite(t *testing.T) {
 }
 
 func (s *TaskAbortSuite) SetupSuite() {
-	s.data = data.MockTaskConnector{
-		CachedTasks: []task.Task{
-			{Id: "task1"},
-			{Id: "task2"},
-		},
-		CachedAborted: make(map[string]string),
+	s.NoError(db.ClearCollections(task.Collection, user.Collection, build.Collection, serviceModel.VersionCollection))
+	s.data = data.DBTaskConnector{}
+	s.sc = &data.DBConnector{
+		DBTaskConnector: s.data,
 	}
-	s.sc = &data.MockConnector{
-		MockTaskConnector: s.data,
+	tasks := []task.Task{
+		{Id: "task1", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
+		{Id: "task2", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
+	}
+	s.NoError((&build.Build{Id: "b1"}).Insert())
+	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+		u := &user.DBUser{Id: "user1"}
+		s.NoError(u.Insert())
 	}
 }
 
@@ -61,8 +69,10 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted["task1"])
-	s.Equal("", s.data.CachedAborted["task2"])
+	tasks, err := s.data.FindTasksByIds([]string{"task1", "task2"})
+	s.NoError(err)
+	s.Equal("user1", tasks[0])
+	s.Equal("", tasks[1])
 	t, ok := res.Data().(*model.APITask)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("task1"), t.Id)
@@ -70,22 +80,13 @@ func (s *TaskAbortSuite) TestAbort() {
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted["task1"])
-	s.Equal("", s.data.CachedAborted["task2"])
+	tasks, err = s.data.FindTasksByIds([]string{"task1", "task2"})
+	s.NoError(err)
+	s.Equal("user1", tasks[0].AbortInfo.User)
+	s.Equal("", tasks[1].AbortInfo.User)
 	t, ok = (res.Data()).(*model.APITask)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("task1"), t.Id)
-}
-
-func (s *TaskAbortSuite) TestAbortFail() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-
-	rm := makeTaskAbortHandler(s.sc)
-	rm.(*taskAbortHandler).taskId = "task1"
-	s.sc.MockTaskConnector.FailOnAbort = true
-	resp := rm.Run(ctx)
-	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func TestFetchArtifacts(t *testing.T) {
@@ -165,7 +166,7 @@ func TestFetchArtifacts(t *testing.T) {
 }
 
 type ProjectTaskWithinDatesSuite struct {
-	sc *data.MockConnector
+	sc *data.DBConnector
 	h  *projectTaskGetHandler
 
 	suite.Suite
@@ -215,14 +216,13 @@ func TestGetDisplayTask(t *testing.T) {
 			}
 			require.NoError(t, displayTask.Insert())
 
-			h := makeGetDisplayTaskHandler(&data.MockConnector{
-				MockTaskConnector: data.MockTaskConnector{
-					CachedTasks: []task.Task{tsk},
-				},
+			h := makeGetDisplayTaskHandler(&data.DBConnector{
+				DBTaskConnector: data.DBTaskConnector{},
 			})
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = tsk.Id
+			require.NoError(t, tsk.Insert())
 
 			resp := rh.Run(ctx)
 			require.NotNil(t, resp)
@@ -233,7 +233,7 @@ func TestGetDisplayTask(t *testing.T) {
 			assert.Equal(t, displayTask.DisplayName, info.Name)
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T) {
-			h := makeGetDisplayTaskHandler(&data.MockConnector{})
+			h := makeGetDisplayTaskHandler(&data.DBConnector{})
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = "nonexistent"
@@ -244,11 +244,10 @@ func TestGetDisplayTask(t *testing.T) {
 		},
 		"ReturnsOkIfNotPartOfDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
-			h := makeGetDisplayTaskHandler(&data.MockConnector{
-				MockTaskConnector: data.MockTaskConnector{
-					CachedTasks: []task.Task{tsk},
-				},
+			h := makeGetDisplayTaskHandler(&data.DBConnector{
+				DBTaskConnector: data.DBTaskConnector{},
 			})
+			require.NoError(t, tsk.Insert())
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = tsk.Id
@@ -356,11 +355,10 @@ func TestGetTaskSyncPath(t *testing.T) {
 		BuildVariant: "build_variant",
 		DisplayName:  "name",
 	}
-	h := makeTaskSyncPathGetHandler(&data.MockConnector{
-		MockTaskConnector: data.MockTaskConnector{
-			CachedTasks: []task.Task{expected},
-		},
+	h := makeTaskSyncPathGetHandler(&data.DBConnector{
+		DBTaskConnector: data.DBTaskConnector{},
 	})
+	require.NoError(t, expected.Insert())
 	rh, ok := h.(*taskSyncPathGetHandler)
 	require.True(t, ok)
 	rh.taskID = expected.Id

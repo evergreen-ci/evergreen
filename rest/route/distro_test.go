@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"net/http"
 	"testing"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -1562,7 +1562,7 @@ func getMockDistrosConnector() *data.DBConnector {
 
 type distroExecuteSuite struct {
 	sc     *data.DBConnector
-	data   data.MockHostConnector
+	data   data.DBHostConnector
 	rh     *distroExecuteHandler
 	env    evergreen.Environment
 	cancel context.CancelFunc
@@ -1575,17 +1575,8 @@ func TestDistroExecuteSuite(t *testing.T) {
 }
 
 func (s *distroExecuteSuite) SetupTest() {
-	s.data = data.MockHostConnector{
-		CachedHosts: []host.Host{
-			{
-				Id: "host1",
-				Distro: distro.Distro{
-					Id:      "distro1",
-					Aliases: []string{"alias1"},
-				},
-			},
-		},
-	}
+	s.NoError(db.ClearCollections(host.Collection))
+	s.data = data.DBHostConnector{}
 	s.sc = &data.DBConnector{
 		DBHostConnector: data.DBHostConnector{},
 	}
@@ -1593,6 +1584,14 @@ func (s *distroExecuteSuite) SetupTest() {
 	s.cancel = cancel
 	env := &mock.Environment{}
 	s.env = env
+	hostToAdd := host.Host{
+		Id: "host1",
+		Distro: distro.Distro{
+			Id:      "distro1",
+			Aliases: []string{"alias1"},
+		},
+	}
+	s.Require().NoError(hostToAdd.Insert())
 	s.Require().NoError(env.Configure(ctx))
 	h := makeDistroExecute(s.sc, s.env)
 	rh, ok := h.(*distroExecuteHandler)

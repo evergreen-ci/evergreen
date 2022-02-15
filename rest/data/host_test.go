@@ -82,6 +82,27 @@ func (*HostConnectorSuite) hosts() []host.Host {
 	}
 }
 
+func (*HostConnectorSuite) users() []user.DBUser {
+	return []user.DBUser{
+		{
+			Id: testUser,
+		},
+		{
+			Id: "user2",
+		},
+		{
+			Id: "user3",
+		},
+		{
+			Id: "user4",
+		},
+		{
+			Id:          "root",
+			SystemRoles: []string{"root"},
+		},
+	}
+}
+
 func TestHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.conn = &DBConnector{}
@@ -129,38 +150,25 @@ func TestHostConnectorSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockHostConnectorSuite(t *testing.T) {
+func TestDBHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.setup = func(s *HostConnectorSuite) {
-		s.NoError(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
+		s.NoError(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
 		cmd := map[string]string{
 			"create": evergreen.ScopeCollection,
 		}
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-		s.conn = &MockConnector{
-			MockHostConnector: MockHostConnector{
-				CachedHosts: s.hosts(),
-			},
-			MockUserConnector: MockUserConnector{
-				CachedUsers: map[string]*user.DBUser{
-					testUser: {
-						Id: testUser,
-					},
-					"user2": {
-						Id: "user2",
-					},
-					"user3": {
-						Id: "user3",
-					},
-					"user4": {
-						Id: "user4",
-					},
-					"root": {
-						Id:          "root",
-						SystemRoles: []string{"root"},
-					},
-				},
-			},
+		s.conn = &DBConnector{
+			DBHostConnector: DBHostConnector{},
+			DBUserConnector: DBUserConnector{},
+		}
+		hosts := s.hosts()
+		users := s.users()
+		for _, h := range hosts {
+			s.Require().NoError(h.Insert())
+		}
+		for _, u := range users {
+			s.Require().NoError(u.Insert())
 		}
 		rm := evergreen.GetEnvironment().RoleManager()
 		s.NoError(rm.AddScope(gimlet.Scope{

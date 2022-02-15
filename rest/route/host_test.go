@@ -32,8 +32,7 @@ import (
 
 type HostsChangeStatusesSuite struct {
 	route *hostsChangeStatusesHandler
-	sc    *data.MockConnector
-
+	sc    *data.DBConnector
 	suite.Suite
 }
 
@@ -48,7 +47,7 @@ func (s *HostsChangeStatusesSuite) SetupTest() {
 
 func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(`{"host1": {"status": "quarantined"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
@@ -61,7 +60,7 @@ func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
 
 func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(`{"host1": {"status": "This is an invalid state"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
@@ -73,7 +72,7 @@ func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
 
 func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(``)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
@@ -90,7 +89,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 }
@@ -103,7 +102,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusUnauthorized, res.Status())
 }
@@ -116,7 +115,7 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 }
@@ -128,7 +127,7 @@ func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
 }
@@ -140,7 +139,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
 }
@@ -152,7 +151,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
 }
@@ -164,7 +163,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
 }
@@ -176,7 +175,7 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusNotFound, res.Status())
 }
@@ -185,7 +184,7 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 
 type HostModifySuite struct {
 	route *hostModifyHandler
-	sc    *data.MockConnector
+	sc    *data.DBConnector
 
 	suite.Suite
 }
@@ -202,7 +201,7 @@ func (s *HostModifySuite) SetupTest() {
 func (s *HostModifySuite) TestRunHostNotFound() {
 	h := s.route.Factory().(*hostModifyHandler)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	h.hostID = "host-invalid"
 	h.options = &host.HostModifyOptions{}
@@ -213,7 +212,7 @@ func (s *HostModifySuite) TestRunHostNotFound() {
 func (s *HostModifySuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostModifyHandler)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	h.hostID = "host1"
 	h.options = &host.HostModifyOptions{}
@@ -224,7 +223,7 @@ func (s *HostModifySuite) TestRunHostNotStartedByUser() {
 func (s *HostModifySuite) TestRunValidHost() {
 	h := s.route.Factory().(*hostModifyHandler)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	h.hostID = "host2"
 	h.options = &host.HostModifyOptions{}
@@ -235,7 +234,7 @@ func (s *HostModifySuite) TestRunValidHost() {
 func (s *HostModifySuite) TestParse() {
 	h := s.route.Factory().(*hostModifyHandler)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	// empty
 	r, err := http.NewRequest("PATCH", "/hosts/my-host", bytes.NewReader(nil))
@@ -271,7 +270,7 @@ func (s *HostModifySuite) TestParse() {
 
 type HostSuite struct {
 	route *hostIDGetHandler
-	sc    *data.MockConnector
+	sc    *data.DBConnector
 
 	suite.Suite
 }
@@ -328,7 +327,8 @@ func (s *HostSuite) TestFindByIdFail() {
 }
 
 func (s *HostSuite) TestBuildFromServiceHost() {
-	host := s.sc.MockHostConnector.CachedHosts[0]
+	host, err := s.sc.DBHostConnector.FindHostById("host1")
+	s.NoError(err)
 	apiHost := model.APIHost{}
 	s.NoError(apiHost.BuildFromService(host))
 	s.Equal(apiHost.Id, utility.ToStringPtr(host.Id))
@@ -348,7 +348,7 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 
 type hostTerminateHostHandlerSuite struct {
 	rm *hostTerminateHandler
-	sc *data.MockConnector
+	sc *data.DBConnector
 
 	suite.Suite
 }
@@ -374,7 +374,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 	s.rm.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := s.rm.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 }
@@ -384,74 +384,92 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	h.hostID = "host1"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, resp.Status())
 
 	apiErr := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
-	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[0].Status)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host1")
+	s.NoError(err)
+	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
-	s.Equal(evergreen.HostUninitialized, s.sc.CachedHosts[2].Status)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host3")
+	s.NoError(err)
+	s.Equal(evergreen.HostUninitialized, foundHost.Status)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host3")
+	s.NoError(err)
+	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
-	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
-	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host3")
+	s.NoError(err)
+	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
-	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	s.Equal(http.StatusUnauthorized, resp.Status())
-	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(evergreen.HostRunning, foundHost.Status)
 }
 
 ////////////////////////////////////////////////////////////////////////
 
 type hostChangeRDPPasswordHandlerSuite struct {
 	rm         gimlet.RouteHandler
-	sc         *data.MockConnector
+	sc         *data.DBConnector
 	env        evergreen.Environment
 	sshKeyName string
 	suite.Suite
@@ -487,7 +505,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.Error(resp.Data().(gimlet.ErrorResponse))
@@ -502,7 +520,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFail
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -513,7 +531,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -545,7 +563,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -560,7 +578,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost()
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -579,7 +597,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpa
 
 type hostExtendExpirationHandlerSuite struct {
 	rm gimlet.RouteHandler
-	sc *data.MockConnector
+	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -604,7 +622,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 }
@@ -637,7 +655,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	h.addHours = 9001 * time.Hour
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	apiErr := resp.Data().(gimlet.ErrorResponse)
@@ -645,60 +663,68 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
-	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
+	expectedTime := time.Now().Add(time.Hour).Add(8 * time.Hour)
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
-	expectedTime := s.sc.CachedHosts[0].ExpirationTime
+	expectedTime := time.Now().Add(time.Hour)
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host1"
 	h.addHours = 8 * time.Hour
 
-	ctx := gimlet.AttachUser(context.Background(), s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, resp.Status())
-	s.Equal(expectedTime, s.sc.CachedHosts[0].ExpirationTime)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host1")
+	s.NoError(err)
+	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
-	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
+	expectedTime := time.Now().Add(time.Hour).Add(8 * time.Hour)
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
-	expectedTime := s.sc.CachedHosts[1].ExpirationTime
+	expectedTime := time.Now().Add(time.Hour)
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
@@ -725,77 +751,81 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	return r, nil
 }
 
-func getMockHostsConnector() *data.MockConnector {
+func getMockHostsConnector() *data.DBConnector {
+	grip.Error(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
 	windowsDistro := distro.Distro{
 		Id:       "windows",
 		Arch:     "windows_amd64",
 		Provider: evergreen.ProviderNameMock,
 		SSHKey:   "ssh_key_name",
 	}
-	connector := &data.MockConnector{
-		MockHostConnector: data.MockHostConnector{
-			CachedHosts: []host.Host{
-				{
-					Id:             "host1",
-					StartedBy:      "user0",
-					Host:           "host1",
-					Status:         evergreen.HostTerminated,
-					CreationTime:   time.Now(),
-					ExpirationTime: time.Now().Add(time.Hour),
-					Distro:         windowsDistro,
-				},
-				{
-					Id:             "host2",
-					StartedBy:      "user0",
-					Host:           "host2",
-					Status:         evergreen.HostRunning,
-					CreationTime:   time.Now(),
-					ExpirationTime: time.Now().Add(time.Hour),
-					Distro:         windowsDistro,
-				},
-				{
-					Id:             "host3",
-					StartedBy:      "user0",
-					Host:           "host3",
-					Status:         evergreen.HostUninitialized,
-					CreationTime:   time.Now(),
-					ExpirationTime: time.Now().Add(time.Hour),
-					Distro:         windowsDistro,
-				},
-				{
-					Id:             "host4",
-					StartedBy:      "user0",
-					Host:           "host4",
-					Status:         evergreen.HostRunning,
-					CreationTime:   time.Now(),
-					ExpirationTime: time.Now().Add(time.Hour),
-					Distro: distro.Distro{
-						Id:       "linux",
-						Arch:     "linux_amd64",
-						Provider: evergreen.ProviderNameMock,
-					},
-				},
-			},
+	connector := &data.DBConnector{
+		DBHostConnector: data.DBHostConnector{},
+		DBUserConnector: data.DBUserConnector{},
+	}
+	users := []user.DBUser{
+		{
+			Id:     "user0",
+			APIKey: "user0-key",
 		},
-		MockUserConnector: data.MockUserConnector{
-			CachedUsers: map[string]*user.DBUser{
-				"user0": {
-					Id:     "user0",
-					APIKey: "user0-key",
-				},
-				"user1": {
-					Id:     "user1",
-					APIKey: "user1-key",
-				},
-				"root": {
-					Id:          "root",
-					APIKey:      "root-key",
-					SystemRoles: []string{"root"},
-				},
+		{
+			Id:     "user1",
+			APIKey: "user1-key",
+		},
+		{
+			Id:          "root",
+			APIKey:      "root-key",
+			SystemRoles: []string{"root"},
+		},
+	}
+	hosts := []host.Host{
+		{
+			Id:             "host1",
+			StartedBy:      "user0",
+			Host:           "host1",
+			Status:         evergreen.HostTerminated,
+			CreationTime:   time.Now(),
+			ExpirationTime: time.Now().Add(time.Hour),
+			Distro:         windowsDistro,
+		},
+		{
+			Id:             "host2",
+			StartedBy:      "user0",
+			Host:           "host2",
+			Status:         evergreen.HostRunning,
+			CreationTime:   time.Now(),
+			ExpirationTime: time.Now().Add(time.Hour),
+			Distro:         windowsDistro,
+		},
+		{
+			Id:             "host3",
+			StartedBy:      "user0",
+			Host:           "host3",
+			Status:         evergreen.HostUninitialized,
+			CreationTime:   time.Now(),
+			ExpirationTime: time.Now().Add(time.Hour),
+			Distro:         windowsDistro,
+		},
+		{
+			Id:             "host4",
+			StartedBy:      "user0",
+			Host:           "host4",
+			Status:         evergreen.HostRunning,
+			CreationTime:   time.Now(),
+			ExpirationTime: time.Now().Add(time.Hour),
+			Distro: distro.Distro{
+				Id:       "linux",
+				Arch:     "linux_amd64",
+				Provider: evergreen.ProviderNameMock,
 			},
 		},
 	}
-	grip.Error(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
+	for _, hostToAdd := range hosts {
+		grip.Error(hostToAdd.Insert())
+	}
+	for _, userToAdd := range users {
+		grip.Error(userToAdd.Insert())
+	}
 	cmd := map[string]string{
 		"create": evergreen.ScopeCollection,
 	}
@@ -944,34 +974,36 @@ func TestRemoveAdminHandler(t *testing.T) {
 }
 
 func TestHostFilterGetHandler(t *testing.T) {
-	connector := &data.MockConnector{
-		MockHostConnector: data.MockHostConnector{
-			CachedHosts: []host.Host{
-				{
-					Id:           "h0",
-					StartedBy:    "user0",
-					Status:       evergreen.HostTerminated,
-					CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-					Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
-				},
-				{
-					Id:           "h1",
-					StartedBy:    "user0",
-					Status:       evergreen.HostRunning,
-					CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-					Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
-				},
-				{
-					Id:           "h2",
-					StartedBy:    "user1",
-					Status:       evergreen.HostRunning,
-					CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
-					Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
-				},
-			},
+	connector := &data.DBConnector{
+		DBHostConnector: data.DBHostConnector{},
+	}
+	newHosts := []host.Host{
+		{
+			Id:           "h0",
+			StartedBy:    "user0",
+			Status:       evergreen.HostTerminated,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+		},
+		{
+			Id:           "h1",
+			StartedBy:    "user0",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
+		},
+		{
+			Id:           "h2",
+			StartedBy:    "user1",
+			Status:       evergreen.HostRunning,
+			CreationTime: time.Date(2009, time.December, 10, 23, 0, 0, 0, time.UTC),
+			Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
 		},
 	}
 
+	for _, hostToAdd := range newHosts {
+		assert.NoError(t, hostToAdd.Insert())
+	}
 	handler := hostFilterGetHandler{
 		sc:     connector,
 		params: model.APIHostParams{Status: evergreen.HostTerminated},
@@ -1005,15 +1037,17 @@ func TestHostFilterGetHandler(t *testing.T) {
 
 func TestDisableHostHandler(t *testing.T) {
 	hostID := "h1"
-	connector := data.MockConnector{
-		MockHostConnector: data.MockHostConnector{
-			CachedHosts: []host.Host{
-				{
-					Id:     hostID,
-					Status: evergreen.HostRunning,
-				},
-			},
+	connector := data.DBConnector{
+		DBHostConnector: data.DBHostConnector{},
+	}
+	hosts := []host.Host{
+		{
+			Id:     hostID,
+			Status: evergreen.HostRunning,
 		},
+	}
+	for _, hostToAdd := range hosts {
+		assert.NoError(t, hostToAdd.Insert())
 	}
 	dh := disableHost{
 		sc:     &connector,
@@ -1022,7 +1056,9 @@ func TestDisableHostHandler(t *testing.T) {
 
 	responder := dh.Run(context.Background())
 	assert.Equal(t, http.StatusOK, responder.Status())
-	assert.Equal(t, evergreen.HostDecommissioned, connector.CachedHosts[0].Status)
+	foundHost, err := connector.FindHostById(hostID)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
 }
 
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {
