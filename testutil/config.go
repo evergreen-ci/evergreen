@@ -116,9 +116,10 @@ func MockConfig() *evergreen.Settings {
 			},
 			NamedQueues: []evergreen.AmboyNamedQueueConfig{
 				{
-					Name:       "queue0",
-					NumWorkers: 5,
-					SampleSize: 100,
+					Name:               "queue0",
+					NumWorkers:         5,
+					SampleSize:         100,
+					LockTimeoutSeconds: 80,
 				},
 				{
 					Name:       "queue1",

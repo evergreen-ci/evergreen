@@ -1438,56 +1438,65 @@ Admin Settings
 										<label>Group TTL</label>
 										<input type="number" ng-model="Settings.amboy.group_ttl">
 									</md-input-container>
-									<md-card>
-										<md-card-title>
-											<md-card-title-text>
-												<span>Named Queue Config</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<div id="amboy-named-queue" class="form-group" ng-repeat="(index, queue) in Settings.amboy.named_queues">
-												<section layout="row" flex>
-													<md-input-container class="control" flex=25>
-														<input class="control" type="text" ng-model="queue.name" placeholder="Name">
-													</md-input-container>
-													<br />
-													<md-input-container class="control" flex=25>
-														<input class="control" type="number" ng-model="queue.num_workers" placeholder="Number of Workers">
-													</md-input-container>
-													<br />
-													<md-input-container class="control" flex=25>
-														<input class="control" type="number" ng-model="queue.sample_size" placeholder="Sample Size">
-													</md-input-container>
-													<div style="margin-top: 1%;">
-														<button class="btn btn-default btn-danger" type="button"
-															style="float: left" ng-click="deleteAmboyNamedQueue(index)">
-															<i class="fa fa-trash"></i>
-														</button>
-													</div>
-												</section>
-											</div>
-											<section layout="row" flex>
-												<md-input-container class="control" flex=25>
-													<input class="control" type="text" ng-model="new_amboy_named_queue.name"
-														placeholder="Name">
+									<md-card-title>
+										<md-card-title-text>
+											<span>Named Queues</span>
+										</md-card-title-text>
+									</md-card-title>
+									<div id="amboy-named-queue" class="form-group" ng-repeat="(index, queue) in Settings.amboy.named_queues">
+										<md-card>
+											<md-card-content>
+												<md-input-container class="control" style="width:45%;">
+													<label>Name</label>
+													<input type="text" ng-model="queue.name">
 												</md-input-container>
-												<br />
-													<md-input-container class="control" flex=25>
-														<input class="control" type="number" ng-model="new_amboy_named_queue.num_workers" placeholder="Number of Workers">
-													</md-input-container>
-													<br />
-													<md-input-container class="control" flex=25>
-														<input class="control" type="number" ng-model="new_amboy_named_queue.sample_size" placeholder="Sample Size">
-													</md-input-container>
+												<md-input-container class="control" style="width:45%;margin-left:50px;">
+													<label>Number of Workers</label>
+													<input type="number" ng-model="queue.num_workers">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%;">
+													<label>Sample Size</label>
+													<input type="number" ng-model="queue.sample_size" placeholder="Sample Size">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%;margin-left:50px;">
+													<label>Lock Timeout (Seconds)</label>
+													<input type="number" ng-model="queue.lock_timeout_seconds">
+												</md-input-container>
 												<div style="margin-top: 1%;">
-													<button class="plus-button btn btn-primary"
-														ng-disabled="!validAmboyNamedQueue(new_amboy_named_queue)" type="button"
-														style="float: left" ng-click="addAmboyNamedQueue()">
-														<i class="fa fa-plus"></i>
+													<button class="btn btn-default btn-danger" type="button"
+														style="float: left" ng-click="deleteAmboyNamedQueue(index)">
+														<i class="fa fa-trash"></i>
 													</button>
-													<label class="control">[[ invalidAmboyNamedQueue ]]</label>
 												</div>
-											</section>
+											</md-card-content>
+										</md-card>
+									</div>
+									<md-card>
+										<md-card-content>
+											<md-input-container class="control" style="width:45%;">
+												<label>Name</label>
+												<input type="text" ng-model="new_amboy_named_queue.name">
+											</md-input-container>
+											<md-input-container class="control" style="width:45%;margin-left:50px;">
+												<label>Number of Workers</label>
+												<input type="number" ng-model="new_amboy_named_queue.num_workers">
+											</md-input-container>
+											<md-input-container class="control" style="width:45%;">
+												<label>Sample Size</label>
+												<input type="number" ng-model="new_amboy_named_queue.sample_size" placeholder="Sample Size">
+											</md-input-container>
+											<md-input-container class="control" style="width:45%;margin-left:50px;">
+												<label>Lock Timeout (Seconds)</label>
+												<input type="number" ng-model="new_amboy_named_queue.lock_timeout_secs">
+											</md-input-container>
+											<div style="margin-top:1%;">
+												<button class="plus-button btn btn-primary"
+													ng-disabled="!validAmboyNamedQueue(new_amboy_named_queue)" type="button"
+													style="float:left" ng-click="addAmboyNamedQueue()">
+													<i class="fa fa-plus"></i>
+												</button>
+												<label class="control">[[ invalidECSCluster ]]</label>
+											</div>
 										</md-card-content>
 									</md-card>
 								</md-card-content>

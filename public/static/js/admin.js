@@ -451,7 +451,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     $scope.Settings.amboy.named_queues.push($scope.new_amboy_named_queue);
-    console.log($scope.Settings.amboy.named_queues);
     $scope.new_amboy_named_queue = {};
     $scope.invalidAmboyNamedQueue = "";
   }
@@ -462,7 +461,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.deleteAmboyNamedQueue = function (index) {
     $scope.Settings.amboy.named_queues.splice(index, 1);
-    console.log($scope.Settings.amboy.named_queues);
   }
 
   $scope.clearAllUserTokens = function () {

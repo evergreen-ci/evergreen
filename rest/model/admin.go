@@ -452,22 +452,25 @@ func (a *APIAmboyRetryConfig) ToService() (interface{}, error) {
 
 // APIAmboyNamedQueueConfig is the model for named Amboy queue settings.
 type APIAmboyNamedQueueConfig struct {
-	Name       *string `json:"name"`
-	NumWorkers int     `json:"num_workers,omitempty"`
-	SampleSize int     `json:"sample_size,omitempty"`
+	Name               *string `json:"name"`
+	NumWorkers         int     `json:"num_workers,omitempty"`
+	SampleSize         int     `json:"sample_size,omitempty"`
+	LockTimeoutSeconds int     `json:"lock_timeout_seconds,omitempty"`
 }
 
 func (a *APIAmboyNamedQueueConfig) BuildFromService(h evergreen.AmboyNamedQueueConfig) {
 	a.Name = utility.ToStringPtr(h.Name)
 	a.NumWorkers = h.NumWorkers
 	a.SampleSize = h.SampleSize
+	a.LockTimeoutSeconds = h.LockTimeoutSeconds
 }
 
 func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 	return evergreen.AmboyNamedQueueConfig{
-		Name:       utility.FromStringPtr(a.Name),
-		NumWorkers: a.NumWorkers,
-		SampleSize: a.SampleSize,
+		Name:               utility.FromStringPtr(a.Name),
+		NumWorkers:         a.NumWorkers,
+		SampleSize:         a.SampleSize,
+		LockTimeoutSeconds: a.LockTimeoutSeconds,
 	}
 }
 
