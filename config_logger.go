@@ -81,7 +81,7 @@ func (c *LoggerConfig) ValidateAndDefault() error {
 
 	info := c.Info()
 	if !info.Valid() {
-		catcher.Add(errors.Errorf("logging level configuration is not valid [%+v]", info))
+		catcher.Errorf("logging level configuration is not valid [%+v]", info)
 	}
 
 	return catcher.Resolve()
@@ -97,19 +97,19 @@ func (b *LogBuffering) validateAndDefault() error {
 	catcher := grip.NewBasicCatcher()
 
 	if b.DurationSeconds < 0 {
-		catcher.Add(errors.New("buffering duration seconds can not be negative"))
+		catcher.New("buffering duration seconds can not be negative")
 	} else if b.DurationSeconds == 0 {
 		b.DurationSeconds = defaultLogBufferingDuration
 	}
 
 	if b.Count < 0 {
-		catcher.Add(errors.New("buffering count can not be negative"))
+		catcher.New("buffering count can not be negative")
 	} else if b.Count == 0 {
 		b.Count = defaultLogBufferingCount
 	}
 
 	if b.IncomingBufferFactor < 0 {
-		catcher.Add(errors.New("incoming buffer factor can not be negative"))
+		catcher.New("incoming buffer factor can not be negative")
 	} else if b.IncomingBufferFactor == 0 {
 		b.IncomingBufferFactor = defaultLogBufferingIncomingFactor
 	}
