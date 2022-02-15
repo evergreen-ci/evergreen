@@ -14,11 +14,12 @@ const defaultMaxImagesPerParent = 3
 // CreateOptions is a struct of options that are commonly passed around when creating a
 // new cloud host.
 type CreateOptions struct {
-	ProvisionOptions   *ProvisionOptions
-	ExpirationDuration *time.Duration
-	Region             string
-	UserName           string
-	UserHost           bool
+	Distro           distro.Distro
+	ProvisionOptions *ProvisionOptions
+	ExpirationTime   time.Time
+	Region           string
+	UserName         string
+	UserHost         bool
 
 	HasContainers         bool
 	ParentID              string
@@ -38,8 +39,10 @@ type CreateOptions struct {
 // does not exist yet but is intended to be picked up by the hostinit package and started. This
 // function takes distro information, the name of the instance, the provider of the instance and
 // a CreateOptions and returns an IntentHost.
-func NewIntent(d distro.Distro, instanceName, provider string, options CreateOptions) *Host {
+func NewIntent(options CreateOptions) *Host {
 	creationTime := time.Now()
+	instanceName := options.Distro.GenerateName()
+
 	// proactively write all possible information pertaining
 	// to the host we want to create. this way, if we are unable
 	// to start it or record its instance id, we have a way of knowing
@@ -47,13 +50,13 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 
 	intentHost := &Host{
 		Id:                    instanceName,
-		User:                  d.User,
-		Distro:                d,
+		User:                  options.Distro.User,
+		Distro:                options.Distro,
 		Tag:                   instanceName,
 		CreationTime:          creationTime,
 		Status:                evergreen.HostUninitialized,
 		TerminationTime:       utility.ZeroTime,
-		Provider:              provider,
+		Provider:              options.Distro.Provider,
 		StartedBy:             options.UserName,
 		UserHost:              options.UserHost,
 		HasContainers:         options.HasContainers,
@@ -67,29 +70,17 @@ func NewIntent(d distro.Distro, instanceName, provider string, options CreateOpt
 		HomeVolumeSize:        options.HomeVolumeSize,
 		HomeVolumeID:          options.HomeVolumeID,
 		NoExpiration:          options.NoExpiration,
+		ExpirationTime:        options.ExpirationTime,
+		ProvisionOptions:      options.ProvisionOptions,
 	}
 
-	if options.ExpirationDuration != nil {
-		intentHost.ExpirationTime = creationTime.Add(*options.ExpirationDuration)
-	}
-	if options.ProvisionOptions != nil {
-		intentHost.ProvisionOptions = options.ProvisionOptions
-	}
 	return intentHost
 }
 
-func newIntentFromHost(h *Host) *Host {
-	newID := h.Distro.GenerateName()
-	intentHost := &Host{
-		Id:                    newID,
-		Tag:                   newID,
-		CreationTime:          time.Now(),
-		Status:                evergreen.HostUninitialized,
-		TerminationTime:       utility.ZeroTime,
-		User:                  h.User,
+func (h *Host) GetCreateOptions() CreateOptions {
+	return CreateOptions{
 		Distro:                h.Distro,
-		Provider:              h.Provider,
-		StartedBy:             h.StartedBy,
+		UserName:              h.StartedBy,
 		UserHost:              h.UserHost,
 		HasContainers:         h.HasContainers,
 		ParentID:              h.ParentID,
@@ -97,7 +88,6 @@ func newIntentFromHost(h *Host) *Host {
 		SpawnOptions:          h.SpawnOptions,
 		DockerOptions:         h.DockerOptions,
 		InstanceTags:          h.InstanceTags,
-		InstanceType:          h.InstanceType,
 		IsVirtualWorkstation:  h.IsVirtualWorkstation,
 		HomeVolumeSize:        h.HomeVolumeSize,
 		HomeVolumeID:          h.HomeVolumeID,
@@ -105,8 +95,6 @@ func newIntentFromHost(h *Host) *Host {
 		ExpirationTime:        h.ExpirationTime,
 		ProvisionOptions:      h.ProvisionOptions,
 	}
-
-	return intentHost
 }
 
 // partitionParents will split parent hosts based on those that already have/will have the image for this distro
@@ -134,8 +122,9 @@ parentLoop:
 }
 
 // generateParentCreateOptions generates host options for a parent host
-func generateParentCreateOptions(pool *evergreen.ContainerPool) CreateOptions {
+func generateParentCreateOptions(parentDistro distro.Distro, pool *evergreen.ContainerPool) CreateOptions {
 	options := CreateOptions{
+		Distro:                parentDistro,
 		HasContainers:         true,
 		UserName:              evergreen.User,
 		ContainerPoolSettings: pool,
@@ -161,7 +150,7 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	parentsToInsert := []Host{}
 	containersLeftToCreate := newContainersNeeded
 	for _, parent := range existingHosts {
-		intents := makeContainerIntentsForParent(parent, containersLeftToCreate, d, hostOptions)
+		intents := makeContainerIntentsForParent(parent, containersLeftToCreate, hostOptions)
 		containersToInsert = append(containersToInsert, intents...)
 		containersLeftToCreate -= len(intents)
 		if containersLeftToCreate <= 0 {
@@ -181,11 +170,12 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	if parentDistro == nil {
 		return nil, nil, errors.Errorf("distro %s not found", pool.Distro)
 	}
+
 	for i := 0; i < numNewParents; i++ {
-		newParent := NewIntent(*parentDistro, parentDistro.GenerateName(), parentDistro.Provider, generateParentCreateOptions(pool))
+		newParent := NewIntent(generateParentCreateOptions(*parentDistro, pool))
 		parentsToInsert = append(parentsToInsert, *newParent)
 		parentInfo := ContainersOnParents{ParentHost: *newParent}
-		intents := makeContainerIntentsForParent(parentInfo, containersLeftToCreate, d, hostOptions)
+		intents := makeContainerIntentsForParent(parentInfo, containersLeftToCreate, hostOptions)
 		containersToInsert = append(containersToInsert, intents...)
 		containersLeftToCreate -= len(intents)
 	}
@@ -193,7 +183,7 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	return containersToInsert, parentsToInsert, nil
 }
 
-func makeContainerIntentsForParent(parent ContainersOnParents, newContainersNeeded int, d distro.Distro, hostOptions CreateOptions) []Host {
+func makeContainerIntentsForParent(parent ContainersOnParents, newContainersNeeded int, hostOptions CreateOptions) []Host {
 	// find out how many more containers this parent can fit
 	containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - len(parent.Containers)
 	containersToCreate := containerSpace
@@ -204,7 +194,7 @@ func makeContainerIntentsForParent(parent ContainersOnParents, newContainersNeed
 	containerHostIntents := []Host{}
 	for i := 0; i < containersToCreate; i++ {
 		hostOptions.ParentID = parent.ParentHost.Id
-		containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))
+		containerHostIntents = append(containerHostIntents, *NewIntent(hostOptions))
 	}
 	return containerHostIntents
 }

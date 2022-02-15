@@ -183,11 +183,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
 		catcher := grip.NewBasicCatcher()
-		if h.SpawnOptions.SpawnedByTask {
-			if err := h.HandleTerminatedHostSpawnedByTask(); err != nil {
-				catcher.Wrap(err, "handling task host that was terminating before it was running")
-			}
-		}
+		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling task host that was terminating before it was running")
 		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
 		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
 

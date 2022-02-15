@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -134,15 +135,13 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			return false, errors.New("non-agent host is not already terminated and should not be terminated")
 		}
 
-		if h.SpawnOptions.SpawnedByTask {
-			if err := h.HandleTerminatedHostSpawnedByTask(); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":      "handling prematurely terminated task host",
-					"cloud_status": cloudStatus.String(),
-					"host_id":      h.Id,
-					"task_id":      h.StartedBy,
-				}))
-			}
+		if err := handleTerminatedHostSpawnedByTask(h); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "handling prematurely terminated task host",
+				"cloud_status": cloudStatus.String(),
+				"host_id":      h.Id,
+				"task_id":      h.StartedBy,
+			}))
 		}
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
@@ -167,4 +166,48 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		})
 		return false, errors.Errorf("unexpected host status '%s'", cloudStatus)
 	}
+}
+
+// handleTerminatedHostSpawnedByTask re-creates a new intent host if possible when this host.create host fails;
+// If it cannot create a new host, it will populate the reason that host.create failed.
+func handleTerminatedHostSpawnedByTask(h *host.Host) error {
+	if !h.SpawnOptions.SpawnedByTask {
+		return nil
+	}
+
+	intent, err := insertNewHostForTask(h)
+	if err != nil || intent == nil {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(errors.Wrap(err, "inserting new host for task"))
+		catcher.Add(task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")))
+		return catcher.Resolve()
+	}
+
+	grip.Info(message.Fields{
+		"message":              "inserted a host intent to replace a terminated host for a task",
+		"original_host_id":     h.Id,
+		"original_host_status": h.Status,
+		"new_host_id":          intent.Id,
+		"task_id":              h.SpawnOptions.TaskID,
+		"task_execution":       h.SpawnOptions.TaskExecutionNumber,
+	})
+
+	return nil
+}
+
+func insertNewHostForTask(h *host.Host) (*host.Host, error) {
+	t, err := task.FindOneIdAndExecution(h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task for host '%s'", h.Id)
+	}
+	if t == nil {
+		return nil, errors.Errorf("host '%s' created by task '%s' execution '%d' that does not exist", h.Id, h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
+	}
+
+	if h.Status != evergreen.HostStarting || t.Status != evergreen.TaskStarted || t.Aborted {
+		return nil, nil
+	}
+
+	intent := host.NewIntent(h.GetCreateOptions())
+	return intent, errors.Wrap(intent.Insert(), "inserting intent")
 }

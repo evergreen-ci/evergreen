@@ -241,3 +241,113 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+	}()
+
+	for name, testCase := range map[string]struct {
+		t                *task.Task
+		h                *host.Host
+		newIntentCreated bool
+		hostDetailsSet   bool
+	}{
+		"TaskStillRunning": {
+			t: &task.Task{
+				Id:        "t0",
+				Execution: 0,
+				Status:    evergreen.TaskStarted,
+			},
+			h: &host.Host{
+				Id: "h0",
+				SpawnOptions: host.SpawnOptions{
+					SpawnedByTask:       true,
+					TaskID:              "t0",
+					TaskExecutionNumber: 0,
+				},
+				Status: evergreen.HostStarting,
+			},
+			newIntentCreated: true,
+			hostDetailsSet:   false,
+		},
+		"TaskAborted": {
+			t: &task.Task{
+				Id:        "t0",
+				Execution: 0,
+				Status:    evergreen.TaskStarted,
+				Aborted:   true,
+			},
+			h: &host.Host{
+				Id: "h0",
+				SpawnOptions: host.SpawnOptions{
+					SpawnedByTask:       true,
+					TaskID:              "t0",
+					TaskExecutionNumber: 0,
+				},
+				Status: evergreen.HostStarting,
+			},
+			newIntentCreated: false,
+			hostDetailsSet:   true,
+		},
+		"HostAlreadyRunning": {
+			t: &task.Task{
+				Id:        "t0",
+				Execution: 0,
+				Status:    evergreen.TaskStarted,
+				Aborted:   true,
+			},
+			h: &host.Host{
+				Id: "h0",
+				SpawnOptions: host.SpawnOptions{
+					SpawnedByTask:       true,
+					TaskID:              "t0",
+					TaskExecutionNumber: 0,
+				},
+				Status: evergreen.HostRunning,
+			},
+			newIntentCreated: false,
+			hostDetailsSet:   true,
+		},
+		"HostNotSpawnedByTask": {
+			t: &task.Task{
+				Id: "t0",
+			},
+			h: &host.Host{
+				Id: "h0",
+				SpawnOptions: host.SpawnOptions{
+					SpawnedByTask: false,
+				},
+			},
+			newIntentCreated: false,
+			hostDetailsSet:   false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
+			require.NoError(t, testCase.t.Insert())
+
+			assert.NoError(t, handleTerminatedHostSpawnedByTask(testCase.h))
+
+			intent, err := host.FindOne(db.Query(nil))
+			require.NoError(t, err)
+			if testCase.newIntentCreated {
+				require.NotNil(t, intent)
+				assert.True(t, host.IsIntentHostId(intent.Id))
+				assert.Equal(t, evergreen.HostUninitialized, intent.Status)
+			} else {
+				assert.Nil(t, intent)
+			}
+
+			t0, err := task.FindOneId(testCase.t.Id)
+			require.NoError(t, err)
+			require.NotNil(t, t0)
+			if testCase.hostDetailsSet {
+				require.Len(t, t0.HostCreateDetails, 1)
+				assert.Equal(t, testCase.h.Id, t0.HostCreateDetails[0].HostId)
+			} else {
+				assert.Nil(t, t0.HostCreateDetails)
+			}
+		})
+	}
+}

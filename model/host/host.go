@@ -1600,37 +1600,6 @@ func (h *Host) AddSSHKeyName(name string) error {
 	return nil
 }
 
-// HandleTerminatedHostSpawnedByTask should be called when a host spawned by a task
-// is found terminated.
-func (h *Host) HandleTerminatedHostSpawnedByTask() error {
-	if !h.SpawnOptions.SpawnedByTask {
-		return nil
-	}
-
-	t, err := task.FindOneIdAndExecution(h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
-	if err != nil {
-		return errors.Wrapf(err, "finding task for host '%s'", h.Id)
-	}
-	if t == nil {
-		return errors.Errorf("host '%s' created by task '%s' execution '%d' that does not exist", h.Id, h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
-	}
-
-	if h.Status == evergreen.HostStarting && t.Status == evergreen.TaskStarted && !t.Aborted {
-		intent := newIntentFromHost(h)
-		grip.Info(message.Fields{
-			"message":              "inserting a host intent to replace a terminated host for a task",
-			"original_host":        h.Id,
-			"original_host_status": h.Status,
-			"new_host":             intent.Id,
-			"task":                 t.Id,
-			"task_execution":       t.Execution,
-		})
-		return intent.Insert()
-	}
-
-	return task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated"))
-}
-
 func FindHostsToTerminate() ([]Host, error) {
 	// unreachableCutoff is the threshold to wait for an decommissioned host to
 	// become marked as reachable again before giving up and terminating it.

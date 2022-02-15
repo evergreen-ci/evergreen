@@ -266,7 +266,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = distro.BootstrapMethodNone
 
-	options, err := getAgentOptions(taskID, userID, createHost)
+	options, err := getAgentOptions(*d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for docker")
 	}
@@ -415,11 +415,11 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getAgentOptions(taskID, userID, createHost)
+	options, err := getAgentOptions(d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
-	intent := host.NewIntent(d, d.GenerateName(), provider, *options)
+	intent := host.NewIntent(*options)
 	if err = intent.Insert(); err != nil {
 		return nil, errors.Wrap(err, "unable to insert host intent")
 	}
@@ -427,13 +427,15 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	return intent, nil
 }
 
-func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
-	options := host.CreateOptions{}
+func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+	options := host.CreateOptions{
+		Distro: d,
+	}
+
 	if userID != "" {
 		options.UserName = userID
 		options.UserHost = true
-		expiration := evergreen.DefaultSpawnHostExpiration
-		options.ExpirationDuration = &expiration
+		options.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 		options.ProvisionOptions = &host.ProvisionOptions{
 			TaskId:  taskID,
 			OwnerId: userID,
