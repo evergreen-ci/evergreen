@@ -66,8 +66,6 @@ func init() {
 }
 
 type spawnhostModifyJob struct {
-	// TODO (EVG-16066): remove HostID.
-	HostID                string                 `bson:"host_id" json:"host_id" yaml:"host_id"`
 	ModifyOptions         host.HostModifyOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
@@ -97,14 +95,6 @@ func NewSpawnhostModifyJob(h *host.Host, changes host.HostModifyOptions, ts stri
 
 func (j *spawnhostModifyJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-
-	// Setting the base field is for temporary backward compatibility with
-	// pending jobs already stored in the DB.
-	// TODO (EVG-16066): remove this check once all old versions of the job are
-	// complete.
-	if j.HostID != "" {
-		j.CloudHostModification.HostID = j.HostID
-	}
 
 	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
