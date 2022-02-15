@@ -30,16 +30,8 @@ func TestProjectCopySuite(t *testing.T) {
 }
 
 func (s *ProjectCopySuite) SetupSuite() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection))
-	s.data = data.DBProjectConnector{
-		//CachedVars: []*model.ProjectVars{
-		//	{
-		//		Id:          "12345",
-		//		Vars:        map[string]string{"a": "1", "b": "2"},
-		//		PrivateVars: map[string]bool{"b": true},
-		//	},
-		//},
-	}
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection))
+	s.data = data.DBProjectConnector{}
 	pRefs := []model.ProjectRef{
 		{
 			Id:         "12345",
@@ -59,6 +51,12 @@ func (s *ProjectCopySuite) SetupSuite() {
 	for _, pRef := range pRefs {
 		s.NoError(pRef.Insert())
 	}
+	projectVar := &model.ProjectVars{
+		Id:          "12345",
+		Vars:        map[string]string{"a": "1", "b": "2"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	s.NoError(projectVar.Insert())
 
 	s.sc = &data.DBConnector{
 		URL:                "https://evergreen.example.net",
@@ -67,7 +65,6 @@ func (s *ProjectCopySuite) SetupSuite() {
 }
 
 func (s *ProjectCopySuite) SetupTest() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	s.route = &projectCopyHandler{sc: s.sc}
 }
 
@@ -92,8 +89,12 @@ func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 }
 
 func (s *ProjectCopySuite) TestCopyToNewProject() {
+	u := &user.DBUser{Id: "me"}
+	admin := &user.DBUser{Id: "my-user"}
+	s.NoError(u.Insert())
+	s.NoError(admin.Insert())
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
+	ctx = gimlet.AttachUser(ctx, u)
 	s.route.oldProject = "projectA"
 	s.route.newProject = "projectC"
 	resp := s.route.Run(ctx)
@@ -152,21 +153,19 @@ func (s *copyVariablesSuite) SetupSuite() {
 	for _, pRef := range pRefs {
 		s.NoError(pRef.Insert())
 	}
-	s.data = data.DBProjectConnector{
-
-		//CachedVars: []*model.ProjectVars{
-		//	{
-		//		Id:          "projectA",
-		//		Vars:        map[string]string{"apple": "red", "hello": "world"},
-		//		PrivateVars: map[string]bool{"hello": true},
-		//	},
-		//	{
-		//		Id:          "projectB",
-		//		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
-		//		PrivateVars: map[string]bool{},
-		//	},
-		//},
+	projectVar1 := &model.ProjectVars{
+		Id:          "projectA",
+		Vars:        map[string]string{"apple": "red", "hello": "world"},
+		PrivateVars: map[string]bool{"hello": true},
 	}
+	projectVar2 := &model.ProjectVars{
+		Id:          "projectB",
+		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
+		PrivateVars: map[string]bool{},
+	}
+	s.NoError(projectVar1.Insert())
+	s.NoError(projectVar2.Insert())
+	s.data = data.DBProjectConnector{}
 
 	s.sc = &data.DBConnector{
 		URL:                "https://evergreen.example.net",
@@ -207,22 +206,28 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		DryRun:         true,
 		IncludePrivate: true,
 	}
-	//delete(s.data.CachedVars[1].Vars, "hello")
-	//delete(s.data.CachedVars[1].Vars, "apple")
+	projectVars, err := model.FindOneProjectVars("projectB")
+	s.NoError(err)
+	delete(projectVars.Vars, "hello")
+	delete(projectVars.Vars, "apple")
 
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	//s.Len(s.data.CachedVars[1].Vars, 1)
+	projectVars, err = model.FindOneProjectVars("projectB")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 1)
 
 	s.route.opts.DryRun = false
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	//s.Len(s.data.CachedVars[1].Vars, 3)
-	//s.Equal("world", s.data.CachedVars[1].Vars["hello"])
-	//s.Equal("red", s.data.CachedVars[1].Vars["apple"])
-	//s.True(s.data.CachedVars[1].PrivateVars["hello"])
+	projectVars, err = model.FindOneProjectVars("projectB")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 3)
+	s.Equal("world", projectVars.Vars["hello"])
+	s.Equal("red", projectVars.Vars["apple"])
+	s.True(projectVars.PrivateVars["hello"])
 }
 
 func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
@@ -245,12 +250,14 @@ func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	//s.Len(s.data.CachedVars[1].Vars, 3)
-	//s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
-	//s.True(s.data.CachedVars[1].PrivateVars["hello"])
-	//s.Equal("red", s.data.CachedVars[1].Vars["apple"])
-	//s.False(s.data.CachedVars[1].PrivateVars["apple"])
-	//s.Equal("yellow", s.data.CachedVars[1].Vars["banana"]) // unchanged
+	projectVars, err := model.FindOneProjectVars("projectB")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 3)
+	s.Equal("world", projectVars.Vars["hello"]) // overwrites old variable
+	s.True(projectVars.PrivateVars["hello"])
+	s.Equal("red", projectVars.Vars["apple"])
+	s.False(projectVars.PrivateVars["apple"])
+	s.Equal("yellow", projectVars.Vars["banana"]) // unchanged
 
 }
 
@@ -275,11 +282,13 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	resp = s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	//s.Len(s.data.CachedVars[1].Vars, 2)
-	//s.Equal("world", s.data.CachedVars[1].Vars["hello"]) // overwrites old variable
-	//s.True(s.data.CachedVars[1].PrivateVars["hello"])
-	//s.Equal("red", s.data.CachedVars[1].Vars["apple"])
-	//s.False(s.data.CachedVars[1].PrivateVars["apple"])
-	//_, ok := s.data.CachedVars[1].Vars["banana"] // no longer exists
-	//s.False(ok)
+	projectVars, err := model.FindOneProjectVars("projectB")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 2)
+	s.Equal("world", projectVars.Vars["hello"]) // overwrites old variable
+	s.True(projectVars.PrivateVars["hello"])
+	s.Equal("red", projectVars.Vars["apple"])
+	s.False(projectVars.PrivateVars["apple"])
+	_, ok := projectVars.Vars["banana"] // no longer exists
+	s.False(ok)
 }
