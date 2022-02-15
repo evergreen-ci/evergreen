@@ -3308,16 +3308,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		addDisplayStatus,
 	)
 	if opts.IncludeBaseTasks {
-		if len(opts.BaseStatuses) > 0 {
-			// If we are filtering for all statuses it is more performant to not include the status filter
-			if !utility.StringSliceContains(opts.BaseStatuses, "all") {
-				pipeline = append(pipeline, bson.M{
-					"$match": bson.M{
-						BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-					},
-				})
-			}
-		}
 		pipeline = append(pipeline, []bson.M{
 			// Add data about the base task
 			{"$lookup": bson.M{
@@ -3367,6 +3357,19 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 					DisplayStatusKey: bson.M{"$in": opts.Statuses},
 				},
 			})
+		}
+	}
+
+	if opts.IncludeBaseTasks {
+		if len(opts.BaseStatuses) > 0 {
+			// If we are filtering for all statuses it is more performant to not include the status filter
+			if !utility.StringSliceContains(opts.BaseStatuses, "all") {
+				pipeline = append(pipeline, bson.M{
+					"$match": bson.M{
+						BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+					},
+				})
+			}
 		}
 	}
 
