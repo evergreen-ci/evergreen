@@ -3135,7 +3135,6 @@ type GroupedTaskStatusCount struct {
 }
 
 func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
-	StatusCount := []*GroupedTaskStatusCount{}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	project := bson.M{"$project": bson.M{
 		BuildVariantKey:            "$" + BuildVariantKey,
@@ -3146,6 +3145,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	variantStatusesKey := "variant_statuses"
 	statusCountsKey := "status_counts"
 	groupByStatusPipeline := []bson.M{
+		// Group tasks by variant
 		{
 			"$group": bson.M{
 				"_id": "$" + BuildVariantKey,
@@ -3170,6 +3170,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 				"_id":              0,
 			},
 		},
+		// Group tasks by variant and status and calculate count for each status
 		{
 			"$group": bson.M{
 				"_id": bson.M{
@@ -3180,11 +3181,13 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 				"count": bson.M{"$sum": 1},
 			},
 		},
+		// Sort the values by status so they are sorted before being grouped. This will ensure that they are sorted in the array when they are grouped.
 		{
 			"$sort": bson.M{
 				bsonutil.GetDottedKeyName("_id", DisplayStatusKey): 1,
 			},
 		},
+		// Group the elements by build variant and status_counts
 		{
 			"$group": bson.M{
 				"_id": bson.M{BuildVariantKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey), BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey)},
@@ -3203,6 +3206,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 				statusCountsKey: 1,
 			},
 		},
+		// Sort build variants in alphabetical order for final return
 		{
 			"$sort": bson.M{
 				"variant": 1,
@@ -3210,18 +3214,12 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 		},
 	}
 	pipeline = append(pipeline, groupByStatusPipeline...)
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting grouped task stats")
+	result := []*GroupedTaskStatusCount{}
+
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get stats list")
 	}
-	err = cursor.All(ctx, &StatusCount)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting task stats")
-	}
-	return StatusCount, nil
+	return result, nil
 
 }
 
