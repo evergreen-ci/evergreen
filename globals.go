@@ -291,22 +291,6 @@ var TaskStatuses = []string{
 	TaskTimedOut,
 }
 
-// FilterValidTaskStatuses returns a slice of task statuses that are valid and are searchable.
-// It returns an empty array if emptyArrayForAll is true
-func FilterValidTaskStatuses(statuses []string, emptyArrayForAll bool) []string {
-	var filteredStatuses []string
-	if emptyArrayForAll && utility.StringSliceContains(statuses, TaskAll) {
-		return []string{}
-	}
-	for _, status := range statuses {
-		if !utility.StringSliceContains(TaskStatuses, status) {
-			continue
-		}
-		filteredStatuses = append(filteredStatuses, status)
-	}
-	return filteredStatuses
-}
-
 var InternalAliases = []string{
 	CommitQueueAlias,
 	GithubPRAlias,

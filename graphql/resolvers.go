@@ -1671,8 +1671,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	}
 
 	opts := data.TaskFilterOptions{
-		Statuses:               evergreen.FilterValidTaskStatuses(statuses, true),
-		BaseStatuses:           evergreen.FilterValidTaskStatuses(baseStatuses, true),
+		Statuses:               getValidTaskStatusesFilter(statuses),
+		BaseStatuses:           getValidTaskStatusesFilter(baseStatuses),
 		Variants:               []string{variantParam},
 		TaskNames:              []string{taskNameParam},
 		Page:                   pageParam,
@@ -3632,7 +3632,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,
-				Statuses:  buildVariantOptions.Statuses,
+				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {
@@ -3763,7 +3763,7 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
-		Statuses:              evergreen.FilterValidTaskStatuses(options.Statuses, true),
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 	}
 	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {

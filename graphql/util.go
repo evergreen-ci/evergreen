@@ -483,7 +483,7 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:         evergreen.FilterValidTaskStatuses(statuses, true),
+		Statuses:         getValidTaskStatusesFilter(statuses),
 		Variants:         searchVariants,
 		TaskNames:        searchTasks,
 		Sorts:            defaultSort,
@@ -1405,4 +1405,21 @@ func hasProjectPermission(ctx context.Context, resource string, next graphql.Res
 		return next(ctx)
 	}
 	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
+}
+
+// getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
+// It returns an empty array if all is included as one of the entries
+func getValidTaskStatusesFilter(statuses []string) []string {
+	filteredStatuses := []string{}
+	if utility.StringSliceContains(statuses, evergreen.TaskAll) {
+		return filteredStatuses
+	}
+	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
+	for _, status := range statuses {
+		if !utility.StringSliceContains(evergreen.TaskStatuses, status) {
+			continue
+		}
+		filteredStatuses = append(filteredStatuses, status)
+	}
+	return filteredStatuses
 }

@@ -3131,7 +3131,7 @@ func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, err
 	options := GetTasksByVersionOptions{
 		TaskNames: opts.TaskNames,
 		Variants:  opts.Variants,
-		Statuses:  evergreen.FilterValidTaskStatuses(opts.Statuses, true),
+		Statuses:  opts.Statuses,
 	}
 	pipeline := getTasksByVersionPipeline(versionID, options)
 	pipeline = append(pipeline, bson.M{"$count": "count"})
