@@ -2997,14 +2997,6 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 
-	if len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
-	}
-
 	if len(opts.Sorts) > 0 {
 		sortPipeline := []bson.M{}
 
@@ -3276,8 +3268,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 		match = bson.M{
 			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
 		}
 	}
@@ -3467,6 +3459,15 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
+
+	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+			},
+		})
+	}
+
 	return pipeline
 }
 
