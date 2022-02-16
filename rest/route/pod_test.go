@@ -179,13 +179,13 @@ func TestGetPod(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
 			podID := "id"
-			sc.CachedPods = []pod.Pod{
-				{
-					ID:     podID,
-					Type:   pod.TypeAgent,
-					Status: pod.StatusRunning,
-				},
+
+			podToInsert := pod.Pod{
+				ID:     podID,
+				Type:   pod.TypeAgent,
+				Status: pod.StatusRunning,
 			}
+			require.NoError(t, podToInsert.Insert())
 
 			ph.podID = podID
 			resp := ph.Run(ctx)
