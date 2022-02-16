@@ -173,13 +173,14 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
-	h := host.NewIntent(s.hostOpts)
+	ec2HostOps := s.hostOpts
+	ec2HostOps.Distro.Provider = evergreen.ProviderNameEc2Auto
+	h := host.NewIntent(ec2HostOps)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	emptyHostOpts := host.CreateOptions{}
+	emptyHostOpts := host.CreateOptions{Distro: s.hostOpts.Distro}
 	h = host.NewIntent(emptyHostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)

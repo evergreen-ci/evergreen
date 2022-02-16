@@ -32,17 +32,18 @@ func (s *OpenStackSuite) SetupTest() {
 		client: s.client,
 	}
 
-	s.distro = distro.Distro{
-		Id:       "host",
-		Provider: evergreen.ProviderNameOpenstack,
-		ProviderSettingsList: []*birch.Document{birch.NewDocument(
-			birch.EC.String("image_name", "image"),
-			birch.EC.String("flavor_name", "flavor"),
-			birch.EC.String("key_name", "key"),
-			birch.EC.String("security_group", "group"),
-		)},
+	s.hostOpts = host.CreateOptions{
+		Distro: distro.Distro{
+			Id:       "host",
+			Provider: evergreen.ProviderNameOpenstack,
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("image_name", "image"),
+				birch.EC.String("flavor_name", "flavor"),
+				birch.EC.String("key_name", "key"),
+				birch.EC.String("security_group", "group"),
+			)},
+		},
 	}
-	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *OpenStackSuite) TestValidateSettings() {

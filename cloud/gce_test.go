@@ -33,18 +33,19 @@ func (s *GCESuite) SetupTest() {
 	s.manager = &gceManager{
 		client: s.client,
 	}
-	s.distro = distro.Distro{
-		Id:       "host",
-		Provider: "gce",
-		ProviderSettingsList: []*birch.Document{birch.NewDocument(
-			birch.EC.String("instance_type", "machine"),
-			birch.EC.String("image_name", "image"),
-			birch.EC.String("disk_type", "pd-standard"),
-			birch.EC.Int("disk_size_gb", 10),
-			birch.EC.SliceString("network_tags", []string{"abc", "def", "ghi"}),
-		)},
+	s.hostOpts = host.CreateOptions{
+		Distro: distro.Distro{
+			Id:       "host",
+			Provider: "gce",
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("instance_type", "machine"),
+				birch.EC.String("image_name", "image"),
+				birch.EC.String("disk_type", "pd-standard"),
+				birch.EC.Int("disk_size_gb", 10),
+				birch.EC.SliceString("network_tags", []string{"abc", "def", "ghi"}),
+			)},
+		},
 	}
-	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *GCESuite) TestValidateSettings() {

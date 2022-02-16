@@ -31,12 +31,13 @@ func (s *VSphereSuite) SetupTest() {
 	s.manager = &vsphereManager{
 		client: s.client,
 	}
-	s.distro = distro.Distro{
-		Id:                   "host",
-		Provider:             evergreen.ProviderNameVsphere,
-		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", "macos-1012"))},
+	s.hostOpts = host.CreateOptions{
+		Distro: distro.Distro{
+			Id:                   "host",
+			Provider:             evergreen.ProviderNameVsphere,
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", "macos-1012"))},
+		},
 	}
-	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *VSphereSuite) TestValidateSettings() {
