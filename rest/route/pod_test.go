@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"testing"
 
@@ -176,6 +177,7 @@ func TestPostPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
+	require.NoError(t, db.ClearCollections(pod.Collection))
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
 			podID := "id"
