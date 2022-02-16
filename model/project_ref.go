@@ -1576,7 +1576,7 @@ func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	if err != nil {
 		return false, errors.Wrapf(err, "database error finding github conflicts")
 	}
-	if len(conflicts.PRTestingIdentifiers) > 0 {
+	if len(conflicts.CommitQueueIdentifiers) > 0 {
 		return false, nil
 	}
 	return true, nil
