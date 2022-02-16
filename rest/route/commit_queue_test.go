@@ -23,7 +23,7 @@ import (
 )
 
 type CommitQueueSuite struct {
-	sc *data.MockConnector
+	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -32,7 +32,7 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
-	s.sc = &data.MockConnector{
+	s.sc = &data.DBConnector{
 		MockCommitQueueConnector: data.MockCommitQueueConnector{},
 	}
 }

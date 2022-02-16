@@ -59,9 +59,3 @@ func (s *SchedulerConnector) CompareTasks(taskIds []string, useLegacy bool) ([]s
 	}
 	return prioritizedIds, logic, nil
 }
-
-type MockSchedulerConnector struct{}
-
-func (s *MockSchedulerConnector) CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
-	return nil, nil, nil
-}

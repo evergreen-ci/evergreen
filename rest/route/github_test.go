@@ -219,25 +219,25 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	}
 }
 
-//func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
-//	event, err := github.ParseWebHook("issue_comment", s.commitQueueCommentBody)
-//	s.NotNil(event)
-//	s.NoError(err)
-//	s.h.event = event
-//	s.h.msgID = "1"
-//	ctx := context.Background()
-//	resp := s.h.Run(ctx)
-//	if s.NotNil(resp) {
-//		s.Equal(http.StatusOK, resp.Status())
-//	}
-//
-//	s.NoError(err)
-//	if s.Len(s.sc.MockCommitQueueConnector.Queue, 1) {
-//		s.Equal("1", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
-//		s.Equal("test_module", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
-//		s.Equal("1234", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
-//	}
-//}
+func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
+	event, err := github.ParseWebHook("issue_comment", s.commitQueueCommentBody)
+	s.NotNil(event)
+	s.NoError(err)
+	s.h.event = event
+	s.h.msgID = "1"
+	ctx := context.Background()
+	resp := s.h.Run(ctx)
+	if s.NotNil(resp) {
+		s.Equal(http.StatusOK, resp.Status())
+	}
+
+	s.NoError(err)
+	if s.Len(s.sc.MockCommitQueueConnector.Queue, 1) {
+		s.Equal("1", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
+		s.Equal("test_module", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
+		s.Equal("1234", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
+	}
+}
 
 func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	event, err := github.ParseWebHook("issue_comment", s.retryCommentBody)

@@ -33,46 +33,10 @@ type DBConnector struct {
 	TaskReliabilityConnector
 	DBCommitQueueConnector
 	SchedulerConnector
+	MockCommitQueueConnector
 }
 
 func (ctx *DBConnector) GetURL() string          { return ctx.URL }
 func (ctx *DBConnector) SetURL(url string)       { ctx.URL = url }
 func (ctx *DBConnector) GetPrefix() string       { return ctx.Prefix }
 func (ctx *DBConnector) SetPrefix(prefix string) { ctx.Prefix = prefix }
-
-type MockConnector struct {
-	URL    string
-	Prefix string
-	MockStatsConnector
-	MockCommitQueueConnector
-
-	//The below mock connectors have been removed from all unit tests and are no longer used
-	MockTaskReliabilityConnector
-	MockContextConnector
-	MockBuildConnector
-	MockProjectConnector
-	MockTestConnector
-	MockSubscriptionConnector
-	MockVersionConnector
-	MockUserConnector
-	MockPatchConnector
-	MockHostConnector
-	MockTaskConnector
-	MockPodConnector
-	MockPatchIntentConnector
-	MockAdminConnector
-	MockStatusConnector
-	MockAliasConnector
-	MockRepoTrackerConnector
-	MockCLIUpdateConnector
-	MockGenerateConnector
-	MockDistroConnector
-	MockNotificationConnector
-	MockCreateHostConnector
-	MockSchedulerConnector
-}
-
-func (ctx *MockConnector) GetURL() string          { return ctx.URL }
-func (ctx *MockConnector) SetURL(url string)       { ctx.URL = url }
-func (ctx *MockConnector) GetPrefix() string       { return ctx.Prefix }
-func (ctx *MockConnector) SetPrefix(prefix string) { ctx.Prefix = prefix }

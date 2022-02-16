@@ -398,4 +398,20 @@ type Connector interface {
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)
+
+	// MockGetGitHubPR Mock Commit queue methods
+	MockGetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
+	MockEnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
+	MockAddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error)
+	MockFindCommitQueueForProject(string) (*restModel.APICommitQueue, error)
+	MockEnableCommitQueue(*model.ProjectRef) error
+	MockCommitQueueRemoveItem(string, string, string) (*restModel.APICommitQueueItem, error)
+	MockIsItemOnCommitQueue(string, string) (bool, error)
+	MockCommitQueueClearAll() (int, error)
+	MockCreatePatchForMerge(context.Context, string, string) (*restModel.APIPatch, error)
+	MockIsPatchEmpty(string) (bool, error)
+	MockIsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
+	MockGetMessageForPatch(string) (string, error)
+	MockConcludeMerge(string, string) error
+	MockGetAdditionalPatches(patchId string) ([]string, error)
 }
