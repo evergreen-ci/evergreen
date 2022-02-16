@@ -41,7 +41,7 @@ func Update() cli.Command {
 				Usage: "download a new CLI even if the current CLI is not out of date",
 			},
 			cli.BoolFlag{
-				Name:  joinFlagNames(autoUpgradeFlagName),
+				Name:  autoUpgradeFlagName,
 				Usage: "setup automatic installations of a new CLI if the current CLI is out of date",
 			},
 		},
@@ -60,10 +60,10 @@ func Update() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			if !conf.AutoUpgradeCLI && !autoUpgrade {
-				fmt.Printf("Automatic CLI upgrades are not set up; specifying the -%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName)
+				fmt.Println(fmt.Sprintf("Automatic CLI upgrades are not set up; specifying the -%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName))
 			}
 			if conf.AutoUpgradeCLI && autoUpgrade {
-				fmt.Printf("Automatic CLI upgrades are already set up, specifying the %s flag is not necessary.", autoUpgradeFlagName)
+				fmt.Println(fmt.Sprintf("Automatic CLI upgrades are already set up, specifying the %s flag is not necessary.", autoUpgradeFlagName))
 			}
 			if !conf.AutoUpgradeCLI && autoUpgrade {
 				conf.SetAutoUpgradeCLI()
