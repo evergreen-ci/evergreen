@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/mock"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -31,9 +32,14 @@ type CommitQueueSuite struct {
 	ctx    context.Context
 	server *service.TestServer
 	suite.Suite
+	env *mock.Environment
 }
 
 func TestCommitQueueSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	require.NoError(t, testConfig.Set())
 	suite.Run(t, new(CommitQueueSuite))
