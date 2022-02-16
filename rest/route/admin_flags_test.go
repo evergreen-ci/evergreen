@@ -16,7 +16,7 @@ import (
 
 func TestAdminFlagsRouteSuite(t *testing.T) {
 	assert := assert.New(t)
-	sc := &data.MockConnector{}
+	sc := &data.DBConnector{}
 
 	postHandler := makeSetServiceFlagsRouteManager(sc)
 	assert.NotNil(postHandler)

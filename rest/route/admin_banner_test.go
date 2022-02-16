@@ -19,7 +19,7 @@ import (
 
 func TestSetBanner(t *testing.T) {
 	assert := assert.New(t)
-	sc := &data.MockConnector{}
+	sc := &data.DBConnector{}
 
 	// test getting the route handler
 	routeManager := makeSetAdminBanner(sc)

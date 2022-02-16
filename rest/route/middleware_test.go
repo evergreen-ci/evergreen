@@ -137,8 +137,8 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
-	mockConnector := &data.DBConnector{}
-	mw := NewProjectAdminMiddleware(mockConnector)
+	connector := &data.DBConnector{}
+	mw := NewProjectAdminMiddleware(connector)
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})

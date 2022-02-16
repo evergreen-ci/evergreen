@@ -361,7 +361,7 @@ func TestGetDockerLogs(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := containerLogsHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
@@ -466,7 +466,7 @@ func TestGetDockerStatus(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := containerStatusHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}

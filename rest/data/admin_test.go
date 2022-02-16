@@ -89,9 +89,9 @@ func TestDataConnectorSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestMockConnectorSuite(t *testing.T) {
+func TestConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
-	s.ctx = &MockConnector{}
+	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
@@ -152,12 +152,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// We have to check different cases because the mock connector does not set
 	// defaults for the settings.
 	switch s.ctx.(type) {
-	case *MockConnector:
-		s.Equal(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
 	case *DBConnector:
 		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 	default:
-		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+		s.Error(errors.New("data connector was not a DBConnector"))
 	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
@@ -179,7 +177,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 
 	// the tests below do not apply to the mock connector
-	if reflect.TypeOf(s.ctx).String() == "*data.MockConnector" {
+	if reflect.TypeOf(s.ctx).String() == "*data.DBConnector" {
 		return
 	}
 
@@ -277,12 +275,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 	switch s.ctx.(type) {
-	case *MockConnector:
-		s.Equal(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
 	case *DBConnector:
 		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 	default:
-		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+		s.Error(errors.New("data connector was not a DBConnector"))
 	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)

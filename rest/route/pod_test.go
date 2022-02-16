@@ -163,7 +163,7 @@ func TestPostPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.MockConnector{}
+			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
@@ -176,8 +176,8 @@ func TestPostPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler){
-		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler){
+		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
 			podID := "id"
 			sc.CachedPods = []pod.Pod{
 				{
@@ -199,7 +199,7 @@ func TestGetPod(t *testing.T) {
 			assert.Equal(t, model.PodTypeAgent, apiPod.Type)
 			assert.Equal(t, model.PodStatusRunning, apiPod.Status)
 		},
-		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler) {
+		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
 			ph.podID = "nonexistent"
 			resp := ph.Run(ctx)
 			require.NotZero(t, resp)
@@ -211,7 +211,7 @@ func TestGetPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.MockConnector{}
+			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 

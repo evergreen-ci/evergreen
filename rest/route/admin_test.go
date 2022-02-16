@@ -53,7 +53,7 @@ func TestAdminRouteSuiteWithDB(t *testing.T) {
 
 func TestAdminRouteSuiteWithMock(t *testing.T) {
 	s := new(AdminRouteSuite)
-	s.sc = &data.MockConnector{}
+	s.sc = &data.DBConnector{}
 
 	// run the rest of the tests
 	suite.Run(t, s)
@@ -136,12 +136,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	// We have to check different cases because the mock connector does not set
 	// defaults for the settings.
 	switch s.sc.(type) {
-	case *data.MockConnector:
-		s.Equal(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
 	case *data.DBConnector:
 		s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
 	default:
-		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
+		s.Error(errors.New("data connector was not a DBConnector or DBConnector"))
 	}
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
@@ -259,7 +257,7 @@ func TestRestartTasksRoute(t *testing.T) {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
 	queue := evergreen.GetEnvironment().LocalQueue()
-	sc := &data.MockConnector{}
+	sc := &data.DBConnector{}
 	handler := makeRestartRoute(sc, evergreen.RestartTasks, queue)
 
 	assert.NotNil(handler)

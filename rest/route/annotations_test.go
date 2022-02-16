@@ -369,7 +369,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	}
 
 	h := &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
@@ -399,7 +399,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	// test with an annotation with invalid URL in Issues
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a.Issues = []restModel.APIIssueLink{
 		{
@@ -428,7 +428,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with a task that doesn't exist
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
@@ -446,7 +446,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with a request that mismatches task execution
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
@@ -464,7 +464,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with a request that omits task execution
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:     utility.ToStringPtr("1"),
@@ -481,7 +481,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with request that only has execution in the request body
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
@@ -500,7 +500,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with request that only has execution in the request url
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:     utility.ToStringPtr("1"),
@@ -518,7 +518,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with a task that has an invalid task execution
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
@@ -536,7 +536,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with empty taskId
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
@@ -549,7 +549,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with id not equal to annotation id
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
@@ -567,7 +567,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with fail statuses
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
@@ -604,7 +604,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	//test with task without fail status
 	h = &annotationByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	a = &restModel.APITaskAnnotation{
 		Id:            utility.ToStringPtr("1"),
@@ -676,7 +676,7 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 
 	//test insert
 	h := &annotationByTaskPutHandler{
-		sc:         &data.MockConnector{},
+		sc:         &data.DBConnector{},
 		taskId:     "t1",
 		annotation: &a,
 		user:       &user.DBUser{Id: "test_annotation_user"},
@@ -741,7 +741,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 		assert.NoError(t, each.Insert())
 	}
 	h := &createdTicketByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
@@ -771,7 +771,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 
 	// test with an invalid URL
 	h = &createdTicketByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	ticket.URL = utility.ToStringPtr("issuelink.com")
 	jsonBody, err = json.Marshal(ticket)
@@ -787,7 +787,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 
 	// test with a task that doesn't exist
 	h = &createdTicketByTaskPutHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 
 	r, err = http.NewRequest("PUT", "/task/t1/annotations?execution=1", buffer)
@@ -809,7 +809,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 
 	//test when there is no annotation for the task
 	h := &createdTicketByTaskPutHandler{
-		sc:        &data.MockConnector{},
+		sc:        &data.DBConnector{},
 		taskId:    "t1",
 		execution: 0,
 		ticket:    ticket,

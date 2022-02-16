@@ -54,7 +54,7 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
-	h := &generateHandler{sc: &data.MockConnector{}}
+	h := &generateHandler{sc: &data.DBConnector{}}
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})
 	assert.Equal(t, r.Status(), http.StatusOK)
@@ -63,7 +63,7 @@ func TestGenerateExecute(t *testing.T) {
 func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
-	sc := &data.MockConnector{}
+	sc := &data.DBConnector{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -88,7 +88,7 @@ func TestGeneratePollParse(t *testing.T) {
 func TestGeneratePollRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sc := &data.MockConnector{}
+	sc := &data.DBConnector{}
 
 	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
