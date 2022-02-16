@@ -95,12 +95,10 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
-	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
-		{
-			Id: "mci",
-		},
+	projRef := dbModel.ProjectRef{
+		Id: "mci",
 	}
-
+	s.NoError(projRef.Insert())
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	env := &mock.Environment{}

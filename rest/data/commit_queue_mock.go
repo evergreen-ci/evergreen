@@ -14,6 +14,7 @@ import (
 type MockCommitQueueConnector struct {
 	Queue           map[string][]restModel.APICommitQueueItem
 	UserPermissions map[UserRepoInfo]string // map user to permission level in lieu of the Github API
+	CachedPatches   []restModel.APIPatch
 }
 
 func (pc *MockCommitQueueConnector) MockGetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
