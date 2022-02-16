@@ -1595,12 +1595,18 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 }
 
 func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error) {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs()
+	allProjects, err := model.FindAllMergedTrackedProjectRefs()
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-
-	groupedProjects, err := GroupProjects(allProjs, false)
+	// We have to iterate over the merged project refs to verify if they are enabled
+	enabledProjects := []model.ProjectRef{}
+	for _, p := range allProjects {
+		if p.IsEnabled() {
+			enabledProjects = append(enabledProjects, p)
+		}
+	}
+	groupedProjects, err := GroupProjects(enabledProjects, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
@@ -1671,8 +1677,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	}
 
 	opts := data.TaskFilterOptions{
-		Statuses:               statuses,
-		BaseStatuses:           baseStatuses,
+		Statuses:               getValidTaskStatusesFilter(statuses),
+		BaseStatuses:           getValidTaskStatusesFilter(baseStatuses),
 		Variants:               []string{variantParam},
 		TaskNames:              []string{taskNameParam},
 		Page:                   pageParam,
@@ -1702,7 +1708,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	return &patchTasks, nil
 }
 
-func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
+func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory,
+	sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error) {
 	dbTask, err := task.FindByIdExecution(taskID, execution)
 	if dbTask == nil || err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task with id %s", taskID))
@@ -1712,6 +1719,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task %s: %s", taskID, err))
 	}
 
+	limitNum := utility.FromIntPtr(limit)
 	var sortBy, cedarSortBy string
 	if sortCategory != nil {
 		switch *sortCategory {
@@ -1731,6 +1739,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			cedarSortBy = apimodels.CedarTestResultsSortByBaseStatus
 			sortBy = "base_status"
 		}
+	} else if limitNum > 0 { // Don't sort TaskID if unlimited EVG-13965.
+		sortBy = testresult.TaskIDKey
 	}
 
 	if dbTask.HasCedarResults {
@@ -1744,7 +1754,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 			GroupID:      utility.FromStringPtr(groupID),
 			SortBy:       cedarSortBy,
 			SortOrderDSC: sortDirection != nil && *sortDirection == SortDirectionDesc,
-			Limit:        utility.FromIntPtr(limit),
+			Limit:        limitNum,
 			Page:         utility.FromIntPtr(page),
 		}
 		if baseTask != nil && baseTask.HasCedarResults {
@@ -1794,7 +1804,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 		SortBy:    sortBy,
 		SortDir:   sortDir,
 		GroupID:   utility.FromStringPtr(groupID),
-		Limit:     utility.FromIntPtr(limit),
+		Limit:     limitNum,
 		Page:      utility.FromIntPtr(page),
 	})
 	if err != nil {
@@ -1831,6 +1841,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 }
 
 func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, testFilters []*TestFilter) ([]*TaskTestResultSample, error) {
+	const testSampleLimit = 10
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -1875,7 +1886,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 				Execution: t.Execution,
 				TestName:  regexFilter,
 				Statuses:  []string{evergreen.TestFailedStatus},
-				Limit:     10,
+				SortBy:    testresult.TaskIDKey,
+				Limit:     testSampleLimit,
+				SortDir:   1,
 				Page:      0,
 			})
 			if err != nil {
@@ -3278,7 +3291,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return obj.Activated && *obj.Status == evergreen.TaskUndispatched, nil
+	return (obj.Activated && *obj.Status == evergreen.TaskUndispatched) || *obj.Status == evergreen.TaskContainerAllocated, nil
 }
 
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3625,7 +3638,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,
-				Statuses:  buildVariantOptions.Statuses,
+				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {
@@ -3756,7 +3769,7 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
-		Statuses:              options.Statuses,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 	}
 	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
@@ -3809,6 +3822,19 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	return groupedBuildVariants, nil
 }
 
+func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		TaskNames: options.Tasks,
+		Variants:  options.Variants,
+		Statuses:  options.Statuses,
+	}
+	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
+	}
+
+	return stats, nil
+}
 func (r *versionResolver) IsPatch(ctx context.Context, v *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*v.Requester), nil
 }
@@ -4080,6 +4106,34 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access this resolver", user.Username()))
+	}
+	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access ProjectSettingsAccess) (res interface{}, err error) {
+		var permissionLevel int
+		if access == ProjectSettingsAccessEdit {
+			permissionLevel = evergreen.ProjectSettingsEdit.Value
+		} else if access == ProjectSettingsAccessView {
+			permissionLevel = evergreen.ProjectSettingsView.Value
+		} else {
+			return nil, Forbidden.Send(ctx, "Permission not specified")
+		}
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "Project not specified")
+		}
+
+		if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+			pid, err := model.GetIdForProject(identifier)
+			if err != nil {
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
+			}
+			return hasProjectPermission(ctx, pid, next, permissionLevel)
+		} else if id, hasId := args["id"].(string); hasId {
+			return hasProjectPermission(ctx, id, next, permissionLevel)
+		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+			return hasProjectPermission(ctx, projectId, next, permissionLevel)
+		}
+		return nil, ResourceNotFound.Send(ctx, "Could not find project")
 	}
 	return c
 }

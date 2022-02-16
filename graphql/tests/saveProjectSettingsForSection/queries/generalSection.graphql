@@ -2,7 +2,7 @@ mutation {
     saveProjectSettingsForSection(
         projectSettings: {
             projectRef: {
-                id: "1234"
+                id: "sandbox_project_id"
                 enabled: true,
                 remotePath: "my_path_is_new"
             }

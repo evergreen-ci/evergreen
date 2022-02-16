@@ -1,0 +1,13 @@
+{
+  version(id: "5e4ff3abe3c3317e352062e4") {
+    id
+    buildVariantStats(options: {}) {
+      variant
+      displayName
+      statusCounts {
+        count
+        status
+      }
+    }
+  }
+}

@@ -1209,10 +1209,14 @@ func TestTaskStatusCount(t *testing.T) {
 	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})
 	counts.IncrementStatus(evergreen.TaskDispatched, details)
 	counts.IncrementStatus(evergreen.TaskInactive, details)
+	counts.IncrementStatus(evergreen.TaskContainerUnallocated, details)
+	counts.IncrementStatus(evergreen.TaskContainerAllocated, details)
 	assert.Equal(1, counts.TimedOut)
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
+	assert.Equal(1, counts.ContainerAllocated)
+	assert.Equal(1, counts.ContainerUnallocated)
 }
 
 func TestFindOneIdOldOrNew(t *testing.T) {
@@ -1274,7 +1278,7 @@ func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 
 func TestBlocked(t *testing.T) {
 	for name, test := range map[string]func(*testing.T){
-		"blocked": func(*testing.T) {
+		"Blocked": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1285,7 +1289,7 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.True(t, t1.Blocked())
 		},
-		"not blocked": func(*testing.T) {
+		"NotBlocked": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1296,7 +1300,7 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.False(t, t1.Blocked())
 		},
-		"blocked state cached": func(*testing.T) {
+		"BlockedStateCached": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1307,7 +1311,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusBlocked, state)
 		},
-		"blocked state pending": func(*testing.T) {
+		"BlockedStatePending": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1324,7 +1328,7 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskStatusPending, state)
 		},
-		"blocked state all statuses": func(*testing.T) {
+		"BlockedStateAllStatuses": func(*testing.T) {
 			t1 := Task{
 				Id: "t1",
 				DependsOn: []Dependency{
@@ -1334,6 +1338,26 @@ func TestBlocked(t *testing.T) {
 			t2 := Task{
 				Id:     "t2",
 				Status: evergreen.TaskUndispatched,
+				DependsOn: []Dependency{
+					{TaskId: "t3", Unattainable: true},
+				},
+			}
+			require.NoError(t, t2.Insert())
+			dependencies := map[string]*Task{t2.Id: &t2}
+			state, err := t1.BlockedState(dependencies)
+			assert.NoError(t, err)
+			assert.Equal(t, "", state)
+		},
+		"BlockedStateContainerStatus": func(*testing.T) {
+			t1 := Task{
+				Id: "t1",
+				DependsOn: []Dependency{
+					{TaskId: "t2", Status: AllStatuses},
+				},
+			}
+			t2 := Task{
+				Id:     "t2",
+				Status: evergreen.TaskContainerUnallocated,
 				DependsOn: []Dependency{
 					{TaskId: "t3", Unattainable: true},
 				},
@@ -2465,6 +2489,21 @@ func TestDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, t12.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t11)
+	t13 := Task{
+		Id:        "t13",
+		Status:    evergreen.TaskContainerUnallocated,
+		Activated: true,
+	}
+	assert.NoError(t, t13.Insert())
+	// No CheckStatuses for t12 to avoid paradox
+	t14 := Task{
+		Id:        "t14",
+		Status:    evergreen.TaskContainerAllocated,
+		Activated: true,
+	}
+	assert.NoError(t, t14.Insert())
+	checkStatuses(t, evergreen.TaskContainerUnallocated, t13)
+	checkStatuses(t, evergreen.TaskContainerAllocated, t14)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
@@ -2940,6 +2979,137 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(stats))
 
+}
+
+func TestGetGroupedTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		BuildVariant: "bv1",
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv1",
+	}
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		Execution:    1,
+		Status:       evergreen.TaskSucceeded,
+		BuildVariant: "bv1",
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		Execution:    1,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv2",
+	}
+	t5 := Task{
+		Id:           "t5",
+		Version:      "v1",
+		Execution:    2,
+		Status:       evergreen.TaskStatusPending,
+		BuildVariant: "bv2",
+	}
+	t6 := Task{
+		Id:           "t6",
+		Version:      "v1",
+		Execution:    2,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv2",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+
+	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{}
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+			{
+				Variant:     "bv2",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  2,
+					},
+					{
+						Status: evergreen.TaskStatusPending,
+						Count:  1,
+					},
+				},
+			},
+		}
+
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+	t.Run("Fetch GroupedTaskStats with filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{
+			Variants: []string{"bv1"},
+		}
+
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+		}
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+
+}
+
+func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTaskStatusCount) {
+	// reflect.DeepEqual does not work here, it was failing because of the slice ptr values for StatusCounts.
+	for i, e := range expected {
+		a := actual[i]
+		assert.Equal(t, e.Variant, a.Variant)
+		assert.Equal(t, e.DisplayName, a.DisplayName)
+		assert.Equal(t, len(e.StatusCounts), len(a.StatusCounts))
+		for j, expectedCount := range e.StatusCounts {
+			actualCount := a.StatusCounts[j]
+			assert.Equal(t, expectedCount.Status, actualCount.Status)
+			assert.Equal(t, expectedCount.Count, actualCount.Count)
+		}
+	}
 }
 
 func TestHasMatchingTasks(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/event"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -482,7 +484,7 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
+		Statuses:         getValidTaskStatusesFilter(statuses),
 		Variants:         searchVariants,
 		TaskNames:        searchTasks,
 		Sorts:            defaultSort,
@@ -770,8 +772,7 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	nonrestartableStatuses := []string{evergreen.TaskStarted, evergreen.TaskUnstarted, evergreen.TaskUndispatched, evergreen.TaskDispatched, evergreen.TaskInactive}
-	canRestart := !utility.StringSliceContains(nonrestartableStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
 	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
 	if err != nil {
 		return nil, err
@@ -884,6 +885,8 @@ func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
 	return publicKeys
 }
 
+var errHostStatusChangeConflict = errors.New("conflicting host status modification is in progress")
+
 // To be moved to a better home when we restructure the resolvers.go file
 // TerminateSpawnHost is a shared utility function to terminate a spawn host
 func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, r *http.Request) (*host.Host, int, error) {
@@ -892,10 +895,16 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.
 		return nil, http.StatusBadRequest, err
 	}
 
-	if err := cloud.TerminateSpawnHost(ctx, env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
+
 	return h, http.StatusOK, nil
 }
 
@@ -911,10 +920,12 @@ func StopSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		return nil, http.StatusBadRequest, err
 	}
 
-	// Stop the host
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
 	if err := env.RemoteQueue().Put(ctx, stopJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
@@ -929,10 +940,13 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host
 		return nil, http.StatusBadRequest, err
 
 	}
-	// Start the host
+
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
 	if err := env.RemoteQueue().Put(ctx, startJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
@@ -1388,4 +1402,32 @@ func GroupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		return groupsArr[i].GroupDisplayName < groupsArr[j].GroupDisplayName
 	})
 	return groupsArr, nil
+}
+
+func hasProjectPermission(ctx context.Context, resource string, next graphql.Resolver, permissionLevel int) (res interface{}, err error) {
+	user := gimlet.GetUser(ctx)
+	if user == nil {
+		return nil, Forbidden.Send(ctx, "user not logged in")
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      resource,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: permissionLevel,
+	}
+	if user.HasPermission(opts) {
+		return next(ctx)
+	}
+	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
+}
+
+// getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
+// It returns an empty array if all is included as one of the entries
+func getValidTaskStatusesFilter(statuses []string) []string {
+	filteredStatuses := []string{}
+	if utility.StringSliceContains(statuses, evergreen.TaskAll) {
+		return filteredStatuses
+	}
+	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
+	return filteredStatuses
 }

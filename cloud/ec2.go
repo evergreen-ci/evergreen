@@ -1167,7 +1167,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 			return errors.Wrap(currentStatusErr, "error getting instance status after stopping error")
 		}
 
-		if currentStatusErr = h.SetStatus(currentStatus.String(), user, ""); currentStatusErr != nil {
+		if currentStatusErr = h.SetStatusAtomically(currentStatus.String(), user, "reverting to the most up-to-date host status"); currentStatusErr != nil {
 			return errors.Wrapf(currentStatusErr, "failed to revert status from stopping to '%s'", currentStatus)
 		}
 		return errors.Wrapf(err, "error stopping EC2 instance '%s'", h.Id)
@@ -1182,10 +1182,11 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 			if err != nil {
 				return false, errors.Wrap(err, "error getting instance info")
 			}
-			if ec2StatusToEvergreenStatus(*instance.State.Name) == StatusStopped {
+			status := ec2StatusToEvergreenStatus(*instance.State.Name)
+			if status == StatusStopped {
 				return false, nil
 			}
-			return true, errors.New("host is not stopped")
+			return true, errors.Errorf("host is not stopped, current status is '%s'", status)
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
@@ -1196,7 +1197,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		if currentStatusErr != nil {
 			return errors.Wrap(currentStatusErr, "error getting instance status after stopping error")
 		}
-		if currentStatusErr := h.SetStatus(currentStatus.String(), user, ""); currentStatusErr != nil {
+		if currentStatusErr := h.SetStatusAtomically(currentStatus.String(), user, "reverting to the most up-to-date host status"); currentStatusErr != nil {
 			return errors.Wrapf(currentStatusErr, "failed to revert status from stopping to '%s'", currentStatus)
 		}
 		return errors.Wrap(err, "error checking if spawnhost stopped")

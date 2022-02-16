@@ -5,7 +5,7 @@
       "result": {
         "data": {
           "attachProjectToRepo": {
-            "repoRefId": "myRepo",
+            "repoRefId": "repo_id",
             "useRepoSettings": true
           }
         }
@@ -17,12 +17,13 @@
         "data": null,
         "errors": [
           {
-            "message": "error finding project nonexistent: 404 (Not Found): project with id 'nonexistent' not found",
+            "message": "user testuser does not have permission to access settings for the project nonexistent",
             "path": [
-              "attachProjectToRepo"
+              "attachProjectToRepo",
+              "projectId"
             ],
             "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+              "code": "FORBIDDEN"
             }
           }
         ]

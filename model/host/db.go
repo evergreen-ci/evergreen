@@ -343,7 +343,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 			"$or": []bson.M{
 				// If the task is finished, then its host should be terminated.
 				{
-					bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": evergreen.CompletedStatuses},
+					bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": evergreen.TaskCompletedStatuses},
 				},
 
 				// If the task execution number is greater than the host's task

@@ -447,14 +447,8 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			DeactivatePrevious:     projectConfig.DeactivatePrevious,
-			PerfEnabled:            projectConfig.PerfEnabled,
-			PRTestingEnabled:       projectConfig.PRTestingEnabled,
-			ManualPRTestingEnabled: projectConfig.ManualPRTestingEnabled,
-			GithubChecksEnabled:    projectConfig.GithubChecksEnabled,
-			GitTagVersionsEnabled:  projectConfig.GitTagVersionsEnabled,
-			PeriodicBuilds:         projectConfig.PeriodicBuilds,
-			GithubTriggerAliases:   projectConfig.GithubTriggerAliases,
+			PeriodicBuilds:       projectConfig.PeriodicBuilds,
+			GithubTriggerAliases: projectConfig.GithubTriggerAliases,
 		}
 		if projectConfig.WorkstationConfig != nil {
 			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig
@@ -464,9 +458,6 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		}
 		if projectConfig.TaskAnnotationSettings != nil {
 			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
-		}
-		if projectConfig.CommitQueue != nil {
-			pRefToMerge.CommitQueue = *projectConfig.CommitQueue
 		}
 		if projectConfig.TaskSync != nil {
 			pRefToMerge.TaskSync = *projectConfig.TaskSync
@@ -984,6 +975,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
 	commonRestricted := map[string]bool{}
+	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
 		if err != nil {
@@ -1002,6 +994,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			if vars.RestrictedVars != nil {
 				commonRestricted = vars.RestrictedVars
 			}
+			if vars.AdminOnlyVars != nil {
+				commonAdminOnly = vars.AdminOnlyVars
+			}
 			continue
 		}
 		for key, val := range commonProjectVariables {
@@ -1013,6 +1008,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 				if vars.RestrictedVars[key] {
 					commonRestricted[key] = true
 				}
+				if vars.AdminOnlyVars[key] {
+					commonAdminOnly[key] = true
+				}
 			} else {
 				// remove any variables from the common set that aren't in all the project refs
 				delete(commonProjectVariables, key)
@@ -1023,6 +1021,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 		Vars:           commonProjectVariables,
 		PrivateVars:    commonPrivate,
 		RestrictedVars: commonRestricted,
+		AdminOnlyVars:  commonAdminOnly,
 	}, nil
 }
 
@@ -1711,6 +1710,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 					projectVarsMapKey:    1,
 					privateVarsMapKey:    1,
 					restrictedVarsMapKey: 1,
+					adminOnlyVarsMapKey:  1,
 				},
 			})
 		if err == nil {
@@ -2284,53 +2284,58 @@ func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBar
 	return projectRef.BuildBaronSettings, true
 }
 
-func BbProjectIsValid(projName string, proj evergreen.BuildBaronSettings) error {
-	webHook, _, err := IsWebhookConfigured(projName, "")
-	if err != nil {
-		return err
+func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
+	catcher := grip.NewBasicCatcher()
+	var err error
+	var webhookConfigured bool
+	if webhook == nil {
+		pRefWebHook, _, err := IsWebhookConfigured(projName, "")
+		if err != nil {
+			return errors.Wrapf(err, "Error retrieving webhook config for %s", projName)
+		}
+		webhook = &pRefWebHook
+		webhookConfigured = webhook != nil && webhook.Endpoint != ""
 	}
-	webhookConfigured := webHook.Endpoint != ""
 
 	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
 		return nil
 	}
 	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
-		return errors.Errorf("Must provide projects to search")
+		catcher.New("Must provide projects to search")
 	}
 	if !webhookConfigured && proj.TicketCreateProject == "" {
-		return errors.Errorf("Must provide project to create tickets for")
+		catcher.Errorf("Must provide project to create tickets for")
 	}
 	if proj.BFSuggestionServer != "" {
 		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
-			return errors.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
+			catcher.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
 		}
 		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-			return errors.Errorf("Failed validating configuration for project '%s': "+
+			catcher.Errorf("Failed validating configuration for project '%s': "+
 				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
 		}
 		if proj.BFSuggestionTimeoutSecs <= 0 {
-			return errors.Errorf("Failed validating configuration for project '%s': "+
+			catcher.Errorf("Failed validating configuration for project '%s': "+
 				"bf_suggestion_timeout_secs must be positive", projName)
 		}
 	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-		return errors.Errorf("Failed validating configuration for project '%s': "+
+		catcher.Errorf("Failed validating configuration for project '%s': "+
 			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
 	} else if proj.BFSuggestionTimeoutSecs != 0 {
-		return errors.Errorf("Failed validating configuration for project '%s': "+
+		catcher.Errorf("Failed validating configuration for project '%s': "+
 			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 	}
 	// the webhook cannot be used if the default build baron creation and search is configured
 	if webhookConfigured {
 		if len(proj.TicketCreateProject) != 0 {
-			return errors.Errorf("The custom file ticket webhook and the build baron should not both be configured")
+			catcher.Errorf("The custom file ticket webhook and the build baron should not both be configured")
 		}
-		if _, err = url.Parse(webHook.Endpoint); err != nil {
-			return errors.Errorf("Failed to parse webhook endpoint for project")
+		if _, err = url.Parse(webhook.Endpoint); err != nil {
+			catcher.Errorf("Failed to parse webhook endpoint for project")
 		}
 	}
-	return nil
+	return catcher.Resolve()
 }
-
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")

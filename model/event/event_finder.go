@@ -76,6 +76,23 @@ func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	return out, nil
 }
 
+// FindByID finds a single event matching the given event ID.
+func FindByID(eventID string) (*EventLogEntry, error) {
+	query := bson.M{
+		idKey: eventID,
+	}
+
+	var e EventLogEntry
+	if err := db.FindOneQ(AllLogCollection, db.Query(query), &e); err != nil {
+		if adb.ResultsNotFound(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "finding event by ID")
+	}
+	return &e, nil
+}
+
+// FindEventsByIDs finds all events that match the given event IDs.
 func FindEventsByIDs(events []string) ([]EventLogEntry, error) {
 	query := bson.M{
 		idKey: bson.M{

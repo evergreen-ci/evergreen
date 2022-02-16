@@ -217,6 +217,19 @@ var (
 					},
 					"then": evergreen.TaskTimedOut,
 				},
+				// TODO (PM-2620): Handle these statuses properly in the UI.
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerAllocated},
+					},
+					"then": evergreen.TaskContainerAllocated,
+				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerUnallocated},
+					},
+					"then": evergreen.TaskContainerUnallocated,
+				},
 				// A task will be unscheduled if it is not activated
 				{
 					"case": bson.M{
@@ -1544,7 +1557,7 @@ func updateAllMatchingDependenciesForTask(taskId, dependencyId string, unattaina
 func AbortTasksForBuild(buildId string, taskIds []string, caller string) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if len(taskIds) > 0 {
 		q[IdKey] = bson.M{"$in": taskIds}
@@ -1566,7 +1579,7 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 		bson.M{
 			VersionKey: versionId,
 			IdKey:      bson.M{"$in": taskIds},
-			StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+			StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 		},
 		bson.M{"$set": bson.M{
 			AbortedKey:   true,

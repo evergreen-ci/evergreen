@@ -818,7 +818,7 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 // build variant + display name combination as the specified task
 func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
-		statuses = evergreen.CompletedStatuses
+		statuses = evergreen.TaskCompletedStatuses
 	}
 	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
@@ -1573,6 +1573,8 @@ func (t *Task) displayTaskPriority() int {
 		return 70
 	case evergreen.TaskUndispatched:
 		return 80
+	case evergreen.TaskContainerUnallocated:
+		return 80
 	case evergreen.TaskInactive:
 		return 90
 	case evergreen.TaskSucceeded:
@@ -1935,7 +1937,7 @@ func (t *Task) MarkUnattainableDependency(dependencyId string, unattainable bool
 func AbortBuild(buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -1973,7 +1975,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 func AbortVersion(versionId string, reason AbortInfo) error {
 	q := bson.M{
 		VersionKey: versionId,
-		StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+		StatusKey:  bson.M{"$in": evergreen.TaskAbortableStatuses},
 	}
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
@@ -2429,7 +2431,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 							{"$and": []bson.M{
 								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
 								{"$or": []bson.M{
-									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.CompletedStatuses}},
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), evergreen.TaskCompletedStatuses}},
 									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
 								}},
 							}},
@@ -2766,13 +2768,15 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 // TaskStatusCount holds counts for task statuses
 type TaskStatusCount struct {
-	Succeeded    int `json:"succeeded"`
-	Failed       int `json:"failed"`
-	Started      int `json:"started"`
-	Undispatched int `json:"undispatched"`
-	Inactive     int `json:"inactive"`
-	Dispatched   int `json:"dispatched"`
-	TimedOut     int `json:"timed_out"`
+	Succeeded            int `json:"succeeded"`
+	Failed               int `json:"failed"`
+	Started              int `json:"started"`
+	Undispatched         int `json:"undispatched"`
+	Inactive             int `json:"inactive"`
+	Dispatched           int `json:"dispatched"`
+	ContainerUnallocated int `json:"container_unallocated"`
+	ContainerAllocated   int `json:"container_allocated"`
+	TimedOut             int `json:"timed_out"`
 }
 
 func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
@@ -2791,6 +2795,10 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 		tsc.Undispatched++
 	case evergreen.TaskInactive:
 		tsc.Inactive++
+	case evergreen.TaskContainerUnallocated:
+		tsc.ContainerUnallocated++
+	case evergreen.TaskContainerAllocated:
+		tsc.ContainerAllocated++
 	}
 }
 
@@ -2989,14 +2997,6 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 
-	if len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
-	}
-
 	if len(opts.Sorts) > 0 {
 		sortPipeline := []bson.M{}
 
@@ -3128,6 +3128,101 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 	return StatusCount, nil
 }
 
+type GroupedTaskStatusCount struct {
+	Variant      string         `bson:"variant"`
+	DisplayName  string         `bson:"display_name"`
+	StatusCounts []*StatusCount `bson:"status_counts"`
+}
+
+func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*GroupedTaskStatusCount, error) {
+	pipeline := getTasksByVersionPipeline(versionID, opts)
+	project := bson.M{"$project": bson.M{
+		BuildVariantKey:            "$" + BuildVariantKey,
+		BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+		DisplayStatusKey:           "$" + DisplayStatusKey,
+	}}
+	pipeline = append(pipeline, project)
+	variantStatusesKey := "variant_statuses"
+	statusCountsKey := "status_counts"
+	groupByStatusPipeline := []bson.M{
+		// Group tasks by variant
+		{
+			"$group": bson.M{
+				"_id": "$" + BuildVariantKey,
+				variantStatusesKey: bson.M{
+					"$push": bson.M{
+						DisplayStatusKey:           "$" + DisplayStatusKey,
+						BuildVariantKey:            "$" + BuildVariantKey,
+						BuildVariantDisplayNameKey: "$" + BuildVariantDisplayNameKey,
+					},
+				},
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path":                       "$" + variantStatusesKey,
+				"preserveNullAndEmptyArrays": false,
+			},
+		},
+		{
+			"$project": bson.M{
+				variantStatusesKey: 1,
+				"_id":              0,
+			},
+		},
+		// Group tasks by variant and status and calculate count for each status
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					DisplayStatusKey:           "$" + bsonutil.GetDottedKeyName(variantStatusesKey, DisplayStatusKey),
+					BuildVariantKey:            "$" + bsonutil.GetDottedKeyName(variantStatusesKey, BuildVariantKey),
+					BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName(variantStatusesKey, BuildVariantDisplayNameKey),
+				},
+				"count": bson.M{"$sum": 1},
+			},
+		},
+		// Sort the values by status so they are sorted before being grouped. This will ensure that they are sorted in the array when they are grouped.
+		{
+			"$sort": bson.M{
+				bsonutil.GetDottedKeyName("_id", DisplayStatusKey): 1,
+			},
+		},
+		// Group the elements by build variant and status_counts
+		{
+			"$group": bson.M{
+				"_id": bson.M{BuildVariantKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey), BuildVariantDisplayNameKey: "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey)},
+				statusCountsKey: bson.M{
+					"$push": bson.M{
+						"status": "$" + bsonutil.GetDottedKeyName("_id", DisplayStatusKey),
+						"count":  "$count",
+					},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"variant":       "$" + bsonutil.GetDottedKeyName("_id", BuildVariantKey),
+				"display_name":  "$" + bsonutil.GetDottedKeyName("_id", BuildVariantDisplayNameKey),
+				statusCountsKey: 1,
+			},
+		},
+		// Sort build variants in alphabetical order for final return
+		{
+			"$sort": bson.M{
+				"variant": 1,
+			},
+		},
+	}
+	pipeline = append(pipeline, groupByStatusPipeline...)
+	result := []*GroupedTaskStatusCount{}
+
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get stats list")
+	}
+	return result, nil
+
+}
+
 type HasMatchingTasksOptions struct {
 	TaskNames []string
 	Variants  []string
@@ -3173,8 +3268,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 		match = bson.M{
 			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
 		}
 	}
@@ -3364,6 +3459,15 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
+
+	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+			},
+		})
+	}
+
 	return pipeline
 }
 

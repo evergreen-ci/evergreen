@@ -43,6 +43,7 @@ func getMockProjectSettings() ProjectSettings {
 			Vars:           map[string]string{},
 			PrivateVars:    map[string]bool{},
 			RestrictedVars: map[string]bool{},
+			AdminOnlyVars:  map[string]bool{},
 		},
 		Aliases: []ProjectAlias{ProjectAlias{
 			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),

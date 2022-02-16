@@ -23,6 +23,8 @@ import (
 
 type projectValidator func(*model.Project) ValidationErrors
 
+type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
+
 type projectSettingsValidator func(*model.Project, *model.ProjectRef) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
@@ -135,6 +137,13 @@ var projectErrorValidators = []projectValidator{
 	validateAliases,
 }
 
+// Functions used to validate the syntax of project configs representing properties found on the project page.
+var projectConfigErrorValidators = []projectConfigValidator{
+	validateProjectConfigAliases,
+	validateProjectConfigPlugins,
+	validateProjectConfigPeriodicBuilds,
+}
+
 // Functions used to validate the semantics of a project configuration file.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
@@ -207,7 +216,7 @@ func getDistrosForProject(projectID string) (ids []string, aliases []string, err
 }
 
 // verify that the project configuration semantics is valid
-func CheckProjectWarnings(project *model.Project, yamlBytes []byte) ValidationErrors {
+func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectWarningValidator := range projectWarningValidators {
 		validationErrs = append(validationErrs,
@@ -234,6 +243,16 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
+	return validationErrs
+}
+
+// verify that the project configuration syntax is valid
+func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, projectConfigErrorValidator := range projectConfigErrorValidators {
+		validationErrs = append(validationErrs,
+			projectConfigErrorValidator(projectConfig)...)
+	}
 	return validationErrs
 }
 
@@ -278,11 +297,9 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 					if dependency.Variant == "" || coveredVariants[dependency.Variant] {
 						errs = append(errs,
 							ValidationError{
-								Message: fmt.Sprintf("task '%s' in project '%s' "+
-									"contains the all dependencies (%s)' "+
+								Message: fmt.Sprintf("task '%s' contains the all dependencies (%s)' "+
 									"specification and other explicit dependencies or duplicate variants",
-									task.Name, project.Identifier,
-									model.AllDependencies),
+									task.Name, model.AllDependencies),
 							},
 						)
 					}
@@ -389,6 +406,56 @@ func dependencyCycleExists(node model.TVPair, allNodes []model.TVPair, visited m
 	return nil
 }
 
+func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, periodicBuild := range pc.PeriodicBuilds {
+		if err := periodicBuild.Validate(); err != nil {
+			validationErrs = append(validationErrs, ValidationError{
+				Message: errors.Wrap(err, "error validating periodic builds").Error(),
+				Level:   Error,
+			})
+		}
+	}
+	return validationErrs
+}
+
+func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
+	errs := []string{}
+	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "Github Checks Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.GitTagAliases, "Git Tag Aliases")...)
+
+	validationErrs := ValidationErrors{}
+	for _, errorMsg := range errs {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: fmt.Sprintf("error validating aliases: %s", errorMsg),
+			Level:   Error,
+		})
+	}
+	return validationErrs
+}
+
+func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
+	errs := ValidationErrors{}
+	annotationSettings := pc.TaskAnnotationSettings
+	var webhook *evergreen.WebHook
+	if annotationSettings != nil {
+		webhook = &annotationSettings.FileTicketWebhook
+	}
+	err := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook)
+	if err != nil {
+		errs = append(errs,
+			ValidationError{
+				Message: errors.Wrap(err, "error validating build baron config").Error(),
+				Level:   Error,
+			},
+		)
+	}
+	return errs
+}
+
 func validateAliases(p *model.Project) ValidationErrors {
 	errs := []string{}
 	errs = append(errs, model.ValidateProjectAliases(p.GitHubPRAliases, "GitHub PR Aliases")...)
@@ -414,8 +481,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 	if len(project.BuildVariants) == 0 {
 		return ValidationErrors{
 			{
-				Message: fmt.Sprintf("project '%s' must specify at least one "+
-					"buildvariant", project.Identifier),
+				Message: "must specify at least one buildvariant",
 			},
 		}
 	}
@@ -424,17 +490,15 @@ func validateBVFields(project *model.Project) ValidationErrors {
 		if buildVariant.Name == "" {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("project '%s' buildvariant must "+
-						"have a name", project.Identifier),
+					Message: "all buildvariants must have a name",
 				},
 			)
 		}
 		if len(buildVariant.Tasks) == 0 {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+
-						"must have at least one task", buildVariant.Name,
-						project.Identifier),
+					Message: fmt.Sprintf("buildvariant '%s' must have at least one task",
+						buildVariant.Name),
 				},
 			)
 		}
@@ -479,10 +543,9 @@ func validateBVFields(project *model.Project) ValidationErrors {
 		if hasTaskWithoutDistro {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' in project '%s' "+
-						"must either specify run_on field or have every task "+
-						"specify run_on.",
-						buildVariant.Name, project.Identifier),
+					Message: fmt.Sprintf("buildvariant '%s' "+
+						"must either specify run_on field or have every task specify run_on",
+						buildVariant.Name),
 				},
 			)
 		}
@@ -498,8 +561,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 	if project.BatchTime < 0 {
 		errs = append(errs,
 			ValidationError{
-				Message: fmt.Sprintf("project '%s' must have a "+
-					"non-negative 'batchtime' set", project.Identifier),
+				Message: fmt.Sprintf("'batchtime' must be non-negative"),
 			},
 		)
 	}
@@ -508,8 +570,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 		if !utility.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("project '%s' contains an invalid "+
-						"command type: %s", project.Identifier, project.CommandType),
+					Message: fmt.Sprintf("invalid command type: %s", project.CommandType),
 				},
 			)
 		}
@@ -526,9 +587,8 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 		// in ProjectRef.getBatchTime()
 		errs = append(errs,
 			ValidationError{
-				Message: fmt.Sprintf("project '%s' field 'batchtime' should not exceed %d)",
-					project.Identifier, math.MaxInt32),
-				Level: Warning,
+				Message: fmt.Sprintf("'batchtime' should not exceed %d", math.MaxInt32),
+				Level:   Warning,
 			},
 		)
 	}
@@ -562,19 +622,16 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				if task.Name == "" {
 					errs = append(errs,
 						ValidationError{
-							Message: fmt.Sprintf("tasks for buildvariant '%s' "+
-								"in project '%s' must each have a name field",
-								project.Identifier, buildVariant.Name),
+							Message: fmt.Sprintf("tasks for buildvariant '%s' must each have a name field",
+								buildVariant.Name),
 							Level: Error,
 						},
 					)
 				} else {
 					errs = append(errs,
 						ValidationError{
-							Message: fmt.Sprintf("buildvariant '%s' in "+
-								"project '%s' references a non-existent "+
-								"task '%s'", buildVariant.Name,
-								project.Identifier, task.Name),
+							Message: fmt.Sprintf("buildvariant '%s' references a non-existent task '%s'",
+								buildVariant.Name, task.Name),
 							Level: Error,
 						},
 					)
@@ -595,10 +652,9 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 					errs = append(errs,
 						ValidationError{
-							Message: fmt.Sprintf("task '%s' in buildvariant '%s' in project "+
-								"'%s' references a nonexistent distro '%s'.\n",
-								task.Name, buildVariant.Name,
-								project.Identifier, distro),
+							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
+								"references a nonexistent distro '%s'",
+								task.Name, buildVariant.Name, distro),
 							Level: Warning,
 						},
 					)
@@ -609,10 +665,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 			if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' in project "+
-							"'%s' references a nonexistent distro '%s'.\n",
-							buildVariant.Name,
-							project.Identifier, distro),
+						Message: fmt.Sprintf("buildvariant '%s' references a nonexistent distro '%s'",
+							buildVariant.Name, distro),
 						Level: Warning,
 					},
 				)
@@ -724,8 +778,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if _, ok := buildVariantNames[buildVariant.Name]; ok {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("project '%s' buildvariant '%s' already exists",
-						project.Identifier, buildVariant.Name),
+					Message: fmt.Sprintf("buildvariant '%s' already exists", buildVariant.Name),
 				},
 			)
 		}
@@ -734,8 +787,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if dispName == "" {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("project '%s' buildvariant '%s' does not have a display name",
-						project.Identifier, buildVariant.Name),
+					Message: fmt.Sprintf("buildvariant '%s' does not have a display name", buildVariant.Name),
 				},
 			)
 		} else if dispName == evergreen.MergeTaskVariant {
@@ -757,7 +809,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkBVNames(project *model.Project, buildVariant *model.BuildVariant) ValidationErrors {
+func checkBVNames(buildVariant *model.BuildVariant) ValidationErrors {
 	errs := ValidationErrors{}
 
 	// Warn against commas because the CLI allows users to specify
@@ -788,7 +840,7 @@ func checkBVNames(project *model.Project, buildVariant *model.BuildVariant) Vali
 	return errs
 }
 
-func checkLoggerConfig(project *model.Project, task *model.ProjectTask) ValidationErrors {
+func checkLoggerConfig(task *model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, command := range task.Commands {
@@ -813,9 +865,8 @@ func validateBVTaskNames(project *model.Project) ValidationErrors {
 			if _, ok := buildVariantTasks[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
-							"in project '%s' already exists",
-							task.Name, buildVariant.Name, project.Identifier),
+						Message: fmt.Sprintf("task '%s' in buildvariant '%s' already exists",
+							task.Name, buildVariant.Name),
 					},
 				)
 			}
@@ -875,7 +926,7 @@ func validateBVBatchTimes(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkBVBatchTimes(project *model.Project, buildVariant *model.BuildVariant) ValidationErrors {
+func checkBVBatchTimes(buildVariant *model.BuildVariant) ValidationErrors {
 	errs := ValidationErrors{}
 	// check task batchtimes first
 	for _, t := range buildVariant.Tasks {
@@ -975,9 +1026,8 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 		if commands == nil || len(commands.List()) == 0 {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("'%s' project's '%s' function contains no commands",
-						project.Identifier, funcName),
-					Level: Error,
+					Message: fmt.Sprintf("'%s' function contains no commands", funcName),
+					Level:   Error,
 				},
 			)
 			continue
@@ -986,9 +1036,8 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 		for _, err := range valErrs {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("'%s' project's '%s' definition: %s",
-						project.Identifier, funcName, err.Message),
-					Level: err.Level,
+					Message: fmt.Sprintf("'%s' definition error: %s", funcName, err.Message),
+					Level:   err.Level,
 				},
 			)
 		}
@@ -1009,8 +1058,7 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 		if seen[funcName] {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf(`project '%s' has duplicate definition of "%s"`,
-						project.Identifier, funcName),
+					Message: fmt.Sprintf(`duplicate definition of "%s"`, funcName),
 				},
 			)
 		}
@@ -1049,8 +1097,7 @@ func validateProjectTaskNames(project *model.Project) ValidationErrors {
 		if _, ok := taskNames[task.Name]; ok {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task '%s' in project '%s' "+
-						"already exists", task.Name, project.Identifier),
+					Message: fmt.Sprintf("task '%s' already exists", task.Name),
 				},
 			)
 		}
@@ -1137,9 +1184,8 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 			if depNames[pair] {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("project '%s' contains a "+
-							"duplicate dependency '%s' specified for task '%s'",
-							project.Identifier, dep.Name, task.Name),
+						Message: fmt.Sprintf("duplicate dependency '%s' specified for task '%s'",
+							dep.Name, task.Name),
 					},
 				)
 			}
@@ -1152,8 +1198,8 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 			default:
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("project '%s' contains an invalid dependency status for task '%s': %s",
-							project.Identifier, task.Name, dep.Status)})
+						Message: fmt.Sprintf("invalid dependency status for task '%s': %s",
+							task.Name, dep.Status)})
 			}
 
 			// check that name of the dependency task is valid
@@ -1161,18 +1207,16 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 				errs = append(errs,
 					ValidationError{
 						Level: Error,
-						Message: fmt.Sprintf("project '%s' contains a "+
-							"non-existent task name '%s' in dependencies for "+
-							"task '%s'", project.Identifier, dep.Name,
-							task.Name),
+						Message: fmt.Sprintf("non-existent task name '%s' in dependencies for task '%s'",
+							dep.Name, task.Name),
 					},
 				)
 			}
 			if dep.Variant != "" && dep.Variant != model.AllVariants && project.FindBuildVariant(dep.Variant) == nil {
 				errs = append(errs, ValidationError{
 					Level: Error,
-					Message: fmt.Sprintf("project '%s' contains a non-existent variant name '%s' in dependencies for task '%s'",
-						project.Identifier, dep.Variant, task.Name),
+					Message: fmt.Sprintf("non-existent variant name '%s' in dependencies for task '%s'",
+						dep.Variant, task.Name),
 				})
 			}
 
@@ -1181,7 +1225,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskDependencies(project *model.Project, task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
+func checkTaskDependencies(task *model.ProjectTask, allTasks map[string]model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 
 	for _, dep := range task.DependsOn {
@@ -1495,14 +1539,16 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) Validatio
 	var errs ValidationErrors
 	if s3PushCalls := p.TasksThatCallCommand(evergreen.S3PushCommandName); len(s3PushCalls) != 0 {
 		errs = append(errs, ValidationError{
-			Level:   Error,
-			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PushCommandName),
+			Level: Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project '%s' settings",
+				ref.Identifier, evergreen.S3PushCommandName),
 		})
 	}
 	if s3PullCalls := p.TasksThatCallCommand(evergreen.S3PullCommandName); len(s3PullCalls) != 0 {
 		errs = append(errs, ValidationError{
-			Level:   Error,
-			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project settings", evergreen.S3PullCommandName),
+			Level: Error,
+			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project '%s' settings",
+				ref.Identifier, evergreen.S3PullCommandName),
 		})
 	}
 	return errs
@@ -1895,9 +1941,8 @@ func checkTasks(project *model.Project) ValidationErrors {
 		if len(task.Commands) == 0 {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task '%s' in project '%s' does not "+
-						"contain any commands",
-						task.Name, project.Identifier),
+					Message: fmt.Sprintf("task '%s' does not contain any commands",
+						task.Name),
 					Level: Warning,
 				},
 			)
@@ -1905,16 +1950,16 @@ func checkTasks(project *model.Project) ValidationErrors {
 		if project.ExecTimeoutSecs == 0 && task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("project '%s' does not "+
-						"have an exec_timeout_secs defined at the top-level or on one or more tasks; these tasks will default to a timeout of %d hours",
-						project.Identifier, int(agent.DefaultExecTimeout.Hours())),
+					Message: fmt.Sprintf("no exec_timeout_secs defined at the top-level or on one or more tasks; "+
+						"these tasks will default to a timeout of %d hours",
+						int(agent.DefaultExecTimeout.Hours())),
 					Level: Warning,
 				},
 			)
 			execTimeoutWarningAdded = true
 		}
-		errs = append(errs, checkLoggerConfig(project, &task)...)
-		errs = append(errs, checkTaskDependencies(project, &task, allTasks)...)
+		errs = append(errs, checkLoggerConfig(&task)...)
+		errs = append(errs, checkTaskDependencies(&task, allTasks)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
 	}
 	if project.Loggers != nil {
@@ -1945,8 +1990,8 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 				},
 			)
 		}
-		errs = append(errs, checkBVNames(project, &buildVariant)...)
-		errs = append(errs, checkBVBatchTimes(project, &buildVariant)...)
+		errs = append(errs, checkBVNames(&buildVariant)...)
+		errs = append(errs, checkBVBatchTimes(&buildVariant)...)
 	}
 
 	for k, v := range displayNames {
