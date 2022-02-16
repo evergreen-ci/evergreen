@@ -178,8 +178,8 @@ func handleTerminatedHostSpawnedByTask(h *host.Host) error {
 	intent, err := insertNewHostForTask(h)
 	if err != nil || intent == nil {
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(errors.Wrap(err, "inserting new host for task"))
-		catcher.Add(task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")))
+		catcher.Wrap(err, "inserting new host for task")
+		catcher.Wrap(task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")), "adding host create details")
 		return catcher.Resolve()
 	}
 
@@ -196,6 +196,10 @@ func handleTerminatedHostSpawnedByTask(h *host.Host) error {
 }
 
 func insertNewHostForTask(h *host.Host) (*host.Host, error) {
+	if h.SpawnOptions.Respawns == 0 {
+		return nil, nil
+	}
+
 	t, err := task.FindOneIdAndExecution(h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task for host '%s'", h.Id)
@@ -208,6 +212,8 @@ func insertNewHostForTask(h *host.Host) (*host.Host, error) {
 		return nil, nil
 	}
 
-	intent := host.NewIntent(h.GetCreateOptions())
+	opts := h.GetCreateOptions()
+	opts.SpawnOptions.Respawns--
+	intent := host.NewIntent(opts)
 	return intent, errors.Wrap(intent.Insert(), "inserting intent")
 }

@@ -459,6 +459,7 @@ func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodel
 		options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(createHost.TeardownTimeoutSecs) * time.Second)
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
 		options.SpawnOptions.Retries = createHost.Retries
+		options.SpawnOptions.Respawns = evergreen.SpawnHostRespawns
 		options.SpawnOptions.SpawnedByTask = true
 	}
 	return &options, nil

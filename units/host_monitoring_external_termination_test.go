@@ -265,6 +265,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 					SpawnedByTask:       true,
 					TaskID:              "t0",
 					TaskExecutionNumber: 0,
+					Respawns:            1,
 				},
 				Status: evergreen.HostStarting,
 			},
@@ -284,6 +285,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 					SpawnedByTask:       true,
 					TaskID:              "t0",
 					TaskExecutionNumber: 0,
+					Respawns:            1,
 				},
 				Status: evergreen.HostStarting,
 			},
@@ -303,6 +305,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 					SpawnedByTask:       true,
 					TaskID:              "t0",
 					TaskExecutionNumber: 0,
+					Respawns:            1,
 				},
 				Status: evergreen.HostRunning,
 			},
@@ -321,6 +324,24 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 			},
 			newIntentCreated: false,
 			hostDetailsSet:   false,
+		},
+		"HostOutOfRespawns": {
+			t: &task.Task{
+				Id:        "t0",
+				Execution: 0,
+				Status:    evergreen.TaskStarted,
+			},
+			h: &host.Host{
+				Id: "h0",
+				SpawnOptions: host.SpawnOptions{
+					SpawnedByTask:       true,
+					TaskID:              "t0",
+					TaskExecutionNumber: 0,
+				},
+				Status: evergreen.HostStarting,
+			},
+			newIntentCreated: false,
+			hostDetailsSet:   true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
