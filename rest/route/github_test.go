@@ -29,6 +29,7 @@ import (
 type GithubWebhookRouteSuite struct {
 	sc                     *data.DBConnector
 	rm                     gimlet.RouteHandler
+	mockRm                 gimlet.RouteHandler
 	canceler               context.CancelFunc
 	conf                   *evergreen.Settings
 	prBody                 []byte
@@ -36,6 +37,7 @@ type GithubWebhookRouteSuite struct {
 	commitQueueCommentBody []byte
 	retryCommentBody       []byte
 	patchCommentBody       []byte
+	mock                   *mockGithubHookApi
 	h                      *githubHookApi
 	queue                  amboy.Queue
 	env                    evergreen.Environment
@@ -71,6 +73,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
+	s.mockRm = makeMockGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
@@ -91,6 +94,8 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
+	s.True(ok)
+	s.mock, ok = s.mockRm.Factory().(*mockGithubHookApi)
 	s.True(ok)
 }
 
@@ -221,12 +226,13 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 
 func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	event, err := github.ParseWebHook("issue_comment", s.commitQueueCommentBody)
+	s.sc.MockCommitQueueConnector.UserPermissions = nil
 	s.NotNil(event)
 	s.NoError(err)
-	s.h.event = event
-	s.h.msgID = "1"
+	s.mock.event = event
+	s.mock.msgID = "1"
 	ctx := context.Background()
-	resp := s.h.Run(ctx)
+	resp := s.mock.Run(ctx)
 	if s.NotNil(resp) {
 		s.Equal(http.StatusOK, resp.Status())
 	}

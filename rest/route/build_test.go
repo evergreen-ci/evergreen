@@ -87,15 +87,16 @@ func TestBuildChangeStatusSuite(t *testing.T) {
 }
 
 func (s *BuildChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection))
+	s.NoError(db.ClearCollections(build.Collection, serviceModel.VersionCollection))
 	s.data = data.DBBuildConnector{}
 	s.sc = &data.DBConnector{
 		DBBuildConnector: s.data,
 	}
 	builds := []build.Build{
-		{Id: "build1"},
-		{Id: "build2"},
+		{Id: "build1", Version: "v1"},
+		{Id: "build2", Version: "v1"},
 	}
+	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
@@ -113,10 +114,10 @@ func (s *BuildChangeStatusSuite) TestSetActivation() {
 	res := s.rm.Run(ctx)
 	s.NotNil(res)
 
-	b, ok := res.Data().(*model.APIBuild)
-	s.True(ok)
+	b, err := build.FindOneId("build1")
+	s.NoError(err)
 	s.True(b.Activated)
-	s.Equal(utility.ToStringPtr("user1"), b.ActivatedBy)
+	s.Equal(utility.ToStringPtr("user1"), &b.ActivatedBy)
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivationFail() {

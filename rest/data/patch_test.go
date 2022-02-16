@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -32,45 +33,14 @@ type PatchConnectorFetchByProjectSuite struct {
 
 func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByProjectSuite)
-	s.setup = func() error {
-		s.ctx = &DBConnector{}
-		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
-
-		patches := []*patch.Patch{
-			{Project: "project1", CreateTime: s.time},
-			{Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
-			{Project: "project1", CreateTime: s.time.Add(time.Second * 4)},
-			{Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
-			{Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
-			{Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
-			{Project: "project3", CreateTime: s.time.Add(time.Second * 12)},
-		}
-
-		for _, p := range patches {
-			if err := p.Insert(); err != nil {
-				return err
-			}
-		}
-		pRef1 := dbModel.ProjectRef{Id: "project1", Identifier: "project_one"}
-		pRef2 := dbModel.ProjectRef{Id: "project2", Identifier: "project_two"}
-		pRef3 := dbModel.ProjectRef{Id: "project3", Identifier: "project_three"}
-		pRef4 := dbModel.ProjectRef{Id: "project4", Identifier: "project_four"}
-		assert.NoError(t, pRef1.Insert())
-		assert.NoError(t, pRef2.Insert())
-		assert.NoError(t, pRef3.Insert())
-		assert.NoError(t, pRef4.Insert())
-		return nil
-	}
-
-	s.teardown = func() error {
-		return db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection)
-	}
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
-func TestDBPatchConnectorFetchByProjectSuite(t *testing.T) {
-	s := new(PatchConnectorFetchByProjectSuite)
+func (s *PatchConnectorFetchByProjectSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
 	s.setup = func() error {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
@@ -128,11 +98,8 @@ func TestDBPatchConnectorFetchByProjectSuite(t *testing.T) {
 	}
 
 	s.teardown = func() error { return nil }
-
-	suite.Run(t, s)
+	s.Require().NoError(s.setup())
 }
-
-func (s *PatchConnectorFetchByProjectSuite) SetupSuite() { s.Require().NoError(s.setup()) }
 
 func (s *PatchConnectorFetchByProjectSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())

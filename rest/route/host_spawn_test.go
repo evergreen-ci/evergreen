@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/aws/aws-sdk-go/aws"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -22,88 +25,98 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//func TestHostPostHandler(t *testing.T) {
-//	assert := assert.New(t)
-//	require := require.New(t)
-//	require.NoError(db.ClearCollections(distro.Collection, host.Collection))
-//
-//	config, err := evergreen.GetConfig()
-//	assert.NoError(err)
-//	config.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
-//	doc := birch.NewDocument(
-//		birch.EC.String("ami", "ami-123"),
-//		birch.EC.String("region", evergreen.DefaultEC2Region),
-//	)
-//	d := &distro.Distro{
-//		Id:                   "distro",
-//		SpawnAllowed:         true,
-//		Provider:             evergreen.ProviderNameEc2OnDemand,
-//		ProviderSettingsList: []*birch.Document{doc},
-//	}
-//	require.NoError(d.Insert())
-//	assert.NoError(err)
-//	h := &hostPostHandler{
-//		settings: config,
-//		options: &model.HostRequestOptions{
-//			TaskID:   "task",
-//			DistroID: "distro",
-//			KeyName:  "keyname",
-//		},
-//	}
-//	h.sc = &data.DBConnector{}
-//	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
-//
-//	resp := h.Run(ctx)
-//	assert.NotNil(resp)
-//	assert.Equal(http.StatusOK, resp.Status())
-//	h.options.UserData = "#!/bin/bash\necho my script"
-//	resp = h.Run(ctx)
-//	assert.NotNil(resp)
-//	assert.Equal(http.StatusOK, resp.Status())
-//	h.options.InstanceTags = []host.Tag{
-//		host.Tag{
-//			Key:           "key",
-//			Value:         "value",
-//			CanBeModified: true,
-//		},
-//	}
-//	resp = h.Run(ctx)
-//	assert.NotNil(resp)
-//	assert.Equal(http.StatusOK, resp.Status())
-//
-//	d.Provider = evergreen.ProviderNameMock
-//	assert.NoError(d.Update())
-//	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
-//	h.options.InstanceType = "test_instance_type"
-//	h.options.UserData = ""
-//	resp = h.Run(ctx)
-//	require.NotNil(resp)
-//	assert.Equal(http.StatusOK, resp.Status())
-//
-//	assert.Len(h.sc.(*data.DBConnector).DBHostConnector.CachedHosts, 4)
-//	h0 := h.sc.(*data.DBConnector).DBHostConnector.CachedHosts[0]
-//	d0 := h0.Distro
-//	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
-//	assert.False(ok)
-//	assert.Empty(userdata)
-//	assert.Empty(h0.InstanceTags)
-//	assert.Empty(h0.InstanceType)
-//
-//	h1 := h.sc.(*data.DBConnector).DBHostConnector.CachedHosts[1]
-//	d1 := h1.Distro
-//	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
-//	assert.True(ok)
-//	assert.Equal("#!/bin/bash\necho my script", userdata)
-//	assert.Empty(h1.InstanceTags)
-//	assert.Empty(h1.InstanceType)
-//
-//	h2 := h.sc.(*data.DBConnector).DBHostConnector.CachedHosts[2]
-//	assert.Equal([]host.Tag{host.Tag{Key: "key", Value: "value", CanBeModified: true}}, h2.InstanceTags)
-//	assert.Empty(h2.InstanceType)
-//
-//	h3 := h.sc.(*data.DBConnector).DBHostConnector.CachedHosts[3]
-//	assert.Equal("test_instance_type", h3.InstanceType)
-//}
+func TestHostPostHandler(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection))
+
+	config, err := evergreen.GetConfig()
+	assert.NoError(err)
+	config.Spawnhost.SpawnHostsPerUser = 4
+	doc := birch.NewDocument(
+		birch.EC.String("ami", "ami-123"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	)
+	d := &distro.Distro{
+		Id:                   "distro",
+		SpawnAllowed:         true,
+		Provider:             evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{doc},
+	}
+	require.NoError(d.Insert())
+	assert.NoError(err)
+	h := &hostPostHandler{
+		settings: config,
+		options: &model.HostRequestOptions{
+			TaskID:   "task",
+			DistroID: "distro",
+			KeyName:  "ssh-rsa YWJjZDEyMzQK",
+		},
+	}
+	h.sc = &data.DBConnector{}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	resp := h.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	h0 := resp.Data().(*model.APIHost)
+	d0, err := distro.FindByID("distro")
+	assert.NoError(err)
+	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.False(ok)
+	assert.Empty(userdata)
+	assert.Empty(h0.InstanceTags)
+	assert.Empty(h0.InstanceType)
+
+	resp = h.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	doc = birch.NewDocument(
+		birch.EC.String("ami", "ami-123"),
+		birch.EC.String("user_data", "#!/bin/bash\necho my script"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	)
+	d.ProviderSettingsList = []*birch.Document{doc}
+	assert.NoError(d.Update())
+
+	h1 := resp.Data().(*model.APIHost)
+	d1, err := distro.FindByID("distro")
+	assert.NoError(err)
+	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.True(ok)
+	assert.Equal("#!/bin/bash\necho my script", userdata)
+	assert.Empty(h1.InstanceTags)
+	assert.Empty(h1.InstanceType)
+
+	h.options.InstanceTags = []host.Tag{
+		host.Tag{
+			Key:           "ssh-rsa YWJjZDEyMzQK",
+			Value:         "value",
+			CanBeModified: true,
+		},
+	}
+	resp = h.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	h2 := resp.Data().(*model.APIHost)
+	assert.Equal([]host.Tag{host.Tag{Key: "ssh-rsa YWJjZDEyMzQK", Value: "value", CanBeModified: true}}, h2.InstanceTags)
+	assert.Empty(h2.InstanceType)
+
+	d.Provider = evergreen.ProviderNameMock
+	assert.NoError(d.Update())
+	h.settings.Providers.AWS.AllowedInstanceTypes = append(h.settings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
+	h.options.InstanceType = "test_instance_type"
+	h.options.UserData = ""
+	resp = h.Run(ctx)
+	require.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	h3 := resp.Data().(*model.APIHost)
+	assert.Equal("test_instance_type", *h3.InstanceType)
+}
 
 func TestHostStopHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
@@ -165,12 +178,14 @@ func TestHostStartHandler(t *testing.T) {
 
 	hosts := []host.Host{
 		host.Host{
-			Id:     "host-running",
-			Status: evergreen.HostRunning,
+			Id:       "host-running",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
 		},
 		host.Host{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
+			Id:       "host-stopped",
+			UserHost: true,
+			Status:   evergreen.HostStopped,
 		},
 	}
 	for _, hostToAdd := range hosts {
@@ -227,7 +242,7 @@ func TestCreateVolumeHandler(t *testing.T) {
 }
 
 func TestDeleteVolumeHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &deleteVolumeHandler{
 		sc:       &data.DBConnector{},
 		env:      evergreen.GetEnvironment(),
@@ -238,13 +253,15 @@ func TestDeleteVolumeHandler(t *testing.T) {
 	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
 	volumes := []host.Volume{
 		host.Volume{
-			ID:        "my-volume",
-			CreatedBy: "user",
+			ID:               "my-volume",
+			CreatedBy:        "user",
+			AvailabilityZone: utility.FromStringPtr(aws.String("us-east-1a")),
 		},
 	}
 	hosts := []host.Host{
 		host.Host{
 			Id:        "my-host",
+			UserHost:  true,
 			StartedBy: "user",
 			Status:    evergreen.HostRunning,
 			Volumes: []host.VolumeAttachment{
