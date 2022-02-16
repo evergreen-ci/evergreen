@@ -1616,7 +1616,6 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := MustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings()
-
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
@@ -1631,6 +1630,22 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
 	return groupedProjects, nil
+}
+
+func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
+	pRef, err := model.FindMergedProjectRef(projectID, "", false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project: %v", err.Error()))
+	}
+	if pRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
+	}
+
+	conflicts, err := pRef.GetGithubProjectConflicts()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project conflicts: %v", err.Error()))
+	}
+	return &conflicts, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
