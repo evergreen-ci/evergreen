@@ -124,6 +124,9 @@ type Task struct {
 
 	// The host the task was run on. This value is empty for display tasks
 	HostId string `bson:"host_id" json:"host_id"`
+	// PodID is the identifier for the pod that runs the task (execution tasks
+	// only).
+	PodID string `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
 
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
@@ -491,6 +494,13 @@ func (t *Task) IsFinished() bool {
 // IsDispatchable return true if the task should be dispatched
 func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
+// ShouldAllocateContainer indicates whether a task can be allocated a container
+// or not.
+// kim: TODO: test
+func (t *Task) ShouldAllocateContainer() bool {
+	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -916,6 +926,35 @@ func (t *Task) MarkAsUndispatched() error {
 			},
 		},
 	)
+}
+
+// MarkAsContainerAllocated marks the task as having a container allocated for
+// it.
+// kim: TODO: test
+func (t *Task) MarkAsContainerAllocated(podID string) error {
+	if err := UpdateOne(
+		bson.M{
+			IdKey:     t.Id,
+			StatusKey: t.Status,
+		}, bson.M{
+			"$set": bson.M{
+				StatusKey: evergreen.TaskContainerAllocated,
+				// kim: TODO: should this be a slice of pods to handle task
+				// groups that execute on multiple containers? Or should it
+				// instead set the pod dispatcher group ID and use that to
+				// associate between the pod and the task?
+				PodIDKey: podID,
+			},
+		}); err != nil {
+		return errors.WithStack(err)
+	}
+
+	t.Status = evergreen.TaskContainerAllocated
+	t.PodID = podID
+
+	// kim: TODO: log to the event log.
+
+	return nil
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
