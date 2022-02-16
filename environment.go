@@ -460,6 +460,9 @@ func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOpt
 		if namedQueue.SampleSize != 0 {
 			dbOpts.SampleSize = namedQueue.SampleSize
 		}
+		if namedQueue.LockTimeoutSeconds != 0 {
+			dbOpts.LockTimeout = time.Duration(namedQueue.LockTimeoutSeconds) * time.Second
+		}
 		var numWorkers int
 		if namedQueue.NumWorkers != 0 {
 			numWorkers = namedQueue.NumWorkers
