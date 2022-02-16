@@ -3,18 +3,18 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/reliability"
-	"github.com/evergreen-ci/utility"
 	"net/http"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -88,6 +88,7 @@ func (s *StatsSuite) TestRunTestHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 	docs, err := sc.StatsConnector.GetTestStats(handler.filter)
+	s.NoError(err)
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }
 
@@ -137,6 +138,7 @@ func (s *StatsSuite) TestRunTaskHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 	docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
+	s.NoError(err)
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }
 

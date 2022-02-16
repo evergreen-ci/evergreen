@@ -1,18 +1,17 @@
 package data
 
 import (
-	"github.com/evergreen-ci/evergreen/model/task"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 	"time"
 
-	dbModel "github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/v34/github"
 	"github.com/stretchr/testify/assert"

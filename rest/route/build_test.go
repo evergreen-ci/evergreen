@@ -3,10 +3,10 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"

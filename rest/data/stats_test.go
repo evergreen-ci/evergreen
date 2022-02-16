@@ -2,13 +2,13 @@ package data
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/utility"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 

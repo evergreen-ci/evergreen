@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/mock"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"

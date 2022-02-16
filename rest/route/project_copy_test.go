@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -205,19 +205,17 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		DryRun:         true,
 		IncludePrivate: true,
 	}
-	projectVars, err := model.FindOneProjectVars("projectB")
-	s.NoError(err)
 	newProjectVar := &model.ProjectVars{
 		Id:          "projectB",
 		Vars:        map[string]string{"banana": "yellow"},
 		PrivateVars: map[string]bool{},
 	}
-	_, err = newProjectVar.Upsert()
+	_, err := newProjectVar.Upsert()
 	s.NoError(err)
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	projectVars, err = model.FindOneProjectVars("projectB")
+	projectVars, err := model.FindOneProjectVars("projectB")
 	s.NoError(err)
 	s.Len(projectVars.Vars, 1)
 

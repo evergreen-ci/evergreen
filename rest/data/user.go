@@ -2,14 +2,15 @@ package data
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"net/http"
-	"strings"
 )
 
 // DBUserConnector is a struct that implements the User related interface

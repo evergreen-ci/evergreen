@@ -739,6 +739,7 @@ func TestRun(t *testing.T) {
 					require.Equal(t, handler.filter.StatsFilter.Limit, len(data))
 					require.NotNil(t, resp.Pages())
 					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					require.NoError(t, err)
 					require.Equal(t, docs[handler.filter.StatsFilter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 			} {
@@ -905,6 +906,7 @@ func TestReliability(t *testing.T) {
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
 					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 				"More Than One Page": func(ctx context.Context, t *testing.T) {
@@ -961,6 +963,7 @@ func TestReliability(t *testing.T) {
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
 					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 				"Invalid Start At": func(ctx context.Context, t *testing.T) {
