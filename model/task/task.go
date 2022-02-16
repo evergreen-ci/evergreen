@@ -3357,14 +3357,12 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
-	if opts.IncludeBaseTasks {
-		if len(opts.BaseStatuses) > 0 {
-			pipeline = append(pipeline, bson.M{
-				"$match": bson.M{
-					BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-				},
-			})
-		}
+	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+			},
+		})
 	}
 
 	return pipeline

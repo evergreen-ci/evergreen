@@ -1415,11 +1415,5 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 		return filteredStatuses
 	}
 	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
-	for _, status := range statuses {
-		if !utility.StringSliceContains(evergreen.TaskStatuses, status) {
-			continue
-		}
-		filteredStatuses = append(filteredStatuses, status)
-	}
 	return filteredStatuses
 }
