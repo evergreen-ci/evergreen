@@ -44,10 +44,10 @@ type MockConnector struct {
 	URL    string
 	Prefix string
 	MockStatsConnector
-	MockTaskReliabilityConnector
 	MockCommitQueueConnector
 
 	//The below mock connectors have been removed from all unit tests and are no longer used
+	MockTaskReliabilityConnector
 	MockContextConnector
 	MockBuildConnector
 	MockProjectConnector
