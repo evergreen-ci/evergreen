@@ -168,7 +168,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 	}
 }
 
-// handleTerminatedHostSpawnedByTask re-creates a new intent host if possible when this host.create host fails;
+// handleTerminatedHostSpawnedByTask re-creates a new intent host if possible when this host.create host fails.
 // If it cannot create a new host, it will populate the reason that host.create failed.
 func handleTerminatedHostSpawnedByTask(h *host.Host) error {
 	if !h.SpawnOptions.SpawnedByTask {
