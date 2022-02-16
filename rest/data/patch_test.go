@@ -497,21 +497,21 @@ func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 	}
 }
 
-//func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-//	settings := testutil.DBConfig()
-//	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
-//	s.NoError(err)
-//	p, err := s.ctx.FindPatchById(s.obj_ids[0])
-//	s.NoError(err)
-//	s.Require().NotNil(p)
-//	s.True(p.Activated)
-//
-//	err = s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
-//	s.NoError(err)
-//	p, err = s.ctx.FindPatchById(s.obj_ids[0])
-//	s.NoError(err)
-//	s.False(p.Activated)
-//}
+func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
+	settings := testutil.TestConfig()
+	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
+	s.NoError(err)
+	p, err := s.ctx.FindPatchById(s.obj_ids[0])
+	s.NoError(err)
+	s.Require().NotNil(p)
+	s.True(p.Activated)
+
+	err = s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
+	s.NoError(err)
+	p, err = s.ctx.FindPatchById(s.obj_ids[0])
+	s.NoError(err)
+	s.False(p.Activated)
+}
 
 ////////////////////////////////////////////////////////////////////////
 //

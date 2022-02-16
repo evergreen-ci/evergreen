@@ -2,11 +2,10 @@ package route
 
 import (
 	"context"
-	"net/http"
-	"testing"
-
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -16,8 +15,13 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	sns "github.com/robbiet480/go.sns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
 )
 
 func TestBaseSNSRoute(t *testing.T) {
@@ -78,75 +82,74 @@ func TestBaseSNSRoute(t *testing.T) {
 	}
 }
 
-//func TestHandleEC2SNSNotification(t *testing.T) {
-//	ctx := context.Background()
-//
-//	rh := ec2SNS{}
-//	rh.queue = queue.NewLocalLimitedSize(1, 1)
-//	require.NoError(t, rh.queue.Start(ctx))
-//	rh.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"sns.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
-//
-//	// unknown host
-//	rh.sc = &data.DBConnector{}
-//	assert.NoError(t, rh.handleNotification(ctx))
-//	assert.Equal(t, rh.queue.Stats(ctx).Total, 0)
-//
-//	// known host
-//	rh.sc = &data.DBConnector{DBHostConnector: data.DBHostConnector{CachedHosts: []host.Host{{Id: "i-0123456789"}}}}
-//	assert.NoError(t, rh.handleNotification(ctx))
-//	require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-//	assert.True(t, strings.HasPrefix(rh.queue.Next(ctx).ID(), "host-monitoring-external-state-check"))
-//}
-//
-//func TestEC2SNSNotificationHandlers(t *testing.T) {
-//	ctx := context.Background()
-//	agentHost := host.Host{
-//		Id:        "agent_host",
-//		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-//		StartedBy: evergreen.User,
-//		Provider:  evergreen.ProviderNameMock,
-//	}
-//	spawnHost := host.Host{
-//		Id:        "spawn_host",
-//		StartedBy: "user",
-//		UserHost:  true,
-//	}
-//	messageID := "m0"
-//	rh := ec2SNS{}
-//	rh.payload.MessageId = messageID
-//	rh.sc = &data.DBConnector{MockHostConnector: data.MockHostConnector{
-//		CachedHosts: []host.Host{
-//			agentHost,
-//			spawnHost,
-//		},
-//	},
-//	}
-//
-//	for name, test := range map[string]func(*testing.T){
-//		"InstanceInterruptionWarningInitiatesTermination": func(t *testing.T) {
-//			rh.payload = sns.Payload{MessageId: messageID}
-//			require.NoError(t, rh.handleInstanceInterruptionWarning(ctx, agentHost.Id))
-//			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-//		},
-//		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
-//			require.NoError(t, rh.handleInstanceTerminated(ctx, agentHost.Id))
-//			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-//		},
-//		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(t *testing.T) {
-//			require.NoError(t, rh.handleInstanceStopped(ctx, agentHost.Id))
-//			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-//		},
-//		"InstanceStoppedWithSpawnHostNoops": func(t *testing.T) {
-//			require.NoError(t, rh.handleInstanceStopped(ctx, spawnHost.Id))
-//			assert.Zero(t, rh.queue.Stats(ctx).Total)
-//		},
-//	} {
-//		rh.queue = queue.NewLocalLimitedSize(1, 1)
-//		require.NoError(t, rh.queue.Start(ctx))
-//
-//		t.Run(name, test)
-//	}
-//}
+func TestHandleEC2SNSNotification(t *testing.T) {
+	ctx := context.Background()
+	assert.NoError(t, db.Clear(host.Collection))
+	rh := ec2SNS{}
+	rh.queue = queue.NewLocalLimitedSize(1, 1)
+	require.NoError(t, rh.queue.Start(ctx))
+	rh.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"sns.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
+
+	// unknown host
+	rh.sc = &data.DBConnector{}
+	assert.NoError(t, rh.handleNotification(ctx))
+	assert.Equal(t, rh.queue.Stats(ctx).Total, 0)
+
+	// known host
+	hostToAdd := host.Host{Id: "i-0123456789"}
+	assert.NoError(t, hostToAdd.Insert())
+
+	assert.NoError(t, rh.handleNotification(ctx))
+	require.Equal(t, 1, rh.queue.Stats(ctx).Total)
+	assert.True(t, strings.HasPrefix(rh.queue.Next(ctx).ID(), "host-monitoring-external-state-check"))
+}
+
+func TestEC2SNSNotificationHandlers(t *testing.T) {
+	ctx := context.Background()
+	assert.NoError(t, db.Clear(host.Collection))
+	agentHost := host.Host{
+		Id:        "agent_host",
+		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		StartedBy: evergreen.User,
+		Provider:  evergreen.ProviderNameMock,
+	}
+	spawnHost := host.Host{
+		Id:        "spawn_host",
+		StartedBy: "user",
+		UserHost:  true,
+	}
+	messageID := "m0"
+	rh := ec2SNS{}
+	rh.payload.MessageId = messageID
+	rh.sc = &data.DBConnector{DBHostConnector: data.DBHostConnector{}}
+	assert.NoError(t, agentHost.Insert())
+	assert.NoError(t, spawnHost.Insert())
+
+	for name, test := range map[string]func(*testing.T){
+		"InstanceInterruptionWarningInitiatesTermination": func(t *testing.T) {
+			rh.payload = sns.Payload{MessageId: messageID}
+			require.NoError(t, rh.handleInstanceInterruptionWarning(ctx, agentHost.Id))
+			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
+		},
+		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
+			require.NoError(t, rh.handleInstanceTerminated(ctx, agentHost.Id))
+			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
+		},
+		"InstanceStoppedWithAgentHostInitiatesInstanceStatusCheck": func(t *testing.T) {
+			require.NoError(t, rh.handleInstanceStopped(ctx, agentHost.Id))
+			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
+		},
+		"InstanceStoppedWithSpawnHostNoops": func(t *testing.T) {
+			require.NoError(t, rh.handleInstanceStopped(ctx, spawnHost.Id))
+			assert.Zero(t, rh.queue.Stats(ctx).Total)
+		},
+	} {
+		rh.queue = queue.NewLocalLimitedSize(1, 1)
+		require.NoError(t, rh.queue.Start(ctx))
+
+		t.Run(name, test)
+	}
+}
 
 func TestECSSNSHandleNotification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
