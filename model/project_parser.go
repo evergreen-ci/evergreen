@@ -578,8 +578,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
 	config, err := CreateProjectConfig(data)
-	fmt.Println("malik2")
-	fmt.Println(config)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}

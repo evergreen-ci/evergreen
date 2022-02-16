@@ -615,19 +615,13 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	validationConfigs := model.ValidationConfigs{}
-	err := json.NewDecoder(body).Decode(&validationConfigs)
+	input := validator.ValidationInput{}
+	err := json.NewDecoder(body).Decode(&input)
 	if err != nil {
 		gimlet.WriteJSONError(w, fmt.Sprintf("Error while unmarshalling JSON body: %v", err))
 		return
 	}
-
-	input := validator.ValidationInput{}
-	//if err := json.Unmarshal(bytes, &input); err != nil {
-	//	// try the legacy structure
-	//	input.ValidationConfigs = bytes
-	//	input.IncludeLong = true // this is legacy behavior
-	//}
+	validationConfigs := input.ValidationConfigs
 
 	project := &model.Project{}
 	var projectConfig *model.ProjectConfig
@@ -636,19 +630,16 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, _, err = model.LoadProjectInto(ctx, input.ValidationConfigs.ParserProjectYaml, opts, "", project); err != nil {
+	if _, _, err = model.LoadProjectInto(ctx, validationConfigs.ParserProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
-	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ValidationConfigs.ProjectConfigYaml, opts, "", project); err != nil {
+	if _, projectConfig, err = model.LoadProjectInto(ctx, validationConfigs.ProjectConfigYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
-	fmt.Println("malik")
-	fmt.Println(projectConfig)
-	fmt.Println(project)
 
 	errs := validator.ValidationErrors{}
 	if input.ProjectID != "" {

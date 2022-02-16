@@ -164,8 +164,6 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 	project *model.Project) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
 	pp, pc, err := model.LoadProjectInto(ctx, data, opts, "", project)
-	fmt.Println("malik3")
-	fmt.Println(pc)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
