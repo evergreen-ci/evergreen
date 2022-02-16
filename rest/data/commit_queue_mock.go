@@ -137,5 +137,5 @@ func (ctx *MockCommitQueueConnector) MockEnableCommitQueue(ref *model.ProjectRef
 }
 
 func (ctx *MockCommitQueueConnector) MockIsPatchEmpty(s string) (bool, error) {
-	return nil
+	return true, nil
 }
