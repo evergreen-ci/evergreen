@@ -8,26 +8,26 @@ import (
 	"testing"
 	"time"
 
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
-	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/level"
-	"github.com/pkg/errors"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/level"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,25 +42,61 @@ type AdminRouteSuite struct {
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
 	s.sc = &data.DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "clearing collections")
-	defer func() {
-		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "clearing collections")
-	}()
-
-	// run the rest of the tests
-	suite.Run(t, s)
-}
-
-func TestAdminRouteSuiteWithMock(t *testing.T) {
-	s := new(AdminRouteSuite)
-	s.sc = &data.DBConnector{}
-
 	// run the rest of the tests
 	suite.Run(t, s)
 }
 
 func (s *AdminRouteSuite) SetupSuite() {
 	// test getting the route handler
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection), "clearing collections")
+	b := &build.Build{
+		Id:      "buildtest",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+	}
+	v := &model.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	testTask1 := &task.Task{
+		Id:        "taskToRestart",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Type: evergreen.CommandTypeTest,
+		},
+	}
+	testTask2 := &task.Task{
+		Id:        "taskThatSucceeded",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskSucceeded,
+	}
+	testTask3 := &task.Task{
+		Id:        "taskOutsideOfTimeRange",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 11, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+	}
+	p := &model.ProjectRef{
+		Id: "sample",
+	}
+	s.NoError(b.Insert(), "error inserting documents")
+	s.NoError(v.Insert(), "error inserting documents")
+	s.NoError(testTask1.Insert(), "error inserting documents")
+	s.NoError(testTask2.Insert(), "error inserting documents")
+	s.NoError(testTask3.Insert(), "error inserting documents")
+	s.NoError(p.Insert(), "error inserting documents")
 	s.getHandler = makeFetchAdminSettings(s.sc)
 	s.postHandler = makeSetAdminSettings(s.sc)
 	s.IsType(&adminGetHandler{}, s.getHandler)
@@ -100,9 +136,9 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	resp = s.getHandler.Run(ctx)
 	s.NotNil(resp)
 	respm, ok := resp.Data().(restModel.Model)
-	s.Require().True(ok, "%+v", resp.Data())
+	s.True(ok, "%+v", resp.Data())
 	settingsResp, err := respm.ToService()
-	s.Require().NoError(err)
+	s.NoError(err)
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
 
@@ -133,8 +169,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settings.Jira.BasicAuthConfig.Username)
-	// We have to check different cases because the mock connector does not set
-	// defaults for the settings.
 	switch s.sc.(type) {
 	case *data.DBConnector:
 		s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
@@ -167,13 +201,13 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	badSettingsOne.ApiUrl = ""
 	badSettingsOne.Ui.CsrfKey = "12345"
 	jsonBody, err = json.Marshal(badSettingsOne)
-	s.Require().NoError(err)
+	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin", buffer)
-	s.Require().NoError(err)
-	s.Require().NoError(s.postHandler.Parse(ctx, request))
+	s.NoError(err)
+	s.NoError(s.postHandler.Parse(ctx, request))
 	resp = s.postHandler.Run(ctx)
-	s.Require().NotNil(resp)
+	s.NotNil(resp)
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "API hostname must not be empty")
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
 
@@ -218,10 +252,10 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	}
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := s.sc.SetEvergreenSettings(&changes, before, user, true)
-	s.Require().NoError(err)
+	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
-	s.Require().NoError(err)
-	s.Require().True(len(dbEvents) >= 1)
+	s.NoError(err)
+	s.True(len(dbEvents) >= 1)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
@@ -252,15 +286,14 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	s.NotNil(ctx)
 }
 
-func TestRestartTasksRoute(t *testing.T) {
-	assert := assert.New(t)
+func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
 	queue := evergreen.GetEnvironment().LocalQueue()
 	sc := &data.DBConnector{}
 	handler := makeRestartRoute(sc, evergreen.RestartTasks, queue)
 
-	assert.NotNil(handler)
+	s.NotNil(handler)
 
 	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
 	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
@@ -270,38 +303,36 @@ func TestRestartTasksRoute(t *testing.T) {
 		StartTime time.Time `json:"start_time"`
 		EndTime   time.Time `json:"end_time"`
 		DryRun    bool      `json:"dry_run"`
-	}{endTime, startTime, false}
+	}{endTime, startTime, true}
 	jsonBody, err := json.Marshal(&body)
-	assert.NoError(err)
+	s.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/restart/tasks", buffer)
-	assert.NoError(err)
-	assert.Error(handler.Parse(ctx, request))
+	s.NoError(err)
+	s.Error(handler.Parse(ctx, request))
 
 	// test a valid request
 	body = struct {
 		StartTime time.Time `json:"start_time"`
 		EndTime   time.Time `json:"end_time"`
 		DryRun    bool      `json:"dry_run"`
-	}{startTime, endTime, false}
+	}{startTime, endTime, true}
 	jsonBody, err = json.Marshal(&body)
-	assert.NoError(err)
+	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/restart/tasks", buffer)
-	assert.NoError(err)
-	assert.NoError(handler.Parse(ctx, request))
+	s.NoError(err)
+	s.NoError(handler.Parse(ctx, request))
 	resp := handler.Run(ctx)
-	assert.NotNil(resp)
+	s.NotNil(resp)
 	model, ok := resp.Data().(*restModel.RestartResponse)
-	assert.True(ok)
-	assert.True(len(model.ItemsRestarted) > 0)
-	assert.Nil(model.ItemsErrored)
+	s.True(ok)
+	s.True(len(model.ItemsRestarted) > 0)
+	s.Nil(model.ItemsErrored)
 }
 
-func TestRestartVersionsRoute(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
+func (s *AdminRouteSuite) TestRestartVersionsRoute() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
 
 	handler := &restartHandler{
 		sc:          &data.DBConnector{},
@@ -321,9 +352,9 @@ func TestRestartVersionsRoute(t *testing.T) {
 		Repo:    "my-repo",
 		Branch:  "my-branch",
 	}
-	assert.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert())
 	cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
-	assert.NoError(commitqueue.InsertQueue(cq))
+	s.NoError(commitqueue.InsertQueue(cq))
 	patches := []patch.Patch{
 		{ // patch: within time frame, failed
 			Id:          mgobson.NewObjectId(),
@@ -349,7 +380,7 @@ func TestRestartVersionsRoute(t *testing.T) {
 		},
 	}
 	for _, p := range patches {
-		assert.NoError(p.Insert())
+		s.NoError(p.Insert())
 	}
 	// test that invalid time range errors
 	body := struct {
@@ -358,11 +389,11 @@ func TestRestartVersionsRoute(t *testing.T) {
 		DryRun    bool      `json:"dry_run"`
 	}{endTime, startTime, false}
 	jsonBody, err := json.Marshal(&body)
-	assert.NoError(err)
+	s.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/restart/versions", buffer)
-	assert.NoError(err)
-	assert.Error(handler.Parse(ctx, request))
+	s.NoError(err)
+	s.Error(handler.Parse(ctx, request))
 
 	// dry run, valid request
 	body = struct {
@@ -371,18 +402,18 @@ func TestRestartVersionsRoute(t *testing.T) {
 		DryRun    bool      `json:"dry_run"`
 	}{startTime, endTime, true}
 	jsonBody, err = json.Marshal(&body)
-	assert.NoError(err)
+	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/restart/versions", buffer)
-	assert.NoError(err)
-	assert.NoError(handler.Parse(ctx, request))
+	s.NoError(err)
+	s.NoError(handler.Parse(ctx, request))
 	resp := handler.Run(ctx)
-	assert.NotNil(resp)
+	s.NotNil(resp)
 	model, ok := resp.Data().(*restModel.RestartResponse)
-	assert.True(ok)
-	require.Len(model.ItemsRestarted, 1)
-	assert.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
-	assert.Empty(model.ItemsErrored)
+	s.True(ok)
+	s.Len(model.ItemsRestarted, 1)
+	s.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
+	s.Empty(model.ItemsErrored)
 
 	// test a valid request
 	body = struct {
@@ -391,30 +422,28 @@ func TestRestartVersionsRoute(t *testing.T) {
 		DryRun    bool      `json:"dry_run"`
 	}{startTime, endTime, false}
 	jsonBody, err = json.Marshal(&body)
-	assert.NoError(err)
+	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/restart/versions", buffer)
-	assert.NoError(err)
-	assert.NoError(handler.Parse(ctx, request))
+	s.NoError(err)
+	s.NoError(handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
-	assert.NotNil(resp)
+	s.NotNil(resp)
 	model, ok = resp.Data().(*restModel.RestartResponse)
-	assert.True(ok)
-	require.Len(model.ItemsRestarted, 1)
-	assert.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
-	assert.Empty(model.ItemsErrored)
+	s.True(ok)
+	s.Len(model.ItemsRestarted, 1)
+	s.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
+	s.Empty(model.ItemsErrored)
 }
 
-func TestAdminEventRoute(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection, distro.Collection), "Error clearing collections")
+func (s *AdminRouteSuite) TestAdminEventRoute() {
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection, distro.Collection), "Error clearing collections")
 
-	// required by test to have a valid distro in the collection
+	// sd by test to have a valid distro in the collection
 	d1 := &distro.Distro{
 		Id: "valid-distro",
 	}
-	require.NoError(d1.Insert())
+	s.NoError(d1.Insert())
 
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
@@ -423,15 +452,15 @@ func TestAdminEventRoute(t *testing.T) {
 
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
-	assert.NoError(err)
+	s.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/settings", buffer)
-	assert.NoError(err)
-	assert.NoError(routeManager.Parse(ctx, request))
+	s.NoError(err)
+	s.NoError(routeManager.Parse(ctx, request))
 	now := time.Now()
 	resp := routeManager.Run(ctx)
-	assert.NotNil(resp)
-	assert.Equal(http.StatusOK, resp.Status())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	// get the changes with the /admin/events route
 	ctx = context.Background()
@@ -439,37 +468,36 @@ func TestAdminEventRoute(t *testing.T) {
 		URL: "http://evergreen.example.net",
 	})
 	request, err = http.NewRequest("GET", "/admin/events?limit=10&ts=2026-01-02T15%3A04%3A05Z", nil)
-	assert.NoError(err)
-	assert.NoError(route.Parse(ctx, request))
+	s.NoError(err)
+	s.NoError(route.Parse(ctx, request))
 	response := route.Run(ctx)
-	assert.NotNil(resp)
+	s.NotNil(resp)
 	count := 0
 
 	data := response.Data().([]interface{})
 	for _, model := range data {
 		evt, ok := model.(*restModel.APIAdminEvent)
-		assert.True(ok)
+		s.True(ok)
 		count++
-		assert.NotEmpty(evt.Guid)
-		assert.NotNil(evt.Before)
-		assert.NotNil(evt.After)
-		assert.Equal("user", evt.User)
+		s.NotEmpty(evt.Guid)
+		s.NotNil(evt.Before)
+		s.NotNil(evt.After)
+		s.Equal("user", evt.User)
 	}
-	assert.Equal(10, count)
+	s.Equal(10, count)
 	pagination := response.Pages()
-	require.NotNil(pagination)
-	require.NotNil(pagination.Next)
-	assert.NotZero(pagination.Next.KeyQueryParam)
-	assert.Equal("limit", pagination.Next.LimitQueryParam)
-	assert.Equal("next", pagination.Next.Relation)
-	assert.Equal(10, pagination.Next.Limit)
+	s.NotNil(pagination)
+	s.NotNil(pagination.Next)
+	s.NotZero(pagination.Next.KeyQueryParam)
+	s.Equal("limit", pagination.Next.LimitQueryParam)
+	s.Equal("next", pagination.Next.Relation)
+	s.Equal(10, pagination.Next.Limit)
 	ts, err := time.Parse(time.RFC3339, pagination.Next.Key)
-	assert.NoError(err)
-	assert.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
+	s.NoError(err)
+	s.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
 }
 
-func TestClearTaskQueueRoute(t *testing.T) {
-	assert := assert.New(t)
+func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 	route := &clearTaskQueueHandler{
 		sc: &data.DBConnector{},
 	}
@@ -486,14 +514,14 @@ func TestClearTaskQueueRoute(t *testing.T) {
 		},
 	}
 	queue := model.NewTaskQueue(distro, tasks, model.DistroQueueInfo{})
-	assert.Len(queue.Queue, 3)
-	assert.NoError(queue.Save())
+	s.Len(queue.Queue, 3)
+	s.NoError(queue.Save())
 
 	route.distro = distro
 	resp := route.Run(context.Background())
-	assert.Equal(http.StatusOK, resp.Status())
+	s.Equal(http.StatusOK, resp.Status())
 
 	queueFromDb, err := model.LoadTaskQueue(distro)
-	assert.NoError(err)
-	assert.Len(queueFromDb.Queue, 0)
+	s.NoError(err)
+	s.Len(queueFromDb.Queue, 0)
 }
