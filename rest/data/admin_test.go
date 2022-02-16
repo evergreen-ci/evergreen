@@ -2,26 +2,24 @@ package data
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -34,10 +32,13 @@ type AdminDataSuite struct {
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "clearing collections")
-	defer func() {
-		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "clearing collections")
-	}()
+	suite.Run(t, s)
+}
+
+func (s *AdminDataSuite) SetupSuite() {
+	s.env = &mock.Environment{}
+	s.Require().NoError(s.env.Configure(context.Background()))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection), "clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -80,24 +81,12 @@ func TestDataConnectorSuite(t *testing.T) {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	require.NoError(t, b.Insert(), "error inserting documents")
-	require.NoError(t, v.Insert(), "error inserting documents")
-	require.NoError(t, testTask1.Insert(), "error inserting documents")
-	require.NoError(t, testTask2.Insert(), "error inserting documents")
-	require.NoError(t, testTask3.Insert(), "error inserting documents")
-	require.NoError(t, p.Insert(), "error inserting documents")
-	suite.Run(t, s)
-}
-
-func TestConnectorSuite(t *testing.T) {
-	s := new(AdminDataSuite)
-	s.ctx = &DBConnector{}
-	suite.Run(t, s)
-}
-
-func (s *AdminDataSuite) SetupSuite() {
-	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(context.Background()))
+	s.NoError(b.Insert(), "error inserting documents")
+	s.NoError(v.Insert(), "error inserting documents")
+	s.NoError(testTask1.Insert(), "error inserting documents")
+	s.NoError(testTask2.Insert(), "error inserting documents")
+	s.NoError(testTask3.Insert(), "error inserting documents")
+	s.NoError(p.Insert(), "error inserting documents")
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
