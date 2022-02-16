@@ -177,6 +177,14 @@ func handleTerminatedHostSpawnedByTask(h *host.Host) error {
 
 	intent, err := insertNewHostForTask(h)
 	if err != nil || intent == nil {
+		grip.Info(message.Fields{
+			"message":        "host was externally terminated",
+			"action":         "adding host create details",
+			"host_id":        h.Id,
+			"task_id":        h.SpawnOptions.TaskID,
+			"task_execution": h.SpawnOptions.TaskExecutionNumber,
+		})
+
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(err, "inserting new host for task")
 		catcher.Wrap(task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")), "adding host create details")
