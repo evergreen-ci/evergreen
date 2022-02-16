@@ -532,16 +532,16 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 	timeToSortTasks := time.Since(sortTasksStartTime)
 
 	totalTime := time.Since(start)
-	grip.InfoWhen(totalTime > time.Second*2, message.Fields{
-		"Ticket":            "EVG-14828",
-		"timeToFindTasks":   timeToFindTasks,
-		"timeToBuildTasks":  timeToBuildTasks,
-		"timeToGroupTasks":  timeToGroupTasks,
-		"timeToSortTasks":   timeToSortTasks,
-		"totalTime":         totalTime,
-		"versionId":         versionId,
-		"taskCount":         len(tasks),
-		"buildVariantCount": len(result),
+	grip.InfoWhen(time.Duration(totalTime.Milliseconds()) > time.Second*2, message.Fields{
+		"Ticket":             "EVG-14828",
+		"timeToFindTasksMS":  timeToFindTasks.Milliseconds(),
+		"timeToBuildTasksMS": timeToBuildTasks.Milliseconds(),
+		"timeToGroupTasksMS": timeToGroupTasks.Milliseconds(),
+		"timeToSortTasksMS":  timeToSortTasks.Milliseconds(),
+		"totalTime":          totalTime,
+		"versionId":          versionId,
+		"taskCount":          len(tasks),
+		"buildVariantCount":  len(result),
 	})
 	return result, nil
 }
