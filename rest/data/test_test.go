@@ -156,6 +156,10 @@ func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 
 func TestFindTestsByTaskId(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 	assert.NoError(db.EnsureIndex(testresult.Collection, mongo.IndexModel{
 		Keys: testresult.TestResultsIndex}))
