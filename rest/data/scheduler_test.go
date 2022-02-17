@@ -1,6 +1,8 @@
 package data
 
 import (
+	"context"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +14,10 @@ import (
 )
 
 func TestCompareTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(distro.Collection, task.Collection, model.VersionCollection))
 	distroId := "d"
 	t1 := task.Task{

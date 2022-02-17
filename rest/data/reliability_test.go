@@ -1,7 +1,10 @@
 package data
 
 import (
+	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
 
@@ -18,7 +21,10 @@ const dayInHours = 24 * time.Hour
 
 func TestMockGetTaskReliability(t *testing.T) {
 	assert := assert.New(t)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	mock := TaskReliabilityConnector{}
 	filter := reliability.TaskReliabilityFilter{
 		StatsFilter: stats.StatsFilter{

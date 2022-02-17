@@ -39,9 +39,8 @@ func TestDownstreamExpansions(t *testing.T) {
 			},
 		} {
 			t.Run(testName, func(t *testing.T) {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-				comm := client.NewMock("http://localhost.com")
+				ctx context.Context,
+					comm := client.NewMock("http://localhost.com")
 				conf := &internal.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 				logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 				cwd := testutil.GetDirectoryOfFile()

@@ -1,6 +1,9 @@
 package data
 
 import (
+	"context"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
 
@@ -71,6 +74,10 @@ func getMockProjectSettings() model.ProjectSettings {
 
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
@@ -167,8 +174,12 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 func TestMockProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, event.AllLogCollection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.setup = func() error {
+		s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, event.AllLogCollection))
 		projectId := "mci2"
 		beforeSettings := model.ProjectSettings{
 			ProjectRef: model.ProjectRef{
@@ -450,6 +461,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
 	dc := &DBProjectConnector{}
 
@@ -505,6 +520,10 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 }
 
 func TestGetProjectAliasResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 	p := model.Project{
 		Identifier: "helloworld",

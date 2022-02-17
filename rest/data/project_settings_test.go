@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,8 +19,11 @@ import (
 
 func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	dc := &DBConnector{}
-	ctx := context.Background()
 	rm := evergreen.GetEnvironment().RoleManager()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 
 	for name, test := range map[string]func(t *testing.T, ref model.RepoRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.RepoRef) {
@@ -232,7 +236,10 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 
 func TestSaveProjectSettingsForSection(t *testing.T) {
 	dc := &DBConnector{}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	rm := evergreen.GetEnvironment().RoleManager()
 
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){

@@ -97,7 +97,7 @@ func (s *PatchConnectorFetchByProjectSuite) SetupSuite() {
 		return nil
 	}
 
-	s.teardown = func() error { return nil }
+	s.teardown = func() error { return db.Clear(patch.Collection) }
 	s.Require().NoError(s.setup())
 }
 
@@ -191,7 +191,10 @@ type PatchConnectorFetchByIdSuite struct {
 
 func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByIdSuite)
-	s.ctx = &DBConnector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -261,7 +264,10 @@ type PatchConnectorAbortByIdSuite struct {
 
 func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
-	s.ctx = &DBConnector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -380,7 +386,10 @@ type PatchConnectorChangeStatusSuite struct {
 
 func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	s := new(PatchConnectorChangeStatusSuite)
-	s.ctx = &DBConnector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -458,7 +467,10 @@ type PatchConnectorFetchByUserSuite struct {
 
 func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
-	s.ctx = &DBConnector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 

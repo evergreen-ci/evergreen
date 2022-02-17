@@ -1,20 +1,27 @@
 package data
 
 import (
-	"testing"
-
+	"context"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestPodConnector(t *testing.T) {
-	for tName, tCase := range map[string]func(t *testing.T, conn Connector){
-		"CreatePodSucceeds": func(t *testing.T, conn Connector) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"CreatePodSucceeds": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			p := model.APICreatePod{
 				Name:   utility.ToStringPtr("name"),
 				Memory: utility.ToIntPtr(128),
@@ -57,7 +64,8 @@ func TestPodConnector(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(secret.Value))
 		},
-		"FindPodByIDSucceeds": func(t *testing.T, conn Connector) {
+		"FindPodByIDSucceeds": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			p := pod.Pod{
 				ID:     "id",
 				Type:   pod.TypeAgent,
@@ -79,12 +87,14 @@ func TestPodConnector(t *testing.T) {
 			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
 			assert.Equal(t, p.Secret, apiPod.Secret.ToService())
 		},
-		"FindPodByIDReturnsNilWithNonexistentPod": func(t *testing.T, conn Connector) {
+		"FindPodByIDReturnsNilWithNonexistentPod": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			apiPod, err := conn.FindPodByID("nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, apiPod)
 		},
-		"FindPodByExternalIDSucceeds": func(t *testing.T, conn Connector) {
+		"FindPodByExternalIDSucceeds": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			p := pod.Pod{
 				ID:   "id",
 				Type: pod.TypeAgent,
@@ -109,12 +119,14 @@ func TestPodConnector(t *testing.T) {
 			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
 			assert.Equal(t, p.Secret, apiPod.Secret.ToService())
 		},
-		"FindPodByExternalIDReturnsNilWithNonexistentPod": func(t *testing.T, conn Connector) {
+		"FindPodByExternalIDReturnsNilWithNonexistentPod": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			apiPod, err := conn.FindPodByExternalID("nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, apiPod)
 		},
-		"UpdatePodStatusSucceeds": func(t *testing.T, conn Connector) {
+		"UpdatePodStatusSucceeds": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			p := pod.Pod{
 				ID:     "id",
 				Type:   pod.TypeAgent,
@@ -134,10 +146,12 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod.Status)
 			assert.Equal(t, updated, apiPod.Status)
 		},
-		"UpdatePodStatusFailsWithNonexistentPod": func(t *testing.T, conn Connector) {
+		"UpdatePodStatusFailsWithNonexistentPod": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			assert.Error(t, conn.UpdatePodStatus("nonexistent", model.PodStatusRunning, model.PodStatusTerminated))
 		},
-		"CheckPodSecret": func(t *testing.T, conn Connector) {
+		"CheckPodSecret": func(ctx context.Context, t *testing.T) {
+			conn := &DBConnector{}
 			p := pod.Pod{
 				ID:   "id",
 				Type: pod.TypeAgent,
@@ -173,7 +187,7 @@ func TestPodConnector(t *testing.T) {
 			defer func() {
 				assert.NoError(t, db.ClearCollections(pod.Collection, event.AllLogCollection))
 			}()
-			tCase(t, &DBConnector{})
+			tCase(ctx, t)
 		})
 	}
 }
