@@ -838,7 +838,7 @@ func TestUpdateVersionGithubStatus(t *testing.T) {
 
 	assert.NoError(t, updateVersionGithubStatus(v, builds))
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
 }
@@ -860,7 +860,7 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildSucceeded, b.GithubCheckStatus)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
 }
@@ -2889,7 +2889,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(err)
 	assert.Len(e, 7)
 }
@@ -2960,7 +2960,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(err)
 	assert.Len(e, 4)
 }
@@ -3032,7 +3032,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(err)
 	assert.Len(e, 4)
 }
