@@ -1146,7 +1146,6 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 type APINotifyConfig struct {
 	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
-	EventProcessingLimit    int           `json:"event_processing_limit"`
 	SMTP                    APISMTPConfig `json:"smtp"`
 }
 
@@ -1159,7 +1158,6 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
 		a.BufferIntervalSeconds = v.BufferIntervalSeconds
-		a.EventProcessingLimit = v.EventProcessingLimit
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1174,7 +1172,6 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		EventProcessingLimit:    a.EventProcessingLimit,
 		SMTP:                    smtp.(evergreen.SMTPConfig),
 	}, nil
 }
