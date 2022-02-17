@@ -260,11 +260,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
 
-		v, err := model.VersionFindOneId(p.Version)
-		if err != nil {
-			return errors.Wrapf(err, "Couldn't find version for id `%s`", p.Version), http.StatusInternalServerError, "", ""
-		}
-		if v.Message != patchUpdateReq.Description {
+		if version.Message != patchUpdateReq.Description {
 			if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
 				return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
 			}
