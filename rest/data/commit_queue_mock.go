@@ -17,7 +17,7 @@ type MockCommitQueueConnector struct {
 	CachedPatches   []restModel.APIPatch
 }
 
-func (pc *MockCommitQueueConnector) MockGetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
+func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	return &github.PullRequest{
 		User: &github.User{
 			ID:    github.Int64(1234),
@@ -32,11 +32,11 @@ func (pc *MockCommitQueueConnector) MockGetGitHubPR(ctx context.Context, owner, 
 	}, nil
 }
 
-func (pc *MockCommitQueueConnector) MockAddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error) {
+func (pc *MockCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error) {
 	return "", nil
 }
 
-func (pc *MockCommitQueueConnector) MockEnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
+func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	if pc.Queue == nil {
 		pc.Queue = make(map[string][]restModel.APICommitQueueItem)
 	}
@@ -49,7 +49,7 @@ func (pc *MockCommitQueueConnector) MockEnqueueItem(projectID string, item restM
 	return len(pc.Queue[projectID]) - 1, nil
 }
 
-func (pc *MockCommitQueueConnector) MockFindCommitQueueForProject(id string) (*restModel.APICommitQueue, error) {
+func (pc *MockCommitQueueConnector) FindCommitQueueForProject(id string) (*restModel.APICommitQueue, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return nil, nil
 	}
@@ -57,7 +57,7 @@ func (pc *MockCommitQueueConnector) MockFindCommitQueueForProject(id string) (*r
 	return &restModel.APICommitQueue{ProjectID: utility.ToStringPtr(id), Queue: pc.Queue[id]}, nil
 }
 
-func (pc *MockCommitQueueConnector) MockCommitQueueRemoveItem(id, itemId, user string) (*restModel.APICommitQueueItem, error) {
+func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user string) (*restModel.APICommitQueueItem, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return nil, nil
 	}
@@ -73,7 +73,7 @@ func (pc *MockCommitQueueConnector) MockCommitQueueRemoveItem(id, itemId, user s
 	return nil, nil
 }
 
-func (pc *MockCommitQueueConnector) MockIsItemOnCommitQueue(id, item string) (bool, error) {
+func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
 	queue, ok := pc.Queue[id]
 	if !ok {
 		return false, errors.Errorf("can't get commit queue for id '%s'", id)
@@ -86,7 +86,7 @@ func (pc *MockCommitQueueConnector) MockIsItemOnCommitQueue(id, item string) (bo
 	return false, nil
 }
 
-func (pc *MockCommitQueueConnector) MockCommitQueueClearAll() (int, error) {
+func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	var count int
 	for k, v := range pc.Queue {
 		if len(v) > 0 {
@@ -98,7 +98,7 @@ func (pc *MockCommitQueueConnector) MockCommitQueueClearAll() (int, error) {
 	return count, nil
 }
 
-func (pc *MockCommitQueueConnector) MockIsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
+func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	_, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
@@ -113,24 +113,24 @@ func (pc *MockCommitQueueConnector) MockIsAuthorizedToPatchAndMerge(ctx context.
 	return hasPermission, nil
 }
 
-func (pc *MockCommitQueueConnector) MockCreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
+func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	return nil, nil
 }
-func (pc *MockCommitQueueConnector) MockGetMessageForPatch(patchID string) (string, error) {
+func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
 	return "", nil
 }
 
-func (pc *MockCommitQueueConnector) MockConcludeMerge(patchID, status string) error {
+func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	return nil
 }
-func (pc *MockCommitQueueConnector) MockGetAdditionalPatches(patchId string) ([]string, error) {
+func (pc *MockCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
 	return nil, nil
 }
 
-func (ctx *MockCommitQueueConnector) MockEnableCommitQueue(ref *model.ProjectRef) error {
+func (ctx *MockCommitQueueConnector) EnableCommitQueue(ref *model.ProjectRef) error {
 	return nil
 }
 
-func (ctx *MockCommitQueueConnector) MockIsPatchEmpty(s string) (bool, error) {
+func (ctx *MockCommitQueueConnector) IsPatchEmpty(s string) (bool, error) {
 	return true, nil
 }

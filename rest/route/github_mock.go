@@ -29,6 +29,7 @@ type mockGithubHookApi struct {
 	eventType string
 	msgID     string
 	sc        data.Connector
+	mockSc    data.MockConnector
 	settings  *evergreen.Settings
 }
 
@@ -146,7 +147,7 @@ func (gh *mockGithubHookApi) commitQueueEnqueue(ctx context.Context, event *gith
 		Owner:    *event.Repo.Owner.Login,
 		Repo:     *event.Repo.Name,
 	}
-	authorized, err := gh.sc.MockIsAuthorizedToPatchAndMerge(ctx, gh.settings, userRepo)
+	authorized, err := gh.mockSc.IsAuthorizedToPatchAndMerge(ctx, gh.settings, userRepo)
 	if err != nil {
 		return errors.Wrap(err, "can't get user info from GitHub API")
 	}
@@ -155,7 +156,7 @@ func (gh *mockGithubHookApi) commitQueueEnqueue(ctx context.Context, event *gith
 	}
 
 	prNum := *event.Issue.Number
-	pr, err := gh.sc.MockGetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
+	pr, err := gh.mockSc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, prNum)
 	if err != nil {
 		return errors.Wrap(err, "can't get PR from GitHub API")
 	}
@@ -174,7 +175,7 @@ func (gh *mockGithubHookApi) commitQueueEnqueue(ctx context.Context, event *gith
 		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 
-	patchId, err := gh.sc.MockAddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
+	patchId, err := gh.mockSc.AddPatchForPr(ctx, *projectRef, prNum, cqInfo.Modules, cqInfo.MessageOverride)
 	if err != nil {
 		sendErr := thirdparty.SendCommitQueueGithubStatus(pr, message.GithubStateFailure, "failed to create patch", "")
 		grip.Error(message.WrapError(sendErr, message.Fields{
@@ -193,7 +194,7 @@ func (gh *mockGithubHookApi) commitQueueEnqueue(ctx context.Context, event *gith
 		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
 		PatchId:         &patchId,
 	}
-	_, err = gh.sc.MockEnqueueItem(projectRef.Id, item, false)
+	_, err = gh.mockSc.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {
 		return errors.Wrap(err, "can't enqueue item on commit queue")
 	}

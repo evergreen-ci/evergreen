@@ -33,10 +33,13 @@ type DBConnector struct {
 	TaskReliabilityConnector
 	DBCommitQueueConnector
 	SchedulerConnector
-	MockCommitQueueConnector
 }
 
 func (ctx *DBConnector) GetURL() string          { return ctx.URL }
 func (ctx *DBConnector) SetURL(url string)       { ctx.URL = url }
 func (ctx *DBConnector) GetPrefix() string       { return ctx.Prefix }
 func (ctx *DBConnector) SetPrefix(prefix string) { ctx.Prefix = prefix }
+
+type MockDBConnector struct {
+	MockCommitQueueConnector
+}
