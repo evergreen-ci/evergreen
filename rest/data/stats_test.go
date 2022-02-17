@@ -1,7 +1,10 @@
 package data
 
 import (
+	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 	"time"
 
@@ -14,6 +17,10 @@ import (
 
 func TestMockGetTestStats(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.Clear(stats.DailyTestStatsCollection))
 	mock := StatsConnector{}
 	filter := &stats.StatsFilter{}
@@ -30,6 +37,10 @@ func TestMockGetTestStats(t *testing.T) {
 
 func TestMockGetTaskStats(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.Clear(stats.DailyTaskStatsCollection))
 	mock := StatsConnector{}
 	filter := &stats.StatsFilter{}
