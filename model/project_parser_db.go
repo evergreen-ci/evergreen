@@ -181,11 +181,7 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 func (pp *ParserProject) GetParameters() []patch.Parameter {
 	res := []patch.Parameter{}
 	for _, param := range pp.Parameters {
-		// If the key doesn't exist the value will default to "" anyway; this prevents
-		// an un-specified parameter from overwriting lower-priority expansions.
-		if param.Parameter.Value != "" {
-			res = append(res, param.Parameter)
-		}
+		res = append(res, param.Parameter)
 	}
 	return res
 }
