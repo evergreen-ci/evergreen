@@ -61,14 +61,14 @@ type Task struct {
 	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
-	// create - the creation time for the task, derived from the commit time or the patch creation time.
-	// dispatch - the time the task runner starts up the agent on the host
-	// scheduled - the time the commit is scheduled
-	// start - the time the agent starts the task on the host after spinning it up
-	// finish - the time the task was completed on the remote host
-	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
-	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
-	// ContainerAllocatedTime - for tasks that run on containers, the time the container was allocated
+	// Create - the creation time for the task, derived from the commit time or the patch creation time.
+	// Dispatch - the time the task runner starts up the agent on the host.
+	// Scheduled - the time the commit is scheduled.
+	// Start - the time the agent starts the task on the host after spinning it up.
+	// Finish - the time the task was completed on the remote host.
+	// Activated - the time the task was marked as available to be scheduled, automatically or by a developer.
+	// DependenciesMet - for tasks that have dependencies, the time all dependencies are met.
+	// ContainerAllocated - for tasks that run on containers, the time the container was allocated.
 	CreateTime             time.Time `bson:"create_time" json:"create_time"`
 	IngestTime             time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime           time.Time `bson:"dispatch_time" json:"dispatch_time"`
