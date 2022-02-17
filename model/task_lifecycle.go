@@ -369,7 +369,7 @@ func AbortTask(taskId, caller string) error {
 // tasks for the same build variant + display name + project combination
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
-	statuses := []string{evergreen.TaskUndispatched}
+	statuses := []string{evergreen.TaskUndispatched, evergreen.TaskContainerUnallocated}
 	filter, sort := task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,

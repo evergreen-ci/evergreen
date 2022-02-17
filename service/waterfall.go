@@ -30,9 +30,9 @@ func uiStatus(task waterfallTask) string {
 	case evergreen.TaskStarted, evergreen.TaskSucceeded,
 		evergreen.TaskFailed, evergreen.TaskDispatched:
 		return task.Status
-	case evergreen.TaskUndispatched:
+	case evergreen.TaskUndispatched, evergreen.TaskContainerUnallocated:
 		if task.Activated {
-			return evergreen.TaskUndispatched
+			return task.Status
 		} else {
 			return evergreen.TaskInactive
 		}

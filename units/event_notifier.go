@@ -2,13 +2,7 @@ package units
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"runtime"
-	"sort"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,7 +16,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -37,11 +30,11 @@ const (
 
 type eventNotifierJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	q        amboy.Queue
 	env      evergreen.Environment
+	q        amboy.Queue
 	flags    *evergreen.ServiceFlags
 
-	Events []string `bson:"events"`
+	EventID string `bson:"event_id"`
 }
 
 func makeEventNotifierJob() *eventNotifierJob {
@@ -56,30 +49,25 @@ func makeEventNotifierJob() *eventNotifierJob {
 	return j
 }
 
-func NewEventNotifierJob(env evergreen.Environment, q amboy.Queue, id string, events []string) amboy.Job {
+func NewEventNotifierJob(env evergreen.Environment, q amboy.Queue, eventID, ts string) amboy.Job {
 	j := makeEventNotifierJob()
-	j.q = q
 	j.env = env
+	j.q = q
 
-	j.SetID(fmt.Sprintf("%s.%s", eventNotifierName, id))
-	j.Events = events
+	j.SetID(fmt.Sprintf("%s.%s.%s", eventNotifierName, eventID, ts))
+	j.EventID = eventID
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", eventNotifierName, eventID)})
+	j.SetEnqueueAllScopes(true)
 
 	return j
 }
 
 func (j *eventNotifierJob) Run(ctx context.Context) {
-	if len(j.Events) == 0 {
-		return
-	}
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 	if j.q == nil {
 		j.q = j.env.RemoteQueue()
-	}
-	if j.q == nil || !j.q.Info().Started {
-		j.AddError(errors.New("evergreen environment not setup correctly"))
-		return
 	}
 	var err error
 	j.flags, err = evergreen.GetServiceFlags()
@@ -95,85 +83,66 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		return
 	}
 
-	events, err := event.FindEventsByIDs(j.Events)
+	e, err := event.FindByID(j.EventID)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
+	if e == nil {
+		j.AddError(errors.Errorf("event '%s' not found", j.EventID))
+		return
+	}
+	if !e.ProcessedAt.IsZero() {
+		return
+	}
 
-	j.AddError(j.dispatchLoop(ctx, events))
+	j.AddError(j.processEvent(ctx, e))
 }
 
-func (j *eventNotifierJob) dispatchLoop(ctx context.Context, events []event.EventLogEntry) error {
-	// TODO: in the future we may want to split up this job so
-	// that the parallelism is pushed up to amboy rather than down
-	// into this job.
+func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEntry) error {
 	startTime := time.Now()
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
 
-	input := make(chan event.EventLogEntry, len(events))
-	for _, e := range events {
-		select {
-		case input <- e:
-			continue
-		case <-ctx.Done():
-			return errors.New("operation aborted")
-		}
+	n, err := j.processEventTriggers(e)
+	catcher.Add(err)
+	catcher.Add(logger.MarkProcessed(e))
+
+	if err = notification.InsertMany(n...); err != nil {
+		// Consider that duplicate key errors are expected.
+		shouldLogError := !db.IsDuplicateKey(err)
+		grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{
+			"job_id":        j.ID(),
+			"job_type":      j.Type().Name,
+			"source":        "events-processing",
+			"notifications": n,
+			"message":       "can't insert notifications",
+		}))
+		catcher.AddWhen(shouldLogError, err)
 	}
-	close(input)
 
-	wg := &sync.WaitGroup{}
-	for i := 0; i < runtime.NumCPU(); i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer recovery.LogStackTraceAndContinue("problem during notification dispatch")
-
-			for e := range input {
-				n, err := j.tryProcessOneEvent(&e)
-				catcher.Add(err)
-				catcher.Add(logger.MarkProcessed(&e))
-
-				if err = notification.InsertMany(n...); err != nil {
-					// consider that duplicate key errors are expected
-					shouldLogError := !db.IsDuplicateKey(err)
-					grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{
-						"job_id":        j.ID(),
-						"job_type":      j.Type().Name,
-						"source":        "events-processing",
-						"notifications": n,
-						"message":       "can't insert notifications",
-					}))
-					catcher.AddWhen(shouldLogError, err)
-				}
-
-				catcher.Add(dispatchNotifications(ctx, n, j.q, j.flags))
-			}
-		}()
-	}
-	wg.Wait()
+	catcher.Add(dispatchNotifications(ctx, n, j.q, j.flags))
 
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
 
 	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job_type":   j.Type().Name,
-		"operation":  "events-processing",
-		"message":    "event-stats",
-		"start_time": startTime.String(),
-		"end_time":   endTime.String(),
-		"duration":   totalDuration.Seconds(),
-		"n":          len(events),
-		"has_errors": catcher.HasErrors(),
-		"num_errors": catcher.Len(),
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
+		"operation":     "events-processing",
+		"message":       "event-stats",
+		"event_id":      j.EventID,
+		"start_time":    startTime.String(),
+		"end_time":      endTime.String(),
+		"duration_secs": totalDuration.Seconds(),
+		"has_errors":    catcher.HasErrors(),
+		"num_errors":    catcher.Len(),
 	})
 
 	return catcher.Resolve()
 }
 
-func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
+func (j *eventNotifierJob) processEventTriggers(e *event.EventLogEntry) (n []notification.Notification, err error) {
 	if e == nil {
 		return nil, errors.New("nil event")
 	}
@@ -203,7 +172,7 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
 		"notifications": len(n),
-		"duration":      time.Now().Sub(startDebug),
+		"duration_secs": time.Now().Sub(startDebug).Seconds(),
 		"stat":          "notifications-from-event",
 	})
 
@@ -218,14 +187,14 @@ func (j *eventNotifierJob) tryProcessOneEvent(e *event.EventLogEntry) (n []notif
 
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job_type":   j.Type().Name,
-		"source":     "events-processing",
-		"message":    "project triggers evaluated",
-		"event_id":   e.ID,
-		"event_type": e.ResourceType,
-		"duration":   time.Now().Sub(startDebug),
-		"stat":       "eval-project-triggers",
+		"job_id":        j.ID(),
+		"job_type":      j.Type().Name,
+		"source":        "events-processing",
+		"message":       "project triggers evaluated",
+		"event_id":      e.ID,
+		"event_type":    e.ResourceType,
+		"duration_secs": time.Now().Sub(startDebug).Seconds(),
+		"stat":          "eval-project-triggers",
 	})
 	versions := []string{}
 	for _, version := range v {
@@ -286,10 +255,4 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 	}
 
 	return false
-}
-
-func sha256sum(ids []string) string {
-	sort.Strings(ids)
-	sum := sha256.Sum256([]byte(strings.Join(ids, "")))
-	return hex.EncodeToString(sum[:])
 }

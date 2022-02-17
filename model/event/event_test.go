@@ -246,6 +246,23 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 	})
 }
 
+func (s *eventSuite) TestFindByID() {
+	logger := NewDBEventLogger(AllLogCollection)
+	e := &EventLogEntry{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: ResourceTypeHost,
+		ResourceId:   "TEST1",
+		EventType:    "TEST2",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeHost),
+	}
+	s.Require().NoError(logger.LogEvent(e))
+	dbEvent, err := FindByID(e.ID)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbEvent)
+	s.Equal(e.ResourceId, dbEvent.ResourceId)
+}
+
 func (s *eventSuite) TestMarkProcessed() {
 	startTime := time.Now()
 

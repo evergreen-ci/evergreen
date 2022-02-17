@@ -568,11 +568,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
 		return
 	}
-	err = model.BbProjectIsValid(projectRef.Id, buildbaronConfig)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
-		return
-	}
 
 	i, err = responseRef.TaskAnnotationSettings.ToService()
 	if err != nil {
@@ -582,6 +577,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	taskannotationsConfig, ok := i.(evergreen.AnnotationsSettings)
 	if !ok {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task annotations config but was actually '%T'", i))
+		return
+	}
+
+	err = model.ValidateBbProject(projectRef.Id, buildbaronConfig, &taskannotationsConfig.FileTicketWebhook)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
 		return
 	}
 

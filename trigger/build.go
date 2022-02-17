@@ -71,8 +71,10 @@ func (t *buildTriggers) taskStatusToDesc() string {
 }
 
 func statusIsSystemFailure(status string) bool {
-	systemFailures := []string{evergreen.TaskSystemFailed, evergreen.TaskTimedOut,
-		evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut,
+	systemFailures := []string{evergreen.TaskSystemFailed,
+		evergreen.TaskTimedOut,
+		evergreen.TaskSystemUnresponse,
+		evergreen.TaskSystemTimedOut,
 		evergreen.TaskTestTimedOut,
 	}
 	return utility.StringSliceContains(systemFailures, status)

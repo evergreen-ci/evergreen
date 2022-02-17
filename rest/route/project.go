@@ -508,7 +508,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	err = dbModel.BbProjectIsValid(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings)
+	err = dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error validating build baron config"))
 	}
