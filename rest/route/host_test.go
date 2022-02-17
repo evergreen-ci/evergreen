@@ -1050,6 +1050,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 }
 
 func TestDisableHostHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection))
 	hostID := "h1"
 	connector := data.DBConnector{
 		DBHostConnector: data.DBHostConnector{},
@@ -1066,6 +1067,7 @@ func TestDisableHostHandler(t *testing.T) {
 	dh := disableHost{
 		sc:     &connector,
 		hostID: hostID,
+		env:    evergreen.GetEnvironment(),
 	}
 
 	responder := dh.Run(context.Background())

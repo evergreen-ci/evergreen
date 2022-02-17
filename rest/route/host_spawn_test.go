@@ -285,7 +285,7 @@ func TestDeleteVolumeHandler(t *testing.T) {
 }
 
 func TestAttachVolumeHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &attachVolumeHandler{
 		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
@@ -345,6 +345,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 }
 
 func TestDetachVolumeHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &detachVolumeHandler{
 		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
@@ -458,6 +459,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 }
 
 func TestGetVolumesHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumesHandler{
 		sc: &data.DBConnector{},
 	}
@@ -522,6 +524,7 @@ func TestGetVolumesHandler(t *testing.T) {
 }
 
 func TestGetVolumeByIDHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumeByIDHandler{
 		sc: &data.DBConnector{},
 	}
