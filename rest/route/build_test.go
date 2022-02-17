@@ -246,6 +246,7 @@ func TestBuildRestartSuite(t *testing.T) {
 }
 
 func (s *BuildRestartSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(build.Collection))
 	s.data = data.DBBuildConnector{}
 	builds := []build.Build{
 		{Id: "build1", Project: "branch"},

@@ -663,66 +663,74 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
-	expectedTime := time.Now().Add(time.Hour).Add(8 * time.Hour)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 8 * time.Hour
+	h.addHours = 1 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
-	expectedTime := time.Now().Add(time.Hour)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host1")
+	s.NoError(err)
+	expectedTime := foundHost.ExpirationTime
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host1"
-	h.addHours = 8 * time.Hour
+	h.addHours = 1 * time.Hour
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, resp.Status())
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host1")
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host1")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
-	expectedTime := time.Now().Add(time.Hour).Add(8 * time.Hour)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 8 * time.Hour
+	h.addHours = 1 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
-	expectedTime := time.Now().Add(time.Hour)
+	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	s.NoError(err)
+	expectedTime := foundHost.ExpirationTime
 
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 8 * time.Hour
+	h.addHours = 1 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
@@ -784,8 +792,8 @@ func getMockHostsConnector() *data.DBConnector {
 			StartedBy:      "user0",
 			Host:           "host1",
 			Status:         evergreen.HostTerminated,
-			CreationTime:   time.Now(),
-			ExpirationTime: time.Now().Add(time.Hour),
+			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -793,8 +801,8 @@ func getMockHostsConnector() *data.DBConnector {
 			StartedBy:      "user0",
 			Host:           "host2",
 			Status:         evergreen.HostRunning,
-			CreationTime:   time.Now(),
-			ExpirationTime: time.Now().Add(time.Hour),
+			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -802,8 +810,8 @@ func getMockHostsConnector() *data.DBConnector {
 			StartedBy:      "user0",
 			Host:           "host3",
 			Status:         evergreen.HostUninitialized,
-			CreationTime:   time.Now(),
-			ExpirationTime: time.Now().Add(time.Hour),
+			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro:         windowsDistro,
 		},
 		{
@@ -811,8 +819,8 @@ func getMockHostsConnector() *data.DBConnector {
 			StartedBy:      "user0",
 			Host:           "host4",
 			Status:         evergreen.HostRunning,
-			CreationTime:   time.Now(),
-			ExpirationTime: time.Now().Add(time.Hour),
+			CreationTime:   time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
+			ExpirationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC).Add(time.Hour),
 			Distro: distro.Distro{
 				Id:       "linux",
 				Arch:     "linux_amd64",
@@ -836,11 +844,17 @@ func getMockHostsConnector() *data.DBConnector {
 		Resources: []string{windowsDistro.Id},
 		Type:      evergreen.DistroResourceType,
 	}))
+	grip.Error(rm.AddScope(gimlet.Scope{
+		ID:        "root",
+		Resources: []string{"windows"},
+		Type:      evergreen.DistroResourceType,
+	}))
 	grip.Error(rm.UpdateRole(gimlet.Role{
 		ID:    "root",
 		Scope: "root",
 		Permissions: gimlet.Permissions{
-			evergreen.PermissionHosts: evergreen.HostsEdit.Value,
+			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
+			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
 		},
 	}))
 	return connector
@@ -853,7 +867,7 @@ func TestClearHostsHandler(t *testing.T) {
 		StartedBy:    "user0",
 		UserHost:     true,
 		Status:       evergreen.HostTerminated,
-		CreationTime: time.Now(),
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
 		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
 	}
 	h1 := host.Host{
@@ -861,7 +875,7 @@ func TestClearHostsHandler(t *testing.T) {
 		StartedBy:    "user0",
 		UserHost:     true,
 		Status:       evergreen.HostRunning,
-		CreationTime: time.Now(),
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
 		NoExpiration: true,
 		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
 	}
@@ -870,7 +884,7 @@ func TestClearHostsHandler(t *testing.T) {
 		StartedBy:    "user0",
 		UserHost:     true,
 		Status:       evergreen.HostRunning,
-		CreationTime: time.Now(),
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
 		Distro:       distro.Distro{Id: "ubuntu-1604", Provider: evergreen.ProviderNameMock},
 	}
 	h3 := host.Host{
@@ -878,7 +892,7 @@ func TestClearHostsHandler(t *testing.T) {
 		StartedBy:    "user0",
 		UserHost:     true,
 		Status:       evergreen.HostTerminated,
-		CreationTime: time.Now(),
+		CreationTime: time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC),
 		Distro:       distro.Distro{Id: "ubuntu-1804", Provider: evergreen.ProviderNameMock},
 	}
 	v1 := host.Volume{

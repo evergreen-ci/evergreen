@@ -35,14 +35,20 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.sc = &data.DBConnector{
 		MockCommitQueueConnector: data.MockCommitQueueConnector{},
 	}
+	s.NoError(db.ClearCollections(dbModel.ProjectRefCollection, patch.Collection, commitqueue.Collection))
 }
 
 func (s *CommitQueueSuite) TestParse() {
 	ctx := context.Background()
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-
-	patchID := mgobson.NewObjectId().Hex()
+	patchID := "aabbccddeeff001122334455"
 	projectID := "proj"
+	p1 := patch.Patch{Id: patch.NewId(patchID), Project: projectID}
+	projRef := dbModel.ProjectRef{
+		Id: "proj",
+	}
+	s.Require().NoError(projRef.Insert())
+	s.NoError(p1.Insert())
 	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{Id: &patchID, ProjectId: &projectID})
 	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
 	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
@@ -51,6 +57,16 @@ func (s *CommitQueueSuite) TestParse() {
 }
 
 func (s *CommitQueueSuite) TestGetCommitQueue() {
+	cq := &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	projRef := dbModel.ProjectRef{
+		Id: "mci",
+	}
+	s.Require().NoError(commitqueue.InsertQueue(cq))
+	s.Require().NoError(projRef.Insert())
+
 	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
 	route.project = "mci"
 	pos, err := s.sc.EnqueueItem(
@@ -74,30 +90,23 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
-	s.Equal(&model.APICommitQueue{
-		ProjectID: utility.ToStringPtr("mci"),
-		Queue: []model.APICommitQueueItem{
-			model.APICommitQueueItem{
-				Source: utility.ToStringPtr(commitqueue.SourceDiff),
-				Issue:  utility.ToStringPtr("1"),
-				Modules: []model.APIModule{
-					model.APIModule{
-						Module: utility.ToStringPtr("test_module"),
-						Issue:  utility.ToStringPtr("1234"),
-					},
-				},
-			},
-			model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff),
-				Issue: utility.ToStringPtr("2"),
-			},
-		},
-	}, response.Data())
+	cqResp := response.Data().(*model.APICommitQueue)
+	list := cqResp.Queue
+	s.Len(list, 2)
+	s.Equal(list[0].Issue, utility.ToStringPtr("1"))
+	s.Equal(list[1].Issue, utility.ToStringPtr("2"))
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
+	s.NoError(db.ClearCollections(commitqueue.Collection))
 	projRef := dbModel.ProjectRef{
 		Id: "mci",
 	}
+	cq := &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	s.Require().NoError(commitqueue.InsertQueue(cq))
 	s.NoError(projRef.Insert())
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
@@ -131,6 +140,18 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 }
 
 func (s *CommitQueueSuite) TestClearAll() {
+	s.NoError(db.ClearCollections(commitqueue.Collection))
+	cq0 := &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	cq1 := &commitqueue.CommitQueue{
+		ProjectID: "logkeeper",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	s.Require().NoError(commitqueue.InsertQueue(cq0))
+	s.Require().NoError(commitqueue.InsertQueue(cq1))
+
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
