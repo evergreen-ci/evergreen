@@ -133,8 +133,8 @@ type DbTestStatsId struct {
 	Date         time.Time `bson:"date"`
 }
 
-// dbTestStats represents the hourly_test_stats and daily_test_stats documents.
-type dbTestStats struct {
+// DbTestStats represents the hourly_test_stats and daily_test_stats documents.
+type DbTestStats struct {
 	Id              DbTestStatsId    `bson:"_id"`
 	NumPass         int              `bson:"num_pass"`
 	NumFail         int              `bson:"num_fail"`
@@ -143,8 +143,8 @@ type dbTestStats struct {
 	LastID          mgobson.ObjectId `bson:"last_id"`
 }
 
-func (d *dbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
-func (d *dbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
+func (d *DbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *DbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the test stats id struct
@@ -157,12 +157,12 @@ var (
 	dbTestStatsIdDateKey         = bsonutil.MustHaveTag(DbTestStatsId{}, "Date")
 
 	// BSON fields for the test stats struct
-	dbTestStatsIdKey              = bsonutil.MustHaveTag(dbTestStats{}, "Id")
-	dbTestStatsNumPassKey         = bsonutil.MustHaveTag(dbTestStats{}, "NumPass")
-	dbTestStatsNumFailKey         = bsonutil.MustHaveTag(dbTestStats{}, "NumFail")
-	dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(dbTestStats{}, "AvgDurationPass")
-	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(dbTestStats{}, "LastUpdate")
-	dbTestStatsLastIDKey          = bsonutil.MustHaveTag(dbTestStats{}, "LastID")
+	dbTestStatsIdKey              = bsonutil.MustHaveTag(DbTestStats{}, "Id")
+	dbTestStatsNumPassKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumPass")
+	dbTestStatsNumFailKey         = bsonutil.MustHaveTag(DbTestStats{}, "NumFail")
+	dbTestStatsAvgDurationPassKey = bsonutil.MustHaveTag(DbTestStats{}, "AvgDurationPass")
+	dbTestStatsLastUpdateKey      = bsonutil.MustHaveTag(DbTestStats{}, "LastUpdate")
+	dbTestStatsLastIDKey          = bsonutil.MustHaveTag(DbTestStats{}, "LastID")
 
 	// BSON dotted field names for test stats id elements
 	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
@@ -1057,8 +1057,8 @@ func makeSum(condition bson.M) bson.M {
 // Functions to access pre-computed stats documents for testing. //
 ///////////////////////////////////////////////////////////////////
 
-func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
-	doc := dbTestStats{}
+func GetDailyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
+	doc := DbTestStats{}
 	q := db.Query(bson.M{dbTestStatsIdKey: id})
 	err := db.FindOneQ(DailyTestStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
@@ -1067,8 +1067,8 @@ func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	return &doc, err
 }
 
-func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
-	doc := dbTestStats{}
+func GetHourlyTestDoc(id DbTestStatsId) (*DbTestStats, error) {
+	doc := DbTestStats{}
 	q := db.Query(bson.M{dbTestStatsIdKey: id})
 	err := db.FindOneQ(HourlyTestStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
