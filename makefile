@@ -385,7 +385,7 @@ mongodb/.get-mongodb:
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
 	@echo "waiting for mongod to start up"
 start-mongod-auth:mongodb/.get-mongodb
 	./mongodb/mongod --auth --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
@@ -393,6 +393,8 @@ start-mongod-auth:mongodb/.get-mongodb
 init-rs:mongodb/.get-mongodb
 	./mongodb/mongo --eval 'rs.initiate()'
 	sleep 30
+set-mongo-fcv:mongodb/.get-mongodb
+	./mongodb/mongo --eval 'db.adminCommand({setFeatureCompatibilityVersion: "$(FCV)"})'
 init-auth:mongodb/.get-mongodb
 	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
 check-mongod:mongodb/.get-mongodb

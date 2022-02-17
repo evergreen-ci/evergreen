@@ -248,6 +248,13 @@ functions:
       params:
         working_dir: evergreen
         command: make init-rs
+    - command: subprocess.exec
+      type: setup
+      params:
+        env:
+          FCV: "4.0"
+        working_dir: evergreen
+        command: make set-mongo-fcv
   setup-mongodb-auth:
     - command: subprocess.exec
       type: setup
