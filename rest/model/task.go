@@ -29,6 +29,7 @@ type APITask struct {
 	CreateTime              *time.Time          `json:"create_time"`
 	DispatchTime            *time.Time          `json:"dispatch_time"`
 	ScheduledTime           *time.Time          `json:"scheduled_time"`
+	ContainerAllocatedTime  *time.Time          `json:"container_allocated_time"`
 	StartTime               *time.Time          `json:"start_time"`
 	FinishTime              *time.Time          `json:"finish_time"`
 	IngestTime              *time.Time          `json:"ingest_time"`
@@ -207,6 +208,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			CreateTime:              ToTimePtr(v.CreateTime),
 			DispatchTime:            ToTimePtr(v.DispatchTime),
 			ScheduledTime:           ToTimePtr(v.ScheduledTime),
+			ContainerAllocatedTime:  ToTimePtr(v.ContainerAllocatedTime),
 			StartTime:               ToTimePtr(v.StartTime),
 			FinishTime:              ToTimePtr(v.FinishTime),
 			IngestTime:              ToTimePtr(v.IngestTime),
@@ -377,6 +379,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 	catcher.Add(err)
 	scheduledTime, err := FromTimePtr(ad.ScheduledTime)
 	catcher.Add(err)
+	containerAllocatedTime, err := FromTimePtr(ad.ContainerAllocatedTime)
+	catcher.Add(err)
 	startTime, err := FromTimePtr(ad.StartTime)
 	catcher.Add(err)
 	finishTime, err := FromTimePtr(ad.FinishTime)
@@ -392,6 +396,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 	st.CreateTime = createTime
 	st.DispatchTime = dispatchTime
 	st.ScheduledTime = scheduledTime
+	st.ContainerAllocatedTime = containerAllocatedTime
 	st.StartTime = startTime
 	st.FinishTime = finishTime
 	st.IngestTime = ingestTime

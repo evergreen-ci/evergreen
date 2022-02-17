@@ -31,6 +31,7 @@ const (
 	TaskDeactivated            = "TASK_DEACTIVATED"
 	TaskAbortRequest           = "TASK_ABORT_REQUEST"
 	TaskScheduled              = "TASK_SCHEDULED"
+	ContainerAllocated         = "CONTAINER_ALLOCATED"
 	TaskPriorityChanged        = "TASK_PRIORITY_CHANGED"
 	TaskJiraAlertCreated       = "TASK_JIRA_ALERT_CREATED"
 	TaskDependenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"
@@ -155,6 +156,11 @@ func LogManyTaskAbortRequests(taskIds []string, userId string) {
 func LogTaskScheduled(taskId string, execution int, scheduledTime time.Time) {
 	logTaskEvent(taskId, TaskScheduled,
 		TaskEventData{Execution: execution, Timestamp: scheduledTime})
+}
+
+func LogTaskContainerAllocated(taskId string, execution int, containerAllocatedTime time.Time) {
+	logTaskEvent(taskId, ContainerAllocated,
+		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})
 }
 
 func LogTaskDependenciesOverridden(taskId string, execution int, userID string) {

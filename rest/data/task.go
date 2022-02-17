@@ -430,6 +430,7 @@ func (mtc *MockTaskConnector) ResetTask(taskId, username string) error {
 			t.DispatchTime = utility.ZeroTime
 			t.StartTime = utility.ZeroTime
 			t.ScheduledTime = utility.ZeroTime
+			t.ContainerAllocatedTime = utility.ZeroTime
 			t.FinishTime = utility.ZeroTime
 			t.LocalTestResults = []task.TestResult{}
 			mtc.CachedTasks[ix] = t

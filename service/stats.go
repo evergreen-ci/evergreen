@@ -41,17 +41,18 @@ type UIProject struct {
 
 //UITask has the fields that are necessary to send over the wire for tasks
 type UITask struct {
-	Id            string    `json:"id"`
-	CreateTime    time.Time `json:"create_time"`
-	DispatchTime  time.Time `json:"dispatch_time"`
-	ScheduledTime time.Time `json:"scheduled_time"`
-	StartTime     time.Time `json:"start_time"`
-	FinishTime    time.Time `json:"finish_time"`
-	Version       string    `json:"version"`
-	Status        string    `json:"status"`
-	Host          string    `json:"host"`
-	Distro        string    `json:"distro"`
-	IsDisplay     bool      `json:"is_display"`
+	Id                     string    `json:"id"`
+	CreateTime             time.Time `json:"create_time"`
+	DispatchTime           time.Time `json:"dispatch_time"`
+	ScheduledTime          time.Time `json:"scheduled_time"`
+	ContainerAllocatedTime time.Time `json:"container_allocated_time,omitempty"`
+	StartTime              time.Time `json:"start_time"`
+	FinishTime             time.Time `json:"finish_time"`
+	Version                string    `json:"version"`
+	Status                 string    `json:"status"`
+	Host                   string    `json:"host"`
+	Distro                 string    `json:"distro"`
+	IsDisplay              bool      `json:"is_display"`
 }
 
 //UIBuild has the fields that are necessary to send over the wire for builds
@@ -198,10 +199,18 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var tasks []task.Task
 
-		fields := []string{task.CreateTimeKey, task.DispatchTimeKey,
-			task.ScheduledTimeKey, task.StartTimeKey, task.FinishTimeKey,
-			task.VersionKey, task.HostIdKey, task.StatusKey, task.HostIdKey,
-			task.DistroIdKey, task.DisplayOnlyKey}
+		fields := []string{task.CreateTimeKey,
+			task.DispatchTimeKey,
+			task.ScheduledTimeKey,
+			task.ContainerAllocatedTimeKey,
+			task.StartTimeKey,
+			task.FinishTimeKey,
+			task.VersionKey,
+			task.HostIdKey,
+			task.StatusKey,
+			task.HostIdKey,
+			task.DistroIdKey,
+			task.DisplayOnlyKey}
 
 		if beforeTaskId != "" {
 			var t *task.Task
