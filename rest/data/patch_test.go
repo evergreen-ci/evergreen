@@ -200,11 +200,11 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 		patches := []patch.Patch{
-			{Id: mgobson.ObjectIdHex(s.obj_ids[0])},
-			{Id: mgobson.ObjectIdHex(s.obj_ids[1])},
+			{Id: patch.NewId(s.obj_ids[0])},
+			{Id: patch.NewId(s.obj_ids[1])},
 		}
 
 		for _, p := range patches {
@@ -269,12 +269,12 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
 	s.setup = func() error {
 
-		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
 		patches := []patch.Patch{
-			{Id: mgobson.ObjectId(s.obj_ids[0]), Version: "version1"},
-			{Id: mgobson.ObjectId(s.obj_ids[1])},
+			{Id: patch.NewId(s.obj_ids[0]), Version: "version1"},
+			{Id: patch.NewId(s.obj_ids[1])},
 		}
 		for _, p := range patches {
 			s.NoError(p.Insert())
@@ -307,7 +307,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	if s.DB {
 		abortedPatch, err := s.ctx.(*DBConnector).DBPatchConnector.FindPatchById(s.obj_ids[0])
 		s.NoError(err)
-		s.Equal("user1", abortedPatch.Requester)
+		s.Equal("patch_request", *abortedPatch.Requester)
 	}
 
 	err = s.ctx.AbortPatch(s.obj_ids[1], "user1")
@@ -389,11 +389,11 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 		patches := []*patch.Patch{
-			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Version: s.obj_ids[0]},
-			{Id: mgobson.ObjectIdHex(s.obj_ids[1]), Version: s.obj_ids[1]},
+			{Id: patch.NewId(s.obj_ids[0]), Version: s.obj_ids[0]},
+			{Id: patch.NewId(s.obj_ids[1]), Version: s.obj_ids[1]},
 		}
 		task := task.Task{
 			Id:      "t1",
