@@ -191,6 +191,12 @@ type PatchConnectorFetchByIdSuite struct {
 
 func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByIdSuite)
+	s.ctx = &DBConnector{}
+	suite.Run(t, s)
+}
+
+func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
@@ -214,33 +220,8 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 		return db.Clear(patch.Collection)
 	}
 
-	suite.Run(t, s)
+	s.Require().NoError(s.setup())
 }
-
-func TestDBPatchConnectorFetchByIdSuite(t *testing.T) {
-	s := new(PatchConnectorFetchByIdSuite)
-	s.setup = func() error {
-
-		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
-
-		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
-		patches := []patch.Patch{
-			{Id: mgobson.ObjectId(s.obj_ids[0])},
-			{Id: mgobson.ObjectId(s.obj_ids[1])},
-		}
-		for _, p := range patches {
-			s.NoError(p.Insert())
-		}
-
-		return nil
-	}
-
-	s.teardown = func() error { return nil }
-
-	suite.Run(t, s)
-}
-
-func (s *PatchConnectorFetchByIdSuite) SetupSuite() { s.Require().NoError(s.setup()) }
 
 func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
@@ -280,35 +261,12 @@ type PatchConnectorAbortByIdSuite struct {
 
 func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
-	s.setup = func() error {
-		s.ctx = &DBConnector{}
-
-		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
-
-		patches := []*patch.Patch{
-			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Version: "version1"},
-			{Id: mgobson.ObjectIdHex(s.obj_ids[1])},
-		}
-
-		for _, p := range patches {
-			if err := p.Insert(); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
-	s.teardown = func() error {
-		return db.Clear(patch.Collection)
-	}
-
-	s.DB = false
+	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
-func TestDBPatchConnectorAbortByIdSuite(t *testing.T) {
-	s := new(PatchConnectorAbortByIdSuite)
+func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
 	s.setup = func() error {
 
 		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
@@ -328,10 +286,6 @@ func TestDBPatchConnectorAbortByIdSuite(t *testing.T) {
 	s.teardown = func() error { return nil }
 
 	s.DB = true
-	suite.Run(t, s)
-}
-
-func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 	s.Require().NoError(s.setup())
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
@@ -426,6 +380,12 @@ type PatchConnectorChangeStatusSuite struct {
 
 func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	s := new(PatchConnectorChangeStatusSuite)
+	s.ctx = &DBConnector{}
+	suite.Run(t, s)
+}
+
+func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection))
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
@@ -452,34 +412,6 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	}
 
 	s.DB = false
-	suite.Run(t, s)
-}
-
-func TestDBPatchConnectorChangeStatusSuite(t *testing.T) {
-	s := new(PatchConnectorChangeStatusSuite)
-	s.setup = func() error {
-
-		s.obj_ids = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
-
-		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
-		patches := []patch.Patch{
-			{Id: mgobson.ObjectId(s.obj_ids[0]), Version: s.obj_ids[0]},
-			{Id: mgobson.ObjectId(s.obj_ids[1]), Version: s.obj_ids[1]},
-		}
-		for _, p := range patches {
-			s.NoError(p.Insert())
-		}
-
-		return nil
-	}
-
-	s.teardown = func() error { return nil }
-
-	s.DB = true
-	suite.Run(t, s)
-}
-
-func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 	s.Require().NoError(s.setup())
 }
 
@@ -527,29 +459,11 @@ type PatchConnectorFetchByUserSuite struct {
 func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
 	s.ctx = &DBConnector{}
-	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
-
-	assert.NoError(t, db.Clear(patch.Collection))
-
-	patches := []*patch.Patch{
-		{Author: "user1", CreateTime: s.time},
-		{Author: "user2", CreateTime: s.time.Add(time.Second * 2)},
-		{Author: "user1", CreateTime: s.time.Add(time.Second * 4)},
-		{Author: "user1", CreateTime: s.time.Add(time.Second * 6)},
-		{Author: "user2", CreateTime: s.time.Add(time.Second * 8)},
-		{Author: "user1", CreateTime: s.time.Add(time.Second * 10)},
-	}
-
-	for _, p := range patches {
-		assert.NoError(t, p.Insert())
-	}
-
 	suite.Run(t, s)
 }
 
-func TestDBPatchConnectorFetchByUserSuite(t *testing.T) {
-	s := new(PatchConnectorFetchByUserSuite)
-
+func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection))
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
 	user2 := "user2"
@@ -570,8 +484,6 @@ func TestDBPatchConnectorFetchByUserSuite(t *testing.T) {
 	for _, p := range patches {
 		s.NoError(p.Insert())
 	}
-
-	suite.Run(t, s)
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
@@ -664,6 +576,7 @@ func TestPatchConnectorFindByUserPatchNameStatusesCommitQueue(t *testing.T) {
 }
 
 func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection))
 	s.Require().NoError(s.setup())
 }
 

@@ -104,11 +104,6 @@ func (pc *MockCommitQueueConnector) MockIsAuthorizedToPatchAndMerge(ctx context.
 		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
 	}
 
-	requiredOrganization := settings.GithubPRCreatorOrg
-	if requiredOrganization == "" {
-		return false, errors.New("no GitHub PR creator organization configured")
-	}
-
 	permission, ok := pc.UserPermissions[args]
 	if !ok {
 		return false, nil
