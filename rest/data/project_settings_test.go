@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"

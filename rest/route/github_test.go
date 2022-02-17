@@ -3,6 +3,11 @@ package route
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
+	"net/http"
+	"path/filepath"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -19,10 +24,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"io/ioutil"
-	"net/http"
-	"path/filepath"
-	"testing"
 )
 
 type GithubWebhookRouteSuite struct {

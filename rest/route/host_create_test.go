@@ -460,6 +460,7 @@ func TestGetDockerLogs(t *testing.T) {
 	assert.NoError(err)
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, logs)
+	assert.NoError(err)
 	assert.Contains(buf.String(), "this is a log message")
 
 }

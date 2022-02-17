@@ -2,6 +2,11 @@ package route
 
 import (
 	"context"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -18,10 +23,6 @@ import (
 	sns "github.com/robbiet480/go.sns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestBaseSNSRoute(t *testing.T) {
