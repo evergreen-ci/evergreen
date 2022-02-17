@@ -85,7 +85,6 @@ func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
 		"host2": hostStatus{Status: "decommissioned"},
-		"host4": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -111,11 +110,10 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]hostStatus{
 		"host3": hostStatus{Status: "decommissioned"},
-		"host2": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 }
@@ -438,7 +436,7 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
@@ -563,7 +561,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -707,7 +705,7 @@ func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	h.addHours = 1 * time.Hour
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())

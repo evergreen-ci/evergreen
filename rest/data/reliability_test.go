@@ -44,7 +44,6 @@ func TestMockGetTaskReliability(t *testing.T) {
 	assert.Len(scores, 0)
 
 	// Add stats
-	//mock.SetTaskReliabilityScores("task_", 102)
 	day := time.Now()
 	tasks := []string{}
 	for i := 0; i < 102; i++ {
