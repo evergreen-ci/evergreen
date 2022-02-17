@@ -385,21 +385,18 @@ mongodb/.get-mongodb:
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
-	@echo "waiting for mongod to start up"
-start-mongod-auth:mongodb/.get-mongodb
-	./mongodb/mongod --auth --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
-	@echo "starting up mongod with auth"
-init-rs:mongodb/.get-mongodb
-	./mongodb/mongo --eval 'rs.initiate()'
-	sleep 30
-set-mongo-fcv:mongodb/.get-mongodb
-	./mongodb/mongo --eval 'db.adminCommand({setFeatureCompatibilityVersion: "$(FCV)"})'
-init-auth:mongodb/.get-mongodb
-	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
-check-mongod:mongodb/.get-mongodb
+	./mongodb/mongod $(if $(AUTH_ENABLED),--auth,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
+configure-mongod:mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
+	./mongodb/mongo --eval 'rs.initiate()'
+ifdef $(FCV)
+	./mongodb/mongo --eval 'db.adminCommand({setFeatureCompatibilityVersion: "$(FCV)"})'
+endif
+ifdef $(AUTH_ENABLED)
+	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
+endif
+	@echo "configured mongod"
 # end mongodb targets
 
 

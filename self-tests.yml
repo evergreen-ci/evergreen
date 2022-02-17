@@ -238,53 +238,16 @@ functions:
         background: true
         working_dir: evergreen
         command: make start-mongod
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make check-mongod
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make init-rs
-    - command: subprocess.exec
-      type: setup
-      params:
         env:
+          AUTH_ENABLED: ${with_auth}
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: evergreen
+        command: make configure-mongod
+        env:
+          AUTH_ENABLED: ${with_auth}
           FCV: "4.0"
-        working_dir: evergreen
-        command: make set-mongo-fcv
-  setup-mongodb-auth:
-    - command: subprocess.exec
-      type: setup
-      params:
-        env:
-          MONGODB_URL: ${mongodb_url}
-          DECOMPRESS: ${decompress}
-        working_dir: evergreen
-        command: make get-mongodb
-    - command: subprocess.exec
-      type: setup
-      params:
-        background: true
-        working_dir: evergreen
-        command: make start-mongod-auth
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make check-mongod
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make init-rs
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen
-        command: make init-auth
 
   setup-docker-host:
     - command: host.create
@@ -588,7 +551,8 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: setup-credentials
-      - func: setup-mongodb-auth
+      - func: setup-mongodb
+        vars: { with_auth: "1"}
       - func: run-make
         vars:
           target: "test-evergreen"
