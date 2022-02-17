@@ -610,7 +610,7 @@ buildvariants:
       nodebin: /opt/node/bin
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
     tasks:
       - name: "dist-and-upload-clis"
       - name: "dist-staging"
@@ -625,12 +625,12 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     run_on:
-      - archlinux-new-small
-      - archlinux-new-large
+      - ubuntu1604-test
+      - ubuntu1604-build
     expansions:
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -654,25 +654,25 @@ buildvariants:
     expansions:
       GOROOT: c:/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2012plus-4.2.18.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
 
-  - name: ubuntu1604-arm64
-    display_name: Ubuntu 16.04 ARM
+  - name: ubuntu1804-arm64
+    display_name: Ubuntu 18.04 ARM
     batchtime: 2880
     run_on:
-      - ubuntu1604-arm64-large
+      - ubuntu1804-arm64-large
     expansions:
       xc_build: yes
       goarch: arm64
       goos: linux
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.2.18.tgz
     tasks:
       - name: ".agent .test"
 
@@ -683,7 +683,7 @@ buildvariants:
       - macos-1014
     expansions:
       GOROOT: /opt/golang/go1.16
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.18.tgz
     tasks:
       - name: ".agent .test"
       - name: ".cli .test"
