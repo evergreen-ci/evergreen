@@ -360,7 +360,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	for _, param := range v.Parameters {
-		// We will overwite empty values here since these were explicitly user-specified.
+		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value
 	}
 
