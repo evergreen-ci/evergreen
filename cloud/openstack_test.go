@@ -32,17 +32,18 @@ func (s *OpenStackSuite) SetupTest() {
 		client: s.client,
 	}
 
-	s.distro = distro.Distro{
-		Id:       "host",
-		Provider: evergreen.ProviderNameOpenstack,
-		ProviderSettingsList: []*birch.Document{birch.NewDocument(
-			birch.EC.String("image_name", "image"),
-			birch.EC.String("flavor_name", "flavor"),
-			birch.EC.String("key_name", "key"),
-			birch.EC.String("security_group", "group"),
-		)},
+	s.hostOpts = host.CreateOptions{
+		Distro: distro.Distro{
+			Id:       "host",
+			Provider: evergreen.ProviderNameOpenstack,
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("image_name", "image"),
+				birch.EC.String("flavor_name", "flavor"),
+				birch.EC.String("key_name", "key"),
+				birch.EC.String("security_group", "group"),
+			)},
+		},
 	}
-	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *OpenStackSuite) TestValidateSettings() {
@@ -153,14 +154,14 @@ func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostA := host.NewIntent(s.hostOpts)
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostB := host.NewIntent(s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -182,7 +183,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	myHost := host.NewIntent(s.hostOpts)
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -230,24 +231,24 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
-	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
+	h := host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := distro.Distro{Provider: evergreen.ProviderNameOpenstack}
-	h = host.NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameOpenstack}
+	h = host.NewIntent(s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsInvalid := distro.Distro{
+	s.hostOpts.Distro = distro.Distro{
 		Provider:             evergreen.ProviderNameOpenstack,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("image_name", ""))},
 	}
-	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
+	h = host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
@@ -260,7 +261,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostOne := host.NewIntent(s.hostOpts)
 
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
@@ -268,7 +269,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 	_, err = hostOne.Upsert()
 	s.NoError(err)
 
-	hostTwo := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostTwo := host.NewIntent(s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -295,7 +296,8 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	h := host.NewIntent(dist, dist.GenerateName(), dist.Provider, s.hostOpts)
+	s.hostOpts.Distro = dist
+	h := host.NewIntent(s.hostOpts)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
@@ -303,7 +305,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	s.NoError(err)
 
 	mock.failCreate = true
-	h = host.NewIntent(dist, dist.GenerateName(), dist.Provider, s.hostOpts)
+	h = host.NewIntent(s.hostOpts)
 
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
