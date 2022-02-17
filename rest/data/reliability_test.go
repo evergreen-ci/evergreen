@@ -81,7 +81,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 
 	var date *string
 	for i, doc := range scores {
-		assert.Contains("task_", *doc.TaskName)
+		assert.Contains(*doc.TaskName, "task_")
 		assert.Equal("variant", *doc.BuildVariant)
 		assert.Equal("distro", *doc.Distro)
 		if i == 0 {

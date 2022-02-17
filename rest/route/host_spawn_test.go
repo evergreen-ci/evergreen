@@ -207,7 +207,7 @@ func TestHostStartHandler(t *testing.T) {
 	subscriptionConnector := h.sc.(*data.DBConnector).DBSubscriptionConnector
 	subscriptions, err := subscriptionConnector.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
-	assert.Len(t, subscriptions, 1)
+	assert.Len(t, subscriptions, 2)
 }
 
 func TestCreateVolumeHandler(t *testing.T) {

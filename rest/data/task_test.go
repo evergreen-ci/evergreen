@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -37,6 +38,10 @@ type TaskConnectorFetchByIdSuite struct {
 
 func TestTaskConnectorFetchByIdSuite(t *testing.T) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s := &TaskConnectorFetchByIdSuite{
 		ctx: &DBConnector{},
 	}
@@ -216,6 +221,10 @@ type TaskConnectorFetchByBuildSuite struct {
 
 func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByBuildSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.ctx = &DBConnector{}
 
 	assert.NoError(t, db.Clear(task.Collection))
@@ -363,6 +372,10 @@ type TaskConnectorFetchByProjectAndCommitSuite struct {
 
 func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByProjectAndCommitSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.ctx = &DBConnector{}
 
 	assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
@@ -531,6 +544,10 @@ type TaskConnectorAbortTaskSuite struct {
 
 func TestDBTaskConnectorAbortTaskSuite(t *testing.T) {
 	s := new(TaskConnectorAbortTaskSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.ctx = &DBConnector{
 		DBTaskConnector: DBTaskConnector{},
 	}
@@ -569,9 +586,13 @@ func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
 
 func TestCheckTaskSecret(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection))
 
-	ctx := &DBConnector{}
+	sc := &DBConnector{}
 
 	task := task.Task{
 		Id:     "task1",
@@ -584,12 +605,12 @@ func TestCheckTaskSecret(t *testing.T) {
 			evergreen.TaskHeader: []string{"task1"},
 		},
 	}
-	code, err := ctx.CheckTaskSecret("task1", r)
+	code, err := sc.CheckTaskSecret("task1", r)
 	assert.Error(err)
 	assert.Equal(http.StatusUnauthorized, code)
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
-	code, err = ctx.CheckTaskSecret("task1", r)
+	code, err = sc.CheckTaskSecret("task1", r)
 	assert.NoError(err)
 	assert.Equal(http.StatusOK, code)
 }
