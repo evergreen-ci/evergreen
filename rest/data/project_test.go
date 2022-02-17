@@ -268,7 +268,9 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 			{Id: "projectD", Private: utility.FalsePtr()},
 			{Id: "projectE", Private: utility.FalsePtr()},
 			{Id: "projectF", Private: utility.TruePtr()},
-			{Id: projectId},
+			{Id: projectId, CommitQueue: model.CommitQueueParams{
+				Enabled: utility.TruePtr(),
+			}},
 		}
 		for _, proj := range projects {
 			s.NoError(proj.Insert())

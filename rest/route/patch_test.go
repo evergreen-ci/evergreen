@@ -439,7 +439,7 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.Equal(http.StatusOK, res.Status())
 	restartedPatch, err := s.sc.FindPatchById(s.objIds[0])
 	s.NoError(err)
-	s.Equal("user1", restartedPatch.Requester)
+	s.Equal("patch_request", *restartedPatch.Requester)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -457,6 +457,15 @@ type PatchesByUserSuite struct {
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
+
+	suite.Run(t, s)
+}
+
+func (s *PatchesByUserSuite) SetupTest() {
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.route = &patchesByUserHandler{
+		sc: s.sc,
+	}
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
 	user1 := "user1"
 	user2 := "user2"
@@ -480,15 +489,6 @@ func TestPatchesByUserSuite(t *testing.T) {
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
-	}
-
-	suite.Run(t, s)
-}
-
-func (s *PatchesByUserSuite) SetupTest() {
-	s.NoError(db.ClearCollections(patch.Collection))
-	s.route = &patchesByUserHandler{
-		sc: s.sc,
 	}
 }
 
