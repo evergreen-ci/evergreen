@@ -566,16 +566,18 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 }
 
 func TestPatchRawHandler(t *testing.T) {
+	patchId := "aabbccddeeff001122334455"
+	patchToInsert := patch.Patch{
+		Id: patch.NewId(patchId),
+	}
+	assert.NoError(t, patchToInsert.Insert())
+
 	route := &patchRawHandler{
 		sc: &data.DBConnector{
 			URL:              "https://evergreen.example.net",
-			DBPatchConnector: data.DBPatchConnector{
-				//CachedRawPatches: map[string]string{
-				//	"":        "main diff",
-				//	"module1": "module1 diff",
-				//},
-			},
+			DBPatchConnector: data.DBPatchConnector{},
 		},
+		patchID: patchId,
 	}
 
 	response := route.Run(context.Background())
