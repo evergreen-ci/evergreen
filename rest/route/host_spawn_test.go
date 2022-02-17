@@ -168,6 +168,7 @@ func TestHostStopHandler(t *testing.T) {
 }
 
 func TestHostStartHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStartHandler{

@@ -44,12 +44,12 @@ func TestPatchByIdSuite(t *testing.T) {
 
 func (s *PatchByIdSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 	s.data = data.DBPatchConnector{}
 	patches := []patch.Patch{
-		{Id: mgobson.ObjectId(s.objIds[0])},
-		{Id: mgobson.ObjectId(s.objIds[1])},
+		{Id: patch.NewId(s.objIds[0])},
+		{Id: patch.NewId(s.objIds[1])},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
@@ -252,7 +252,7 @@ func TestPatchAbortSuite(t *testing.T) {
 
 func (s *PatchAbortSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
 
 	s.data = data.DBPatchConnector{}
@@ -260,8 +260,8 @@ func (s *PatchAbortSuite) SetupSuite() {
 		DBPatchConnector: s.data,
 	}
 	patches := []patch.Patch{
-		{Id: mgobson.ObjectId(s.objIds[0]), Version: version1},
-		{Id: mgobson.ObjectId(s.objIds[1])},
+		{Id: patch.NewId(s.objIds[0]), Version: version1},
+		{Id: patch.NewId(s.objIds[1])},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
@@ -282,8 +282,8 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.NoError(err)
 	abortedPatch1, err := s.data.FindPatchById(s.objIds[1])
 	s.NoError(err)
-	s.Equal("user1", abortedPatch0.Requester)
-	s.Equal("", abortedPatch1.Requester)
+	s.Equal("patch_request", *abortedPatch0.Requester)
+	s.Equal("", *abortedPatch1.Requester)
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
@@ -295,8 +295,8 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.NoError(err)
 	abortedPatch1, err = s.data.FindPatchById(s.objIds[1])
 	s.NoError(err)
-	s.Equal("user1", abortedPatch0.Requester)
-	s.Equal("", abortedPatch1.Requester)
+	s.Equal("patch_request", *abortedPatch0.Requester)
+	s.Equal("", *abortedPatch1.Requester)
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
@@ -340,15 +340,15 @@ func TestPatchesChangeStatusSuite(t *testing.T) {
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 	s.data = data.DBPatchConnector{}
 	s.sc = &data.DBConnector{
 		DBPatchConnector: s.data,
 	}
 	patches := []patch.Patch{
-		{Id: mgobson.ObjectId(s.objIds[0]), Project: "proj"},
-		{Id: mgobson.ObjectId(s.objIds[1]), Project: "proj"},
+		{Id: patch.NewId(s.objIds[0]), Project: "proj"},
+		{Id: patch.NewId(s.objIds[1]), Project: "proj"},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
@@ -398,7 +398,7 @@ func TestPatchRestartSuite(t *testing.T) {
 
 func (s *PatchRestartSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection))
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
 
 	s.patchData = data.DBPatchConnector{}
@@ -416,8 +416,8 @@ func (s *PatchRestartSuite) SetupSuite() {
 		},
 	}
 	patches := []patch.Patch{
-		{Id: mgobson.ObjectId(s.objIds[0]), Version: version1},
-		{Id: mgobson.ObjectId(s.objIds[1])},
+		{Id: patch.NewId(s.objIds[0]), Version: version1},
+		{Id: patch.NewId(s.objIds[1])},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
@@ -457,7 +457,6 @@ type PatchesByUserSuite struct {
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
-	s.NoError(db.ClearCollections(patch.Collection))
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
 	user1 := "user1"
 	user2 := "user2"
@@ -487,6 +486,7 @@ func TestPatchesByUserSuite(t *testing.T) {
 }
 
 func (s *PatchesByUserSuite) SetupTest() {
+	s.NoError(db.ClearCollections(patch.Collection))
 	s.route = &patchesByUserHandler{
 		sc: s.sc,
 	}

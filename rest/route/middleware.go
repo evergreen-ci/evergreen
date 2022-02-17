@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/google/go-github/v34/github"
 	"net/http"
 	"strconv"
 	"strings"
@@ -394,6 +395,103 @@ func NewCommitQueueItemOwnerMiddleware(sc data.Connector) gimlet.Middleware {
 	return &CommitQueueItemOwnerMiddleware{
 		sc: sc,
 	}
+}
+
+func NewMockCommitQueueItemOwnerMiddleware(sc data.Connector) gimlet.Middleware {
+	return &MockCommitQueueItemOwnerMiddleware{
+		sc: sc,
+	}
+}
+
+type MockCommitQueueItemOwnerMiddleware struct {
+	sc data.Connector
+}
+
+func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	user := MustHaveUser(ctx)
+	opCtx := MustHaveProjectContext(ctx)
+	projRef, err := opCtx.GetProjectRef()
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}))
+		return
+	}
+
+	if !projRef.CommitQueue.IsEnabled() {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Commit queue is not enabled for project",
+		}))
+		return
+	}
+
+	// A superuser or project admin is authorized
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	})
+	if isAdmin {
+		next(rw, r)
+		return
+	}
+
+	// The owner of the patch can also pass
+	vars := gimlet.GetVars(r)
+	itemId, ok := vars["item"]
+	if !ok {
+		itemId, ok = vars["patch_id"]
+	}
+	if !ok || itemId == "" {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "No item provided",
+		}))
+		return
+	}
+
+	if bson.IsObjectIdHex(itemId) {
+		patch, err := m.sc.FindPatchById(itemId)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
+			return
+		}
+		if user.Id != *patch.Author {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Not authorized",
+			}))
+			return
+		}
+	} else if _, err := strconv.Atoi(itemId); err == nil {
+		pr := &github.PullRequest{
+			Base: &github.PullRequestBranch{
+				SHA: github.String("abcdef"),
+			},
+			User: &github.User{
+				ID: github.Int64(0),
+			},
+			Number:         github.Int(1),
+			MergeCommitSHA: github.String("abcdef"),
+		}
+
+		var githubUID int
+		if pr.User != nil && pr.User.ID != nil {
+			githubUID = int(*pr.User.ID)
+		}
+		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Not authorized",
+			}))
+			return
+		}
+	}
+	next(rw, r)
 }
 
 type CommitQueueItemOwnerMiddleware struct {

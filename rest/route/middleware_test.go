@@ -154,7 +154,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -177,6 +177,10 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		},
 	}
 	assert.NoError(commitqueue.InsertQueue(&cq))
+	p := patch.Patch{
+		Id: patch.NewId("aabbccddeeff112233445566"),
+	}
+	assert.NoError(p.Insert())
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -192,11 +196,11 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"item":       "1234",
+		"item":       "aabbccddeeff112233445566",
 	})
 
 	mockDataConnector := &data.DBConnector{}
-	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	mw := NewMockCommitQueueItemOwnerMiddleware(mockDataConnector)
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -247,7 +251,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 	})
 
 	mockDataConnector := &data.DBConnector{}
-	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	mw := NewMockCommitQueueItemOwnerMiddleware(mockDataConnector)
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
