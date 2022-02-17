@@ -573,8 +573,8 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     run_on:
-      - ubuntu1604-test
-      - ubuntu1604-build
+      - ubuntu1604-small
+      - ubuntu1604-large
     expansions:
       goos: linux
       goarch: amd64
@@ -596,8 +596,8 @@ buildvariants:
   - name: race-detector
     display_name: Race Detector
     run_on:
-      - ubuntu1604-test
-      - ubuntu1604-build
+      - ubuntu1604-small
+      - ubuntu1604-large
     expansions:
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
