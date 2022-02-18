@@ -397,10 +397,12 @@ func TestPodAuthMiddleware(t *testing.T) {
 	m := NewPodAuthMiddleware(&data.DBConnector{})
 	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
+			s, err := p.GetSecret()
+			require.NoError(t, err)
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{p.ID},
-					evergreen.PodSecretHeader: []string{p.Secret.Value},
+					evergreen.PodSecretHeader: []string{s.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -426,19 +428,23 @@ func TestPodAuthMiddleware(t *testing.T) {
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithoutPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
+			s, err := p.GetSecret()
+			require.NoError(t, err)
 			r := &http.Request{
 				Header: http.Header{
-					evergreen.PodSecretHeader: []string{p.Secret.Value},
+					evergreen.PodSecretHeader: []string{s.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithInvalidPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
+			s, err := p.GetSecret()
+			require.NoError(t, err)
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{"foo"},
-					evergreen.PodSecretHeader: []string{p.Secret.Value},
+					evergreen.PodSecretHeader: []string{s.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -452,11 +458,16 @@ func TestPodAuthMiddleware(t *testing.T) {
 			}()
 			p := &pod.Pod{
 				ID: "id",
-				Secret: pod.Secret{
-					Name:   "name",
-					Value:  "value",
-					Exists: utility.FalsePtr(),
-					Owned:  utility.TruePtr(),
+				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
+					EnvSecrets: map[string]pod.Secret{
+						pod.PodSecretEnvVar: {
+							Name:       "name",
+							Value:      "value",
+							ExternalID: "external_id",
+							Exists:     utility.FalsePtr(),
+							Owned:      utility.TruePtr(),
+						},
+					},
 				},
 			}
 			require.NoError(t, p.Insert())
