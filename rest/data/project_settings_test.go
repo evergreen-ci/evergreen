@@ -250,6 +250,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
+			assert.Equal(t, "myRepoId", utility.FromStringPtr(settings.ProjectRef.RepoRefId))
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
