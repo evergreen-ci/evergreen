@@ -259,6 +259,13 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
+
+		if version.Message != patchUpdateReq.Description {
+			if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+				return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
+			}
+		}
+
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
