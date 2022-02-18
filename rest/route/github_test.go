@@ -38,7 +38,6 @@ type GithubWebhookRouteSuite struct {
 	commitQueueCommentBody []byte
 	retryCommentBody       []byte
 	patchCommentBody       []byte
-	mock                   *mockGithubHookApi
 	h                      *githubHookApi
 	queue                  amboy.Queue
 	env                    evergreen.Environment
@@ -72,9 +71,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.sc = &data.DBConnector{
 		DBPatchIntentConnector: data.DBPatchIntentConnector{},
 	}
+	s.mockSc = &data.MockDBConnector{
+		MockCommitQueueConnector: data.MockCommitQueueConnector{},
+	}
 
-	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
-	s.mockRm = makeMockGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
+	s.rm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
@@ -95,8 +96,6 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
-	s.True(ok)
-	s.mock, ok = s.mockRm.Factory().(*mockGithubHookApi)
 	s.True(ok)
 }
 
@@ -249,10 +248,10 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	}
 	s.NotNil(event)
 	s.NoError(err)
-	s.mock.event = event
-	s.mock.msgID = "1"
+	s.h.event = event
+	s.h.msgID = "1"
 	ctx := context.Background()
-	resp := s.mock.Run(ctx)
+	resp := s.h.Run(ctx)
 	if s.NotNil(resp) {
 		s.Equal(http.StatusOK, resp.Status())
 	}
@@ -401,7 +400,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	s.NoError(alias.Upsert())
 	s.NoError(pRef.Insert())
 
-	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
+	v, err := s.h.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
 	s.NoError(err)
 	s.NotNil(v)
 }

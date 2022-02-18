@@ -328,6 +328,10 @@ buildvariants:
 
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
 		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))

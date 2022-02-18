@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,7 +105,7 @@ func TestPatchesByProjectSuite(t *testing.T) {
 
 func (s *PatchesByProjectSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
-	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	proj1 := "project1"
 	proj1Identifier := "project_one"
 	proj2 := "project2"
@@ -251,17 +252,41 @@ func TestPatchAbortSuite(t *testing.T) {
 }
 
 func (s *PatchAbortSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(db.ClearCollections(patch.Collection, task.Collection, serviceModel.VersionCollection, build.Collection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
+	version2 := "version2"
 
 	s.data = data.DBPatchConnector{}
 	s.sc = &data.DBConnector{
 		DBPatchConnector: s.data,
 	}
 	patches := []patch.Patch{
-		{Id: patch.NewId(s.objIds[0]), Version: version1},
-		{Id: patch.NewId(s.objIds[1])},
+		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true},
+		{Id: patch.NewId(s.objIds[1]), Activated: true},
+	}
+	versions := []*serviceModel.Version{
+		{Id: version1},
+		{Id: version2},
+	}
+
+	tasks := []*task.Task{
+		{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task2", Version: "version2", Aborted: false, Status: evergreen.TaskDispatched},
+	}
+
+	builds := []*build.Build{
+		{Id: "build1"},
+	}
+
+	for _, item := range versions {
+		s.NoError(item.Insert())
+	}
+	for _, item := range tasks {
+		s.NoError(item.Insert())
+	}
+	for _, item := range builds {
+		s.NoError(item.Insert())
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
@@ -278,25 +303,27 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	abortedPatch0, err := s.data.FindPatchById(s.objIds[0])
+	task1, err := task.FindOneId("task1")
 	s.NoError(err)
-	abortedPatch1, err := s.data.FindPatchById(s.objIds[1])
+	s.True(task1.Aborted)
+	task2, err := task.FindOneId("task2")
 	s.NoError(err)
-	s.Equal("patch_request", *abortedPatch0.Requester)
-	s.Equal("", *abortedPatch1.Requester)
+	s.False(task2.Aborted)
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 
+	rm.patchId = s.objIds[1]
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	abortedPatch0, err = s.data.FindPatchById(s.objIds[0])
+
+	task1, err = task.FindOneId("task1")
 	s.NoError(err)
-	abortedPatch1, err = s.data.FindPatchById(s.objIds[1])
+	s.True(task1.Aborted)
+	task2, err = task.FindOneId("task2")
 	s.NoError(err)
-	s.Equal("patch_request", *abortedPatch0.Requester)
-	s.Equal("", *abortedPatch1.Requester)
+	s.True(task2.Aborted)
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
@@ -339,7 +366,7 @@ func TestPatchesChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 	s.data = data.DBPatchConnector{}
@@ -356,6 +383,11 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 }
 
 func (s *PatchesChangeStatusSuite) TestChangeStatus() {
+	p := serviceModel.ProjectRef{
+		Id:         "proj",
+		Identifier: "proj",
+	}
+	s.NoError(p.Insert())
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	env := testutil.NewEnvironment(ctx, s.T())
@@ -466,7 +498,7 @@ func (s *PatchesByUserSuite) SetupTest() {
 	s.route = &patchesByUserHandler{
 		sc: s.sc,
 	}
-	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
 	user2 := "user2"
 	nowPlus2 := s.now.Add(time.Second * 2)
@@ -566,9 +598,31 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 }
 
 func TestPatchRawHandler(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
+	patchString := `main diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	patchString = `module1 diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchId := "aabbccddeeff001122334455"
 	patchToInsert := patch.Patch{
 		Id: patch.NewId(patchId),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "main",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "testPatch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
+				},
+			},
+			{
+				ModuleName: "module1",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "module1Patch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
+				},
+			},
+		},
 	}
 	assert.NoError(t, patchToInsert.Insert())
 
@@ -577,7 +631,8 @@ func TestPatchRawHandler(t *testing.T) {
 			URL:              "https://evergreen.example.net",
 			DBPatchConnector: data.DBPatchConnector{},
 		},
-		patchID: patchId,
+		patchID:    patchId,
+		moduleName: "main",
 	}
 
 	response := route.Run(context.Background())

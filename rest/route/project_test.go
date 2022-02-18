@@ -39,10 +39,14 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.RepositoriesCollection))
 	s.sc = getProjectsConnector()
 	s.NoError(getMockProjectRef().Insert())
-
+	s.NoError(getMockVar().Insert())
+	s.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+		Project:      "dimoxinil",
+		LastRevision: "something",
+	}))
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
 	s.rm = makePatchProjectByID(s.sc, settings).(*projectIDPatchHandler)
@@ -304,7 +308,7 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.sc = getProjectsConnector()
 	s.NoError(getMockProjectRef().Insert())
 	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
@@ -340,7 +344,11 @@ func (s *ProjectPutSuite) TestParse() {
 
 func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	u := user.DBUser{
+		Id: "user",
+	}
+	s.NoError(u.Insert())
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
@@ -415,6 +423,7 @@ func (s *ProjectGetByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
 	s.NoError(getMockProjectRef().Insert())
+	s.NoError(getMockVar().Insert())
 	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
 }
 
@@ -677,7 +686,12 @@ func TestDeleteProject(t *testing.T) {
 		serviceModel.RepoRefCollection,
 		serviceModel.ProjectAliasCollection,
 		serviceModel.ProjectVarsCollection,
+		user.Collection,
 	))
+	u := user.DBUser{
+		Id: "me",
+	}
+	require.NoError(t, u.Insert())
 
 	repo := serviceModel.RepoRef{
 		ProjectRef: serviceModel.ProjectRef{
@@ -709,7 +723,7 @@ func TestDeleteProject(t *testing.T) {
 		}
 
 		projects = append(projects, project)
-		require.NoError(t, project.Insert())
+		require.NoError(t, project.Add(&u))
 	}
 
 	numAliases := 2
