@@ -104,6 +104,10 @@ func (*HostConnectorSuite) users() []user.DBUser {
 }
 
 func TestHostConnectorSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s := new(HostConnectorSuite)
 	s.conn = &DBConnector{}
 
@@ -151,6 +155,10 @@ func TestHostConnectorSuite(t *testing.T) {
 }
 
 func TestDBHostConnectorSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s := new(HostConnectorSuite)
 	s.setup = func(s *HostConnectorSuite) {
 		s.NoError(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))

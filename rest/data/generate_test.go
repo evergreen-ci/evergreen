@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +16,11 @@ import (
 )
 
 func TestGeneratePoll(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection))
-	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)

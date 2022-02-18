@@ -31,6 +31,10 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	s := &CommitQueueSuite{settings: testConfig}
 	suite.Run(t, s)
@@ -389,6 +393,10 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 }
 
 func TestConcludeMerge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(commitqueue.Collection))
 	projectID := "evergreen"
 	itemID := bson.NewObjectId()
