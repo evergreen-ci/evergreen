@@ -357,8 +357,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	}
 	if u != nil {
 		// check if user is an admin
-		authorized := isAdmin(u, t.Project)
-		if authorized {
+		if isAdmin(u, t.Project) {
 			for key, val := range projectVars.GetAdminOnlyVars() {
 				res.Vars[key] = val
 			}
