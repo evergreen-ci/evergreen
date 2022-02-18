@@ -1628,7 +1628,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
-			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
