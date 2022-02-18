@@ -128,9 +128,9 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 
 // isAdmin returns true if the user id is located in ProjectRef's Admins field
 // or if the the permission level is sufficient.
-func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
+func isAdmin(u gimlet.User, projectId string) bool {
 	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      project.Id,
+		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,

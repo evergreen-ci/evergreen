@@ -357,12 +357,7 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	}
 	if u != nil {
 		// check if user is an admin
-		authorized := u.HasPermission(gimlet.PermissionOpts{
-			Resource:      t.Project,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-		})
+		authorized := isAdmin(u, t.Project)
 		if authorized {
 			for key, val := range projectVars.GetAdminOnlyVars() {
 				res.Vars[key] = val
