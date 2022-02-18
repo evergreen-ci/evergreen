@@ -1869,12 +1869,9 @@ func (h *Host) UpdateParentIDs() error {
 // than the new 30 day expiration (unless it is set to unexpirable again #loophole)
 func (h *Host) PastMaxExpiration(extension time.Duration) error {
 	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * time.Hour * 24)
-	if h.ExpirationTime.After(maxExpirationTime) {
-		return errors.New("Spawn host cannot be extended further")
-	}
-
 	proposedTime := h.ExpirationTime.Add(extension)
-	if proposedTime.After(maxExpirationTime) {
+
+	if h.ExpirationTime.After(maxExpirationTime) || proposedTime.After(maxExpirationTime) {
 		return errors.Errorf("Spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
 	}
 	return nil
