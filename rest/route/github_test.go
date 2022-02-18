@@ -28,6 +28,7 @@ import (
 
 type GithubWebhookRouteSuite struct {
 	sc                     *data.DBConnector
+	mockSc                 *data.MockDBConnector
 	rm                     gimlet.RouteHandler
 	mockRm                 gimlet.RouteHandler
 	canceler               context.CancelFunc
@@ -243,7 +244,7 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		Owner:    "baxterthehacker",
 		Repo:     "public-repo",
 	}
-	s.sc.MockCommitQueueConnector.UserPermissions = map[data.UserRepoInfo]string{
+	s.mockSc.MockCommitQueueConnector.UserPermissions = map[data.UserRepoInfo]string{
 		args1: "admin",
 	}
 	s.NotNil(event)
@@ -257,10 +258,10 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	}
 
 	s.NoError(err)
-	if s.Len(s.sc.MockCommitQueueConnector.Queue, 1) {
-		s.Equal("1", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["proj"][0].Issue))
-		s.Equal("test_module", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["proj"][0].Modules[0].Module))
-		s.Equal("1234", utility.FromStringPtr(s.sc.MockCommitQueueConnector.Queue["proj"][0].Modules[0].Issue))
+	if s.Len(s.mockSc.MockCommitQueueConnector.Queue, 1) {
+		s.Equal("1", utility.FromStringPtr(s.mockSc.MockCommitQueueConnector.Queue["proj"][0].Issue))
+		s.Equal("test_module", utility.FromStringPtr(s.mockSc.MockCommitQueueConnector.Queue["proj"][0].Modules[0].Module))
+		s.Equal("1234", utility.FromStringPtr(s.mockSc.MockCommitQueueConnector.Queue["proj"][0].Modules[0].Issue))
 	}
 }
 

@@ -373,7 +373,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	p := &model.Project{}
-	ctx := context.Background()
+	ctx = context.Background()
 	pp, pc, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{
