@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -324,7 +325,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res := apimodels.ExpansionVars{
 		Vars:           map[string]string{},
 		RestrictedVars: map[string]string{},
-		AdminOnlyVars:  map[string]string{},
 		PrivateVars:    map[string]bool{},
 	}
 	if projectVars == nil {
@@ -336,7 +336,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	if projectVars.PrivateVars != nil {
 		res.PrivateVars = projectVars.PrivateVars
 	}
-
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -345,6 +344,24 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	if v == nil {
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
+	}
+	var u *user.DBUser
+	if t.ActivatedBy == evergreen.StepbackTaskActivator {
+		u, err = user.FindOneById(v.Author)
+	} else if t.ActivatedBy != "" {
+		u, err = user.FindOneById(t.ActivatedBy)
+	}
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if u != nil {
+		// check if user is an admin
+		if isAdmin(u, t.Project) {
+			for key, val := range projectVars.GetAdminOnlyVars() {
+				res.Vars[key] = val
+			}
+		}
 	}
 
 	projParams, err := model.FindParametersForVersion(v)

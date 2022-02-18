@@ -976,9 +976,8 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	DBUser := MustHaveUser(r)
-	authorized := isAdmin(DBUser, projectRef)
 	template := "not_admin.html"
-	if authorized {
+	if isAdmin(DBUser, projectRef.Id) {
 		template = "project_events.html"
 	}
 
