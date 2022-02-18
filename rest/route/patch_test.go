@@ -406,9 +406,9 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	s.NoError(err)
 	s.Equal(int64(7), p1.PatchNumber)
 	s.Equal(int64(0), p2.PatchNumber)
-	p, ok := res.Data().(*model.APIPatch)
+	foundPatch, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
-	s.True(p.Activated)
+	s.True(foundPatch.Activated)
 }
 
 ////////////////////////////////////////////////////////////////////////
