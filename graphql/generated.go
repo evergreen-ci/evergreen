@@ -236,6 +236,12 @@ type ComplexityRoot struct {
 		Repo     func(childComplexity int) int
 	}
 
+	GithubProjectConflicts struct {
+		CommitCheckIdentifiers func(childComplexity int) int
+		CommitQueueIdentifiers func(childComplexity int) int
+		PRTestingIdentifiers   func(childComplexity int) int
+	}
+
 	GithubUser struct {
 		LastKnownAs func(childComplexity int) int
 		UID         func(childComplexity int) int
@@ -689,6 +695,7 @@ type ComplexityRoot struct {
 		CommitQueue              func(childComplexity int, id string) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
 		Distros                  func(childComplexity int, onlySpawnable bool) int
+		GithubProjectConflicts   func(childComplexity int, projectID string) int
 		HasVersion               func(childComplexity int, id string) int
 		Host                     func(childComplexity int, hostID string) int
 		HostEvents               func(childComplexity int, hostID string, hostTag *string, limit *int, page *int) int
@@ -1319,6 +1326,7 @@ type QueryResolver interface {
 	Version(ctx context.Context, id string) (*model.APIVersion, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
+	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
@@ -2125,6 +2133,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GithubPRSubscriber.Repo(childComplexity), true
+
+	case "GithubProjectConflicts.commitCheckIdentifiers":
+		if e.complexity.GithubProjectConflicts.CommitCheckIdentifiers == nil {
+			break
+		}
+
+		return e.complexity.GithubProjectConflicts.CommitCheckIdentifiers(childComplexity), true
+
+	case "GithubProjectConflicts.commitQueueIdentifiers":
+		if e.complexity.GithubProjectConflicts.CommitQueueIdentifiers == nil {
+			break
+		}
+
+		return e.complexity.GithubProjectConflicts.CommitQueueIdentifiers(childComplexity), true
+
+	case "GithubProjectConflicts.prTestingIdentifiers":
+		if e.complexity.GithubProjectConflicts.PRTestingIdentifiers == nil {
+			break
+		}
+
+		return e.complexity.GithubProjectConflicts.PRTestingIdentifiers(childComplexity), true
 
 	case "GithubUser.lastKnownAs":
 		if e.complexity.GithubUser.LastKnownAs == nil {
@@ -4572,6 +4601,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Distros(childComplexity, args["onlySpawnable"].(bool)), true
+
+	case "Query.githubProjectConflicts":
+		if e.complexity.Query.GithubProjectConflicts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_githubProjectConflicts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GithubProjectConflicts(childComplexity, args["projectId"].(string)), true
 
 	case "Query.hasVersion":
 		if e.complexity.Query.HasVersion == nil {
@@ -7388,6 +7429,7 @@ type Query {
   version(id: String!): Version!
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
+  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -8500,6 +8542,12 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type GithubProjectConflicts {
+  commitQueueIdentifiers: [String!]
+  prTestingIdentifiers: [String!]
+  commitCheckIdentifiers: [String!]
 }
 
 type ProjectSettings {
@@ -10255,6 +10303,21 @@ func (ec *executionContext) field_Query_distros_args(ctx context.Context, rawArg
 		}
 	}
 	args["onlySpawnable"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_githubProjectConflicts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -14203,6 +14266,102 @@ func (ec *executionContext) _GithubPRSubscriber_prNumber(ctx context.Context, fi
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GithubProjectConflicts_commitQueueIdentifiers(ctx context.Context, field graphql.CollectedField, obj *model1.GithubProjectConflicts) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GithubProjectConflicts",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommitQueueIdentifiers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GithubProjectConflicts_prTestingIdentifiers(ctx context.Context, field graphql.CollectedField, obj *model1.GithubProjectConflicts) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GithubProjectConflicts",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PRTestingIdentifiers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GithubProjectConflicts_commitCheckIdentifiers(ctx context.Context, field graphql.CollectedField, obj *model1.GithubProjectConflicts) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GithubProjectConflicts",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommitCheckIdentifiers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GithubUser_uid(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubUser) (ret graphql.Marshaler) {
@@ -25092,6 +25251,48 @@ func (ec *executionContext) _Query_viewableProjectRefs(ctx context.Context, fiel
 	res := resTmp.([]*GroupedProjects)
 	fc.Result = res
 	return ec.marshalNGroupedProjects2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedProjects(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_githubProjectConflicts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_githubProjectConflicts_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GithubProjectConflicts(rctx, args["projectId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model1.GithubProjectConflicts)
+	fc.Result = res
+	return ec.marshalNGithubProjectConflicts2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_project(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -42913,6 +43114,34 @@ func (ec *executionContext) _GithubPRSubscriber(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var githubProjectConflictsImplementors = []string{"GithubProjectConflicts"}
+
+func (ec *executionContext) _GithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, obj *model1.GithubProjectConflicts) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, githubProjectConflictsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GithubProjectConflicts")
+		case "commitQueueIdentifiers":
+			out.Values[i] = ec._GithubProjectConflicts_commitQueueIdentifiers(ctx, field, obj)
+		case "prTestingIdentifiers":
+			out.Values[i] = ec._GithubProjectConflicts_prTestingIdentifiers(ctx, field, obj)
+		case "commitCheckIdentifiers":
+			out.Values[i] = ec._GithubProjectConflicts_commitCheckIdentifiers(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var githubUserImplementors = []string{"GithubUser"}
 
 func (ec *executionContext) _GithubUser(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubUser) graphql.Marshaler {
@@ -45464,6 +45693,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_viewableProjectRefs(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "githubProjectConflicts":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_githubProjectConflicts(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -49444,6 +49687,20 @@ func (ec *executionContext) marshalNFileDiff2ᚕgithubᚗcomᚋevergreenᚑciᚋ
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNGithubProjectConflicts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v model1.GithubProjectConflicts) graphql.Marshaler {
+	return ec._GithubProjectConflicts(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGithubProjectConflicts2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, v *model1.GithubProjectConflicts) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._GithubProjectConflicts(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGroupedBuildVariant2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGroupedBuildVariantᚄ(ctx context.Context, sel ast.SelectionSet, v []*GroupedBuildVariant) graphql.Marshaler {
