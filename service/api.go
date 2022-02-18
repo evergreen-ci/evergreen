@@ -352,8 +352,15 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	params := append(projParams, v.Parameters...)
-	for _, param := range params {
+	for _, param := range projParams {
+		// If the key doesn't exist the value will default to "" anyway; this prevents
+		// an un-specified parameter from overwriting lower-priority expansions.
+		if param.Value != "" {
+			res.Vars[param.Key] = param.Value
+		}
+	}
+	for _, param := range v.Parameters {
+		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value
 	}
 
