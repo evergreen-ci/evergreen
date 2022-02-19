@@ -418,4 +418,5 @@ type MockConnector interface {
 	GetMessageForPatch(string) (string, error)
 	ConcludeMerge(string, string) error
 	GetAdditionalPatches(patchId string) ([]string, error)
+	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
 }

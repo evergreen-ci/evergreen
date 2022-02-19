@@ -15,6 +15,7 @@ type MockCommitQueueConnector struct {
 	Queue           map[string][]restModel.APICommitQueueItem
 	UserPermissions map[UserRepoInfo]string // map user to permission level in lieu of the Github API
 	CachedPatches   []restModel.APIPatch
+	Aliases         []restModel.APIProjectAlias
 }
 
 func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
@@ -133,4 +134,11 @@ func (ctx *MockCommitQueueConnector) EnableCommitQueue(ref *model.ProjectRef) er
 
 func (ctx *MockCommitQueueConnector) IsPatchEmpty(s string) (bool, error) {
 	return true, nil
+}
+
+func (ctx *MockCommitQueueConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
+	if len(ctx.Aliases) == 1 && utility.FromStringPtr(ctx.Aliases[0].RemotePath) != "" {
+		return true, utility.FromStringPtr(ctx.Aliases[0].RemotePath), nil
+	}
+	return len(ctx.Aliases) > 0, "", nil
 }
