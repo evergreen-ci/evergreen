@@ -367,6 +367,10 @@ func TestFindTestsByTaskIdPaginationOrderDependsOnObjectId(t *testing.T) {
 
 func TestFindTestsByDisplayTaskId(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	serviceContext := &DBConnector{}
