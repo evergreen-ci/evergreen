@@ -438,7 +438,7 @@ func TestPatchRestartSuite(t *testing.T) {
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection))
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection, task.Collection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
 
@@ -456,6 +456,12 @@ func (s *PatchRestartSuite) SetupSuite() {
 			Id: s.objIds[1],
 		},
 	}
+	tasks := []task.Task{
+		{
+			Id:      "task1",
+			Version: s.objIds[0],
+		},
+	}
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0]), Version: version1},
 		{Id: patch.NewId(s.objIds[1])},
@@ -465,6 +471,9 @@ func (s *PatchRestartSuite) SetupSuite() {
 	}
 	for _, v := range versions {
 		s.NoError(v.Insert())
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
 	}
 }
 

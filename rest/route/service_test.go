@@ -67,6 +67,7 @@ func TestHostParseAndValidate(t *testing.T) {
 func TestHostPaginator(t *testing.T) {
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
+		So(db.Clear(host.Collection), ShouldBeNil)
 		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
@@ -78,10 +79,11 @@ func TestHostPaginator(t *testing.T) {
 					Distro: distro.Distro{
 						Provider: evergreen.ProviderNameMock,
 					},
+					Status: evergreen.HostRunning,
 				}
 				cachedHosts = append(cachedHosts, nextHost)
+				So(nextHost.Insert(), ShouldBeNil)
 			}
-			//serviceContext.DBHostConnector.CachedHosts = cachedHosts
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				hostToStartAt := 100
@@ -925,15 +927,25 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection))
 	Convey("With a task in the DB and a Connector", t, func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
 		sc := data.DBConnector{}
+		version := serviceModel.Version{
+			Id: "v1",
+		}
+		build := build.Build{
+			Id: "b1",
+		}
 		testTask := task.Task{
 			Id:        "testTaskId",
+			Version:   "v1",
+			BuildId:   "b1",
 			Activated: false,
 			Priority:  10,
 		}
 		So(testTask.Insert(), ShouldBeNil)
+		So(version.Insert(), ShouldBeNil)
+		So(build.Insert(), ShouldBeNil)
 		ctx := context.Background()
 		Convey("then setting priority should change it's priority", func() {
 			act := true
@@ -1006,8 +1018,8 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 	Convey("With test server with a handler and mock data", t, func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		sc := &data.DBConnector{}
 		rm := makeGetTaskRoute(sc)
 		sc.SetPrefix("rest")

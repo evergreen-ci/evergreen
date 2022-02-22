@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"net/http"
 	"testing"
 	"time"
@@ -415,6 +416,12 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
+	mock := cloud.GetMockProvider()
+	mock.Set(h.hostID, cloud.MockInstance{
+		IsUp:   true,
+		Status: cloud.StatusRunning,
+	})
+
 	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
@@ -425,7 +432,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	s.Equal(http.StatusOK, resp.Status())
 	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
 	s.NoError(err)
-	s.Equal(evergreen.HostRunning, foundHost.Status)
+	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {

@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -87,8 +86,8 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 	ctx := context.Background()
 	assert.NoError(t, db.Clear(host.Collection))
 	rh := ec2SNS{}
-	rh.queue = queue.NewLocalLimitedSize(1, 1)
-	require.NoError(t, rh.queue.Start(ctx))
+	rh.queue = evergreen.GetEnvironment().LocalQueue()
+	rh.env = evergreen.GetEnvironment()
 	rh.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"sns.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
 
 	// unknown host
@@ -102,7 +101,6 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 
 	assert.NoError(t, rh.handleNotification(ctx))
 	require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-	assert.True(t, strings.HasPrefix(rh.queue.Next(ctx).ID(), "host-monitoring-external-state-check"))
 }
 
 func TestEC2SNSNotificationHandlers(t *testing.T) {

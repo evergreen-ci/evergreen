@@ -2,6 +2,8 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -326,6 +328,22 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 
 func TestTaskAuthMiddleware(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+
+	assert.NoError(db.ClearCollections(host.Collection, task.Collection))
+	task1 := task.Task{
+		Id:     "task1",
+		Secret: "abcdef",
+	}
+	host1 := &host.Host{
+		Id:     "host1",
+		Secret: "abcdef",
+	}
+	assert.NoError(task1.Insert())
+	assert.NoError(host1.Insert())
 	m := NewTaskAuthMiddleware(&data.DBConnector{})
 	r := &http.Request{
 		Header: http.Header{
