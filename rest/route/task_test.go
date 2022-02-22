@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 	"time"
@@ -36,6 +37,10 @@ type TaskAbortSuite struct {
 }
 
 func TestTaskAbortSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(TaskAbortSuite))
 }
 
@@ -91,6 +96,10 @@ func (s *TaskAbortSuite) TestAbort() {
 
 func TestFetchArtifacts(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require := require.New(t)
 
 	assert.NoError(db.ClearCollections(task.Collection, task.OldCollection, artifact.Collection))

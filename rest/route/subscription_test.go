@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 	"time"
@@ -26,7 +28,10 @@ type SubscriptionRouteSuite struct {
 
 func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 	s := new(SubscriptionRouteSuite)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.sc = &data.DBConnector{}
 
 	suite.Run(t, s)

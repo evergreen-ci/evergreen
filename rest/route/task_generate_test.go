@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
@@ -54,6 +55,10 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	h := &generateHandler{sc: &data.DBConnector{}}
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})
@@ -61,11 +66,13 @@ func TestGenerateExecute(t *testing.T) {
 }
 
 func TestGeneratePollParse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
 	sc := &data.DBConnector{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
@@ -76,7 +83,6 @@ func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, client.Connect(ctx))
 	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
@@ -88,9 +94,10 @@ func TestGeneratePollParse(t *testing.T) {
 func TestGeneratePollRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	sc := &data.DBConnector{}
 
-	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)

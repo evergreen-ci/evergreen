@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"net/url"
 	"testing"
@@ -23,6 +24,10 @@ type StatsSuite struct {
 }
 
 func TestStatsSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatsSuite))
 }
 

@@ -1026,6 +1026,10 @@ type ProjectPutRotateSuite struct {
 }
 
 func TestProjectPutRotateSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectPutRotateSuite))
 }
 

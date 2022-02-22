@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 	"time"
@@ -83,7 +84,10 @@ func TestBaseSNSRoute(t *testing.T) {
 }
 
 func TestHandleEC2SNSNotification(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.Clear(host.Collection))
 	rh := ec2SNS{}
 	rh.queue = evergreen.GetEnvironment().LocalQueue()
@@ -104,7 +108,10 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 }
 
 func TestEC2SNSNotificationHandlers(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.Clear(host.Collection))
 	agentHost := host.Host{
 		Id:        "agent_host",
@@ -153,6 +160,8 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 func TestECSSNSHandleNotification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector){
 		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {

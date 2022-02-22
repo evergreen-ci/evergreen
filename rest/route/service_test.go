@@ -65,6 +65,10 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
 		So(db.Clear(host.Collection), ShouldBeNil)
@@ -282,6 +286,10 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
 	p := &serviceModel.ProjectRef{
 		Id:         "project_1",
@@ -467,6 +475,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
@@ -678,6 +690,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 }
 
 func TestTestPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(testresult.Collection))
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
@@ -824,6 +840,10 @@ func TestTestPaginator(t *testing.T) {
 }
 
 func TestTaskExecutionPatchPrepare(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		tep := &taskExecutionPatchHandler{}
 
@@ -927,6 +947,10 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With a task in the DB and a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
 		sc := data.DBConnector{}
@@ -974,6 +998,10 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 }
 
 func TestTaskResetPrepare(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		trh := &taskRestartHandler{}
 
@@ -1018,6 +1046,10 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		sc := &data.DBConnector{}
@@ -1159,6 +1191,10 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func TestParentTaskInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	sc := data.DBConnector{
@@ -1217,6 +1253,10 @@ func TestParentTaskInfo(t *testing.T) {
 }
 
 func TestOptionsRequest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	route := "/rest/v2/tasks/test/restart"

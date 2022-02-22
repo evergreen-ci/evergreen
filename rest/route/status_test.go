@@ -28,6 +28,10 @@ type StatusSuite struct {
 }
 
 func TestStatusSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatusSuite))
 }
 func (s *StatusSuite) SetupSuite() {

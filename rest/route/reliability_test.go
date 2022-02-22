@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -76,6 +77,8 @@ func TestParseParameters(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(groupContext, t)
+	evergreen.SetEnvironment(env)
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Tasks": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -368,6 +371,8 @@ func TestParse(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(groupContext, t)
+	evergreen.SetEnvironment(env)
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Parse": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -472,9 +477,11 @@ func TestParse(t *testing.T) {
 
 func TestRun(t *testing.T) {
 
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(groupContext, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Run": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
