@@ -28,7 +28,7 @@ import (
 
 type GithubWebhookRouteSuite struct {
 	sc                     *data.DBConnector
-	mockSc                 *data.MockDBConnector
+	mockSc                 *data.MockGitHubConnector
 	rm                     gimlet.RouteHandler
 	mockRm                 gimlet.RouteHandler
 	canceler               context.CancelFunc
@@ -69,8 +69,8 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.NoError(db.Clear(commitqueue.Collection))
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
-	s.mockSc = &data.MockDBConnector{
-		MockDBConnectorImpl: data.MockDBConnectorImpl{},
+	s.mockSc = &data.MockGitHubConnector{
+		MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{},
 	}
 	s.sc = &data.DBConnector{}
 
@@ -227,7 +227,9 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 }
 
 func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
-	s.NoError(db.Clear(model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+	cq := &commitqueue.CommitQueue{ProjectID: "proj"}
+	s.NoError(commitqueue.InsertQueue(cq))
 	p := model.ProjectRef{
 		Id:      "proj",
 		Owner:   "baxterthehacker",
@@ -245,7 +247,7 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		Owner:    "baxterthehacker",
 		Repo:     "public-repo",
 	}
-	s.mockSc.MockDBConnectorImpl.UserPermissions = map[data.UserRepoInfo]string{
+	s.mockSc.MockGitHubConnectorImpl.UserPermissions = map[data.UserRepoInfo]string{
 		args1: "admin",
 	}
 	s.NotNil(event)
@@ -259,11 +261,14 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	}
 
 	s.NoError(err)
-	if s.Len(s.mockSc.MockDBConnectorImpl.Queue, 1) {
-		s.Equal("1", utility.FromStringPtr(s.mockSc.MockDBConnectorImpl.Queue["proj"][0].Issue))
-		s.Equal("test_module", utility.FromStringPtr(s.mockSc.MockDBConnectorImpl.Queue["proj"][0].Modules[0].Module))
-		s.Equal("1234", utility.FromStringPtr(s.mockSc.MockDBConnectorImpl.Queue["proj"][0].Modules[0].Issue))
+	cq, err = commitqueue.FindOneId("proj")
+	s.NoError(err)
+	if s.Len(cq.Queue, 1) {
+		s.Equal("1", utility.FromStringPtr(&cq.Queue[0].Issue))
+		s.Equal("test_module", utility.FromStringPtr(&cq.Queue[0].Modules[0].Module))
+		s.Equal("1234", utility.FromStringPtr(&cq.Queue[0].Modules[0].Issue))
 	}
+
 }
 
 func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
@@ -383,7 +388,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 }
 
 func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ProjectAliasCollection))
 	tag := model.GitTag{
 		Tag:    "release",
 		Pusher: "release-bot",
@@ -400,7 +405,14 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}
+	projectAlias := model.ProjectAlias{
+		ProjectID:  "my-project",
+		Alias:      evergreen.GitTagAlias,
+		GitTag:     "release",
+		RemotePath: "rest/route/testdata/release.yml",
+	}
 	s.NoError(pRef.Insert())
+	s.NoError(projectAlias.Upsert())
 
 	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
 	s.NoError(err)

@@ -399,17 +399,3 @@ type Connector interface {
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks([]string, bool) ([]string, map[string]map[string]string, error)
 }
-
-type MockConnector interface {
-	// Commit queue methods
-	// GetGithubPR takes the owner, repo, and PR number.
-	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	// if bool is true, move the commit queue item to be processed next.
-	EnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
-	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error)
-	CreatePatchForMerge(context.Context, string, string) (*restModel.APIPatch, error)
-	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
-	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
-	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (model.ProjectInfo, error)
-	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
-}

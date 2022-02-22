@@ -23,7 +23,7 @@ import (
 
 type CommitQueueSuite struct {
 	ctx      Connector
-	mockCtx  MockConnector
+	mockCtx  MockGitHubConnector
 	settings *evergreen.Settings
 	suite.Suite
 
@@ -192,7 +192,7 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 		Owner:    "evergreen-ci",
 		Repo:     "evergreen",
 	}
-	c := &MockDBConnectorImpl{
+	c := &MockGitHubConnectorImpl{
 		UserPermissions: map[UserRepoInfo]string{
 			args1: "admin",
 			args2: "read",
@@ -254,7 +254,6 @@ buildvariants:
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
-	s.mockCtx = &MockDBConnector{}
 	pr, err := s.mockCtx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)
 	s.NoError(err)
 
