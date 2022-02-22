@@ -917,6 +917,7 @@ type ComplexityRoot struct {
 		Restarts                func(childComplexity int) int
 		Revision                func(childComplexity int) int
 		ScheduledTime           func(childComplexity int) int
+		ContainerAllocatedTime  func(childComplexity int) int
 		SpawnHostLink           func(childComplexity int) int
 		StartTime               func(childComplexity int) int
 		Status                  func(childComplexity int) int
@@ -5956,6 +5957,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.ScheduledTime(childComplexity), true
 
+	case "Task.containerAllocatedTime":
+		if e.complexity.Task.ContainerAllocatedTime == nil {
+			break
+		}
+
+		return e.complexity.Task.ContainerAllocatedTime(childComplexity), true
+
 	case "Task.spawnHostLink":
 		if e.complexity.Task.SpawnHostLink == nil {
 			break
@@ -8521,6 +8529,7 @@ type Task {
   restarts: Int
   revision: String
   scheduledTime: Time
+  containerAllocatedTime: Time
   spawnHostLink: String
   startTime: Time
   status: String!
@@ -31560,6 +31569,39 @@ func (ec *executionContext) _Task_scheduledTime(ctx context.Context, field graph
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_containerAllocatedTime(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ContainerAllocatedTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	// what on earth are the symbols in the line below
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_spawnHostLink(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -47326,6 +47368,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_revision(ctx, field, obj)
 		case "scheduledTime":
 			out.Values[i] = ec._Task_scheduledTime(ctx, field, obj)
+		case "containerAllocatedTime":
+			out.Values[i] = ec._Task_containerAllocatedTime(ctx, field, obj)
 		case "spawnHostLink":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

@@ -1100,6 +1100,7 @@ type Task {
   restarts: Int
   revision: String
   scheduledTime: Time
+  containerAllocatedTime: Time
   spawnHostLink: String
   startTime: Time
   status: String!
