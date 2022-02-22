@@ -51,9 +51,9 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	}
 	s.NoError(user.Insert())
 	s.sc = getProjectsConnector()
-	s.NoError(getMockProjectRef().Add(&user))
-	s.NoError(getMockVar().Insert())
-	aliases := getMockAliases()
+	s.NoError(getTestProjectRef().Add(&user))
+	s.NoError(getTestVar().Insert())
+	aliases := getTestAliases()
 	for _, alias := range aliases {
 		s.NoError(alias.Upsert())
 	}
@@ -174,7 +174,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
-	pRef, err := s.sc.DBProjectConnector.FindProjectById("dimoxinil", false, false)
+	pRef, err := s.sc.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().Equal("EVG", pRef.BuildBaronSettings.TicketCreateProject)
 }
@@ -346,7 +346,7 @@ func TestProjectPutSuite(t *testing.T) {
 func (s *ProjectPutSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
 	s.sc = getProjectsConnector()
-	s.NoError(getMockProjectRef().Insert())
+	s.NoError(getTestProjectRef().Insert())
 	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
 }
 
@@ -461,8 +461,8 @@ func TestProjectGetByIDSuite(t *testing.T) {
 func (s *ProjectGetByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
-	s.NoError(getMockProjectRef().Insert())
-	s.NoError(getMockVar().Insert())
+	s.NoError(getTestProjectRef().Insert())
+	s.NoError(getTestVar().Insert())
 	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
 }
 
@@ -635,14 +635,14 @@ func getProjectsConnector() *data.DBConnector {
 	return &connector
 }
 
-func getMockVar() *serviceModel.ProjectVars {
+func getTestVar() *serviceModel.ProjectVars {
 	return &serviceModel.ProjectVars{
 		Id:   "dimoxinil",
 		Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
 	}
 }
 
-func getMockAliases() []serviceModel.ProjectAlias {
+func getTestAliases() []serviceModel.ProjectAlias {
 	return []serviceModel.ProjectAlias{
 		serviceModel.ProjectAlias{
 			ProjectID: "dimoxinil",
@@ -659,17 +659,17 @@ func getMockAliases() []serviceModel.ProjectAlias {
 	}
 }
 
-func getMockProjectRef() *serviceModel.ProjectRef {
+func getTestProjectRef() *serviceModel.ProjectRef {
 	return &serviceModel.ProjectRef{
-		Owner:      "dimoxinil",
-		Repo:       "dimoxinil-enterprise-repo",
-		Branch:     "main",
-		Enabled:    utility.FalsePtr(),
-		Private:    utility.TruePtr(),
-		BatchTime:  0,
-		RemotePath: "evergreen.yml",
-		Id:         "dimoxinil",
-		//	Identifier:         "dimoxinil",
+		Owner:              "dimoxinil",
+		Repo:               "dimoxinil-enterprise-repo",
+		Branch:             "main",
+		Enabled:            utility.FalsePtr(),
+		Private:            utility.TruePtr(),
+		BatchTime:          0,
+		RemotePath:         "evergreen.yml",
+		Id:                 "dimoxinil",
+		Identifier:         "dimoxinil",
 		DisplayName:        "Dimoxinil",
 		DeactivatePrevious: utility.FalsePtr(),
 		TracksPushEvents:   utility.FalsePtr(),
@@ -1036,8 +1036,8 @@ func TestProjectPutRotateSuite(t *testing.T) {
 func (s *ProjectPutRotateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
 	s.sc = getProjectsConnector()
-	s.NoError(getMockVar().Insert())
-	s.NoError(getMockProjectRef().Insert())
+	s.NoError(getTestVar().Insert())
+	s.NoError(getTestProjectRef().Insert())
 	s.rm = makeProjectVarsPut(s.sc).(*projectVarsPutHandler)
 }
 
@@ -1070,7 +1070,6 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	s.Contains(respMap["dimoxinil"], "banana")
 	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
-	//s.Equal("yellow", s.sc.CachedVars[0].Vars["banana"])
 
 	req, _ = http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/variables/rotate", bytes.NewBuffer(dryRunFalse))
 	err = s.rm.Parse(ctx, req)
@@ -1084,5 +1083,4 @@ func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
 	s.Contains(respMap["dimoxinil"], "banana")
 	s.Contains(respMap["dimoxinil"], "lemon")
 	s.Equal(resp.Status(), http.StatusOK)
-	//s.Equal("brown", s.sc.CachedVars[0].Vars["banana"])
 }
