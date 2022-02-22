@@ -364,6 +364,10 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	m := NewHostAuthMiddleware(&data.DBConnector{})
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
@@ -424,6 +428,10 @@ func TestHostAuthMiddleware(t *testing.T) {
 }
 
 func TestPodAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	m := NewPodAuthMiddleware(&data.DBConnector{})
 	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
@@ -499,13 +507,16 @@ func TestPodAuthMiddleware(t *testing.T) {
 func TestProjectViewPermission(t *testing.T) {
 	//setup
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require := require.New(t)
 	counter := 0
 	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
 		counter++
 		rw.WriteHeader(http.StatusOK)
 	}
-	env := evergreen.GetEnvironment()
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection))
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	role1 := gimlet.Role{
@@ -575,7 +586,7 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(1, counter)
 
 	// attach a user, but with no permissions yet
-	ctx := gimlet.AttachUser(req.Context(), user)
+	ctx = gimlet.AttachUser(req.Context(), user)
 	req = req.WithContext(ctx)
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
@@ -599,13 +610,16 @@ func TestProjectViewPermission(t *testing.T) {
 func TestEventLogPermission(t *testing.T) {
 	//setup
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require := require.New(t)
 	counter := 0
 	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
 		counter++
 		rw.WriteHeader(http.StatusOK)
 	}
-	env := evergreen.GetEnvironment()
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection, distro.Collection))
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	projRole := gimlet.Role{

@@ -3,6 +3,8 @@ package route
 import (
 	"bytes"
 	"context"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
@@ -17,6 +19,10 @@ import (
 )
 
 func TestPostPod(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podPostHandler){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			copied := ph.Factory()
@@ -177,6 +183,10 @@ func TestPostPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(pod.Collection))
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {

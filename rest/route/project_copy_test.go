@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
@@ -26,6 +28,10 @@ type ProjectCopySuite struct {
 }
 
 func TestProjectCopySuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectCopySuite))
 }
 
@@ -131,6 +137,10 @@ type copyVariablesSuite struct {
 }
 
 func TestCopyVariablesSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(copyVariablesSuite))
 }
 

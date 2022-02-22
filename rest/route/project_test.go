@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
@@ -34,7 +35,10 @@ type ProjectPatchByIDSuite struct {
 }
 
 func TestProjectPatchSuite(t *testing.T) {
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectPatchByIDSuite))
 }
 
@@ -332,7 +336,10 @@ type ProjectPutSuite struct {
 }
 
 func TestProjectPutSuite(t *testing.T) {
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectPutSuite))
 }
 
@@ -444,7 +451,10 @@ type ProjectGetByIDSuite struct {
 }
 
 func TestProjectGetByIDSuite(t *testing.T) {
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectGetByIDSuite))
 }
 
@@ -513,6 +523,10 @@ type ProjectGetSuite struct {
 }
 
 func TestProjectGetSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectGetSuite))
 }
 
@@ -674,6 +688,10 @@ func getMockProjectRef() *serviceModel.ProjectRef {
 
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
@@ -727,6 +745,10 @@ func TestGetProjectVersions(t *testing.T) {
 }
 
 func TestDeleteProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(
 		serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection,
@@ -793,7 +815,6 @@ func TestDeleteProject(t *testing.T) {
 	_, err := projVars.Upsert()
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	pdh := projectDeleteHandler{
 		sc: &data.DBConnector{},
 	}
@@ -854,10 +875,13 @@ func TestDeleteProject(t *testing.T) {
 }
 
 func TestAttachProjectToRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
 		evergreen.ScopeCollection, evergreen.RoleCollection))
-	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())

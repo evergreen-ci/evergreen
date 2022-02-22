@@ -2,6 +2,8 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 	"time"
@@ -21,6 +23,10 @@ type notificationSuite struct {
 }
 
 func TestNotificationSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, &notificationSuite{})
 }
 
