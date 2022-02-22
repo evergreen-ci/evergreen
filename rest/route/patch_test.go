@@ -265,7 +265,7 @@ func TestPatchAbortSuite(t *testing.T) {
 
 func (s *PatchAbortSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, task.Collection, serviceModel.VersionCollection, build.Collection))
-	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456", "aabbccddeeff001122334457"}
 	version1 := "version1"
 	version2 := "version2"
 
@@ -275,7 +275,8 @@ func (s *PatchAbortSuite) SetupSuite() {
 	}
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true},
-		{Id: patch.NewId(s.objIds[1]), Activated: true},
+		{Id: patch.NewId(s.objIds[1]), Version: version2, Activated: true},
+		{Id: patch.NewId(s.objIds[2]), Activated: true},
 	}
 	versions := []*serviceModel.Version{
 		{Id: version1},
@@ -338,9 +339,9 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.True(task2.Aborted)
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
+	s.Equal(utility.ToStringPtr(s.objIds[1]), p.Id)
 
-	rm.patchId = s.objIds[1]
+	rm.patchId = s.objIds[2]
 	res = rm.Run(ctx)
 
 	s.NotEqual(http.StatusOK, res.Status())

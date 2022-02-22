@@ -192,7 +192,7 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 		Owner:    "evergreen-ci",
 		Repo:     "evergreen",
 	}
-	c := &MockCommitQueueConnector{
+	c := &MockDBConnectorImpl{
 		UserPermissions: map[UserRepoInfo]string{
 			args1: "admin",
 			args2: "read",
@@ -275,7 +275,7 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.Equal(1, pos)
 
 	conn := s.mockCtx.(*MockDBConnector)
-	q, ok := conn.MockCommitQueueConnector.Queue["mci"]
+	q, ok := conn.MockDBConnectorImpl.Queue["mci"]
 	s.True(ok)
 	s.Require().Len(q, 2)
 
@@ -286,7 +286,7 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 	pos, err = s.mockCtx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
 	s.NoError(err)
 	s.Equal(1, pos)
-	q, ok = conn.MockCommitQueueConnector.Queue["mci"]
+	q, ok = conn.MockDBConnectorImpl.Queue["mci"]
 	s.True(ok)
 	s.Require().Len(q, 3)
 

@@ -70,7 +70,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
 	s.mockSc = &data.MockDBConnector{
-		MockCommitQueueConnector: data.MockCommitQueueConnector{},
+		MockDBConnectorImpl: data.MockDBConnectorImpl{},
 	}
 	s.sc = &data.DBConnector{}
 
@@ -96,6 +96,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
+	s.True(ok)
 	s.mock, ok = s.mockRm.Factory().(*githubHookApi)
 	s.True(ok)
 }
@@ -244,7 +245,7 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		Owner:    "baxterthehacker",
 		Repo:     "public-repo",
 	}
-	s.mockSc.MockCommitQueueConnector.UserPermissions = map[data.UserRepoInfo]string{
+	s.mockSc.MockDBConnectorImpl.UserPermissions = map[data.UserRepoInfo]string{
 		args1: "admin",
 	}
 	s.NotNil(event)
@@ -258,10 +259,10 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	}
 
 	s.NoError(err)
-	if s.Len(s.mockSc.MockCommitQueueConnector.Queue, 1) {
-		s.Equal("1", utility.FromStringPtr(s.mockSc.MockCommitQueueConnector.Queue["proj"][0].Issue))
-		s.Equal("test_module", utility.FromStringPtr(s.mockSc.MockCommitQueueConnector.Queue["proj"][0].Modules[0].Module))
-		s.Equal("1234", utility.FromStringPtr(s.mockSc.MockCommitQueueConnector.Queue["proj"][0].Modules[0].Issue))
+	if s.Len(s.mockSc.MockDBConnectorImpl.Queue, 1) {
+		s.Equal("1", utility.FromStringPtr(s.mockSc.MockDBConnectorImpl.Queue["proj"][0].Issue))
+		s.Equal("test_module", utility.FromStringPtr(s.mockSc.MockDBConnectorImpl.Queue["proj"][0].Modules[0].Module))
+		s.Equal("1234", utility.FromStringPtr(s.mockSc.MockDBConnectorImpl.Queue["proj"][0].Modules[0].Issue))
 	}
 }
 

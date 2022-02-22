@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -944,10 +944,13 @@ func TestAttachProjectToRepo(t *testing.T) {
 }
 
 func TestDetachProjectFromRepo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
 		evergreen.ScopeCollection, evergreen.RoleCollection))
-	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())

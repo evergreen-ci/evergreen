@@ -2,8 +2,6 @@ package route
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,8 +16,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"

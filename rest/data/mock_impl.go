@@ -11,14 +11,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type MockCommitQueueConnector struct {
+type MockDBConnectorImpl struct {
 	Queue           map[string][]restModel.APICommitQueueItem
 	UserPermissions map[UserRepoInfo]string // map user to permission level in lieu of the Github API
 	CachedPatches   []restModel.APIPatch
 	Aliases         []restModel.APIProjectAlias
 }
 
-func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
+func (pc *MockDBConnectorImpl) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	return &github.PullRequest{
 		User: &github.User{
 			ID:    github.Int64(1234),
@@ -33,11 +33,11 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 	}, nil
 }
 
-func (pc *MockCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error) {
+func (pc *MockDBConnectorImpl) AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error) {
 	return "", nil
 }
 
-func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
+func (pc *MockDBConnectorImpl) EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	if pc.Queue == nil {
 		pc.Queue = make(map[string][]restModel.APICommitQueueItem)
 	}
@@ -50,7 +50,7 @@ func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel
 	return len(pc.Queue[projectID]) - 1, nil
 }
 
-func (pc *MockCommitQueueConnector) FindCommitQueueForProject(id string) (*restModel.APICommitQueue, error) {
+func (pc *MockDBConnectorImpl) FindCommitQueueForProject(id string) (*restModel.APICommitQueue, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return nil, nil
 	}
@@ -58,7 +58,7 @@ func (pc *MockCommitQueueConnector) FindCommitQueueForProject(id string) (*restM
 	return &restModel.APICommitQueue{ProjectID: utility.ToStringPtr(id), Queue: pc.Queue[id]}, nil
 }
 
-func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user string) (*restModel.APICommitQueueItem, error) {
+func (pc *MockDBConnectorImpl) CommitQueueRemoveItem(id, itemId, user string) (*restModel.APICommitQueueItem, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return nil, nil
 	}
@@ -74,7 +74,7 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, itemId, user strin
 	return nil, nil
 }
 
-func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
+func (pc *MockDBConnectorImpl) IsItemOnCommitQueue(id, item string) (bool, error) {
 	queue, ok := pc.Queue[id]
 	if !ok {
 		return false, errors.Errorf("can't get commit queue for id '%s'", id)
@@ -87,7 +87,7 @@ func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, 
 	return false, nil
 }
 
-func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
+func (pc *MockDBConnectorImpl) CommitQueueClearAll() (int, error) {
 	var count int
 	for k, v := range pc.Queue {
 		if len(v) > 0 {
@@ -99,7 +99,7 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return count, nil
 }
 
-func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
+func (pc *MockDBConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	_, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
@@ -114,36 +114,36 @@ func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Cont
 	return hasPermission, nil
 }
 
-func (pc *MockCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
+func (pc *MockDBConnectorImpl) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	return nil, nil
 }
-func (pc *MockCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
+func (pc *MockDBConnectorImpl) GetMessageForPatch(patchID string) (string, error) {
 	return "", nil
 }
 
-func (pc *MockCommitQueueConnector) ConcludeMerge(patchID, status string) error {
+func (pc *MockDBConnectorImpl) ConcludeMerge(patchID, status string) error {
 	return nil
 }
-func (pc *MockCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
+func (pc *MockDBConnectorImpl) GetAdditionalPatches(patchId string) ([]string, error) {
 	return nil, nil
 }
 
-func (ctx *MockCommitQueueConnector) EnableCommitQueue(ref *model.ProjectRef) error {
+func (ctx *MockDBConnectorImpl) EnableCommitQueue(ref *model.ProjectRef) error {
 	return nil
 }
 
-func (ctx *MockCommitQueueConnector) IsPatchEmpty(s string) (bool, error) {
+func (ctx *MockDBConnectorImpl) IsPatchEmpty(s string) (bool, error) {
 	return true, nil
 }
 
-func (ctx *MockCommitQueueConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
+func (ctx *MockDBConnectorImpl) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
 	if len(ctx.Aliases) == 1 && utility.FromStringPtr(ctx.Aliases[0].RemotePath) != "" {
 		return true, utility.FromStringPtr(ctx.Aliases[0].RemotePath), nil
 	}
 	return len(ctx.Aliases) > 0, "", nil
 }
 
-func (pc *MockCommitQueueConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
+func (pc *MockDBConnectorImpl) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
 	config := `
 buildvariants:
 - name: v1
@@ -168,7 +168,7 @@ tasks:
 	}, err
 }
 
-func (mvc *MockCommitQueueConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata, active bool) (*model.Version, error) {
+func (mvc *MockDBConnectorImpl) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata, active bool) (*model.Version, error) {
 	return &model.Version{
 		Requester:         evergreen.GitTagRequester,
 		TriggeredByGitTag: metadata.GitTag,

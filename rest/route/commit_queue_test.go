@@ -2,23 +2,28 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type CommitQueueSuite struct {
-	sc *data.MockDBConnector
+	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -27,164 +32,160 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
-	s.sc = &data.MockDBConnector{
-		MockCommitQueueConnector: data.MockCommitQueueConnector{},
+	s.sc = &data.DBConnector{
+		DBCommitQueueConnector: data.DBCommitQueueConnector{},
 	}
 	s.NoError(db.ClearCollections(dbModel.ProjectRefCollection, patch.Collection, commitqueue.Collection))
+	projRef := dbModel.ProjectRef{
+		Id: "proj",
+	}
+	s.Require().NoError(projRef.Insert())
+	projRef2 := dbModel.ProjectRef{
+		Id: "mci",
+	}
+	cq := &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	s.Require().NoError(commitqueue.InsertQueue(cq))
+	s.NoError(projRef2.Insert())
 }
 
-//func (s *CommitQueueSuite) TestParse() {
-//	ctx := context.Background()
-//	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-//	patchID := "aabbccddeeff001122334455"
-//	projectID := "proj"
-//	p1 := patch.Patch{Id: patch.NewId(patchID), Project: projectID}
-//	projRef := dbModel.ProjectRef{
-//		Id: "proj",
-//	}
-//	s.Require().NoError(projRef.Insert())
-//	s.NoError(p1.Insert())
-//	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{Id: &patchID, ProjectId: &projectID})
-//	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
-//	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
-//	s.NoError(route.Parse(ctx, req))
-//	s.True(route.force)
-//}
+func (s *CommitQueueSuite) TestParse() {
+	ctx := context.Background()
+	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
+	patchID := "aabbccddeeff001122334455"
+	projectID := "proj"
+	p1 := patch.Patch{Id: patch.NewId(patchID), Project: projectID}
+	s.NoError(p1.Insert())
+	req, _ := http.NewRequest("PUT", fmt.Sprintf("http://example.com/api/rest/v2/commit_queue/%s?force=true", patchID), nil)
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patchID})
+	s.NoError(route.Parse(ctx, req))
+	s.True(route.force)
+}
 
-//func (s *CommitQueueSuite) TestGetCommitQueue() {
-//	cq := &commitqueue.CommitQueue{
-//		ProjectID: "mci",
-//		Queue:     []commitqueue.CommitQueueItem{},
-//	}
-//	projRef := dbModel.ProjectRef{
-//		Id: "mci",
-//	}
-//	s.Require().NoError(commitqueue.InsertQueue(cq))
-//	s.Require().NoError(projRef.Insert())
-//
-//	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
-//	route.project = "mci"
-//	pos, err := s.sc.EnqueueItem(
-//		"mci",
-//		model.APICommitQueueItem{
-//			Issue:  utility.ToStringPtr("1"),
-//			Source: utility.ToStringPtr(commitqueue.SourceDiff),
-//			Modules: []model.APIModule{
-//				model.APIModule{
-//					Module: utility.ToStringPtr("test_module"),
-//					Issue:  utility.ToStringPtr("1234"),
-//				},
-//			},
-//		}, false)
-//	s.NoError(err)
-//	s.Equal(0, pos)
-//
-//	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(1, pos)
-//
-//	response := route.Run(context.Background())
-//	s.Equal(200, response.Status())
-//	cqResp := response.Data().(*model.APICommitQueue)
-//	list := cqResp.Queue
-//	s.Len(list, 2)
-//	s.Equal(list[0].Issue, utility.ToStringPtr("1"))
-//	s.Equal(list[1].Issue, utility.ToStringPtr("2"))
-//}
+func (s *CommitQueueSuite) TestGetCommitQueue() {
+	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
+	route.project = "mci"
+	pos, err := s.sc.EnqueueItem(
+		"mci",
+		model.APICommitQueueItem{
+			Issue:  utility.ToStringPtr("1"),
+			Source: utility.ToStringPtr(commitqueue.SourceDiff),
+			Modules: []model.APIModule{
+				model.APIModule{
+					Module: utility.ToStringPtr("test_module"),
+					Issue:  utility.ToStringPtr("1234"),
+				},
+			},
+		}, false)
+	s.NoError(err)
+	s.Equal(0, pos)
 
-//func (s *CommitQueueSuite) TestDeleteItem() {
-//	s.NoError(db.ClearCollections(commitqueue.Collection))
-//	projRef := dbModel.ProjectRef{
-//		Id: "mci",
-//	}
-//	cq := &commitqueue.CommitQueue{
-//		ProjectID: "mci",
-//		Queue:     []commitqueue.CommitQueueItem{},
-//	}
-//	s.Require().NoError(commitqueue.InsertQueue(cq))
-//	s.NoError(projRef.Insert())
-//	ctx := context.Background()
-//	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-//	env := &mock.Environment{}
-//	s.Require().NoError(env.Configure(ctx))
-//
-//	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
-//	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(0, pos)
-//	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(1, pos)
-//
-//	route.project = "mci"
-//
-//	// Valid delete
-//	route.item = "1"
-//	response := route.Run(ctx)
-//	s.Equal(204, response.Status())
-//
-//	// Already deleted
-//	response = route.Run(ctx)
-//	s.Equal(404, response.Status())
-//
-//	// Invalid project
-//	route.project = "not_here"
-//	route.item = "2"
-//	response = route.Run(ctx)
-//	s.Equal(404, response.Status())
-//}
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 
-//func (s *CommitQueueSuite) TestClearAll() {
-//	s.NoError(db.ClearCollections(commitqueue.Collection))
-//	cq0 := &commitqueue.CommitQueue{
-//		ProjectID: "mci",
-//		Queue:     []commitqueue.CommitQueueItem{},
-//	}
-//	cq1 := &commitqueue.CommitQueue{
-//		ProjectID: "logkeeper",
-//		Queue:     []commitqueue.CommitQueueItem{},
-//	}
-//	s.Require().NoError(commitqueue.InsertQueue(cq0))
-//	s.Require().NoError(commitqueue.InsertQueue(cq1))
-//
-//	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-//	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(0, pos)
-//	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("23")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(1, pos)
-//	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(0, pos)
-//	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("45")}, false)
-//	s.Require().NoError(err)
-//	s.Require().Equal(1, pos)
-//
-//	response := route.Run(context.Background())
-//	s.Equal(200, response.Status())
-//	s.Equal(struct {
-//		ClearedCount int `json:"cleared_count"`
-//	}{2}, response.Data())
-//
-//	response = route.Run(context.Background())
-//	s.Equal(200, response.Status())
-//	s.Equal(struct {
-//		ClearedCount int `json:"cleared_count"`
-//	}{0}, response.Data())
-//}
+	response := route.Run(context.Background())
+	s.Equal(200, response.Status())
+	cqResp := response.Data().(*model.APICommitQueue)
+	list := cqResp.Queue
+	s.Len(list, 2)
+	s.Equal(list[0].Issue, utility.ToStringPtr("1"))
+	s.Equal(list[1].Issue, utility.ToStringPtr("2"))
+}
 
-//func (s *CommitQueueSuite) TestEnqueueItem() {
-//	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-//	id := mgobson.NewObjectId().Hex()
-//	s.sc.CachedPatches = append(s.sc.CachedPatches, model.APIPatch{
-//		Id: &id,
-//	})
-//	route.item = id
-//	response := route.Run(context.Background())
-//	s.Equal(200, response.Status())
-//	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
-//}
+func (s *CommitQueueSuite) TestDeleteItem() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(ctx))
+
+	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+
+	route.project = "mci"
+
+	// Valid delete
+	route.item = "1"
+	response := route.Run(ctx)
+	s.Equal(204, response.Status())
+
+	// Already deleted
+	response = route.Run(ctx)
+	s.Equal(500, response.Status())
+
+	// Invalid project
+	route.project = "not_here"
+	route.item = "2"
+	response = route.Run(ctx)
+	s.Equal(404, response.Status())
+}
+
+func (s *CommitQueueSuite) TestClearAll() {
+	s.NoError(db.ClearCollections(commitqueue.Collection))
+	cq0 := &commitqueue.CommitQueue{
+		ProjectID: "mci",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	cq1 := &commitqueue.CommitQueue{
+		ProjectID: "logkeeper",
+		Queue:     []commitqueue.CommitQueueItem{},
+	}
+	s.Require().NoError(commitqueue.InsertQueue(cq0))
+	s.Require().NoError(commitqueue.InsertQueue(cq1))
+
+	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("23")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("45")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+
+	response := route.Run(context.Background())
+	s.Equal(200, response.Status())
+	s.Equal(struct {
+		ClearedCount int `json:"cleared_count"`
+	}{2}, response.Data())
+
+	response = route.Run(context.Background())
+	s.Equal(200, response.Status())
+	s.Equal(struct {
+		ClearedCount int `json:"cleared_count"`
+	}{0}, response.Data())
+}
+
+func (s *CommitQueueSuite) TestEnqueueItem() {
+	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
+	id := "aabbccddeeff112233445566"
+	patch1 := patch.Patch{
+		Id: patch.NewId(id),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "",
+				PatchSet:   patch.PatchSet{CommitMessages: []string{"Commit"}},
+			},
+		},
+	}
+	s.NoError(patch1.Insert())
+	route.item = id
+	route.project = "mci"
+	response := route.Run(context.Background())
+	s.Equal(200, response.Status())
+	s.Equal(model.APICommitQueuePosition{Position: 0}, response.Data())
+}
 
 func TestCqMessageForPatch(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection, patch.Collection))

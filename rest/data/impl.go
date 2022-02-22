@@ -42,5 +42,5 @@ func (ctx *DBConnector) SetPrefix(prefix string) { ctx.Prefix = prefix }
 
 type MockDBConnector struct {
 	DBConnector
-	MockCommitQueueConnector
+	MockDBConnectorImpl
 }
