@@ -61,21 +61,23 @@ type Task struct {
 	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
-	// create - the creation time for the task, derived from the commit time or the patch creation time.
-	// dispatch - the time the task runner starts up the agent on the host
-	// scheduled - the time the commit is scheduled
-	// start - the time the agent starts the task on the host after spinning it up
-	// finish - the time the task was completed on the remote host
-	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
-	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
-	CreateTime          time.Time `bson:"create_time" json:"create_time"`
-	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime           time.Time `bson:"start_time" json:"start_time"`
-	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
+	// Create - the creation time for the task, derived from the commit time or the patch creation time.
+	// Dispatch - the time the task runner starts up the agent on the host.
+	// Scheduled - the time the commit is scheduled.
+	// Start - the time the agent starts the task on the host after spinning it up.
+	// Finish - the time the task was completed on the remote host.
+	// Activated - the time the task was marked as available to be scheduled, automatically or by a developer.
+	// DependenciesMet - for tasks that have dependencies, the time all dependencies are met.
+	// ContainerAllocated - for tasks that run on containers, the time the container was allocated.
+	CreateTime             time.Time `bson:"create_time" json:"create_time"`
+	IngestTime             time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime           time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime          time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime              time.Time `bson:"start_time" json:"start_time"`
+	FinishTime             time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime          time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
+	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
 	Version            string              `bson:"version" json:"version,omitempty"`
 	Project            string              `bson:"branch" json:"branch,omitempty"`
@@ -1387,6 +1389,7 @@ func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
+	t.ContainerAllocatedTime = utility.ZeroTime
 
 	return DeactivateTasks([]Task{*t}, caller)
 }
@@ -1403,9 +1406,10 @@ func DeactivateTasks(tasks []Task, caller string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:     false,
-				ActivatedByKey:   caller,
-				ScheduledTimeKey: utility.ZeroTime,
+				ActivatedKey:              false,
+				ActivatedByKey:            caller,
+				ScheduledTimeKey:          utility.ZeroTime,
+				ContainerAllocatedTimeKey: utility.ZeroTime,
 			},
 		},
 	)
@@ -1446,6 +1450,7 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			ActivatedKey:                false,
 			DeactivatedForDependencyKey: true,
 			ScheduledTimeKey:            utility.ZeroTime,
+			ContainerAllocatedTimeKey:   utility.ZeroTime,
 		}},
 	)
 	if err != nil {
@@ -1621,6 +1626,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
 		t.ScheduledTime = utility.ZeroTime
+		t.ContainerAllocatedTime = utility.ZeroTime
 		t.FinishTime = utility.ZeroTime
 		t.DependenciesMetTime = utility.ZeroTime
 		t.TimeTaken = 0
@@ -1635,18 +1641,19 @@ func resetTaskUpdate(t *Task) bson.M {
 	}
 	update := bson.M{
 		"$set": bson.M{
-			ActivatedKey:           true,
-			ActivatedTimeKey:       now,
-			SecretKey:              newSecret,
-			HostIdKey:              "",
-			StatusKey:              evergreen.TaskUndispatched,
-			DispatchTimeKey:        utility.ZeroTime,
-			StartTimeKey:           utility.ZeroTime,
-			ScheduledTimeKey:       utility.ZeroTime,
-			FinishTimeKey:          utility.ZeroTime,
-			DependenciesMetTimeKey: utility.ZeroTime,
-			TimeTakenKey:           0,
-			LastHeartbeatKey:       utility.ZeroTime,
+			ActivatedKey:              true,
+			ActivatedTimeKey:          now,
+			SecretKey:                 newSecret,
+			HostIdKey:                 "",
+			StatusKey:                 evergreen.TaskUndispatched,
+			DispatchTimeKey:           utility.ZeroTime,
+			StartTimeKey:              utility.ZeroTime,
+			ScheduledTimeKey:          utility.ZeroTime,
+			ContainerAllocatedTimeKey: utility.ZeroTime,
+			FinishTimeKey:             utility.ZeroTime,
+			DependenciesMetTimeKey:    utility.ZeroTime,
+			TimeTakenKey:              0,
+			LastHeartbeatKey:          utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:              "",
@@ -2017,6 +2024,7 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
+	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
 	taskStruct += fmt.Sprintf("DispatchTime: %v\n", t.DispatchTime)
 	taskStruct += fmt.Sprintf("StartTime: %v\n", t.StartTime)
 	taskStruct += fmt.Sprintf("FinishTime: %v\n", t.FinishTime)

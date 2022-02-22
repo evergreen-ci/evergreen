@@ -151,6 +151,10 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		msg["dependencies_met_time"] = j.task.DependenciesMetTime
 	}
 
+	if !j.task.ContainerAllocatedTime.IsZero() {
+		msg["container_allocated_time"] = j.task.ContainerAllocatedTime
+	}
+
 	historicRuntime, err := j.task.GetHistoricRuntime()
 	if err != nil {
 		msg[message.FieldsMsgName] = "problem computing historic runtime"
