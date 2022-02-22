@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -24,9 +24,13 @@ func TestMockGetTestStats(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	assert.NoError(db.Clear(stats.DailyTestStatsCollection))
+	assert.NoError(db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
 	mock := StatsConnector{}
 	filter := &stats.StatsFilter{}
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 
 	// Add stats
 	assert.NoError(insertTestStats(filter, 102, 100))
@@ -129,6 +133,10 @@ func insertTaskStats(filter *stats.StatsFilter, numTests int, limit int) error {
 }
 
 func TestGetTaskStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	}()
@@ -166,6 +174,10 @@ func TestGetTaskStats(t *testing.T) {
 }
 
 func TestGetTestStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
 	}()

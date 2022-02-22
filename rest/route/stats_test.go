@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 	"net/http"
 	"net/url"
 	"testing"
@@ -29,6 +30,14 @@ func TestStatsSuite(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatsSuite))
+}
+
+func (s *StatsSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	s.NoError(proj.Insert())
 }
 
 func (s *StatsSuite) TestParseStatsFilter() {

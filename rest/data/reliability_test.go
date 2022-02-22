@@ -26,6 +26,12 @@ func TestMockGetTaskReliability(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, stats.DailyTaskStatsCollection))
+
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 	mock := TaskReliabilityConnector{}
 	filter := reliability.TaskReliabilityFilter{
 		StatsFilter: stats.StatsFilter{
@@ -94,11 +100,19 @@ func TestMockGetTaskReliability(t *testing.T) {
 }
 
 func TestGetTaskReliability(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	}()
 	assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 	stat := stats.DbTaskStats{
 		Id: stats.DbTaskStatsId{
 			Project:   "projectID",

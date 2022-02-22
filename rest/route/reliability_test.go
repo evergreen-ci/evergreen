@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 	"net/http"
 	"net/url"
 	"strings"
@@ -481,7 +482,11 @@ func TestRun(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(groupContext, t)
 	evergreen.SetEnvironment(env)
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Run": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -490,7 +495,6 @@ func TestRun(t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
 
-					// taskReliabilityHandler.sc.(&data.DBConnector).URL
 					err = disableTaskReliability()
 					assert.NoError(t, err)
 
@@ -800,9 +804,14 @@ func TestReliability(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Pagination": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
