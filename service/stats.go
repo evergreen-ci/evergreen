@@ -252,17 +252,18 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		for _, t := range tasks {
 			// create a UITask
 			uiTask := &UITask{
-				Id:            t.Id,
-				CreateTime:    t.CreateTime,
-				DispatchTime:  t.DispatchTime,
-				ScheduledTime: t.ScheduledTime,
-				StartTime:     t.StartTime,
-				FinishTime:    t.FinishTime,
-				Version:       t.Version,
-				Status:        t.Status,
-				Host:          t.HostId,
-				Distro:        t.DistroId,
-				IsDisplay:     t.DisplayOnly,
+				Id:                     t.Id,
+				CreateTime:             t.CreateTime,
+				DispatchTime:           t.DispatchTime,
+				ScheduledTime:          t.ScheduledTime,
+				ContainerAllocatedTime: t.ContainerAllocatedTime,
+				StartTime:              t.StartTime,
+				FinishTime:             t.FinishTime,
+				Version:                t.Version,
+				Status:                 t.Status,
+				Host:                   t.HostId,
+				Distro:                 t.DistroId,
+				IsDisplay:              t.DisplayOnly,
 			}
 			uiTasks = append(uiTasks, uiTask)
 			versionIds = append(versionIds, t.Version)
