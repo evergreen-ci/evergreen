@@ -72,52 +72,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	groupID, err := j.getPodDispatcherGroupID()
-	if err != nil {
-		j.AddRetryableError(errors.Wrap(err, "getting group ID for pod allocation"))
-		return
-	}
-
-	pd, err := dispatcher.FindOneByGroupID(groupID)
-	if err != nil {
-		j.AddRetryableError(errors.Wrap(err, "checking for existing pod dispatcher"))
-		return
-	}
-
 	podID := primitive.NewObjectID().Hex()
-	if pd != nil {
-		// kim: TODO: add method to aggregate count pod statuses in order to see
-		// if there's one that's already preparing to run tasks.
-		// kim: QUESTION: how important is it to beancount the current pod
-		// statuses? It's mostly a question of wasted work if the pod statuses
-		// are not tallied beforehand, because there could already be a pod
-		// starting up for this task. For now, it's safe to assume that if the
-		// pod is up and preparing/ready to run the task, it won't hit a fault
-		// and PM-2617 will deal with faults.
-
-		pd.PodIDs = append(pd.PodIDs, podID)
-
-		if !utility.StringSliceContains(pd.TaskIDs, j.task.Id) {
-			pd.TaskIDs = append(pd.TaskIDs, j.task.Id)
-		}
-
-		change, err := pd.UpsertAtomically()
-		if err != nil {
-			j.AddRetryableError(errors.Wrap(err, "updating existing pod dispatcher"))
-			return
-		}
-		if change.Updated == 0 {
-			j.AddRetryableError(errors.New("existing pod dispatcher was not updated"))
-			return
-		}
-	} else {
-		pd := dispatcher.NewPodDispatcher(groupID, []string{podID}, []string{j.task.Id})
-		if err := pd.Insert(); err != nil {
-			j.AddRetryableError(errors.Wrap(err, "inserting new pod dispatcher"))
-			return
-		}
-	}
-
 	intentPod, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
 		// TODO (EVG-16371): fill in the actual values from the task's container
 		// configuration. These are just placeholder values.
@@ -134,17 +89,85 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := intentPod.Insert(); err != nil {
-		j.AddRetryableError(errors.Wrap(err, "inserting new task intent pod"))
+	if _, err := dispatcher.Allocate(ctx, j.env, j.task, intentPod); err != nil {
+		j.AddRetryableError(errors.Wrap(err, "allocating pod for task dispatch"))
 		return
 	}
 
-	// kim: TODO: set task status atomically from "waiting for container" to
-	// "container allocated".
-	if err := j.task.MarkAsContainerAllocated(podID); err != nil {
-		j.AddRetryableError(errors.Wrap(err, "marking task as container allocated"))
-		return
-	}
+	// groupID := j.getPodDispatcherGroupID()
+	//
+	// pd, err := dispatcher.FindOne(dispatcher.ByGroupID(groupID))
+	// if err != nil {
+	//     j.AddRetryableError(errors.Wrap(err, "checking for existing pod dispatcher"))
+	//     return
+	// }
+	//
+	// podID := primitive.NewObjectID().Hex()
+	// if pd != nil {
+	//     pd.PodIDs = append(pd.PodIDs, podID)
+	//
+	//     if !utility.StringSliceContains(pd.TaskIDs, j.task.Id) {
+	//         pd.TaskIDs = append(pd.TaskIDs, j.task.Id)
+	//     }
+	//
+	//     change, err := pd.UpsertAtomically()
+	//     if err != nil {
+	//         j.AddRetryableError(errors.Wrap(err, "updating existing pod dispatcher"))
+	//         return
+	//     }
+	//     if change.Updated == 0 {
+	//         j.AddRetryableError(errors.New("existing pod dispatcher was not updated"))
+	//         return
+	//     }
+	// } else {
+	//     pd := dispatcher.NewPodDispatcher(groupID, []string{podID}, []string{j.task.Id})
+	//     if err := pd.Insert(); err != nil {
+	//         j.AddRetryableError(errors.Wrap(err, "inserting new pod dispatcher"))
+	//         return
+	//     }
+	// }
+	//
+	// intentPod, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+	//     // TODO (EVG-16371): fill in the actual values from the task's container
+	//     // configuration. These are just placeholder values.
+	//     ID:         podID,
+	//     CPU:        1024,
+	//     MemoryMB:   1024,
+	//     OS:         pod.OSLinux,
+	//     Arch:       pod.ArchAMD64,
+	//     Image:      "ubuntu",
+	//     WorkingDir: "/",
+	// })
+	// if err != nil {
+	//     j.AddError(errors.Wrap(err, "creating new task intent pod"))
+	//     return
+	// }
+	//
+	// mongoClient := evergreen.GetEnvironment().Client()
+	// session, err := mongoClient.StartSession()
+	// if err != nil {
+	//     j.AddRetryableError(errors.Wrap(err, "starting transaction session"))
+	//     return
+	// }
+	// defer session.EndSession(ctx)
+	//
+	// insertPodAndUpdateTaskStatus := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	// }
+	//
+	// if _, err := session.WithTransaction(ctx, insertPodAndUpdateTaskStatus); err != nil {
+	//     j.AddRetryableError(errors.Wrap(err, "transaction to insert pod and update task"))
+	//     return
+	// }
+	//
+	// if err := intentPod.Insert(); err != nil {
+	//     j.AddRetryableError(errors.Wrap(err, "inserting new task intent pod"))
+	//     return
+	// }
+	//
+	// if err := j.task.MarkAsContainerAllocated(); err != nil {
+	//     j.AddRetryableError(errors.Wrap(err, "marking task as container allocated"))
+	//     return
+	// }
 
 	/*
 		 kim: NOTE: all operations must be idempotent.
@@ -180,12 +203,4 @@ func (j *podAllocatorJob) populate() error {
 	}
 
 	return nil
-}
-
-func (j *podAllocatorJob) getPodDispatcherGroupID() (string, error) {
-	if j.task.TaskGroup != "" {
-		return "", errors.New("task groups not supported yet")
-	}
-
-	return j.task.Id, nil
 }

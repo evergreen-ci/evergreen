@@ -1,0 +1,238 @@
+package dispatcher
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+func init() {
+	testutil.Setup()
+}
+
+func TestFindOne(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, pds []PodDispatcher){
+		"ReturnsNilResultForNoMatches": func(t *testing.T, pds []PodDispatcher) {
+			found, err := FindOne(db.Query(bson.M{}))
+			assert.NoError(t, err)
+			assert.Zero(t, found)
+		},
+		"ReturnsOneMatching": func(t *testing.T, pds []PodDispatcher) {
+			for _, pd := range pds {
+				require.NoError(t, pd.Insert())
+			}
+			found, err := FindOneByID(pds[0].ID)
+			require.NoError(t, err)
+			require.NotZero(t, found)
+			assert.Equal(t, pds[0], *found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t, []PodDispatcher{
+				NewPodDispatcher("group0", []string{"task0"}, []string{"pod0"}),
+				NewPodDispatcher("group1", []string{"task1"}, []string{"pod1"}),
+			})
+		})
+	}
+}
+
+func TestFind(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, pds []PodDispatcher){
+		"ReturnsEmptyForNoMatches": func(t *testing.T, pds []PodDispatcher) {
+			found, err := Find(db.Query(bson.M{}))
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+		"ReturnsMatching": func(t *testing.T, pds []PodDispatcher) {
+			for _, pd := range pds {
+				require.NoError(t, pd.Insert())
+			}
+			found, err := Find(db.Query(bson.M{}))
+			require.NoError(t, err)
+			require.Len(t, found, 2)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t, []PodDispatcher{
+				NewPodDispatcher("group0", []string{"task0"}, []string{"pod0"}),
+				NewPodDispatcher("group1", []string{"task1"}, []string{"pod1"}),
+			})
+		})
+	}
+}
+
+func TestFindOneByGroupID(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, pds []PodDispatcher){
+		"FindsMatchingGroupID": func(t *testing.T, pds []PodDispatcher) {
+			for _, pd := range pds {
+				require.NoError(t, pd.Insert())
+			}
+			found, err := FindOneByGroupID(pds[0].GroupID)
+			require.NoError(t, err)
+			assert.Equal(t, pds[0].ID, found.ID)
+		},
+		"ReturnsNoResultsWithUnmatchedGroupID": func(t *testing.T, pds []PodDispatcher) {
+			for _, pd := range pds {
+				require.NoError(t, pd.Insert())
+			}
+			found, err := FindOneByGroupID("foo")
+			assert.NoError(t, err)
+			assert.Zero(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			tCase(t, []PodDispatcher{
+				NewPodDispatcher("group0", []string{"task0"}, []string{"pod0"}),
+				NewPodDispatcher("group1", []string{"task1"}, []string{"pod1"}),
+			})
+		})
+	}
+}
+
+func TestAllocate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
+	}()
+
+	checkAllocated := func(t *testing.T, tsk *task.Task, p *pod.Pod, pd *PodDispatcher) {
+		dbPod, err := pod.FindOneByID(p.ID)
+		require.NoError(t, err)
+		require.NotZero(t, dbPod)
+		assert.Equal(t, p.Type, dbPod.Type)
+		assert.Equal(t, p.Status, dbPod.Status)
+
+		dbTask, err := task.FindOneId(tsk.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskContainerAllocated, dbTask.Status)
+
+		dbDispatcher, err := FindOneByGroupID(getGroupID(tsk))
+		require.NoError(t, err)
+		require.NotZero(t, dbDispatcher)
+		assert.Equal(t, pd.PodIDs, dbDispatcher.PodIDs)
+		assert.Equal(t, pd.TaskIDs, dbDispatcher.TaskIDs)
+		assert.Equal(t, pd.ModificationCount, dbDispatcher.ModificationCount)
+
+		dbEvents, err := event.FindAllByResourceID(tsk.Id)
+		require.NoError(t, err)
+		require.Len(t, dbEvents, 1)
+		assert.Equal(t, event.ContainerAllocated, dbEvents[0].EventType)
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod){
+		"SucceedsWithNewPodDispatcher": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
+			require.NoError(t, tsk.Insert())
+
+			newDispatcher, err := Allocate(ctx, env, tsk, p)
+			require.NoError(t, err)
+
+			assert.Equal(t, getGroupID(tsk), newDispatcher.GroupID)
+			assert.Equal(t, []string{p.ID}, newDispatcher.PodIDs)
+			assert.Equal(t, []string{tsk.Id}, newDispatcher.TaskIDs)
+			assert.True(t, newDispatcher.ModificationCount > 0)
+
+			checkAllocated(t, tsk, p, newDispatcher)
+
+		},
+		"SucceedsWithExistingPodDispatcherForGroup": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
+			pd := &PodDispatcher{
+				GroupID:           getGroupID(tsk),
+				PodIDs:            []string{utility.RandomString()},
+				TaskIDs:           []string{tsk.Id},
+				ModificationCount: 1,
+			}
+			require.NoError(t, pd.Insert())
+			require.NoError(t, tsk.Insert())
+
+			updatedDispatcher, err := Allocate(ctx, env, tsk, p)
+			require.NoError(t, err)
+
+			assert.Equal(t, pd.GroupID, updatedDispatcher.GroupID)
+			left, right := utility.StringSliceSymmetricDifference(append(pd.PodIDs, p.ID), updatedDispatcher.PodIDs)
+			assert.Empty(t, left)
+			assert.Empty(t, right)
+			assert.Equal(t, pd.TaskIDs, updatedDispatcher.TaskIDs)
+			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
+
+			checkAllocated(t, tsk, p, updatedDispatcher)
+		},
+		"FailsWithoutMatchingTaskStatus": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
+			pd, err := Allocate(ctx, env, tsk, p)
+			require.Error(t, err)
+			assert.Zero(t, pd)
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+
+			dbTask, err := task.FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+
+			dbDispatcher, err := FindOneByGroupID(getGroupID(tsk))
+			assert.NoError(t, err)
+			assert.Zero(t, dbDispatcher)
+
+			dbEvents, err := event.FindAllByResourceID(tsk.Id)
+			assert.NoError(t, err)
+			assert.Empty(t, dbEvents)
+		},
+		// "": func(ctx context.Context, t *testing.T, tsk *task.Task, p *pod.Pod) { },
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx))
+
+			p, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+				ID:         primitive.NewObjectID().Hex(),
+				CPU:        256,
+				MemoryMB:   512,
+				OS:         pod.OSLinux,
+				Arch:       pod.ArchARM64,
+				Image:      "image",
+				WorkingDir: "/",
+			})
+			require.NoError(t, err)
+			tCase(tctx, t, env, &task.Task{
+				Id:     "task",
+				Status: evergreen.TaskContainerUnallocated,
+			}, p)
+		})
+	}
+}

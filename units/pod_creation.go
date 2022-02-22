@@ -88,16 +88,6 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.pod.Type == pod.TypeAgent {
-		// Verify that a task pod is correctly associated with a task to run. If
-		// not, it should not be created.
-
-		// kim: TODO: implement task.FindByPodID() and check if length is
-		// non-zero before proceeding with pod creation. This check will
-		// guarantee that the pod allocator finished in its entirety
-		// successfully before the pod is created.
-	}
-
 	settings := *j.env.Settings()
 	// Use the latest service flags instead of those cached in the environment.
 	flags, err := evergreen.GetServiceFlags()

@@ -1,11 +1,21 @@
 package dispatcher
 
 import (
+	"context"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const Collection = "pod_dispatchers"
@@ -19,10 +29,9 @@ var (
 )
 
 // FindOne finds one dispatcher queue for the given query.
-// kim: TODO: test
-func FindOne(query bson.M) (*PodDispatcher, error) {
+func FindOne(q db.Q) (*PodDispatcher, error) {
 	var pd PodDispatcher
-	err := db.FindOneQ(Collection, db.Query(query), &pd)
+	err := db.FindOneQ(Collection, q, &pd)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -30,18 +39,9 @@ func FindOne(query bson.M) (*PodDispatcher, error) {
 }
 
 // Find finds all dispatcher queues for the given query.
-// kim: TODO: test
-func Find(query bson.M) ([]PodDispatcher, error) {
+func Find(q db.Q) ([]PodDispatcher, error) {
 	pds := []PodDispatcher{}
-	return pds, errors.WithStack(db.FindAllQ(Collection, db.Query(query), &pds))
-}
-
-// FindOneByGroupID finds a pod dispatcher by its group ID.
-// kim: TODO: test
-func FindOneByGroupID(id string) (*PodDispatcher, error) {
-	return FindOne(bson.M{
-		GroupIDKey: id,
-	})
+	return pds, errors.WithStack(db.FindAllQ(Collection, q, &pds))
 }
 
 // UpdateOne updates one dispatcher queue.
@@ -53,4 +53,93 @@ func UpdateOne(query bson.M, update interface{}) error {
 // query; otherwise, it inserts a new dispatcher queue.
 func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {
 	return db.Upsert(Collection, query, update)
+}
+
+// FindOneByID finds one pod dispatcher by its ID.
+func FindOneByID(id string) (*PodDispatcher, error) {
+	return FindOne(db.Query(bson.M{
+		IDKey: id,
+	}))
+}
+
+// ByGroupID returns the query to find a pod dispatcher by its group ID.
+func ByGroupID(groupID string) bson.M {
+	return bson.M{
+		GroupIDKey: groupID,
+	}
+}
+
+// FindOneByGroupID finds one pod dispatcher by its group ID.
+func FindOneByGroupID(groupID string) (*PodDispatcher, error) {
+	return FindOne(db.Query(ByGroupID(groupID)))
+}
+
+// Allocate sets up the given intent pod to the given task for dispatching.
+func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *pod.Pod) (*PodDispatcher, error) {
+	mongoClient := env.Client()
+	session, err := mongoClient.StartSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "starting transaction session")
+	}
+	defer session.EndSession(ctx)
+
+	pd := &PodDispatcher{}
+	allocateDispatcher := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		groupID := getGroupID(t)
+		if err := env.DB().Collection(Collection).FindOne(sessCtx, ByGroupID(groupID)).Decode(pd); err != nil && !adb.ResultsNotFound(err) {
+			return nil, errors.Wrap(err, "checking for existing pod dispatcher")
+		} else if adb.ResultsNotFound(err) {
+			newDispatcher := NewPodDispatcher(groupID, []string{t.Id}, []string{p.ID})
+			pd = &newDispatcher
+		} else {
+			pd.PodIDs = append(pd.PodIDs, p.ID)
+
+			if !utility.StringSliceContains(pd.TaskIDs, t.Id) {
+				pd.TaskIDs = append(pd.TaskIDs, t.Id)
+			}
+		}
+
+		if _, err := env.DB().Collection(Collection).UpdateOne(sessCtx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(), options.Update().SetUpsert(true)); err != nil {
+			return nil, errors.Wrap(err, "updating existing pod dispatcher")
+		}
+		pd.ModificationCount++
+
+		if _, err := env.DB().Collection(pod.Collection).InsertOne(sessCtx, p); err != nil {
+			return nil, errors.Wrap(err, "inserting new intent pod")
+		}
+
+		update, err := env.DB().Collection(task.Collection).UpdateOne(sessCtx, bson.M{
+			task.IdKey:     t.Id,
+			task.StatusKey: t.Status,
+		}, bson.M{
+			"$set": bson.M{
+				task.StatusKey: evergreen.TaskContainerAllocated,
+			},
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "marking task as container allocated")
+		}
+		if update.ModifiedCount == 0 {
+			return nil, errors.New("task status was not updated")
+		}
+		t.Status = evergreen.TaskContainerAllocated
+
+		return nil, nil
+	}
+
+	if _, err := session.WithTransaction(ctx, allocateDispatcher); err != nil {
+		return nil, errors.Wrap(err, "allocating dispatcher in transaction")
+	}
+
+	t.Status = evergreen.TaskContainerAllocated
+
+	event.LogTaskContainerAllocated(t.Id, t.Execution, time.Now())
+
+	return pd, nil
+}
+
+func getGroupID(t *task.Task) string {
+	// TODO (PM-2618): handle task units that represent task groups rather than
+	// standalone tasks.
+	return t.Id
 }

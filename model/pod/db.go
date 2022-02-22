@@ -87,15 +87,6 @@ func FindOneByID(id string) (*Pod, error) {
 	return p, nil
 }
 
-// FindByIDs returns all pods matching any of the given IDs.
-// kim: TODO: test
-func FindByIDs(podIDs ...string) ([]Pod, error) {
-	if len(podIDs) == 0 {
-		return []Pod{}, nil
-	}
-	return Find(db.Query(bson.M{IDKey: bson.M{"$in": podIDs}}))
-}
-
 // UpdateOne updates one pod.
 func UpdateOne(query interface{}, update interface{}) error {
 	return db.Update(
