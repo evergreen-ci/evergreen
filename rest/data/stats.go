@@ -1,8 +1,8 @@
 package data
 
 import (
-	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/stats"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 )

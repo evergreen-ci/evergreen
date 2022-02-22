@@ -1,9 +1,9 @@
 package data
 
 import (
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 )
 
