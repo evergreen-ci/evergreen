@@ -796,7 +796,10 @@ func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
 }
 
 func TestReliability(t *testing.T) {
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()

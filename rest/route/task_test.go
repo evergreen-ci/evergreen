@@ -56,10 +56,10 @@ func (s *TaskAbortSuite) SetupSuite() {
 	}
 	s.NoError((&build.Build{Id: "b1"}).Insert())
 	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
+	u := &user.DBUser{Id: "user1"}
+	s.NoError(u.Insert())
 	for _, t := range tasks {
 		s.NoError(t.Insert())
-		u := &user.DBUser{Id: "user1"}
-		s.NoError(u.Insert())
 	}
 }
 
@@ -76,8 +76,8 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.NotNil(res)
 	tasks, err := s.data.FindTasksByIds([]string{"task1", "task2"})
 	s.NoError(err)
-	s.Equal("user1", tasks[0])
-	s.Equal("", tasks[1])
+	s.Equal("user1", tasks[0].ActivatedBy)
+	s.Equal("", tasks[1].ActivatedBy)
 	t, ok := res.Data().(*model.APITask)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr("task1"), t.Id)
@@ -215,6 +215,10 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 }
 
 func TestGetDisplayTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	for testName, testCase := range map[string]func(context.Context, *testing.T){
 		"SucceedsWithTaskInDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
@@ -285,6 +289,10 @@ func TestGetDisplayTask(t *testing.T) {
 }
 
 func TestGetTaskSyncReadCredentials(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	creds := model.APIS3Credentials{
 		Key:    utility.ToStringPtr("key"),
 		Secret: utility.ToStringPtr("secret"),
@@ -345,7 +353,6 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 	rh := makeTaskSyncReadCredentialsGetHandler(&data.DBConnector{
 		DBAdminConnector: connector,
 	})
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	resp := rh.Run(ctx)
 	require.NotNil(t, resp)
@@ -357,6 +364,10 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 }
 
 func TestGetTaskSyncPath(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	expected := task.Task{
 		Id:           "task_id",
 		Project:      "project",
@@ -372,7 +383,6 @@ func TestGetTaskSyncPath(t *testing.T) {
 	require.True(t, ok)
 	rh.taskID = expected.Id
 
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	resp := rh.Run(ctx)
 

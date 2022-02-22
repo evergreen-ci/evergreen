@@ -1126,6 +1126,10 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With a task returned by the Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, serviceModel.VersionCollection, build.Collection))
 		sc := data.DBConnector{}

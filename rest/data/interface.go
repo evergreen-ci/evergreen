@@ -407,17 +407,8 @@ type MockConnector interface {
 	// if bool is true, move the commit queue item to be processed next.
 	EnqueueItem(string, restModel.APICommitQueueItem, bool) (int, error)
 	AddPatchForPr(ctx context.Context, projectRef model.ProjectRef, prNum int, modules []restModel.APIModule, messageOverride string) (string, error)
-	FindCommitQueueForProject(string) (*restModel.APICommitQueue, error)
-	EnableCommitQueue(*model.ProjectRef) error
-	CommitQueueRemoveItem(string, string, string) (*restModel.APICommitQueueItem, error)
-	IsItemOnCommitQueue(string, string) (bool, error)
-	CommitQueueClearAll() (int, error)
 	CreatePatchForMerge(context.Context, string, string) (*restModel.APIPatch, error)
-	IsPatchEmpty(string) (bool, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
-	GetMessageForPatch(string) (string, error)
-	ConcludeMerge(string, string) error
-	GetAdditionalPatches(patchId string) ([]string, error)
 	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
 	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (model.ProjectInfo, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)

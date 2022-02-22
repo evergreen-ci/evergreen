@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"reflect"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 

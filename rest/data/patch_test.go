@@ -254,7 +254,6 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 type PatchConnectorAbortByIdSuite struct {
 	ctx      Connector
 	obj_ids  []string
-	DB       bool
 	setup    func() error
 	teardown func() error
 	prBody   []byte
@@ -291,7 +290,6 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 
 	s.teardown = func() error { return nil }
 
-	s.DB = true
 	s.Require().NoError(s.setup())
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
@@ -310,11 +308,9 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
-	if s.DB {
-		abortedPatch, err := s.ctx.(*DBConnector).DBPatchConnector.FindPatchById(s.obj_ids[0])
-		s.NoError(err)
-		s.Equal("patch_request", *abortedPatch.Requester)
-	}
+	abortedPatch, err := s.ctx.(*DBConnector).DBPatchConnector.FindPatchById(s.obj_ids[0])
+	s.NoError(err)
+	s.Equal("patch_request", *abortedPatch.Requester)
 
 	err = s.ctx.AbortPatch(s.obj_ids[1], "user1")
 	s.NoError(err)
@@ -420,7 +416,6 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 		return db.Clear(patch.Collection)
 	}
 
-	s.DB = false
 	s.Require().NoError(s.setup())
 }
 
@@ -431,11 +426,9 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 	err := s.ctx.SetPatchPriority(s.obj_ids[0], 7, "")
 	s.NoError(err)
-	if s.DB {
-		t, err := s.ctx.(*DBConnector).DBTaskConnector.FindTaskById("t1")
-		s.NoError(err)
-		s.Equal(int64(7), t.Priority)
-	}
+	t, err := s.ctx.(*DBConnector).DBTaskConnector.FindTaskById("t1")
+	s.NoError(err)
+	s.Equal(int64(7), t.Priority)
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {

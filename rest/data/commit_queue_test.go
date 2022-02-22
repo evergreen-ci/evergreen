@@ -266,33 +266,32 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
-	s.mockCtx = &MockDBConnector{}
-	pos, err := s.mockCtx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
+	s.ctx = &DBConnector{}
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
-	pos, err = s.mockCtx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("5678")}, false)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("5678")}, false)
 	s.NoError(err)
 	s.Equal(1, pos)
 
-	conn := s.mockCtx.(*MockDBConnector)
-	q, ok := conn.MockDBConnectorImpl.Queue["mci"]
-	s.True(ok)
-	s.Require().Len(q, 2)
+	cq, err := commitqueue.FindOneId("mci")
+	s.NoError(err)
+	s.Require().Len(cq.Queue, 2)
 
-	s.Equal("1234", utility.FromStringPtr(q[0].Issue))
-	s.Equal("5678", utility.FromStringPtr(q[1].Issue))
+	s.Equal("1234", utility.FromStringPtr(&cq.Queue[0].Issue))
+	s.Equal("5678", utility.FromStringPtr(&cq.Queue[1].Issue))
 
 	// move to front
-	pos, err = s.mockCtx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
 	s.NoError(err)
-	s.Equal(1, pos)
-	q, ok = conn.MockDBConnectorImpl.Queue["mci"]
-	s.True(ok)
-	s.Require().Len(q, 3)
+	s.Equal(0, pos)
+	cq, err = commitqueue.FindOneId("mci")
+	s.NoError(err)
+	s.Require().Len(cq.Queue, 3)
 
-	s.Equal("1234", utility.FromStringPtr(q[0].Issue))
-	s.Equal("important", utility.FromStringPtr(q[1].Issue))
-	s.Equal("5678", utility.FromStringPtr(q[2].Issue))
+	s.Equal("important", utility.FromStringPtr(&cq.Queue[0].Issue))
+	s.Equal("1234", utility.FromStringPtr(&cq.Queue[1].Issue))
+	s.Equal("5678", utility.FromStringPtr(&cq.Queue[2].Issue))
 
 }
 

@@ -74,31 +74,6 @@ func (pc *MockDBConnectorImpl) CommitQueueRemoveItem(id, itemId, user string) (*
 	return nil, nil
 }
 
-func (pc *MockDBConnectorImpl) IsItemOnCommitQueue(id, item string) (bool, error) {
-	queue, ok := pc.Queue[id]
-	if !ok {
-		return false, errors.Errorf("can't get commit queue for id '%s'", id)
-	}
-	for _, queueItem := range queue {
-		if utility.FromStringPtr(queueItem.Issue) == item {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (pc *MockDBConnectorImpl) CommitQueueClearAll() (int, error) {
-	var count int
-	for k, v := range pc.Queue {
-		if len(v) > 0 {
-			count++
-		}
-		pc.Queue[k] = []restModel.APICommitQueueItem{}
-	}
-
-	return count, nil
-}
-
 func (pc *MockDBConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	_, err := settings.GetGithubOauthToken()
 	if err != nil {
@@ -116,24 +91,6 @@ func (pc *MockDBConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, 
 
 func (pc *MockDBConnectorImpl) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	return nil, nil
-}
-func (pc *MockDBConnectorImpl) GetMessageForPatch(patchID string) (string, error) {
-	return "", nil
-}
-
-func (pc *MockDBConnectorImpl) ConcludeMerge(patchID, status string) error {
-	return nil
-}
-func (pc *MockDBConnectorImpl) GetAdditionalPatches(patchId string) ([]string, error) {
-	return nil, nil
-}
-
-func (ctx *MockDBConnectorImpl) EnableCommitQueue(ref *model.ProjectRef) error {
-	return nil
-}
-
-func (ctx *MockDBConnectorImpl) IsPatchEmpty(s string) (bool, error) {
-	return true, nil
 }
 
 func (ctx *MockDBConnectorImpl) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
