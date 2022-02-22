@@ -1225,7 +1225,6 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.NoError(t, execTask0.Insert())
 	assert.NoError(t, execTask1.Insert())
 	assert.NoError(t, randomTask.Insert())
-	ctx := context.Background()
 	tbh := &tasksByBuildHandler{
 		limit: 100,
 		sc:    &sc,
@@ -1262,7 +1261,6 @@ func TestOptionsRequest(t *testing.T) {
 	route := "/rest/v2/tasks/test/restart"
 	_, err := http.NewRequest("OPTIONS", route, nil)
 	assert.NoError(t, err)
-	ctx := context.Background()
 
 	tbh := &optionsHandler{}
 	resp := tbh.Run(ctx)

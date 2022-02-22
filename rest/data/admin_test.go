@@ -142,14 +142,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.PodInit.S3BaseURL, settingsFromConnector.PodInit.S3BaseURL)
 	s.EqualValues(testSettings.PodInit.MaxParallelPodRequests, settingsFromConnector.PodInit.MaxParallelPodRequests)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
-	// We have to check different cases because the mock connector does not set
-	// defaults for the settings.
-	switch s.ctx.(type) {
-	case *DBConnector:
-		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
-	default:
-		s.Error(errors.New("data connector was not a DBConnector"))
-	}
+
+	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
+
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
@@ -168,11 +163,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
-
-	// the tests below do not apply to the mock connector
-	if reflect.TypeOf(s.ctx).String() == "*data.DBConnector" {
-		return
-	}
 
 	// spot check events in the event log
 	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
@@ -267,12 +257,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
-	switch s.ctx.(type) {
-	case *DBConnector:
-		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
-	default:
-		s.Error(errors.New("data connector was not a DBConnector"))
-	}
+
+	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
+
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
