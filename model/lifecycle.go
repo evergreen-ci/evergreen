@@ -1297,6 +1297,8 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
+	} else if t.Activated {
+		t.ActivatedBy = v.Author
 	}
 	if buildVarTask.IsGroup {
 		tg := project.FindTaskGroup(buildVarTask.GroupName)
