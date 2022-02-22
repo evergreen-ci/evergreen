@@ -67,7 +67,7 @@ func (s *UserConnectorSuite) TestGetSSHKeysWithNoUserPanics() {
 
 func (s *UserConnectorSuite) TestGetSSHKeys() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0", PubKeys: []user.PubKey{{Name: "user0_pubkey0"}, {Name: "user0_pubkey1"}}})
 
 	resp := s.get.Run(ctx)
 
@@ -196,7 +196,7 @@ func (s *UserConnectorDeleteSuite) SetupTest() {
 
 func (s *UserConnectorDeleteSuite) TestDeleteSSHKeys() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0", PubKeys: []user.PubKey{{Name: "user0_pubkey0"}, {Name: "user0_pubkey1"}}})
 
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey0"
 	resp := s.rm.Run(ctx)

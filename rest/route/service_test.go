@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1081,8 +1082,8 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(task.Collection))
 	Convey("With a task returned by the Connector", t, func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, serviceModel.VersionCollection, build.Collection))
 		sc := data.DBConnector{}
 		timeNow := time.Now()
 		testTask := task.Task{
@@ -1090,18 +1091,32 @@ func TestTaskResetExecute(t *testing.T) {
 			Activated:    false,
 			Secret:       "initialSecret",
 			DispatchTime: timeNow,
+			BuildId:      "b0",
+			Version:      "v1",
+			Status:       evergreen.TaskSucceeded,
 		}
 		So(testTask.Insert(), ShouldBeNil)
+		v := &serviceModel.Version{Id: "v1"}
+		So(v.Insert(), ShouldBeNil)
+		b := build.Build{Id: "b0", Version: "v1", Activated: true}
+		So(b.Insert(), ShouldBeNil)
 		ctx := context.Background()
 		Convey("and an error from the service function", func() {
-			//sc.DBTaskConnector.StoredError = fmt.Errorf("could not reset task")
-
+			testTask2 := task.Task{
+				Id:           "testTaskId2",
+				Activated:    false,
+				Secret:       "initialSecret",
+				DispatchTime: timeNow,
+				BuildId:      "b0",
+				Version:      "v1",
+				Status:       evergreen.TaskStarted,
+			}
+			So(testTask2.Insert(), ShouldBeNil)
 			trh := &taskRestartHandler{
-				taskId:   "testTaskId",
+				taskId:   "testTaskId2",
 				username: "testUser",
 				sc:       &sc,
 			}
-
 			resp := trh.Run(ctx)
 			So(resp.Status(), ShouldNotEqual, http.StatusOK)
 			apiErr, ok := resp.Data().(gimlet.ErrorResponse)

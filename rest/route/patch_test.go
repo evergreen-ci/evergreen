@@ -366,7 +366,7 @@ func TestPatchesChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.VersionCollection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 	s.data = data.DBPatchConnector{}
@@ -374,11 +374,22 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 		DBPatchConnector: s.data,
 	}
 	patches := []patch.Patch{
-		{Id: patch.NewId(s.objIds[0]), Project: "proj"},
-		{Id: patch.NewId(s.objIds[1]), Project: "proj"},
+		{Id: patch.NewId(s.objIds[0]), Version: "v1", Project: "proj", PatchNumber: 7},
+		{Id: patch.NewId(s.objIds[1]), Version: "v1", Project: "proj", PatchNumber: 0},
 	}
 	for _, p := range patches {
 		s.NoError(p.Insert())
+	}
+	v := &serviceModel.Version{Id: "v1"}
+	s.NoError(v.Insert())
+	b := build.Build{Id: "b0", Version: "v1", Activated: true}
+	s.NoError(b.Insert())
+	tasks := []task.Task{
+		{Id: "t0", BuildId: "b0", Activated: true, Status: evergreen.TaskUndispatched},
+		{Id: "t1", BuildId: "b0", Activated: true, Status: evergreen.TaskSucceeded},
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
 	}
 }
 
@@ -404,11 +415,9 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	s.NoError(err)
 	p2, err := s.sc.FindPatchById(s.objIds[1])
 	s.NoError(err)
-	s.Equal(int64(7), p1.PatchNumber)
-	s.Equal(int64(0), p2.PatchNumber)
-	foundPatch, ok := res.Data().(*model.APIPatch)
-	s.True(ok)
-	s.True(foundPatch.Activated)
+	s.Equal(7, p1.PatchNumber)
+	s.Equal(0, p2.PatchNumber)
+	s.True(p1.Activated)
 }
 
 ////////////////////////////////////////////////////////////////////////
