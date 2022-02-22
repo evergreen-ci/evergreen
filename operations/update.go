@@ -25,7 +25,6 @@ import (
 func Update() cli.Command {
 	const installFlagName = "install"
 	const forceFlagName = "force"
-	const autoUpgradeFlagName = "auto"
 
 	return cli.Command{
 		Name:    "get-update",
@@ -40,17 +39,12 @@ func Update() cli.Command {
 				Name:  joinFlagNames(forceFlagName, "f"),
 				Usage: "download a new CLI even if the current CLI is not out of date",
 			},
-			cli.BoolFlag{
-				Name:  autoUpgradeFlagName,
-				Usage: "setup automatic installations of a new CLI if the current CLI is out of date",
-			},
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			doInstall := c.Bool(installFlagName)
 			forceUpdate := c.Bool(forceFlagName)
-			autoUpgrade := c.Bool(autoUpgradeFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -59,116 +53,96 @@ func Update() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if !conf.AutoUpgradeCLI && !autoUpgrade {
-				fmt.Println(fmt.Sprintf("Automatic CLI upgrades are not set up; specifying the -%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName))
+
+			client := conf.getRestCommunicator(ctx)
+			defer client.Close()
+
+			update, err := checkUpdate(client, false, forceUpdate)
+			if err != nil {
+				return err
 			}
-			if conf.AutoUpgradeCLI && autoUpgrade {
-				fmt.Println(fmt.Sprintf("Automatic CLI upgrades are already set up, specifying the %s flag is not necessary.", autoUpgradeFlagName))
+			if !update.needsUpdate || len(update.binaries) == 0 {
+				return nil
 			}
-			if !conf.AutoUpgradeCLI && autoUpgrade {
-				conf.SetAutoUpgradeCLI()
-				if err := conf.Write(""); err != nil {
-					return errors.Wrap(err, "error setting auto-upgrade CLI option")
+
+			updatedBin, err := tryAllPrepareUpdate(update)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if doInstall {
+					grip.Error(os.Remove(updatedBin))
 				}
-				fmt.Println("Automatic CLI upgrades have successfully been setup.")
+			}()
+
+			if doInstall {
+				grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
+
+				var binaryDest string
+				binaryDest, err = osext.Executable()
+				if err != nil {
+					return errors.Errorf("Failed to get installation path: %s", err)
+				}
+
+				winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
+				winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
+				if runtime.GOOS == "windows" {
+					grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
+					if err = os.Rename(binaryDest, winTempDest); err != nil {
+						return err
+					}
+				} else {
+					grip.Infoln("Unlinking existing binary at", binaryDest)
+					if err = syscall.Unlink(binaryDest); err != nil {
+						return err
+					}
+				}
+
+				grip.Infoln("Moving upgraded binary to", binaryDest)
+				err = copyFile(binaryDest, updatedBin)
+				if err != nil {
+					return err
+				}
+
+				grip.Info("Setting binary permissions...")
+				err = os.Chmod(binaryDest, 0755)
+				if err != nil {
+					return err
+				}
+				grip.Info("Upgrade complete!")
+
+				if runtime.GOOS == "windows" {
+					grip.Infoln("Deleting old binary", winTempDest)
+					// Source: https://stackoverflow.com/a/19748576
+					// Since Windows does not allow a binary that's currently in
+					// use to be deleted, wait 2 seconds for the CLI process to
+					// exit and then delete it.
+					cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping localhost -n 3 > nul & del %s", winTempDest))
+					if err = cmd.Start(); err != nil {
+						return err
+					}
+				}
+
+				return nil
 			}
-			return CheckAndUpdateVersion(conf, ctx, doInstall, forceUpdate, false)
+
+			grip.Infoln("New binary downloaded (but not installed) to path:", updatedBin)
+
+			// Attempt to generate a command that the user can copy/paste to complete the install.
+			binaryDest, err := osext.Executable()
+			if err != nil {
+				// osext not working on this platform so we can't generate command, give up (but ignore err)
+				return nil
+			}
+			installCommand := fmt.Sprintf("\tmv %s %s", updatedBin, binaryDest)
+			if runtime.GOOS == "windows" {
+				installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
+			}
+			grip.Infoln("To complete the install, run the following command:", installCommand)
+
+			return nil
 		},
 	}
-}
-
-// CheckAndUpdateVersion checks if the CLI is up to date. If there is no new CLI version it will simply notify that the current binary is up to date.
-// If there is a new version available, it will be downloaded, and if doInstall is set the new binary will automatically be replaced at the current path the old binary existed in.
-// Otherwise, it will simply be downloaded and a suggested 'mv' command will be printed so the user can replace the binary at their discretion.
-// Toggling forceUpdate will download a new CLI even if the current CLI does not have an out-of-date CLI version string.
-func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
-	client := conf.getRestCommunicator(ctx)
-	defer client.Close()
-
-	update, err := checkUpdate(client, silent, forceUpdate)
-	if err != nil {
-		return err
-	}
-	if !update.needsUpdate || len(update.binaries) == 0 {
-		return nil
-	}
-
-	updatedBin, err := tryAllPrepareUpdate(update)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if doInstall {
-			grip.Error(os.Remove(updatedBin))
-		}
-	}()
-
-	if doInstall {
-		grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
-
-		var binaryDest string
-		binaryDest, err = osext.Executable()
-		if err != nil {
-			return errors.Errorf("Failed to get installation path: %s", err)
-		}
-
-		winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
-		winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
-		if runtime.GOOS == "windows" {
-			grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
-			if err = os.Rename(binaryDest, winTempDest); err != nil {
-				return err
-			}
-		} else {
-			grip.Infoln("Unlinking existing binary at", binaryDest)
-			if err = syscall.Unlink(binaryDest); err != nil {
-				return err
-			}
-		}
-
-		grip.Infoln("Moving upgraded binary to", binaryDest)
-		err = copyFile(binaryDest, updatedBin)
-		if err != nil {
-			return err
-		}
-
-		grip.Info("Setting binary permissions...")
-		err = os.Chmod(binaryDest, 0755)
-		if err != nil {
-			return err
-		}
-		grip.Info("Upgrade complete!")
-
-		if runtime.GOOS == "windows" {
-			grip.Infoln("Deleting old binary", winTempDest)
-			// Source: https://stackoverflow.com/a/19748576
-			// Since Windows does not allow a binary that's currently in
-			// use to be deleted, wait 2 seconds for the CLI process to
-			// exit and then delete it.
-			cmd := exec.Command("cmd", "/c", fmt.Sprintf("ping localhost -n 3 > nul & del %s", winTempDest))
-			if err = cmd.Start(); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
-	grip.Infoln("New binary downloaded (but not installed) to path:", updatedBin)
-
-	// Attempt to generate a command that the user can copy/paste to complete the install.
-	binaryDest, err := osext.Executable()
-	if err != nil {
-		// osext not working on this platform so we can't generate command, give up (but ignore err)
-		return nil
-	}
-	installCommand := fmt.Sprintf("\tmv %s %s", updatedBin, binaryDest)
-	if runtime.GOOS == "windows" {
-		installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
-	}
-	grip.Infoln("To complete the install, run the following command:", installCommand)
-
-	return nil
 }
 
 func copyFile(dst, src string) error {

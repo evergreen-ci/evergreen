@@ -8,6 +8,7 @@ type Query {
   version(id: String!): Version!
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
+  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -1120,6 +1121,12 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type GithubProjectConflicts {
+  commitQueueIdentifiers: [String!]
+  prTestingIdentifiers: [String!]
+  commitCheckIdentifiers: [String!]
 }
 
 type ProjectSettings {

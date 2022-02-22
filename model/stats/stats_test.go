@@ -338,7 +338,7 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	s.Equal(float64(4), doc.AvgDurationPass)
 	s.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	var lastTestResult *dbTestStats
+	var lastTestResult *DbTestStats
 	lastTestResult, err = s.getLastHourlyTestStat(testStatsID)
 	s.NoError(err)
 	s.Equal(lastTestResult.LastID, doc.LastID)
@@ -800,8 +800,8 @@ func (s *statsSuite) getLastTestResult(testStatsID DbTestStatsId) (*testresult.T
 	return lastTestResult, err
 }
 
-func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*dbTestStats, error) {
-	testResults := &dbTestStats{}
+func (s *statsSuite) getLastHourlyTestStat(testStatsID DbTestStatsId) (*DbTestStats, error) {
+	testResults := &DbTestStats{}
 
 	start := utility.GetUTCDay(testStatsID.Date)
 	end := start.Add(24 * time.Hour)

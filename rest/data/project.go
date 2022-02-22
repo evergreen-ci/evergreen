@@ -163,14 +163,13 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 }
 
 func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
-	conflictingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	conflicts, err := projectRef.GetGithubProjectConflicts()
 	if err != nil {
 		return errors.Wrap(err, "error finding project refs")
 	}
-	for _, ref := range conflictingRefs {
-		if ref.IsPRTestingEnabled() && ref.Id != projectRef.Id {
-			return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
-		}
+	if len(conflicts.PRTestingIdentifiers) > 0 {
+		return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
+
 	}
 	return nil
 }

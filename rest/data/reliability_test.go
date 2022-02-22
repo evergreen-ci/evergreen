@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -90,4 +91,42 @@ func TestMockGetTaskReliability(t *testing.T) {
 			assert.Equal(date, doc.Date)
 		}
 	}
+}
+
+func TestGetTaskReliability(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+	}()
+	assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+
+	stat := stats.DbTaskStats{
+		Id: stats.DbTaskStatsId{
+			Project:   "projectID",
+			TaskName:  "t0",
+			Date:      time.Date(2022, 02, 15, 0, 0, 0, 0, time.UTC),
+			Requester: evergreen.RepotrackerVersionRequester,
+		},
+	}
+	assert.NoError(t, db.Insert(stats.DailyTaskStatsCollection, stat))
+	projectRef := model.ProjectRef{
+		Id:         "projectID",
+		Identifier: "projectName",
+	}
+	assert.NoError(t, projectRef.Insert())
+
+	sc := TaskReliabilityConnector{}
+	filter := reliability.TaskReliabilityFilter{}
+	filter.Project = "projectName"
+	filter.GroupNumDays = 1
+	filter.Requesters = []string{evergreen.RepotrackerVersionRequester}
+	filter.Sort = stats.SortLatestFirst
+	filter.GroupBy = stats.GroupByTask
+	filter.AfterDate = time.Time{}
+	filter.BeforeDate = time.Date(2022, 02, 16, 0, 0, 0, 0, time.UTC)
+	filter.Limit = 1
+	filter.Tasks = []string{"t0"}
+	scores, err := sc.GetTaskReliabilityScores(filter)
+
+	assert.NoError(t, err)
+	require.Len(t, scores, 1)
 }

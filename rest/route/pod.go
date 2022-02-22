@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -49,27 +48,8 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := utility.ReadJSON(r.Body, &h.p); err != nil {
 		return errors.Wrap(err, "reading payload body")
 	}
-	if err := h.validatePayload(); err != nil {
-		return errors.Wrap(err, "invalid API input")
-	}
 
 	return nil
-}
-
-// validatePayload validates that the input request payload is valid.
-func (h *podPostHandler) validatePayload() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(utility.FromStringPtr(h.p.Image) == "", "missing image")
-	catcher.NewWhen(h.p.OS == "", "missing OS")
-	catcher.NewWhen(h.p.Arch == "", "missing architecture")
-	catcher.NewWhen(h.p.OS == model.APIPodOS(pod.OSWindows) && h.p.WindowsVersion == "", "must specify a Windows version for a Windows pod")
-	catcher.NewWhen(h.p.OS != model.APIPodOS(pod.OSWindows) && h.p.WindowsVersion != "", "cannot specify a Windows version for a non-Windows pod")
-	catcher.NewWhen(utility.FromIntPtr(h.p.CPU) <= 0, "CPU must be a positive non-zero value")
-	catcher.NewWhen(utility.FromIntPtr(h.p.Memory) <= 0, "memory must be a positive non-zero value")
-	for i, envVar := range h.p.EnvVars {
-		catcher.ErrorfWhen(utility.FromStringPtr(envVar.Name) == "", "missing environment variable name for variable at index %d", i)
-	}
-	return catcher.Resolve()
 }
 
 // Run creates a new pod based on the request payload.

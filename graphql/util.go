@@ -259,6 +259,13 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
+
+		if version.Message != patchUpdateReq.Description {
+			if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+				return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
+			}
+		}
+
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
@@ -533,15 +540,15 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 
 	totalTime := time.Since(start)
 	grip.InfoWhen(totalTime > time.Second*2, message.Fields{
-		"Ticket":            "EVG-14828",
-		"timeToFindTasks":   timeToFindTasks,
-		"timeToBuildTasks":  timeToBuildTasks,
-		"timeToGroupTasks":  timeToGroupTasks,
-		"timeToSortTasks":   timeToSortTasks,
-		"totalTime":         totalTime,
-		"versionId":         versionId,
-		"taskCount":         len(tasks),
-		"buildVariantCount": len(result),
+		"Ticket":             "EVG-14828",
+		"timeToFindTasksMS":  timeToFindTasks.Milliseconds(),
+		"timeToBuildTasksMS": timeToBuildTasks.Milliseconds(),
+		"timeToGroupTasksMS": timeToGroupTasks.Milliseconds(),
+		"timeToSortTasksMS":  timeToSortTasks.Milliseconds(),
+		"totalTime":          totalTime,
+		"versionId":          versionId,
+		"taskCount":          len(tasks),
+		"buildVariantCount":  len(result),
 	})
 	return result, nil
 }

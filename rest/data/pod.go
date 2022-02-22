@@ -18,13 +18,14 @@ import (
 type DBPodConnector struct{}
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func (c *DBPodConnector) CreatePod(p model.APICreatePod) (*model.APICreatePodResponse, error) {
-	dbPod, err := translatePod(p)
+func (c *DBPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
+	dbPod, err := apiPod.ToService()
 	if err != nil {
-		return nil, err
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
+		}
 	}
-
-	addAgentPodSettings(dbPod)
 
 	if err := dbPod.Insert(); err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -53,7 +54,14 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 			Message:    "pod does not exist",
 		}
 	}
-	if secret != p.Secret.Value {
+	s, err := p.GetSecret()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    errors.Wrap(err, "getting pod secret").Error(),
+		}
+	}
+	if secret != s.Value {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "pod secrets do not match",

@@ -63,11 +63,6 @@ func NewEventNotifierJob(env evergreen.Environment, q amboy.Queue, eventID, ts s
 }
 
 func (j *eventNotifierJob) Run(ctx context.Context) {
-	// TODO (EVG-16260): remove this line. This line is only necessary to ensure
-	// that the old batched version of the event notifier job no-ops.
-	if j.EventID == "" {
-		return
-	}
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -94,6 +89,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		return
 	}
 	if e == nil {
+		j.AddError(errors.Errorf("event '%s' not found", j.EventID))
 		return
 	}
 	if !e.ProcessedAt.IsZero() {

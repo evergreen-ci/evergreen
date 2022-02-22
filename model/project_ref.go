@@ -184,6 +184,12 @@ type WorkstationSetupCommand struct {
 	Directory string `bson:"directory" json:"directory" yaml:"directory"`
 }
 
+type GithubProjectConflicts struct {
+	CommitQueueIdentifiers []string
+	PRTestingIdentifiers   []string
+	CommitCheckIdentifiers []string
+}
+
 func (a AlertConfig) GetSettingsMap() map[string]string {
 	ret := make(map[string]string)
 	for k, v := range a.Settings {
@@ -1141,12 +1147,24 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 		ProjectRefRepoKey:  repoName,
 	}
 }
-func byOwnerRepoAndBranch(owner, repoName, branch string) bson.M {
-	return bson.M{
-		ProjectRefOwnerKey:  owner,
-		ProjectRefRepoKey:   repoName,
-		ProjectRefBranchKey: branch,
+
+// byOwnerRepoAndBranch excepts an owner, repoName, and branch.
+// If includeUndefinedBranches is set, also returns projects with an empty branch, so this can
+// be populated by the repo elsewhere.
+func byOwnerRepoAndBranch(owner, repoName, branch string, includeUndefinedBranches bool) bson.M {
+	q := bson.M{
+		ProjectRefOwnerKey: owner,
+		ProjectRefRepoKey:  repoName,
 	}
+	if includeUndefinedBranches {
+		q["$or"] = []bson.M{
+			{ProjectRefBranchKey: ""},
+			{ProjectRefBranchKey: branch},
+		}
+	} else {
+		q[ProjectRefBranchKey] = branch
+	}
+	return q
 }
 
 func byId(identifier string) db.Q {
@@ -1163,14 +1181,17 @@ func byId(identifier string) db.Q {
 func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch)}}
+	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch, true)}}
 	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
-
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+	mergedProjects, err := addLoggerAndRepoSettingsToProjects(projectRefs)
+	if err != nil {
+		return nil, err
+	}
+	return filterProjectsByBranch(mergedProjects, branch), nil
 }
 
 // FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch finds ProjectRef with matching repo/branch that
@@ -1178,15 +1199,28 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string)
 func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	q := byOwnerRepoAndBranch(owner, repoName, branch)
+	q := byOwnerRepoAndBranch(owner, repoName, branch, true)
 	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
+	mergedProjects, err := addLoggerAndRepoSettingsToProjects(projectRefs)
+	if err != nil {
+		return nil, err
+	}
+	return filterProjectsByBranch(mergedProjects, branch), nil
+}
 
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
+	res := []ProjectRef{}
+	for _, p := range pRefs {
+		if p.Branch == branch {
+			res = append(res, p)
+		}
+	}
+	return res
 }
 
 func FindBranchAdminsForRepo(repoId string) ([]string, error) {
@@ -1348,7 +1382,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 }
 
 func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	q := byOwnerRepoAndBranch(owner, repo, branch)
+	// don't need to include undefined branches here since hidden projects explicitly define them
+	q := byOwnerRepoAndBranch(owner, repo, branch, false)
 	q[ProjectRefHiddenKey] = true
 
 	return findOneProjectRefQ(db.Query(q))
@@ -1537,11 +1572,11 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 }
 
 func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
-	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	conflicts, err := projectRef.GetGithubProjectConflicts()
 	if err != nil {
-		return false, errors.Wrapf(err, "database error finding project by repo and branch")
+		return false, errors.Wrapf(err, "database error finding github conflicts")
 	}
-	if resultRef != nil && resultRef.Id != projectRef.Id {
+	if len(conflicts.CommitQueueIdentifiers) > 0 {
 		return false, nil
 	}
 	return true, nil
@@ -1593,7 +1628,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
-			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1868,6 +1902,37 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		}
 	}
 	return defaultRes, nil
+}
+
+// GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not p has something enabled,
+// returns the project identifiers that it _would_ conflict with if it did.
+func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error) {
+	res := GithubProjectConflicts{}
+	// return early for projects that don't need to consider conflicts
+	if p.Owner == "" || p.Repo == "" || p.Branch == "" {
+		return res, nil
+	}
+
+	matchingProjects, err := FindMergedEnabledProjectRefsByRepoAndBranch(p.Owner, p.Repo, p.Branch)
+	if err != nil {
+		return res, errors.Wrap(err, "error getting conflicting projects")
+	}
+
+	for _, conflictingRef := range matchingProjects {
+		if conflictingRef.Id == p.Id {
+			continue
+		}
+		if conflictingRef.IsPRTestingEnabled() {
+			res.PRTestingIdentifiers = append(res.PRTestingIdentifiers, conflictingRef.Identifier)
+		}
+		if conflictingRef.CommitQueue.IsEnabled() {
+			res.CommitQueueIdentifiers = append(res.CommitQueueIdentifiers, conflictingRef.Identifier)
+		}
+		if conflictingRef.IsGithubChecksEnabled() {
+			res.CommitCheckIdentifiers = append(res.CommitCheckIdentifiers, conflictingRef.Identifier)
+		}
+	}
+	return res, nil
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {

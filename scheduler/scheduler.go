@@ -301,6 +301,7 @@ func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
 	}
 
 	hostOptions := host.CreateOptions{
+		Distro:        d,
 		UserName:      evergreen.User,
 		DockerOptions: *dockerOptions,
 	}
@@ -310,13 +311,14 @@ func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
 // generateIntentHost creates a host intent document for a regular host
 func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.Host, error) {
 	hostOptions := host.CreateOptions{
+		Distro:   d,
 		UserName: evergreen.User,
 	}
 	if pool != nil {
 		hostOptions.ContainerPoolSettings = pool
 		hostOptions.HasContainers = true
 	}
-	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
+	return host.NewIntent(hostOptions), nil
 }
 
 // pass the empty string to unschedule all distros.
