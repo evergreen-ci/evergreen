@@ -34,7 +34,7 @@ func TestProjectEventsTestSuite(t *testing.T) {
 	suite.Run(t, new(ProjectEventsTestSuite))
 }
 
-func getMockProjectSettings(projectId string) model.ProjectSettings {
+func getTestProjectSettings(projectId string) model.ProjectSettings {
 	return model.ProjectSettings{
 		ProjectRef: model.ProjectRef{
 			Owner:      "admin",
@@ -68,9 +68,9 @@ func getMockProjectSettings(projectId string) model.ProjectSettings {
 
 func (s *ProjectEventsTestSuite) SetupSuite() {
 	s.projectId = "mci2"
-	beforeSettings := getMockProjectSettings(s.projectId)
+	beforeSettings := getTestProjectSettings(s.projectId)
 
-	afterSettings := getMockProjectSettings(s.projectId)
+	afterSettings := getTestProjectSettings(s.projectId)
 	afterSettings.ProjectRef.Enabled = utility.FalsePtr()
 
 	s.event = model.ProjectChangeEvent{
@@ -94,7 +94,7 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	}
 	s.NoError(projectRef.Insert())
 
-	s.NoError(model.LogProjectEvent("PROJECT_ADDED", "mci2", s.event))
+	s.NoError(model.LogProjectEvent(model.EventTypeProjectAdded, "mci2", s.event))
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {

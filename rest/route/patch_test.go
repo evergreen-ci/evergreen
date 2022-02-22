@@ -510,7 +510,7 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.Equal(http.StatusOK, res.Status())
 	restartedPatch, err := s.sc.FindPatchById(s.objIds[0])
 	s.NoError(err)
-	s.Equal("patch_request", *restartedPatch.Requester)
+	s.Equal(evergreen.PatchVersionRequester, *restartedPatch.Requester)
 }
 
 ////////////////////////////////////////////////////////////////////////

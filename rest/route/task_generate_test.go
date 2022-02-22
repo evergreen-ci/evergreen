@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +59,13 @@ func TestGenerateExecute(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(task.Collection))
+	task1 := task.Task{
+		Id: "task1",
+	}
+	require.NoError(t, task1.Insert())
 	h := &generateHandler{sc: &data.DBConnector{}}
+	h.taskID = "task1"
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})
 	assert.Equal(t, r.Status(), http.StatusOK)
@@ -97,6 +103,19 @@ func TestGeneratePollRun(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	sc := &data.DBConnector{}
+	require.NoError(t, db.ClearCollections(task.Collection))
+	tasks := []task.Task{
+		{
+			Id:             "1",
+			GeneratedTasks: true,
+		},
+		{
+			Id: "2",
+		},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
 
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()

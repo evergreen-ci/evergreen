@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 	"time"
@@ -15,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -336,6 +337,7 @@ func TestPostUserRoles(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
+	env.SetUserManager(serviceutil.MockUserManager{})
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection))
 	rm := evergreen.GetEnvironment().RoleManager()
 	u := user.DBUser{
@@ -374,6 +376,10 @@ func TestPostUserRoles(t *testing.T) {
 	body = `{"create_user": true, "roles": ["role1"]}`
 	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": newId})
+	u = user.DBUser{
+		Id: newId,
+	}
+	require.NoError(t, u.Insert())
 	require.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)

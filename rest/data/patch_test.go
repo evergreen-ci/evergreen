@@ -310,7 +310,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	s.Equal(s.obj_ids[0], *p.Id)
 	abortedPatch, err := s.ctx.(*DBConnector).DBPatchConnector.FindPatchById(s.obj_ids[0])
 	s.NoError(err)
-	s.Equal("patch_request", *abortedPatch.Requester)
+	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
 
 	err = s.ctx.AbortPatch(s.obj_ids[1], "user1")
 	s.NoError(err)
@@ -432,7 +432,7 @@ func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	settings := testutil.TestConfig()
+	settings := testutil.MockConfig()
 	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0])
