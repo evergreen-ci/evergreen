@@ -21,10 +21,8 @@ import (
 
 // VersionSuite enables testing for version related routes.
 type VersionSuite struct {
-	sc          *data.DBConnector
-	versionData data.DBVersionConnector
-	buildData   data.DBBuildConnector
-	bv, bi      []string // build variants and build indices for testing
+	sc     *data.DBConnector
+	bv, bi []string // build variants and build indices for testing
 
 	suite.Suite
 }
@@ -93,10 +91,9 @@ func (s *VersionSuite) SetupSuite() {
 		BuildVariant: s.bv[1],
 	}
 
-	s.versionData = data.DBVersionConnector{}
 	s.sc = &data.DBConnector{
-		DBVersionConnector: s.versionData,
-		DBBuildConnector:   s.buildData,
+		DBVersionConnector: data.DBVersionConnector{},
+		DBBuildConnector:   data.DBBuildConnector{},
 	}
 	versions := []serviceModel.Version{testVersion1}
 
@@ -223,7 +220,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	v, err := s.versionData.FindVersionById("versionId")
+	v, err := s.sc.FindVersionById("versionId")
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
 }

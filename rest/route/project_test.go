@@ -515,7 +515,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
-	data  data.DBProjectConnector
 	sc    *data.DBConnector
 	route *projectGetHandler
 
@@ -531,11 +530,10 @@ func TestProjectGetSuite(t *testing.T) {
 }
 
 func (s *ProjectGetSuite) SetupSuite() {
-	s.data = data.DBProjectConnector{}
 
 	s.sc = &data.DBConnector{
 		URL:                "https://evergreen.example.net",
-		DBProjectConnector: s.data,
+		DBProjectConnector: data.DBProjectConnector{},
 	}
 	pRefs := []serviceModel.ProjectRef{
 		serviceModel.ProjectRef{

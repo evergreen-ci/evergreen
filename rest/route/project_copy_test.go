@@ -20,7 +20,6 @@ import (
 )
 
 type ProjectCopySuite struct {
-	data  data.DBProjectConnector
 	sc    *data.DBConnector
 	route *projectCopyHandler
 
@@ -37,7 +36,6 @@ func TestProjectCopySuite(t *testing.T) {
 
 func (s *ProjectCopySuite) SetupSuite() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection))
-	s.data = data.DBProjectConnector{}
 	pRefs := []model.ProjectRef{
 		{
 			Id:         "12345",
@@ -66,7 +64,7 @@ func (s *ProjectCopySuite) SetupSuite() {
 
 	s.sc = &data.DBConnector{
 		URL:                "https://evergreen.example.net",
-		DBProjectConnector: s.data,
+		DBProjectConnector: data.DBProjectConnector{},
 	}
 }
 
@@ -129,7 +127,6 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 }
 
 type copyVariablesSuite struct {
-	data  data.DBProjectConnector
 	sc    *data.DBConnector
 	route *copyVariablesHandler
 
@@ -175,11 +172,10 @@ func (s *copyVariablesSuite) SetupSuite() {
 	}
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
-	s.data = data.DBProjectConnector{}
 
 	s.sc = &data.DBConnector{
 		URL:                "https://evergreen.example.net",
-		DBProjectConnector: s.data,
+		DBProjectConnector: data.DBProjectConnector{},
 	}
 }
 

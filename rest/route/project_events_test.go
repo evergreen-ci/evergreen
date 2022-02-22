@@ -20,7 +20,6 @@ import (
 type ProjectEventsTestSuite struct {
 	suite.Suite
 	sc        *data.DBConnector
-	data      data.DBProjectConnector
 	route     projectEventsGet
 	projectId string
 	event     model.ProjectChangeEvent
@@ -81,11 +80,9 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 
 	s.NoError(db.ClearCollections(event.AllLogCollection, model.ProjectRefCollection))
 
-	s.data = data.DBProjectConnector{}
-
 	s.sc = &data.DBConnector{
 		URL:                "https://evergreen.example.net",
-		DBProjectConnector: s.data,
+		DBProjectConnector: data.DBProjectConnector{},
 	}
 
 	projectRef := &model.ProjectRef{

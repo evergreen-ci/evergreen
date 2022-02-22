@@ -34,7 +34,6 @@ import (
 type PatchByIdSuite struct {
 	sc     *data.DBConnector
 	objIds []string
-	data   data.DBPatchConnector
 	route  *patchByIdHandler
 	suite.Suite
 }
@@ -51,7 +50,6 @@ func (s *PatchByIdSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
-	s.data = data.DBPatchConnector{}
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0])},
 		{Id: patch.NewId(s.objIds[1])},
@@ -62,7 +60,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 
 	s.sc = &data.DBConnector{
 		URL:              "https://evergreen.example.net",
-		DBPatchConnector: s.data,
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 }
 
@@ -97,7 +95,6 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 
 type PatchesByProjectSuite struct {
 	sc    *data.DBConnector
-	data  data.DBPatchConnector
 	now   time.Time
 	route *patchesByProjectHandler
 	suite.Suite
@@ -125,7 +122,6 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 	nowPlus6 := s.now.Add(time.Second * 6)
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
-	s.data = data.DBPatchConnector{}
 	projects := []serviceModel.ProjectRef{
 		{
 			Id:         proj1,
@@ -156,7 +152,7 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 	}
 	s.sc = &data.DBConnector{
 		URL:              "https://evergreen.example.net",
-		DBPatchConnector: s.data,
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 }
 
@@ -250,7 +246,6 @@ func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
 type PatchAbortSuite struct {
 	sc     *data.DBConnector
 	objIds []string
-	data   data.DBPatchConnector
 
 	suite.Suite
 }
@@ -269,9 +264,8 @@ func (s *PatchAbortSuite) SetupSuite() {
 	version1 := "version1"
 	version2 := "version2"
 
-	s.data = data.DBPatchConnector{}
 	s.sc = &data.DBConnector{
-		DBPatchConnector: s.data,
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true},
@@ -369,7 +363,6 @@ func (s *PatchAbortSuite) TestAbortFail() {
 type PatchesChangeStatusSuite struct {
 	sc     *data.DBConnector
 	objIds []string
-	data   data.DBPatchConnector
 
 	suite.Suite
 }
@@ -386,9 +379,8 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.VersionCollection))
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
-	s.data = data.DBPatchConnector{}
 	s.sc = &data.DBConnector{
-		DBPatchConnector: s.data,
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0]), Version: "v1", Project: "proj", PatchNumber: 7},
@@ -442,10 +434,8 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 // Tests for restart patch by id route
 
 type PatchRestartSuite struct {
-	sc          *data.DBConnector
-	objIds      []string
-	patchData   data.DBPatchConnector
-	versionData data.DBVersionConnector
+	sc     *data.DBConnector
+	objIds []string
 
 	suite.Suite
 }
@@ -463,11 +453,9 @@ func (s *PatchRestartSuite) SetupSuite() {
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
 
-	s.patchData = data.DBPatchConnector{}
-	s.versionData = data.DBVersionConnector{}
 	s.sc = &data.DBConnector{
-		DBPatchConnector:   s.patchData,
-		DBVersionConnector: s.versionData,
+		DBPatchConnector:   data.DBPatchConnector{},
+		DBVersionConnector: data.DBVersionConnector{},
 	}
 	versions := []serviceModel.Version{
 		{
@@ -519,7 +507,6 @@ func (s *PatchRestartSuite) TestRestart() {
 
 type PatchesByUserSuite struct {
 	sc    *data.DBConnector
-	data  data.DBPatchConnector
 	now   time.Time
 	route *patchesByUserHandler
 
@@ -548,10 +535,9 @@ func (s *PatchesByUserSuite) SetupTest() {
 	nowPlus6 := s.now.Add(time.Second * 6)
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
-	s.data = data.DBPatchConnector{}
 	s.sc = &data.DBConnector{
 		URL:              "https://evergreen.example.net",
-		DBPatchConnector: s.data,
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 	patches := []patch.Patch{
 		{Author: user1, CreateTime: s.now},

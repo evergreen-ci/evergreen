@@ -144,9 +144,8 @@ func (s *DistroPatchSetupByIDSuite) TestRunInvalidId() {
 // Tests for GET /rest/v2/distros/{distro_id}
 
 type DistroByIDSuite struct {
-	sc   *data.DBConnector
-	data data.DBDistroConnector
-	rm   gimlet.RouteHandler
+	sc *data.DBConnector
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }
@@ -186,15 +185,9 @@ func (s *DistroByIDSuite) SetupSuite() {
 		},
 		{Id: "distro2"},
 	}
-	s.data = data.DBDistroConnector{
 
-		//CachedTasks: []task.Task{
-		//	{Id: "task1"},
-		//	{Id: "task2"},
-		//},
-	}
 	s.sc = &data.DBConnector{
-		DBDistroConnector: s.data,
+		DBDistroConnector: data.DBDistroConnector{},
 	}
 	for _, d := range distros {
 		err := s.sc.CreateDistro(d)
@@ -428,7 +421,6 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 
 type DistroPutSuite struct {
 	sc       *data.DBConnector
-	data     data.DBDistroConnector
 	rm       gimlet.RouteHandler
 	settings *evergreen.Settings
 
@@ -441,9 +433,8 @@ func TestDistroPutSuite(t *testing.T) {
 
 func (s *DistroPutSuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.data = data.DBDistroConnector{}
 	s.sc = &data.DBConnector{
-		DBDistroConnector: s.data,
+		DBDistroConnector: data.DBDistroConnector{},
 	}
 	distros := []*distro.Distro{
 		{
@@ -610,9 +601,8 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 // Tests for DELETE /rest/v2/distros/{distro_id}
 
 type DistroDeleteByIDSuite struct {
-	sc   *data.DBConnector
-	data data.DBDistroConnector
-	rm   gimlet.RouteHandler
+	sc *data.DBConnector
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }
@@ -623,9 +613,8 @@ func TestDistroDeleteSuite(t *testing.T) {
 
 func (s *DistroDeleteByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection, model.TaskAliasQueuesCollection, model.TaskQueuesCollection))
-	s.data = data.DBDistroConnector{}
 	s.sc = &data.DBConnector{
-		DBDistroConnector: s.data,
+		DBDistroConnector: data.DBDistroConnector{},
 	}
 	distros := []*distro.Distro{
 		{
@@ -688,7 +677,6 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 
 type DistroPatchByIDSuite struct {
 	sc       *data.DBConnector
-	data     data.DBDistroConnector
 	rm       gimlet.RouteHandler
 	settings *evergreen.Settings
 
@@ -715,9 +703,8 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		)),
 	)}
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.data = data.DBDistroConnector{}
 	s.sc = &data.DBConnector{
-		DBDistroConnector: s.data,
+		DBDistroConnector: data.DBDistroConnector{},
 	}
 	distros := []*distro.Distro{
 		{
@@ -1562,7 +1549,6 @@ func getMockDistrosConnector() *data.DBConnector {
 
 type distroExecuteSuite struct {
 	sc     *data.DBConnector
-	data   data.DBHostConnector
 	rh     *distroExecuteHandler
 	env    evergreen.Environment
 	cancel context.CancelFunc
@@ -1576,7 +1562,6 @@ func TestDistroExecuteSuite(t *testing.T) {
 
 func (s *distroExecuteSuite) SetupTest() {
 	s.NoError(db.ClearCollections(host.Collection))
-	s.data = data.DBHostConnector{}
 	s.sc = &data.DBConnector{
 		DBHostConnector: data.DBHostConnector{},
 	}

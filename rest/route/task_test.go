@@ -30,9 +30,7 @@ import (
 // Tests for abort task route
 
 type TaskAbortSuite struct {
-	sc   *data.DBConnector
-	data data.DBTaskConnector
-
+	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -46,9 +44,8 @@ func TestTaskAbortSuite(t *testing.T) {
 
 func (s *TaskAbortSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(task.Collection, user.Collection, build.Collection, serviceModel.VersionCollection))
-	s.data = data.DBTaskConnector{}
 	s.sc = &data.DBConnector{
-		DBTaskConnector: s.data,
+		DBTaskConnector: data.DBTaskConnector{},
 	}
 	tasks := []task.Task{
 		{Id: "task1", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
@@ -74,7 +71,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 
 	s.NotNil(res)
-	tasks, err := s.data.FindTasksByIds([]string{"task1", "task2"})
+	tasks, err := s.sc.FindTasksByIds([]string{"task1", "task2"})
 	s.NoError(err)
 	s.Equal("user1", tasks[0].ActivatedBy)
 	s.Equal("", tasks[1].ActivatedBy)
@@ -85,7 +82,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	tasks, err = s.data.FindTasksByIds([]string{"task1", "task2"})
+	tasks, err = s.sc.FindTasksByIds([]string{"task1", "task2"})
 	s.NoError(err)
 	s.Equal("user1", tasks[0].AbortInfo.User)
 	s.Equal("", tasks[1].AbortInfo.User)

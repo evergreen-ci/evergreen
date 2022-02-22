@@ -21,9 +21,8 @@ import (
 
 // StatusSuite enables testing for version related routes.
 type StatusSuite struct {
-	sc   *data.DBConnector
-	data data.DBStatusConnector
-	h    *recentTasksGetHandler
+	sc *data.DBConnector
+	h  *recentTasksGetHandler
 
 	suite.Suite
 }
