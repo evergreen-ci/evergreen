@@ -142,3 +142,35 @@ func (ctx *MockCommitQueueConnector) HasMatchingGitTagAliasAndRemotePath(project
 	}
 	return len(ctx.Aliases) > 0, "", nil
 }
+
+func (pc *MockCommitQueueConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
+	config := `
+buildvariants:
+- name: v1
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+	p := &model.Project{}
+	opts := &model.GetProjectOpts{
+		Ref:          &pRef,
+		RemotePath:   file,
+		Token:        token,
+		ReadFileFrom: model.ReadFromLocal,
+	}
+	pp, pConfig, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
+	return model.ProjectInfo{
+		Project:             p,
+		IntermediateProject: pp,
+		Config:              pConfig,
+	}, err
+}
+
+func (mvc *MockCommitQueueConnector) CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo, metadata model.VersionMetadata, active bool) (*model.Version, error) {
+	return &model.Version{
+		Requester:         evergreen.GitTagRequester,
+		TriggeredByGitTag: metadata.GitTag,
+	}, nil
+}

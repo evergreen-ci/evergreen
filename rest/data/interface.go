@@ -419,4 +419,6 @@ type MockConnector interface {
 	ConcludeMerge(string, string) error
 	GetAdditionalPatches(patchId string) ([]string, error)
 	HasMatchingGitTagAliasAndRemotePath(string, string) (bool, string, error)
+	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (model.ProjectInfo, error)
+	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata, bool) (*model.Version, error)
 }

@@ -39,10 +39,20 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.RepositoriesCollection))
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.RepositoriesCollection, serviceModel.ProjectAliasCollection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
+	user := user.DBUser{
+		Id:          "langdon.alger",
+		SystemRoles: []string{"admin"},
+	}
+	s.NoError(user.Insert())
 	s.sc = getProjectsConnector()
-	s.NoError(getMockProjectRef().Insert())
+	s.NoError(getMockProjectRef().Add(&user))
 	s.NoError(getMockVar().Insert())
+	aliases := getMockAliases()
+	for _, alias := range aliases {
+		s.NoError(alias.Upsert())
+	}
 	s.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:      "dimoxinil",
 		LastRevision: "something",
@@ -50,6 +60,25 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
 	s.rm = makePatchProjectByID(s.sc, settings).(*projectIDPatchHandler)
+	projectAdminRole := gimlet.Role{
+		ID:    "dimoxinil",
+		Scope: "project_scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+			evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+		},
+	}
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	err = roleManager.UpdateRole(projectAdminRole)
+	s.NoError(err)
+	adminScope := gimlet.Scope{
+		ID:        "project_scope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"dimoxinil", "other_project", "branch_project"},
+	}
+	s.NoError(roleManager.AddScope(adminScope))
 }
 
 func (s *ProjectPatchByIDSuite) TestParse() {
@@ -167,7 +196,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "tag": ".*"}]}`)
+	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
@@ -184,7 +213,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	}}
 	s.NoError(repoRef.Add(nil))
 
-	jsonBody = []byte(`{"enabled": true, "use_repo_settings": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "tag": ".*"}]}`)
+	jsonBody = []byte(`{"enabled": true, "use_repo_settings": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
 	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err = s.rm.Parse(ctx, req)
@@ -596,6 +625,23 @@ func getMockVar() *serviceModel.ProjectVars {
 	return &serviceModel.ProjectVars{
 		Id:   "dimoxinil",
 		Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
+	}
+}
+
+func getMockAliases() []serviceModel.ProjectAlias {
+	return []serviceModel.ProjectAlias{
+		serviceModel.ProjectAlias{
+			ProjectID: "dimoxinil",
+			Task:      ".*",
+			Variant:   ".*",
+			Alias:     evergreen.GithubPRAlias,
+		},
+		serviceModel.ProjectAlias{
+			ProjectID:   "dimoxinil",
+			Task:        ".*",
+			VariantTags: []string{"v1"},
+			Alias:       evergreen.GitTagAlias,
+		},
 	}
 }
 
