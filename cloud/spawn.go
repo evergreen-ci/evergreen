@@ -324,10 +324,9 @@ func ModifySpawnHost(ctx context.Context, env evergreen.Environment, host *host.
 func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
 	if err := host.PastMaxExpiration(extendBy); err != nil {
 		return time.Time{}, err
-	} else {
-		newExp := host.ExpirationTime.Add(extendBy)
-		return newExp, nil
 	}
+	newExp := host.ExpirationTime.Add(extendBy)
+	return newExp, nil
 }
 
 func modifySpawnHostProviderSettings(d distro.Distro, settings *evergreen.Settings, region, volumeID string) ([]*birch.Document, error) {
