@@ -6,8 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -267,15 +265,12 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 			res.Vars[k] = ""
 			res.PrivateVars[k] = projectVars.PrivateVars[k]
 		} else {
+			if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
+				res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+			}
 			res.Vars[k] = v
 		}
 	}
-
-	grip.Debug(message.Fields{
-		"bynnbynn":      "redact",
-		"adminOnlyVars": res.AdminOnlyVars,
-		"vars":          res.Vars,
-	})
 
 	return res
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -123,10 +122,6 @@ func (p *APIProjectVars) ToService() (interface{}, error) {
 			adminOnlyVars[key] = val
 		}
 	}
-	grip.Debug(message.Fields{
-		"bynnbynn":      "ToService",
-		"adminOnlyVars": adminOnlyVars,
-	})
 
 	// handle UI list
 	for _, each := range p.PrivateVarsList {
