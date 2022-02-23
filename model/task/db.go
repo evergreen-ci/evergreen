@@ -46,6 +46,7 @@ var (
 	OverrideDependenciesKey     = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDepsKey                  = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey              = bsonutil.MustHaveTag(Task{}, "DisplayName")
+	ExecutionPlatformKey        = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                   = bsonutil.MustHaveTag(Task{}, "HostId")
 	AgentVersionKey             = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                = bsonutil.MustHaveTag(Task{}, "Execution")
@@ -715,26 +716,51 @@ func BySubsetAborted(ids []string) bson.M {
 	}
 }
 
+// ByExecutionPlatform returns the query to find tasks matching the given
+// execution platform. If the empty string is given, the task is assumed to be
+// the default of ExecutionPlatformHost.
+func ByExecutionPlatform(platform ExecutionPlatform) bson.M {
+	switch platform {
+	case "", ExecutionPlatformHost:
+		return bson.M{
+			"$or": []bson.M{
+				{ExecutionPlatformKey: bson.M{"$exists": false}},
+				{ExecutionPlatformKey: platform},
+			},
+		}
+	case ExecutionPlatformContainer:
+		return bson.M{
+			ExecutionPlatformKey: platform,
+		}
+	default:
+		return bson.M{}
+	}
+}
+
 var (
 	IsDispatchedOrStarted = bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 	}
 )
 
-func scheduleableTasksQuery() bson.M {
-	return bson.M{
+func schedulableHostTasksQuery() bson.M {
+	q := bson.M{
 		ActivatedKey: true,
 		StatusKey:    evergreen.TaskUndispatched,
 
 		// Filter out tasks disabled by negative priority
 		PriorityKey: bson.M{"$gt": evergreen.DisabledTaskPriority},
-
+	}
+	q["$and"] = []bson.M{
+		ByExecutionPlatform(ExecutionPlatformHost),
 		// Filter tasks containing unattainable dependencies
-		"$or": []bson.M{
+		{"$or": []bson.M{
 			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
 			{OverrideDependenciesKey: true},
-		},
+		}},
 	}
+
+	return q
 }
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
