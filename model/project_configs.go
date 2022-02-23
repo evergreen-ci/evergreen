@@ -13,10 +13,13 @@ import (
 )
 
 type ProjectConfig struct {
-	Id         string    `yaml:"_id" bson:"_id"`
-	Project    string    `yaml:"project,omitempty" bson:"project,omitempty"`
-	CreateTime time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	Id string `yaml:"_id" bson:"_id"`
+	HeadlessProjectConfig
+}
 
+type HeadlessProjectConfig struct {
+	Project          string    `yaml:"project,omitempty" bson:"project,omitempty"`
+	ConfigCreateTime time.Time `yaml:"config_create_time,omitempty" bson:"config_create_time,omitempty"`
 	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on the project page will take precedence over this struct and will
 	// be the configs used for a given project during runtime.
@@ -70,6 +73,6 @@ func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
 	if p.isEmpty() {
 		return nil, nil
 	}
-	p.CreateTime = time.Now()
+	p.ConfigCreateTime = time.Now()
 	return p, nil
 }

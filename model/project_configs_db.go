@@ -15,7 +15,7 @@ const (
 var (
 	ProjectConfigIdKey         = bsonutil.MustHaveTag(ProjectConfig{}, "Id")
 	ProjectConfigProjectKey    = bsonutil.MustHaveTag(ProjectConfig{}, "Project")
-	ProjectConfigCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "CreateTime")
+	ProjectConfigCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "ConfigCreateTime")
 )
 
 // FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty

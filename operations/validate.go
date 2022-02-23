@@ -127,22 +127,19 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		return errors.Errorf("%s is an invalid configuration", path)
 	}
 
-	parserProjectYaml, err := yaml.Marshal(pp)
+	projectYaml, err := yaml.Marshal(pp)
 	if err != nil {
 		return errors.Wrapf(err, "Could not marshal parser project into yaml")
 	}
 
-	projectConfigYaml, err := yaml.Marshal(pc)
-	if err != nil {
-		return errors.Wrapf(err, "Could not marshal project config into yaml")
+	if pc != nil {
+		projectConfigYaml, err := yaml.Marshal(pc.HeadlessProjectConfig)
+		if err != nil {
+			return errors.Wrapf(err, "Could not marshal project config into yaml")
+		}
+		projectYaml = []byte(string(projectYaml) + string(projectConfigYaml))
 	}
-
-	validationInput := model.ValidationConfigs{
-		ProjectConfigYaml: projectConfigYaml,
-		ParserProjectYaml: parserProjectYaml,
-	}
-
-	projErrors, err := ac.ValidateLocalConfig(validationInput, quiet, includeLong, projectID)
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {
 		return nil
 	}

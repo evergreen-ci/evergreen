@@ -401,7 +401,7 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, error) {
 	var err error
 	if intermediateProject == nil {
-		intermediateProject, err = createIntermediateProject([]byte(config), false)
+		intermediateProject, _, err = createIntermediateProject([]byte(config), false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error creating intermediate project")
 		}

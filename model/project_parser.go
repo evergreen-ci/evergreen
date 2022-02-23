@@ -573,11 +573,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 	}
-	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, LoadProjectError)
-	}
-	config, err := CreateProjectConfig(data)
+	intermediateProject, config, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -607,7 +603,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		if err != nil {
 			return intermediateProject, config, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
 		}
-		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
+		add, _, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
 		if err != nil {
 			return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
 		}
@@ -800,32 +796,45 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, error) {
+func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, *ProjectConfig, error) {
+	var c *ProjectConfig
 	p := ParserProject{}
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
-			ParserProject `yaml:"pp,inline"`
+			ParserProject          `yaml:"pp,inline"`
+			*HeadlessProjectConfig `yaml:"pc,inline"`
 			// Variables is only used to suppress yaml unmarshalling errors related
 			// to a non-existent variables field.
 			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
 		}{}
 
 		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
+		if strictProjectWithVariables.HeadlessProjectConfig != nil {
+			c = &ProjectConfig{
+				"",
+				*strictProjectWithVariables.HeadlessProjectConfig,
+			}
+			c.ConfigCreateTime = time.Now()
+		}
+
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-			return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
+			return nil, nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
+		}
+		if err := util.UnmarshalYAMLWithFallback(yml, c); err != nil {
+			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+			return nil, nil, errors.Wrap(yamlErr, "error unmarshalling into project config")
 		}
 	}
 
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
-
-	return &p, nil
+	return &p, c, nil
 }
 
 // TranslateProject converts our intermediate project representation into
