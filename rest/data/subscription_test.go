@@ -1,12 +1,15 @@
 package data
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +17,10 @@ import (
 
 func TestGetSubscriptions(t *testing.T) {
 	assert := assert.New(t)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(event.SubscriptionsCollection))
 
 	subs := []event.Subscription{
@@ -77,6 +83,10 @@ func TestGetSubscriptions(t *testing.T) {
 }
 
 func TestSaveProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
@@ -181,6 +191,10 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 }
 
 func TestDeleteProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, ids []string){
 		"InvalidOwner": func(t *testing.T, ids []string) {
@@ -242,6 +256,10 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 }
 
 func TestCopyProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
 	oldProjectId := "my-project"
 	subs := []event.Subscription{

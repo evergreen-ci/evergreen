@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -17,7 +18,7 @@ import (
 )
 
 type UserConnectorSuite struct {
-	sc   *data.MockConnector
+	sc   *data.DBConnector
 	get  gimlet.RouteHandler
 	post gimlet.RouteHandler
 	suite.Suite
@@ -29,31 +30,31 @@ func TestUserConnectorSuite(t *testing.T) {
 }
 
 func (s *UserConnectorSuite) SetupTest() {
-	s.sc = &data.MockConnector{MockUserConnector: data.MockUserConnector{
-		CachedUsers: map[string]*user.DBUser{
-			"user0": {
-				Id:     "user0",
-				APIKey: "apikey0",
-				PubKeys: []user.PubKey{
-					{
-						Name:      "user0_pubkey0",
-						Key:       "ssh-mock 12345",
-						CreatedAt: time.Now(),
-					},
-					{
-						Name:      "user0_pubkey1",
-						Key:       "ssh-mock 67890",
-						CreatedAt: time.Now(),
-					},
-				},
+	s.NoError(db.ClearCollections(user.Collection))
+	s.sc = &data.DBConnector{DBUserConnector: data.DBUserConnector{}}
+	user0 := user.DBUser{
+		Id:     "user0",
+		APIKey: "apikey0",
+		PubKeys: []user.PubKey{
+			{
+				Name:      "user0_pubkey0",
+				Key:       "ssh-mock 12345",
+				CreatedAt: time.Now(),
 			},
-			"user1": {
-				Id:     "user1",
-				APIKey: "apikey1",
-				// no pub keys
+			{
+				Name:      "user0_pubkey1",
+				Key:       "ssh-mock 67890",
+				CreatedAt: time.Now(),
 			},
 		},
-	}}
+	}
+	user1 := user.DBUser{
+		Id:     "user1",
+		APIKey: "apikey1",
+		// no pub keys
+	}
+	s.NoError(user0.Insert())
+	s.NoError(user1.Insert())
 	s.post = makeSetKey(s.sc)
 	s.get = makeFetchKeys(s.sc)
 }
@@ -66,7 +67,7 @@ func (s *UserConnectorSuite) TestGetSSHKeysWithNoUserPanics() {
 
 func (s *UserConnectorSuite) TestGetSSHKeys() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0", PubKeys: []user.PubKey{{Name: "user0_pubkey0"}, {Name: "user0_pubkey1"}}})
 
 	resp := s.get.Run(ctx)
 
@@ -82,7 +83,7 @@ func (s *UserConnectorSuite) TestGetSSHKeys() {
 
 func (s *UserConnectorSuite) TestGetSSHKeysWithEmptyPubKeys() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := s.get.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
@@ -99,24 +100,28 @@ func (s *UserConnectorSuite) TestAddSSHKeyWithNoUserPanics() {
 
 func (s *UserConnectorSuite) TestAddSSHKey() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	s.post.(*keysPostHandler).keyName = "Test"
 	s.post.(*keysPostHandler).keyValue = "ssh-dss 12345"
 	resp := s.post.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 
-	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
-	s.Equal("Test", s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Name)
-	s.Equal("ssh-dss 12345", s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Key)
+	user0, err := user.FindOneById("user0")
+	s.NoError(err)
+	s.Len(user0.PubKeys, 3)
+	s.Equal("Test", user0.PubKeys[2].Name)
+	s.Equal("ssh-dss 12345", user0.PubKeys[2].Key)
 }
 
 func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	s.TestAddSSHKey()
 
-	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
+	user0, err := user.FindOneById("user0")
+	s.NoError(err)
+	s.Len(user0.PubKeys, 3)
 
 	s.post.(*keysPostHandler).keyName = "Test"
 	s.post.(*keysPostHandler).keyValue = "ssh-dss 12345"
@@ -124,7 +129,9 @@ func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	resp := s.post.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 
-	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
+	user0, err = user.FindOneById("user0")
+	s.NoError(err)
+	s.Len(user0.PubKeys, 3)
 }
 
 func TestKeyValidationFailsWithInvalidKeys(t *testing.T) {
@@ -152,59 +159,63 @@ func TestKeyValidation(t *testing.T) {
 }
 
 type UserConnectorDeleteSuite struct {
-	sc *data.MockConnector
+	sc *data.DBConnector
 	rm gimlet.RouteHandler
 	suite.Suite
 }
 
 func (s *UserConnectorDeleteSuite) SetupTest() {
-	s.sc = &data.MockConnector{MockUserConnector: data.MockUserConnector{
-		CachedUsers: map[string]*user.DBUser{
-			"user0": {
-				Id:     "user0",
-				APIKey: "apikey0",
-				PubKeys: []user.PubKey{
-					{
-						Name:      "user0_pubkey0",
-						Key:       "ssh-mock 12345",
-						CreatedAt: time.Now(),
-					},
-					{
-						Name:      "user0_pubkey1",
-						Key:       "ssh-mock 67890",
-						CreatedAt: time.Now(),
-					},
-				},
+	s.NoError(db.ClearCollections(user.Collection))
+	s.sc = &data.DBConnector{DBUserConnector: data.DBUserConnector{}}
+	user0 := user.DBUser{
+		Id:     "user0",
+		APIKey: "apikey0",
+		PubKeys: []user.PubKey{
+			{
+				Name:      "user0_pubkey0",
+				Key:       "ssh-mock 12345",
+				CreatedAt: time.Now(),
 			},
-			"user1": {
-				Id:     "user1",
-				APIKey: "apikey1",
-				// no pub keys
+			{
+				Name:      "user0_pubkey1",
+				Key:       "ssh-mock 67890",
+				CreatedAt: time.Now(),
 			},
 		},
-	}}
+	}
+	user1 := user.DBUser{
+		Id:     "user1",
+		APIKey: "apikey1",
+		// no pub keys
+	}
+	s.NoError(user0.Insert())
+	s.NoError(user1.Insert())
 
 	s.rm = makeDeleteKeys(s.sc)
 }
 
 func (s *UserConnectorDeleteSuite) TestDeleteSSHKeys() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0", PubKeys: []user.PubKey{{Name: "user0_pubkey0"}, {Name: "user0_pubkey1"}}})
 
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey0"
 	resp := s.rm.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 1)
+	user0, err := user.FindOneById("user0")
+	s.NoError(err)
+	s.Len(user0.PubKeys, 1)
 
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey1"
 	resp = s.rm.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Empty(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys)
+	user0, err = user.FindOneById("user0")
+	s.NoError(err)
+	s.Empty(user0.PubKeys)
 }
 
 func (s *UserConnectorDeleteSuite) TestDeleteSSHKeysWithEmptyPubKeys() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	s.rm.(*keysDeleteHandler).keyName = "keythatdoesntexist"
 	resp := s.rm.Run(ctx)

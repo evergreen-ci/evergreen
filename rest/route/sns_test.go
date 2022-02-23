@@ -3,15 +3,17 @@ package route
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
@@ -82,27 +84,35 @@ func TestBaseSNSRoute(t *testing.T) {
 }
 
 func TestHandleEC2SNSNotification(t *testing.T) {
-	ctx := context.Background()
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(t, db.Clear(host.Collection))
 	rh := ec2SNS{}
-	rh.queue = queue.NewLocalLimitedSize(1, 1)
-	require.NoError(t, rh.queue.Start(ctx))
+	rh.queue = evergreen.GetEnvironment().LocalQueue()
+	rh.env = evergreen.GetEnvironment()
 	rh.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"sns.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
 
 	// unknown host
-	rh.sc = &data.MockConnector{}
+	rh.sc = &data.DBConnector{}
 	assert.NoError(t, rh.handleNotification(ctx))
 	assert.Equal(t, rh.queue.Stats(ctx).Total, 0)
 
 	// known host
-	rh.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{CachedHosts: []host.Host{{Id: "i-0123456789"}}}}
+	hostToAdd := host.Host{Id: "i-0123456789"}
+	assert.NoError(t, hostToAdd.Insert())
+
 	assert.NoError(t, rh.handleNotification(ctx))
 	require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-	assert.True(t, strings.HasPrefix(rh.queue.Next(ctx).ID(), "host-monitoring-external-state-check"))
 }
 
 func TestEC2SNSNotificationHandlers(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(t, db.Clear(host.Collection))
 	agentHost := host.Host{
 		Id:        "agent_host",
 		StartTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
@@ -117,13 +127,9 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	messageID := "m0"
 	rh := ec2SNS{}
 	rh.payload.MessageId = messageID
-	rh.sc = &data.MockConnector{MockHostConnector: data.MockHostConnector{
-		CachedHosts: []host.Host{
-			agentHost,
-			spawnHost,
-		},
-	},
-	}
+	rh.sc = &data.DBConnector{DBHostConnector: data.DBHostConnector{}}
+	assert.NoError(t, agentHost.Insert())
+	assert.NoError(t, spawnHost.Insert())
 
 	for name, test := range map[string]func(*testing.T){
 		"InstanceInterruptionWarningInitiatesTermination": func(t *testing.T) {
@@ -154,23 +160,26 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 func TestECSSNSHandleNotification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.MockPodConnector){
-		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.MockPodConnector) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector){
+		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
-					TaskARN:       mpc.CachedPods[0].Resources.ExternalID,
+					TaskARN:       "external_id",
 					LastStatus:    "STOPPED",
 					StoppedReason: "reason",
 				},
 			}
 			require.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.Equal(t, pod.StatusDecommissioned, mpc.CachedPods[0].Status)
+			p, err := mpc.FindPodByID("id")
+			assert.NoError(t, err)
+			assert.Equal(t, model.PodStatusDecommissioned, p.Status)
 		},
-		"NoopsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.MockPodConnector) {
-			status := mpc.CachedPods[0].Status
+		"NoopsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
@@ -181,53 +190,54 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			assert.Equal(t, status, mpc.CachedPods[0].Status)
+			p, err := mpc.FindPodByID("id")
+			assert.NoError(t, err)
+			assert.Equal(t, model.PodStatusRunning, p.Status)
 		},
-		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.MockPodConnector) {
-			status := mpc.CachedPods[0].Status
-
+		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
-					TaskARN:       mpc.CachedPods[0].Resources.ExternalID,
+					TaskARN:       "external_id",
 					StoppedReason: "reason",
 				},
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			assert.Equal(t, status, mpc.CachedPods[0].Status)
+			p, err := mpc.FindPodByID("id")
+			assert.NoError(t, err)
+			assert.Equal(t, model.PodStatusRunning, p.Status)
 		},
-		"FailsWithUnknownNotificationType": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.MockPodConnector) {
-			status := mpc.CachedPods[0].Status
-
+		"FailsWithUnknownNotificationType": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
 			notification := ecsEventBridgeNotification{
 				DetailType: "unknown",
 				Detail: ecsEventDetail{
-					TaskARN:       mpc.CachedPods[0].Resources.ExternalID,
+					TaskARN:       "external_id",
 					LastStatus:    "STOPPED",
 					StoppedReason: "reason",
 				},
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			assert.Equal(t, status, mpc.CachedPods[0].Status)
+			p, err := mpc.FindPodByID("id")
+			assert.NoError(t, err)
+			assert.Equal(t, model.PodStatusRunning, p.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			mc := &data.MockConnector{
-				MockPodConnector: data.MockPodConnector{
-					CachedPods: []pod.Pod{
-						{
-							ID:     "id",
-							Type:   pod.TypeAgent,
-							Status: pod.StatusRunning,
-							Resources: pod.ResourceInfo{
-								ExternalID: "external_id",
-							},
-						},
-					},
+			assert.NoError(t, db.Clear(pod.Collection))
+			mc := &data.DBConnector{
+				DBPodConnector: data.DBPodConnector{},
+			}
+			podToCreate := pod.Pod{
+				ID:     "id",
+				Type:   pod.TypeAgent,
+				Status: pod.StatusRunning,
+				Resources: pod.ResourceInfo{
+					ExternalID: "external_id",
 				},
 			}
+			require.NoError(t, podToCreate.Insert())
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			q, err := queue.NewLocalLimitedSizeSerializable(1, 1)
@@ -235,7 +245,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			rh, ok := makeECSSNS(mc, env, q).(*ecsSNS)
 			require.True(t, ok)
 
-			tCase(ctx, t, rh, &mc.MockPodConnector)
+			tCase(ctx, t, rh, &mc.DBPodConnector)
 		})
 	}
 }

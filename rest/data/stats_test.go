@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -8,74 +9,134 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMockGetTestStats(t *testing.T) {
 	assert := assert.New(t)
-
-	mock := MockStatsConnector{}
-	filter := stats.StatsFilter{Limit: 100}
-
-	stats, err := mock.GetTestStats(filter)
-	assert.NoError(err)
-	assert.Len(stats, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
+	mock := StatsConnector{}
+	filter := &stats.StatsFilter{}
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 
 	// Add stats
-	mock.SetTestStats("test_", 102)
+	assert.NoError(insertTestStats(filter, 102, 100))
 
-	stats, err = mock.GetTestStats(filter)
+	stats, err := mock.GetTestStats(*filter)
 	assert.NoError(err)
 	assert.Len(stats, 100)
 
-	var date *string
-	for i, doc := range stats {
-		assert.Equal(fmt.Sprintf("test_%v", i), *doc.TestFile)
-		assert.Equal("task", *doc.TaskName)
-		assert.Equal("variant", *doc.BuildVariant)
-		assert.Equal("distro", *doc.Distro)
-		if i == 0 {
-			date = doc.Date
-		} else {
-			assert.Equal(date, doc.Date)
-		}
-	}
+	assert.Equal(fmt.Sprintf("test_%v", 0), *stats[0].TestFile)
 }
 
 func TestMockGetTaskStats(t *testing.T) {
 	assert := assert.New(t)
-
-	mock := MockStatsConnector{}
-	filter := stats.StatsFilter{Limit: 100}
-
-	stats, err := mock.GetTaskStats(filter)
-	assert.NoError(err)
-	assert.Len(stats, 0)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(db.Clear(stats.DailyTaskStatsCollection))
+	mock := StatsConnector{}
+	filter := &stats.StatsFilter{}
 	// Add stats
-	mock.SetTaskStats("task_", 102)
+	assert.NoError(insertTaskStats(filter, 102, 100))
 
-	stats, err = mock.GetTaskStats(filter)
+	stats, err := mock.GetTaskStats(*filter)
 	assert.NoError(err)
 	assert.Len(stats, 100)
 
-	var date *string
-	for i, doc := range stats {
-		assert.Equal(fmt.Sprintf("task_%v", i), *doc.TaskName)
-		assert.Equal("variant", *doc.BuildVariant)
-		assert.Equal("distro", *doc.Distro)
-		if i == 0 {
-			date = doc.Date
-		} else {
-			assert.Equal(date, doc.Date)
+	assert.Equal(fmt.Sprintf("task_%v", 0), *stats[0].TaskName)
+
+}
+
+func insertTestStats(filter *stats.StatsFilter, numTests int, limit int) error {
+	day := time.Now()
+	tests := []string{}
+	for i := 0; i < numTests; i++ {
+		testFile := fmt.Sprintf("%v%v", "test_", i)
+		tests = append(tests, testFile)
+		err := db.Insert(stats.DailyTestStatsCollection, mgobson.M{
+			"_id": stats.DbTestStatsId{
+				Project:      "project",
+				Requester:    "requester",
+				TestFile:     testFile,
+				TaskName:     "task",
+				BuildVariant: "variant",
+				Distro:       "distro",
+				Date:         utility.GetUTCDay(day),
+			},
+		})
+		if err != nil {
+			return err
 		}
 	}
+	*filter = stats.StatsFilter{
+		Limit:        limit,
+		Project:      "project",
+		Requesters:   []string{"requester"},
+		Tasks:        []string{"task"},
+		GroupBy:      "distro",
+		GroupNumDays: 1,
+		Tests:        tests,
+		Sort:         stats.SortEarliestFirst,
+		BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+		AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
+	}
+	return nil
+}
+
+func insertTaskStats(filter *stats.StatsFilter, numTests int, limit int) error {
+	day := time.Now()
+	tasks := []string{}
+	for i := 0; i < numTests; i++ {
+		taskName := fmt.Sprintf("%v%v", "task_", i)
+		tasks = append(tasks, taskName)
+		err := db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+			"_id": stats.DbTestStatsId{
+				Project:      "project",
+				Requester:    "requester",
+				TaskName:     taskName,
+				BuildVariant: "variant",
+				Distro:       "distro",
+				Date:         utility.GetUTCDay(day),
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	*filter = stats.StatsFilter{
+		Limit:        limit,
+		Project:      "project",
+		Requesters:   []string{"requester"},
+		Tasks:        tasks,
+		GroupBy:      "distro",
+		GroupNumDays: 1,
+		Sort:         stats.SortEarliestFirst,
+		BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+		AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
+	}
+	return nil
 }
 
 func TestGetTaskStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	}()
@@ -113,6 +174,10 @@ func TestGetTaskStats(t *testing.T) {
 }
 
 func TestGetTestStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
 	}()

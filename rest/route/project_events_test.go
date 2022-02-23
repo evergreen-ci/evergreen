@@ -6,53 +6,58 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
 type ProjectEventsTestSuite struct {
 	suite.Suite
-	sc        *data.MockConnector
-	data      data.MockProjectConnector
+	sc        *data.DBConnector
 	route     projectEventsGet
 	projectId string
-	event     restModel.APIProjectEvent
+	event     model.ProjectChangeEvent
 }
 
 func TestProjectEventsTestSuite(t *testing.T) {
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectEventsTestSuite))
 }
 
-func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
-	return restModel.APIProjectSettings{
-		ProjectRef: restModel.APIProjectRef{
-			Owner:      utility.ToStringPtr("admin"),
+func getTestProjectSettings(projectId string) model.ProjectSettings {
+	return model.ProjectSettings{
+		ProjectRef: model.ProjectRef{
+			Owner:      "admin",
 			Enabled:    utility.TruePtr(),
 			Private:    utility.TruePtr(),
-			Identifier: utility.ToStringPtr(projectId),
-			Admins:     []*string{},
+			Identifier: projectId,
+			Admins:     []string{},
 		},
-		GitHubWebhooksEnabled: true,
-		Vars: restModel.APIProjectVars{
+		Vars: model.ProjectVars{
 			Vars:        map[string]string{},
 			PrivateVars: map[string]bool{},
 		},
-		Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
-			Alias:   utility.ToStringPtr("alias1"),
-			Variant: utility.ToStringPtr("ubuntu"),
-			Task:    utility.ToStringPtr("subcommand"),
+		Aliases: []model.ProjectAlias{model.ProjectAlias{
+			Alias:   "alias1",
+			Variant: "ubuntu",
+			Task:    "subcommand",
 		},
 		},
-		Subscriptions: []restModel.APISubscription{restModel.APISubscription{
-			ID:           utility.ToStringPtr("subscription1"),
-			ResourceType: utility.ToStringPtr("project"),
-			Owner:        utility.ToStringPtr("admin"),
-			Subscriber: restModel.APISubscriber{
-				Type:   utility.ToStringPtr(event.GithubPullRequestSubscriberType),
+		Subscriptions: []event.Subscription{event.Subscription{
+			ID:           "subscription1",
+			ResourceType: "project",
+			Owner:        "admin",
+			Subscriber: event.Subscriber{
+				Type:   event.GithubPullRequestSubscriberType,
 				Target: restModel.APIGithubPRSubscriber{},
 			},
 		},
@@ -62,26 +67,31 @@ func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 
 func (s *ProjectEventsTestSuite) SetupSuite() {
 	s.projectId = "mci2"
-	beforeSettings := getMockProjectSettings(s.projectId)
+	beforeSettings := getTestProjectSettings(s.projectId)
 
-	afterSettings := getMockProjectSettings(s.projectId)
+	afterSettings := getTestProjectSettings(s.projectId)
 	afterSettings.ProjectRef.Enabled = utility.FalsePtr()
 
-	s.event = restModel.APIProjectEvent{
-		Timestamp: restModel.ToTimePtr(time.Now()),
-		User:      utility.ToStringPtr("me"),
-		Before:    beforeSettings,
-		After:     afterSettings,
+	s.event = model.ProjectChangeEvent{
+		User:   "me",
+		Before: beforeSettings,
+		After:  afterSettings,
 	}
 
-	s.data = data.MockProjectConnector{
-		CachedEvents: []restModel.APIProjectEvent{s.event},
+	s.NoError(db.ClearCollections(event.AllLogCollection, model.ProjectRefCollection))
+
+	s.sc = &data.DBConnector{
+		URL:                "https://evergreen.example.net",
+		DBProjectConnector: data.DBProjectConnector{},
 	}
 
-	s.sc = &data.MockConnector{
-		URL:                  "https://evergreen.example.net",
-		MockProjectConnector: s.data,
+	projectRef := &model.ProjectRef{
+		Id:      "mci2",
+		Enabled: utility.TruePtr(),
 	}
+	s.NoError(projectRef.Insert())
+
+	s.NoError(model.LogProjectEvent(model.EventTypeProjectAdded, "mci2", s.event))
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
@@ -96,5 +106,11 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 
 	responseData, ok := resp.Data().([]interface{})
 	s.Require().True(ok)
-	s.Equal(&s.event, responseData[0])
+	apiEvent := responseData[0].(*restModel.APIProjectEvent)
+	s.Equal(s.event.Before.ProjectRef.Identifier, *apiEvent.Before.ProjectRef.Identifier)
+	s.Equal(s.event.Before.Aliases[0].Alias, *apiEvent.Before.Aliases[0].Alias)
+	s.Equal(s.event.Before.Subscriptions[0].ID, *apiEvent.Before.Subscriptions[0].ID)
+	s.Equal(s.event.After.ProjectRef.Identifier, *apiEvent.After.ProjectRef.Identifier)
+	s.Equal(s.event.After.Aliases[0].Alias, *apiEvent.After.Aliases[0].Alias)
+	s.Equal(s.event.After.Subscriptions[0].ID, *apiEvent.After.Subscriptions[0].ID)
 }

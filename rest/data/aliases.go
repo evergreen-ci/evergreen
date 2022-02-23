@@ -163,34 +163,3 @@ func (d *DBAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag st
 	}
 	return len(aliases) > 0, "", nil
 }
-
-// MockAliasConnector is a struct that implements mock versions of
-// Alias-related methods for testing.
-type MockAliasConnector struct {
-	Aliases []restModel.APIProjectAlias
-}
-
-// FindAllAliases is a mock implementation for testing.
-func (d *MockAliasConnector) FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
-	return append(d.Aliases, aliasesToAdd...), nil
-}
-
-func (d *MockAliasConnector) CopyProjectAliases(oldProjectId, newProjectId string) error {
-	return nil
-}
-
-func (d *MockAliasConnector) UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
-	return nil
-}
-
-func (pc *MockAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
-	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
-	return false, nil
-}
-
-func (d *MockAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
-	if len(d.Aliases) == 1 && utility.FromStringPtr(d.Aliases[0].RemotePath) != "" {
-		return true, utility.FromStringPtr(d.Aliases[0].RemotePath), nil
-	}
-	return len(d.Aliases) > 0, "", nil
-}

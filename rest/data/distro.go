@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -141,73 +140,4 @@ func getDefaultProviderSettings(d *distro.Distro) (map[string]interface{}, error
 // ClearTaskQueue deletes all tasks from the task queue for a distro
 func (tc *DBDistroConnector) ClearTaskQueue(distroId string) error {
 	return model.ClearTaskQueue(distroId)
-}
-
-// MockDistroConnector is a struct that implements mock versions of
-// Distro-related methods for testing.
-type MockDistroConnector struct {
-	CachedDistros []*distro.Distro
-	CachedTasks   []task.Task
-}
-
-func (mdc *MockDistroConnector) FindDistroById(distroId string) (*distro.Distro, error) {
-	// Find the distro.
-	for _, d := range mdc.CachedDistros {
-		if d.Id == distroId {
-			return d, nil
-		}
-	}
-	return nil, gimlet.ErrorResponse{
-		StatusCode: http.StatusNotFound,
-		Message:    fmt.Sprintf("distro with id '%s' not found", distroId),
-	}
-}
-
-// FindAllDistros is a mock implementation for testing.
-func (mdc *MockDistroConnector) FindAllDistros() ([]distro.Distro, error) {
-	out := []distro.Distro{}
-	for _, d := range mdc.CachedDistros {
-		out = append(out, *d)
-	}
-	return out, nil
-}
-
-func (mdc *MockDistroConnector) UpdateDistro(old, new *distro.Distro) error {
-	for _, d := range mdc.CachedDistros {
-		if d.Id == new.Id {
-			return nil
-		}
-	}
-	return gimlet.ErrorResponse{
-		StatusCode: http.StatusInternalServerError,
-		Message:    fmt.Sprintf("distro with id '%s' was not updated", new.Id),
-	}
-}
-
-func (mdc *MockDistroConnector) DeleteDistroById(distroId string) error {
-	for _, d := range mdc.CachedDistros {
-		if d.Id == distroId {
-			return nil
-		}
-	}
-	return gimlet.ErrorResponse{
-		StatusCode: http.StatusInternalServerError,
-		Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
-	}
-}
-
-func (mdc *MockDistroConnector) CreateDistro(distro *distro.Distro) error {
-	for _, d := range mdc.CachedDistros {
-		if d.Id == distro.Id {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("distro with id '%s' was not inserted", distro.Id),
-			}
-		}
-	}
-	return nil
-}
-
-func (mdc *MockDistroConnector) ClearTaskQueue(distroId string) error {
-	return errors.New("ClearTaskQueue unimplemented for mock")
 }
