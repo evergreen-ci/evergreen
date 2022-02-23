@@ -499,15 +499,6 @@ func (t *Task) ShouldAllocateContainer() bool {
 	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
-// GetPodDispatcherGroupID generates the identifier pod dispatcher identifier
-// associated with this task's current execution.
-func (t *Task) GetPodDispatcherGroupID() (string, error) {
-	if t.TaskGroup != "" {
-		return "", errors.New("task groups not supported yet")
-	}
-	return fmt.Sprintf("%s.%d", t.Id, t.Execution), nil
-}
-
 // SatisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.

@@ -28,7 +28,7 @@ var (
 	ModificationCountKey = bsonutil.MustHaveTag(PodDispatcher{}, "ModificationCount")
 )
 
-// FindOne finds one dispatcher queue for the given query.
+// FindOne finds one pod dispatcher for the given query.
 func FindOne(q db.Q) (*PodDispatcher, error) {
 	var pd PodDispatcher
 	err := db.FindOneQ(Collection, q, &pd)
@@ -38,19 +38,19 @@ func FindOne(q db.Q) (*PodDispatcher, error) {
 	return &pd, err
 }
 
-// Find finds all dispatcher queues for the given query.
+// Find finds all pod dispatchers for the given query.
 func Find(q db.Q) ([]PodDispatcher, error) {
 	pds := []PodDispatcher{}
 	return pds, errors.WithStack(db.FindAllQ(Collection, q, &pds))
 }
 
-// UpdateOne updates one dispatcher queue.
+// UpdateOne updates one pod dispatcher.
 func UpdateOne(query bson.M, update interface{}) error {
 	return db.Update(Collection, query, update)
 }
 
-// UpsertOne updates an existing dispatcher queue if it exists based on the
-// query; otherwise, it inserts a new dispatcher queue.
+// UpsertOne updates an existing pod dispatcher if it exists based on the
+// query; otherwise, it inserts a new pod dispatcher.
 func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {
 	return db.Upsert(Collection, query, update)
 }
@@ -85,7 +85,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 
 	pd := &PodDispatcher{}
 	allocateDispatcher := func(sessCtx mongo.SessionContext) (interface{}, error) {
-		groupID := getGroupID(t)
+		groupID := GetGroupID(t)
 		if err := env.DB().Collection(Collection).FindOne(sessCtx, ByGroupID(groupID)).Decode(pd); err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrap(err, "checking for existing pod dispatcher")
 		} else if adb.ResultsNotFound(err) {
@@ -108,9 +108,13 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 			return nil, errors.Wrap(err, "inserting new intent pod")
 		}
 
+		// Only allow the task to transition state if it's currently in a state
+		// where it needs a pod to be allocated.
 		update, err := env.DB().Collection(task.Collection).UpdateOne(sessCtx, bson.M{
-			task.IdKey:     t.Id,
-			task.StatusKey: t.Status,
+			task.IdKey:        t.Id,
+			task.StatusKey:    evergreen.TaskContainerUnallocated,
+			task.ActivatedKey: true,
+			task.PriorityKey:  bson.M{"$gt": evergreen.DisabledTaskPriority},
 		}, bson.M{
 			"$set": bson.M{
 				task.StatusKey: evergreen.TaskContainerAllocated,
@@ -131,14 +135,13 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		return nil, errors.Wrap(err, "allocating dispatcher in transaction")
 	}
 
-	t.Status = evergreen.TaskContainerAllocated
-
 	event.LogTaskContainerAllocated(t.Id, t.Execution, time.Now())
 
 	return pd, nil
 }
 
-func getGroupID(t *task.Task) string {
+// GetGroupID returns the pod dispatcher group ID for the task.
+func GetGroupID(t *task.Task) string {
 	// TODO (PM-2618): handle task units that represent task groups rather than
 	// standalone tasks.
 	return t.Id

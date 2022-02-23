@@ -137,7 +137,7 @@ func TestAllocate(t *testing.T) {
 		require.NotZero(t, dbTask)
 		assert.Equal(t, evergreen.TaskContainerAllocated, dbTask.Status)
 
-		dbDispatcher, err := FindOneByGroupID(getGroupID(tsk))
+		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
 		require.NoError(t, err)
 		require.NotZero(t, dbDispatcher)
 		assert.Equal(t, pd.PodIDs, dbDispatcher.PodIDs)
@@ -157,7 +157,7 @@ func TestAllocate(t *testing.T) {
 			newDispatcher, err := Allocate(ctx, env, tsk, p)
 			require.NoError(t, err)
 
-			assert.Equal(t, getGroupID(tsk), newDispatcher.GroupID)
+			assert.Equal(t, GetGroupID(tsk), newDispatcher.GroupID)
 			assert.Equal(t, []string{p.ID}, newDispatcher.PodIDs)
 			assert.Equal(t, []string{tsk.Id}, newDispatcher.TaskIDs)
 			assert.True(t, newDispatcher.ModificationCount > 0)
@@ -167,7 +167,7 @@ func TestAllocate(t *testing.T) {
 		},
 		"SucceedsWithExistingPodDispatcherForGroup": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
 			pd := &PodDispatcher{
-				GroupID:           getGroupID(tsk),
+				GroupID:           GetGroupID(tsk),
 				PodIDs:            []string{utility.RandomString()},
 				TaskIDs:           []string{tsk.Id},
 				ModificationCount: 1,
@@ -200,7 +200,7 @@ func TestAllocate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 
-			dbDispatcher, err := FindOneByGroupID(getGroupID(tsk))
+			dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 
@@ -230,8 +230,9 @@ func TestAllocate(t *testing.T) {
 			})
 			require.NoError(t, err)
 			tCase(tctx, t, env, &task.Task{
-				Id:     "task",
-				Status: evergreen.TaskContainerUnallocated,
+				Id:        "task",
+				Status:    evergreen.TaskContainerUnallocated,
+				Activated: true,
 			}, p)
 		})
 	}
