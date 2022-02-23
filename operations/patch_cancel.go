@@ -13,7 +13,7 @@ func PatchCancel() cli.Command {
 		Name:   "cancel-patch",
 		Usage:  "cancel an existing patch",
 		Flags:  addPatchIDFlag(),
-		Before: requirePatchIDFlag,
+		Before: mergeBeforeFuncs(autoUpdateCLI, requirePatchIDFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)

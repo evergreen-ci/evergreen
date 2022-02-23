@@ -66,7 +66,7 @@ func List() cli.Command {
 				Name:  spawnableFlagName,
 				Usage: "list all spawnable distros for a project",
 			})...),
-		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, patchAliasesFlagName, triggerAliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
+		Before: mergeBeforeFuncs(autoUpdateCLI, requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, patchAliasesFlagName, triggerAliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			project := c.String(projectFlagName)

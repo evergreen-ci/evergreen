@@ -31,6 +31,7 @@ func Pull() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			requireStringFlag(taskFlagName),
 			requireWorkingDirFlag(dirFlagName),
 		),

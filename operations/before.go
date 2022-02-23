@@ -1,6 +1,8 @@
 package operations
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -94,6 +96,23 @@ var (
 		}
 
 		return catcher.Resolve()
+	}
+
+	autoUpdateCLI = func(c *cli.Context) error {
+		confPath := c.String("conf")
+		conf, err := NewClientSettings(confPath)
+		if err != nil {
+			return errors.Wrap(err, "problem loading configuration")
+		}
+		if conf.AutoUpgradeCLI {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if err = CheckAndUpdateVersion(conf, ctx, true, false, true); err != nil {
+				fmt.Println("Automatic CLI update failed, continuing command execution")
+				return err
+			}
+		}
+		return nil
 	}
 )
 

@@ -25,6 +25,7 @@ func PatchSetModule() cli.Command {
 					Usage: "enable submitting larger patches (>16MB)",
 				})),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			setPlainLogger,
 			requirePatchIDFlag,
 			requireModuleFlag,
@@ -165,7 +166,7 @@ func PatchRemoveModule() cli.Command {
 		Aliases: []string{"rm-module", "patch-rm-module"},
 		Usage:   "remove a module from an existing patch",
 		Flags:   mergeFlagSlices(addPatchIDFlag(), addModuleFlag()),
-		Before:  mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
+		Before:  mergeBeforeFuncs(autoUpdateCLI, requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)

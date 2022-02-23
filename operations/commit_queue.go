@@ -57,6 +57,7 @@ func listQueue() cli.Command {
 		Usage: "list the contents of a project's commit queue",
 		Flags: addProjectFlag(),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			requireStringFlag(projectFlagName),
 			setPlainLogger,
 		),
@@ -94,6 +95,7 @@ func deleteItem() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			requireStringFlag(itemFlagName),
 			setPlainLogger,
 		),
@@ -144,6 +146,7 @@ func mergeCommand() cli.Command {
 			},
 		)),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, refFlagName, commitsFlagName),
 		),
@@ -194,6 +197,7 @@ func setModuleCommand() cli.Command {
 		Usage: "update or add module to an existing merge patch",
 		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addCommitsFlag()),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			requirePatchIDFlag,
 			requireModuleFlag,
 			setPlainLogger,
@@ -242,6 +246,7 @@ func enqueuePatch() cli.Command {
 			},
 		)),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			requirePatchIDFlag,
 			setPlainLogger,
 		),
@@ -354,6 +359,7 @@ func backport() cli.Command {
 				},
 			)),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			setPlainLogger,
 			requireStringFlag(backportProjectFlag),
 			mutuallyExclusiveArgs(true, existingPatchFlag, commitShaFlag),
