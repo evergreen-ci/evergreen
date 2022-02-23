@@ -41,6 +41,9 @@ func (ctx *DBConnector) GetPrefix() string       { return ctx.Prefix }
 func (ctx *DBConnector) SetPrefix(prefix string) { ctx.Prefix = prefix }
 
 type MockGitHubConnector struct {
+	URL string
 	DBConnector
 	MockGitHubConnectorImpl
 }
+
+func (ctx *MockGitHubConnector) GetURL() string { return ctx.URL }
