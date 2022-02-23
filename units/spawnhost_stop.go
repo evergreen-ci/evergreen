@@ -24,9 +24,8 @@ func init() {
 }
 
 type spawnhostStopJob struct {
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	UserID   string `bson:"user_id" json:"user_id" yaml:"user_id"`
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
+	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -44,52 +43,32 @@ func makeSpawnhostStopJob() *spawnhostStopJob {
 	return j
 }
 
+// NewSpawnhostStopJob returns a job to stop a running spawn host.
 func NewSpawnhostStopJob(h *host.Host, user, ts string) amboy.Job {
 	j := makeSpawnhostStopJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStopName, user, h.Id, ts))
-	j.HostID = h.Id
-	j.UserID = user
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, h.Id)})
+	j.SetEnqueueAllScopes(true)
+	j.CloudHostModification.HostID = h.Id
+	j.CloudHostModification.UserID = user
 	return j
 }
 
 func (j *spawnhostStopJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	var err error
-	if j.host == nil {
-		j.host, err = host.FindOneByIdOrTag(j.HostID)
-		if err != nil {
-			j.AddError(err)
-			return
+	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
+		if err := mgr.StopInstance(ctx, h, user); err != nil {
+			event.LogHostStopFinished(h.Id, false)
+			return errors.Wrapf(err, "stopping spawn host '%s'", h.Id)
 		}
-		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.ID()))
-			return
-		}
-	}
 
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+		event.LogHostStopFinished(h.Id, true)
+
+		return nil
+	}
+	if err := j.CloudHostModification.modifyHost(ctx, stopCloudHost); err != nil {
+		j.AddError(err)
 		return
 	}
-	cloudManager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting cloud manager for spawnhost stop job"))
-		return
-	}
-
-	// Stop instance using the cloud manager
-	if err := cloudManager.StopInstance(ctx, j.host, j.UserID); err != nil {
-		j.AddError(errors.Wrap(err, "error stopping spawnhost using cloud manager"))
-		event.LogHostStopFinished(j.host.Id, false)
-		return
-	}
-
-	event.LogHostStopFinished(j.host.Id, true)
-	return
 }

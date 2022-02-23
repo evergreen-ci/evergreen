@@ -204,6 +204,20 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 	for _, s3CopyFile := range c.S3CopyFiles {
 		timer.Reset(0)
 
+		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
+			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
+			continue
+		}
+
+		if ctx.Err() != nil {
+			return errors.New("s3copy operation was canceled")
+		}
+
+		logger.Execution().Infof("Making API push copy call to "+
+			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
+			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
+			s3CopyFile.Destination.Path)
+
 		s3CopyReq := apimodels.S3CopyRequest{
 			S3SourceRegion:      s3CopyFile.Source.Region,
 			S3SourceBucket:      s3CopyFile.Source.Bucket,
@@ -223,20 +237,6 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			continue
 		}
 
-		if len(s3CopyFile.BuildVariants) > 0 && !utility.StringSliceContains(
-			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
-			continue
-		}
-
-		if ctx.Err() != nil {
-			return errors.New("s3copy operation received was canceled")
-		}
-
-		logger.Execution().Infof("Making API push copy call to "+
-			"transfer %v/%v => %v/%v", s3CopyFile.Source.Bucket,
-			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
-			s3CopyFile.Destination.Path)
-
 		s3CopyReq.AwsKey = c.AwsKey
 		s3CopyReq.AwsSecret = c.AwsSecret
 
@@ -251,10 +251,22 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		if err != nil {
 			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket")
 			logger.Task().Error(bucketErr)
+
+			newPushLog.Status = pushLogFailed
+			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
+				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+bucketErr.Error())
+			}
+
 			return bucketErr
 		}
 
 		if err := srcBucket.Check(ctx); err != nil {
+
+			newPushLog.Status = pushLogFailed
+			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
+				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+err.Error())
+			}
+
 			return errors.Wrap(err, "invalid bucket")
 		}
 		destOpts := pail.S3Options{
@@ -267,8 +279,15 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		if err != nil {
 			bucketErr := errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket")
 			logger.Task().Error(bucketErr)
+
+			newPushLog.Status = pushLogFailed
+			if pushError := comm.UpdatePushStatus(ctx, td, newPushLog); pushError != nil {
+				return errors.Wrap(pushError, "error updating pushlog to failed after the following s3 bucket error: %s"+bucketErr.Error())
+			}
+
 			return bucketErr
 		}
+
 	retryLoop:
 		for i := 0; i < maxS3OpAttempts; i++ {
 			select {

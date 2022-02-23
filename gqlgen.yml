@@ -260,6 +260,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  GithubProjectConflicts:
+    model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   ClientConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
   ClientBinary:
@@ -319,6 +321,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
+  GroupedTaskStatusCount:
+    model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
   TaskLogs:
     fields:
       eventLogs:

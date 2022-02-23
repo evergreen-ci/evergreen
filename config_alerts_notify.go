@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	DefaultEventProcessingLimit    = 1000
 	DefaultBufferIntervalSeconds   = 60
 	DefaultBufferTargetPerInterval = 20
 )
@@ -17,7 +16,6 @@ const (
 type NotifyConfig struct {
 	BufferTargetPerInterval int        `bson:"buffer_target_per_interval" json:"buffer_target_per_interval" yaml:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int        `bson:"buffer_interval_seconds" json:"buffer_interval_seconds" yaml:"buffer_interval_seconds"`
-	EventProcessingLimit    int        `bson:"event_processing_limit" json:"event_processing_limit" yaml:"event_processing_limit"`
 	SMTP                    SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
 }
 
@@ -68,10 +66,6 @@ func (c *NotifyConfig) ValidateAndDefault() error {
 	if jobsPerSecond > maxNotificationsPerSecond {
 		return errors.Errorf("maximum notification jobs per second is %d", maxNotificationsPerSecond)
 
-	}
-
-	if c.EventProcessingLimit <= 0 {
-		c.EventProcessingLimit = DefaultEventProcessingLimit
 	}
 
 	return nil

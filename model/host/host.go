@@ -309,6 +309,10 @@ type SpawnOptions struct {
 	// Retries is the number of times Evergreen should try to spawn this host.
 	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
 
+	// Respawns is the number of spawn attempts remaining if the host is externally terminated after
+	// being spawned.
+	Respawns int `bson:"respawns,omitempty" json:"respawns,omitempty"`
+
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
 }

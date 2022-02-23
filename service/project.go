@@ -166,24 +166,11 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	matchingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+
+	conflicts, err := projRef.GetGithubProjectConflicts()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-	PRConflictingRefs := []string{}
-	CQConflictingRefs := []string{}
-	githubChecksConflictingRefs := []string{}
-	for _, ref := range matchingRefs {
-		if ref.IsPRTestingEnabled() && ref.Id != projRef.Id {
-			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
-		}
-		if ref.CommitQueue.IsEnabled() && ref.Id != projRef.Id {
-			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
-		}
-		if ref.IsGithubChecksEnabled() && ref.Id != projRef.Id {
-			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
-		}
 	}
 	var hook *model.GithubHook
 	hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
@@ -225,8 +212,8 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		GithubValidOrgs             []string                    `json:"github_valid_orgs"`
 		Subscriptions               []restModel.APISubscription `json:"subscriptions"`
 		Permissions                 gimlet.Permissions          `json:"permissions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs,
-		CQConflictingRefs, githubChecksConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
+	}{projRef, projVars, projectAliases, conflicts.PRTestingIdentifiers,
+		conflicts.CommitQueueIdentifiers, conflicts.CommitCheckIdentifiers, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -568,11 +555,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected build baron config but was actually '%T'", i))
 		return
 	}
-	err = model.BbProjectIsValid(projectRef.Id, buildbaronConfig)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
-		return
-	}
 
 	i, err = responseRef.TaskAnnotationSettings.ToService()
 	if err != nil {
@@ -582,6 +564,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	taskannotationsConfig, ok := i.(evergreen.AnnotationsSettings)
 	if !ok {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected task annotations config but was actually '%T'", i))
+		return
+	}
+
+	err = model.ValidateBbProject(projectRef.Id, buildbaronConfig, &taskannotationsConfig.FileTicketWebhook)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating build baron config input"))
 		return
 	}
 
@@ -988,9 +976,8 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	DBUser := MustHaveUser(r)
-	authorized := isAdmin(DBUser, projectRef)
 	template := "not_admin.html"
-	if authorized {
+	if isAdmin(DBUser, projectRef.Id) {
 		template = "project_events.html"
 	}
 

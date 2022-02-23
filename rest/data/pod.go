@@ -18,13 +18,14 @@ import (
 type DBPodConnector struct{}
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func (c *DBPodConnector) CreatePod(p model.APICreatePod) (*model.APICreatePodResponse, error) {
-	dbPod, err := translatePod(p)
+func (c *DBPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
+	dbPod, err := apiPod.ToService()
 	if err != nil {
-		return nil, err
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
+		}
 	}
-
-	addAgentPodSettings(dbPod)
 
 	if err := dbPod.Insert(); err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -53,7 +54,14 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 			Message:    "pod does not exist",
 		}
 	}
-	if secret != p.Secret.Value {
+	s, err := p.GetSecret()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    errors.Wrap(err, "getting pod secret").Error(),
+		}
+	}
+	if secret != s.Value {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "pod secrets do not match",
@@ -137,12 +145,13 @@ type MockPodConnector struct {
 }
 
 func (c *MockPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
-	dbPod, err := translatePod(apiPod)
+	dbPod, err := apiPod.ToService()
 	if err != nil {
-		return nil, err
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
+		}
 	}
-
-	addAgentPodSettings(dbPod)
 
 	c.CachedPods = append(c.CachedPods, *dbPod)
 
@@ -156,7 +165,11 @@ func (c *MockPodConnector) CheckPodSecret(id, secret string) error {
 		if id != p.ID {
 			continue
 		}
-		if secret != p.Secret.Value {
+		s, err := p.GetSecret()
+		if err != nil {
+			return err
+		}
+		if secret != s.Value {
 			return errors.New("incorrect pod secret")
 		}
 	}
@@ -238,52 +251,4 @@ func (c *MockPodConnector) UpdatePodStatus(id string, apiCurrent, apiUpdated mod
 	}
 
 	return nil
-}
-
-// translatePod translates a pod creation request into its data model.
-func translatePod(p model.APICreatePod) (*pod.Pod, error) {
-	i, err := p.ToService()
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
-		}
-	}
-
-	dbPod, ok := i.(pod.Pod)
-	if !ok {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for pod.Pod", i),
-		}
-	}
-
-	return &dbPod, nil
-}
-
-const (
-	podIDEnvVar     = "POD_ID"
-	podSecretEnvVar = "POD_SECRET"
-)
-
-// addAgentPodSettings adds any pod configuration that is necessary to run the
-// agent.
-func addAgentPodSettings(p *pod.Pod) {
-	p.Type = pod.TypeAgent
-	if p.Secret.Name == "" {
-		p.Secret.Name = podSecretEnvVar
-	}
-	if p.Secret.Value == "" {
-		p.Secret.Value = utility.RandomString()
-	}
-	p.Secret.Exists = utility.FalsePtr()
-	p.Secret.Owned = utility.TruePtr()
-	if p.TaskContainerCreationOpts.EnvSecrets == nil {
-		p.TaskContainerCreationOpts.EnvSecrets = map[string]pod.Secret{}
-	}
-	p.TaskContainerCreationOpts.EnvSecrets[podSecretEnvVar] = p.Secret
-	if p.TaskContainerCreationOpts.EnvVars == nil {
-		p.TaskContainerCreationOpts.EnvVars = map[string]string{}
-	}
-	p.TaskContainerCreationOpts.EnvVars[podIDEnvVar] = p.ID
 }

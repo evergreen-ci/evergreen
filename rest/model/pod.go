@@ -8,13 +8,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// APIPodEnvVar is the model for environment variables in a container.
-type APIPodEnvVar struct {
-	Name   *string `json:"name"`
-	Value  *string `json:"value"`
-	Secret *bool   `json:"secret"`
-}
-
 // APICreatePod is the model to create a new pod.
 type APICreatePod struct {
 	Name           *string              `json:"name"`
@@ -23,7 +16,6 @@ type APICreatePod struct {
 	Image          *string              `json:"image"`
 	RepoUsername   *string              `json:"repo_username"`
 	RepoPassword   *string              `json:"repo_password"`
-	EnvVars        []*APIPodEnvVar      `json:"env_vars"`
 	OS             APIPodOS             `json:"os"`
 	Arch           APIPodArch           `json:"arch"`
 	WindowsVersion APIPodWindowsVersion `json:"windows_version"`
@@ -35,10 +27,8 @@ type APICreatePodResponse struct {
 	ID string `json:"id"`
 }
 
-// ToService returns a service layer pod.Pod using the data from APIPod.
-func (p *APICreatePod) ToService() (interface{}, error) {
-	envVars, secrets := p.splitEnvVars()
-
+// ToService returns a service layer pod.Pod using the data from APICreatePod.
+func (p *APICreatePod) ToService() (*pod.Pod, error) {
 	os, err := p.OS.ToService()
 	if err != nil {
 		return nil, err
@@ -52,53 +42,18 @@ func (p *APICreatePod) ToService() (interface{}, error) {
 		return nil, err
 	}
 
-	return pod.Pod{
-		ID: utility.RandomString(),
-		Secret: pod.Secret{
-			Value:  utility.FromStringPtr(p.Secret),
-			Exists: utility.FalsePtr(),
-			Owned:  utility.TruePtr(),
-		},
-		Status: pod.StatusInitializing,
-		TimeInfo: pod.TimeInfo{
-			Initializing: time.Now(),
-		},
-		TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-			Image:          utility.FromStringPtr(p.Image),
-			RepoUsername:   utility.FromStringPtr(p.RepoUsername),
-			RepoPassword:   utility.FromStringPtr(p.RepoPassword),
-			MemoryMB:       utility.FromIntPtr(p.Memory),
-			CPU:            utility.FromIntPtr(p.CPU),
-			OS:             *os,
-			Arch:           *arch,
-			WindowsVersion: *winVer,
-			EnvVars:        envVars,
-			EnvSecrets:     secrets,
-			WorkingDir:     utility.FromStringPtr(p.WorkingDir),
-		},
-	}, nil
-}
-
-// splitEnvVars splits its environment variables into its non-secret and secret
-// environment variables.
-func (p *APICreatePod) splitEnvVars() (envVars map[string]string, secrets map[string]pod.Secret) {
-	envVars = make(map[string]string)
-	secrets = make(map[string]pod.Secret)
-
-	for _, envVar := range p.EnvVars {
-		if utility.FromBoolPtr(envVar.Secret) {
-			secrets[utility.FromStringPtr(envVar.Name)] = pod.Secret{
-				Name:   utility.FromStringPtr(envVar.Name),
-				Value:  utility.FromStringPtr(envVar.Value),
-				Exists: utility.FalsePtr(),
-				Owned:  utility.TruePtr(),
-			}
-		} else {
-			envVars[utility.FromStringPtr(envVar.Name)] = utility.FromStringPtr(envVar.Value)
-		}
-	}
-
-	return envVars, secrets
+	return pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
+		Secret:         utility.FromStringPtr(p.Secret),
+		CPU:            utility.FromIntPtr(p.CPU),
+		MemoryMB:       utility.FromIntPtr(p.Memory),
+		OS:             *os,
+		Arch:           *arch,
+		WindowsVersion: *winVer,
+		Image:          utility.FromStringPtr(p.Image),
+		WorkingDir:     utility.FromStringPtr(p.WorkingDir),
+		RepoUsername:   utility.FromStringPtr(p.RepoUsername),
+		RepoPassword:   utility.FromStringPtr(p.RepoPassword),
+	})
 }
 
 // APIPod represents a pod to be used and returned from the REST API.
@@ -106,7 +61,6 @@ type APIPod struct {
 	ID                        *string                            `json:"id"`
 	Type                      APIPodType                         `json:"type"`
 	Status                    APIPodStatus                       `json:"status"`
-	Secret                    APIPodSecret                       `json:"secret"`
 	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts"`
 	TimeInfo                  APIPodTimeInfo                     `json:"time_info"`
 	Resources                 APIPodResourceInfo                 `json:"resources"`
@@ -121,7 +75,6 @@ func (p *APIPod) BuildFromService(dbPod *pod.Pod) error {
 	if err := p.Status.BuildFromService(dbPod.Status); err != nil {
 		return errors.Wrap(err, "building status from service")
 	}
-	p.Secret.BuildFromService(dbPod.Secret)
 	p.TimeInfo.BuildFromService(dbPod.TimeInfo)
 	p.TaskContainerCreationOpts.BuildFromService(dbPod.TaskContainerCreationOpts)
 	p.Resources.BuildFromService(dbPod.Resources)
@@ -142,14 +95,12 @@ func (p *APIPod) ToService() (*pod.Pod, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting task container creation options to service")
 	}
-	secret := p.Secret.ToService()
 	timing := p.TimeInfo.ToService()
 	resources := p.Resources.ToService()
 	return &pod.Pod{
 		ID:                        utility.FromStringPtr(p.ID),
 		Type:                      *t,
 		Status:                    *s,
-		Secret:                    secret,
 		TaskContainerCreationOpts: *taskCreationOpts,
 		TimeInfo:                  timing,
 		Resources:                 resources,

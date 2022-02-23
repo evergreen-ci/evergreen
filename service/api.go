@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -324,7 +325,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res := apimodels.ExpansionVars{
 		Vars:           map[string]string{},
 		RestrictedVars: map[string]string{},
-		AdminOnlyVars:  map[string]string{},
 		PrivateVars:    map[string]bool{},
 	}
 	if projectVars == nil {
@@ -336,7 +336,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	if projectVars.PrivateVars != nil {
 		res.PrivateVars = projectVars.PrivateVars
 	}
-
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -346,14 +345,39 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
 	}
+	var u *user.DBUser
+	if t.ActivatedBy == evergreen.StepbackTaskActivator {
+		u, err = user.FindOneById(v.Author)
+	} else if t.ActivatedBy != "" {
+		u, err = user.FindOneById(t.ActivatedBy)
+	}
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if u != nil {
+		// check if user is an admin
+		if isAdmin(u, t.Project) {
+			for key, val := range projectVars.GetAdminOnlyVars() {
+				res.Vars[key] = val
+			}
+		}
+	}
 
 	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	params := append(projParams, v.Parameters...)
-	for _, param := range params {
+	for _, param := range projParams {
+		// If the key doesn't exist the value will default to "" anyway; this prevents
+		// an un-specified parameter from overwriting lower-priority expansions.
+		if param.Value != "" {
+			res.Vars[param.Key] = param.Value
+		}
+	}
+	for _, param := range v.Parameters {
+		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value
 	}
 
@@ -631,12 +655,13 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	project := &model.Project{}
+	var projectConfig *model.ProjectConfig
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
@@ -669,6 +694,9 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs = append(errs, validator.CheckProjectErrors(project, input.IncludeLong)...)
+	if projectConfig != nil {
+		errs = append(errs, validator.CheckProjectConfigErrors(projectConfig)...)
+	}
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)

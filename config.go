@@ -35,7 +35,7 @@ var (
 	ClientVersion = "2022-02-16"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-02-04"
+	AgentVersion = "2022-02-14"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

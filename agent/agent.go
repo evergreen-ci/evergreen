@@ -591,7 +591,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 			tc.logger.Task().Error(errors.Wrap(err, "error running post task commands"))
 		}
 		a.runEndTaskSync(ctx, tc, detail)
-	case evergreen.TaskUndispatched:
+	// TODO: (PM-2616) make sure that TaskContainerUnallocated means the task has been aborted.
+	case evergreen.TaskUndispatched, evergreen.TaskContainerUnallocated:
 		tc.logger.Task().Info("Task completed - ABORTED.")
 	case evergreen.TaskConflict:
 		tc.logger.Task().Error("Task completed - CANCELED.")

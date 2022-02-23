@@ -16,26 +16,15 @@ func TestPodConnector(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, conn Connector){
 		"CreatePodSucceeds": func(t *testing.T, conn Connector) {
 			p := model.APICreatePod{
-				Name:   utility.ToStringPtr("name"),
-				Memory: utility.ToIntPtr(128),
-				CPU:    utility.ToIntPtr(128),
-				Image:  utility.ToStringPtr("image"),
-				EnvVars: []*model.APIPodEnvVar{
-					{
-						Name:   utility.ToStringPtr("env_name"),
-						Value:  utility.ToStringPtr("env_value"),
-						Secret: utility.ToBoolPtr(false),
-					},
-					{
-						Name:   utility.ToStringPtr("secret_name"),
-						Value:  utility.ToStringPtr("secret_value"),
-						Secret: utility.ToBoolPtr(true),
-					},
-				},
+				Name:           utility.ToStringPtr("name"),
+				Memory:         utility.ToIntPtr(128),
+				CPU:            utility.ToIntPtr(128),
+				Image:          utility.ToStringPtr("image"),
 				OS:             model.APIPodOS(pod.OSWindows),
 				Arch:           model.APIPodArch(pod.ArchAMD64),
 				WindowsVersion: model.APIPodWindowsVersion(pod.WindowsVersionServer2019),
 				Secret:         utility.ToStringPtr("secret"),
+				WorkingDir:     utility.ToStringPtr("/working/dir"),
 			}
 			res, err := conn.CreatePod(p)
 			require.NoError(t, err)
@@ -47,13 +36,10 @@ func TestPodConnector(t *testing.T) {
 
 			assert.Equal(t, model.PodTypeAgent, apiPod.Type)
 			assert.Equal(t, model.PodStatusInitializing, apiPod.Status)
-			assert.Equal(t, podSecretEnvVar, utility.FromStringPtr(apiPod.Secret.Name))
-			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(apiPod.Secret.Value))
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars)
-			assert.Equal(t, "env_value", apiPod.TaskContainerCreationOpts.EnvVars["env_name"])
 			assert.NotZero(t, apiPod.TaskContainerCreationOpts.EnvVars["POD_ID"])
 			require.NotZero(t, apiPod.TaskContainerCreationOpts.EnvSecrets)
-			secret, ok := apiPod.TaskContainerCreationOpts.EnvSecrets["POD_SECRET"]
+			secret, ok := apiPod.TaskContainerCreationOpts.EnvSecrets[pod.PodSecretEnvVar]
 			require.True(t, ok)
 			assert.Equal(t, utility.FromStringPtr(p.Secret), utility.FromStringPtr(secret.Value))
 		},
@@ -62,13 +48,6 @@ func TestPodConnector(t *testing.T) {
 				ID:     "id",
 				Type:   pod.TypeAgent,
 				Status: pod.StatusInitializing,
-				Secret: pod.Secret{
-					Name:       podSecretEnvVar,
-					Value:      "secret_value",
-					ExternalID: "external_id",
-					Exists:     utility.TruePtr(),
-					Owned:      utility.FalsePtr(),
-				},
 			}
 			require.NoError(t, p.Insert())
 
@@ -77,7 +56,8 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod)
 
 			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
-			assert.Equal(t, p.Secret, apiPod.Secret.ToService())
+			assert.EqualValues(t, p.Type, apiPod.Type)
+			assert.EqualValues(t, p.Status, apiPod.Status)
 		},
 		"FindPodByIDReturnsNilWithNonexistentPod": func(t *testing.T, conn Connector) {
 			apiPod, err := conn.FindPodByID("nonexistent")
@@ -86,15 +66,8 @@ func TestPodConnector(t *testing.T) {
 		},
 		"FindPodByExternalIDSucceeds": func(t *testing.T, conn Connector) {
 			p := pod.Pod{
-				ID:   "id",
-				Type: pod.TypeAgent,
-				Secret: pod.Secret{
-					Name:       podSecretEnvVar,
-					Value:      "secret_value",
-					ExternalID: "external_id",
-					Exists:     utility.TruePtr(),
-					Owned:      utility.FalsePtr(),
-				},
+				ID:     "id",
+				Type:   pod.TypeAgent,
 				Status: pod.StatusRunning,
 				Resources: pod.ResourceInfo{
 					ExternalID: "external_id",
@@ -107,7 +80,8 @@ func TestPodConnector(t *testing.T) {
 			require.NotZero(t, apiPod)
 
 			assert.Equal(t, p.ID, utility.FromStringPtr(apiPod.ID))
-			assert.Equal(t, p.Secret, apiPod.Secret.ToService())
+			assert.EqualValues(t, p.Type, apiPod.Type)
+			assert.EqualValues(t, p.Status, apiPod.Status)
 		},
 		"FindPodByExternalIDReturnsNilWithNonexistentPod": func(t *testing.T, conn Connector) {
 			apiPod, err := conn.FindPodByExternalID("nonexistent")
@@ -138,30 +112,34 @@ func TestPodConnector(t *testing.T) {
 			assert.Error(t, conn.UpdatePodStatus("nonexistent", model.PodStatusRunning, model.PodStatusTerminated))
 		},
 		"CheckPodSecret": func(t *testing.T, conn Connector) {
+			secretVal := "secret_value"
 			p := pod.Pod{
 				ID:   "id",
 				Type: pod.TypeAgent,
-				Secret: pod.Secret{
-					Name:       podSecretEnvVar,
-					Value:      "secret_value",
-					ExternalID: "external_id",
-					Exists:     utility.TruePtr(),
-					Owned:      utility.FalsePtr(),
+				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
+					EnvSecrets: map[string]pod.Secret{
+						pod.PodSecretEnvVar: {
+							Value:      secretVal,
+							ExternalID: "external_id",
+							Exists:     utility.TruePtr(),
+							Owned:      utility.FalsePtr(),
+						},
+					},
 				},
 			}
 			require.NoError(t, p.Insert())
 
 			t.Run("Succeeds", func(t *testing.T) {
-				assert.NoError(t, conn.CheckPodSecret(p.ID, p.Secret.Value))
+				assert.NoError(t, conn.CheckPodSecret(p.ID, secretVal))
 			})
 			t.Run("FailsWithoutID", func(t *testing.T) {
-				assert.Error(t, conn.CheckPodSecret("", p.Secret.Value))
+				assert.Error(t, conn.CheckPodSecret("", secretVal))
 			})
 			t.Run("FailsWithoutSecret", func(t *testing.T) {
 				assert.Error(t, conn.CheckPodSecret(p.ID, ""))
 			})
 			t.Run("FailsWithBadID", func(t *testing.T) {
-				assert.Error(t, conn.CheckPodSecret("bad_id", p.Secret.Value))
+				assert.Error(t, conn.CheckPodSecret("bad_id", secretVal))
 			})
 			t.Run("FailsWithBadSecret", func(t *testing.T) {
 				assert.Error(t, conn.CheckPodSecret(p.ID, "bad_secret"))

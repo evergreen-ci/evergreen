@@ -577,7 +577,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
-	config, err := createProjectConfig(data)
+	config, err := CreateProjectConfig(data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}

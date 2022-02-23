@@ -13,29 +13,12 @@ import (
 func TestAPICreatePod(t *testing.T) {
 	t.Run("ToService", func(t *testing.T) {
 		apiPod := APICreatePod{
-			Name:         utility.ToStringPtr("id"),
-			Memory:       utility.ToIntPtr(128),
-			CPU:          utility.ToIntPtr(128),
-			Image:        utility.ToStringPtr("image"),
-			RepoUsername: utility.ToStringPtr("username"),
-			RepoPassword: utility.ToStringPtr("password"),
-			EnvVars: []*APIPodEnvVar{
-				{
-					Name:   utility.ToStringPtr("name"),
-					Value:  utility.ToStringPtr("value"),
-					Secret: utility.ToBoolPtr(false),
-				},
-				{
-					Name:   utility.ToStringPtr("name1"),
-					Value:  utility.ToStringPtr("value1"),
-					Secret: utility.ToBoolPtr(false),
-				},
-				{
-					Name:   utility.ToStringPtr("secret_name"),
-					Value:  utility.ToStringPtr("secret_value"),
-					Secret: utility.ToBoolPtr(true),
-				},
-			},
+			Name:           utility.ToStringPtr("id"),
+			Memory:         utility.ToIntPtr(128),
+			CPU:            utility.ToIntPtr(128),
+			Image:          utility.ToStringPtr("image"),
+			RepoUsername:   utility.ToStringPtr("username"),
+			RepoPassword:   utility.ToStringPtr("password"),
 			OS:             APIPodOS(pod.OSWindows),
 			Arch:           APIPodArch(pod.ArchAMD64),
 			WindowsVersion: APIPodWindowsVersion(pod.WindowsVersionServer2019),
@@ -43,17 +26,9 @@ func TestAPICreatePod(t *testing.T) {
 			WorkingDir:     utility.ToStringPtr("working_dir"),
 		}
 
-		res, err := apiPod.ToService()
+		p, err := apiPod.ToService()
 		require.NoError(t, err)
 
-		p, ok := res.(pod.Pod)
-		require.True(t, ok)
-
-		assert.Zero(t, p.Secret.Name)
-		assert.Zero(t, p.Secret.ExternalID)
-		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), p.Secret.Value)
-		assert.False(t, utility.FromBoolPtr(p.Secret.Exists))
-		assert.True(t, utility.FromBoolPtr(p.Secret.Owned))
 		assert.Equal(t, utility.FromStringPtr(apiPod.Image), p.TaskContainerCreationOpts.Image)
 		assert.Equal(t, utility.FromStringPtr(apiPod.RepoUsername), p.TaskContainerCreationOpts.RepoUsername)
 		assert.Equal(t, utility.FromStringPtr(apiPod.RepoPassword), p.TaskContainerCreationOpts.RepoPassword)
@@ -66,16 +41,19 @@ func TestAPICreatePod(t *testing.T) {
 		assert.EqualValues(t, utility.FromStringPtr(apiPod.WorkingDir), p.TaskContainerCreationOpts.WorkingDir)
 		assert.Equal(t, pod.StatusInitializing, p.Status)
 		assert.NotZero(t, p.TimeInfo.Initializing)
-		assert.Len(t, p.TaskContainerCreationOpts.EnvVars, 2)
-		assert.Len(t, p.TaskContainerCreationOpts.EnvSecrets, 1)
-		assert.Equal(t, "value1", p.TaskContainerCreationOpts.EnvVars["name1"])
-		dbPodSecret, ok := p.TaskContainerCreationOpts.EnvSecrets["secret_name"]
+		assert.Len(t, p.TaskContainerCreationOpts.EnvVars, 1, "pod ID should be set")
+		assert.Len(t, p.TaskContainerCreationOpts.EnvSecrets, 1, "pod secret should be set")
+		podID, ok := p.TaskContainerCreationOpts.EnvVars["POD_ID"]
 		require.True(t, ok)
-		assert.Equal(t, "secret_name", dbPodSecret.Name)
-		assert.Zero(t, dbPodSecret.ExternalID)
-		assert.Equal(t, "secret_value", dbPodSecret.Value)
-		assert.False(t, utility.FromBoolPtr(dbPodSecret.Exists))
-		assert.True(t, utility.FromBoolPtr(dbPodSecret.Owned))
+		assert.NotZero(t, p.ID)
+		assert.Equal(t, p.ID, podID)
+		podSecret, err := p.GetSecret()
+		require.NoError(t, err)
+		assert.Zero(t, podSecret.Name)
+		assert.Zero(t, podSecret.ExternalID)
+		assert.Equal(t, utility.FromStringPtr(apiPod.Secret), podSecret.Value)
+		assert.False(t, utility.FromBoolPtr(podSecret.Exists))
+		assert.True(t, utility.FromBoolPtr(podSecret.Owned))
 	})
 }
 
@@ -85,13 +63,6 @@ func TestAPIPod(t *testing.T) {
 			ID:     "id",
 			Type:   pod.TypeAgent,
 			Status: pod.StatusRunning,
-			Secret: pod.Secret{
-				Name:       "secret_name",
-				ExternalID: "external_id",
-				Value:      "secret_value",
-				Exists:     utility.TruePtr(),
-				Owned:      utility.FalsePtr(),
-			},
 			TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
 				Image:          "image",
 				RepoUsername:   "username",
@@ -146,13 +117,6 @@ func TestAPIPod(t *testing.T) {
 			ID:     utility.ToStringPtr("id"),
 			Type:   PodTypeAgent,
 			Status: PodStatusRunning,
-			Secret: APIPodSecret{
-				Name:       utility.ToStringPtr("secret_name"),
-				ExternalID: utility.ToStringPtr("external_id"),
-				Value:      utility.ToStringPtr("secret_value"),
-				Exists:     utility.TruePtr(),
-				Owned:      utility.FalsePtr(),
-			},
 			TaskContainerCreationOpts: APIPodTaskContainerCreationOptions{
 				Image:          utility.ToStringPtr("image"),
 				RepoUsername:   utility.ToStringPtr("username"),
@@ -209,11 +173,6 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, utility.FromStringPtr(apiPod.ID), dbPod.ID)
 			assert.Equal(t, pod.TypeAgent, dbPod.Type)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
-			assert.Equal(t, utility.FromStringPtr(apiPod.Secret.Name), dbPod.Secret.Name)
-			assert.Equal(t, utility.FromStringPtr(apiPod.Secret.ExternalID), dbPod.Secret.ExternalID)
-			assert.Equal(t, utility.FromStringPtr(apiPod.Secret.Value), dbPod.Secret.Value)
-			assert.Equal(t, utility.FromBoolPtr(apiPod.Secret.Exists), utility.FromBoolPtr(dbPod.Secret.Exists))
-			assert.Equal(t, utility.FromBoolPtr(apiPod.Secret.Owned), utility.FromBoolPtr(dbPod.Secret.Owned))
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image), dbPod.TaskContainerCreationOpts.Image)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoUsername), dbPod.TaskContainerCreationOpts.RepoUsername)
 			assert.Equal(t, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword), dbPod.TaskContainerCreationOpts.RepoPassword)
@@ -280,11 +239,6 @@ func TestAPIPod(t *testing.T) {
 			assert.Equal(t, dbPod.ID, utility.FromStringPtr(apiPod.ID))
 			assert.Equal(t, PodTypeAgent, apiPod.Type)
 			assert.Equal(t, PodStatusRunning, apiPod.Status)
-			assert.Equal(t, dbPod.Secret.Name, utility.FromStringPtr(apiPod.Secret.Name))
-			assert.Equal(t, dbPod.Secret.ExternalID, utility.FromStringPtr(apiPod.Secret.ExternalID))
-			assert.Equal(t, dbPod.Secret.Value, utility.FromStringPtr(apiPod.Secret.Value))
-			assert.Equal(t, utility.FromBoolPtr(dbPod.Secret.Exists), utility.FromBoolPtr(apiPod.Secret.Exists))
-			assert.Equal(t, utility.FromBoolPtr(dbPod.Secret.Owned), utility.FromBoolPtr(apiPod.Secret.Owned))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.Image, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.Image))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoUsername, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoUsername))
 			assert.Equal(t, dbPod.TaskContainerCreationOpts.RepoPassword, utility.FromStringPtr(apiPod.TaskContainerCreationOpts.RepoPassword))

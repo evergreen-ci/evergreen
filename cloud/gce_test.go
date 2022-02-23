@@ -33,18 +33,19 @@ func (s *GCESuite) SetupTest() {
 	s.manager = &gceManager{
 		client: s.client,
 	}
-	s.distro = distro.Distro{
-		Id:       "host",
-		Provider: "gce",
-		ProviderSettingsList: []*birch.Document{birch.NewDocument(
-			birch.EC.String("instance_type", "machine"),
-			birch.EC.String("image_name", "image"),
-			birch.EC.String("disk_type", "pd-standard"),
-			birch.EC.Int("disk_size_gb", 10),
-			birch.EC.SliceString("network_tags", []string{"abc", "def", "ghi"}),
-		)},
+	s.hostOpts = host.CreateOptions{
+		Distro: distro.Distro{
+			Id:       "host",
+			Provider: "gce",
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("instance_type", "machine"),
+				birch.EC.String("image_name", "image"),
+				birch.EC.String("disk_type", "pd-standard"),
+				birch.EC.Int("disk_size_gb", 10),
+				birch.EC.SliceString("network_tags", []string{"abc", "def", "ghi"}),
+			)},
+		},
 	}
-	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *GCESuite) TestValidateSettings() {
@@ -208,14 +209,14 @@ func (s *GCESuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostA := host.NewIntent(s.hostOpts)
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostB := host.NewIntent(s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -237,7 +238,7 @@ func (s *GCESuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	myHost := host.NewIntent(s.hostOpts)
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -302,25 +303,25 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
-	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
+	h := host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := distro.Distro{Provider: "gce"}
-	h = host.NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
+	s.hostOpts.Distro = distro.Distro{Provider: "gce"}
+	h = host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Nil(h)
 	s.Error(err)
 
-	dSettingsInvalid := distro.Distro{
+	s.hostOpts.Distro = distro.Distro{
 		Provider:             "gce",
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("instance_type", ""))},
 	}
-	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
+	h = host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
@@ -333,12 +334,12 @@ func (s *GCESuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostOne := host.NewIntent(s.hostOpts)
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostTwo := host.NewIntent(s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -355,7 +356,7 @@ func (s *GCESuite) TestSpawnAPICall() {
 			birch.EC.Int("disk_size_gb", 10),
 		)},
 	}
-	opts := host.CreateOptions{}
+	opts := host.CreateOptions{Distro: dist}
 
 	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
@@ -364,13 +365,13 @@ func (s *GCESuite) TestSpawnAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	h := host.NewIntent(dist, dist.GenerateName(), dist.Provider, opts)
+	h := host.NewIntent(opts)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failCreate = true
-	h = host.NewIntent(dist, dist.GenerateName(), dist.Provider, opts)
+	h = host.NewIntent(opts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)

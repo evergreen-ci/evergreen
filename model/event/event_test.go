@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	amboyRegistry "github.com/mongodb/amboy/registry"
@@ -246,6 +245,23 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 	})
 }
 
+func (s *eventSuite) TestFindByID() {
+	logger := NewDBEventLogger(AllLogCollection)
+	e := &EventLogEntry{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: ResourceTypeHost,
+		ResourceId:   "TEST1",
+		EventType:    "TEST2",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeHost),
+	}
+	s.Require().NoError(logger.LogEvent(e))
+	dbEvent, err := FindByID(e.ID)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbEvent)
+	s.Equal(e.ResourceId, dbEvent.ResourceId)
+}
+
 func (s *eventSuite) TestMarkProcessed() {
 	startTime := time.Now()
 
@@ -324,7 +340,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	for i := range data {
 		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	events, err := FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	events, err := FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(events, 1)
 
