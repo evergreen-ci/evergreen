@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -34,7 +35,8 @@ type APIProjectVars struct {
 	VarsToDelete   []string          `json:"vars_to_delete,omitempty"`
 
 	// to use for the UI
-	PrivateVarsList []string `json:"-"`
+	PrivateVarsList   []string `json:"-"`
+	AdminOnlyVarsList []string `json:"-"`
 }
 
 type APIProjectAlias struct {
@@ -109,20 +111,34 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 
 func (p *APIProjectVars) ToService() (interface{}, error) {
 	privateVars := map[string]bool{}
+	adminOnlyVars := map[string]bool{}
 	// ignore false inputs
 	for key, val := range p.PrivateVars {
 		if val {
 			privateVars[key] = val
 		}
 	}
+	for key, val := range p.AdminOnlyVars {
+		if val {
+			adminOnlyVars[key] = val
+		}
+	}
+	grip.Debug(message.Fields{
+		"bynnbynn":      "ToService",
+		"adminOnlyVars": adminOnlyVars,
+	})
+
 	// handle UI list
 	for _, each := range p.PrivateVarsList {
 		privateVars[each] = true
 	}
+	for _, each := range p.AdminOnlyVarsList {
+		adminOnlyVars[each] = true
+	}
 	return &model.ProjectVars{
 		Vars:           p.Vars,
 		RestrictedVars: p.RestrictedVars,
-		AdminOnlyVars:  p.AdminOnlyVars,
+		AdminOnlyVars:  adminOnlyVars,
 		PrivateVars:    privateVars,
 	}, nil
 }
