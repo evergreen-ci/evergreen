@@ -3,6 +3,7 @@
         vars{
             vars
             privateVars
+            adminOnlyVars
         }
     }
 }

@@ -206,6 +206,8 @@ models:
     fields:
       privateVars:
         resolver: true
+      adminOnlyVars:
+        resolver: true
   ProjectVarsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
   ProjectAlias:

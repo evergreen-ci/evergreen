@@ -501,6 +501,16 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.AP
 	return res, nil
 }
 
+func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
+	res := []*string{}
+	for varAlias, isAdminOnly := range obj.AdminOnlyVars {
+		if isAdminOnly {
+			res = append(res, utility.ToStringPtr(varAlias))
+		}
+	}
+	return res, nil
+}
+
 func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(obj.Type)
