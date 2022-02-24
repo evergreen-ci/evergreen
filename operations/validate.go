@@ -133,11 +133,11 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 	}
 
 	if pc != nil {
-		projectConfigYaml, err := yaml.Marshal(pc.HeadlessProjectConfig)
+		projectConfigYaml, err := yaml.Marshal(pc.ProjectConfigFields)
 		if err != nil {
 			return errors.Wrapf(err, "Could not marshal project config into yaml")
 		}
-		projectYaml = []byte(string(projectYaml) + string(projectConfigYaml))
+		projectYaml = []byte(strings.Join([]string{string(projectYaml), string(projectConfigYaml)}, "\n"))
 	}
 	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {

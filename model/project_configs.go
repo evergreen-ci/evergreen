@@ -14,15 +14,12 @@ import (
 
 type ProjectConfig struct {
 	Id string `yaml:"_id" bson:"_id"`
-	HeadlessProjectConfig
+	ProjectConfigFields
 }
 
-type HeadlessProjectConfig struct {
-	Project          string    `yaml:"project,omitempty" bson:"project,omitempty"`
-	ConfigCreateTime time.Time `yaml:"config_create_time,omitempty" bson:"config_create_time,omitempty"`
-	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
-	// Values for the below fields set on the project page will take precedence over this struct and will
-	// be the configs used for a given project during runtime.
+type ProjectConfigFields struct {
+	Project                string                         `yaml:"project,omitempty" bson:"project,omitempty"`
+	ConfigCreateTime       time.Time                      `yaml:"config_create_time,omitempty" bson:"config_create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	CommitQueueAliases     []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
@@ -65,14 +62,10 @@ func (pc *ProjectConfig) isEmpty() bool {
 // CreateProjectConfig marshals the supplied YAML into our
 // intermediate configs representation.
 func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
-	hp := HeadlessProjectConfig{}
-	if err := util.UnmarshalYAMLWithFallback(yml, &hp); err != nil {
+	p := &ProjectConfig{}
+	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, "error unmarshalling into project config")
-	}
-	p := &ProjectConfig{
-		"",
-		hp,
 	}
 	if p.isEmpty() {
 		return nil, nil

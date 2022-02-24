@@ -1243,16 +1243,18 @@ func TestValidateProjectTaskIdsAndTags(t *testing.T) {
 func TestValidatePeriodicBuilds(t *testing.T) {
 	projectConfig := &model.ProjectConfig{
 		Id: "project-1",
-		PeriodicBuilds: []model.PeriodicBuildDefinition{
-			{
-				ID:            "so_occasional",
-				ConfigFile:    "build.yml",
-				IntervalHours: -1,
-			},
-			{
-				ID:            "more_frequent",
-				ConfigFile:    "",
-				IntervalHours: 1,
+		ProjectConfigFields: model.ProjectConfigFields{
+			PeriodicBuilds: []model.PeriodicBuildDefinition{
+				{
+					ID:            "so_occasional",
+					ConfigFile:    "build.yml",
+					IntervalHours: -1,
+				},
+				{
+					ID:            "more_frequent",
+					ConfigFile:    "",
+					IntervalHours: 1,
+				},
 			},
 		},
 	}
@@ -1273,86 +1275,85 @@ func TestValidatePlugins(t *testing.T) {
 	assert.Nil(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject: "BFG",
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionUsername:    "user",
 				BFSuggestionPassword:    "pass",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 				BFSuggestionUsername: "user",
 				BFSuggestionPassword: "pass",
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionPassword:    "pass",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			}}}), ShouldNotBeNil)
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 0,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: -1,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 		})
 	})
 }
@@ -1362,83 +1363,85 @@ func TestValidateProjectAliases(t *testing.T) {
 		Convey("ensure misconfigured aliases throw an error", func() {
 			projectConfig := &model.ProjectConfig{
 				Id: "project-1",
-				PatchAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "",
-						Variant:   "v1",
-						Task:      "^test",
+				ProjectConfigFields: model.ProjectConfigFields{
+					PatchAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "",
+							Variant:   "v1",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Variant:   "v1",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Variant:   "[0-9]++",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Variant:   "v1",
+							Task:      "[0-9]++",
+						},
 					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Task:      "^test",
+					CommitQueueAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.CommitQueueAlias,
+							Variant:   "v1",
+							Task:      "^test",
+						},
 					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Variant:   "v1",
+					GitHubChecksAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.GithubChecksAlias,
+							Variant:   "v1",
+							Task:      "^test",
+						},
 					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Variant:   "[0-9]++",
-						Task:      "^test",
-					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Variant:   "v1",
-						Task:      "[0-9]++",
-					},
-				},
-				CommitQueueAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.CommitQueueAlias,
-						Variant:   "v1",
-						Task:      "^test",
-					},
-				},
-				GitHubChecksAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.GithubChecksAlias,
-						Variant:   "v1",
-						Task:      "^test",
-					},
-				},
-				GitTagAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.GitTagAlias,
-						Variant:   "v1",
-						Task:      "^test",
-					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.GitTagAlias,
-						Variant:   "v1",
-						Task:      "^test",
-						GitTag:    "[0-9]++",
-					},
-					{
-						ID:         mgobson.NewObjectId(),
-						ProjectID:  "project-1",
-						Alias:      evergreen.GitTagAlias,
-						Variant:    "v1",
-						Task:       "^test",
-						RemotePath: "remote/path",
-						GitTag:     "^test",
+					GitTagAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.GitTagAlias,
+							Variant:   "v1",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.GitTagAlias,
+							Variant:   "v1",
+							Task:      "^test",
+							GitTag:    "[0-9]++",
+						},
+						{
+							ID:         mgobson.NewObjectId(),
+							ProjectID:  "project-1",
+							Alias:      evergreen.GitTagAlias,
+							Variant:    "v1",
+							Task:       "^test",
+							RemotePath: "remote/path",
+							GitTag:     "^test",
+						},
 					},
 				},
 			}

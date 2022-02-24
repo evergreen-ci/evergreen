@@ -190,8 +190,8 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
 	s.NoError(patchAlias.Upsert())
 
 	projectConfig := &ProjectConfig{
-		"project-1",
-		HeadlessProjectConfig{Project: "project-1",
+		Id: "project-1",
+		ProjectConfigFields: ProjectConfigFields{Project: "project-1",
 			PatchAliases: []ProjectAlias{
 				{
 					ID:        mgobson.NewObjectId(),

@@ -801,8 +801,8 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	p := ParserProject{}
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
-			ParserProject         `yaml:"pp,inline"`
-			HeadlessProjectConfig `yaml:"pc,inline"`
+			ParserProject       `yaml:"pp,inline"`
+			ProjectConfigFields `yaml:"pc,inline"`
 			// Variables is only used to suppress yaml unmarshalling errors related
 			// to a non-existent variables field.
 			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
@@ -814,7 +814,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 		p = strictProjectWithVariables.ParserProject
 		c = ProjectConfig{
 			"",
-			strictProjectWithVariables.HeadlessProjectConfig,
+			strictProjectWithVariables.ProjectConfigFields,
 		}
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
