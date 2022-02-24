@@ -678,28 +678,6 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	return resolved, nil
 }
 
-// GetResolvedFinderSettings combines the distro's FinderSettings fields with the
-// SchedulerConfig defaults to resolve and validate a canonical set of FinderSettings' field values.
-func (d *Distro) GetResolvedFinderSettings(s *evergreen.Settings) (FinderSettings, error) {
-	config := s.Scheduler
-	fs := d.FinderSettings
-	resolved := FinderSettings{
-		Version: fs.Version,
-	}
-
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(config.ValidateAndDefault())
-	if catcher.HasErrors() {
-		return FinderSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve FinderSettings for distro '%s'", d.Id)
-	}
-	if resolved.Version == "" {
-		resolved.Version = config.TaskFinder
-	}
-
-	d.FinderSettings = resolved
-	return resolved, nil
-}
-
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
 // SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
 func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSettings, error) {
