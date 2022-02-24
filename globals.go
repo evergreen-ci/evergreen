@@ -295,6 +295,8 @@ var TaskStatuses = []string{
 	TaskWillRun,
 	TaskUnscheduled,
 	TaskUndispatched,
+	TaskUnstarted,
+	TaskDispatched,
 }
 
 var InternalAliases = []string{
