@@ -812,10 +812,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 			return nil, nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
-		c = ProjectConfig{
-			"",
-			strictProjectWithVariables.HeadlessProjectConfig,
-		}
+		c = GetProjectConfig(&strictProjectWithVariables.HeadlessProjectConfig)
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
