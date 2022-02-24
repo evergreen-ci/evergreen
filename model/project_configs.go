@@ -65,10 +65,14 @@ func (pc *ProjectConfig) isEmpty() bool {
 // CreateProjectConfig marshals the supplied YAML into our
 // intermediate configs representation.
 func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
-	p := &ProjectConfig{}
-	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
+	hp := HeadlessProjectConfig{}
+	if err := util.UnmarshalYAMLWithFallback(yml, &hp); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 		return nil, errors.Wrap(yamlErr, "error unmarshalling into project config")
+	}
+	p := &ProjectConfig{
+		"",
+		hp,
 	}
 	if p.isEmpty() {
 		return nil, nil
