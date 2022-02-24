@@ -202,14 +202,6 @@ $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 	$(gobin) build -ldflags "-w" -o  $@ $<
 # end generate lint
 
-# generated config for go tests
-go-test-config:$(buildDir)/go-test-config.json
-$(buildDir)/go-test-config.json:$(buildDir)/go-test-config
-	./$(buildDir)/go-test-config
-$(buildDir)/go-test-config:cmd/go-test-config/make-config.go
-	$(gobin) build -o $@ $<
-#end generated config
-
 # generate rest model
 # build-codegen is a special target to build all packages before performing code generation so that goimports can
 # properly locate package imports.
