@@ -265,10 +265,10 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 			res.Vars[k] = ""
 			res.PrivateVars[k] = projectVars.PrivateVars[k]
 		} else {
-			if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
-				res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
-			}
 			res.Vars[k] = v
+		}
+		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
+			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
 		}
 	}
 
