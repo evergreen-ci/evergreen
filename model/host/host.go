@@ -449,10 +449,7 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 		return errors.New(msg)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
-
-	h.Status = status
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -461,7 +458,14 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 				StatusKey: status,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	h.Status = status
+	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
+
+	return nil
 }
 
 // SetStatusAtomically is the same as SetStatus but only updates the host if its
@@ -489,7 +493,7 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 		},
 	)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	h.Status = newStatus
@@ -1411,13 +1415,16 @@ func (h *Host) MarkReachable() error {
 		return nil
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
+		return errors.WithStack(err)
+	}
 
+	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
 	h.Status = evergreen.HostRunning
 
-	return UpdateOne(
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
+	return nil
 }
 
 func (h *Host) Upsert() (*adb.ChangeInfo, error) {
