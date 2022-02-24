@@ -292,6 +292,11 @@ var TaskStatuses = []string{
 	TaskSystemUnresponse,
 	TaskSystemTimedOut,
 	TaskTimedOut,
+	TaskWillRun,
+	TaskUnscheduled,
+	TaskUndispatched,
+	TaskUnstarted,
+	TaskDispatched,
 }
 
 var InternalAliases = []string{
