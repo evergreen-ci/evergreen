@@ -797,12 +797,12 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
 func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, *ProjectConfig, error) {
-	var c *ProjectConfig
+	c := ProjectConfig{}
 	p := ParserProject{}
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
-			ParserProject          `yaml:"pp,inline"`
-			*HeadlessProjectConfig `yaml:"pc,inline"`
+			ParserProject         `yaml:"pp,inline"`
+			HeadlessProjectConfig `yaml:"pc,inline"`
 			// Variables is only used to suppress yaml unmarshalling errors related
 			// to a non-existent variables field.
 			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
@@ -812,20 +812,16 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 			return nil, nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
-		if strictProjectWithVariables.HeadlessProjectConfig != nil {
-			c = &ProjectConfig{
-				"",
-				*strictProjectWithVariables.HeadlessProjectConfig,
-			}
-			c.ConfigCreateTime = time.Now()
+		c = ProjectConfig{
+			"",
+			strictProjectWithVariables.HeadlessProjectConfig,
 		}
-
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 			return nil, nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
 		}
-		if err := util.UnmarshalYAMLWithFallback(yml, c); err != nil {
+		if err := util.UnmarshalYAMLWithFallback(yml, &c); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 			return nil, nil, errors.Wrap(yamlErr, "error unmarshalling into project config")
 		}
@@ -834,7 +830,11 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
-	return &p, c, nil
+	if c.isEmpty() {
+		return &p, nil, nil
+	}
+	c.ConfigCreateTime = time.Now()
+	return &p, &c, nil
 }
 
 // TranslateProject converts our intermediate project representation into
