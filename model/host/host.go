@@ -462,8 +462,8 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 		return err
 	}
 
-	h.Status = status
 	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
+	h.Status = status
 
 	return nil
 }
@@ -496,8 +496,8 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 		return errors.WithStack(err)
 	}
 
-	h.Status = newStatus
 	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	h.Status = newStatus
 
 	return nil
 }
