@@ -2,6 +2,7 @@ package repotracker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -835,7 +836,9 @@ buildvariants:
   - name: task2
 tasks:
 - name: task1
+  exec_timeout_secs: 3
 - name: task2
+  exec_timeout_secs: 3
 `
 	p := &model.Project{}
 	ctx := context.Background()
@@ -854,8 +857,13 @@ tasks:
 	dbVersion, err := model.VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Equal(v.Config, dbVersion.Config)
+	fmt.Println(dbVersion.Errors)
+	fmt.Println(dbVersion.Warnings)
 	s.Require().Len(dbVersion.Errors, 1)
+	s.Require().Len(dbVersion.Warnings, 2)
 	s.Equal("buildvariant 'bv' must either specify run_on field or have every task specify run_on", dbVersion.Errors[0])
+	s.Equal("task 'task1' does not contain any commands", dbVersion.Warnings[0])
+	s.Equal("task 'task2' does not contain any commands", dbVersion.Warnings[1])
 
 	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
 	s.NoError(err)
