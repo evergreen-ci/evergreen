@@ -107,7 +107,7 @@ var (
 		if conf.AutoUpgradeCLI {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			if err = CheckAndUpdateVersion(conf, ctx, true, false, true); err != nil {
+			if err = checkAndUpdateVersion(conf, ctx, true, false, true); err != nil {
 				fmt.Println("Automatic CLI update failed, continuing command execution")
 				return err
 			}

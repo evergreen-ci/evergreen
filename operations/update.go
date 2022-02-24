@@ -48,7 +48,7 @@ func Update() cli.Command {
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			doInstall := c.Bool(installFlagName)
+			install := c.Bool(installFlagName)
 			forceUpdate := c.Bool(forceFlagName)
 			autoUpgrade := c.Bool(autoUpgradeFlagName)
 
@@ -60,10 +60,10 @@ func Update() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			if !conf.AutoUpgradeCLI && !autoUpgrade {
-				fmt.Println(fmt.Sprintf("Automatic CLI upgrades are not set up; specifying the -%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.", autoUpgradeFlagName))
+				fmt.Printf("Automatic CLI upgrades are not set up; specifying the --%s flag will enable automatic CLI upgrades before each command if the current CLI is out of date.\n", autoUpgradeFlagName)
 			}
 			if conf.AutoUpgradeCLI && autoUpgrade {
-				fmt.Println(fmt.Sprintf("Automatic CLI upgrades are already set up, specifying the %s flag is not necessary.", autoUpgradeFlagName))
+				fmt.Printf("Automatic CLI upgrades are already set up, specifying the --%s flag is not necessary.\n", autoUpgradeFlagName)
 			}
 			if !conf.AutoUpgradeCLI && autoUpgrade {
 				conf.SetAutoUpgradeCLI()
@@ -72,16 +72,17 @@ func Update() cli.Command {
 				}
 				fmt.Println("Automatic CLI upgrades have successfully been setup.")
 			}
-			return CheckAndUpdateVersion(conf, ctx, doInstall, forceUpdate, false)
+			doInstall := install || autoUpgrade || conf.AutoUpgradeCLI
+			return checkAndUpdateVersion(conf, ctx, doInstall, forceUpdate, false)
 		},
 	}
 }
 
-// CheckAndUpdateVersion checks if the CLI is up to date. If there is no new CLI version it will simply notify that the current binary is up to date.
+// checkAndUpdateVersion checks if the CLI is up to date. If there is no new CLI version it will simply notify that the current binary is up to date.
 // If there is a new version available, it will be downloaded, and if doInstall is set the new binary will automatically be replaced at the current path the old binary existed in.
 // Otherwise, it will simply be downloaded and a suggested 'mv' command will be printed so the user can replace the binary at their discretion.
 // Toggling forceUpdate will download a new CLI even if the current CLI does not have an out-of-date CLI version string.
-func CheckAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
+func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
 	client := conf.getRestCommunicator(ctx)
 	defer client.Close()
 
