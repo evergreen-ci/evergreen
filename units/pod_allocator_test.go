@@ -16,7 +16,20 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
+
+// TODO (EVG-16402): use helper method in db package for this.
+func createCollection(ctx context.Context, t *testing.T, env evergreen.Environment, coll string) {
+	const namespaceExistsErrCode = 48
+	err := env.DB().CreateCollection(ctx, coll)
+	if err == nil {
+		return
+	}
+	if mongoErr, ok := err.(mongo.CommandError); !ok || !mongoErr.HasErrorCode(48) {
+		assert.FailNow(t, err.Error())
+	}
+}
 
 func TestPodAllocatorJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -26,8 +39,17 @@ func TestPodAllocatorJob(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 	}()
 
-	for tName, tCase := range map[string]func(t *testing.T, j *podAllocatorJob, tsk task.Task){
-		"RunSucceeds": func(t *testing.T, j *podAllocatorJob, tsk task.Task) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	// Pod allocation uses a multi-document transaction, which requires the
+	// collections to exist first before any documents can be inserted.
+	createCollection(ctx, t, env, task.Collection)
+	createCollection(ctx, t, env, pod.Collection)
+	createCollection(ctx, t, env, dispatcher.Collection)
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task){
+		"RunSucceeds": func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task) {
 			j.task = &tsk
 			require.NoError(t, tsk.Insert())
 
@@ -56,7 +78,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.Len(t, taskEvents, 1)
 			assert.Equal(t, event.ContainerAllocated, taskEvents[0].EventType)
 		},
-		"RunFailsForTaskWhoseDBStatusHasChanged": func(t *testing.T, j *podAllocatorJob, tsk task.Task) {
+		"RunFailsForTaskWhoseDBStatusHasChanged": func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task) {
 			j.task = &tsk
 			modified := tsk
 			modified.Activated = false
@@ -84,7 +106,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, taskEvents)
 		},
-		"RunNoopsForTaskThatDoesNotNeedContainerAllocation": func(t *testing.T, j *podAllocatorJob, tsk task.Task) {
+		"RunNoopsForTaskThatDoesNotNeedContainerAllocation": func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task) {
 			tsk.Activated = false
 			j.task = &tsk
 			require.NoError(t, tsk.Insert())
@@ -114,13 +136,10 @@ func TestPodAllocatorJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
-
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx))
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 
 			tsk := task.Task{
 				Id:        "task0",
@@ -130,7 +149,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			j := NewPodAllocatorJob(tsk.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
 			allocatorJob := j.(*podAllocatorJob)
 			allocatorJob.env = env
-			tCase(t, allocatorJob, tsk)
+			tCase(tctx, t, allocatorJob, tsk)
 		})
 	}
 }

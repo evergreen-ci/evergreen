@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func init() {
@@ -117,6 +118,18 @@ func TestFindOneByGroupID(t *testing.T) {
 	}
 }
 
+// TODO (EVG-16402): use helper method in db package for this.
+func createCollection(ctx context.Context, t *testing.T, env evergreen.Environment, coll string) {
+	err := env.DB().CreateCollection(ctx, coll)
+	if err == nil {
+		return
+	}
+	const namespaceExistsErrCode = 48
+	if mongoErr, ok := err.(mongo.CommandError); !ok || !mongoErr.HasErrorCode(namespaceExistsErrCode) {
+		assert.FailNow(t, err.Error())
+	}
+}
+
 func TestAllocate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -124,6 +137,15 @@ func TestAllocate(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
 	}()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	// Running a multi-document transaction requires the collections to exist
+	// first before any documents can be inserted.
+	createCollection(ctx, t, env, task.Collection)
+	createCollection(ctx, t, env, pod.Collection)
+	createCollection(ctx, t, env, Collection)
 
 	checkAllocated := func(t *testing.T, tsk *task.Task, p *pod.Pod, pd *PodDispatcher) {
 		dbPod, err := pod.FindOneByID(p.ID)
@@ -215,9 +237,6 @@ func TestAllocate(t *testing.T) {
 			defer tcancel()
 
 			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
-
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx))
 
 			p, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
 				ID:         primitive.NewObjectID().Hex(),

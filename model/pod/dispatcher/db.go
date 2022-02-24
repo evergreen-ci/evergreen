@@ -100,7 +100,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		}
 
 		if _, err := env.DB().Collection(Collection).UpdateOne(sessCtx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(), options.Update().SetUpsert(true)); err != nil {
-			return nil, errors.Wrap(err, "updating existing pod dispatcher")
+			return nil, errors.Wrap(err, "upserting pod dispatcher")
 		}
 		pd.ModificationCount++
 
