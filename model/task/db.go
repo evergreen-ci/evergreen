@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	ActivatedTasksByDistroIndex = bson.D{
+	activatedTasksByDistroIndex = bson.D{
 		{Key: DistroIdKey, Value: 1},
 		{Key: StatusKey, Value: 1},
 		{Key: ActivatedKey, Value: 1},
