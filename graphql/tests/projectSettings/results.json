@@ -119,8 +119,8 @@
         "data": {
           "projectSettings": {
             "vars": {
-              "vars": {"admintest": "woo", "both": "", "hello": "", "foo":  "bar"},
-              "privateVars": ["both", "hello"],
+              "vars": {"hello": "", "foo":  "bar", "admintest": "woo", "both": ""},
+              "privateVars": ["hello", "both"],
               "adminOnlyVars": ["admintest", "both"]
             }
           }
