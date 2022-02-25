@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -112,7 +111,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			if err = checkAndUpdateVersion(conf, ctx, true, false, true); err != nil {
-				fmt.Println("Automatic CLI update failed! Continuing with command execution.")
+				grip.Errorf("Automatic CLI update failed! Continuing with command execution. Error: %s", err.Error())
 			}
 		}
 		return nil
