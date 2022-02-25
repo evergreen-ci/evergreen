@@ -118,13 +118,6 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 
 		if t.Requester == evergreen.MergeTestRequester {
-			p, err := patch.FindOneId(t.Version)
-			if err != nil {
-				return errors.Wrap(err, "unable to find patch")
-			}
-			if p == nil {
-				return errors.New("patch not found")
-			}
 			if err = DequeueAndRestartForTask(nil, t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
 				return err
 			}
