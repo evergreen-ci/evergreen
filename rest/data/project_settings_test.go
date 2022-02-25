@@ -263,7 +263,33 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, pRefFromDB)
 			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
 			assert.NotEqual(t, pRefFromDB.Owner, "something different") // because use repo settings is true, we don't change this
-
+		},
+		"github conflicts with enabling": func(t *testing.T, ref model.ProjectRef) {
+			conflictingRef := model.ProjectRef{
+				Owner:               ref.Owner,
+				Repo:                ref.Repo,
+				Branch:              ref.Branch,
+				Enabled:             utility.TruePtr(),
+				PRTestingEnabled:    utility.TruePtr(),
+				GithubChecksEnabled: utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{
+					Enabled: utility.TruePtr(),
+				},
+			}
+			assert.NoError(t, conflictingRef.Insert())
+			ref.PRTestingEnabled = utility.TruePtr()
+			ref.GithubChecksEnabled = utility.TruePtr()
+			assert.NoError(t, ref.Upsert())
+			ref.Enabled = utility.TruePtr()
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			_, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "PR testing and commit checks")
+			assert.NotContains(t, err.Error(), "the commit queue")
 		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
@@ -399,6 +425,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Id:         "myId",
 			Owner:      "evergreen-ci",
 			Repo:       "evergreen",
+			Branch:     "main",
 			Restricted: utility.FalsePtr(),
 			RepoRefId:  "myRepoId",
 			Admins:     []string{"oldAdmin"},
