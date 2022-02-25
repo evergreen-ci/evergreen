@@ -18,9 +18,8 @@ func PatchList() cli.Command {
 	)
 
 	return cli.Command{
-		Name:   "list-patches",
-		Before: autoUpdateCLI,
-		Usage:  "show existing patches",
+		Name:  "list-patches",
+		Usage: "show existing patches",
 		Flags: mergeFlagSlices(addPatchIDFlag(
 			cli.IntFlag{
 				Name:  joinFlagNames(numberFlagName, "n"),

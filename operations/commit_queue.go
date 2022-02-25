@@ -57,7 +57,6 @@ func listQueue() cli.Command {
 		Usage: "list the contents of a project's commit queue",
 		Flags: addProjectFlag(),
 		Before: mergeBeforeFuncs(
-			autoUpdateCLI,
 			requireStringFlag(projectFlagName),
 			setPlainLogger,
 		),
@@ -95,7 +94,6 @@ func deleteItem() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			autoUpdateCLI,
 			requireStringFlag(itemFlagName),
 			setPlainLogger,
 		),

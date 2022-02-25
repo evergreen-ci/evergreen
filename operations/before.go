@@ -98,6 +98,10 @@ var (
 		return catcher.Resolve()
 	}
 
+	// autoUpdateCLI is to be run before commonly used command line functions and will automatically update and install a newer
+	// CLI version if one is found, and then run the command on that new CLI version.
+	// Some functions that one would expect to return quickly have been omitted from having this as a 'before' function since downloading and installing
+	// takes time that would be cumbersome to the user (e.g. list functions, delete functions).
 	autoUpdateCLI = func(c *cli.Context) error {
 		confPath := c.String("conf")
 		conf, err := NewClientSettings(confPath)
@@ -108,8 +112,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			if err = checkAndUpdateVersion(conf, ctx, true, false, true); err != nil {
-				fmt.Println("Automatic CLI update failed, continuing command execution")
-				return err
+				fmt.Println("Automatic CLI update failed! Continuing with command execution.")
 			}
 		}
 		return nil

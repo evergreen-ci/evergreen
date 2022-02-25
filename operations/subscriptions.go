@@ -21,9 +21,8 @@ func Subscriptions() cli.Command {
 
 func subscriptionsList() cli.Command {
 	return cli.Command{
-		Name:   "list",
-		Usage:  "list subscriptions belonging to a user",
-		Before: autoUpdateCLI,
+		Name:  "list",
+		Usage: "list subscriptions belonging to a user",
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

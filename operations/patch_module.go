@@ -166,7 +166,7 @@ func PatchRemoveModule() cli.Command {
 		Aliases: []string{"rm-module", "patch-rm-module"},
 		Usage:   "remove a module from an existing patch",
 		Flags:   mergeFlagSlices(addPatchIDFlag(), addModuleFlag()),
-		Before:  mergeBeforeFuncs(autoUpdateCLI, requirePatchIDFlag, requireModuleFlag),
+		Before:  mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)

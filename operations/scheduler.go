@@ -32,7 +32,7 @@ func compareTasks() cli.Command {
 		Name:    "compare-tasks",
 		Usage:   "compares 2 tasks, showing which one would be sorted higher and why",
 		Aliases: []string{"c"},
-		Before:  mergeBeforeFuncs(autoUpdateCLI, setPlainLogger),
+		Before:  setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			useLegacy := c.Bool(legacyFlagName)
