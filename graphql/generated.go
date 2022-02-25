@@ -618,7 +618,6 @@ type ComplexityRoot struct {
 		TaskSync                func(childComplexity int) int
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
-		UseRepoSettings         func(childComplexity int) int
 		ValidDefaultLoggers     func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
@@ -4245,13 +4244,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Triggers(childComplexity), true
-
-	case "Project.useRepoSettings":
-		if e.complexity.Project.UseRepoSettings == nil {
-			break
-		}
-
-		return e.complexity.Project.UseRepoSettings(childComplexity), true
 
 	case "Project.validDefaultLoggers":
 		if e.complexity.Project.ValidDefaultLoggers == nil {
@@ -8728,7 +8720,6 @@ type Project {
   taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
-  useRepoSettings: Boolean!
   repoRefId: String!
 
   isFavorite: Boolean!
@@ -23624,41 +23615,6 @@ func (ec *executionContext) _Project_hidden(ctx context.Context, field graphql.C
 	res := resTmp.(*bool)
 	fc.Result = res
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Project_useRepoSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.UseRepoSettings, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Project_repoRefId(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
@@ -45238,11 +45194,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "hidden":
 			out.Values[i] = ec._Project_hidden(ctx, field, obj)
-		case "useRepoSettings":
-			out.Values[i] = ec._Project_useRepoSettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "repoRefId":
 			out.Values[i] = ec._Project_repoRefId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

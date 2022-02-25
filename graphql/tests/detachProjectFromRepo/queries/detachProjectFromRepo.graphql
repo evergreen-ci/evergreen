@@ -1,6 +1,5 @@
 mutation {
     detachProjectFromRepo(projectId: "sandbox_project_id") {
         repoRefId
-        useRepoSettings
     }
 }
