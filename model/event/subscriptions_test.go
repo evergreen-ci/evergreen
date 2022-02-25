@@ -35,11 +35,12 @@ func (s *subscriptionsSuite) SetupTest() {
 			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
-					Type: "data1",
+					Type: SelectorID,
 					Data: "something",
 				},
 			},
 			RegexSelectors: []Selector{},
+			Filter:         Filter{ID: "something"},
 			Subscriber: Subscriber{
 				Type:   EmailSubscriberType,
 				Target: &t1,
@@ -53,11 +54,12 @@ func (s *subscriptionsSuite) SetupTest() {
 			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
-					Type: "data2",
+					Type: SelectorProject,
 					Data: "somethingelse",
 				},
 			},
 			RegexSelectors: []Selector{},
+			Filter:         Filter{Project: "somethingelse"},
 			Subscriber: Subscriber{
 				Type:   EmailSubscriberType,
 				Target: &t2,
@@ -71,19 +73,19 @@ func (s *subscriptionsSuite) SetupTest() {
 			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
-					Type: "data1",
+					Type: SelectorID,
 					Data: "something",
 				},
 			},
 			RegexSelectors: []Selector{
 				{
-					Type: "data2",
+					Type: SelectorProject,
 					Data: "else$",
 				},
-				{
-					Type: "data2",
-					Data: "^something",
-				},
+			},
+			Filter: Filter{
+				ID:      "something",
+				Project: "else$",
 			},
 			Subscriber: Subscriber{
 				Type:   EmailSubscriberType,
@@ -97,11 +99,12 @@ func (s *subscriptionsSuite) SetupTest() {
 			Trigger:      "trigger2",
 			Selectors: []Selector{
 				{
-					Type: "data",
+					Type: SelectorObject,
 					Data: "somethingspecial",
 				},
 			},
 			RegexSelectors: []Selector{},
+			Filter:         Filter{Object: "somethingspecial"},
 			Subscriber: Subscriber{
 				Type:   EmailSubscriberType,
 				Target: &t4,
@@ -119,11 +122,12 @@ func (s *subscriptionsSuite) SetupTest() {
 			Trigger:      "trigger2",
 			Selectors: []Selector{
 				{
-					Type: "data",
+					Type: SelectorObject,
 					Data: "somethingspecial",
 				},
 			},
 			RegexSelectors: []Selector{},
+			Filter:         Filter{Object: "somethingspecial"},
 			Subscriber: Subscriber{
 				Type:   SlackSubscriberType,
 				Target: &t5,
@@ -156,12 +160,8 @@ func (s *subscriptionsSuite) TestUpsert() {
 			s.Equal(sub.Selectors, s.subscriptions[3].Selectors)
 			s.Equal(s.subscriptions[3].RegexSelectors, sub.RegexSelectors)
 			s.Equal(s.subscriptions[3].Subscriber, sub.Subscriber)
-		}
-		if sub.ID == "5949645c9acd9604fdd202d8" {
+			s.Equal(s.subscriptions[3].Filter, sub.Filter)
 			s.Equal(s.subscriptions[3].TriggerData, sub.TriggerData)
-		}
-		if sub.ID == s.subscriptions[4].ID {
-
 		}
 	}
 }
@@ -193,7 +193,7 @@ func (s *subscriptionsSuite) TestFind() {
 
 	subs, err = FindSubscriptions("type2", []Selector{
 		{
-			Type: "data",
+			Type: SelectorObject,
 			Data: "somethingspecial",
 		},
 	})
@@ -214,11 +214,11 @@ func (s *subscriptionsSuite) TestFind() {
 	// this query hits a subscriber with a regex selector
 	subs, err = FindSubscriptions("type1", []Selector{
 		{
-			Type: "data1",
+			Type: SelectorID,
 			Data: "something",
 		},
 		{
-			Type: "data2",
+			Type: SelectorProject,
 			Data: "somethingelse",
 		},
 	})
@@ -271,6 +271,61 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 
 	a.RegexSelectors[0].Data = "^S"
 	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
+}
+
+func (s *subscriptionsSuite) TestFilterFromSelectors() {
+	for _, sub := range s.subscriptions {
+		filter := Filter{}
+		s.NoError(filter.FromSelectors(append(sub.Selectors, sub.RegexSelectors...)))
+		s.Equal(sub.Filter, filter)
+	}
+
+	filter := Filter{}
+	s.Error(filter.FromSelectors([]Selector{{Type: "non-existent-type"}}))
+}
+
+func (s *subscriptionsSuite) TestValidateFilter() {
+	for _, sub := range s.subscriptions {
+		s.NoError(sub.ValidateFilter())
+	}
+
+	noFilterParams := Subscription{}
+	s.Error(noFilterParams.ValidateFilter())
+}
+
+func (s *subscriptionsSuite) TestFromSelectors() {
+	s.Run("NoType", func() {
+		f := Filter{}
+		s.Error(f.FromSelectors([]Selector{{Data: "id"}}))
+	})
+
+	s.Run("NoData", func() {
+		f := Filter{}
+		s.Error(f.FromSelectors([]Selector{{Type: SelectorID}}))
+	})
+
+	s.Run("DuplicateSelectors", func() {
+		f := Filter{}
+		s.Error(f.FromSelectors([]Selector{
+			{Type: SelectorID, Data: "id1"},
+			{Type: SelectorID, Data: "id2"},
+		}))
+	})
+
+	s.Run("InvalidSelectorType", func() {
+		f := Filter{}
+		s.Error(f.FromSelectors([]Selector{{Type: "not-a-type", Data: "data"}}))
+	})
+
+	s.Run("ValidSelectors", func() {
+		f := Filter{}
+		s.NoError(f.FromSelectors([]Selector{
+			{Type: SelectorID, Data: "id"},
+			{Type: SelectorObject, Data: "obj"},
+		}))
+		s.Equal("id", f.ID)
+		s.Equal("obj", f.Object)
+	})
 }
 
 func (s *subscriptionsSuite) TestFindByOwnerForPerson() {

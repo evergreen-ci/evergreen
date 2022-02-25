@@ -29,6 +29,7 @@ var (
 	subscriptionTriggerKey        = bsonutil.MustHaveTag(Subscription{}, "Trigger")
 	subscriptionSelectorsKey      = bsonutil.MustHaveTag(Subscription{}, "Selectors")
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
+	subscriptionFilterKey         = bsonutil.MustHaveTag(Subscription{}, "Filter")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
@@ -81,6 +82,7 @@ type Subscription struct {
 	Trigger        string            `bson:"trigger"`
 	Selectors      []Selector        `bson:"selectors,omitempty"`
 	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
+	Filter         Filter            `bson:"filter"`
 	Subscriber     Subscriber        `bson:"subscriber"`
 	OwnerType      OwnerType         `bson:"owner_type"`
 	Owner          string            `bson:"owner"`
@@ -94,6 +96,7 @@ type unmarshalSubscription struct {
 	Trigger        string            `bson:"trigger"`
 	Selectors      []Selector        `bson:"selectors,omitempty"`
 	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
+	Filter         Filter            `bson:"filter"`
 	Subscriber     Subscriber        `bson:"subscriber"`
 	OwnerType      OwnerType         `bson:"owner_type"`
 	Owner          string            `bson:"owner"`
@@ -116,6 +119,7 @@ func (s *Subscription) SetBSON(raw mgobson.Raw) error {
 	s.Trigger = temp.Trigger
 	s.Selectors = temp.Selectors
 	s.RegexSelectors = temp.RegexSelectors
+	s.Filter = temp.Filter
 	s.Subscriber = temp.Subscriber
 	s.Owner = temp.Owner
 	s.OwnerType = temp.OwnerType
@@ -127,6 +131,75 @@ func (s *Subscription) SetBSON(raw mgobson.Raw) error {
 type Selector struct {
 	Type string `bson:"type"`
 	Data string `bson:"data"`
+}
+
+type Filter struct {
+	Object       string `bson:"object,omitempty"`
+	ID           string `bson:"id,omitempty"`
+	Project      string `bson:"project,omitempty"`
+	Owner        string `bson:"owner,omitempty"`
+	Requester    string `bson:"requester,omitempty"`
+	Status       string `bson:"status,omitempty"`
+	DisplayName  string `bson:"display_name,omitempty"`
+	BuildVariant string `bson:"build_variant,omitempty"`
+	InVersion    string `bson:"in_version,omitempty"`
+	InBuild      string `bson:"in_build,omitempty"`
+}
+
+func (f *Filter) setFieldFromSelector(selector Selector) error {
+	switch selector.Type {
+	case SelectorObject:
+		f.Object = selector.Data
+	case SelectorID:
+		f.ID = selector.Data
+	case SelectorProject:
+		f.Project = selector.Data
+	case SelectorOwner:
+		f.Owner = selector.Data
+	case SelectorRequester:
+		f.Requester = selector.Data
+	case SelectorStatus:
+		f.Status = selector.Data
+	case SelectorDisplayName:
+		f.DisplayName = selector.Data
+	case SelectorBuildVariant:
+		f.BuildVariant = selector.Data
+	case SelectorInVersion:
+		f.InVersion = selector.Data
+	case SelectorInBuild:
+		f.InBuild = selector.Data
+	default:
+		return errors.Errorf("unknown selector type '%s'", selector.Type)
+	}
+
+	return nil
+}
+
+func (f *Filter) FromSelectors(selectors []Selector) error {
+	catcher := grip.NewBasicCatcher()
+	typesSeen := make(map[string]bool)
+	for _, selector := range selectors {
+		if selector.Type == "" {
+			catcher.New("selector has an empty type")
+			continue
+		}
+		if selector.Data == "" {
+			catcher.Errorf("selector '%s' has no data", selector.Type)
+			continue
+		}
+
+		if typesSeen[selector.Type] {
+			catcher.Errorf("selector type '%s' specified more than once", selector.Type)
+			continue
+		}
+		typesSeen[selector.Type] = true
+
+		if err := f.setFieldFromSelector(selector); err != nil {
+			catcher.Wrap(err, "setting field from selector")
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 const (
@@ -221,6 +294,7 @@ func (s *Subscription) Upsert() error {
 		subscriptionTriggerKey:        s.Trigger,
 		subscriptionSelectorsKey:      s.Selectors,
 		subscriptionRegexSelectorsKey: s.RegexSelectors,
+		subscriptionFilterKey:         s.Filter,
 		subscriptionSubscriberKey:     s.Subscriber,
 		subscriptionOwnerKey:          s.Owner,
 		subscriptionOwnerTypeKey:      s.OwnerType,
@@ -299,21 +373,16 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	return true, ""
 }
 
-func ValidateSelectors(selectors []Selector) (bool, string) {
-	for i := range selectors {
-		if len(selectors[i].Type) == 0 || len(selectors[i].Data) == 0 {
-			return false, "Selector had empty type or data"
-		}
+func (s *Subscription) ValidateFilter() error {
+	if s.Filter == (Filter{}) {
+		return errors.New("no filter parameters specified")
 	}
 
-	return true, ""
+	return nil
 }
 
 func (s *Subscription) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if len(s.Selectors)+len(s.RegexSelectors) == 0 {
-		catcher.Add(errors.New("must specify at least 1 selector"))
-	}
 	if s.ResourceType == "" {
 		catcher.New("subscription type is required")
 	}
@@ -329,6 +398,7 @@ func (s *Subscription) Validate() error {
 		s.Subscriber.Type == JIRACommentSubscriberType {
 		catcher.New("JIRA comment subscription not allowed for all tasks in the project")
 	}
+	catcher.Add(s.ValidateFilter())
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
@@ -513,6 +583,23 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 				Data: id,
 			},
 		},
+		Filter:     Filter{ID: id},
+		Subscriber: sub,
+	}
+}
+
+func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
+	return Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: resourceType,
+		Trigger:      trigger,
+		Selectors: []Selector{
+			{
+				Type: SelectorOwner,
+				Data: owner,
+			},
+		},
+		Filter:     Filter{Owner: owner},
 		Subscriber: sub,
 	}
 }
@@ -545,6 +632,14 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, TriggerOutcome)
 }
 
+func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, TriggerExpiration)
+}
+
+func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, TriggerOutcome)
+}
+
 func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
 		ID:           mgobson.NewObjectId().Hex(),
@@ -559,6 +654,10 @@ func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscribe
 				Type: SelectorRequester,
 				Data: evergreen.PatchVersionRequester,
 			},
+		},
+		Filter: Filter{
+			Owner:     owner,
+			Requester: evergreen.PatchVersionRequester,
 		},
 		Subscriber: sub,
 	}
@@ -583,24 +682,10 @@ func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription
 				Data: evergreen.RepotrackerVersionRequester,
 			},
 		},
-		Subscriber: sub,
-	}
-}
-
-func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, TriggerExpiration)
-}
-
-func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
-	return Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
-		ResourceType: resourceType,
-		Trigger:      trigger,
-		Selectors: []Selector{
-			{
-				Type: SelectorOwner,
-				Data: owner,
-			},
+		Filter: Filter{
+			Owner:     owner,
+			Object:    ObjectTask,
+			Requester: evergreen.RepotrackerVersionRequester,
 		},
 		Subscriber: sub,
 	}
@@ -652,8 +737,4 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 		},
 		Subscriber: sub,
 	}
-}
-
-func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, TriggerOutcome)
 }
