@@ -120,7 +120,7 @@
           "projectSettings": {
             "vars": {
               "vars": {"hello": "", "foo":  "bar", "admintest": "woo", "both": ""},
-              "privateVars": ["hello", "both"],
+              "privateVars": ["both", "hello"],
               "adminOnlyVars": ["admintest", "both"]
             }
           }
