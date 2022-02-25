@@ -137,7 +137,8 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		if err != nil {
 			return errors.Wrapf(err, "Could not marshal project config into yaml")
 		}
-		projectYaml = []byte(strings.Join([]string{string(projectYaml), string(projectConfigYaml)}, "\n"))
+		projectYamlString := fmt.Sprintf("%s\n%s", string(projectYaml), string(projectConfigYaml))
+		projectYaml = []byte(projectYamlString)
 	}
 	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {
@@ -166,7 +167,7 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
 		if strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
-			pp, _, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
+			pp, pc, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{
 					Level:   validator.Warning,

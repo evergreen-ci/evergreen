@@ -813,8 +813,8 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 		}
 		p = strictProjectWithVariables.ParserProject
 		c = ProjectConfig{
-			"",
-			strictProjectWithVariables.ProjectConfigFields,
+			Id:                  "",
+			ProjectConfigFields: strictProjectWithVariables.ProjectConfigFields,
 		}
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
@@ -833,7 +833,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if c.isEmpty() {
 		return &p, nil, nil
 	}
-	c.ConfigCreateTime = time.Now()
+	c.CreateTime = time.Now()
 	return &p, &c, nil
 }
 

@@ -13,13 +13,18 @@ import (
 )
 
 type ProjectConfig struct {
-	Id                  string `yaml:"_id" bson:"_id"`
+	Id         string    `yaml:"_id" bson:"_id"`
+	CreateTime time.Time `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	// ProjectConfigFields are the properties on the project config that do not duplicate parser project's fields to allow strict unmarshalling of a full config file.
+	// Since a config file gets split into ParserProject and ProjectConfig, strict unmarshalling does not work when duplicate fields exist (e.g. Id, CreateTime).
 	ProjectConfigFields `yaml:",inline" bson:",inline"`
 }
 
 type ProjectConfigFields struct {
+	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
+	// Values for the below fields set on the project page will take precedence over this struct and will
+	// be the configs used for a given project during runtime.
 	Project                string                         `yaml:"project,omitempty" bson:"project,omitempty"`
-	ConfigCreateTime       time.Time                      `yaml:"config_create_time,omitempty" bson:"config_create_time,omitempty"`
 	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
 	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
 	CommitQueueAliases     []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
@@ -70,6 +75,6 @@ func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
 	if p.isEmpty() {
 		return nil, nil
 	}
-	p.ConfigCreateTime = time.Now()
+	p.CreateTime = time.Now()
 	return p, nil
 }
