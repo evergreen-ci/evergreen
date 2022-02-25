@@ -13,8 +13,8 @@ import (
 )
 
 type ProjectConfig struct {
-	Id string `yaml:"_id" bson:"_id"`
-	ProjectConfigFields
+	Id                  string `yaml:"_id" bson:"_id"`
+	ProjectConfigFields `yaml:",inline" bson:",inline"`
 }
 
 type ProjectConfigFields struct {
