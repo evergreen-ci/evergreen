@@ -13,14 +13,13 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/event"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -598,7 +597,7 @@ type VersionModifications struct {
 	TaskIds           []string                  `json:"task_ids"` // deprecated
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
+func ModifyVersion(version model.Version, user user.DBUser, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
@@ -624,20 +623,11 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
-			var projId string
-			if proj == nil {
-				id, err := model.GetIdForProject(version.Identifier)
-				if err != nil {
-					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
-				}
-				if id == "" {
-					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
-				}
-				projId = id
-			} else {
-				projId = proj.Id
+			err := model.RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
 			}
-			_, err := commitqueue.RemoveCommitQueueItemForVersion(projId, version.Id, user.DisplayName())
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
@@ -653,10 +643,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				"message": "unable to send github status",
 				"patch":   version.Id,
 			}))
-			err = model.RestartItemsAfterVersion(nil, projId, version.Id, user.Id)
-			if err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
-			}
+
 		}
 	case SetPriority:
 		projId := version.Identifier
@@ -690,7 +677,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := MustHaveUser(ctx)
-	httpStatus, err := ModifyVersion(*version, *user, nil, modifications)
+	httpStatus, err := ModifyVersion(*version, *user, modifications)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}

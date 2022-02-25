@@ -622,7 +622,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				if mergeTask == nil {
 					return errors.New("no merge task found")
 				}
-				catcher.Add(DequeueAndRestart(mergeTask, evergreen.APIServerTaskActivator, "new push to pull request"))
+				catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 			} else if err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":         "github hook",

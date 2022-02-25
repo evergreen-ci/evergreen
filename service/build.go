@@ -177,11 +177,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if projCtx.Build.Requester == evergreen.MergeTestRequester {
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
 			p, err := patch.FindOneId(projCtx.Build.Version)
 			if err != nil {
 				http.Error(w, "Error finding patch", http.StatusInternalServerError)
@@ -197,6 +192,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				"patch":   projCtx.Build.Version,
 			}))
 			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -245,11 +245,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !putParams.Active && projCtx.Build.Requester == evergreen.MergeTestRequester {
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
 			p, err := patch.FindOneId(projCtx.Build.Version)
 			if err != nil {
 				http.Error(w, "Error finding patch", http.StatusInternalServerError)
@@ -265,6 +260,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				"patch":   projCtx.Build.Version,
 			}))
 			err = model.RestartItemsAfterVersion(nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
