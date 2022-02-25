@@ -1075,9 +1075,7 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 		},
 	}
 
-	// Force the query to use 'distro_1_status_1_activated_1_priority_1'
-	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
-	info, err := UpdateAllWithHint(query, update, activatedTasksByDistroIndex)
+	info, err := UpdateAll(query, update)
 	if err != nil {
 		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
 	}
