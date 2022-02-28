@@ -43,6 +43,7 @@ func makePodAllocatorJob() *podAllocatorJob {
 	}
 }
 
+// NewPodAllocatorJob returns a job to allocate a pod for the given task ID.
 func NewPodAllocatorJob(taskID, ts string) amboy.Job {
 	j := makePodAllocatorJob()
 	j.TaskID = taskID
