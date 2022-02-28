@@ -491,11 +491,12 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:         getValidTaskStatusesFilter(statuses),
-		Variants:         searchVariants,
-		TaskNames:        searchTasks,
-		Sorts:            defaultSort,
-		IncludeBaseTasks: true,
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		Variants:                       searchVariants,
+		TaskNames:                      searchTasks,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               true,
+		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()
 	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
@@ -1267,7 +1268,9 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := sc.FindTasksByVersion(version.Id, opts)
 	if err != nil {

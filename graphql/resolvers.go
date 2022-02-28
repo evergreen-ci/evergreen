@@ -1284,8 +1284,9 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -1462,9 +1463,10 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
 		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 		opts := data.TaskFilterOptions{
-			Statuses:         failedAndAbortedStatuses,
-			FieldsToProject:  []string{task.DisplayStatusKey},
-			IncludeBaseTasks: false,
+			Statuses:                       failedAndAbortedStatuses,
+			FieldsToProject:                []string{task.DisplayStatusKey},
+			IncludeBaseTasks:               false,
+			IncludeBuildVariantDisplayName: false,
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(id, opts)
 		if err != nil {
@@ -1702,15 +1704,16 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	}
 
 	opts := data.TaskFilterOptions{
-		Statuses:               getValidTaskStatusesFilter(statuses),
-		BaseStatuses:           getValidTaskStatusesFilter(baseStatuses),
-		Variants:               []string{variantParam},
-		TaskNames:              []string{taskNameParam},
-		Page:                   pageParam,
-		Limit:                  limitParam,
-		Sorts:                  taskSorts,
-		IncludeBaseTasks:       true,
-		IncludeEmptyActivation: utility.FromBoolPtr(includeEmptyActivation),
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
+		Variants:                       []string{variantParam},
+		TaskNames:                      []string{taskNameParam},
+		Page:                           pageParam,
+		Limit:                          limitParam,
+		Sorts:                          taskSorts,
+		IncludeBaseTasks:               true,
+		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
+		IncludeBuildVariantDisplayName: true,
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -2596,9 +2599,10 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 // ScheduleUndispatchedBaseTasks only allows scheduling undispatched base tasks for tasks that are failing on the current patch
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := data.TaskFilterOptions{
-		Statuses:              evergreen.TaskFailureStatuses,
-		IncludeExecutionTasks: true,
-		IncludeBaseTasks:      false,
+		Statuses:                       evergreen.TaskFailureStatuses,
+		IncludeExecutionTasks:          true,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -3756,9 +3760,10 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
-		FieldsToProject:  []string{task.DisplayStatusKey},
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{task.DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 	if err != nil {
@@ -3776,9 +3781,10 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
-		FieldsToProject:  []string{task.DisplayStatusKey},
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{task.DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(baseVersion.Id, opts)
 	if err != nil {
@@ -3796,6 +3802,9 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		Variants:              options.Variants,
 		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 	}
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
+	}
 	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
@@ -3812,8 +3821,9 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 			{Key: task.DisplayNameKey, Order: 1},
 		}
 		opts := data.TaskFilterOptions{
-			Sorts:            defaultSort,
-			IncludeBaseTasks: true,
+			Sorts:                          defaultSort,
+			IncludeBaseTasks:               true,
+			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 		if err != nil {
@@ -3852,6 +3862,10 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.AP
 		TaskNames: options.Tasks,
 		Variants:  options.Variants,
 		Statuses:  options.Statuses,
+	}
+	// Should only include BuildVariantDisplayName in the query if we need to filter on it.
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
 	if err != nil {
@@ -3974,9 +3988,10 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
-		Statuses:         failedAndAbortedStatuses,
-		FieldsToProject:  []string{task.DisplayStatusKey},
-		IncludeBaseTasks: false,
+		Statuses:                       failedAndAbortedStatuses,
+		FieldsToProject:                []string{task.DisplayStatusKey},
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
