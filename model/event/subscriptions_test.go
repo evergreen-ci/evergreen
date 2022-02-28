@@ -276,7 +276,7 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 func (s *subscriptionsSuite) TestFilterFromSelectors() {
 	for _, sub := range s.subscriptions {
 		filter := Filter{}
-		s.NoError(filter.FromSelectors(append(sub.Selectors, sub.RegexSelectors...)))
+		s.Require().NoError(filter.FromSelectors(append(sub.Selectors, sub.RegexSelectors...)))
 		s.Equal(sub.Filter, filter)
 	}
 

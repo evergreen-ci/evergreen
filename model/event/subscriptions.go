@@ -133,6 +133,7 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
+// Filter specifies the event properties that are of interest.
 type Filter struct {
 	Object       string `bson:"object,omitempty"`
 	ID           string `bson:"id,omitempty"`
@@ -175,6 +176,7 @@ func (f *Filter) setFieldFromSelector(selector Selector) error {
 	return nil
 }
 
+// FromSelectors sets the filter's properties from the selectors' data.
 func (f *Filter) FromSelectors(selectors []Selector) error {
 	catcher := grip.NewBasicCatcher()
 	typesSeen := make(map[string]bool)
@@ -194,9 +196,7 @@ func (f *Filter) FromSelectors(selectors []Selector) error {
 		}
 		typesSeen[selector.Type] = true
 
-		if err := f.setFieldFromSelector(selector); err != nil {
-			catcher.Wrap(err, "setting field from selector")
-		}
+		catcher.Wrap(f.setFieldFromSelector(selector), "setting field from selector")
 	}
 
 	return catcher.Resolve()
