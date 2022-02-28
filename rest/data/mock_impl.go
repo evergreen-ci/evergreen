@@ -76,7 +76,7 @@ tasks:
 	return model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		Config:              &model.ProjectConfig{},
+		Config:              nil,
 	}, err
 }
 

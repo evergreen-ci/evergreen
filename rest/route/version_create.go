@@ -71,12 +71,14 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    errors.Wrap(err, "unable to unmarshal yaml config").Error(),
 		})
 	}
-	projectInfo.Config, err = model.CreateProjectConfig(h.Config, projectInfo.Ref.Id)
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "unable to unmarshal project config yaml").Error(),
-		})
+	if projectInfo.Ref.IsVersionControlEnabled() {
+		projectInfo.Config, err = model.CreateProjectConfig(h.Config, projectInfo.Ref.Id)
+		if err != nil {
+			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    errors.Wrap(err, "unable to unmarshal project config yaml").Error(),
+			})
+		}
 	}
 	projectInfo.Project = p
 	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)

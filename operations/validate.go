@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -137,8 +138,8 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 		if err != nil {
 			return errors.Wrapf(err, "Could not marshal project config into yaml")
 		}
-		projectYamlString := fmt.Sprintf("%s\n%s", string(projectYaml), string(projectConfigYaml))
-		projectYaml = []byte(projectYamlString)
+		projectBytes := [][]byte{projectYaml, projectConfigYaml}
+		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
 	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {

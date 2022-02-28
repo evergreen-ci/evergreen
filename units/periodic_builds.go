@@ -172,9 +172,12 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing config file")
 	}
-	config, err := model.CreateProjectConfig(configBytes, j.project.Id)
-	if err != nil {
-		return "", errors.Wrap(err, "error parsing project config")
+	var config *model.ProjectConfig
+	if j.project.IsVersionControlEnabled() {
+		config, err = model.CreateProjectConfig(configBytes, j.project.Id)
+		if err != nil {
+			return "", errors.Wrap(err, "error parsing project config")
+		}
 	}
 	metadata := model.VersionMetadata{
 		IsAdHoc:         true,
