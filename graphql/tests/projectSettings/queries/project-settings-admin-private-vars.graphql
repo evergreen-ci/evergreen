@@ -1,0 +1,9 @@
+{
+    projectSettings(identifier: "vars_test") {
+        vars{
+            vars
+            privateVars
+            adminOnlyVars
+        }
+    }
+}

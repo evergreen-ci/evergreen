@@ -128,6 +128,20 @@
       }
     },
     {
+      "query_file": "project-settings-admin-private-vars.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "vars": {
+              "vars": {"both": ""},
+              "privateVars": ["both"],
+              "adminOnlyVars": ["both"]
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "project-settings-subscriptions.graphql",
       "result": {
         "data": {
