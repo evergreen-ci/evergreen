@@ -121,7 +121,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedParserProject != "" {
-		if _, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project); err != nil {
+		if _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project); err != nil {
 			return nil, nil, errors.WithStack(err)
 		}
 		patchConfig := &PatchConfig{
@@ -166,7 +166,11 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	pp, pc, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
+	pc, err := CreateProjectConfig(projectFileBytes, p.Project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -289,13 +293,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	intermediateProject, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched parser project from repository revision “%v”",
 			p.Githash)
 	}
-	config, err := CreateProjectConfig([]byte(p.PatchedProjectConfig))
+	config, err := CreateProjectConfig([]byte(p.PatchedProjectConfig), p.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -737,7 +741,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	project := &Project{}
-	if _, _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedParserProject), nil, existingPatch.Project, project); err != nil {
+	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedParserProject), nil, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 

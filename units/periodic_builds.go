@@ -168,9 +168,13 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Token:        token,
 		ReadFileFrom: model.ReadfromGithub,
 	}
-	intermediateProject, config, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
+	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing config file")
+	}
+	config, err := model.CreateProjectConfig(configBytes, j.project.Id)
+	if err != nil {
+		return "", errors.Wrap(err, "error parsing project config")
 	}
 	metadata := model.VersionMetadata{
 		IsAdHoc:         true,

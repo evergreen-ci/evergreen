@@ -461,7 +461,7 @@ tasks:
 - name: t1
 `
 	p = &model.Project{}
-	pp, _, err = model.LoadProjectInto(ctx, []byte(config2), nil, ref.Id, p)
+	pp, err = model.LoadProjectInto(ctx, []byte(config2), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp

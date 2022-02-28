@@ -59,7 +59,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -76,7 +76,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -88,7 +88,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false)
+				p, err := createIntermediateProject([]byte(nameless), false)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -100,7 +100,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false)
+				p, err := createIntermediateProject([]byte(nameless), false)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -109,7 +109,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false)
+				p, err := createIntermediateProject([]byte(nameless), false)
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -138,7 +138,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -163,7 +163,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -181,7 +181,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, err := createIntermediateProject([]byte(simple), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -205,7 +205,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -226,7 +226,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -241,7 +241,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -253,7 +253,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, err := createIntermediateProject([]byte(single), false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -277,7 +277,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, err := createIntermediateProject([]byte(yml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -569,7 +569,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, err := createIntermediateProject([]byte(yml), false)
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -598,7 +598,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, err := createIntermediateProject([]byte(yml), false)
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -637,7 +637,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -670,7 +670,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -702,7 +702,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "execution task execTask3 is listed in more than 1 display task")
@@ -728,7 +728,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "display task execTask1 cannot have the same name as an execution task")
@@ -758,7 +758,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(wildcardYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -792,7 +792,7 @@ tasks:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
@@ -827,7 +827,7 @@ buildvariants:
 	opts := &GetProjectOpts{
 		UnmarshalStrict: true,
 	}
-	_, _, err := LoadProjectInto(ctx, []byte(exampleYml), opts, "example_project", &proj)
+	_, err := LoadProjectInto(ctx, []byte(exampleYml), opts, "example_project", &proj)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "field not_a_field not found")
 
@@ -847,7 +847,7 @@ buildvariants:
   tasks:
   - name: task1
 `
-	_, _, err = LoadProjectInto(ctx, []byte(yamlWithVariables), opts, "example_project", &proj)
+	_, err = LoadProjectInto(ctx, []byte(yamlWithVariables), opts, "example_project", &proj)
 	require.NoError(t, err)
 
 	fmt.Println("MY TESTS ARE STARTING")
@@ -870,12 +870,12 @@ buildvariants:
     tasks:
       - name: task1
 `
-	_, _, err = LoadProjectInto(ctx, []byte(yamlWithDup), opts, "example_project", &proj)
+	_, err = LoadProjectInto(ctx, []byte(yamlWithDup), opts, "example_project", &proj)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already defined")
 
 	// unless not using strict
-	_, _, err = LoadProjectInto(ctx, []byte(yamlWithDup), nil, "example_project", &proj)
+	_, err = LoadProjectInto(ctx, []byte(yamlWithDup), nil, "example_project", &proj)
 	assert.NoError(t, err)
 }
 
@@ -908,7 +908,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, _, err := createIntermediateProject([]byte(tagYml), false)
+	pp, err := createIntermediateProject([]byte(tagYml), false)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -978,7 +978,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1011,7 +1011,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
 	assert.Contains(err.Error(), `nothing named 'example_task_3'`)
@@ -1047,7 +1047,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(orderedYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	for i, t := range proj.TaskGroups[0].Tasks {
@@ -1081,7 +1081,7 @@ buildvariants:
 `
 
 	proj = &Project{}
-	_, _, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
+	_, err = LoadProjectInto(ctx, []byte(tagYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 2)
@@ -1119,7 +1119,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1156,7 +1156,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1193,7 +1193,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1229,7 +1229,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(validYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1273,7 +1273,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1325,7 +1325,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Len(proj.BuildVariants, 3)
@@ -1370,7 +1370,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
 	assert.Len(t, proj.Tasks, 2)
@@ -1417,7 +1417,7 @@ buildvariants:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(t, proj)
 	assert.Nil(t, err)
 	assert.Len(t, proj.BuildVariants, 3)
@@ -1453,7 +1453,7 @@ tasks:
 
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.Nil(err)
 	assert.Equal("something", proj.Loggers.Agent[0].Type)
@@ -1532,7 +1532,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := ioutil.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, _, err := createIntermediateProject(yml, false)
+	original, err := createIntermediateProject(yml, false)
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -1621,7 +1621,7 @@ buildvariants:
 }
 
 func checkProjectPersists(t *testing.T, yml []byte) {
-	pp, _, err := createIntermediateProject(yml, false)
+	pp, err := createIntermediateProject(yml, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -1640,7 +1640,7 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, _, err = createIntermediateProject(newYaml, false)
+	pp, err = createIntermediateProject(newYaml, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -2238,10 +2238,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, _, err := createIntermediateProject([]byte(mainYaml), false)
+	p1, err := createIntermediateProject([]byte(mainYaml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, _, err := createIntermediateProject([]byte(smallYaml), false)
+	p2, err := createIntermediateProject([]byte(smallYaml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2287,13 +2287,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, _, err := createIntermediateProject([]byte(mainYaml), false)
+	p1, err := createIntermediateProject([]byte(mainYaml), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, _, err := createIntermediateProject([]byte(succeed), false)
+	p2, err := createIntermediateProject([]byte(succeed), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, _, err := createIntermediateProject([]byte(fail), false)
+	p3, err := createIntermediateProject([]byte(fail), false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)

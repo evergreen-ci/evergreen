@@ -161,13 +161,20 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
 	project *model.Project) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
-	pp, pc, err := model.LoadProjectInto(ctx, data, opts, "", project)
+	pc, err := model.CreateProjectConfig(data, "")
+	if err != nil {
+		errs = append(errs, validator.ValidationError{
+			Level:   validator.Error,
+			Message: err.Error(),
+		})
+	}
+	pp, err := model.LoadProjectInto(ctx, data, opts, "", project)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
 		if strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
-			pp, pc, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
+			pp, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{
 					Level:   validator.Warning,

@@ -328,7 +328,7 @@ tasks:
 
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
 	// create new version to use for activating

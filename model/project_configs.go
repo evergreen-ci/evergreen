@@ -66,7 +66,7 @@ func (pc *ProjectConfig) isEmpty() bool {
 
 // CreateProjectConfig marshals the supplied YAML into our
 // intermediate configs representation.
-func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
+func CreateProjectConfig(yml []byte, identifier string) (*ProjectConfig, error) {
 	p := &ProjectConfig{}
 	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
@@ -76,5 +76,8 @@ func CreateProjectConfig(yml []byte) (*ProjectConfig, error) {
 		return nil, nil
 	}
 	p.CreateTime = time.Now()
+	if identifier != "" {
+		p.Project = identifier
+	}
 	return p, nil
 }
