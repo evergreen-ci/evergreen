@@ -498,6 +498,7 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.AP
 			res = append(res, utility.ToStringPtr(privateAlias))
 		}
 	}
+	sort.Slice(res, func(i, j int) bool { return utility.FromStringPtr(res[i]) < utility.FromStringPtr(res[j]) })
 	return res, nil
 }
 
@@ -508,6 +509,7 @@ func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.
 			res = append(res, utility.ToStringPtr(varAlias))
 		}
 	}
+	sort.Slice(res, func(i, j int) bool { return utility.FromStringPtr(res[i]) < utility.FromStringPtr(res[j]) })
 	return res, nil
 }
 
