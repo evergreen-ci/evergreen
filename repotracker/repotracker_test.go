@@ -652,7 +652,8 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
 	pp.BuildVariants[1].Tasks[0].RunOn = []string{"test-distro-one"}
 
-	pp.AddTask("t1", nil)
+	pp.AddTask("t1", []model.PluginCommandConf{{Function: "func1"}})
+	pp.Tasks[0].ExecTimeoutSecs = 3
 
 	return pp
 }
@@ -884,7 +885,17 @@ buildvariants:
   - name: task2
 tasks:
 - name: task1
+  exec_timeout_secs: 100
+  commands:
+  - command: shell.exec
+	params:
+	  script: echo "test"
 - name: task2
+  exec_timeout_secs: 100
+  commands:
+  - command: shell.exec
+    params:
+      script: echo "test"
 `
 	p := &model.Project{}
 	ctx := context.Background()
