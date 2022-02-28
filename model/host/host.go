@@ -309,6 +309,10 @@ type SpawnOptions struct {
 	// Retries is the number of times Evergreen should try to spawn this host.
 	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
 
+	// Respawns is the number of spawn attempts remaining if the host is externally terminated after
+	// being spawned.
+	Respawns int `bson:"respawns,omitempty" json:"respawns,omitempty"`
+
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
 }
@@ -445,10 +449,7 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 		return errors.New(msg)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
-
-	h.Status = status
-	return UpdateOne(
+	if err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -457,7 +458,14 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 				StatusKey: status,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
+	h.Status = status
+
+	return nil
 }
 
 // SetStatusAtomically is the same as SetStatus but only updates the host if its
@@ -485,11 +493,11 @@ func (h *Host) SetStatusAtomically(newStatus, user string, logs string) error {
 		},
 	)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
-	h.Status = newStatus
 	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	h.Status = newStatus
 
 	return nil
 }
@@ -1407,13 +1415,16 @@ func (h *Host) MarkReachable() error {
 		return nil
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
+		return errors.WithStack(err)
+	}
 
+	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
 	h.Status = evergreen.HostRunning
 
-	return UpdateOne(
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
+	return nil
 }
 
 func (h *Host) Upsert() (*adb.ChangeInfo, error) {
@@ -1865,12 +1876,9 @@ func (h *Host) UpdateParentIDs() error {
 // than the new 30 day expiration (unless it is set to unexpirable again #loophole)
 func (h *Host) PastMaxExpiration(extension time.Duration) error {
 	maxExpirationTime := h.CreationTime.Add(evergreen.SpawnHostExpireDays * time.Hour * 24)
-	if h.ExpirationTime.After(maxExpirationTime) {
-		return errors.New("Spawn host cannot be extended further")
-	}
-
 	proposedTime := h.ExpirationTime.Add(extension)
-	if proposedTime.After(maxExpirationTime) {
+
+	if h.ExpirationTime.After(maxExpirationTime) || proposedTime.After(maxExpirationTime) {
 		return errors.Errorf("Spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
 	}
 	return nil

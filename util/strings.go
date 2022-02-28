@@ -24,6 +24,7 @@ func CleanForPath(name string) string {
 func CleanName(name string) string {
 	name = strings.Replace(name, "-", "_", -1)
 	name = strings.Replace(name, " ", "_", -1)
+	name = strings.Replace(name, "/", "_", -1)
 	return name
 }
 

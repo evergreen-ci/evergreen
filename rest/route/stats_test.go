@@ -2,14 +2,21 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,7 +25,19 @@ type StatsSuite struct {
 }
 
 func TestStatsSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatsSuite))
+}
+
+func (s *StatsSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	s.NoError(proj.Insert())
 }
 
 func (s *StatsSuite) TestParseStatsFilter() {
@@ -54,17 +73,17 @@ func (s *StatsSuite) TestParseStatsFilter() {
 }
 
 func (s *StatsSuite) TestRunTestHandler() {
+	s.NoError(db.ClearCollections(stats.DailyTestStatsCollection, stats.DailyTaskStatsCollection))
 	var err error
-	sc := &data.MockConnector{
-		MockStatsConnector: data.MockStatsConnector{},
-		URL:                "https://example.net/test",
+	sc := &data.DBConnector{
+		StatsConnector: data.StatsConnector{},
+		URL:            "https://example.net/test",
 	}
 	handler := makeGetProjectTestStats(sc).(*testStatsHandler)
 	s.Require().NoError(err)
 
 	// 100 documents will be returned
-	sc.MockStatsConnector.SetTestStats("test", 100)
-	handler.filter = stats.StatsFilter{Limit: 101}
+	s.insertTestStats(handler, 100, 101)
 
 	resp := handler.Run(context.Background())
 
@@ -72,17 +91,19 @@ func (s *StatsSuite) TestRunTestHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.Nil(resp.Pages())
 
+	s.NoError(db.ClearCollections(stats.DailyTestStatsCollection, stats.DailyTaskStatsCollection))
+
 	// 101 documents will be returned
-	sc.MockStatsConnector.SetTestStats("test", 101)
-	handler.filter = stats.StatsFilter{Limit: 101}
+	s.insertTestStats(handler, 101, 101)
 
 	resp = handler.Run(context.Background())
 
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
-	lastDoc := sc.MockStatsConnector.CachedTestStats[100]
-	s.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
+	docs, err := sc.StatsConnector.GetTestStats(handler.filter)
+	s.NoError(err)
+	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }
 
 func (s *StatsSuite) TestReadTestStartAt() {
@@ -102,17 +123,17 @@ func (s *StatsSuite) TestReadTestStartAt() {
 }
 
 func (s *StatsSuite) TestRunTaskHandler() {
+	s.NoError(db.ClearCollections(stats.DailyTestStatsCollection, stats.DailyTaskStatsCollection))
 	var err error
-	sc := &data.MockConnector{
-		MockStatsConnector: data.MockStatsConnector{},
-		URL:                "https://example.net/task",
+	sc := &data.DBConnector{
+		StatsConnector: data.StatsConnector{},
+		URL:            "https://example.net/task",
 	}
 	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
 	s.Require().NoError(err)
 
 	// 100 documents will be returned
-	sc.MockStatsConnector.SetTaskStats("task", 100)
-	handler.filter = stats.StatsFilter{Limit: 101}
+	s.insertTaskStats(handler, 100, 101)
 
 	resp := handler.Run(context.Background())
 
@@ -120,15 +141,81 @@ func (s *StatsSuite) TestRunTaskHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.Nil(resp.Pages())
 
+	s.NoError(db.ClearCollections(stats.DailyTestStatsCollection, stats.DailyTaskStatsCollection))
+
 	// 101 documents will be returned
-	sc.MockStatsConnector.SetTaskStats("task", 101)
-	handler.filter = stats.StatsFilter{Limit: 101}
+	s.insertTaskStats(handler, 101, 101)
 
 	resp = handler.Run(context.Background())
 
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
-	lastDoc := sc.MockStatsConnector.CachedTaskStats[100]
-	s.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
+	docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
+	s.NoError(err)
+	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
+}
+
+func (s *StatsSuite) insertTestStats(handler *testStatsHandler, numTests int, limit int) {
+	day := time.Now()
+	tests := []string{}
+	for i := 0; i < numTests; i++ {
+		testFile := fmt.Sprintf("%v%v", "test", i)
+		tests = append(tests, testFile)
+		err := db.Insert(stats.DailyTestStatsCollection, mgobson.M{
+			"_id": stats.DbTestStatsId{
+				Project:      "project",
+				Requester:    "requester",
+				TestFile:     testFile,
+				TaskName:     "task",
+				BuildVariant: "variant",
+				Distro:       "distro",
+				Date:         utility.GetUTCDay(day),
+			},
+		})
+		s.Require().NoError(err)
+	}
+	handler.filter = stats.StatsFilter{
+		Limit:        limit,
+		Project:      "project",
+		Requesters:   []string{"requester"},
+		Tasks:        []string{"task"},
+		GroupBy:      "distro",
+		GroupNumDays: 1,
+		Tests:        tests,
+		Sort:         stats.SortEarliestFirst,
+		BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+		AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
+	}
+}
+
+func (s *StatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int, limit int) {
+	day := time.Now()
+	tasks := []string{}
+	for i := 0; i < numTests; i++ {
+		taskName := fmt.Sprintf("%v%v", "task", i)
+		tasks = append(tasks, taskName)
+		err := db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+			"_id": stats.DbTestStatsId{
+				Project:      "project",
+				Requester:    "requester",
+				TaskName:     taskName,
+				BuildVariant: "variant",
+				Distro:       "distro",
+				Date:         utility.GetUTCDay(day),
+			},
+		})
+		s.Require().NoError(err)
+	}
+	handler.filter = stats.StatsFilter{
+		Limit:        limit,
+		Project:      "project",
+		Requesters:   []string{"requester"},
+		Tasks:        tasks,
+		GroupBy:      "distro",
+		GroupNumDays: 1,
+		Sort:         stats.SortEarliestFirst,
+		BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+		AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
+	}
 }

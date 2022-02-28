@@ -45,19 +45,6 @@ func TestMakeExtendedHostExpiration(t *testing.T) {
 	assert.NoError(err, expTime.Format(time.RFC3339))
 }
 
-func TestMakeExtendedHostExpirationFailsBeyondOneWeek(t *testing.T) {
-	assert := assert.New(t)
-
-	h := host.Host{
-		CreationTime:   time.Now(),
-		ExpirationTime: time.Now().Add(12 * time.Hour),
-	}
-
-	expTime, err := MakeExtendedSpawnHostExpiration(&h, 24*14*time.Hour)
-	assert.Zero(expTime)
-	assert.Error(err, expTime.Format(time.RFC3339))
-}
-
 func TestMakeExtendedHostExpirationFailsPastMax(t *testing.T) {
 	assert := assert.New(t)
 
@@ -69,7 +56,7 @@ func TestMakeExtendedHostExpirationFailsPastMax(t *testing.T) {
 	expTime, err := MakeExtendedSpawnHostExpiration(&h, time.Hour)
 	assert.Zero(expTime)
 	assert.Error(err)
-	assert.Contains(err.Error(), "cannot be extended further")
+	assert.Contains(err.Error(), "cannot be extended more than")
 
 	h.CreationTime = time.Now().Add(-25 * time.Hour * 24)
 

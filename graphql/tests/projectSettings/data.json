@@ -107,8 +107,9 @@
   "project_vars": [
     {
     "_id": "sandbox_project_id",
-    "vars": {"hello": "world", "foo":  "bar"},
-    "private_vars": {"hello":  true, "foo":  false}
+    "vars": {"hello": "world", "foo":  "bar", "admintest": "woo", "both": "dos"},
+    "private_vars": {"hello":  true, "foo":  false, "both": true},
+    "admin_only_vars": {"admintest": true, "both": true}
     }
   ],
   "subscriptions": [

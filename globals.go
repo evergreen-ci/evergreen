@@ -90,6 +90,9 @@ const (
 	// This is not an official task status; it is used by the front end to indicate that there is a linked issue in the annotation
 	TaskKnownIssue = "known-issue"
 
+	// This is not an official task status; it is used by the front end to indicate that the filter should apply to all of the tasks
+	TaskAll = "all"
+
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
@@ -209,6 +212,7 @@ const (
 	ExpireOnFormat                      = "2006-01-02"
 	DefaultMaxSpawnHostsPerUser         = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
+	SpawnHostRespawns                   = 2
 	SpawnHostNoExpirationDuration       = 7 * 24 * time.Hour
 	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 	UnattachedVolumeExpiration          = 24 * time.Hour * 30
@@ -273,6 +277,27 @@ const (
 	KeyTooLargeToIndexError    = "key too large to index"
 	InvalidDivideInputError    = "$divide only supports numeric types"
 )
+
+var TaskStatuses = []string{
+	TaskStarted,
+	TaskSucceeded,
+	TaskFailed,
+	TaskSystemFailed,
+	TaskTestTimedOut,
+	TaskSetupFailed,
+	TaskAborted,
+	TaskStatusBlocked,
+	TaskStatusPending,
+	TaskKnownIssue,
+	TaskSystemUnresponse,
+	TaskSystemTimedOut,
+	TaskTimedOut,
+	TaskWillRun,
+	TaskUnscheduled,
+	TaskUndispatched,
+	TaskUnstarted,
+	TaskDispatched,
+}
 
 var InternalAliases = []string{
 	CommitQueueAlias,

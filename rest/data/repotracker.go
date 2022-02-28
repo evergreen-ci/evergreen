@@ -156,21 +156,6 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	return nil
 }
 
-type MockRepoTrackerConnector struct{}
-
-func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, event *github.PushEvent) error {
-	branch, err := validatePushEvent(event)
-	if err != nil {
-		return err
-	}
-	if len(branch) == 0 {
-		return nil
-	}
-
-	_, err = model.FindMergedEnabledProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
-	return err
-}
-
 func validatePushEvent(event *github.PushEvent) (string, error) {
 	if event == nil || event.Ref == nil || event.Repo == nil ||
 		event.Repo.Name == nil || event.Repo.Owner == nil ||

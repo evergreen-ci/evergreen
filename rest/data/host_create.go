@@ -265,7 +265,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = distro.BootstrapMethodNone
 
-	options, err := getAgentOptions(taskID, userID, createHost)
+	options, err := getAgentOptions(*d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for docker")
 	}
@@ -414,11 +414,11 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getAgentOptions(taskID, userID, createHost)
+	options, err := getAgentOptions(d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
-	intent := host.NewIntent(d, d.GenerateName(), provider, *options)
+	intent := host.NewIntent(*options)
 	if err = intent.Insert(); err != nil {
 		return nil, errors.Wrap(err, "unable to insert host intent")
 	}
@@ -426,13 +426,15 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	return intent, nil
 }
 
-func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
-	options := host.CreateOptions{}
+func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+	options := host.CreateOptions{
+		Distro: d,
+	}
+
 	if userID != "" {
 		options.UserName = userID
 		options.UserHost = true
-		expiration := evergreen.DefaultSpawnHostExpiration
-		options.ExpirationDuration = &expiration
+		options.ExpirationTime = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 		options.ProvisionOptions = &host.ProvisionOptions{
 			TaskId:  taskID,
 			OwnerId: userID,
@@ -456,6 +458,7 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*h
 		options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(createHost.TeardownTimeoutSecs) * time.Second)
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
 		options.SpawnOptions.Retries = createHost.Retries
+		options.SpawnOptions.Respawns = evergreen.SpawnHostRespawns
 		options.SpawnOptions.SpawnedByTask = true
 	}
 	return &options, nil
@@ -490,41 +493,4 @@ func (db *DBCreateHostConnector) GetDockerStatus(ctx context.Context, containerI
 		return nil, errors.Wrapf(err, "error getting status of container %s", containerId)
 	}
 	return status, nil
-}
-
-// MockCreateHostConnector mocks `DBCreateHostConnector`.
-type MockCreateHostConnector struct{}
-
-func (dc *MockCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
-	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
-	c := cloud.GetMockClient()
-	logs, err := c.GetDockerLogs(ctx, containerId, parent, options)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
-	}
-	return logs, nil
-}
-
-func (dc *MockCreateHostConnector) GetDockerStatus(ctx context.Context, containerId string, parent *host.Host,
-	_ *evergreen.Settings) (*cloud.ContainerStatus, error) {
-	c := cloud.GetMockClient()
-	status, err := c.GetDockerStatus(ctx, containerId, parent)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting status of container %s", containerId)
-	}
-	return status, nil
-}
-
-// ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (*MockCreateHostConnector) ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
-	return nil, errors.New("method not implemented")
-}
-
-func (*MockCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
-	connector := DBCreateHostConnector{}
-	return connector.MakeIntentHost(taskID, userID, publicKey, createHost)
-}
-
-func (*MockCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) error {
-	return errors.New("CreateHostsFromTask not implemented")
 }

@@ -501,6 +501,16 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.AP
 	return res, nil
 }
 
+func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
+	res := []*string{}
+	for varAlias, isAdminOnly := range obj.AdminOnlyVars {
+		if isAdminOnly {
+			res = append(res, utility.ToStringPtr(varAlias))
+		}
+	}
+	return res, nil
+}
+
 func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(obj.Type)
@@ -1616,7 +1626,6 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
 	usr := MustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings()
-
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
@@ -1631,6 +1640,22 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
 	return groupedProjects, nil
+}
+
+func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
+	pRef, err := model.FindMergedProjectRef(projectID, "", false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project: %v", err.Error()))
+	}
+	if pRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
+	}
+
+	conflicts, err := pRef.GetGithubProjectConflicts()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project conflicts: %v", err.Error()))
+	}
+	return &conflicts, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
@@ -1677,8 +1702,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	}
 
 	opts := data.TaskFilterOptions{
-		Statuses:               statuses,
-		BaseStatuses:           baseStatuses,
+		Statuses:               getValidTaskStatusesFilter(statuses),
+		BaseStatuses:           getValidTaskStatusesFilter(baseStatuses),
 		Variants:               []string{variantParam},
 		TaskNames:              []string{taskNameParam},
 		Page:                   pageParam,
@@ -3638,7 +3663,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,
-				Statuses:  buildVariantOptions.Statuses,
+				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {
@@ -3769,7 +3794,7 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
-		Statuses:              options.Statuses,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 	}
 	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
@@ -3822,6 +3847,19 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	return groupedBuildVariants, nil
 }
 
+func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
+	opts := task.GetTasksByVersionOptions{
+		TaskNames: options.Tasks,
+		Variants:  options.Variants,
+		Statuses:  options.Statuses,
+	}
+	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
+	}
+
+	return stats, nil
+}
 func (r *versionResolver) IsPatch(ctx context.Context, v *restModel.APIVersion) (bool, error) {
 	return evergreen.IsPatchRequester(*v.Requester), nil
 }

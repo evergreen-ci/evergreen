@@ -36,7 +36,7 @@ func Validate() cli.Command {
 			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier in order to run validation requiring project settings",
 		}),
-		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
+		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			path := c.String(pathFlagName)

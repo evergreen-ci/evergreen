@@ -386,7 +386,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 && projCtx.Task.Requester == evergreen.PatchVersionRequester {
+	if len(uis.Settings.Ui.UIv2Url) > 0 && evergreen.IsPatchRequester(projCtx.Task.Requester) {
 		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
 	}
 

@@ -580,16 +580,11 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	// GET /rest/v1/projects/mongodb-mongo-master/last_green?linux-64=1&windows-64=1
 	queryParams := r.URL.Query()
 
-	// Make sure all query params are valid variants and put them in an array
+	// Don't validate build variants are in project, since they may be generated
+	// variants that don't yet exist for the latest parser project.
 	var bvs []string
 	for key := range queryParams {
-		if project.FindBuildVariant(key) != nil {
-			bvs = append(bvs, key)
-		} else {
-			msg := fmt.Sprintf("build variant '%v' does not exist", key)
-			http.Error(w, msg, http.StatusNotFound)
-			return
-		}
+		bvs = append(bvs, key)
 	}
 
 	// Get latest version for which all the given build variants passed.

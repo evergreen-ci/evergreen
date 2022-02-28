@@ -1483,7 +1483,7 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
-func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
+func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	t1 := Task{
@@ -1495,7 +1495,7 @@ func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	_, err := UnscheduleStaleUnderwaterTasks("")
+	_, err := UnscheduleStaleUnderwaterHostTasks("")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
@@ -1503,7 +1503,7 @@ func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	assert.EqualValues(-1, dbTask.Priority)
 }
 
-func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
+func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	t1 := Task{
 		Id:            "t1",
@@ -1520,7 +1520,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1528,7 +1528,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	assert.EqualValues(t, -1, dbTask.Priority)
 }
 
-func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
+func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	t1 := Task{
 		Id:            "t1",
@@ -1546,7 +1546,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1772,7 +1772,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert.Len(unattainableTasks, 1)
 }
 
-func TestUnattainableScheduleableTasksQuery(t *testing.T) {
+func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
@@ -1826,7 +1826,7 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	q := db.Query(scheduleableTasksQuery())
+	q := db.Query(schedulableHostTasksQuery())
 	schedulableTasks, err := FindAll(q)
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)
@@ -2979,6 +2979,137 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(stats))
 
+}
+
+func TestGetGroupedTaskStatsByVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		BuildVariant: "bv1",
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv1",
+	}
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		Execution:    1,
+		Status:       evergreen.TaskSucceeded,
+		BuildVariant: "bv1",
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		Execution:    1,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv2",
+	}
+	t5 := Task{
+		Id:           "t5",
+		Version:      "v1",
+		Execution:    2,
+		Status:       evergreen.TaskStatusPending,
+		BuildVariant: "bv2",
+	}
+	t6 := Task{
+		Id:           "t6",
+		Version:      "v1",
+		Execution:    2,
+		Status:       evergreen.TaskFailed,
+		BuildVariant: "bv2",
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+
+	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{}
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+			{
+				Variant:     "bv2",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  2,
+					},
+					{
+						Status: evergreen.TaskStatusPending,
+						Count:  1,
+					},
+				},
+			},
+		}
+
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+	t.Run("Fetch GroupedTaskStats with filters applied", func(t *testing.T) {
+
+		opts := GetTasksByVersionOptions{
+			Variants: []string{"bv1"},
+		}
+
+		variants, err := GetGroupedTaskStatsByVersion("v1", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(variants))
+		expectedValues := []*GroupedTaskStatusCount{
+			{
+				Variant:     "bv1",
+				DisplayName: "",
+				StatusCounts: []*StatusCount{
+					{
+						Status: evergreen.TaskFailed,
+						Count:  1,
+					},
+					{
+						Status: evergreen.TaskSucceeded,
+						Count:  2,
+					},
+				},
+			},
+		}
+		compareGroupedTaskStatusCounts(t, expectedValues, variants)
+	})
+
+}
+
+func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTaskStatusCount) {
+	// reflect.DeepEqual does not work here, it was failing because of the slice ptr values for StatusCounts.
+	for i, e := range expected {
+		a := actual[i]
+		assert.Equal(t, e.Variant, a.Variant)
+		assert.Equal(t, e.DisplayName, a.DisplayName)
+		assert.Equal(t, len(e.StatusCounts), len(a.StatusCounts))
+		for j, expectedCount := range e.StatusCounts {
+			actualCount := a.StatusCounts[j]
+			assert.Equal(t, expectedCount.Status, actualCount.Status)
+			assert.Equal(t, expectedCount.Count, actualCount.Count)
+		}
+	}
 }
 
 func TestHasMatchingTasks(t *testing.T) {

@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -361,7 +364,7 @@ func TestGetDockerLogs(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := containerLogsHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
@@ -452,12 +455,13 @@ func TestGetDockerLogs(t *testing.T) {
 	assert.Equal("10", handler.tail)
 
 	// valid Run
-	res := handler.Run(context.Background())
-	require.NotNil(res)
-	logs, ok := res.Data().(*bytes.Buffer)
-	require.True(ok)
+	cloudClient := cloud.GetMockClient()
+	logs, err := cloudClient.GetDockerLogs(nil, "containerId", handler.host, types.ContainerLogsOptions{})
 	assert.NoError(err)
-	assert.Contains(logs.String(), "this is a log message")
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, logs)
+	assert.NoError(err)
+	assert.Contains(buf.String(), "this is a log message")
 
 }
 
@@ -466,7 +470,7 @@ func TestGetDockerStatus(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
 	handler := containerStatusHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
@@ -524,12 +528,9 @@ func TestGetDockerStatus(t *testing.T) {
 	assert.Equal(h.Id, handler.host.Id)
 
 	// valid Run
-	res := handler.Run(context.Background())
-	require.NotNil(res)
-	assert.Equal(http.StatusOK, res.Status())
-
-	status, ok := res.Data().(*cloud.ContainerStatus)
-	require.True(ok)
+	cloudClient := cloud.GetMockClient()
+	status, err := cloudClient.GetDockerStatus(nil, "containerId", handler.host)
+	assert.NoError(err)
 	require.NotNil(status)
 	require.True(status.HasStarted)
 

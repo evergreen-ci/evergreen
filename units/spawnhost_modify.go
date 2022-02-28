@@ -11,10 +11,50 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const (
+	spawnHostStatusChangeScopeName = "spawn-host-status-change"
+)
+
+// CloudHostModification is a helper to perform cloud manager operations on
+// a single host.
+type CloudHostModification struct {
+	HostID string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	UserID string `bson:"user_id" json:"user_id" yaml:"user_id"`
+
+	host *host.Host
+	env  evergreen.Environment
+}
+
+func (m *CloudHostModification) modifyHost(ctx context.Context, op func(mgr cloud.Manager, h *host.Host, user string) error) error {
+	if m.env == nil {
+		m.env = evergreen.GetEnvironment()
+	}
+
+	var err error
+	if m.host == nil {
+		m.host, err = host.FindOneByIdOrTag(m.HostID)
+		if err != nil {
+			return errors.Wrap(err, "finding host")
+		}
+		if m.host == nil {
+			return errors.New("host not found")
+		}
+	}
+
+	mgrOpts, err := cloud.GetManagerOptions(m.host.Distro)
+	if err != nil {
+		return errors.Wrap(err, "getting cloud manager options")
+	}
+	cloudManager, err := cloud.GetManager(ctx, m.env, mgrOpts)
+	if err != nil {
+		return errors.Wrap(err, "getting cloud manager")
+	}
+
+	return op(cloudManager, m.host, m.UserID)
+}
 
 const (
 	spawnhostModifyName = "spawnhost-modify"
@@ -26,12 +66,11 @@ func init() {
 }
 
 type spawnhostModifyJob struct {
-	HostID        string                 `bson:"host_id" json:"host_id" yaml:"host_id"`
-	ModifyOptions host.HostModifyOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
-	job.Base      `bson:"job_base" json:"job_base" yaml:"job_base"`
+	ModifyOptions         host.HostModifyOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
+	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
+	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
 
-	host *host.Host
-	env  evergreen.Environment
+	env evergreen.Environment
 }
 
 func makeSpawnhostModifyJob() *spawnhostModifyJob {
@@ -49,56 +88,25 @@ func makeSpawnhostModifyJob() *spawnhostModifyJob {
 func NewSpawnhostModifyJob(h *host.Host, changes host.HostModifyOptions, ts string) amboy.Job {
 	j := makeSpawnhostModifyJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s", spawnhostModifyName, h.Id, ts))
-	j.HostID = h.Id
 	j.ModifyOptions = changes
+	j.CloudHostModification.HostID = h.Id
 	return j
 }
 
 func (j *spawnhostModifyJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	var err error
-	if j.host == nil {
-		j.host, err = host.FindOneByIdOrTag(j.HostID)
-		if err != nil {
-			j.AddError(err)
-			return
+	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
+		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
+			event.LogHostModifyFinished(h.Id, false)
+			return errors.Wrapf(err, "modifying spawn host '%s'", h.Id)
 		}
-		if j.host == nil {
-			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.ID()))
-			return
-		}
+
+		event.LogHostModifyFinished(h.Id, true)
+		return nil
 	}
-
-	grip.Info(message.Fields{
-		"message": "modifying spawnhost",
-		"job_id":  j.ID(),
-		"host_id": j.HostID,
-		"changes": j.ModifyOptions,
-	})
-
-	mgrOpts, err := cloud.GetManagerOptions(j.host.Distro)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't get ManagerOpts for '%s'", j.host.Id))
+	if err := j.CloudHostModification.modifyHost(ctx, modifyCloudHost); err != nil {
+		j.AddError(err)
 		return
 	}
-	cloudManager, err := cloud.GetManager(ctx, j.env, mgrOpts)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting cloud manager for spawnhost modify job"))
-		return
-	}
-
-	// Modify spawnhost using the cloud manager
-	if err := cloudManager.ModifyHost(ctx, j.host, j.ModifyOptions); err != nil {
-		j.AddError(errors.Wrap(err, "error modifying spawnhost using cloud manager"))
-		event.LogHostModifyFinished(j.host.Id, false)
-		return
-	}
-
-	event.LogHostModifyFinished(j.host.Id, true)
-	return
 }

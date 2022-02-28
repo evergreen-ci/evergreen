@@ -10,7 +10,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -217,41 +216,4 @@ func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProje
 		catcher.Add(sub.Upsert())
 	}
 	return catcher.Resolve()
-}
-
-type MockSubscriptionConnector struct {
-	MockSubscriptions []restModel.APISubscription
-}
-
-func (mc *MockSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
-	return mc.MockSubscriptions, nil
-}
-
-func (mc *MockSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
-	for _, sub := range subscriptions {
-		mc.MockSubscriptions = append(mc.MockSubscriptions, sub)
-	}
-	return nil
-}
-
-func (mc *MockSubscriptionConnector) DeleteSubscriptions(owner string, ids []string) error {
-	idMap := make(map[string]bool)
-	for _, id := range ids {
-		idMap[id] = true
-	}
-
-	n := 0
-	for _, sub := range mc.MockSubscriptions {
-		if idMap[utility.FromStringPtr(sub.ID)] {
-			mc.MockSubscriptions[n] = sub
-			n++
-		}
-	}
-	mc.MockSubscriptions = mc.MockSubscriptions[:n]
-
-	return nil
-}
-
-func (mc *MockSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
-	return nil
 }

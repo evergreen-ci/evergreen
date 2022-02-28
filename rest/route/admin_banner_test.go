@@ -14,11 +14,12 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetBanner(t *testing.T) {
 	assert := assert.New(t)
-	sc := &data.MockConnector{}
+	sc := &data.DBConnector{}
 
 	// test getting the route handler
 	routeManager := makeSetAdminBanner(sc)
@@ -95,15 +96,62 @@ func TestFetchBanner(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
-	connector := &data.MockConnector{
-		MockAdminConnector: data.MockAdminConnector{
-			MockSettings: &evergreen.Settings{
-				Banner:      "foo",
-				BannerTheme: "warning",
+	connector := data.DBAdminConnector{}
+	u := &user.DBUser{
+		Id: evergreen.ParentPatchUser,
+	}
+	newSettings := &model.APIAdminSettings{
+		Banner:      utility.ToStringPtr("foo"),
+		BannerTheme: utility.ToStringPtr("warning"),
+		ApiUrl:      utility.ToStringPtr("test"),
+		ConfigDir:   utility.ToStringPtr("test"),
+		AuthConfig: &model.APIAuthConfig{
+			Github: &model.APIGithubAuthConfig{
+				Organization: utility.ToStringPtr("test"),
+			},
+		},
+		Ui: &model.APIUIConfig{
+			Secret:         utility.ToStringPtr("test"),
+			Url:            utility.ToStringPtr("test"),
+			DefaultProject: utility.ToStringPtr("test"),
+		},
+		Providers: &model.APICloudProviders{
+			AWS: &model.APIAWSConfig{
+				Pod: &model.APIAWSPodConfig{
+					ECS: &model.APIECSConfig{},
+				},
+			},
+			Docker: &model.APIDockerConfig{
+				APIVersion:    utility.ToStringPtr(""),
+				DefaultDistro: utility.ToStringPtr(""),
+			},
+			GCE: &model.APIGCEConfig{
+				ClientEmail:  utility.ToStringPtr("gce_email"),
+				PrivateKey:   utility.ToStringPtr("gce_key"),
+				PrivateKeyID: utility.ToStringPtr("gce_key_id"),
+				TokenURI:     utility.ToStringPtr("gce_token"),
+			},
+			OpenStack: &model.APIOpenStackConfig{
+				IdentityEndpoint: utility.ToStringPtr("endpoint"),
+				Username:         utility.ToStringPtr("username"),
+				Password:         utility.ToStringPtr("password"),
+				DomainName:       utility.ToStringPtr("domain"),
+				ProjectName:      utility.ToStringPtr("project"),
+				ProjectID:        utility.ToStringPtr("project_id"),
+				Region:           utility.ToStringPtr("region"),
+			},
+			VSphere: &model.APIVSphereConfig{
+				Host:     utility.ToStringPtr("host"),
+				Username: utility.ToStringPtr("vsphere"),
+				Password: utility.ToStringPtr("vsphere_pass"),
 			},
 		},
 	}
-	routeManager := makeFetchAdminBanner(connector)
+	_, err := connector.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
+	require.NoError(t, err)
+	routeManager := makeFetchAdminBanner(&data.DBConnector{
+		DBAdminConnector: connector,
+	})
 	assert.NotNil(routeManager)
 
 	// test getting what we just sets

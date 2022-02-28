@@ -18,7 +18,6 @@ const (
 var (
 	IDKey                        = bsonutil.MustHaveTag(Pod{}, "ID")
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
-	SecretKey                    = bsonutil.MustHaveTag(Pod{}, "Secret")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")

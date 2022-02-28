@@ -216,11 +216,23 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 	return restrictedVars
 }
 
+func (projectVars *ProjectVars) GetAdminOnlyVars() map[string]string {
+	adminOnlyVars := map[string]string{}
+
+	for k, v := range projectVars.Vars {
+		if projectVars.AdminOnlyVars[k] {
+			adminOnlyVars[k] = v
+		}
+	}
+	return adminOnlyVars
+}
+
+// GetUnrestrictedVars returns non-restricted and non-admin only vars until EVG-16045.
 func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
 	safeVars := map[string]string{}
 
 	for k, v := range projectVars.Vars {
-		if !projectVars.RestrictedVars[k] {
+		if !projectVars.RestrictedVars[k] && !projectVars.AdminOnlyVars[k] {
 			safeVars[k] = v
 		}
 	}
@@ -231,6 +243,7 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
 		Vars:           map[string]string{},
 		PrivateVars:    map[string]bool{},
+		AdminOnlyVars:  map[string]bool{},
 		RestrictedVars: projectVars.RestrictedVars,
 	}
 	if projectVars == nil {
@@ -239,6 +252,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res.Id = projectVars.Id
 	if projectVars.Vars == nil {
 		return res
+	}
+	if projectVars.AdminOnlyVars == nil {
+		res.AdminOnlyVars = map[string]bool{}
 	}
 	if projectVars.PrivateVars == nil {
 		res.PrivateVars = map[string]bool{}
@@ -251,7 +267,11 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		} else {
 			res.Vars[k] = v
 		}
+		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
+			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+		}
 	}
+
 	return res
 }
 
