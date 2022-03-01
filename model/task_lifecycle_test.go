@@ -2005,7 +2005,7 @@ func TestMarkUndispatched(t *testing.T) {
 		So(v.Insert(), ShouldBeNil)
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
 			var err error
-			So(MarkTaskUndispatched(testTask), ShouldBeNil)
+			So(MarkHostTaskUndispatched(testTask), ShouldBeNil)
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -2043,7 +2043,7 @@ func TestMarkDispatched(t *testing.T) {
 				},
 				AgentRevision: "testAgentVersion",
 			}
-			So(MarkTaskDispatched(testTask, sampleHost), ShouldBeNil)
+			So(MarkHostTaskDispatched(testTask, sampleHost), ShouldBeNil)
 			var err error
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)

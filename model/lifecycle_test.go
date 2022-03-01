@@ -2068,7 +2068,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
 }
 
-func TestMarkAsDispatched(t *testing.T) {
+func TestMarkAsHostDispatched(t *testing.T) {
 
 	var (
 		taskId       string
@@ -2104,8 +2104,7 @@ func TestMarkAsDispatched(t *testing.T) {
 			" the task, the host it is on, and the build it is a part of"+
 			" should be set to reflect this", func() {
 
-			// mark the task as dispatched
-			So(taskDoc.MarkAsDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
+			So(taskDoc.MarkAsHostDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db
