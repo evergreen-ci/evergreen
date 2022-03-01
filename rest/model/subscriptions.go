@@ -1,10 +1,9 @@
 package model
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 type APISelector struct {
@@ -122,6 +121,10 @@ func (s *APISubscription) ToService() (interface{}, error) {
 			return nil, errors.New("unable to convert selector")
 		}
 		out.RegexSelectors = append(out.RegexSelectors, newSelector)
+	}
+
+	if err = out.Filter.FromSelectors(append(out.Selectors, out.RegexSelectors...)); err != nil {
+		return nil, errors.Wrap(err, "setting filter from selectors")
 	}
 
 	return out, nil
