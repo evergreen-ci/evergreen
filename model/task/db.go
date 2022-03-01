@@ -1616,6 +1616,29 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 	return err
 }
 
+// HasUnfinishedTaskForVersion returns true if there are any scheduled but
+// unfinished tasks matching the given conditions.
+func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
+	count, err := Count(
+		db.Query(bson.M{
+			VersionKey:      bson.M{"$in": versionIds},
+			DisplayNameKey:  taskName,
+			BuildVariantKey: variantName,
+			StatusKey:       bson.M{"$in": evergreen.TaskUncompletedStatuses},
+		}))
+	return count > 0, err
+}
+
+// FindTaskForVersion returns a task matching the given version and task info.
+func FindTaskForVersion(versionId, taskName, variantName string) (*Task, error) {
+	return FindOne(
+		db.Query(bson.M{
+			VersionKey:      versionId,
+			DisplayNameKey:  taskName,
+			BuildVariantKey: variantName,
+		}))
+}
+
 func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
