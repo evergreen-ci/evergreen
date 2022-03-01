@@ -394,7 +394,7 @@ func TestBatchTimes(t *testing.T) {
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
-		So(db.ClearCollections(model.VersionCollection, distro.Collection), ShouldBeNil)
+		So(db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection), ShouldBeNil)
 		previouslyActivatedVersion := model.Version{
 			Id:         "previously activated",
 			Identifier: "testproject",
@@ -652,7 +652,12 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
 	pp.BuildVariants[1].Tasks[0].RunOn = []string{"test-distro-one"}
 
-	pp.AddTask("t1", []model.PluginCommandConf{{Function: "func1"}})
+	pp.AddTask("t1", []model.PluginCommandConf{model.PluginCommandConf{
+		Command: "shell.exec",
+		Params: map[string]interface{}{
+			"script": "echo hi",
+		},
+	}})
 	pp.Tasks[0].ExecTimeoutSecs = 3
 
 	return pp
@@ -888,8 +893,8 @@ tasks:
   exec_timeout_secs: 100
   commands:
   - command: shell.exec
-	params:
-	  script: echo "test"
+    params:
+      script: echo "test"
 - name: task2
   exec_timeout_secs: 100
   commands:
