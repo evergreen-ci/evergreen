@@ -103,9 +103,13 @@ var (
 	// takes time that would be cumbersome to the user (e.g. list functions, delete functions).
 	autoUpdateCLI = func(c *cli.Context) error {
 		confPath := c.String("conf")
+		// we do not return an error in case of failure to find a valid config path because we do not want to block the underlying CLI operation.
+		if confPath == "" {
+			return nil
+		}
 		conf, err := NewClientSettings(confPath)
 		if err != nil {
-			grip.Errorf("problem loading configuration: %s", err.Error())
+			grip.Errorf("Problem loading configuration: %s", err.Error())
 		}
 		if conf != nil && conf.AutoUpgradeCLI {
 			ctx, cancel := context.WithCancel(context.Background())
