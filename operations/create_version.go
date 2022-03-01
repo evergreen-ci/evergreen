@@ -13,7 +13,7 @@ import (
 func CreateVersion() cli.Command {
 	return cli.Command{
 		Name:   "create-version",
-		Before: mergeBeforeFuncs(autoUpdateCLI, requirePathFlag, setPlainLogger),
+		Before: mergeBeforeFuncs(requirePathFlag, setPlainLogger),
 		Usage:  "creates a set of runnable tasks from a config file",
 		Flags: mergeFlagSlices(addPathFlag(), addProjectFlag(
 			cli.StringFlag{

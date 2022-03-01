@@ -13,7 +13,7 @@ func PatchFinalize() cli.Command {
 		Name:   "finalize-patch",
 		Usage:  "finalize an existing patch",
 		Flags:  addPatchIDFlag(),
-		Before: mergeBeforeFuncs(autoUpdateCLI, requirePatchIDFlag),
+		Before: requirePatchIDFlag,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)

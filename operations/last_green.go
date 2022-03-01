@@ -22,7 +22,7 @@ func LastGreen() cli.Command {
 		Name:   "last-green",
 		Usage:  "return a project's most recent successful version for given variants",
 		Flags:  addProjectFlag(addVariantsFlag()...),
-		Before: mergeBeforeFuncs(autoUpdateCLI, requireVariantsFlag),
+		Before: requireVariantsFlag,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			variants := c.StringSlice(variantsFlagName)
