@@ -493,6 +493,12 @@ func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
+// ShouldAllocateContainer indicates whether a task should be allocated a
+// container or not.
+func (t *Task) ShouldAllocateContainer() bool {
+	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+}
+
 // SatisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.

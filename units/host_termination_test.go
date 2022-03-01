@@ -55,6 +55,7 @@ func TestHostTerminationJob(t *testing.T) {
 			events, err := event.Find(event.AllLogCollection, event.MostRecentHostEvents(h.Id, "", 50))
 			require.NoError(t, err)
 			require.NotEmpty(t, events)
+			assert.Equal(t, event.EventHostStatusChanged, events[0].EventType)
 			data, ok := events[0].Data.(*event.HostEventData)
 			require.True(t, ok)
 			assert.Equal(t, "some termination message", data.Logs)

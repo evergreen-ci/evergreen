@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,29 +32,35 @@ import (
 // Tests for fetch patch by id route
 
 type PatchByIdSuite struct {
-	sc     *data.MockConnector
+	sc     *data.DBConnector
 	objIds []string
-	data   data.MockPatchConnector
 	route  *patchByIdHandler
 	suite.Suite
 }
 
 func TestPatchByIdSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchByIdSuite))
 }
 
 func (s *PatchByIdSuite) SetupSuite() {
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0]},
-			{Id: &s.objIds[1]},
-		},
+	patches := []patch.Patch{
+		{Id: patch.NewId(s.objIds[0])},
+		{Id: patch.NewId(s.objIds[1])},
 	}
-	s.sc = &data.MockConnector{
-		URL:                "https://evergreen.example.net",
-		MockPatchConnector: s.data,
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+
+	s.sc = &data.DBConnector{
+		URL:              "https://evergreen.example.net",
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 }
 
@@ -87,19 +94,23 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 // Tests for fetch patch by project route
 
 type PatchesByProjectSuite struct {
-	sc    *data.MockConnector
-	data  data.MockPatchConnector
+	sc    *data.DBConnector
 	now   time.Time
 	route *patchesByProjectHandler
 	suite.Suite
 }
 
 func TestPatchesByProjectSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchesByProjectSuite))
 }
 
 func (s *PatchesByProjectSuite) SetupSuite() {
-	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection))
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	proj1 := "project1"
 	proj1Identifier := "project_one"
 	proj2 := "project2"
@@ -111,24 +122,37 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 	nowPlus6 := s.now.Add(time.Second * 6)
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{ProjectId: &proj1, CreateTime: &s.now},
-			{ProjectId: &proj2, CreateTime: &nowPlus2},
-			{ProjectId: &proj1, CreateTime: &nowPlus4},
-			{ProjectId: &proj1, CreateTime: &nowPlus6},
-			{ProjectId: &proj2, CreateTime: &nowPlus8},
-			{ProjectId: &proj1, CreateTime: &nowPlus10},
+	projects := []serviceModel.ProjectRef{
+		{
+			Id:         proj1,
+			Identifier: proj1Identifier,
 		},
-		CachedProjectRefs: []model.APIProjectRef{
-			{Id: &proj1, Identifier: &proj1Identifier},
-			{Id: &proj2, Identifier: &proj2Identifier},
-			{Id: &proj3, Identifier: &proj3Identifier},
+		{
+			Id:         proj2,
+			Identifier: proj2Identifier,
+		},
+		{
+			Id:         proj3,
+			Identifier: proj3Identifier,
 		},
 	}
-	s.sc = &data.MockConnector{
-		URL:                "https://evergreen.example.net",
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Project: proj1, CreateTime: s.now},
+		{Project: proj2, CreateTime: nowPlus2},
+		{Project: proj1, CreateTime: nowPlus4},
+		{Project: proj1, CreateTime: nowPlus6},
+		{Project: proj2, CreateTime: nowPlus8},
+		{Project: proj1, CreateTime: nowPlus10},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+	for _, proj := range projects {
+		s.NoError(proj.Insert())
+	}
+	s.sc = &data.DBConnector{
+		URL:              "https://evergreen.example.net",
+		DBPatchConnector: data.DBPatchConnector{},
 	}
 }
 
@@ -220,30 +244,59 @@ func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
 // Tests for abort patch route
 
 type PatchAbortSuite struct {
-	sc     *data.MockConnector
+	sc     *data.DBConnector
 	objIds []string
-	data   data.MockPatchConnector
 
 	suite.Suite
 }
 
 func TestPatchAbortSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchAbortSuite))
 }
 
 func (s *PatchAbortSuite) SetupSuite() {
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.NoError(db.ClearCollections(patch.Collection, task.Collection, serviceModel.VersionCollection, build.Collection))
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456", "aabbccddeeff001122334457"}
 	version1 := "version1"
+	version2 := "version2"
 
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], Version: &version1},
-			{Id: &s.objIds[1]},
-		},
-		CachedAborted: make(map[string]string),
+	s.sc = &data.DBConnector{
+		DBPatchConnector: data.DBPatchConnector{},
 	}
-	s.sc = &data.MockConnector{
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true},
+		{Id: patch.NewId(s.objIds[1]), Version: version2, Activated: true},
+		{Id: patch.NewId(s.objIds[2]), Activated: true},
+	}
+	versions := []*serviceModel.Version{
+		{Id: version1},
+		{Id: version2},
+	}
+
+	tasks := []*task.Task{
+		{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task2", Version: "version2", Aborted: false, Status: evergreen.TaskDispatched},
+	}
+
+	builds := []*build.Build{
+		{Id: "build1"},
+	}
+
+	for _, item := range versions {
+		s.NoError(item.Insert())
+	}
+	for _, item := range tasks {
+		s.NoError(item.Insert())
+	}
+	for _, item := range builds {
+		s.NoError(item.Insert())
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
 	}
 }
 
@@ -257,22 +310,32 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0]])
-	s.Equal("", s.data.CachedAborted[s.objIds[1]])
+	task1, err := task.FindOneId("task1")
+	s.NoError(err)
+	s.True(task1.Aborted)
+	task2, err := task.FindOneId("task2")
+	s.NoError(err)
+	s.False(task2.Aborted)
 	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 
+	rm.patchId = s.objIds[1]
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0]])
-	s.Equal("", s.data.CachedAborted[s.objIds[1]])
+
+	task1, err = task.FindOneId("task1")
+	s.NoError(err)
+	s.True(task1.Aborted)
+	task2, err = task.FindOneId("task2")
+	s.NoError(err)
+	s.True(task2.Aborted)
 	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
+	s.Equal(utility.ToStringPtr(s.objIds[1]), p.Id)
 
-	rm.patchId = s.objIds[1]
+	rm.patchId = s.objIds[2]
 	res = rm.Run(ctx)
 
 	s.NotEqual(http.StatusOK, res.Status())
@@ -298,34 +361,53 @@ func (s *PatchAbortSuite) TestAbortFail() {
 // Tests for change patch status route
 
 type PatchesChangeStatusSuite struct {
-	sc     *data.MockConnector
+	sc     *data.DBConnector
 	objIds []string
-	data   data.MockPatchConnector
 
 	suite.Suite
 }
 
 func TestPatchesChangeStatusSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchesChangeStatusSuite))
 }
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.VersionCollection))
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], ProjectId: utility.ToStringPtr("proj")},
-			{Id: &s.objIds[1], ProjectId: utility.ToStringPtr("proj")},
-		},
-		CachedAborted:  make(map[string]string),
-		CachedPriority: make(map[string]int64),
+	s.sc = &data.DBConnector{
+		DBPatchConnector: data.DBPatchConnector{},
 	}
-	s.sc = &data.MockConnector{
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Id: patch.NewId(s.objIds[0]), Version: "v1", Project: "proj", PatchNumber: 7},
+		{Id: patch.NewId(s.objIds[1]), Version: "v1", Project: "proj", PatchNumber: 0},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+	v := &serviceModel.Version{Id: "v1"}
+	s.NoError(v.Insert())
+	b := build.Build{Id: "b0", Version: "v1", Activated: true}
+	s.NoError(b.Insert())
+	tasks := []task.Task{
+		{Id: "t0", BuildId: "b0", Activated: true, Status: evergreen.TaskUndispatched},
+		{Id: "t1", BuildId: "b0", Activated: true, Status: evergreen.TaskSucceeded},
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
 	}
 }
 
 func (s *PatchesChangeStatusSuite) TestChangeStatus() {
+	p := serviceModel.ProjectRef{
+		Id:         "proj",
+		Identifier: "proj",
+	}
+	s.NoError(p.Insert())
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	env := testutil.NewEnvironment(ctx, s.T())
@@ -338,11 +420,13 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	rm.Priority = &tmp_seven
 	res := rm.Run(ctx)
 	s.NotNil(res)
-	s.Equal(int64(7), s.data.CachedPriority[s.objIds[0]])
-	s.Equal(int64(0), s.data.CachedPriority[s.objIds[1]])
-	p, ok := res.Data().(*model.APIPatch)
-	s.True(ok)
-	s.True(p.Activated)
+	p1, err := s.sc.FindPatchById(s.objIds[0])
+	s.NoError(err)
+	p2, err := s.sc.FindPatchById(s.objIds[1])
+	s.NoError(err)
+	s.Equal(7, p1.PatchNumber)
+	s.Equal(0, p2.PatchNumber)
+	s.True(p1.Activated)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -350,39 +434,55 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 // Tests for restart patch by id route
 
 type PatchRestartSuite struct {
-	sc          *data.MockConnector
-	objIds      []string
-	patchData   data.MockPatchConnector
-	versionData data.MockVersionConnector
+	sc     *data.DBConnector
+	objIds []string
 
 	suite.Suite
 }
 
 func TestPatchRestartSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchRestartSuite))
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
-	s.objIds = []string{mgobson.NewObjectId().Hex(), mgobson.NewObjectId().Hex()}
+	s.NoError(db.ClearCollections(patch.Collection, serviceModel.VersionCollection, task.Collection))
+	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
 
-	s.patchData = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Id: &s.objIds[0], Version: &version1},
-			{Id: &s.objIds[1]},
-		},
-		CachedAborted: make(map[string]string),
+	s.sc = &data.DBConnector{
+		DBPatchConnector:   data.DBPatchConnector{},
+		DBVersionConnector: data.DBVersionConnector{},
 	}
-	s.versionData = data.MockVersionConnector{
-		CachedVersions: []serviceModel.Version{
-			{Id: s.objIds[0]},
-			{Id: s.objIds[1]},
+	versions := []serviceModel.Version{
+		{
+			Id: s.objIds[0],
 		},
-		CachedRestartedVersions: make(map[string]string),
+		{
+			Id: s.objIds[1],
+		},
 	}
-	s.sc = &data.MockConnector{
-		MockPatchConnector:   s.patchData,
-		MockVersionConnector: s.versionData,
+	tasks := []task.Task{
+		{
+			Id:      "task1",
+			Version: s.objIds[0],
+		},
+	}
+	patches := []patch.Patch{
+		{Id: patch.NewId(s.objIds[0]), Version: version1},
+		{Id: patch.NewId(s.objIds[1])},
+	}
+	for _, p := range patches {
+		s.NoError(p.Insert())
+	}
+	for _, v := range versions {
+		s.NoError(v.Insert())
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
 	}
 }
 
@@ -396,7 +496,9 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.NotNil(res)
 
 	s.Equal(http.StatusOK, res.Status())
-	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0]])
+	restartedPatch, err := s.sc.FindPatchById(s.objIds[0])
+	s.NoError(err)
+	s.Equal(evergreen.PatchVersionRequester, *restartedPatch.Requester)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -404,8 +506,7 @@ func (s *PatchRestartSuite) TestRestart() {
 // Tests for fetch patches for current user
 
 type PatchesByUserSuite struct {
-	sc    *data.MockConnector
-	data  data.MockPatchConnector
+	sc    *data.DBConnector
 	now   time.Time
 	route *patchesByUserHandler
 
@@ -414,7 +515,19 @@ type PatchesByUserSuite struct {
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
-	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	suite.Run(t, s)
+}
+
+func (s *PatchesByUserSuite) SetupTest() {
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.route = &patchesByUserHandler{
+		sc: s.sc,
+	}
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
 	user2 := "user2"
 	nowPlus2 := s.now.Add(time.Second * 2)
@@ -422,27 +535,20 @@ func TestPatchesByUserSuite(t *testing.T) {
 	nowPlus6 := s.now.Add(time.Second * 6)
 	nowPlus8 := s.now.Add(time.Second * 8)
 	nowPlus10 := s.now.Add(time.Second * 10)
-	s.data = data.MockPatchConnector{
-		CachedPatches: []model.APIPatch{
-			{Author: &user1, CreateTime: &s.now},
-			{Author: &user2, CreateTime: &nowPlus2},
-			{Author: &user1, CreateTime: &nowPlus4},
-			{Author: &user1, CreateTime: &nowPlus6},
-			{Author: &user2, CreateTime: &nowPlus8},
-			{Author: &user1, CreateTime: &nowPlus10},
-		},
+	s.sc = &data.DBConnector{
+		URL:              "https://evergreen.example.net",
+		DBPatchConnector: data.DBPatchConnector{},
 	}
-	s.sc = &data.MockConnector{
-		URL:                "https://evergreen.example.net",
-		MockPatchConnector: s.data,
+	patches := []patch.Patch{
+		{Author: user1, CreateTime: s.now},
+		{Author: user2, CreateTime: nowPlus2},
+		{Author: user1, CreateTime: nowPlus4},
+		{Author: user1, CreateTime: nowPlus6},
+		{Author: user2, CreateTime: nowPlus8},
+		{Author: user1, CreateTime: nowPlus10},
 	}
-
-	suite.Run(t, s)
-}
-
-func (s *PatchesByUserSuite) SetupTest() {
-	s.route = &patchesByUserHandler{
-		sc: s.sc,
+	for _, p := range patches {
+		s.NoError(p.Insert())
 	}
 }
 
@@ -520,16 +626,45 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 }
 
 func TestPatchRawHandler(t *testing.T) {
-	route := &patchRawHandler{
-		sc: &data.MockConnector{
-			URL: "https://evergreen.example.net",
-			MockPatchConnector: data.MockPatchConnector{
-				CachedRawPatches: map[string]string{
-					"":        "main diff",
-					"module1": "module1 diff",
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
+	patchString := `main diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	patchString = `module1 diff`
+	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
+	patchId := "aabbccddeeff001122334455"
+	patchToInsert := patch.Patch{
+		Id: patch.NewId(patchId),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "main",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "testPatch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
+				},
+			},
+			{
+				ModuleName: "module1",
+				PatchSet: patch.PatchSet{
+					PatchFileId:    "module1Patch",
+					CommitMessages: []string{"Commit 1", "Commit 2"},
 				},
 			},
 		},
+	}
+	assert.NoError(t, patchToInsert.Insert())
+
+	route := &patchRawHandler{
+		sc: &data.DBConnector{
+			URL:              "https://evergreen.example.net",
+			DBPatchConnector: data.DBPatchConnector{},
+		},
+		patchID:    patchId,
+		moduleName: "main",
 	}
 
 	response := route.Run(context.Background())
@@ -544,6 +679,10 @@ func TestPatchRawHandler(t *testing.T) {
 
 func TestSchedulePatchRoute(t *testing.T) {
 	// setup, lots of setup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	const config = `
 functions:
   "fetch source" :
@@ -691,7 +830,6 @@ buildvariants:
 		PatchedParserProject: config,
 	}
 	require.NoError(t, unfinalized.Insert())
-	ctx := context.Background()
 	handler := makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
 
 	// nonexistent patch ID should error

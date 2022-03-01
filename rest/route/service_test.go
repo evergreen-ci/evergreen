@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -64,31 +66,45 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		So(db.Clear(host.Collection), ShouldBeNil)
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are hosts to be found", func() {
 			cachedHosts := []host.Host{}
 			for i := 0; i < numHostsInDB; i++ {
+				prefix := int(math.Log10(float64(i)))
+				if i == 0 {
+					prefix = 0
+				}
 				nextHost := host.Host{
-					Id: fmt.Sprintf("host%d", i),
+					Id: fmt.Sprintf("%dhost%d", prefix, i),
 					Distro: distro.Distro{
 						Provider: evergreen.ProviderNameMock,
 					},
+					Status: evergreen.HostRunning,
 				}
 				cachedHosts = append(cachedHosts, nextHost)
+				So(nextHost.Insert(), ShouldBeNil)
 			}
-			serviceContext.MockHostConnector.CachedHosts = cachedHosts
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				hostToStartAt := 100
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
 						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
@@ -102,7 +118,7 @@ func TestHostPaginator(t *testing.T) {
 						StartedBy:         utility.ToStringPtr(""),
 						Provider:          utility.ToStringPtr(""),
 						User:              utility.ToStringPtr(""),
-						Status:            utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(evergreen.HostRunning),
 						InstanceType:      utility.ToStringPtr(""),
 						AvailabilityZone:  utility.ToStringPtr(""),
 						DisplayName:       utility.ToStringPtr(""),
@@ -112,9 +128,10 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
+				prefix := int(math.Log10(float64(hostToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Key:             fmt.Sprintf("%dhost%d", prefix, hostToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -135,8 +152,12 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
 						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
@@ -150,7 +171,7 @@ func TestHostPaginator(t *testing.T) {
 						StartedBy:         utility.ToStringPtr(""),
 						Provider:          utility.ToStringPtr(""),
 						User:              utility.ToStringPtr(""),
-						Status:            utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(evergreen.HostRunning),
 						InstanceType:      utility.ToStringPtr(""),
 						AvailabilityZone:  utility.ToStringPtr(""),
 						DisplayName:       utility.ToStringPtr(""),
@@ -160,9 +181,10 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
+				prefix := int(math.Log10(float64(hostToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Key:             fmt.Sprintf("%dhost%d", prefix, hostToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -184,8 +206,12 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
 						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
@@ -199,7 +225,7 @@ func TestHostPaginator(t *testing.T) {
 						StartedBy:         utility.ToStringPtr(""),
 						Provider:          utility.ToStringPtr(""),
 						User:              utility.ToStringPtr(""),
-						Status:            utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(evergreen.HostRunning),
 						InstanceType:      utility.ToStringPtr(""),
 						AvailabilityZone:  utility.ToStringPtr(""),
 						DisplayName:       utility.ToStringPtr(""),
@@ -209,9 +235,10 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
+				prefix := int(math.Log10(float64(hostToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Key:             fmt.Sprintf("%dhost%d", prefix, hostToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -232,8 +259,12 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					nextModelHost := &model.APIHost{
-						Id:      utility.ToStringPtr(fmt.Sprintf("host%d", i)),
+						Id:      utility.ToStringPtr(fmt.Sprintf("%dhost%d", prefix, i)),
 						HostURL: utility.ToStringPtr(""),
 						Distro: model.DistroInfo{
 							Id:                   utility.ToStringPtr(""),
@@ -247,7 +278,7 @@ func TestHostPaginator(t *testing.T) {
 						StartedBy:         utility.ToStringPtr(""),
 						Provider:          utility.ToStringPtr(""),
 						User:              utility.ToStringPtr(""),
-						Status:            utility.ToStringPtr(""),
+						Status:            utility.ToStringPtr(evergreen.HostRunning),
 						InstanceType:      utility.ToStringPtr(""),
 						AvailabilityZone:  utility.ToStringPtr(""),
 						DisplayName:       utility.ToStringPtr(""),
@@ -257,9 +288,10 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
+				prefix := int(math.Log10(float64(hostToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Key:             fmt.Sprintf("%dhost%d", prefix, hostToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -279,32 +311,53 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	numTasks := 300
 	projectName := "project_1"
 	commit := "commit_1"
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
+		p := &serviceModel.ProjectRef{
+			Id:         "project_1",
+			Identifier: "project_1",
+		}
+		assert.NoError(t, p.Insert())
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
+				prefix := int(math.Log10(float64(i)))
+				if i == 0 {
+					prefix = 0
+				}
 				nextTask := task.Task{
-					Id:       fmt.Sprintf("task_%d", i),
+					Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 					Revision: commit,
 					Project:  projectName,
 				}
 				cachedTasks = append(cachedTasks, nextTask)
 			}
-			serviceContext.MockTaskConnector.CachedTasks = cachedTasks
+			for _, cachedTask := range cachedTasks {
+				err := db.Insert(task.Collection, cachedTask)
+				So(err, ShouldBeNil)
+			}
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("task_%d", i),
+						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
 						Project:  projectName,
 					}
@@ -315,9 +368,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dtask_%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -328,7 +382,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				handler := &tasksByProjectHandler{
 					project:    projectName,
 					commitHash: commit,
-					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					sc:         &serviceContext,
 					limit:      limit,
 				}
@@ -341,8 +395,12 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("task_%d", i),
+						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
 						Project:  projectName,
 					}
@@ -353,9 +411,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dtask_%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -367,7 +426,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					project:    projectName,
 					commitHash: commit,
 					sc:         &serviceContext,
-					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 				}
 
@@ -379,8 +438,12 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("task_%d", i),
+						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
 						Project:  projectName,
 					}
@@ -391,9 +454,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dtask_%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						LimitQueryParam: "limit",
 						KeyQueryParam:   "start_at",
@@ -401,11 +465,12 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Relation:        "next",
 					},
 				}
+				prefix = int(math.Log10(float64(taskToStartAt)))
 				handler := &tasksByProjectHandler{
 					project:    projectName,
 					commitHash: commit,
 					sc:         &serviceContext,
-					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 				}
 
@@ -417,8 +482,12 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("task_%d", i),
+						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
 						Project:  projectName,
 					}
@@ -429,9 +498,10 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dtask_%d", prefix, taskToStartAt+limit),
 						LimitQueryParam: "limit",
 						KeyQueryParam:   "start_at",
 						Limit:           limit,
@@ -444,7 +514,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					project:    projectName,
 					commitHash: commit,
 					sc:         &serviceContext,
-					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					key:        fmt.Sprintf("%dtask_%d", 0, taskToStartAt),
 					limit:      limit,
 				}
 
@@ -455,39 +525,55 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+		serviceContext := data.DBConnector{
 			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			cachedOldTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
-				nextTask := task.Task{
-					Id: fmt.Sprintf("build%d", i),
+				prefix := int(math.Log10(float64(i)))
+				if i == 0 {
+					prefix = 0
 				}
+				nextTask := task.Task{
+					Id: fmt.Sprintf("%dbuild%d", prefix, i),
+				}
+				So(db.Insert(task.Collection, nextTask), ShouldBeNil)
 				cachedTasks = append(cachedTasks, nextTask)
 			}
 			for i := 0; i < 5; i++ {
+				prefix := int(math.Log10(float64(i)))
+				if i == 0 {
+					prefix = 0
+				}
 				nextTask := task.Task{
-					Id:        fmt.Sprintf("build0_%d", i),
-					OldTaskId: "build0",
+					Id:        fmt.Sprintf("%dbuild0_%d", prefix, i),
+					OldTaskId: "0build0",
 					Execution: i,
 				}
+				So(db.Insert(task.OldCollection, nextTask), ShouldBeNil)
 				cachedOldTasks = append(cachedOldTasks, nextTask)
 			}
-
-			serviceContext.MockTaskConnector.CachedTasks = cachedTasks
-			serviceContext.MockTaskConnector.CachedOldTasks = cachedOldTasks
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceModel := &task.Task{
-						Id: fmt.Sprintf("build%d", i),
+						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceModel)
@@ -496,9 +582,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("build%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dbuild%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -506,10 +593,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						LimitQueryParam: "limit",
 					},
 				}
-
+				prefix = int(math.Log10(float64(taskToStartAt)))
 				tbh := &tasksByBuildHandler{
 					limit: limit,
-					key:   fmt.Sprintf("build%d", taskToStartAt),
+					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
 					sc:    &serviceContext,
 				}
 
@@ -523,8 +610,12 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceModel := &task.Task{
-						Id: fmt.Sprintf("build%d", i),
+						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceModel)
@@ -533,9 +624,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("build%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dbuild%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -544,9 +636,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					},
 				}
 
+				prefix = int(math.Log10(float64(taskToStartAt)))
 				tbh := &tasksByBuildHandler{
 					limit: limit,
-					key:   fmt.Sprintf("build%d", taskToStartAt),
+					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
 					sc:    &serviceContext,
 				}
 
@@ -559,8 +652,12 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceModel := &task.Task{
-						Id: fmt.Sprintf("build%d", i),
+						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceModel)
@@ -569,9 +666,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("build%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dbuild%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -579,10 +677,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						LimitQueryParam: "limit",
 					},
 				}
-
+				prefix = int(math.Log10(float64(taskToStartAt)))
 				tbh := &tasksByBuildHandler{
 					limit: limit,
-					key:   fmt.Sprintf("build%d", taskToStartAt),
+					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
 					sc:    &serviceContext,
 				}
 
@@ -595,8 +693,12 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					prefix := int(math.Log10(float64(i)))
+					if i == 0 {
+						prefix = 0
+					}
 					serviceModel := &task.Task{
-						Id: fmt.Sprintf("build%d", i),
+						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromService(serviceModel)
@@ -605,9 +707,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
+				prefix := int(math.Log10(float64(taskToStartAt + limit)))
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             fmt.Sprintf("build%d", taskToStartAt+limit),
+						Key:             fmt.Sprintf("%dbuild%d", prefix, taskToStartAt+limit),
 						Limit:           limit,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -618,7 +721,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 
 				tbh := &tasksByBuildHandler{
 					limit: limit,
-					key:   fmt.Sprintf("build%d", taskToStartAt),
+					key:   fmt.Sprintf("%dbuild%d", 0, taskToStartAt),
 					sc:    &serviceContext,
 				}
 
@@ -628,7 +731,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 			Convey("pagination with tasks with previous executions", func() {
 				expectedTasks := []model.Model{}
 				serviceModel := &task.Task{
-					Id: "build0",
+					Id: "0build0",
 				}
 				nextModelTask := &model.APITask{}
 				err := nextModelTask.BuildFromService(serviceModel)
@@ -640,7 +743,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:             "build1",
+						Key:             "0build1",
 						Limit:           1,
 						Relation:        "next",
 						BaseURL:         serviceContext.GetURL(),
@@ -651,7 +754,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 
 				tbh := &tasksByBuildHandler{
 					limit:              1,
-					key:                "build0",
+					key:                "0build0",
 					sc:                 &serviceContext,
 					fetchAllExecutions: true,
 				}
@@ -665,7 +768,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{
+		serviceContext := data.MockGitHubConnector{
 			URL: "http://evergreen.example.net/",
 		}
 		Convey("and there are tasks with tests to be found", func() {
@@ -681,7 +784,7 @@ func TestTestPaginator(t *testing.T) {
 				}
 				cachedTests = append(cachedTests, nextTest)
 			}
-			serviceContext.MockTestConnector.CachedTests = cachedTests
+			serviceContext.CachedTests = cachedTests
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				testToStartAt := 100
@@ -807,6 +910,10 @@ func TestTestPaginator(t *testing.T) {
 }
 
 func TestTaskExecutionPatchPrepare(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		tep := &taskExecutionPatchHandler{}
 
@@ -910,14 +1017,29 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With a task in the DB and a Connector", t, func() {
-		sc := data.MockConnector{}
+		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
+		sc := data.DBConnector{}
+		version := serviceModel.Version{
+			Id: "v1",
+		}
+		build := build.Build{
+			Id: "b1",
+		}
 		testTask := task.Task{
 			Id:        "testTaskId",
+			Version:   "v1",
+			BuildId:   "b1",
 			Activated: false,
 			Priority:  10,
 		}
-		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
+		So(testTask.Insert(), ShouldBeNil)
+		So(version.Insert(), ShouldBeNil)
+		So(build.Insert(), ShouldBeNil)
 		ctx := context.Background()
 		Convey("then setting priority should change it's priority", func() {
 			act := true
@@ -946,6 +1068,10 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 }
 
 func TestTaskResetPrepare(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		trh := &taskRestartHandler{}
 
@@ -990,20 +1116,28 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With test server with a handler and mock data", t, func() {
-		sc := &data.MockConnector{}
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
+		sc := &data.DBConnector{}
 		rm := makeGetTaskRoute(sc)
 		sc.SetPrefix("rest")
 
 		Convey("and task is in the service context", func() {
-			sc.MockTaskConnector.CachedTasks = []task.Task{
-				{Id: "testTaskId", Project: "testProject"},
+			newTask := task.Task{
+				Id:        "testTaskId",
+				Project:   "testProject",
+				Execution: 1,
 			}
-			sc.MockTaskConnector.CachedOldTasks = []task.Task{
-				{Id: "testTaskId_0",
-					OldTaskId: "testTaskId",
-				},
+			oldTask := task.Task{
+				Id:        "testTaskId_0",
+				OldTaskId: "testTaskId",
 			}
+			So(db.Insert(task.Collection, newTask), ShouldBeNil)
+			So(db.Insert(task.OldCollection, oldTask), ShouldBeNil)
 
 			app := gimlet.NewApp()
 			app.SetPrefix(sc.GetPrefix())
@@ -1029,8 +1163,6 @@ func TestTaskGetHandler(t *testing.T) {
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("and old tasks are available", func() {
-				sc.MockTaskConnector.CachedTasks[0].Execution = 1
-
 				Convey("a test that requests old executions should receive them", func() {
 					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
 					So(err, ShouldBeNil)
@@ -1064,26 +1196,45 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("With a task returned by the Connector", t, func() {
-		sc := data.MockConnector{}
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, serviceModel.VersionCollection, build.Collection))
+		sc := data.DBConnector{}
 		timeNow := time.Now()
 		testTask := task.Task{
 			Id:           "testTaskId",
 			Activated:    false,
 			Secret:       "initialSecret",
 			DispatchTime: timeNow,
+			BuildId:      "b0",
+			Version:      "v1",
+			Status:       evergreen.TaskSucceeded,
 		}
-		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
+		So(testTask.Insert(), ShouldBeNil)
+		v := &serviceModel.Version{Id: "v1"}
+		So(v.Insert(), ShouldBeNil)
+		b := build.Build{Id: "b0", Version: "v1", Activated: true}
+		So(b.Insert(), ShouldBeNil)
 		ctx := context.Background()
 		Convey("and an error from the service function", func() {
-			sc.MockTaskConnector.StoredError = fmt.Errorf("could not reset task")
-
+			testTask2 := task.Task{
+				Id:           "testTaskId2",
+				Activated:    false,
+				Secret:       "initialSecret",
+				DispatchTime: timeNow,
+				BuildId:      "b0",
+				Version:      "v1",
+				Status:       evergreen.TaskStarted,
+			}
+			So(testTask2.Insert(), ShouldBeNil)
 			trh := &taskRestartHandler{
-				taskId:   "testTaskId",
+				taskId:   "testTaskId2",
 				username: "testUser",
 				sc:       &sc,
 			}
-
 			resp := trh.Run(ctx)
 			So(resp.Status(), ShouldNotEqual, http.StatusOK)
 			apiErr, ok := resp.Data().(gimlet.ErrorResponse)
@@ -1114,9 +1265,13 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func TestParentTaskInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
-	sc := data.MockConnector{
+	sc := data.DBConnector{
 		URL: "http://evergreen.example.net",
 	}
 	buildID := "test"
@@ -1141,8 +1296,9 @@ func TestParentTaskInfo(t *testing.T) {
 	}
 
 	assert.NoError(t, displayTask.Insert())
-	sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, displayTask, execTask0, execTask1, randomTask)
-	ctx := context.Background()
+	assert.NoError(t, execTask0.Insert())
+	assert.NoError(t, execTask1.Insert())
+	assert.NoError(t, randomTask.Insert())
 	tbh := &tasksByBuildHandler{
 		limit: 100,
 		sc:    &sc,
@@ -1170,12 +1326,15 @@ func TestParentTaskInfo(t *testing.T) {
 }
 
 func TestOptionsRequest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	route := "/rest/v2/tasks/test/restart"
 	_, err := http.NewRequest("OPTIONS", route, nil)
 	assert.NoError(t, err)
-	ctx := context.Background()
 
 	tbh := &optionsHandler{}
 	resp := tbh.Run(ctx)

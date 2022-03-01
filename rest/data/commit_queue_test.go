@@ -23,6 +23,7 @@ import (
 
 type CommitQueueSuite struct {
 	ctx      Connector
+	mockCtx  MockGitHubConnector
 	settings *evergreen.Settings
 	suite.Suite
 
@@ -31,6 +32,10 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	s := &CommitQueueSuite{settings: testConfig}
 	suite.Run(t, s)
@@ -52,6 +57,20 @@ func (s *CommitQueueSuite) SetupTest() {
 	}
 	s.Require().NoError(s.projectRef.Insert())
 	s.queue = &commitqueue.CommitQueue{ProjectID: "mci"}
+	s.Require().NoError(commitqueue.InsertQueue(s.queue))
+	logkeeper := &model.ProjectRef{
+		Id:               "logkeeper",
+		Owner:            "evergreen-ci",
+		Repo:             "evergreen",
+		Branch:           "main",
+		Enabled:          utility.TruePtr(),
+		PatchingDisabled: utility.FalsePtr(),
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+	}
+	s.Require().NoError(logkeeper.Insert())
+	s.queue = &commitqueue.CommitQueue{ProjectID: "logkeeper"}
 	s.Require().NoError(commitqueue.InsertQueue(s.queue))
 }
 
@@ -144,7 +163,6 @@ func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	s.Require().Equal(2, pos)
 
 	q := &commitqueue.CommitQueue{ProjectID: "logkeeper"}
-	s.Require().NoError(commitqueue.InsertQueue(q))
 
 	// Only one queue is cleared since the second is empty
 	clearedCount, err := s.ctx.CommitQueueClearAll()
@@ -174,7 +192,7 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 		Owner:    "evergreen-ci",
 		Repo:     "evergreen",
 	}
-	c := &MockCommitQueueConnector{
+	c := &MockGitHubConnectorImpl{
 		UserPermissions: map[UserRepoInfo]string{
 			args1: "admin",
 			args2: "read",
@@ -236,8 +254,7 @@ buildvariants:
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
-	s.ctx = &MockConnector{}
-	pr, err := s.ctx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)
+	pr, err := s.mockCtx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)
 	s.NoError(err)
 
 	s.Require().NotNil(pr.User.ID)
@@ -248,7 +265,7 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
-	s.ctx = &MockConnector{}
+	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
@@ -256,30 +273,29 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.NoError(err)
 	s.Equal(1, pos)
 
-	conn := s.ctx.(*MockConnector)
-	q, ok := conn.MockCommitQueueConnector.Queue["mci"]
-	s.True(ok)
-	s.Require().Len(q, 2)
+	cq, err := commitqueue.FindOneId("mci")
+	s.NoError(err)
+	s.Require().Len(cq.Queue, 2)
 
-	s.Equal("1234", utility.FromStringPtr(q[0].Issue))
-	s.Equal("5678", utility.FromStringPtr(q[1].Issue))
+	s.Equal("1234", utility.FromStringPtr(&cq.Queue[0].Issue))
+	s.Equal("5678", utility.FromStringPtr(&cq.Queue[1].Issue))
 
 	// move to front
 	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
 	s.NoError(err)
-	s.Equal(1, pos)
-	q, ok = conn.MockCommitQueueConnector.Queue["mci"]
-	s.True(ok)
-	s.Require().Len(q, 3)
+	s.Equal(0, pos)
+	cq, err = commitqueue.FindOneId("mci")
+	s.NoError(err)
+	s.Require().Len(cq.Queue, 3)
 
-	s.Equal("1234", utility.FromStringPtr(q[0].Issue))
-	s.Equal("important", utility.FromStringPtr(q[1].Issue))
-	s.Equal("5678", utility.FromStringPtr(q[2].Issue))
+	s.Equal("important", utility.FromStringPtr(&cq.Queue[0].Issue))
+	s.Equal("1234", utility.FromStringPtr(&cq.Queue[1].Issue))
+	s.Equal("5678", utility.FromStringPtr(&cq.Queue[2].Issue))
 
 }
 
 func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
-	s.ctx = &MockConnector{}
+	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -291,7 +307,7 @@ func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
-	s.ctx = &MockConnector{}
+	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -303,7 +319,7 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.Require().Equal(2, pos)
 
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
-	s.NoError(err)
+	s.Error(err)
 	s.Nil(found)
 
 	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
@@ -316,7 +332,7 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 }
 
 func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
-	s.ctx = &MockConnector{}
+	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -335,7 +351,7 @@ func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
-	s.ctx = &MockConnector{}
+	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -389,6 +405,10 @@ func (s *CommitQueueSuite) TestWritePatchInfo() {
 }
 
 func TestConcludeMerge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(commitqueue.Collection))
 	projectID := "evergreen"
 	itemID := bson.NewObjectId()

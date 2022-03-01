@@ -1,14 +1,17 @@
 package data
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,6 +74,10 @@ func getMockProjectSettings() model.ProjectSettings {
 
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
@@ -161,108 +168,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	s.teardown = func() error {
 		return db.Clear(model.ProjectRefCollection)
 	}
-
-	suite.Run(t, s)
-}
-
-func TestMockProjectConnectorGetSuite(t *testing.T) {
-	s := new(ProjectConnectorGetSuite)
-	s.setup = func() error {
-		projectId := "mci2"
-		beforeSettings := restModel.APIProjectSettings{
-			ProjectRef: restModel.APIProjectRef{
-				Owner:      utility.ToStringPtr("admin"),
-				Enabled:    utility.TruePtr(),
-				Private:    utility.TruePtr(),
-				Identifier: utility.ToStringPtr(projectId),
-				Admins:     []*string{},
-			},
-			GitHubWebhooksEnabled: true,
-			Vars: restModel.APIProjectVars{
-				Vars:        map[string]string{},
-				PrivateVars: map[string]bool{},
-			},
-			Aliases: []restModel.APIProjectAlias{{
-				Alias:   utility.ToStringPtr("alias1"),
-				Variant: utility.ToStringPtr("ubuntu"),
-				Task:    utility.ToStringPtr("subcommand"),
-			},
-			},
-			Subscriptions: []restModel.APISubscription{{
-				ID:           utility.ToStringPtr("subscription1"),
-				ResourceType: utility.ToStringPtr("project"),
-				Owner:        utility.ToStringPtr("admin"),
-				Subscriber: restModel.APISubscriber{
-					Type:   utility.ToStringPtr(event.GithubPullRequestSubscriberType),
-					Target: restModel.APIGithubPRSubscriber{},
-				},
-			},
-			},
-		}
-
-		afterSettings := beforeSettings
-		afterSettings.ProjectRef.Enabled = utility.FalsePtr()
-
-		projectEvents := []restModel.APIProjectEvent{}
-		for i := 0; i < projEventCount; i++ {
-			projectEvents = append(projectEvents, restModel.APIProjectEvent{
-				Timestamp: restModel.ToTimePtr(time.Now().Add(time.Second * time.Duration(-i))),
-				User:      utility.ToStringPtr("me"),
-				Before:    beforeSettings,
-				After:     afterSettings,
-			})
-		}
-
-		s.ctx = &MockConnector{MockProjectConnector: MockProjectConnector{
-			CachedProjects: []model.ProjectRef{
-				{
-					Id:          "projectA",
-					Private:     utility.FalsePtr(),
-					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-					Owner:       "evergreen-ci",
-					Repo:        "gimlet",
-					Branch:      "main",
-				},
-				{
-					Id:          "projectB",
-					Private:     utility.TruePtr(),
-					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-					Owner:       "evergreen-ci",
-					Repo:        "evergreen",
-					Branch:      "main",
-				},
-				{
-					Id:          "projectC",
-					Private:     utility.TruePtr(),
-					CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-					Owner:       "evergreen-ci",
-					Repo:        "evergreen",
-					Branch:      "main",
-				},
-				{Id: "projectD", Private: utility.FalsePtr()},
-				{Id: "projectE", Private: utility.FalsePtr()},
-				{Id: "projectF", Private: utility.TruePtr()},
-				{Id: projectId},
-			},
-			CachedEvents: projectEvents,
-			CachedVars: []*model.ProjectVars{
-				{
-					Id:          projectId,
-					Vars:        map[string]string{"a": "1", "b": "3"},
-					PrivateVars: map[string]bool{"b": true},
-				},
-				{
-					Id:          repoProjectId,
-					Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
-					PrivateVars: map[string]bool{"a": true},
-				},
-			},
-		}}
-
-		return nil
-	}
-
-	s.teardown = func() error { return nil }
 
 	suite.Run(t, s)
 }
@@ -444,6 +349,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
 	dc := &DBProjectConnector{}
 
@@ -499,6 +408,10 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 }
 
 func TestGetProjectAliasResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 	p := model.Project{
 		Identifier: "helloworld",

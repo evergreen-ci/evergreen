@@ -8,11 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
@@ -26,7 +28,10 @@ type SubscriptionRouteSuite struct {
 
 func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 	s := new(SubscriptionRouteSuite)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.sc = &data.DBConnector{}
 
 	suite.Run(t, s)
@@ -49,8 +54,8 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "seltype",
-			"data": "seldata",
+			"type": event.SelectorObject,
+			"data": "obj",
 		}},
 		"subscriber": map[string]string{
 			"type":   "slack",
@@ -74,7 +79,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
 	s.Equal(event.ResourceTypeTask, dbSubscriptions[0].ResourceType)
-	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
+	s.Equal("obj", dbSubscriptions[0].Filter.Object)
 	s.Equal("slack", dbSubscriptions[0].Subscriber.Type)
 
 	// test updating the same subscription
@@ -86,8 +91,8 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "seltype",
-			"data": "seldata",
+			"type": event.SelectorObject,
+			"data": "obj",
 		}},
 		"subscriber": map[string]string{
 			"type":   "slack",
@@ -120,8 +125,8 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 		"owner":         "myproj",
 		"owner_type":    "project",
 		"selectors": []map[string]string{{
-			"type": "seltype",
-			"data": "seldata",
+			"type": event.SelectorObject,
+			"data": "obj",
 		}},
 		"subscriber": map[string]string{
 			"type":   "email",
@@ -144,7 +149,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
 	s.Equal(event.ResourceTypeTask, dbSubscriptions[0].ResourceType)
-	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
+	s.Equal("obj", dbSubscriptions[0].Filter.Object)
 	s.Equal("email", dbSubscriptions[0].Subscriber.Type)
 
 	// test updating the same subscription
@@ -156,8 +161,8 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 		"owner":         "myproj",
 		"owner_type":    "project",
 		"selectors": []map[string]string{{
-			"type": "seltype",
-			"data": "seldata",
+			"type": event.SelectorObject,
+			"data": "obj",
 		}},
 		"subscriber": map[string]string{
 			"type":   "email",
@@ -203,8 +208,8 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 		"owner":         "not_me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "seltype",
-			"data": "seldata",
+			"type": event.SelectorObject,
+			"data": "obj",
 		}},
 		"subscriber": map[string]string{
 			"type":   "slack",
@@ -290,7 +295,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "version",
 		}},
 		"subscriber": map[string]interface{}{
@@ -320,7 +325,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "project",
+			"type": event.SelectorProject,
 			"data": "mci",
 		}},
 		"subscriber": map[string]interface{}{
@@ -348,7 +353,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "task",
 		}},
 		"subscriber": map[string]string{
@@ -377,7 +382,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "task",
 		}},
 		"subscriber": map[string]string{
@@ -406,7 +411,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "task",
 		}},
 		"subscriber": map[string]string{
@@ -435,7 +440,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "",
 		}},
 		"subscriber": map[string]string{
@@ -453,7 +458,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Invalid selectors: Selector had empty type or data", respErr.Message)
+	s.Contains(respErr.Message, "selector 'object' has no data")
 }
 
 func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
@@ -468,7 +473,7 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 		"owner":         "me",
 		"owner_type":    "person",
 		"regex_selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "",
 		}},
 		"subscriber": map[string]string{
@@ -485,7 +490,7 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Invalid regex selectors: Selector had empty type or data", respErr.Message)
+	s.Contains(respErr.Message, "selector 'object' has no data")
 
 	body[0]["regex_selectors"] = []map[string]string{{
 		"type": "",
@@ -500,7 +505,7 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Invalid regex selectors: Selector had empty type or data", respErr.Message)
+	s.Contains(respErr.Message, "selector has an empty type")
 }
 
 func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
@@ -528,7 +533,7 @@ func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
 	s.Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: must specify at least 1 selector", respErr.Message)
+	s.Contains(respErr.Message, "no filter parameters specified")
 }
 
 func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() {
@@ -543,7 +548,7 @@ func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() 
 		"owner":         "me",
 		"owner_type":    "person",
 		"regex_selectors": []map[string]string{{
-			"type": "object",
+			"type": event.SelectorObject,
 			"data": "data",
 		}},
 		"subscriber": map[string]string{

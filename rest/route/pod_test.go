@@ -6,16 +6,23 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPostPod(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podPostHandler){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			copied := ph.Factory()
@@ -84,7 +91,7 @@ func TestPostPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.MockConnector{}
+			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
@@ -97,16 +104,21 @@ func TestPostPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler){
-		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(pod.Collection))
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler){
+		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
 			podID := "id"
-			sc.CachedPods = []pod.Pod{
-				{
-					ID:     podID,
-					Type:   pod.TypeAgent,
-					Status: pod.StatusRunning,
-				},
+
+			podToInsert := pod.Pod{
+				ID:     podID,
+				Type:   pod.TypeAgent,
+				Status: pod.StatusRunning,
 			}
+			require.NoError(t, podToInsert.Insert())
 
 			ph.podID = podID
 			resp := ph.Run(ctx)
@@ -120,7 +132,7 @@ func TestGetPod(t *testing.T) {
 			assert.Equal(t, model.PodTypeAgent, apiPod.Type)
 			assert.Equal(t, model.PodStatusRunning, apiPod.Status)
 		},
-		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, sc *data.MockConnector, ph *podGetHandler) {
+		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
 			ph.podID = "nonexistent"
 			resp := ph.Run(ctx)
 			require.NotZero(t, resp)
@@ -132,7 +144,7 @@ func TestGetPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.MockConnector{}
+			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 

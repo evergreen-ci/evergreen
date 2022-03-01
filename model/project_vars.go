@@ -243,6 +243,7 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
 		Vars:           map[string]string{},
 		PrivateVars:    map[string]bool{},
+		AdminOnlyVars:  map[string]bool{},
 		RestrictedVars: projectVars.RestrictedVars,
 	}
 	if projectVars == nil {
@@ -251,6 +252,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res.Id = projectVars.Id
 	if projectVars.Vars == nil {
 		return res
+	}
+	if projectVars.AdminOnlyVars == nil {
+		res.AdminOnlyVars = map[string]bool{}
 	}
 	if projectVars.PrivateVars == nil {
 		res.PrivateVars = map[string]bool{}
@@ -263,7 +267,11 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		} else {
 			res.Vars[k] = v
 		}
+		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
+			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+		}
 	}
+
 	return res
 }
 

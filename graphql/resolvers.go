@@ -501,6 +501,16 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.AP
 	return res, nil
 }
 
+func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
+	res := []*string{}
+	for varAlias, isAdminOnly := range obj.AdminOnlyVars {
+		if isAdminOnly {
+			res = append(res, utility.ToStringPtr(varAlias))
+		}
+	}
+	return res, nil
+}
+
 func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(obj.Type)
@@ -3532,7 +3542,7 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId 
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant, repo.RevisionOrderNumber)
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(pid, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
@@ -3554,7 +3564,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectId))
 	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName, repo.RevisionOrderNumber)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}

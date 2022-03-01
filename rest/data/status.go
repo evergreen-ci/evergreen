@@ -61,33 +61,3 @@ func FindRecentTaskList(minutes int, key string) (*model.APIRecentTaskStatsList,
 func (c *DBStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error) {
 	return host.GetStatsByDistro()
 }
-
-// MockStatusConnector is a struct that implements mock versions of
-// Distro-related methods for testing.
-type MockStatusConnector struct {
-	CachedTasks           []task.Task
-	CachedResults         *task.ResultCounts
-	CachedResultCountList *model.APIRecentTaskStatsList
-	CachedHostStats       []host.StatsByDistro
-}
-
-// FindRecentTasks is a mock implementation for testing.
-func (c *MockStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.ResultCounts, error) {
-	return c.CachedTasks, c.CachedResults, nil
-}
-
-func (c *MockStatusConnector) FindRecentTaskListDistro(minutes int) (*model.APIRecentTaskStatsList, error) {
-	return c.CachedResultCountList, nil
-}
-
-func (c *MockStatusConnector) FindRecentTaskListProject(minutes int) (*model.APIRecentTaskStatsList, error) {
-	return c.CachedResultCountList, nil
-}
-func (c *MockStatusConnector) FindRecentTaskListAgentVersion(minutes int) (*model.APIRecentTaskStatsList, error) {
-	return c.CachedResultCountList, nil
-}
-
-// GetHostStatsByDistro returns mock stats for hosts broken down by distro
-func (c *MockStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error) {
-	return c.CachedHostStats, nil
-}

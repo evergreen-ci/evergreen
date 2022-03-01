@@ -325,13 +325,7 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 	if err := host.PastMaxExpiration(extendBy); err != nil {
 		return time.Time{}, err
 	}
-
 	newExp := host.ExpirationTime.Add(extendBy)
-	remainingDuration := newExp.Sub(time.Now()) //nolint
-	if remainingDuration > evergreen.MaxSpawnHostExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
-	}
-
 	return newExp, nil
 }
 

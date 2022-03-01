@@ -5,8 +5,7 @@
       "result": {
         "data": {
           "attachProjectToRepo": {
-            "repoRefId": "repo_id",
-            "useRepoSettings": true
+            "repoRefId": "repo_id"
           }
         }
       }

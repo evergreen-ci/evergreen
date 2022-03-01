@@ -618,7 +618,6 @@ type ComplexityRoot struct {
 		TaskSync                func(childComplexity int) int
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
-		UseRepoSettings         func(childComplexity int) int
 		ValidDefaultLoggers     func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
@@ -677,8 +676,9 @@ type ComplexityRoot struct {
 	}
 
 	ProjectVars struct {
-		PrivateVars func(childComplexity int) int
-		Vars        func(childComplexity int) int
+		AdminOnlyVars func(childComplexity int) int
+		PrivateVars   func(childComplexity int) int
+		Vars          func(childComplexity int) int
 	}
 
 	PublicKey struct {
@@ -880,6 +880,7 @@ type ComplexityRoot struct {
 		CanSetPriority          func(childComplexity int) int
 		CanSync                 func(childComplexity int) int
 		CanUnschedule           func(childComplexity int) int
+		ContainerAllocatedTime  func(childComplexity int) int
 		CreateTime              func(childComplexity int) int
 		DependsOn               func(childComplexity int) int
 		Details                 func(childComplexity int) int
@@ -917,7 +918,6 @@ type ComplexityRoot struct {
 		Restarts                func(childComplexity int) int
 		Revision                func(childComplexity int) int
 		ScheduledTime           func(childComplexity int) int
-		ContainerAllocatedTime  func(childComplexity int) int
 		SpawnHostLink           func(childComplexity int) int
 		StartTime               func(childComplexity int) int
 		Status                  func(childComplexity int) int
@@ -1319,6 +1319,7 @@ type ProjectSubscriberResolver interface {
 }
 type ProjectVarsResolver interface {
 	PrivateVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
+	AdminOnlyVars(ctx context.Context, obj *model.APIProjectVars) ([]*string, error)
 }
 type QueryResolver interface {
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
@@ -4244,13 +4245,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Triggers(childComplexity), true
 
-	case "Project.useRepoSettings":
-		if e.complexity.Project.UseRepoSettings == nil {
-			break
-		}
-
-		return e.complexity.Project.UseRepoSettings(childComplexity), true
-
 	case "Project.validDefaultLoggers":
 		if e.complexity.Project.ValidDefaultLoggers == nil {
 			break
@@ -4488,6 +4482,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectSubscription.TriggerData(childComplexity), true
+
+	case "ProjectVars.adminOnlyVars":
+		if e.complexity.ProjectVars.AdminOnlyVars == nil {
+			break
+		}
+
+		return e.complexity.ProjectVars.AdminOnlyVars(childComplexity), true
 
 	case "ProjectVars.privateVars":
 		if e.complexity.ProjectVars.PrivateVars == nil {
@@ -5698,6 +5699,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.CanUnschedule(childComplexity), true
 
+	case "Task.containerAllocatedTime":
+		if e.complexity.Task.ContainerAllocatedTime == nil {
+			break
+		}
+
+		return e.complexity.Task.ContainerAllocatedTime(childComplexity), true
+
 	case "Task.createTime":
 		if e.complexity.Task.CreateTime == nil {
 			break
@@ -5956,13 +5964,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.ScheduledTime(childComplexity), true
-
-	case "Task.containerAllocatedTime":
-		if e.complexity.Task.ContainerAllocatedTime == nil {
-			break
-		}
-
-		return e.complexity.Task.ContainerAllocatedTime(childComplexity), true
 
 	case "Task.spawnHostLink":
 		if e.complexity.Task.SpawnHostLink == nil {
@@ -8053,6 +8054,7 @@ input TaskSpecifierInput {
 input ProjectVarsInput {
   vars: StringMap
   privateVarsList: [String]
+  adminOnlyVarsList: [String]
 }
 
 input VariantTaskInput {
@@ -8601,6 +8603,7 @@ type RepoEventLogEntry {
 type ProjectVars {
   vars: StringMap
   privateVars: [String]
+  adminOnlyVars: [String]
 }
 
 type ProjectAlias {
@@ -8717,7 +8720,6 @@ type Project {
   taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
-  useRepoSettings: Boolean!
   repoRefId: String!
 
   isFavorite: Boolean!
@@ -23615,41 +23617,6 @@ func (ec *executionContext) _Project_hidden(ctx context.Context, field graphql.C
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Project_useRepoSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.UseRepoSettings, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Project_repoRefId(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24944,6 +24911,38 @@ func (ec *executionContext) _ProjectVars_privateVars(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.ProjectVars().PrivateVars(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ProjectVars_adminOnlyVars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ProjectVars",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectVars().AdminOnlyVars(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -31598,7 +31597,6 @@ func (ec *executionContext) _Task_containerAllocatedTime(ctx context.Context, fi
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	// what on earth are the symbols in the line below
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
@@ -40869,6 +40867,14 @@ func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, 
 			if err != nil {
 				return it, err
 			}
+		case "adminOnlyVarsList":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminOnlyVarsList"))
+			it.AdminOnlyVarsList, err = ec.unmarshalOString2ᚕstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -45188,11 +45194,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "hidden":
 			out.Values[i] = ec._Project_hidden(ctx, field, obj)
-		case "useRepoSettings":
-			out.Values[i] = ec._Project_useRepoSettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
 		case "repoRefId":
 			out.Values[i] = ec._Project_repoRefId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -45599,6 +45600,17 @@ func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._ProjectVars_privateVars(ctx, field, obj)
+				return res
+			})
+		case "adminOnlyVars":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectVars_adminOnlyVars(ctx, field, obj)
 				return res
 			})
 		default:

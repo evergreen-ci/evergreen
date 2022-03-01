@@ -1,5 +1,5 @@
 {
-    projectSettings(identifier: "sandbox") {
+    projectSettings(identifier: "varsTest") {
         vars{
             vars
             privateVars

@@ -43,9 +43,3 @@ func (c *NotificationConnector) GetNotificationsStats() (*restModel.APIEventStat
 
 	return &stats, nil
 }
-
-type MockNotificationConnector struct{}
-
-func (c *MockNotificationConnector) GetNotificationsStats() (*restModel.APIEventStats, error) {
-	return nil, errors.New("not implemented")
-}
