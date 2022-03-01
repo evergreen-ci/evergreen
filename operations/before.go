@@ -105,9 +105,9 @@ var (
 		confPath := c.String("conf")
 		conf, err := NewClientSettings(confPath)
 		if err != nil {
-			return errors.Wrap(err, "problem loading configuration")
+			grip.Errorf("problem loading configuration: %s", err.Error())
 		}
-		if conf.AutoUpgradeCLI {
+		if conf != nil && conf.AutoUpgradeCLI {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			if err = checkAndUpdateVersion(conf, ctx, true, false, true); err != nil {
