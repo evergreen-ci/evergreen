@@ -183,18 +183,19 @@ func (f *Filter) FromSelectors(selectors []Selector) error {
 	for _, selector := range selectors {
 		if selector.Type == "" {
 			catcher.New("selector has an empty type")
-			continue
 		}
 		if selector.Data == "" {
 			catcher.Errorf("selector '%s' has no data", selector.Type)
-			continue
 		}
 
 		if typesSeen[selector.Type] {
 			catcher.Errorf("selector type '%s' specified more than once", selector.Type)
-			continue
 		}
 		typesSeen[selector.Type] = true
+
+		if catcher.HasErrors() {
+			continue
+		}
 
 		catcher.Wrap(f.setFieldFromSelector(selector), "setting field from selector")
 	}
