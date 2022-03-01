@@ -119,9 +119,23 @@
         "data": {
           "projectSettings": {
             "vars": {
-              "vars": {"hello": "", "foo":  "bar", "admintest": "woo", "both": ""},
-              "privateVars": ["hello", "both"],
-              "adminOnlyVars": ["admintest", "both"]
+              "vars": {"admintest": "woo", "hello": "", "foo":  "bar"},
+              "privateVars": ["hello"],
+              "adminOnlyVars": ["admintest"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-settings-admin-private-vars.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "vars": {
+              "vars": {"both": ""},
+              "privateVars": ["both"],
+              "adminOnlyVars": ["both"]
             }
           }
         }
