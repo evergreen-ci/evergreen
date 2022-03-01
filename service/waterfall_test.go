@@ -37,19 +37,18 @@ func TestGetVersionsAndVariants(t *testing.T) {
 		DisplayName: "old-bv",
 	}).Insert())
 
-	firstTask := &task.Task{
+	require.NoError(t, (&task.Task{
 		Id:        firstTaskID,
 		Version:   firstVersionID,
 		BuildId:   firstBuildID,
 		Activated: true,
-	}
-	require.NoError(t, firstTask.Insert())
+	}).Insert())
 
 	for x := 0; x < model.MaxMainlineCommitVersionLimit; x++ {
 		require.NoError(t, (&model.Version{
 			Id:         fmt.Sprintf("version_%d", x),
 			Requester:  evergreen.RepotrackerVersionRequester,
-			CreateTime: firstCreationTime.Add(time.Duration(x) * time.Second),
+			CreateTime: firstCreationTime.Add(time.Duration(x+1) * time.Second),
 		}).Insert())
 
 		require.NoError(t, (&build.Build{

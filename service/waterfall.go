@@ -218,6 +218,9 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 	numTestResultCalls := 0
 	versionsCheckedCount := 0
+	if numVersionElements > model.MaxMainlineCommitVersionLimit {
+		numVersionElements = model.MaxMainlineCommitVersionLimit
+	}
 	// loop until we have enough from the db
 	for len(finalVersions) < numVersionElements && versionsCheckedCount < model.MaxMainlineCommitVersionLimit {
 
