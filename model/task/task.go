@@ -3005,17 +3005,18 @@ type TasksSortOrder struct {
 }
 
 type GetTasksByVersionOptions struct {
-	Statuses              []string
-	BaseStatuses          []string
-	Variants              []string
-	TaskNames             []string
-	Page                  int
-	Limit                 int
-	FieldsToProject       []string
-	Sorts                 []TasksSortOrder
-	IncludeExecutionTasks bool
-	IncludeBaseTasks      bool
-	IncludeEmptyActivaton bool
+	Statuses                       []string
+	BaseStatuses                   []string
+	Variants                       []string
+	TaskNames                      []string
+	Page                           int
+	Limit                          int
+	FieldsToProject                []string
+	Sorts                          []TasksSortOrder
+	IncludeExecutionTasks          bool
+	IncludeBaseTasks               bool
+	IncludeEmptyActivaton          bool
+	IncludeBuildVariantDisplayName bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3312,7 +3313,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
-	if len(opts.Variants) > 0 {
+	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	pipeline = append(pipeline,
@@ -3476,7 +3477,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		)
 	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(opts.Variants) == 0 {
+	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(opts.Statuses) > 0 {
