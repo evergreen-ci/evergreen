@@ -177,7 +177,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		ID:        "superuser_scope",
 		Name:      "superuser scope",
 		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{"super_user", "sandbox_project_id", "repo_id"},
+		Resources: []string{"super_user", "sandbox_project_id", "repo_id", "vars_test"},
 	}
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)

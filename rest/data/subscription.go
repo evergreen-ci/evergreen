@@ -63,19 +63,6 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 			}
 		}
 
-		if ok, msg := event.ValidateSelectors(dbSubscription.Selectors); !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Invalid selectors: %s", msg),
-			}
-		}
-		if ok, msg := event.ValidateSelectors(dbSubscription.RegexSelectors); !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Invalid regex selectors: %s", msg),
-			}
-		}
-
 		err = dbSubscription.Validate()
 		if err != nil {
 			return gimlet.ErrorResponse{

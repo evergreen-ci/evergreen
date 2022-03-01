@@ -308,7 +308,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 				p.Alias, p.Project), false) {
 			conf.SetDefaultAlias(p.Project, p.Alias)
 			if err := conf.Write(""); err != nil {
-				return errors.Wrap(err, "error setting default alias")
+				return err
 			}
 		}
 	} else if len(p.Variants) == 0 || len(p.Tasks) == 0 {
@@ -327,7 +327,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 				p.Variants, p.Project), false) {
 			conf.SetDefaultVariants(p.Project, p.Variants...)
 			if err := conf.Write(""); err != nil {
-				return errors.Wrap(err, "error setting default variants")
+				return err
 			}
 		}
 	} else if p.Alias == "" {
@@ -353,7 +353,7 @@ func (p *patchParams) loadTriggerAliases(conf *ClientSettings) error {
 				p.TriggerAliases, p.Project), false) {
 			conf.SetDefaultTriggerAliases(p.Project, p.TriggerAliases)
 			if err := conf.Write(""); err != nil {
-				return errors.Wrap(err, "error setting default trigger aliases")
+				return err
 			}
 		}
 	} else {
@@ -370,7 +370,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				p.Tasks, p.Project), false) {
 			conf.SetDefaultTasks(p.Project, p.Tasks...)
 			if err := conf.Write(""); err != nil {
-				return errors.Wrap(err, "error setting default tasks")
+				return err
 			}
 		}
 	} else if p.Alias == "" {

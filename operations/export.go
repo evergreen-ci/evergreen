@@ -61,7 +61,6 @@ func Export() cli.Command {
 				Usage: "write output in json, otherwise uses CSV",
 			}),
 		Before: mergeBeforeFuncs(
-			autoUpdateCLI,
 			requireStringFlag(statFlagName),
 			requireStringValueChoices(granularityFlagName,
 				[]string{granularityDays, granularityHours, granularityMinutes, granularitySeconds}),
