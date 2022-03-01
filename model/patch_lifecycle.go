@@ -170,9 +170,12 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	pc, err := CreateProjectConfig(projectFileBytes, p.Project)
-	if err != nil {
-		return nil, nil, errors.WithStack(err)
+	var pc *ProjectConfig
+	if projectRef.IsVersionControlEnabled() {
+		pc, err = CreateProjectConfig(projectFileBytes, p.Project)
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
 	}
 	ppOut, err := yaml.Marshal(pp)
 	if err != nil {

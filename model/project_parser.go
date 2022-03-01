@@ -786,9 +786,12 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	if err != nil {
 		return ProjectInfo{}, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
 	}
-	pc, err := CreateProjectConfig(fileContents, opts.Ref.Id)
-	if err != nil {
-		return ProjectInfo{}, errors.Wrapf(err, "error parsing project config for '%s'", opts.Ref.Id)
+	var pc *ProjectConfig
+	if opts.Ref.IsVersionControlEnabled() {
+		pc, err = CreateProjectConfig(fileContents, opts.Ref.Id)
+		if err != nil {
+			return ProjectInfo{}, errors.Wrapf(err, "error parsing project config for '%s'", opts.Ref.Id)
+		}
 	}
 	return ProjectInfo{
 		Project:             &config,
