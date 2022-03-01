@@ -545,7 +545,7 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		"timeToBuildTasksMS": timeToBuildTasks.Milliseconds(),
 		"timeToGroupTasksMS": timeToGroupTasks.Milliseconds(),
 		"timeToSortTasksMS":  timeToSortTasks.Milliseconds(),
-		"totalTime":          totalTime,
+		"totalTimeMS":        totalTime.Milliseconds(),
 		"versionId":          versionId,
 		"taskCount":          len(tasks),
 		"buildVariantCount":  len(result),
