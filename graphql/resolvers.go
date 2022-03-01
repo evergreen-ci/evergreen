@@ -2444,6 +2444,15 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *
 	return changes, nil
 }
 
+func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectId string, section ProjectSettingsSection) (*string, error) {
+	usr := MustHaveUser(ctx)
+	if err := model.DefaultSectionToRepo(projectId, model.ProjectPageSection(section), usr.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
+	}
+
+	return &projectId, nil
+}
+
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := MustHaveUser(ctx)
 	pRef, err := r.sc.FindProjectById(projectID, false, false)
