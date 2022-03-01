@@ -3859,14 +3859,12 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 
 func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
 	opts := task.GetTasksByVersionOptions{
-		TaskNames: options.Tasks,
-		Variants:  options.Variants,
-		Statuses:  options.Statuses,
+		TaskNames:                      options.Tasks,
+		Variants:                       options.Variants,
+		Statuses:                       options.Statuses,
+		IncludeBuildVariantDisplayName: true,
 	}
-	// Should only include BuildVariantDisplayName in the query if we need to filter on it.
-	if len(options.Variants) != 0 {
-		opts.IncludeBuildVariantDisplayName = true
-	}
+
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
