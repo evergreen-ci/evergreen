@@ -254,7 +254,7 @@ func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErro
 	projectConfig, err := model.CreateProjectConfig([]byte(patchedProjectConfig))
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{
-			Message: fmt.Sprintf("can't retrieve aliases from patched config: %s", err.Error()),
+			Message: fmt.Sprintf("Error unmarshalling patched project config: %s", err.Error()),
 		})
 		return validationErrs
 	}
