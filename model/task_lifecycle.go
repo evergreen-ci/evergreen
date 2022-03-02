@@ -31,111 +31,112 @@ type StatusChanges struct {
 	BuildComplete    bool
 }
 
-func SetActiveState(t *task.Task, caller string, active bool) error {
-	originalTasks := []task.Task{*t}
-	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
-		if err != nil {
-			return errors.Wrapf(err, "error getting execution tasks")
-		}
-		originalTasks = append(originalTasks, execTasks...)
-	}
-
-	if active {
-		// if the task is being activated and it doesn't override its dependencies
-		// activate the task's dependencies as well
-		tasksToActivate := []task.Task{}
-		if !t.OverrideDependencies {
-			deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
+func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
+	for _, t := range tasks {
+		originalTasks := []task.Task{*t}
+		if t.DisplayOnly {
+			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 			if err != nil {
-				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
+				return errors.Wrapf(err, "error getting execution tasks")
 			}
-			if t.IsPartOfSingleHostTaskGroup() {
-				for _, dep := range deps {
-					// reset any already finished tasks in the same task group
-					if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-						if err = resetTask(dep.Id, caller, false); err != nil {
-							return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+			originalTasks = append(originalTasks, execTasks...)
+		}
+
+		if active {
+			// if the task is being activated and it doesn't override its dependencies
+			// activate the task's dependencies as well
+			tasksToActivate := []task.Task{}
+			if !t.OverrideDependencies {
+				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
+				if err != nil {
+					return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
+				}
+				if t.IsPartOfSingleHostTaskGroup() {
+					for _, dep := range deps {
+						// reset any already finished tasks in the same task group
+						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
+							if err = resetTask(dep.Id, caller, false); err != nil {
+								return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+							}
+						} else {
+							tasksToActivate = append(tasksToActivate, dep)
 						}
-					} else {
-						tasksToActivate = append(tasksToActivate, dep)
 					}
+				} else {
+					tasksToActivate = append(tasksToActivate, deps...)
+				}
+			}
+
+			// Investigating strange dispatch state as part of EVG-13144
+			if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
+				if err := resetTask(t.Id, caller, false); err != nil {
+					return errors.Wrap(err, "error resetting task")
 				}
 			} else {
-				tasksToActivate = append(tasksToActivate, deps...)
+				tasksToActivate = append(tasksToActivate, originalTasks...)
 			}
-		}
-
-		// Investigating strange dispatch state as part of EVG-13144
-		if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
-			if err := resetTask(t.Id, caller, false); err != nil {
-				return errors.Wrap(err, "error resetting task")
+			if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
+				return errors.Wrapf(err, "can't activate tasks")
 			}
-		} else {
-			tasksToActivate = append(tasksToActivate, originalTasks...)
-		}
-		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
-			return errors.Wrapf(err, "can't activate tasks")
-		}
 
-		if t.DistroId == "" && !t.DisplayOnly {
-			grip.Critical(message.Fields{
-				"message": "task is missing distro id",
-				"task_id": t.Id,
-			})
-		}
+			if t.DistroId == "" && !t.DisplayOnly {
+				grip.Critical(message.Fields{
+					"message": "task is missing distro id",
+					"task_id": t.Id,
+				})
+			}
 
-		version, err := VersionFindOneId(t.Version)
-		if err != nil {
-			return errors.Wrapf(err, "error find associated version")
-		}
-		if version == nil {
-			return errors.Errorf("could not find associated version : `%s`", t.Version)
-		}
-		if err = version.SetActivated(); err != nil {
-			return errors.Wrapf(err, "Error marking version as activated")
-		}
-
-		// If the task was not activated by step back, and either the caller is not evergreen
-		// or the task was originally activated by evergreen, deactivate the task
-	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
-		var err error
-		// deactivate later tasks in the group as well, since they won't succeed without this one
-		if t.IsPartOfSingleHostTaskGroup() {
-			tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			version, err := VersionFindOneId(t.Version)
 			if err != nil {
-				return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+				return errors.Wrapf(err, "error find associated version")
 			}
-			for _, taskInGroup := range tasksInGroup {
-				if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
-					originalTasks = append(originalTasks, taskInGroup)
+			if version == nil {
+				return errors.Errorf("could not find associated version : `%s`", t.Version)
+			}
+			if err = version.SetActivated(); err != nil {
+				return errors.Wrapf(err, "Error marking version as activated")
+			}
+
+			// If the task was not activated by step back, and either the caller is not evergreen
+			// or the task was originally activated by evergreen, deactivate the task
+		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
+			var err error
+			// deactivate later tasks in the group as well, since they won't succeed without this one
+			if t.IsPartOfSingleHostTaskGroup() {
+				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+				if err != nil {
+					return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+				}
+				for _, taskInGroup := range tasksInGroup {
+					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
+						originalTasks = append(originalTasks, taskInGroup)
+					}
 				}
 			}
-		}
-		err = task.DeactivateTasks(originalTasks, caller)
-		if err != nil {
-			return errors.Wrap(err, "error deactivating task")
+			err = task.DeactivateTasks(originalTasks, caller)
+			if err != nil {
+				return errors.Wrap(err, "error deactivating task")
+			}
+
+			if t.Requester == evergreen.MergeTestRequester {
+				if err = DequeueAndRestartForTask(nil, t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
+					return err
+				}
+			}
+		} else {
+			return nil
 		}
 
-		if t.Requester == evergreen.MergeTestRequester {
-			if err = DequeueAndRestartForTask(nil, t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
-				return err
+		if t.IsPartOfDisplay() {
+			if err := UpdateDisplayTaskForTask(t); err != nil {
+				return errors.Wrap(err, "problem updating display task")
 			}
 		}
-	} else {
-		return nil
-	}
 
-	if t.IsPartOfDisplay() {
-		if err := UpdateDisplayTaskForTask(t); err != nil {
-			return errors.Wrap(err, "problem updating display task")
+		if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
+			return errors.Wrap(err, "problem updating build and version status for task")
 		}
 	}
-
-	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
-		return errors.Wrap(err, "problem updating build and version status for task")
-	}
-
 	return nil
 }
 
@@ -147,7 +148,7 @@ func SetActiveStateById(id, user string, active bool) error {
 	if t == nil {
 		return errors.Errorf("task '%s' not found", id)
 	}
-	return SetActiveState(t, user, active)
+	return SetActiveState(user, active, t)
 }
 
 // activatePreviousTask will set the Active state for the first task with a
@@ -182,7 +183,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// activate the task
-	if err = SetActiveState(prevTask, caller, true); err != nil {
+	if err = SetActiveState(caller, true, prevTask); err != nil {
 		return errors.Wrapf(err, "error setting task '%s' active", prevTask.Id)
 	}
 	// add the task that we're actually stepping back so that we know to activate it
@@ -341,7 +342,7 @@ func AbortTask(taskId, caller string) error {
 	}
 
 	// set the active state and then set the abort
-	if err = SetActiveState(t, caller, false); err != nil {
+	if err = SetActiveState(caller, false, t); err != nil {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
@@ -400,7 +401,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 			continue
 		}
 
-		if err = SetActiveState(&t, caller, false); err != nil {
+		if err = SetActiveState(caller, false, &t); err != nil {
 			return err
 		}
 	}

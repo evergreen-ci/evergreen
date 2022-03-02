@@ -731,7 +731,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}
-		if err = model.SetActiveState(projCtx.Task, authUser.Username(), active); err != nil {
+		if err = model.SetActiveState(authUser.Username(), active, projCtx.Task); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
