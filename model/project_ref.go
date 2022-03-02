@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -2338,69 +2337,6 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
-// GetBuildBaronSettings retrieves build baron settings from project settings.
-// Project page settings takes precedence, otherwise fallback to project config yaml.
-// Returns build baron settings and ok if found.
-func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
-	projectRef, err := FindMergedProjectRef(projectId, version, true)
-	if err != nil || projectRef == nil {
-		return evergreen.BuildBaronSettings{}, false
-	}
-	return projectRef.BuildBaronSettings, true
-}
-
-func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
-	catcher := grip.NewBasicCatcher()
-	var err error
-	var webhookConfigured bool
-	if webhook == nil {
-		pRefWebHook, _, err := IsWebhookConfigured(projName, "")
-		if err != nil {
-			return errors.Wrapf(err, "Error retrieving webhook config for %s", projName)
-		}
-		webhook = &pRefWebHook
-		webhookConfigured = webhook != nil && webhook.Endpoint != ""
-	}
-
-	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
-		return nil
-	}
-	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
-		catcher.New("Must provide projects to search")
-	}
-	if !webhookConfigured && proj.TicketCreateProject == "" {
-		catcher.Errorf("Must provide project to create tickets for")
-	}
-	if proj.BFSuggestionServer != "" {
-		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
-			catcher.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
-		}
-		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-			catcher.Errorf("Failed validating configuration for project '%s': "+
-				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
-		}
-		if proj.BFSuggestionTimeoutSecs <= 0 {
-			catcher.Errorf("Failed validating configuration for project '%s': "+
-				"bf_suggestion_timeout_secs must be positive", projName)
-		}
-	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-		catcher.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
-	} else if proj.BFSuggestionTimeoutSecs != 0 {
-		catcher.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
-	}
-	// the webhook cannot be used if the default build baron creation and search is configured
-	if webhookConfigured {
-		if len(proj.TicketCreateProject) != 0 {
-			catcher.Errorf("The custom file ticket webhook and the build baron should not both be configured")
-		}
-		if _, err = url.Parse(webhook.Endpoint); err != nil {
-			catcher.Errorf("Failed to parse webhook endpoint for project")
-		}
-	}
-	return catcher.Resolve()
-}
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -2484,19 +2420,6 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	} else {
 		return evergreen.WebHook{}, false, nil
 	}
-}
-
-// IsWebhookConfigured retrieves webhook configuration from the project settings.
-func IsBBTicketCreationDefined(project string, version string) (bool, error) {
-	projectRef, err := FindMergedProjectRef(project, version, true)
-	if err != nil || projectRef == nil {
-		return false, errors.Errorf("Unable to find merged project ref for project %s", project)
-	}
-	createProject := projectRef.BuildBaronSettings.TicketCreateProject
-	if createProject != "" {
-		return true, nil
-	}
-	return false, nil
 }
 
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {

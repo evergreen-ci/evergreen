@@ -1,4 +1,4 @@
-package graphql
+package data
 
 import (
 	"testing"
@@ -13,6 +13,7 @@ import (
 )
 
 func TestMakeTicket(t *testing.T) {
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, build.Collection, model.ProjectRefCollection))
 	t1 := task.Task{

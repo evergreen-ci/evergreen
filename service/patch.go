@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen/graphql"
+	"github.com/evergreen-ci/evergreen/units"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -49,7 +50,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshall project and get project variants and tasks
-	variantsAndTasksFromProject, err := graphql.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedParserProject, projCtx.Patch.Project)
+	variantsAndTasksFromProject, err := model.GetVariantsAndTasksFromProject(r.Context(), projCtx.Patch.PatchedParserProject, projCtx.Patch.Project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
@@ -92,21 +93,21 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	if curUser == nil {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
 	}
-	patchUpdateReq := graphql.PatchUpdate{}
+	patchUpdateReq := model.PatchUpdate{}
 	if err := utility.ReadJSON(utility.NewRequestReader(r), &patchUpdateReq); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
 
-	err, status, successMessage, versionId := graphql.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
+	status, err := units.SchedulePatch(r.Context(), projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
 		uis.LoggedError(w, r, status, err)
 		return
 	}
 
-	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(successMessage))
+	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch successfully configured."))
 	gimlet.WriteJSON(w, struct {
 		VersionId string `json:"version"`
-	}{versionId})
+	}{projCtx.Patch.Id.Hex()})
 
 }
 
