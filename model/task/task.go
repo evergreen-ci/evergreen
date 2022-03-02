@@ -854,11 +854,12 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
-// Mark that the task has been dispatched onto a particular host. Sets the
-// running task field on the host and the host id field on the task. If the host
-// is part of a display task, the display task is also marked as dispatched to a
-// host. Returns an error if any of the database updates fail.
-func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string, dispatchTime time.Time) error {
+// MarkAsHostDispatched marks that the task has been dispatched onto a
+// particular host. If the task is part of a display task, the display task is
+// also marked as dispatched to a host. Returns an error if any of the database
+// updates fail.
+func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
+	dispatchTime time.Time) error {
 	t.DispatchTime = dispatchTime
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostId
