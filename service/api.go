@@ -345,21 +345,27 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
 	}
-	var u *user.DBUser
-	if t.ActivatedBy == evergreen.StepbackTaskActivator {
-		u, err = user.FindOneById(v.Author)
-	} else if t.ActivatedBy != "" {
-		u, err = user.FindOneById(t.ActivatedBy)
-	}
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if u != nil {
-		// check if user is an admin
-		if isAdmin(u, t.Project) {
-			for key, val := range projectVars.GetAdminOnlyVars() {
-				res.Vars[key] = val
+	if v.Requester == evergreen.RepotrackerVersionRequester {
+		for key, val := range projectVars.GetAdminOnlyVars() {
+			res.Vars[key] = val
+		}
+	} else {
+		var u *user.DBUser
+		if t.ActivatedBy == evergreen.StepbackTaskActivator {
+			u, err = user.FindOneById(v.Author)
+		} else if t.ActivatedBy != "" {
+			u, err = user.FindOneById(t.ActivatedBy)
+		}
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		if u != nil {
+			// check if user is an admin
+			if isAdmin(u, t.Project) {
+				for key, val := range projectVars.GetAdminOnlyVars() {
+					res.Vars[key] = val
+				}
 			}
 		}
 	}
