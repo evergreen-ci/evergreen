@@ -70,16 +70,16 @@ func SetScheduled(ctx context.Context, sc data.Connector, isActive bool, taskIDs
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if t == nil {
-		//fix dis
-		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task %s not found", "taskID").Error())
+		return nil, ResourceNotFound.Send(ctx, errors.New("could not find tasks to schedule").Error())
 	}
-	//if t.Requester == evergreen.MergeTestRequester && isActive {
-	//	return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
-	//}
 
 	taskPtrs := []*task.Task{}
-	for _, taskee := range t {
-		taskPtrs = append(taskPtrs, &taskee)
+	for _, foundTask := range t {
+		taskCopy := foundTask
+		if foundTask.Requester == evergreen.MergeTestRequester && isActive {
+			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+		}
+		taskPtrs = append(taskPtrs, &taskCopy)
 	}
 	if err = model.SetActiveState(usr.Username(), isActive, taskPtrs...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -96,7 +96,7 @@ func SetScheduled(ctx context.Context, sc data.Connector, isActive bool, taskIDs
 	apiTasks := []*restModel.APITask{}
 	for _, task := range t {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromService(task)
+		err = apiTask.BuildFromService(&task)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}

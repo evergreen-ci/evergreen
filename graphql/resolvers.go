@@ -2776,8 +2776,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	scheduledTasks := []*restModel.APITask{}
 	tasks, err := SetScheduled(ctx, r.sc, true, taskIds...)
 	if err != nil {
-		//return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule %d task : %s", len(taskIds)-count, err.Error()))
-		return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule task : %s", err.Error()))
+		return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule tasks : %s", err.Error()))
 	}
 	scheduledTasks = append(scheduledTasks, tasks...)
 
