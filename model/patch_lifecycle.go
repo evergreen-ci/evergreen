@@ -302,11 +302,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			"Error marshaling patched parser project from repository revision “%v”",
 			p.Githash)
 	}
-	config, err := CreateProjectConfig([]byte(p.PatchedProjectConfig), p.Project)
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"Error marshaling patched project config from repository revision “%v”",
-			p.Githash)
+	var config *ProjectConfig
+	if len(p.PatchedProjectConfig) > 0 {
+		config, err = CreateProjectConfig([]byte(p.PatchedProjectConfig), p.Project)
+		if err != nil {
+			return nil, errors.Wrapf(err,
+				"Error marshaling patched project config from repository revision “%v”",
+				p.Githash)
+		}
 	}
 	intermediateProject.Id = p.Id.Hex()
 	if config != nil {

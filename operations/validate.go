@@ -162,6 +162,8 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong bool, localM
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts,
 	project *model.Project) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
+	// We validate the project config regardless if version control is disabled for the project
+	// to ensure that the config will remain valid if it is turned on.
 	pc, err := model.CreateProjectConfig(data, "")
 	if err != nil {
 		errs = append(errs, validator.ValidationError{

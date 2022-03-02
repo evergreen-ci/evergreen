@@ -505,6 +505,10 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	var pp *ParserProject
 	var err error
 
+	pRef, err := FindMergedProjectRef(id, "", false)
+	if err != nil {
+		return ProjectInfo{}, errors.Wrap(err, "error finding project ref")
+	}
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "error finding parser project")
@@ -534,9 +538,12 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "error loading project")
 	}
-	pc, err := CreateProjectConfig([]byte(v.Config), id)
-	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "error loading project config")
+	var pc *ProjectConfig
+	if pRef.IsVersionControlEnabled() {
+		pc, err = CreateProjectConfig([]byte(v.Config), id)
+		if err != nil {
+			return ProjectInfo{}, errors.Wrap(err, "error loading project config")
+		}
 	}
 	pp.Id = v.Id
 	pp.Identifier = utility.ToStringPtr(id)
