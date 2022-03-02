@@ -20,7 +20,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20220119144730-b220d71c0330
 	github.com/evergreen-ci/shrub v0.0.0-20211025143051-a8d91b2e29fd
 	github.com/evergreen-ci/timber v0.0.0-20220119202616-544be15f3b95
-	github.com/evergreen-ci/utility v0.0.0-20211119154302-265fd6f368ba
+	github.com/evergreen-ci/utility v0.0.0-20220302150552-3f7a1a268ea7
 	github.com/google/go-github/v34 v34.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gophercloud/gophercloud v0.1.0
