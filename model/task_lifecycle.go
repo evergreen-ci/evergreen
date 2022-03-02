@@ -1185,9 +1185,11 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	return nil
 }
 
-func MarkTaskUndispatched(t *task.Task) error {
+// MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
+// it's part of a display task, update the display task as necessary.
+func MarkHostTaskUndispatched(t *task.Task) error {
 	// record that the task as undispatched on the host
-	if err := t.MarkAsUndispatched(); err != nil {
+	if err := t.MarkAsHostUndispatched(); err != nil {
 		return errors.WithStack(err)
 	}
 	// the task was successfully dispatched, log the event
@@ -1200,9 +1202,11 @@ func MarkTaskUndispatched(t *task.Task) error {
 	return nil
 }
 
-func MarkTaskDispatched(t *task.Task, h *host.Host) error {
+// MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
+// part of a display task, update the display task as necessary.
+func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	// record that the task was dispatched on the host
-	if err := t.MarkAsDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
+	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched "+
 			"on host %s", t.Id, h.Id)
 	}

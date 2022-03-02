@@ -854,10 +854,12 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
-// Mark that the task has been dispatched onto a particular host. Sets the
-// running task field on the host and the host id field on the task.
-// Returns an error if any of the database updates fail.
-func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatchTime time.Time) error {
+// MarkAsHostDispatched marks that the task has been dispatched onto a
+// particular host. If the task is part of a display task, the display task is
+// also marked as dispatched to a host. Returns an error if any of the database
+// updates fail.
+func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
+	dispatchTime time.Time) error {
 	t.DispatchTime = dispatchTime
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostId
@@ -890,16 +892,15 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 
 	//when dispatching an execution task, mark its parent as dispatched
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		return dt.MarkAsDispatched("", "", "", dispatchTime)
+		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
 	return nil
 }
 
-// MarkAsUndispatched marks that the task has been undispatched from a
-// particular host. Unsets the running task field on the host and the
-// host id field on the task
-// Returns an error if any of the database updates fail.
-func (t *Task) MarkAsUndispatched() error {
+// MarkAsHostUndispatched marks that the host task is undispatched. If the task
+// is already dispatched to a host, it unsets the host ID field on the task. It
+// returns an error if any of the database updates fail.
+func (t *Task) MarkAsHostUndispatched() error {
 	// then, update the task document
 	t.Status = evergreen.TaskUndispatched
 
