@@ -122,10 +122,13 @@ func (c *AmboyConfig) Set() error {
 }
 
 const (
+	// DefaultAmboyQueueName is the default name prefix for the Amboy remote
+	// queue.
+	DefaultAmboyQueueName = "evg.service"
+
 	defaultLogBufferingDuration                  = 20
 	defaultAmboyPoolSize                         = 2
 	defaultAmboyLocalStorageSize                 = 1024
-	defaultAmboyQueueName                        = "evg.service"
 	defaultSingleAmboyQueueName                  = "evg.single"
 	defaultAmboyDBName                           = "amboy"
 	defaultGroupWorkers                          = 1
@@ -137,7 +140,7 @@ const (
 
 func (c *AmboyConfig) ValidateAndDefault() error {
 	if c.Name == "" {
-		c.Name = defaultAmboyQueueName
+		c.Name = DefaultAmboyQueueName
 	}
 
 	if c.SingleName == "" {
