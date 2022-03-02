@@ -1186,8 +1186,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 }
 
 // MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
-// it's part of a display task, update the display task as necessary as a result
-// of marking this task as undispatched.
+// it's part of a display task, update the display task as necessary.
 func MarkHostTaskUndispatched(t *task.Task) error {
 	// record that the task as undispatched on the host
 	if err := t.MarkAsHostUndispatched(); err != nil {
@@ -1204,8 +1203,7 @@ func MarkHostTaskUndispatched(t *task.Task) error {
 }
 
 // MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
-// part of a display task, update the display task as necessary as a result of
-// marking this task as dispatched.
+// part of a display task, update the display task as necessary.
 func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	// record that the task was dispatched on the host
 	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
