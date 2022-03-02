@@ -160,7 +160,7 @@ var Root = function (_React$PureComponent2) {
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
     _this2.loadDataPortion = _this2.loadDataPortion.bind(_this2);
     _this2.loadDataPortion();
-    _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 100);
+    _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 1000);
     _this2.loadData = _this2.loadData.bind(_this2);
     return _this2;
   }
