@@ -130,7 +130,7 @@ class Root extends React.PureComponent {
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
     this.loadDataPortion = this.loadDataPortion.bind(this);
     this.loadDataPortion();
-    this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
+    this.loadDataPortion = _.debounce(this.loadDataPortion, 1000)
     this.loadData = this.loadData.bind(this);
   }
 
