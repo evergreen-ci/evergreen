@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	patchDescriptionFlagName = "description"
-	patchVerboseFlagName     = "verbose"
-	patchTriggerAliasFlag    = "trigger-alias"
-	reuseDefinitionFlag      = "reuse"
+	patchDescriptionFlagName   = "description"
+	patchVerboseFlagName       = "verbose"
+	patchTriggerAliasFlag      = "trigger-alias"
+	reuseDefinitionFlag        = "reuse"
+	repeatFailedDefinitionFlag = "repeat-failed"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -58,7 +59,11 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			},
 			cli.BoolFlag{
 				Name:  reuseDefinitionFlag,
-				Usage: "use the same tasks/variants defined for the last patch you scheduled for this project",
+				Usage: "use all of the same tasks/variants defined for the last patch you scheduled for this project",
+			},
+			cli.BoolFlag{
+				Name:  repeatFailedDefinitionFlag,
+				Usage: "use only the failed tasks/variants defined for the last patch you scheduled for this project",
 			},
 			cli.StringFlag{
 				Name:  pathFlagName,
@@ -111,6 +116,7 @@ func Patch() cli.Command {
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
 				ReuseDefinition:   c.Bool(reuseDefinitionFlag),
+				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
 			}
 
 			var err error
@@ -127,7 +133,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if params.ReuseDefinition && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
+			if (params.ReuseDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
 				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
 

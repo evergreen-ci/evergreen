@@ -58,6 +58,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Finalize          bool               `json:"finalize"`
 		TriggerAliases    []string           `json:"trigger_aliases"`
 		Alias             string             `json:"alias"`
+		RepeatFailed      bool               `json:"repeat_failed"`
 		ReuseDefinition   bool               `json:"reuse_definition"`
 		GithubAuthor      string             `json:"github_author"`
 	}{}
@@ -163,6 +164,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		BackportOf:      data.BackportInfo,
 		GitInfo:         data.GitMetadata,
 		ReuseDefinition: data.ReuseDefinition,
+		RepeatFailed:    data.RepeatFailed,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,

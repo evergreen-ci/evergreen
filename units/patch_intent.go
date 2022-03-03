@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"strings"
 	"time"
 
@@ -289,6 +290,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	if j.intent.RepeatFailedTasksAndVariants() {
+		patchDoc.VariantsTasks, err = j.getPreviousPatchFailures(project)
+		if err != nil {
+			return err
+		}
+	}
+
 	// verify that all variants exists
 	for _, buildVariant := range patchDoc.BuildVariants {
 		if buildVariant == "all" || buildVariant == "" {
@@ -478,6 +486,44 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 				Tasks:        tasks,
 				DisplayTasks: displayTasks,
 			})
+		}
+	}
+	return res, nil
+}
+
+func (j *patchIntentProcessor) getPreviousPatchFailures(project *model.Project) ([]patch.VariantTasks, error) {
+	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying for most recent patch")
+	}
+	if previousPatch == nil {
+		return nil, errors.Errorf("no previous patch available")
+	}
+
+	var res []patch.VariantTasks
+
+	if previousPatch.Status == evergreen.PatchFailed {
+		for _, vt := range previousPatch.VariantsTasks {
+			failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(previousPatch.Version, vt.Variant)))
+			if err != nil {
+				return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
+			}
+			tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
+
+			failedTaskNames := make([]string, 0, len(failedTasks))
+			for _, failedTask := range failedTasks {
+				failedTaskNames = append(failedTaskNames, failedTask.DisplayName)
+			}
+
+			// I want the subset of vt.tasks that exists in tasksForVariant
+			tasks := utility.StringSliceIntersection(tasksInProjectVariant, failedTaskNames)
+
+			if len(tasks) > 0 {
+				res = append(res, patch.VariantTasks{
+					Variant: vt.Variant,
+					Tasks:   tasks,
+				})
+			}
 		}
 	}
 	return res, nil

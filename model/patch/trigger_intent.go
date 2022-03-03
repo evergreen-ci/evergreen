@@ -78,6 +78,10 @@ func (t *TriggerIntent) ReusePreviousPatchDefinition() bool {
 	return false
 }
 
+func (g *TriggerIntent) RepeatFailedTasksAndVariants() bool {
+	return false
+}
+
 func (t *TriggerIntent) GetAlias() string {
 	// triggers have no alias
 	return ""

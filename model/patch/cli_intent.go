@@ -86,6 +86,8 @@ type cliIntent struct {
 	GitInfo *GitMetadata `bson:"git_info,omitempty"`
 
 	ReuseDefinition bool `bson:"reuse_definition"`
+
+	RepeatFailed bool `bson:"repeat_failed"`
 }
 
 // BSON fields for the patches
@@ -165,6 +167,10 @@ func (c *cliIntent) ReusePreviousPatchDefinition() bool {
 	return c.ReuseDefinition
 }
 
+func (c *cliIntent) RepeatFailedTasksAndVariants() bool {
+	return c.RepeatFailed
+}
+
 func (g *cliIntent) RequesterIdentity() string {
 	return evergreen.PatchVersionRequester
 }
@@ -223,6 +229,7 @@ type CLIIntentParams struct {
 	Alias           string
 	TriggerAliases  []string
 	ReuseDefinition bool
+	RepeatFailed    bool
 	SyncParams      SyncAtEndOptions
 }
 
@@ -282,6 +289,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		BackportOf:      params.BackportOf,
 		GitInfo:         params.GitInfo,
 		ReuseDefinition: params.ReuseDefinition,
+		RepeatFailed:    params.RepeatFailed,
 	}, nil
 }
 
