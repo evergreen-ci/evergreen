@@ -505,15 +505,14 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	var pp *ParserProject
 	var err error
 
-	pRef, err := FindMergedProjectRef(id, "", false)
-	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "error finding project ref")
-	}
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "error finding parser project")
 	}
-
+	pc, err := FindProjectConfig(v.Identifier, v.Id)
+	if err != nil {
+		return ProjectInfo{}, errors.Wrap(err, "error finding project config")
+	}
 	// if parser project config number is old then we should default to legacy
 	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		if pp.Functions == nil {
@@ -525,6 +524,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 		return ProjectInfo{
 			Project:             p,
 			IntermediateProject: pp,
+			Config:              pc,
 		}, err
 	}
 
@@ -537,13 +537,6 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "error loading project")
-	}
-	var pc *ProjectConfig
-	if pRef.IsVersionControlEnabled() {
-		pc, err = CreateProjectConfig([]byte(v.Config), id)
-		if err != nil {
-			return ProjectInfo{}, errors.Wrap(err, "error loading project config")
-		}
 	}
 	pp.Id = v.Id
 	pp.Identifier = utility.ToStringPtr(id)
@@ -563,7 +556,6 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	return ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		Config:              pc,
 	}, nil
 }
 

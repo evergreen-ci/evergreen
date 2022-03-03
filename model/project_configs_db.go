@@ -18,8 +18,8 @@ var (
 	ProjectConfigCreateTimeKey = bsonutil.MustHaveTag(ProjectConfig{}, "CreateTime")
 )
 
-// FindProjectConfigToMerge returns a project config by id, or the most recent project config if id is empty
-func FindProjectConfigToMerge(projectId, id string) (*ProjectConfig, error) {
+// FindProjectConfig returns a project config by id, or the most recent project config if id is empty
+func FindProjectConfig(projectId, id string) (*ProjectConfig, error) {
 	if id == "" {
 		return FindLastKnownGoodProjectConfig(projectId)
 	}
