@@ -1855,6 +1855,56 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 	assert.Len(schedulableTasks, 2)
 }
 
+func TestUnattainableScheduledContainerTasksQuery(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	tasks := []Task{
+		{
+			Id:                "t0",
+			Activated:         true,
+			Status:            evergreen.TaskUndispatched,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			Priority:          0,
+		},
+		{
+			Id:                "t1",
+			Activated:         true,
+			Status:            evergreen.TaskUndispatched,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			Priority:          -1,
+		},
+		{
+			Id:                "t2",
+			Activated:         true,
+			Status:            evergreen.TaskUndispatched,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			Priority:          2,
+		},
+		{
+			Id:                "t3",
+			Activated:         false,
+			Status:            evergreen.TaskUndispatched,
+			ExecutionPlatform: ExecutionPlatformContainer,
+			Priority:          0,
+		},
+		{
+			Id:                "t4",
+			Activated:         false,
+			Status:            evergreen.TaskUndispatched,
+			ExecutionPlatform: ExecutionPlatformHost,
+			Priority:          0,
+		},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	q := db.Query(ScheduledContainerTasksQuery())
+	schedulableTasks, err := FindAll(q)
+	assert.NoError(err)
+	assert.Len(schedulableTasks, 2)
+}
+
 func TestGetTimeSpent(t *testing.T) {
 	assert := assert.New(t)
 	referenceTime := time.Unix(1136239445, 0)

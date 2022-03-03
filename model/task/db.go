@@ -772,6 +772,25 @@ func schedulableHostTasksQuery() bson.M {
 	return q
 }
 
+// ScheduledContainerTasksQuery is a query that filters for scheduled tasks that are waiting for a pod
+// to be allocated to them, sorted by when they were scheduled.
+func ScheduledContainerTasksQuery() bson.M {
+	return bson.M{
+		ActivatedKey:         true,
+		StatusKey:            evergreen.TaskUndispatched,
+		ExecutionPlatformKey: ExecutionPlatformContainer,
+
+		// Filter out tasks disabled by negative priority
+		PriorityKey: bson.M{"$gt": evergreen.DisabledTaskPriority},
+
+		// Filter tasks containing unattainable dependencies
+		"$or": []bson.M{
+			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
+			{OverrideDependenciesKey: true},
+		},
+	}
+}
+
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
 func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string, limit int) []bson.M {

@@ -63,7 +63,7 @@ type Task struct {
 	// time information for task
 	// Create - the creation time for the task, derived from the commit time or the patch creation time.
 	// Dispatch - the time the task runner starts up the agent on the host.
-	// Scheduled - the time the commit is scheduled.
+	// Scheduled - the time the task is scheduled.
 	// Start - the time the agent starts the task on the host after spinning it up.
 	// Finish - the time the task was completed on the remote host.
 	// Activated - the time the task was marked as available to be scheduled, automatically or by a developer.
