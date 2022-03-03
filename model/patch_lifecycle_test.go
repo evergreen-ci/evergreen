@@ -675,6 +675,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Len(dbBuild.Tasks, 2)
 
 	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, tasks, p.SyncAtEndOpts, ref.Identifier, "")
+	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)

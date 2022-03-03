@@ -601,6 +601,10 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 
 	case VolumeSetNoExpiration:
 		mgr, err := cloud.GetEC2ManagerForVolume(ctx, vol)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
 		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
 			NoExpiration: true,
 		})
@@ -611,6 +615,10 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 
 	case VolumeSetHasExpiration:
 		mgr, err := cloud.GetEC2ManagerForVolume(ctx, vol)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
+			return
+		}
 		err = mgr.ModifyVolume(ctx, vol, &restModel.VolumeModifyOptions{
 			HasExpiration: true,
 		})

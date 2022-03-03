@@ -249,22 +249,26 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	n, err := s.t.patchOutcome(&s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
-	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no 'github' token in settings", err.Error())
+	s.Require().Error(err)
+	s.Contains("no 'github' token in settings", err.Error())
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
 	n, err = s.t.patchOutcome(&s.subs[1])
-	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no 'github' token in settings", err.Error())
+	s.Require().Error(err)
+	s.Contains("no 'github' token in settings", err.Error())
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
 	n, err = s.t.patchOutcome(&s.subs[2])
-	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no 'github' token in settings", err.Error())
+	s.Require().Error(err)
+	s.Contains("no 'github' token in settings", err.Error())
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
 	n, err = s.t.patchOutcome(&s.subs[2])
-	s.Equal("Failed to finalize child patch: can't get Github OAuth token from configuration: no 'github' token in settings", err.Error())
+	s.Require().Error(err)
+	s.Contains("no 'github' token in settings", err.Error())
 	s.Nil(n)
 
 }
