@@ -27,7 +27,6 @@ type ServiceFlags struct {
 	CacheStatsEndpointDisabled bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled    bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
-	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
 	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
 	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled  bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
@@ -95,7 +94,6 @@ func (c *ServiceFlags) Set() error {
 			cacheStatsEndpointDisabledKey:   c.CacheStatsEndpointDisabled,
 			taskReliabilityDisabledKey:      c.TaskReliabilityDisabled,
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
-			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
 			backgroundCleanupDisabledKey:    c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:     c.BackgroundReauthDisabled,
