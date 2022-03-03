@@ -435,8 +435,15 @@ func IsIntentHostId(id string) bool {
 	return strings.HasPrefix(id, "evg-")
 }
 
-func (h *Host) SetStatus(status, user string, logs string) error {
-	if h.Status == status {
+// SetStatus updates a host's status on behalf of the given user.
+func (h *Host) SetStatus(newStatus, user, logs string) error {
+	return h.SetStatusAndFields(newStatus, bson.M{}, user, logs)
+}
+
+// SetStatusAndFields is the same as SetStatus but also sets any of the other
+// given fields.
+func (h *Host) SetStatusAndFields(newStatus string, setFields bson.M, user, logs string) error {
+	if h.Status == newStatus {
 		return nil
 	}
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
@@ -444,26 +451,25 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 		grip.Warning(message.Fields{
 			"message": msg,
 			"host_id": h.Id,
-			"status":  status,
+			"status":  newStatus,
 		})
 		return errors.New(msg)
 	}
 
+	setFields[StatusKey] = newStatus
 	if err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				StatusKey: status,
-			},
+			"$set": setFields,
 		},
 	); err != nil {
 		return err
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
-	h.Status = status
+	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	h.Status = newStatus
 
 	return nil
 }
@@ -769,24 +775,21 @@ func (h *Host) ResetLastCommunicated() error {
 	return nil
 }
 
-// Terminate marks a host as terminated and sets the termination time.
+// Terminate marks a host as terminated, sets the termination time, and unsets
+// the host volumes.
 func (h *Host) Terminate(user, reason string) error {
-	err := h.SetTerminated(user, reason)
-	if err != nil {
+	terminatedAt := time.Now()
+	if err := h.SetStatusAndFields(evergreen.HostTerminated, bson.M{
+		TerminationTimeKey: terminatedAt,
+		VolumesKey:         nil,
+	}, user, reason); err != nil {
 		return err
 	}
-	h.TerminationTime = time.Now()
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				TerminationTimeKey: h.TerminationTime,
-				VolumesKey:         nil,
-			},
-		},
-	)
+
+	h.TerminationTime = terminatedAt
+	h.Volumes = nil
+
+	return nil
 }
 
 // SetDNSName updates the DNS name for a given host once
