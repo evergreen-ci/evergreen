@@ -361,7 +361,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
-		if errors.Cause(err) == context.Canceled {
+		if utility.IsContextError(errors.Cause(err)) {
 			return errors.Wrap(err, "checking cloud host status")
 		}
 		if err == cloud.ErrInstanceNotFound {

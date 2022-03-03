@@ -152,6 +152,22 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
+		"ContextErrorDoesNotTerminateHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+			require.NoError(t, h.Insert())
+
+			ctx, cancel := context.WithCancel(ctx)
+			cancel()
+
+			currentStatus := h.Status
+			j, ok := NewHostTerminationJob(env, h, true, "foo").(*hostTerminationJob)
+			require.True(t, ok)
+			require.Error(t, j.checkAndTerminateCloudHost(ctx, currentStatus))
+
+			dbHost, err := host.FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, currentStatus, dbHost.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, event.AllLogCollection), "error clearing host collection")
