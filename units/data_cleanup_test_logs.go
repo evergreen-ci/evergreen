@@ -82,14 +82,14 @@ func (j *dataCleanupTestLogs) Run(ctx context.Context) {
 	totalDocs, _ := j.env.DB().Collection(model.TestLogCollection).EstimatedDocumentCount(ctx)
 
 	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
-LOOP:
+deleteDocs:
 	for {
 		select {
 		case <-ctx.Done():
-			break LOOP
+			break deleteDocs
 		default:
 			if time.Since(startAt) >= 50*time.Second {
-				break LOOP
+				break deleteDocs
 			}
 			opStart := time.Now()
 			num, err := model.DeleteTestLogsWithLimit(ctx, j.env, timestamp, cleanupBatchSize)
@@ -99,7 +99,7 @@ LOOP:
 			numDocs += num
 			timeSpent += time.Since(opStart)
 			if num < cleanupBatchSize {
-				break
+				break deleteDocs
 			}
 		}
 	}
