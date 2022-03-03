@@ -57,7 +57,7 @@ func (h *restartHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.restartType != evergreen.RestartTasks && h.restartType != evergreen.RestartVersions {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "Restart type must be tasks or versions",
+			Message:    "RestartAction type must be tasks or versions",
 		}
 	}
 

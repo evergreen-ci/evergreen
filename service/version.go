@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/evergreen-ci/evergreen/model/version"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -252,12 +250,12 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	user := MustHaveUser(r)
 
-	modification := version.Modification{}
+	modification := model.VersionModification{}
 	if err = utility.ReadJSON(utility.NewRequestReader(r), &modification); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	httpStatus, err := version.ModifyVersion(*projCtx.Version, *user, modification)
+	httpStatus, err := model.ModifyVersion(*projCtx.Version, *user, modification)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return

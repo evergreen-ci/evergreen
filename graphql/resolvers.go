@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen/model/version"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
@@ -2580,8 +2579,8 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 }
 
 func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
-	modifications := version.Modification{
-		Action: version.SetActive,
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
 		Active: true,
 		Abort:  false,
 	}
@@ -2593,8 +2592,8 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 }
 
 func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
-	modifications := version.Modification{
-		Action: version.SetActive,
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
 		Active: false,
 		Abort:  abort,
 	}
@@ -2676,8 +2675,8 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 	if len(taskIds) == 0 {
 		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
 	}
-	modifications := version.Modification{
-		Action:  version.Restart,
+	modifications := model.VersionModification{
+		Action:  evergreen.RestartAction,
 		Abort:   abort,
 		TaskIds: taskIds,
 	}
@@ -2692,8 +2691,8 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, 
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
 	}
-	modifications := version.Modification{
-		Action:            version.Restart,
+	modifications := model.VersionModification{
+		Action:            evergreen.RestartAction,
 		Abort:             abort,
 		VersionsToRestart: versionsToRestart,
 	}
@@ -2723,8 +2722,8 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, 
 }
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
-	modifications := version.Modification{
-		Action:   version.SetPriority,
+	modifications := model.VersionModification{
+		Action:   evergreen.SetPriorityAction,
 		Priority: int64(priority),
 	}
 	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)

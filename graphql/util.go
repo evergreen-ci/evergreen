@@ -12,8 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/cloud"
 
-	"github.com/evergreen-ci/evergreen/model/version"
-
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -34,6 +32,8 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/crypto/ssh"
 )
+
+// This file should consist only of private utility functions that are specific to graphql resolver use cases.
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
@@ -340,13 +340,13 @@ func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, tes
 }
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func modifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modification version.Modification) error {
+func modifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modification model.VersionModification) error {
 	v, err := dataConnector.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := mustHaveUser(ctx)
-	httpStatus, err := version.ModifyVersion(*v, *user, modification)
+	httpStatus, err := model.ModifyVersion(*v, *user, modification)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -354,7 +354,7 @@ func modifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 	if evergreen.IsPatchRequester(v.Requester) {
 		// restart is handled through graphql because we need the user to specify
 		// which downstream tasks they want to restart
-		if modification.Action != version.Restart {
+		if modification.Action != evergreen.RestartAction {
 			//do the same for child patches
 			p, err := patch.FindOneId(patchID)
 			if err != nil {

@@ -1,11 +1,10 @@
-package version
+package model
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -16,39 +15,31 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ModificationAction string
-
-const (
-	Restart     ModificationAction = "restart"
-	SetActive   ModificationAction = "set_active"
-	SetPriority ModificationAction = "set_priority"
-)
-
-type Modification struct {
-	Action            ModificationAction        `json:"action"`
-	Active            bool                      `json:"active"`
-	Abort             bool                      `json:"abort"`
-	Priority          int64                     `json:"priority"`
-	VersionsToRestart []*model.VersionToRestart `json:"versions_to_restart"`
-	TaskIds           []string                  `json:"task_ids"` // deprecated
+type VersionModification struct {
+	Action            evergreen.ModificationAction `json:"action"`
+	Active            bool                         `json:"active"`
+	Abort             bool                         `json:"abort"`
+	Priority          int64                        `json:"priority"`
+	VersionsToRestart []*VersionToRestart          `json:"versions_to_restart"`
+	TaskIds           []string                     `json:"task_ids"` // deprecated
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, modifications Modification) (int, error) {
+func ModifyVersion(version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
-	case Restart:
+	case evergreen.RestartAction:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
-			if err := model.RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
+			if err := RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 			}
 		}
-		if err := model.RestartVersions(modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
+		if err := RestartVersions(modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
 		}
-	case SetActive:
+	case evergreen.SetActiveAction:
 		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
 			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
 		}
-		if err := model.SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
+		if err := SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
 		}
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
@@ -59,7 +50,7 @@ func ModifyVersion(version model.Version, user user.DBUser, modifications Modifi
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
-			err := model.RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
+			err := RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
 			}
@@ -74,14 +65,14 @@ func ModifyVersion(version model.Version, user user.DBUser, modifications Modifi
 			if p == nil {
 				return http.StatusNotFound, errors.New("patch not found")
 			}
-			err = model.SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",
 				"patch":   version.Id,
 			}))
 
 		}
-	case SetPriority:
+	case evergreen.SetPriorityAction:
 		projId := version.Identifier
 		if projId == "" {
 			return http.StatusNotFound, errors.Errorf("Could not find project for version %s", version.Id)
@@ -97,7 +88,7 @@ func ModifyVersion(version model.Version, user user.DBUser, modifications Modifi
 				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
-		if err := model.SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
+		if err := SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
 		}
 	default:

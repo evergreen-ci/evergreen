@@ -418,7 +418,7 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
 
 	if err := p.sc.RestartVersion(p.patchId, usr.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "RestartAction error"))
 	}
 
 	foundPatch, err := p.sc.FindPatchById(p.patchId)
