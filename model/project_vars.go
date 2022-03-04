@@ -223,7 +223,8 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 	return restrictedVars
 }
 
-// GetAdminOnlyVars will change to GetVars on EVG-16045 after removing restricted vars.
+// GetAdminOnlyVars currently returns admin only variables for mainline commits and project admins.
+// Will change to GetVars on EVG-16045 after removing restricted vars.
 func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string {
 	adminOnlyVars := map[string]string{}
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
@@ -235,10 +236,10 @@ func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string
 	} else if t.ActivatedBy != "" {
 		u, err := user.FindOneById(t.ActivatedBy)
 		if err != nil {
-			grip.Error(message.Fields{
-				"error":   err,
-				"message": fmt.Sprintf("problem with fetching user '%s' for task '%s'", t.ActivatedBy, t.Id),
-			})
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
+				"task_id": t.Id,
+			}))
 			return adminOnlyVars
 		}
 		if u != nil {
