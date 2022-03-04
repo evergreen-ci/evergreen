@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -220,6 +221,7 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 	return restrictedVars
 }
 
+// GetAdminOnlyVars will change to GetVars on EVG-16045 after removing restricted vars.
 func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) (map[string]string, error) {
 	adminOnlyVars := map[string]string{}
 	if evergreen.IsSystemActivator(t.ActivatedBy) {
@@ -228,15 +230,9 @@ func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) (map[string]strin
 				adminOnlyVars[k] = v
 			}
 		}
-	} else {
-		var u *user.DBUser
-		var err error
-		if t.ActivatedBy != "" {
-			u, err = user.FindOneById(t.ActivatedBy)
-		}
-		if err != nil {
-			return nil, err
-		}
+	} else if t.ActivatedBy != "" {
+		u, err := user.FindOneById(t.ActivatedBy)
+		grip.Error(err)
 		if u != nil {
 			isAdmin := u.HasPermission(gimlet.PermissionOpts{
 				Resource:      t.Project,
