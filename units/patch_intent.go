@@ -508,20 +508,33 @@ func (j *patchIntentProcessor) getPreviousPatchFailures(project *model.Project) 
 			if err != nil {
 				return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
 			}
-			tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 
+			tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 			failedTaskNames := make([]string, 0, len(failedTasks))
 			for _, failedTask := range failedTasks {
-				failedTaskNames = append(failedTaskNames, failedTask.DisplayName)
+				if !failedTask.DisplayOnly && !failedTask.IsPartOfDisplay() {
+					failedTaskNames = append(failedTaskNames, failedTask.DisplayName)
+				}
+			}
+
+			var displayTasks []patch.DisplayTask
+			displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
+			for _, dt := range vt.DisplayTasks {
+				for _, failedTask := range failedTasks {
+					if failedTask.DisplayName == dt.Name && failedTask.DisplayOnly && utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
+						displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
+					}
+				}
 			}
 
 			// I want the subset of vt.tasks that exists in tasksForVariant
 			tasks := utility.StringSliceIntersection(tasksInProjectVariant, failedTaskNames)
 
-			if len(tasks) > 0 {
+			if len(tasks)+len(displayTasks) > 0 {
 				res = append(res, patch.VariantTasks{
-					Variant: vt.Variant,
-					Tasks:   tasks,
+					Variant:      vt.Variant,
+					Tasks:        tasks,
+					DisplayTasks: displayTasks,
 				})
 			}
 		}
