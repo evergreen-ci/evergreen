@@ -1080,6 +1080,9 @@ func UpdateBuildAndVersionStatusForTask(t *task.Task) error {
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
+	if t.Aborted {
+		taskVersion.SetAborted()
+	}
 
 	if evergreen.IsPatchRequester(taskVersion.Requester) {
 		p, err := patch.FindOneId(taskVersion.Id)

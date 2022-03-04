@@ -37,6 +37,7 @@ type Version struct {
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted             *bool                `bson:"abort,omitempty" json:"abort,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to to distinguish the unset value from the default value
@@ -153,6 +154,32 @@ func (self *Version) SetNotActivated() error {
 			},
 		},
 	)
+}
+
+func (self *Version) SetAborted() error {
+	self.Aborted = utility.TruePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionAbortedKey: true,
+			},
+		},
+	)
+
+}
+
+func (self *Version) SetNotAborted() error {
+	self.Aborted = utility.FalsePtr()
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionAbortedKey: false,
+			},
+		},
+	)
+
 }
 
 func (self *Version) Insert() error {
