@@ -3,7 +3,11 @@ package model
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -216,15 +220,41 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 	return restrictedVars
 }
 
-func (projectVars *ProjectVars) GetAdminOnlyVars() map[string]string {
+func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) (map[string]string, error) {
 	adminOnlyVars := map[string]string{}
-
-	for k, v := range projectVars.Vars {
-		if projectVars.AdminOnlyVars[k] {
-			adminOnlyVars[k] = v
+	if evergreen.IsSystemActivator(t.ActivatedBy) {
+		for k, v := range projectVars.Vars {
+			if projectVars.AdminOnlyVars[k] {
+				adminOnlyVars[k] = v
+			}
+		}
+	} else {
+		var u *user.DBUser
+		var err error
+		if t.ActivatedBy != "" {
+			u, err = user.FindOneById(t.ActivatedBy)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if u != nil {
+			isAdmin := u.HasPermission(gimlet.PermissionOpts{
+				Resource:      t.Project,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			})
+			if isAdmin {
+				for k, v := range projectVars.Vars {
+					if projectVars.AdminOnlyVars[k] {
+						adminOnlyVars[k] = v
+					}
+				}
+			}
 		}
 	}
-	return adminOnlyVars
+
+	return adminOnlyVars, nil
 }
 
 // GetUnrestrictedVars returns non-restricted and non-admin only vars until EVG-16045.

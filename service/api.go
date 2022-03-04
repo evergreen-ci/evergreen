@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -345,15 +344,14 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
 	}
-	adminAccess, err := accessAdminVars(t, v)
+
+	adminVars, err := projectVars.GetAdminOnlyVars(t)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		as.LoggedError(w, r, http.StatusNotFound, err)
 		return
 	}
-	if adminAccess {
-		for key, val := range projectVars.GetAdminOnlyVars() {
-			res.Vars[key] = val
-		}
+	for key, val := range adminVars {
+		res.Vars[key] = val
 	}
 	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
@@ -373,28 +371,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	}
 
 	gimlet.WriteJSON(w, res)
-}
-
-func accessAdminVars(t *task.Task, v *model.Version) (bool, error) {
-	if v.Requester == evergreen.RepotrackerVersionRequester {
-		return true, nil
-	} else {
-		var u *user.DBUser
-		var err error
-		if t.ActivatedBy == evergreen.StepbackTaskActivator {
-			u, err = user.FindOneById(v.Author)
-		} else if t.ActivatedBy != "" {
-			u, err = user.FindOneById(t.ActivatedBy)
-		}
-		if err != nil {
-			return false, err
-		}
-		if u != nil {
-			// check if user is an admin
-			return isAdmin(u, t.Project), nil
-		}
-	}
-	return false, nil
 }
 
 // AttachFiles updates file mappings for a task or build
