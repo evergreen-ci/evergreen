@@ -303,7 +303,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			p.Githash)
 	}
 	var config *ProjectConfig
-	if len(p.PatchedProjectConfig) > 0 {
+	if projectRef.IsVersionControlEnabled() {
 		config, err = CreateProjectConfig([]byte(p.PatchedProjectConfig), p.Project)
 		if err != nil {
 			return nil, errors.Wrapf(err,

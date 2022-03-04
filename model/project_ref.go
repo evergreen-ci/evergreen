@@ -444,7 +444,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
 // the project ref.
 func (p *ProjectRef) MergeWithProjectConfig(version string) error {
-	projectConfig, err := FindProjectConfig(p.Id, version)
+	projectConfig, err := FindProjectConfigForProjectOrVersion(p.Id, version)
 	if err != nil {
 		return err
 	}
