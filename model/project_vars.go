@@ -8,9 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -222,9 +224,9 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 }
 
 // GetAdminOnlyVars will change to GetVars on EVG-16045 after removing restricted vars.
-func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) (map[string]string, error) {
+func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string {
 	adminOnlyVars := map[string]string{}
-	if evergreen.IsSystemActivator(t.ActivatedBy) {
+	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		for k, v := range projectVars.Vars {
 			if projectVars.AdminOnlyVars[k] {
 				adminOnlyVars[k] = v
@@ -232,7 +234,13 @@ func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) (map[string]strin
 		}
 	} else if t.ActivatedBy != "" {
 		u, err := user.FindOneById(t.ActivatedBy)
-		grip.Error(err)
+		if err != nil {
+			grip.Error(message.Fields{
+				"error":   err,
+				"message": fmt.Sprintf("problem with fetching user '%s' for task '%s'", t.ActivatedBy, t.Id),
+			})
+			return adminOnlyVars
+		}
 		if u != nil {
 			isAdmin := u.HasPermission(gimlet.PermissionOpts{
 				Resource:      t.Project,
@@ -250,7 +258,7 @@ func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) (map[string]strin
 		}
 	}
 
-	return adminOnlyVars, nil
+	return adminOnlyVars
 }
 
 // GetUnrestrictedVars returns non-restricted and non-admin only vars until EVG-16045.
