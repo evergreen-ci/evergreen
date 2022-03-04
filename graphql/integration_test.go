@@ -1,4 +1,4 @@
-package graphql_test
+package graphql
 
 // This test takes a specification and runs GraphQL queries, comparing the output of the query to what is expected.
 // To add a new test:
@@ -16,7 +16,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -116,11 +115,6 @@ type spec struct {
 	Tests []test                     `json:"tests"`
 }
 
-type test struct {
-	QueryFile string          `json:"query_file"`
-	Result    json.RawMessage `json:"result"`
-}
-
 func (s *spec) SetupData(db mongo.Database) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
@@ -133,9 +127,4 @@ func (s *spec) SetupData(db mongo.Database) error {
 		catcher.Add(err)
 	}
 	return catcher.Resolve()
-}
-
-// escapeGQLQuery replaces literal newlines with '\n' and literal double quotes with '\"'
-func escapeGQLQuery(in string) string {
-	return strings.Replace(strings.Replace(in, "\n", "\\n", -1), "\"", "\\\"", -1)
 }
