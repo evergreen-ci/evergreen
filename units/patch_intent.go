@@ -502,26 +502,13 @@ func (j *patchIntentProcessor) getPreviousPatchFailures(project *model.Project) 
 
 	var res []patch.VariantTasks
 
-	grip.Info(message.Fields{
-		"message":       "MALIK",
-		"previousPatch": previousPatch,
-	})
-
 	if previousPatch.Status == evergreen.PatchFailed {
 		for _, vt := range previousPatch.VariantsTasks {
 			failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(previousPatch.Version, vt.Variant)))
-			grip.Info(message.Fields{
-				"message":     "MALIK",
-				"failedTasks": failedTasks,
-			})
 			if err != nil {
 				return nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
 			}
 			tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
-			grip.Info(message.Fields{
-				"message":               "MALIK",
-				"tasksInProjectVariant": tasksInProjectVariant,
-			})
 
 			failedTaskNames := make([]string, 0, len(failedTasks))
 			for _, failedTask := range failedTasks {
@@ -539,14 +526,6 @@ func (j *patchIntentProcessor) getPreviousPatchFailures(project *model.Project) 
 					}
 				}
 			}
-			grip.Info(message.Fields{
-				"message":                      "MALIK",
-				"displayTasksInProjectVariant": displayTasksInProjectVariant,
-			})
-			grip.Info(message.Fields{
-				"message":      "MALIK",
-				"displayTasks": displayTasks,
-			})
 
 			// I want the subset of vt.tasks that exists in tasksForVariant
 			tasks := utility.StringSliceIntersection(tasksInProjectVariant, failedTaskNames)
