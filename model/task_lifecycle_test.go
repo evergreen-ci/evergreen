@@ -1564,6 +1564,9 @@ func TestAbortTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldEqual, false)
 			So(testTask.Aborted, ShouldEqual, true)
+			testVersion, err := VersionFindOneId(testTask.Version)
+			So(err, ShouldBeNil)
+			So(testVersion.Aborted, ShouldEqual, utility.TruePtr())
 		})
 		Convey("a task that is finished should error when aborting", func() {
 			So(AbortTask(finishedTask.Id, userName), ShouldNotBeNil)

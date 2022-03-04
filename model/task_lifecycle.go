@@ -344,6 +344,19 @@ func AbortTask(taskId, caller string) error {
 	if err = SetActiveState(t, caller, false); err != nil {
 		return err
 	}
+
+	v, err := VersionFindOneId(t.Version)
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		return errors.Errorf("version '%s' doesn't exist", t.Version)
+	}
+	err = v.SetAborted()
+	if err != nil {
+		return err
+	}
+
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
 	return t.SetAborted(task.AbortInfo{User: caller})
 }
