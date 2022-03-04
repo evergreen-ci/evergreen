@@ -122,8 +122,8 @@ func (c *AmboyConfig) Set() error {
 }
 
 const (
-	// DefaultAmboyQueueName is the default name prefix for the Amboy remote
-	// queue.
+	// DefaultAmboyQueueName is the default namespace prefix for the Amboy
+	// remote queue.
 	DefaultAmboyQueueName = "evg.service"
 
 	defaultLogBufferingDuration                  = 20
