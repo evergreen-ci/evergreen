@@ -77,7 +77,7 @@ func populateMainlineCommits(t *testing.T) {
 }
 
 func TestMainlineCommits(t *testing.T) {
-	setupPermissions(t, &AtomicGraphQLState{})
+	setupPermissions(t)
 	populateMainlineCommits(t)
 	config := New("/graphql")
 	assert.NotNil(t, config)

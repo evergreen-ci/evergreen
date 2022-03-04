@@ -53,9 +53,9 @@ type AtomicGraphQLState struct {
 }
 
 const apiUser = "testuser"
+const apiKey = "testapikey"
 
 func setup(t *testing.T, state *AtomicGraphQLState) {
-	const apiKey = "testapikey"
 	const slackUsername = "testslackuser"
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
