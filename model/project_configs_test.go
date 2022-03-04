@@ -17,7 +17,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	pc, err := CreateProjectConfig([]byte(projYml))
+	pc, err := CreateProjectConfig([]byte(projYml), "")
 	assert.Nil(t, err)
 	assert.Nil(t, pc)
 
@@ -37,7 +37,7 @@ commit_queue_aliases:
     variant: ubuntu1604
 
 `
-	pc, err = CreateProjectConfig([]byte(projYml))
+	pc, err = CreateProjectConfig([]byte(projYml), "")
 	assert.Nil(t, err)
 	assert.NotNil(t, pc)
 	assert.Equal(t, "BF", pc.BuildBaronSettings.TicketCreateProject)

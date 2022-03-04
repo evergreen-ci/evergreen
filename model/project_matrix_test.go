@@ -41,7 +41,7 @@ buildvariants:
       set:
         tags: "gotcha_boy"
 `
-			p, err := createIntermediateProject([]byte(axes), false)
+			p, err := createIntermediateProject([]byte(axes), true)
 			So(err, ShouldBeNil)
 			axis := p.Axes[0]
 			So(axis.Id, ShouldEqual, "os")
