@@ -13,28 +13,27 @@ import (
 )
 
 func TestMakeTicket(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, build.Collection, model.ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, build.Collection, model.ProjectRefCollection))
 	t1 := task.Task{
 		Id:      "t1",
 		Version: "v",
 		Project: "proj",
 		BuildId: "b",
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t, t1.Insert())
 	v := model.Version{
 		Id:       "v",
 		Revision: "1234567890",
 	}
-	assert.NoError(v.Insert())
+	assert.NoError(t, v.Insert())
 	b := build.Build{
 		Id: "b",
 	}
-	assert.NoError(b.Insert())
+	assert.NoError(t, b.Insert())
 	p := model.ProjectRef{
 		Identifier: "proj",
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(t, p.Insert())
 
 	evgSettings := evergreen.Settings{
 		Ui: evergreen.UIConfig{
@@ -43,14 +42,14 @@ func TestMakeTicket(t *testing.T) {
 	}
 
 	n, err := makeNotification(&evgSettings, "MCI", &t1)
-	assert.NoError(err)
-	assert.NotNil(n)
-	assert.EqualValues(event.JIRAIssueSubscriber{
+	assert.NoError(t, err)
+	assert.NotNil(t, n)
+	assert.EqualValues(t, event.JIRAIssueSubscriber{
 		Project:   "MCI",
 		IssueType: jiraIssueType,
 	}, n.Subscriber.Target)
 	// test that creating another ticket creates another notification
 	n, err = makeNotification(&evgSettings, "MCI", &t1)
-	assert.NoError(err)
-	assert.NotNil(n)
+	assert.NoError(t, err)
+	assert.NotNil(t, n)
 }

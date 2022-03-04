@@ -26,8 +26,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func TestQueries(t *testing.T, serverURL string) {
-	f, err := ioutil.ReadFile("integration_spec.json")
+func TestQueries(t *testing.T, serverURL, pathToTests string) {
+	f, err := ioutil.ReadFile(filepath.Join(pathToTests, "integration_spec.json"))
 	require.NoError(t, err)
 	var spec spec
 	err = json.Unmarshal(f, &spec)
@@ -36,7 +36,7 @@ func TestQueries(t *testing.T, serverURL string) {
 
 	for _, testCase := range spec.Tests {
 		singleTest := func(t *testing.T) {
-			f, err := ioutil.ReadFile(filepath.Join("testdata", testCase.QueryFile))
+			f, err := ioutil.ReadFile(filepath.Join(pathToTests, "testdata", testCase.QueryFile))
 			require.NoError(t, err)
 			jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 			body := bytes.NewBuffer([]byte(jsonQuery))

@@ -177,12 +177,12 @@ func escapeGQLQuery(in string) string {
 	return strings.Replace(strings.Replace(in, "\n", "\\n", -1), "\"", "\\\"", -1)
 }
 
-func MakeTestsInDirectory(state *AtomicGraphQLState) func(t *testing.T) {
+func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t *testing.T) {
 	return func(t *testing.T) {
-		dataFile, err := ioutil.ReadFile(filepath.Join("tests", state.Directory, "data.json"))
+		dataFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "data.json"))
 		require.NoError(t, err)
 
-		resultsFile, err := ioutil.ReadFile(filepath.Join("tests", state.Directory, "results.json"))
+		resultsFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "results.json"))
 		require.NoError(t, err)
 
 		var testData map[string]json.RawMessage
@@ -211,7 +211,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState) func(t *testing.T) {
 		setup(t, state)
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
-				f, err := ioutil.ReadFile(filepath.Join("tests", state.Directory, "queries", testCase.QueryFile))
+				f, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
 				require.NoError(t, err)
 				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 				body := bytes.NewBuffer([]byte(jsonQuery))
