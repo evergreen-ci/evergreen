@@ -182,6 +182,10 @@ func (self *Version) SetNotAborted() error {
 
 }
 
+func (self *Version) IsAborted() bool {
+	return utility.FromBoolPtr(self.Aborted)
+}
+
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
 }
