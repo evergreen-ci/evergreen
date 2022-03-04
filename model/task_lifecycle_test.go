@@ -2089,10 +2089,15 @@ buildvariants:
    stepback: false
 `
 		ver := &Version{
-			Id:     "version_id",
-			Config: config,
+			Id:         "version_id",
+			Identifier: "p1",
+			Config:     config,
 		}
 		So(ver.Insert(), ShouldBeNil)
+		projRef := &ProjectRef{
+			Id: "p1",
+		}
+		So(projRef.Insert(), ShouldBeNil)
 
 		Convey("if the task does not override the setting", func() {
 			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: "sample", Version: ver.Id}
@@ -2775,8 +2780,12 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, ProjectRefCollection))
 
+	projRef := &ProjectRef{
+		Id: "sample",
+	}
+	require.NoError(projRef.Insert())
 	v := &Version{
 		Id:         "sample_version",
 		Identifier: "sample",
