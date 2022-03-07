@@ -23,6 +23,8 @@ import (
 
 type projectValidator func(*model.Project) ValidationErrors
 
+type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
+
 type projectSettingsValidator func(*model.Project, *model.ProjectRef) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
@@ -135,6 +137,13 @@ var projectErrorValidators = []projectValidator{
 	validateAliases,
 }
 
+// Functions used to validate the syntax of project configs representing properties found on the project page.
+var projectConfigErrorValidators = []projectConfigValidator{
+	validateProjectConfigAliases,
+	validateProjectConfigPlugins,
+	validateProjectConfigPeriodicBuilds,
+}
+
 // Functions used to validate the semantics of a project configuration file.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
@@ -234,6 +243,34 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
+	return validationErrs
+}
+
+func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	if len(patchedProjectConfig) <= 0 {
+		return validationErrs
+	}
+	projectConfig, err := model.CreateProjectConfig([]byte(patchedProjectConfig))
+	if err != nil {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: fmt.Sprintf("Error unmarshalling patched project config: %s", err.Error()),
+		})
+		return validationErrs
+	}
+	return CheckProjectConfigErrors(projectConfig)
+}
+
+// verify that the project configuration syntax is valid
+func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	if projectConfig == nil {
+		return validationErrs
+	}
+	for _, projectConfigErrorValidator := range projectConfigErrorValidators {
+		validationErrs = append(validationErrs,
+			projectConfigErrorValidator(projectConfig)...)
+	}
 	return validationErrs
 }
 
@@ -385,6 +422,56 @@ func dependencyCycleExists(node model.TVPair, allNodes []model.TVPair, visited m
 
 	// no cycle found
 	return nil
+}
+
+func validateProjectConfigPeriodicBuilds(pc *model.ProjectConfig) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, periodicBuild := range pc.PeriodicBuilds {
+		if err := periodicBuild.Validate(); err != nil {
+			validationErrs = append(validationErrs, ValidationError{
+				Message: errors.Wrap(err, "error validating periodic builds").Error(),
+				Level:   Error,
+			})
+		}
+	}
+	return validationErrs
+}
+
+func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
+	errs := []string{}
+	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.GitHubChecksAliases, "Github Checks Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(pc.GitTagAliases, "Git Tag Aliases")...)
+
+	validationErrs := ValidationErrors{}
+	for _, errorMsg := range errs {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: fmt.Sprintf("error validating aliases: %s", errorMsg),
+			Level:   Error,
+		})
+	}
+	return validationErrs
+}
+
+func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
+	errs := ValidationErrors{}
+	annotationSettings := pc.TaskAnnotationSettings
+	var webhook *evergreen.WebHook
+	if annotationSettings != nil {
+		webhook = &annotationSettings.FileTicketWebhook
+	}
+	err := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook)
+	if err != nil {
+		errs = append(errs,
+			ValidationError{
+				Message: errors.Wrap(err, "error validating build baron config").Error(),
+				Level:   Error,
+			},
+		)
+	}
+	return errs
 }
 
 func validateAliases(p *model.Project) ValidationErrors {

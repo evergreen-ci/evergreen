@@ -407,17 +407,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 }
 
 func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
-	opts := queue.DefaultMongoDBOptions()
-	opts.URI = e.settings.Database.Url
-	opts.DB = e.settings.Amboy.DB
-	opts.Collection = e.settings.Amboy.Name
-	opts.Priority = e.settings.Amboy.RequireRemotePriority
-	opts.SkipQueueIndexBuilds = true
-	opts.SkipReportingIndexBuilds = true
-	opts.UseGroups = true
-	opts.GroupName = e.settings.Amboy.Name
-	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
-	opts.Client = e.client
+	opts := e.getRemoteQueueGroupDBOptions()
 
 	retryOpts := e.settings.Amboy.Retry.RetryableQueueOptions()
 	queueOpts := queue.MongoDBQueueOptions{
@@ -428,7 +418,8 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	}
 
 	remoteQueueGroupOpts := queue.MongoDBQueueGroupOptions{
-		Queue:                     queueOpts,
+		DefaultQueue:              queueOpts,
+		PerQueue:                  e.getNamedRemoteQueueOptions(),
 		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
 		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
 		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
@@ -445,6 +436,45 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
 	})
 
 	return nil
+}
+
+func (e *envState) getRemoteQueueGroupDBOptions() queue.MongoDBOptions {
+	opts := queue.DefaultMongoDBOptions()
+	opts.URI = e.settings.Database.Url
+	opts.DB = e.settings.Amboy.DB
+	opts.Collection = e.settings.Amboy.Name
+	opts.Priority = e.settings.Amboy.RequireRemotePriority
+	opts.SkipQueueIndexBuilds = true
+	opts.SkipReportingIndexBuilds = true
+	opts.UseGroups = true
+	opts.GroupName = e.settings.Amboy.Name
+	opts.LockTimeout = time.Duration(e.settings.Amboy.LockTimeoutMinutes) * time.Minute
+	opts.Client = e.client
+	return opts
+}
+
+func (e *envState) getNamedRemoteQueueOptions() map[string]queue.MongoDBQueueOptions {
+	perQueueOpts := map[string]queue.MongoDBQueueOptions{}
+	for _, namedQueue := range e.settings.Amboy.NamedQueues {
+		dbOpts := e.getRemoteQueueGroupDBOptions()
+		if namedQueue.SampleSize != 0 {
+			dbOpts.SampleSize = namedQueue.SampleSize
+		}
+		if namedQueue.LockTimeoutSeconds != 0 {
+			dbOpts.LockTimeout = time.Duration(namedQueue.LockTimeoutSeconds) * time.Second
+		}
+		var numWorkers int
+		if namedQueue.NumWorkers != 0 {
+			numWorkers = namedQueue.NumWorkers
+		} else {
+			numWorkers = e.settings.Amboy.GroupDefaultWorkers
+		}
+		perQueueOpts[namedQueue.Name] = queue.MongoDBQueueOptions{
+			NumWorkers: utility.ToIntPtr(numWorkers),
+			DB:         &dbOpts,
+		}
+	}
+	return perQueueOpts
 }
 
 func (e *envState) createNotificationQueue(ctx context.Context) error {

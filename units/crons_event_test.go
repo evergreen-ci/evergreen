@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -24,8 +25,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -41,9 +40,6 @@ func TestEventCrons(t *testing.T) {
 	s := &cronsEventSuite{}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
-	env := evergreen.GetEnvironment()
-	require.NoError(t, env.RemoteQueue().Start(s.ctx))
-	s.env = env
 	suite.Run(t, s)
 }
 
@@ -52,7 +48,11 @@ func (s *cronsEventSuite) TearDownSuite() {
 }
 
 func (s *cronsEventSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection,
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.ctx))
+	s.env = env
+
+	s.Require().NoError(db.ClearCollections(event.AllLogCollection, evergreen.ConfigCollection, notification.Collection,
 		event.SubscriptionsCollection, patch.Collection, model.ProjectRefCollection))
 
 	events := []event.EventLogEntry{
@@ -130,9 +130,9 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	// degraded mode shouldn't process events
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	s.NoError(logger.LogEvent(&e))
-	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, s.env.RemoteQueue()))
+	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
 
-	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	out, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(out, 1)
 }
@@ -151,9 +151,9 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	s.NoError(notification.InsertMany(s.n...))
 
-	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
+	startingStats := s.env.LocalQueue().Stats(ctx)
 
-	s.NoError(dispatchNotifications(ctx, s.n, s.env.RemoteQueue(), &flags))
+	s.NoError(dispatchNotifications(ctx, s.n, s.env.LocalQueue(), &flags))
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
@@ -162,7 +162,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 		s.Equal("sender disabled", out[i].Error)
 	}
 
-	stats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
+	stats := s.env.LocalQueue().Stats(ctx)
 	s.Equal(startingStats.Running, stats.Running)
 	s.Equal(startingStats.Blocked, stats.Blocked)
 	s.Equal(startingStats.Completed, stats.Completed)
@@ -274,15 +274,13 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 	go httpServer(ln, handler)
 
-	env := evergreen.GetEnvironment()
-	q := env.LocalQueue()
-	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, q))
+	q := s.env.RemoteQueue()
+	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, q))
 
-	grip.Info("waiting for dispatches")
+	// Wait for event notifier to finish.
 	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
-	grip.Info("waiting for senders")
-	amboy.Wait(s.ctx, q)
-	grip.Info("senders are done")
+	// Wait for event send to finish.
+	amboy.WaitInterval(s.ctx, q, 10*time.Millisecond)
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
@@ -294,60 +292,14 @@ func (s *cronsEventSuite) TestEndToEnd() {
 
 func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
 	s.NoError(notification.InsertMany(s.n...))
-	env := evergreen.GetEnvironment()
 	flags, err := evergreen.GetServiceFlags()
 	s.NoError(err)
-	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
+	origStats := s.env.LocalQueue().Stats(s.ctx)
 
-	s.NoError(dispatchUnprocessedNotifications(s.ctx, env.LocalQueue(), flags))
+	s.NoError(dispatchUnprocessedNotifications(s.ctx, s.env.LocalQueue(), flags))
 
-	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
+	stats := s.env.LocalQueue().Stats(s.ctx)
 	s.Equal(origStats.Total+6, stats.Total)
-}
-
-func (s *cronsEventSuite) TestBatchingCanCount() {
-	env := evergreen.GetEnvironment()
-	notifSettings := evergreen.NotifyConfig{
-		EventProcessingLimit: 2,
-	}
-	s.NoError(notifSettings.Set())
-	events := []event.EventLogEntry{
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-	}
-	logger := event.NewDBEventLogger(event.AllLogCollection)
-
-	for _, evt := range events {
-		s.NoError(logger.LogEvent(&evt))
-	}
-	origStats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
-	s.NoError(PopulateEventAlertProcessing(s.env)(s.ctx, env.LocalQueue()))
-
-	stats := evergreen.GetEnvironment().LocalQueue().Stats(s.ctx)
-	s.Equal(origStats.Total+3, stats.Total)
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
@@ -422,8 +374,4 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		"signature": string(sig),
 		"body":      string(body),
 	})
-}
-
-func TestChecksum(t *testing.T) {
-	assert.Equal(t, "19cc02f26df43cc571bc9ed7b0c4d29224a3ec229529221725ef76d021c8326f", sha256sum([]string{"abc", "def", "ghi"}))
 }

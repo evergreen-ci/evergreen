@@ -729,6 +729,8 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	// validate the project
 	verrs := validator.CheckProjectErrors(projectInfo.Project, true)
 	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref)...)
+	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
+	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have errors in the project.
 		// Format them, as we need to store + display them to the user
@@ -1187,12 +1189,11 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrapf(err, "error committing transaction for version '%s'", v.Id)
 		}
 		grip.Info(message.Fields{
-			"message":         "successfully created version",
-			"version":         v.Id,
-			"hash":            v.Revision,
-			"project":         v.Identifier,
-			"tasks_to_create": tasksToCreate,
-			"runner":          RunnerName,
+			"message": "successfully created version",
+			"version": v.Id,
+			"hash":    v.Revision,
+			"project": v.Identifier,
+			"runner":  RunnerName,
 		})
 		return nil
 	}

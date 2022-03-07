@@ -181,9 +181,10 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		expiration = evergreen.SpawnHostNoExpirationDuration
 	}
 	hostOptions := host.CreateOptions{
+		Distro:               d,
 		ProvisionOptions:     so.ProvisionOptions,
 		UserName:             so.UserName,
-		ExpirationDuration:   &expiration,
+		ExpirationTime:       time.Now().Add(expiration),
 		UserHost:             true,
 		InstanceTags:         so.InstanceTags,
 		InstanceType:         so.InstanceType,
@@ -195,7 +196,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		Region:               so.Region,
 	}
 
-	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
+	intentHost := host.NewIntent(hostOptions)
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
@@ -324,13 +325,7 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 	if err := host.PastMaxExpiration(extendBy); err != nil {
 		return time.Time{}, err
 	}
-
 	newExp := host.ExpirationTime.Add(extendBy)
-	remainingDuration := newExp.Sub(time.Now()) //nolint
-	if remainingDuration > evergreen.MaxSpawnHostExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
-	}
-
 	return newExp, nil
 }
 

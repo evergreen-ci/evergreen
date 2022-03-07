@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,18 +55,30 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
-	h := &generateHandler{sc: &data.MockConnector{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(task.Collection))
+	task1 := task.Task{
+		Id: "task1",
+	}
+	require.NoError(t, task1.Insert())
+	h := &generateHandler{sc: &data.DBConnector{}}
+	h.taskID = "task1"
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})
 	assert.Equal(t, r.Status(), http.StatusOK)
 }
 
 func TestGeneratePollParse(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
-
-	sc := &data.MockConnector{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
+
+	sc := &data.DBConnector{}
 
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
@@ -76,7 +89,6 @@ func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, client.Connect(ctx))
 	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
@@ -88,9 +100,23 @@ func TestGeneratePollParse(t *testing.T) {
 func TestGeneratePollRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sc := &data.MockConnector{}
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	sc := &data.DBConnector{}
+	require.NoError(t, db.ClearCollections(task.Collection))
+	tasks := []task.Task{
+		{
+			Id:             "1",
+			GeneratedTasks: true,
+		},
+		{
+			Id: "2",
+		},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
 
-	env := evergreen.GetEnvironment()
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)

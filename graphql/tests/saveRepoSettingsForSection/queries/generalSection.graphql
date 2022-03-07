@@ -14,8 +14,8 @@ mutation {
             remotePath
             spawnHostScriptPath ## overwritten
         }
-        vars {
-            vars ## should be unchanged
+        vars { ## should be unchanged
+            vars
             privateVars
         }
     }

@@ -3,9 +3,16 @@ package model
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -216,11 +223,51 @@ func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
 	return restrictedVars
 }
 
+// GetAdminOnlyVars currently returns admin only variables for mainline commits and project admins.
+// Will change to GetVars on EVG-16045 after removing restricted vars.
+func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string {
+	adminOnlyVars := map[string]string{}
+	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
+		for k, v := range projectVars.Vars {
+			if projectVars.AdminOnlyVars[k] {
+				adminOnlyVars[k] = v
+			}
+		}
+	} else if t.ActivatedBy != "" {
+		u, err := user.FindOneById(t.ActivatedBy)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
+				"task_id": t.Id,
+			}))
+			return adminOnlyVars
+		}
+		if u != nil {
+			isAdmin := u.HasPermission(gimlet.PermissionOpts{
+				Resource:      t.Project,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionProjectSettings,
+				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+			})
+			if isAdmin {
+				for k, v := range projectVars.Vars {
+					if projectVars.AdminOnlyVars[k] {
+						adminOnlyVars[k] = v
+					}
+				}
+			}
+		}
+	}
+
+	return adminOnlyVars
+}
+
+// GetUnrestrictedVars returns non-restricted and non-admin only vars until EVG-16045.
 func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
 	safeVars := map[string]string{}
 
 	for k, v := range projectVars.Vars {
-		if !projectVars.RestrictedVars[k] {
+		if !projectVars.RestrictedVars[k] && !projectVars.AdminOnlyVars[k] {
 			safeVars[k] = v
 		}
 	}
@@ -231,6 +278,7 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
 		Vars:           map[string]string{},
 		PrivateVars:    map[string]bool{},
+		AdminOnlyVars:  map[string]bool{},
 		RestrictedVars: projectVars.RestrictedVars,
 	}
 	if projectVars == nil {
@@ -239,6 +287,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res.Id = projectVars.Id
 	if projectVars.Vars == nil {
 		return res
+	}
+	if projectVars.AdminOnlyVars == nil {
+		res.AdminOnlyVars = map[string]bool{}
 	}
 	if projectVars.PrivateVars == nil {
 		res.PrivateVars = map[string]bool{}
@@ -251,7 +302,11 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		} else {
 			res.Vars[k] = v
 		}
+		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
+			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+		}
 	}
+
 	return res
 }
 

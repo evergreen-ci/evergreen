@@ -12,7 +12,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 type DBPatchIntentConnector struct{}
@@ -64,25 +63,6 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 		"intent_type": intent.GetType(),
 		"intent_id":   intent.ID(),
 	})
-
-	return nil
-}
-
-type MockPatchIntentKey struct {
-	intentType string
-	msgID      string
-}
-
-type MockPatchIntentConnector struct {
-	CachedIntents map[MockPatchIntentKey]patch.Intent
-}
-
-func (p *MockPatchIntentConnector) AddPatchIntent(newIntent patch.Intent, _ amboy.Queue) error {
-	key := MockPatchIntentKey{newIntent.GetType(), newIntent.ID()}
-	if _, ok := p.CachedIntents[key]; ok {
-		return errors.New("intent with msg_id already exists")
-	}
-	p.CachedIntents[key] = newIntent
 
 	return nil
 }

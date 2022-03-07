@@ -6,89 +6,81 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
 // StatusSuite enables testing for version related routes.
 type StatusSuite struct {
-	sc   *data.MockConnector
-	data data.MockStatusConnector
-	h    *recentTasksGetHandler
+	sc *data.DBConnector
+	h  *recentTasksGetHandler
 
 	suite.Suite
 }
 
 func TestStatusSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatusSuite))
 }
 func (s *StatusSuite) SetupSuite() {
-	s.data = data.MockStatusConnector{
-		CachedTasks: []task.Task{
-			{
-				Id:     "task1",
-				Status: evergreen.TaskUndispatched,
-			},
-			{
-				Id:     "task2",
-				Status: evergreen.TaskStarted,
-			},
-			{
-				Id:     "task3",
-				Status: evergreen.TaskStarted,
-			},
-			{
-				Id:     "task4",
-				Status: evergreen.TaskStarted,
-			},
-			{
-				Id:     "task5",
-				Status: evergreen.TaskFailed,
-				Details: apimodels.TaskEndDetail{
-					Type:     "system",
-					TimedOut: true,
-				},
-			},
-		},
-		CachedResults: &task.ResultCounts{
-			Total:              1,
-			Inactive:           2,
-			Unstarted:          3,
-			Started:            4,
-			Succeeded:          5,
-			Failed:             6,
-			SystemFailed:       7,
-			SystemUnresponsive: 8,
-			SystemTimedOut:     9,
-			TestTimedOut:       10,
-		},
-		CachedResultCountList: &model.APIRecentTaskStatsList{
-			"total": model.APIStatList{
-				{Name: utility.ToStringPtr("d1"), Count: 3},
-				{Name: utility.ToStringPtr("d2"), Count: 2},
-			},
-			evergreen.TaskInactive: model.APIStatList{
-				{Name: utility.ToStringPtr("d1"), Count: 2},
-				{Name: utility.ToStringPtr("d2"), Count: 1},
-			},
-			evergreen.TaskSucceeded: model.APIStatList{
-				{Name: utility.ToStringPtr("d1"), Count: 1},
-				{Name: utility.ToStringPtr("d2"), Count: 1},
-			},
-		},
-	}
-	s.sc = &data.MockConnector{
-		MockStatusConnector: s.data,
+	s.sc = &data.DBConnector{
+		DBStatusConnector: data.DBStatusConnector{},
 	}
 }
 
 func (s *StatusSuite) SetupTest() {
+	s.NoError(db.Clear(task.Collection))
+	tasks := []task.Task{
+		{
+			Id:         "task1",
+			Status:     evergreen.TaskUndispatched,
+			FinishTime: time.Now().Add(time.Second),
+			DistroId:   "d2",
+		},
+		{
+			Id:         "task2",
+			Status:     evergreen.TaskStarted,
+			FinishTime: time.Now().Add(time.Second),
+			DistroId:   "d2",
+		},
+		{
+			Id:         "task3",
+			Status:     evergreen.TaskStarted,
+			FinishTime: time.Now().Add(time.Second),
+			DistroId:   "d3",
+		},
+		{
+			Id:         "task4",
+			Status:     evergreen.TaskStarted,
+			FinishTime: time.Now().Add(time.Second),
+			DistroId:   "d3",
+		},
+		{
+			Id:     "task5",
+			Status: evergreen.TaskFailed,
+			Details: apimodels.TaskEndDetail{
+				Type:     "system",
+				TimedOut: true,
+			},
+			FinishTime: time.Now().Add(time.Second),
+			DistroId:   "d3",
+		},
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+	}
 	s.h = &recentTasksGetHandler{sc: s.sc}
 }
 
@@ -185,16 +177,10 @@ func (s *StatusSuite) TestExecuteDefault() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
 	res := resp.Data().(*model.APIRecentTaskStats)
-	s.Equal(1, res.Total)
-	s.Equal(2, res.Inactive)
-	s.Equal(3, res.Unstarted)
-	s.Equal(4, res.Started)
-	s.Equal(5, res.Succeeded)
-	s.Equal(6, res.Failed)
-	s.Equal(7, res.SystemFailed)
-	s.Equal(8, res.SystemUnresponsive)
-	s.Equal(9, res.SystemTimedOut)
-	s.Equal(10, res.TestTimedOut)
+	s.Equal(5, res.Total)
+	s.Equal(3, res.Started)
+	s.Equal(1, res.Inactive)
+	s.Equal(1, res.SystemTimedOut)
 }
 
 func (s *StatusSuite) TestExecuteVerbose() {
@@ -219,20 +205,18 @@ func (s *StatusSuite) TestExecuteByDistro() {
 	s.NotNil(resp)
 	res := *resp.Data().(*model.APIRecentTaskStatsList)
 
-	s.Equal(utility.ToStringPtr("d1"), res["total"][0].Name)
-	s.Equal(3, res["total"][0].Count)
-	s.Equal(utility.ToStringPtr("d2"), res["total"][1].Name)
-	s.Equal(2, res["total"][1].Count)
+	s.Equal(utility.ToStringPtr("d3"), res["totals"][0].Name)
+	s.Equal(3, res["totals"][0].Count)
+	s.Equal(utility.ToStringPtr("d2"), res["totals"][1].Name)
+	s.Equal(2, res["totals"][1].Count)
 
-	s.Equal(utility.ToStringPtr("d1"), res[evergreen.TaskInactive][0].Name)
-	s.Equal(2, res[evergreen.TaskInactive][0].Count)
-	s.Equal(utility.ToStringPtr("d2"), res[evergreen.TaskInactive][1].Name)
-	s.Equal(1, res[evergreen.TaskInactive][1].Count)
+	s.Equal(utility.ToStringPtr("d3"), res[evergreen.TaskStarted][0].Name)
+	s.Equal(2, res[evergreen.TaskStarted][0].Count)
+	s.Equal(utility.ToStringPtr("d2"), res[evergreen.TaskStarted][1].Name)
+	s.Equal(1, res[evergreen.TaskStarted][1].Count)
 
-	s.Equal(utility.ToStringPtr("d1"), res[evergreen.TaskSucceeded][0].Name)
-	s.Equal(1, res[evergreen.TaskSucceeded][0].Count)
-	s.Equal(utility.ToStringPtr("d2"), res[evergreen.TaskSucceeded][1].Name)
-	s.Equal(1, res[evergreen.TaskSucceeded][1].Count)
+	s.Equal(utility.ToStringPtr("d2"), res[evergreen.TaskUndispatched][0].Name)
+	s.Equal(1, res[evergreen.TaskUndispatched][0].Count)
 }
 
 func (s *StatusSuite) TaskTaskType() {

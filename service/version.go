@@ -221,7 +221,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 && projCtx.Version.Requester == evergreen.PatchVersionRequester {
+	if len(uis.Settings.Ui.UIv2Url) > 0 && evergreen.IsPatchRequester(projCtx.Version.Requester) {
 		newUILink = fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -256,7 +256,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	httpStatus, err := graphql.ModifyVersion(*projCtx.Version, *user, projCtx.ProjectRef, modifications)
+	httpStatus, err := graphql.ModifyVersion(*projCtx.Version, *user, modifications)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return

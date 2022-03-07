@@ -44,7 +44,7 @@ func TestGetLatestExecutions(t *testing.T) {
 
 func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
-	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234"}
+	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float32(91.23)}
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "annie.black"))
 
 	annotation, err := FindOneByTaskIdAndExecution("t1", 0)
@@ -55,6 +55,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation.Issues[0].Source)
 	assert.Equal(t, UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
+	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "not.annie.black"))
 	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
@@ -62,6 +63,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.Issues, 2)
 	assert.NotNil(t, annotation.Issues[1].Source)
+	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
 }
 

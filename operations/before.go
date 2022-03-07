@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -94,6 +95,30 @@ var (
 		}
 
 		return catcher.Resolve()
+	}
+
+	// autoUpdateCLI is to be run before commonly used command line functions and will automatically update and install a newer
+	// CLI version if one is found, and then run the command on that new CLI version.
+	// Some functions that one would expect to return quickly have been omitted from having this as a 'before' function since downloading and installing
+	// takes time that would be cumbersome to the user (e.g. list functions, delete functions).
+	autoUpdateCLI = func(c *cli.Context) error {
+		confPath := c.String("conf")
+		// we do not return an error in case of failure to find a valid config path because we do not want to block the underlying CLI operation.
+		if confPath == "" {
+			return nil
+		}
+		conf, err := NewClientSettings(confPath)
+		if err != nil {
+			grip.Errorf("Problem loading configuration: %s", err.Error())
+		}
+		if conf != nil && conf.AutoUpgradeCLI {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if err = checkAndUpdateVersion(conf, ctx, true, false, true); err != nil {
+				grip.Errorf("Automatic CLI update failed! Continuing with command execution. Error: %s", err.Error())
+			}
+		}
+		return nil
 	}
 )
 

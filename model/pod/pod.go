@@ -6,7 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Pod represents a related collection of containers. This model holds metadata
@@ -18,9 +20,6 @@ type Pod struct {
 	Type Type `bson:"type" json:"type"`
 	// Status is the current state of the pod.
 	Status Status `bson:"status"`
-	// Secret is the shared secret between the server and the pod for
-	// authentication when the host is provisioned.
-	Secret Secret `bson:"secret" json:"secret"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
 	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
@@ -28,6 +27,110 @@ type Pod struct {
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
 	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
+	// RunningTask is the ID of the task currently running on the pod.
+	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
+}
+
+// TaskIntentPodOptions represents options to create an intent pod that runs
+// container tasks.
+type TaskIntentPodOptions struct {
+	// ID is the pod identifier. If unspecified, it defaults to a new BSON
+	// object ID.
+	ID string
+	// Secret is the shared secret value between the server and the pod for
+	// authentication when the host is provisioned. If unspecified, it defaults
+	// to a random string.
+	Secret string
+
+	// The remaining fields correspond to the ones in
+	// TaskContainerCreationOptions.
+
+	CPU            int
+	MemoryMB       int
+	OS             OS
+	Arch           Arch
+	WindowsVersion WindowsVersion
+	Image          string
+	WorkingDir     string
+	RepoUsername   string
+	RepoPassword   string
+}
+
+// Validate checks that the options to create a task intent pod are valid and
+// sets defaults if possible.
+func (o *TaskIntentPodOptions) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(o.CPU <= 0, "CPU must be a positive non-zero value")
+	catcher.NewWhen(o.MemoryMB <= 0, "memory must be a positive non-zero value")
+	catcher.Wrap(o.OS.Validate(), "invalid OS")
+	catcher.Wrap(o.Arch.Validate(), "invalid arch")
+	if o.OS == OSWindows {
+		catcher.Wrap(o.WindowsVersion.Validate(), "must specify a valid Windows version")
+	}
+	catcher.NewWhen(o.Image == "", "missing image")
+	catcher.NewWhen(o.WorkingDir == "", "missing working directory")
+
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	if o.ID == "" {
+		o.ID = primitive.NewObjectID().Hex()
+	}
+	if o.Secret == "" {
+		o.Secret = utility.RandomString()
+	}
+
+	return nil
+}
+
+const (
+	// PodIDEnvVar is the name of the environment variable containing the pod
+	// ID.
+	PodIDEnvVar = "POD_ID"
+	// PodIDEnvVar is the name of the environment variable containing the shared
+	// secret between the server and the pod.
+	PodSecretEnvVar = "POD_SECRET"
+)
+
+// NewTaskIntentPod creates a new intent pod to run container tasks from the
+// given initialization options.
+func NewTaskIntentPod(opts TaskIntentPodOptions) (*Pod, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid options")
+	}
+
+	p := Pod{
+		ID:     opts.ID,
+		Status: StatusInitializing,
+		Type:   TypeAgent,
+		TaskContainerCreationOpts: TaskContainerCreationOptions{
+			CPU:            opts.CPU,
+			MemoryMB:       opts.MemoryMB,
+			OS:             opts.OS,
+			Arch:           opts.Arch,
+			WindowsVersion: opts.WindowsVersion,
+			Image:          opts.Image,
+			WorkingDir:     opts.WorkingDir,
+			RepoUsername:   opts.RepoUsername,
+			RepoPassword:   opts.RepoPassword,
+		},
+		TimeInfo: TimeInfo{
+			Initializing: time.Now(),
+		},
+	}
+	p.TaskContainerCreationOpts.EnvVars = map[string]string{
+		PodIDEnvVar: opts.ID,
+	}
+	p.TaskContainerCreationOpts.EnvSecrets = map[string]Secret{
+		PodSecretEnvVar: {
+			Value:  opts.Secret,
+			Exists: utility.FalsePtr(),
+			Owned:  utility.TruePtr(),
+		},
+	}
+
+	return &p, nil
 }
 
 // Type is the type of pod.
@@ -247,7 +350,7 @@ type Secret struct {
 	// Value is the value of the secret. If the secret does not yet exist, it
 	// will be created; otherwise, this is just a cached copy of the actual
 	// value stored in the secrets storage service.
-	Value string `bson:"new_value,omitempty" json:"new_value,omitempty" yaml:"new_value,omitempty"`
+	Value string `bson:"value,omitempty" json:"value,omitempty" yaml:"value,omitempty"`
 	// Exists determines whether or not the secret already exists in the secrets
 	// storage service. If this is false, then a new secret will be stored.
 	Exists *bool `bson:"exists,omitempty" json:"exists,omitempty" yaml:"exists,omitempty"`
@@ -311,4 +414,14 @@ func (p *Pod) UpdateResources(info ResourceInfo) error {
 	p.Resources = info
 
 	return nil
+}
+
+// GetSecret returns the shared secret between the server and the pod. If the
+// secret is unset, this will return an error.
+func (p *Pod) GetSecret() (*Secret, error) {
+	s, ok := p.TaskContainerCreationOpts.EnvSecrets[PodSecretEnvVar]
+	if !ok {
+		return nil, errors.New("pod does not have a secret")
+	}
+	return &s, nil
 }

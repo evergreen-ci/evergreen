@@ -21,12 +21,22 @@ const (
 )
 
 var (
+	ActivatedTasksByDistroIndex = bson.D{
+		{Key: DistroIdKey, Value: 1},
+		{Key: StatusKey, Value: 1},
+		{Key: ActivatedKey, Value: 1},
+		{Key: PriorityKey, Value: 1},
+	}
+)
+
+var (
 	// BSON fields for the task struct
 	IdKey                       = bsonutil.MustHaveTag(Task{}, "Id")
 	SecretKey                   = bsonutil.MustHaveTag(Task{}, "Secret")
 	CreateTimeKey               = bsonutil.MustHaveTag(Task{}, "CreateTime")
 	DispatchTimeKey             = bsonutil.MustHaveTag(Task{}, "DispatchTime")
 	ScheduledTimeKey            = bsonutil.MustHaveTag(Task{}, "ScheduledTime")
+	ContainerAllocatedTimeKey   = bsonutil.MustHaveTag(Task{}, "ContainerAllocatedTime")
 	StartTimeKey                = bsonutil.MustHaveTag(Task{}, "StartTime")
 	FinishTimeKey               = bsonutil.MustHaveTag(Task{}, "FinishTime")
 	ActivatedTimeKey            = bsonutil.MustHaveTag(Task{}, "ActivatedTime")
@@ -45,6 +55,7 @@ var (
 	OverrideDependenciesKey     = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
 	NumDepsKey                  = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey              = bsonutil.MustHaveTag(Task{}, "DisplayName")
+	ExecutionPlatformKey        = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                   = bsonutil.MustHaveTag(Task{}, "HostId")
 	AgentVersionKey             = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                = bsonutil.MustHaveTag(Task{}, "Execution")
@@ -216,6 +227,19 @@ var (
 						"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
 					},
 					"then": evergreen.TaskTimedOut,
+				},
+				// TODO (PM-2620): Handle these statuses properly in the UI.
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerAllocated},
+					},
+					"then": evergreen.TaskContainerAllocated,
+				},
+				{
+					"case": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerUnallocated},
+					},
+					"then": evergreen.TaskContainerUnallocated,
 				},
 				// A task will be unscheduled if it is not activated
 				{
@@ -701,26 +725,51 @@ func BySubsetAborted(ids []string) bson.M {
 	}
 }
 
+// ByExecutionPlatform returns the query to find tasks matching the given
+// execution platform. If the empty string is given, the task is assumed to be
+// the default of ExecutionPlatformHost.
+func ByExecutionPlatform(platform ExecutionPlatform) bson.M {
+	switch platform {
+	case "", ExecutionPlatformHost:
+		return bson.M{
+			"$or": []bson.M{
+				{ExecutionPlatformKey: bson.M{"$exists": false}},
+				{ExecutionPlatformKey: platform},
+			},
+		}
+	case ExecutionPlatformContainer:
+		return bson.M{
+			ExecutionPlatformKey: platform,
+		}
+	default:
+		return bson.M{}
+	}
+}
+
 var (
 	IsDispatchedOrStarted = bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 	}
 )
 
-func scheduleableTasksQuery() bson.M {
-	return bson.M{
+func schedulableHostTasksQuery() bson.M {
+	q := bson.M{
 		ActivatedKey: true,
 		StatusKey:    evergreen.TaskUndispatched,
 
 		// Filter out tasks disabled by negative priority
 		PriorityKey: bson.M{"$gt": evergreen.DisabledTaskPriority},
-
+	}
+	q["$and"] = []bson.M{
+		ByExecutionPlatform(ExecutionPlatformHost),
 		// Filter tasks containing unattainable dependencies
-		"$or": []bson.M{
+		{"$or": []bson.M{
 			{bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true}},
 			{OverrideDependenciesKey: true},
-		},
+		}},
 	}
+
+	return q
 }
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
@@ -1482,6 +1531,18 @@ func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	)
 }
 
+func UpdateAllWithHint(query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	res, err := env.DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &adb.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
+}
+
 // Remove deletes the task of the given id from the database
 func Remove(id string) error {
 	return db.Remove(
@@ -1574,6 +1635,29 @@ func AbortTasksForVersion(versionId string, taskIds []string, caller string) err
 		}},
 	)
 	return err
+}
+
+// HasUnfinishedTaskForVersion returns true if there are any scheduled but
+// unfinished tasks matching the given conditions.
+func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
+	count, err := Count(
+		db.Query(bson.M{
+			VersionKey:      bson.M{"$in": versionIds},
+			DisplayNameKey:  taskName,
+			BuildVariantKey: variantName,
+			StatusKey:       bson.M{"$in": evergreen.TaskUncompletedStatuses},
+		}))
+	return count > 0, err
+}
+
+// FindTaskForVersion returns a task matching the given version and task info.
+func FindTaskForVersion(versionId, taskName, variantName string) (*Task, error) {
+	return FindOne(
+		db.Query(bson.M{
+			VersionKey:      versionId,
+			DisplayNameKey:  taskName,
+			BuildVariantKey: variantName,
+		}))
 }
 
 func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {

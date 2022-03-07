@@ -8,6 +8,7 @@ type Query {
   version(id: String!): Version!
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
+  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -99,6 +100,7 @@ type Mutation {
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
   attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
@@ -219,6 +221,7 @@ type Version {
   activated: Boolean
   taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+  buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
   isPatch: Boolean!
   patch: Patch
   childVersions: [Version]
@@ -250,6 +253,12 @@ type VersionTiming {
 type StatusCount {
   status: String!
   count: Int!
+}
+# Returns task counts grouped by status for a build variant
+type GroupedTaskStatusCount {
+  variant: String!
+  displayName: String!
+  statusCounts: [StatusCount!]!
 }
 
 input BuildVariantOptions {
@@ -552,6 +561,7 @@ input PeriodicBuildInput {
 
 input CommitQueueParamsInput {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String
   message: String
 }
@@ -615,6 +625,7 @@ input TaskSpecifierInput {
 input ProjectVarsInput {
   vars: StringMap
   privateVarsList: [String]
+  adminOnlyVarsList: [String]
 }
 
 input VariantTaskInput {
@@ -1091,6 +1102,7 @@ type Task {
   restarts: Int
   revision: String
   scheduledTime: Time
+  containerAllocatedTime: Time
   spawnHostLink: String
   startTime: Time
   status: String!
@@ -1112,6 +1124,12 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type GithubProjectConflicts {
+  commitQueueIdentifiers: [String!]
+  prTestingIdentifiers: [String!]
+  commitCheckIdentifiers: [String!]
 }
 
 type ProjectSettings {
@@ -1156,6 +1174,7 @@ type RepoEventLogEntry {
 type ProjectVars {
   vars: StringMap
   privateVars: [String]
+  adminOnlyVars: [String]
 }
 
 type ProjectAlias {
@@ -1272,7 +1291,6 @@ type Project {
   taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
-  useRepoSettings: Boolean!
   repoRefId: String!
 
   isFavorite: Boolean!
@@ -1352,12 +1370,14 @@ type PeriodicBuild {
 
 type CommitQueueParams {
   enabled: Boolean
+  requireSigned: Boolean
   mergeMethod: String!
   message: String!
 }
 
 type RepoCommitQueueParams {
   enabled: Boolean!
+  requireSigned: Boolean!
   mergeMethod: String!
   message: String!
 }

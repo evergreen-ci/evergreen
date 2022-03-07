@@ -324,7 +324,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	res := apimodels.ExpansionVars{
 		Vars:           map[string]string{},
 		RestrictedVars: map[string]string{},
-		AdminOnlyVars:  map[string]string{},
 		PrivateVars:    map[string]bool{},
 	}
 	if projectVars == nil {
@@ -336,7 +335,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	if projectVars.PrivateVars != nil {
 		res.PrivateVars = projectVars.PrivateVars
 	}
-
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -346,14 +344,23 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
 	}
-
+	for key, val := range projectVars.GetAdminOnlyVars(t) {
+		res.Vars[key] = val
+	}
 	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	params := append(projParams, v.Parameters...)
-	for _, param := range params {
+	for _, param := range projParams {
+		// If the key doesn't exist the value will default to "" anyway; this prevents
+		// an un-specified parameter from overwriting lower-priority expansions.
+		if param.Value != "" {
+			res.Vars[param.Key] = param.Value
+		}
+	}
+	for _, param := range v.Parameters {
+		// We will overwrite empty values here since these were explicitly user-specified.
 		res.Vars[param.Key] = param.Value
 	}
 
@@ -631,12 +638,13 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	project := &model.Project{}
+	var projectConfig *model.ProjectConfig
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
@@ -669,6 +677,9 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	errs = append(errs, validator.CheckProjectErrors(project, input.IncludeLong)...)
+	if projectConfig != nil {
+		errs = append(errs, validator.CheckProjectConfigErrors(projectConfig)...)
+	}
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)
@@ -794,7 +805,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(requireTaskSecret).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(requireTask).Handler(as.keyValPluginInc).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/manifest/load").Wrap(requireTask).Handler(as.manifestLoadHandler).Get()
-	app.Route().Version(2).Prefix("/task/{taskId}").Route("/s3Copy/s3Copy").Wrap(requireTaskSecret).Handler(as.s3copyPlugin).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/downstreamParams").Wrap(requireTask).Handler(as.SetDownstreamParams).Post()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/tags/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTagsForTask).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/json/history/{task_name}/{name}").Wrap(requireTask).Handler(as.getTaskJSONTaskHistory).Get()

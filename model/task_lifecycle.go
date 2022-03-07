@@ -118,25 +118,8 @@ func SetActiveState(t *task.Task, caller string, active bool) error {
 		}
 
 		if t.Requester == evergreen.MergeTestRequester {
-			_, err = commitqueue.RemoveCommitQueueItemForVersion(t.Project, t.Version, caller)
-			if err != nil {
+			if err = DequeueAndRestartForTask(nil, t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
 				return err
-			}
-			p, err := patch.FindOneId(t.Version)
-			if err != nil {
-				return errors.Wrap(err, "unable to find patch")
-			}
-			if p == nil {
-				return errors.New("patch not found")
-			}
-			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", caller))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to send github status",
-				"patch":   t.Version,
-			}))
-			err = RestartItemsAfterVersion(nil, t.Project, t.Version, caller)
-			if err != nil {
-				return errors.Wrap(err, "error restarting later commit queue items")
 			}
 		}
 	} else {
@@ -369,7 +352,7 @@ func AbortTask(taskId, caller string) error {
 // tasks for the same build variant + display name + project combination
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
-	statuses := []string{evergreen.TaskUndispatched}
+	statuses := []string{evergreen.TaskUndispatched, evergreen.TaskContainerUnallocated}
 	filter, sort := task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
@@ -657,40 +640,6 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	return nil
 }
 
-func DequeueAndRestart(t *task.Task, caller, reason string) error {
-	cq, err := commitqueue.FindOneId(t.Project)
-	if err != nil {
-		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue found for '%s'", t.Project)
-	}
-
-	// this must be done before dequeuing so that we know which entries to restart
-	if err = RestartItemsAfterVersion(cq, t.Project, t.Version, caller); err != nil {
-		return errors.Wrap(err, "unable to restart versions")
-	}
-
-	if err = tryDequeueAndAbortCommitQueueVersion(t, *cq, caller); err != nil {
-		return err
-	}
-
-	p, err := patch.FindOneId(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "unable to find patch")
-	}
-	if p == nil {
-		return errors.New("patch not found")
-	}
-	err = SendCommitQueueResult(p, message.GithubStateFailure, reason)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "unable to send github status",
-		"patch":   t.Version,
-	}))
-
-	return nil
-}
-
 func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, caller string) error {
 	if cq == nil {
 		var err error
@@ -727,21 +676,47 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 	return catcher.Resolve()
 }
 
-func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQueue, caller string) error {
-	p, err := patch.FindOne(patch.ByVersion(t.Version))
+// DequeueAndRestartForTask restarts all items after the given task's version, aborts/dequeues the current version,
+// and sends an updated status to GitHub.
+func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
+	if cq == nil {
+		var err error
+		cq, err = commitqueue.FindOneId(t.Project)
+		if err != nil {
+			return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
+		}
+		if cq == nil {
+			return errors.Errorf("no commit queue found for '%s'", t.Project)
+		}
+	}
+	// this must be done before dequeuing so that we know which entries to restart
+	if err := RestartItemsAfterVersion(cq, t.Project, t.Version, caller); err != nil {
+		return errors.Wrap(err, "unable to restart versions")
+	}
+
+	p, err := patch.FindOneId(t.Version)
 	if err != nil {
-		return errors.Wrapf(err, "error finding patch")
+		return errors.Wrap(err, "unable to find patch")
 	}
 	if p == nil {
-		return errors.Errorf("No patch for task")
+		return errors.New("patch not found")
+	}
+	if err := tryDequeueAndAbortCommitQueueVersion(p, *cq, t.Id, caller); err != nil {
+		return err
 	}
 
-	if !p.IsCommitQueuePatch() {
-		return nil
-	}
+	err = SendCommitQueueResult(p, githubState, reason)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "unable to send github status",
+		"patch":   t.Version,
+	}))
 
+	return nil
+}
+
+func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQueue, taskId string, caller string) error {
 	issue := p.Id.Hex()
-	err = removeNextMergeTaskDependency(cq, issue)
+	err := removeNextMergeTaskDependency(cq, issue)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "error removing dependency",
 		"patch":   issue,
@@ -756,7 +731,7 @@ func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQue
 		"caller":  caller,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", t.Version, t.Project)
+		return errors.Wrapf(err, "can't remove and prevent merge for item '%s' from queue '%s'", p.Version, p.Project)
 	}
 	if removed == nil {
 		return errors.Errorf("no commit queue entry removed for '%s'", issue)
@@ -771,7 +746,7 @@ func tryDequeueAndAbortCommitQueueVersion(t *task.Task, cq commitqueue.CommitQue
 	}
 
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
-	return errors.Wrapf(CancelPatch(p, task.AbortInfo{TaskID: t.Id, User: caller}), "Error aborting failed commit queue patch")
+	return errors.Wrapf(CancelPatch(p, task.AbortInfo{TaskID: taskId, User: caller}), "Error aborting failed commit queue patch")
 }
 
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of
@@ -1210,9 +1185,11 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	return nil
 }
 
-func MarkTaskUndispatched(t *task.Task) error {
+// MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
+// it's part of a display task, update the display task as necessary.
+func MarkHostTaskUndispatched(t *task.Task) error {
 	// record that the task as undispatched on the host
-	if err := t.MarkAsUndispatched(); err != nil {
+	if err := t.MarkAsHostUndispatched(); err != nil {
 		return errors.WithStack(err)
 	}
 	// the task was successfully dispatched, log the event
@@ -1225,9 +1202,11 @@ func MarkTaskUndispatched(t *task.Task) error {
 	return nil
 }
 
-func MarkTaskDispatched(t *task.Task, h *host.Host) error {
+// MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
+// part of a display task, update the display task as necessary.
+func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 	// record that the task was dispatched on the host
-	if err := t.MarkAsDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
+	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched "+
 			"on host %s", t.Id, h.Id)
 	}

@@ -10,27 +10,37 @@ import (
 
 func TestSubscriptionModels(t *testing.T) {
 	assert := assert.New(t)
+
+	owner := "me"
+	id := "abcde12345"
+	project := "mci"
+
 	subscription := event.Subscription{
 		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: "atype",
 		Trigger:      "atrigger",
-		Owner:        "me",
+		Owner:        owner,
 		OwnerType:    event.OwnerTypePerson,
 		Selectors: []event.Selector{
 			{
-				Type: "type1",
-				Data: "data1",
+				Type: event.SelectorID,
+				Data: id,
 			},
 		},
 		RegexSelectors: []event.Selector{
 			{
-				Type: "type2",
-				Data: "data2",
+				Type: event.SelectorOwner,
+				Data: owner,
 			},
 			{
-				Type: "type3",
-				Data: "data3",
+				Type: event.SelectorProject,
+				Data: project,
 			},
+		},
+		Filter: event.Filter{
+			ID:      id,
+			Owner:   owner,
+			Project: project,
 		},
 		Subscriber: event.Subscriber{
 			Type:   event.EmailSubscriberType,

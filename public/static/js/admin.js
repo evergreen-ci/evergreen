@@ -435,6 +435,34 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.Settings.providers.aws.pod.ecs.clusters.splice(index, 1);
   }
 
+  $scope.addAmboyNamedQueue = function () {
+    if ($scope.Settings.amboy == null) {
+      $scope.Settings.amboy = {
+        "named_queues": []
+      };
+    }
+    if ($scope.Settings.amboy.named_queues == null) {
+      $scope.Settings.amboy.named_queues = [];
+    }
+
+    if (!$scope.validAmboyNamedQueue($scope.new_amboy_named_queue)) {
+      $scope.invalidAmboyNamedQueue = "Amboy queue name is required.";
+      return
+    }
+
+    $scope.Settings.amboy.named_queues.push($scope.new_amboy_named_queue);
+    $scope.new_amboy_named_queue = {};
+    $scope.invalidAmboyNamedQueue = "";
+  }
+
+  $scope.validAmboyNamedQueue = function (queue) {
+    return queue && queue.name;
+  }
+
+  $scope.deleteAmboyNamedQueue = function (index) {
+    $scope.Settings.amboy.named_queues.splice(index, 1);
+  }
+
   $scope.clearAllUserTokens = function () {
     if (!confirm("This will log out all users from all existing sessions. Continue?"))
       return

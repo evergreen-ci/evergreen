@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -31,9 +32,14 @@ type CommitQueueSuite struct {
 	ctx    context.Context
 	server *service.TestServer
 	suite.Suite
+	env *mock.Environment
 }
 
 func TestCommitQueueSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	require.NoError(t, testConfig.Set())
 	suite.Run(t, new(CommitQueueSuite))

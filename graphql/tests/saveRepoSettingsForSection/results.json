@@ -20,6 +20,26 @@
       }
     },
     {
+      "query_file": "cqSection.graphql",
+      "result": {
+        "data": {
+          "saveRepoSettingsForSection": {
+            "projectRef": {
+              "commitQueue": {
+                "enabled": true,
+                "requireSigned": false
+              }
+            },
+            "vars": {
+              "vars": {"hello": ""},
+              "privateVars": ["hello"]
+
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "varsSection.graphql",
       "result": {
         "data": {

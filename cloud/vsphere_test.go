@@ -31,12 +31,13 @@ func (s *VSphereSuite) SetupTest() {
 	s.manager = &vsphereManager{
 		client: s.client,
 	}
-	s.distro = distro.Distro{
-		Id:                   "host",
-		Provider:             evergreen.ProviderNameVsphere,
-		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", "macos-1012"))},
+	s.hostOpts = host.CreateOptions{
+		Distro: distro.Distro{
+			Id:                   "host",
+			Provider:             evergreen.ProviderNameVsphere,
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", "macos-1012"))},
+		},
 	}
-	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *VSphereSuite) TestValidateSettings() {
@@ -136,14 +137,14 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostA := host.NewIntent(s.hostOpts)
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	err = hostA.Insert()
 	s.NoError(err)
 
-	hostB := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostB := host.NewIntent(s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -165,7 +166,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	myHost := host.NewIntent(s.hostOpts)
 	err := myHost.Insert()
 	s.NoError(err)
 	myHost, err = s.manager.SpawnHost(ctx, myHost)
@@ -211,24 +212,24 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dProviderName := distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
-	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameEc2Auto}
+	h := host.NewIntent(s.hostOpts)
 	s.NotNil(h)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := distro.Distro{Provider: evergreen.ProviderNameVsphere}
-	h = host.NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
+	s.hostOpts.Distro = distro.Distro{Provider: evergreen.ProviderNameVsphere}
+	h = host.NewIntent(s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsInvalid := distro.Distro{
+	s.hostOpts.Distro = distro.Distro{
 		Provider:             evergreen.ProviderNameVsphere,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("template", ""))},
 	}
-	h = host.NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
+	h = host.NewIntent(s.hostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
@@ -240,12 +241,12 @@ func (s *VSphereSuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostOne := host.NewIntent(s.hostOpts)
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostTwo := host.NewIntent(s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -259,13 +260,13 @@ func (s *VSphereSuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	h := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	h := host.NewIntent(s.hostOpts)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failCreate = true
-	h = host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	h = host.NewIntent(s.hostOpts)
 	_, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 }

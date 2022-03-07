@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"reflect"
 	"testing"
 	"time"
 
@@ -19,9 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,11 +29,18 @@ type AdminDataSuite struct {
 
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	s.ctx = &DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "clearing collections")
-	defer func() {
-		assert.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "clearing collections")
-	}()
+	suite.Run(t, s)
+}
+
+func (s *AdminDataSuite) SetupSuite() {
+	s.env = &mock.Environment{}
+	s.Require().NoError(s.env.Configure(context.Background()))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection, model.ProjectRefCollection), "clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -80,24 +83,12 @@ func TestDataConnectorSuite(t *testing.T) {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	require.NoError(t, b.Insert(), "error inserting documents")
-	require.NoError(t, v.Insert(), "error inserting documents")
-	require.NoError(t, testTask1.Insert(), "error inserting documents")
-	require.NoError(t, testTask2.Insert(), "error inserting documents")
-	require.NoError(t, testTask3.Insert(), "error inserting documents")
-	require.NoError(t, p.Insert(), "error inserting documents")
-	suite.Run(t, s)
-}
-
-func TestMockConnectorSuite(t *testing.T) {
-	s := new(AdminDataSuite)
-	s.ctx = &MockConnector{}
-	suite.Run(t, s)
-}
-
-func (s *AdminDataSuite) SetupSuite() {
-	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(context.Background()))
+	s.NoError(b.Insert(), "error inserting documents")
+	s.NoError(v.Insert(), "error inserting documents")
+	s.NoError(testTask1.Insert(), "error inserting documents")
+	s.NoError(testTask2.Insert(), "error inserting documents")
+	s.NoError(testTask3.Insert(), "error inserting documents")
+	s.NoError(p.Insert(), "error inserting documents")
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
@@ -132,6 +123,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Amboy.LockTimeoutMinutes, settingsFromConnector.Amboy.LockTimeoutMinutes)
 	s.EqualValues(testSettings.Amboy.SampleSize, settingsFromConnector.Amboy.SampleSize)
 	s.EqualValues(testSettings.Amboy.Retry, settingsFromConnector.Amboy.Retry)
+	s.EqualValues(testSettings.Amboy.NamedQueues, settingsFromConnector.Amboy.NamedQueues)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.PreferredType, settingsFromConnector.AuthConfig.PreferredType)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
@@ -149,16 +141,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.PodInit.S3BaseURL, settingsFromConnector.PodInit.S3BaseURL)
 	s.EqualValues(testSettings.PodInit.MaxParallelPodRequests, settingsFromConnector.PodInit.MaxParallelPodRequests)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
-	// We have to check different cases because the mock connector does not set
-	// defaults for the settings.
-	switch s.ctx.(type) {
-	case *MockConnector:
-		s.Equal(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
-	case *DBConnector:
-		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
-	default:
-		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
-	}
+
+	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
+
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
@@ -177,11 +162,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
-
-	// the tests below do not apply to the mock connector
-	if reflect.TypeOf(s.ctx).String() == "*data.MockConnector" {
-		return
-	}
 
 	// spot check events in the event log
 	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
@@ -267,6 +247,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settingsFromConnector.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Amboy.LockTimeoutMinutes, settingsFromConnector.Amboy.LockTimeoutMinutes)
 	s.EqualValues(testSettings.Amboy.SampleSize, settingsFromConnector.Amboy.SampleSize)
+	s.EqualValues(testSettings.Amboy.Retry, settingsFromConnector.Amboy.Retry)
+	s.EqualValues(testSettings.Amboy.NamedQueues, settingsFromConnector.Amboy.NamedQueues)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.PreferredType, settingsFromConnector.AuthConfig.PreferredType)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
@@ -276,14 +258,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
-	switch s.ctx.(type) {
-	case *MockConnector:
-		s.Equal(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
-	case *DBConnector:
-		s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
-	default:
-		s.Error(errors.New("data connector was not a DBConnector or MockConnector"))
-	}
+
+	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
+
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)

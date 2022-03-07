@@ -577,7 +577,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
-	config, err := createProjectConfig(data)
+	config, err := CreateProjectConfig(data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -586,7 +586,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	for _, path := range intermediateProject.Include {
 		if opts == nil {
 			err = errors.New("Trying to open include files with empty opts")
-			grip.Critical(message.NewError(errors.WithStack(err)))
 			return nil, nil, errors.Wrapf(err, LoadProjectError)
 		}
 		opts.UpdateForFile(path.FileName)

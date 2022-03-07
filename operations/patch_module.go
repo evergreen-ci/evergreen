@@ -25,6 +25,7 @@ func PatchSetModule() cli.Command {
 					Usage: "enable submitting larger patches (>16MB)",
 				})),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			setPlainLogger,
 			requirePatchIDFlag,
 			requireModuleFlag,

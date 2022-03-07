@@ -14,20 +14,21 @@ import (
 )
 
 type AmboyConfig struct {
-	Name                                  string           `bson:"name" json:"name" yaml:"name"`
-	SingleName                            string           `bson:"single_name" json:"single_name" yaml:"single_name"`
-	DB                                    string           `bson:"database" json:"database" yaml:"database"`
-	PoolSizeLocal                         int              `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
-	PoolSizeRemote                        int              `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
-	LocalStorage                          int              `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
-	GroupDefaultWorkers                   int              `bson:"group_default_workers" json:"group_default_workers" yaml:"group_default_workers"`
-	GroupBackgroundCreateFrequencyMinutes int              `bson:"group_background_create_frequency" json:"group_background_create_frequency" yaml:"group_background_create_frequency"`
-	GroupPruneFrequencyMinutes            int              `bson:"group_prune_frequency" json:"group_prune_frequency" yaml:"group_prune_frequency"`
-	GroupTTLMinutes                       int              `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
-	RequireRemotePriority                 bool             `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
-	LockTimeoutMinutes                    int              `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
-	SampleSize                            int              `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
-	Retry                                 AmboyRetryConfig `bson:"retry" json:"retry" yaml:"retry"`
+	Name                                  string                  `bson:"name" json:"name" yaml:"name"`
+	SingleName                            string                  `bson:"single_name" json:"single_name" yaml:"single_name"`
+	DB                                    string                  `bson:"database" json:"database" yaml:"database"`
+	PoolSizeLocal                         int                     `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
+	PoolSizeRemote                        int                     `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
+	LocalStorage                          int                     `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
+	GroupDefaultWorkers                   int                     `bson:"group_default_workers" json:"group_default_workers" yaml:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int                     `bson:"group_background_create_frequency" json:"group_background_create_frequency" yaml:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int                     `bson:"group_prune_frequency" json:"group_prune_frequency" yaml:"group_prune_frequency"`
+	GroupTTLMinutes                       int                     `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
+	RequireRemotePriority                 bool                    `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
+	LockTimeoutMinutes                    int                     `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
+	SampleSize                            int                     `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
+	Retry                                 AmboyRetryConfig        `bson:"retry" json:"retry" yaml:"retry"`
+	NamedQueues                           []AmboyNamedQueueConfig `bson:"named_queues" json:"named_queues" yaml:"named_queues"`
 }
 
 // AmboyRetryConfig represents configuration settings for Amboy's retryability
@@ -39,6 +40,15 @@ type AmboyRetryConfig struct {
 	MaxRetryTimeSeconds                 int `bson:"max_retry_time_seconds" json:"max_retry_time_seconds" yaml:"max_retry_time_seconds"`
 	RetryBackoffSeconds                 int `bson:"retry_backoff_seconds" json:"retry_backoff_seconds" yaml:"retry_backoff_seconds"`
 	StaleRetryingMonitorIntervalSeconds int `bson:"stale_retrying_monitor_interval_seconds" json:"stale_retrying_monitor_interval_seconds" yaml:"stale_retrying_monitor_interval_seconds"`
+}
+
+// AmboyNamedQueueConfig represents configuration settings for particular named
+// queues in the Amboy queue group.
+type AmboyNamedQueueConfig struct {
+	Name               string `bson:"name" json:"name" yaml:"name"`
+	NumWorkers         int    `bson:"num_workers" json:"num_workers" yaml:"num_workers"`
+	SampleSize         int    `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
+	LockTimeoutSeconds int    `bson:"lock_timeout_seconds" json:"lock_timeout_seconds" yaml:"lock_timeout_seconds"`
 }
 
 var (
@@ -56,6 +66,7 @@ var (
 	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
 	amboySampleSizeKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SampleSize")
 	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
+	amboyNamedQueuesKey                           = bsonutil.MustHaveTag(AmboyConfig{}, "NamedQueues")
 )
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
@@ -103,6 +114,7 @@ func (c *AmboyConfig) Set() error {
 			amboyLockTimeoutMinutesKey:                    c.LockTimeoutMinutes,
 			amboySampleSizeKey:                            c.SampleSize,
 			amboyRetryKey:                                 c.Retry,
+			amboyNamedQueuesKey:                           c.NamedQueues,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -110,10 +122,13 @@ func (c *AmboyConfig) Set() error {
 }
 
 const (
+	// DefaultAmboyQueueName is the default namespace prefix for the Amboy
+	// remote queue.
+	DefaultAmboyQueueName = "evg.service"
+
 	defaultLogBufferingDuration                  = 20
 	defaultAmboyPoolSize                         = 2
 	defaultAmboyLocalStorageSize                 = 1024
-	defaultAmboyQueueName                        = "evg.service"
 	defaultSingleAmboyQueueName                  = "evg.single"
 	defaultAmboyDBName                           = "amboy"
 	defaultGroupWorkers                          = 1
@@ -125,7 +140,7 @@ const (
 
 func (c *AmboyConfig) ValidateAndDefault() error {
 	if c.Name == "" {
-		c.Name = defaultAmboyQueueName
+		c.Name = DefaultAmboyQueueName
 	}
 
 	if c.SingleName == "" {

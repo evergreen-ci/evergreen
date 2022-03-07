@@ -13,14 +13,13 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/event"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -30,6 +29,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -258,6 +258,13 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 		if version == nil {
 			return errors.Errorf("Couldn't find patch for id %v", p.Version), http.StatusInternalServerError, "", ""
 		}
+
+		if version.Message != patchUpdateReq.Description {
+			if err = model.UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+				return errors.Wrap(err, "Error setting version message"), http.StatusInternalServerError, "", ""
+			}
+		}
+
 		// First add new tasks to existing builds, if necessary
 		err = model.AddNewTasksForPatch(context.Background(), p, version, project, tasks, projectRef.Identifier)
 		if err != nil {
@@ -483,11 +490,12 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:         statuses,
-		Variants:         searchVariants,
-		TaskNames:        searchTasks,
-		Sorts:            defaultSort,
-		IncludeBaseTasks: true,
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		Variants:                       searchVariants,
+		TaskNames:                      searchTasks,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               true,
+		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()
 	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
@@ -532,15 +540,15 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 
 	totalTime := time.Since(start)
 	grip.InfoWhen(totalTime > time.Second*2, message.Fields{
-		"Ticket":            "EVG-14828",
-		"timeToFindTasks":   timeToFindTasks,
-		"timeToBuildTasks":  timeToBuildTasks,
-		"timeToGroupTasks":  timeToGroupTasks,
-		"timeToSortTasks":   timeToSortTasks,
-		"totalTime":         totalTime,
-		"versionId":         versionId,
-		"taskCount":         len(tasks),
-		"buildVariantCount": len(result),
+		"Ticket":             "EVG-14828",
+		"timeToFindTasksMS":  timeToFindTasks.Milliseconds(),
+		"timeToBuildTasksMS": timeToBuildTasks.Milliseconds(),
+		"timeToGroupTasksMS": timeToGroupTasks.Milliseconds(),
+		"timeToSortTasksMS":  timeToSortTasks.Milliseconds(),
+		"totalTimeMS":        totalTime.Milliseconds(),
+		"versionId":          versionId,
+		"taskCount":          len(tasks),
+		"buildVariantCount":  len(result),
 	})
 	return result, nil
 }
@@ -590,7 +598,7 @@ type VersionModifications struct {
 	TaskIds           []string                  `json:"task_ids"` // deprecated
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
+func ModifyVersion(version model.Version, user user.DBUser, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
@@ -616,20 +624,11 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
-			var projId string
-			if proj == nil {
-				id, err := model.GetIdForProject(version.Identifier)
-				if err != nil {
-					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
-				}
-				if id == "" {
-					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
-				}
-				projId = id
-			} else {
-				projId = proj.Id
+			err := model.RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
 			}
-			_, err := commitqueue.RemoveCommitQueueItemForVersion(projId, version.Id, user.DisplayName())
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
@@ -645,10 +644,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				"message": "unable to send github status",
 				"patch":   version.Id,
 			}))
-			err = model.RestartItemsAfterVersion(nil, projId, version.Id, user.Id)
-			if err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
-			}
+
 		}
 	case SetPriority:
 		projId := version.Identifier
@@ -682,7 +678,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := MustHaveUser(ctx)
-	httpStatus, err := ModifyVersion(*version, *user, nil, modifications)
+	httpStatus, err := ModifyVersion(*version, *user, modifications)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -884,6 +880,8 @@ func getMyPublicKeys(ctx context.Context) []*restModel.APIPubKey {
 	return publicKeys
 }
 
+var errHostStatusChangeConflict = errors.New("conflicting host status modification is in progress")
+
 // To be moved to a better home when we restructure the resolvers.go file
 // TerminateSpawnHost is a shared utility function to terminate a spawn host
 func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, u *user.DBUser, r *http.Request) (*host.Host, int, error) {
@@ -892,10 +890,16 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, h *host.
 		return nil, http.StatusBadRequest, err
 	}
 
-	if err := cloud.TerminateSpawnHost(ctx, env, h, u.Id, fmt.Sprintf("terminated via UI by %s", u.Username())); err != nil {
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
+
 	return h, http.StatusOK, nil
 }
 
@@ -911,10 +915,12 @@ func StopSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		return nil, http.StatusBadRequest, err
 	}
 
-	// Stop the host
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
 	if err := env.RemoteQueue().Put(ctx, stopJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
@@ -929,10 +935,13 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host
 		return nil, http.StatusBadRequest, err
 
 	}
-	// Start the host
+
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
 	if err := env.RemoteQueue().Put(ctx, startJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
 		logError(ctx, err, r)
 		return nil, http.StatusInternalServerError, err
 	}
@@ -1246,7 +1255,9 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := sc.FindTasksByVersion(version.Id, opts)
 	if err != nil {
@@ -1405,4 +1416,15 @@ func hasProjectPermission(ctx context.Context, resource string, next graphql.Res
 		return next(ctx)
 	}
 	return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access settings for the project %s", user.Username(), resource))
+}
+
+// getValidTaskStatusesFilter returns a slice of task statuses that are valid and are searchable.
+// It returns an empty array if all is included as one of the entries
+func getValidTaskStatusesFilter(statuses []string) []string {
+	filteredStatuses := []string{}
+	if utility.StringSliceContains(statuses, evergreen.TaskAll) {
+		return filteredStatuses
+	}
+	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
+	return filteredStatuses
 }

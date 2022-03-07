@@ -611,6 +611,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 
 	validationErrors := validator.CheckProjectErrors(project, true)
 	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
+	validationErrors = append(validationErrors, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range validationErrors.AtLevel(validator.Error) {
 		catcher.Add(validationErr)

@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -838,7 +839,7 @@ func TestUpdateVersionGithubStatus(t *testing.T) {
 
 	assert.NoError(t, updateVersionGithubStatus(v, builds))
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
 }
@@ -860,7 +861,7 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildSucceeded, b.GithubCheckStatus)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
 }
@@ -1648,9 +1649,7 @@ func TestTryDequeueAndAbortBlockedCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	pRef := &ProjectRef{Id: cq.ProjectID}
-
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(&task.Task{Id: "t1", Version: v.Id, Project: pRef.Id}, *cq, evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, "t1", evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem(patchID), -1)
@@ -1734,9 +1733,7 @@ func TestTryDequeueAndAbortCommitQueueVersion(t *testing.T) {
 	assert.NoError(t, m.Insert())
 	assert.NoError(t, commitqueue.InsertQueue(cq))
 
-	pRef := &ProjectRef{Id: cq.ProjectID}
-
-	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(&task.Task{Id: "t1", Version: v.Id, Project: pRef.Id}, *cq, evergreen.User))
+	assert.NoError(t, tryDequeueAndAbortCommitQueueVersion(p, *cq, "t1", evergreen.User))
 	cq, err := commitqueue.FindOneId("my-project")
 	assert.NoError(t, err)
 	assert.Equal(t, cq.FindItem("12"), -1)
@@ -1867,7 +1864,7 @@ func TestDequeueAndRestart(t *testing.T) {
 	}
 	assert.NoError(t, commitqueue.InsertQueue(&cq))
 
-	assert.NoError(t, DequeueAndRestart(&t2, "", ""))
+	assert.NoError(t, DequeueAndRestartForTask(&cq, &t2, message.GithubStateFailure, "", ""))
 	dbCq, err := commitqueue.FindOneId(cq.ProjectID)
 	assert.NoError(t, err)
 	assert.Len(t, dbCq.Queue, 2)
@@ -2008,7 +2005,7 @@ func TestMarkUndispatched(t *testing.T) {
 		So(v.Insert(), ShouldBeNil)
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
 			var err error
-			So(MarkTaskUndispatched(testTask), ShouldBeNil)
+			So(MarkHostTaskUndispatched(testTask), ShouldBeNil)
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -2046,7 +2043,7 @@ func TestMarkDispatched(t *testing.T) {
 				},
 				AgentRevision: "testAgentVersion",
 			}
-			So(MarkTaskDispatched(testTask, sampleHost), ShouldBeNil)
+			So(MarkHostTaskDispatched(testTask, sampleHost), ShouldBeNil)
 			var err error
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
@@ -2889,7 +2886,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(err)
 	assert.Len(e, 7)
 }
@@ -2960,7 +2957,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(err)
 	assert.Len(e, 4)
 }
@@ -3032,7 +3029,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
-	e, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(err)
 	assert.Len(e, 4)
 }

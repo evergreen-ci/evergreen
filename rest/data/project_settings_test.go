@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +19,11 @@ import (
 
 func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	dc := &DBConnector{}
-	ctx := context.Background()
 	rm := evergreen.GetEnvironment().RoleManager()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 
 	for name, test := range map[string]func(t *testing.T, ref model.RepoRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.RepoRef) {
@@ -232,7 +236,10 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 
 func TestSaveProjectSettingsForSection(t *testing.T) {
 	dc := &DBConnector{}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	rm := evergreen.GetEnvironment().RoleManager()
 
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
@@ -250,12 +257,39 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			settings, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
+			assert.Equal(t, "myRepoId", utility.FromStringPtr(settings.ProjectRef.RepoRefId))
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
 			assert.NotEqual(t, pRefFromDB.Owner, "something different") // because use repo settings is true, we don't change this
-
+		},
+		"github conflicts with enabling": func(t *testing.T, ref model.ProjectRef) {
+			conflictingRef := model.ProjectRef{
+				Owner:               ref.Owner,
+				Repo:                ref.Repo,
+				Branch:              ref.Branch,
+				Enabled:             utility.TruePtr(),
+				PRTestingEnabled:    utility.TruePtr(),
+				GithubChecksEnabled: utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{
+					Enabled: utility.TruePtr(),
+				},
+			}
+			assert.NoError(t, conflictingRef.Insert())
+			ref.PRTestingEnabled = utility.TruePtr()
+			ref.GithubChecksEnabled = utility.TruePtr()
+			assert.NoError(t, ref.Upsert())
+			ref.Enabled = utility.TruePtr()
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			_, err := dc.SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, false, "me")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "PR testing and commit checks")
+			assert.NotContains(t, err.Error(), "the commit queue")
 		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
@@ -391,6 +425,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Id:         "myId",
 			Owner:      "evergreen-ci",
 			Repo:       "evergreen",
+			Branch:     "main",
 			Restricted: utility.FalsePtr(),
 			RepoRefId:  "myRepoId",
 			Admins:     []string{"oldAdmin"},
