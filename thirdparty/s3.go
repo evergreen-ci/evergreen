@@ -10,10 +10,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-//PresignExpireTime sets the amount of time the link is live before expiring
-const PresignExpireTime = 24 * time.Hour
+const (
+	//PresignExpireTime sets the amount of time the link is live before expiring
+	PresignExpireTime = 24 * time.Hour
+	NotFoundError     = "NotFound"
+)
 
-//RequestParams holds all the parameters needed to sign a url
+//RequestParams holds all the parameters needed to sign a url or fetch headObject
 type RequestParams struct {
 	Bucket    string `json:"bucket"`
 	FileKey   string `json:"fileKey"`
@@ -42,4 +45,29 @@ func PreSign(r RequestParams) (string, error) {
 
 	urlStr, err := req.Presign(PresignExpireTime)
 	return urlStr, err
+}
+
+func GetHeadObject(r RequestParams) (*s3.HeadObjectOutput, error) {
+	session, err := session.NewSession(&aws.Config{
+		Region: aws.String(endpoints.UsEast1RegionID),
+		Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     r.AwsKey,
+			SecretAccessKey: r.AwsSecret,
+		}),
+	})
+	if err != nil {
+		return nil, err
+	}
+	svc := s3.New(session)
+
+	headObject, err := svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(r.Bucket),
+		Key:    aws.String(r.FileKey),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return headObject, err
 }
