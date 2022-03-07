@@ -109,8 +109,8 @@ type PatchUpdate struct {
 	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
 }
 
-// ConfigurePatch
-// TODO: add function comment
+// ConfigurePatch validates and creates the updated tasks/variants, and updates description if needed.
+// Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
 	var err error
 	project := &Project{}

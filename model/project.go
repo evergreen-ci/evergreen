@@ -1848,7 +1848,7 @@ type VariantsAndTasksFromProject struct {
 	Project  Project
 }
 
-// TODO: Add function comment
+// GetVariantsAndTasksFromProject formats variants and tasks as used by the UI pages.
 func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &Project{}
 	if _, _, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
