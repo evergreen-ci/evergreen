@@ -533,7 +533,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
 	ctx := context.Background()
-	pp, err := LoadProjectInto(ctx, []byte(sampleProjYml), nil, "", p)
+	pp, _, err := LoadProjectInto(ctx, []byte(sampleProjYml), nil, "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
@@ -570,7 +570,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
-	pp, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
+	pp, _, err = LoadProjectInto(ctx, []byte(sampleProjYmlNoFunctions), nil, "", p)
 	s.NoError(err)
 	newPP, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)

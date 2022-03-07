@@ -225,7 +225,7 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, host.Collection, model.VersionCollection, model.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, host.Collection, model.VersionCollection))
 
 	t1 := &task.Task{
 		Id:                "t1",
@@ -282,13 +282,8 @@ tasks:
 - name: display_t3
 `
 	v := &model.Version{
-		Id:         "v1",
-		Identifier: "p1",
-		Config:     yml,
-	}
-
-	pRef := &model.ProjectRef{
-		Id: "p1",
+		Id:     "v1",
+		Config: yml,
 	}
 	assert.NoError(t, t1.Insert())
 	assert.NoError(t, t2.Insert())
@@ -296,7 +291,6 @@ tasks:
 	assert.NoError(t, b.Insert())
 	assert.NoError(t, h.Insert())
 	assert.NoError(t, v.Insert())
-	assert.NoError(t, pRef.Insert())
 	cloud.GetMockProvider().Set(h.Id, cloud.MockInstance{
 		Status: cloud.StatusRunning,
 	})

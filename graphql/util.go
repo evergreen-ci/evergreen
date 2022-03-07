@@ -213,7 +213,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if _, err = model.LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project); err != nil {
+	if _, _, err = model.LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project); err != nil {
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
@@ -365,7 +365,7 @@ type VariantsAndTasksFromProject struct {
 
 func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
-	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
+	if _, _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 

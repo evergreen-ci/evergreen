@@ -55,11 +55,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	projectConfig := &ProjectConfig{
 		Id: "ident",
-		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "random2",
 			},
 		},
 	}
@@ -1871,27 +1869,25 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	}
 	projectConfig := &ProjectConfig{
 		Id: "version1",
-		ProjectConfigFields: ProjectConfigFields{
-			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-				FileTicketWebhook: evergreen.WebHook{
-					Endpoint: "random2",
-				},
+		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+			FileTicketWebhook: evergreen.WebHook{
+				Endpoint: "random2",
 			},
-			WorkstationConfig: &WorkstationConfig{
-				GitClone: utility.FalsePtr(),
-				SetupCommands: []WorkstationSetupCommand{
-					{Command: "overridden"},
-				},
-			},
-			BuildBaronSettings: &evergreen.BuildBaronSettings{
-				TicketCreateProject:     "BFG",
-				TicketSearchProjects:    []string{"BF", "BFG"},
-				BFSuggestionServer:      "https://evergreen.mongodb.com",
-				BFSuggestionTimeoutSecs: 10,
-			},
-			GithubTriggerAliases: []string{"one", "two"},
-			PeriodicBuilds:       []PeriodicBuildDefinition{{ID: "p1"}},
 		},
+		WorkstationConfig: &WorkstationConfig{
+			GitClone: utility.FalsePtr(),
+			SetupCommands: []WorkstationSetupCommand{
+				{Command: "overridden"},
+			},
+		},
+		BuildBaronSettings: &evergreen.BuildBaronSettings{
+			TicketCreateProject:     "BFG",
+			TicketSearchProjects:    []string{"BF", "BFG"},
+			BFSuggestionServer:      "https://evergreen.mongodb.com",
+			BFSuggestionTimeoutSecs: 10,
+		},
+		GithubTriggerAliases: []string{"one", "two"},
+		PeriodicBuilds:       []PeriodicBuildDefinition{{ID: "p1"}},
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, projectConfig.Insert())

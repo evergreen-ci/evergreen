@@ -329,7 +329,7 @@ tasks:
 
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
+	pp, _, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
 	// create new version to use for activating
@@ -803,11 +803,12 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
@@ -847,11 +848,12 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, nil)
@@ -902,7 +904,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},
@@ -911,6 +913,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err := CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev}, false, &vErrs)
@@ -939,7 +942,7 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	s.NotNil(pp)
 	//force a duplicate key error with the version
@@ -951,6 +954,7 @@ tasks:
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
+		Config:              pc,
 		Project:             p,
 	}
 	v, err = CreateVersionFromConfig(context.Background(), projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
@@ -986,11 +990,12 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
+		Config:              pc,
 		Project:             p,
 	}
 	metadata := model.VersionMetadata{Revision: *s.rev}
@@ -1048,11 +1053,12 @@ tasks:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
+	pp, pc, err := model.LoadProjectInto(ctx, []byte(configYml), nil, s.ref.Id, p)
 	s.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
 		IntermediateProject: pp,
+		Config:              pc,
 		Project:             p,
 	}
 	alias := model.ProjectAlias{

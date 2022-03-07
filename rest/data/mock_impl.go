@@ -72,11 +72,11 @@ tasks:
 		Token:        token,
 		ReadFileFrom: model.ReadFromLocal,
 	}
-	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
+	pp, pConfig, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)
 	return model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		Config:              nil,
+		Config:              pConfig,
 	}, err
 }
 

@@ -644,12 +644,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
-		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
-		return
-	}
-	if projectConfig, err = model.CreateProjectConfig(input.ProjectYaml, ""); err != nil {
+	if _, projectConfig, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
