@@ -1658,6 +1658,15 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 	return &conflicts, nil
 }
 
+func (r *queryResolver) CanCreateProject(ctx context.Context) (bool, error) {
+	usr := MustHaveUser(ctx)
+	return usr.HasPermission(gimlet.PermissionOpts{
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	}), nil
+}
+
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
 	pageParam := 0
 	if page != nil {

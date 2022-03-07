@@ -195,6 +195,10 @@ type ProjectEvents struct {
 	Count           int                      `json:"count"`
 }
 
+type ProjectPermissions struct {
+	CreateProject bool `json:"CreateProject"`
+}
+
 type PublicKeyInput struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`

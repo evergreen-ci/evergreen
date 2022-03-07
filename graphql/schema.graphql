@@ -9,6 +9,7 @@ type Query {
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
+  canCreateProject: Boolean!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -1129,6 +1130,10 @@ type GithubProjectConflicts {
   commitQueueIdentifiers: [String!]
   prTestingIdentifiers: [String!]
   commitCheckIdentifiers: [String!]
+}
+
+type ProjectPermissions {
+  CreateProject: Boolean!
 }
 
 type ProjectSettings {
