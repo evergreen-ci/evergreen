@@ -8052,18 +8052,16 @@ input WorkstationSetupCommandInput {
 
 input PatchTriggerAliasInput {
   alias: String!
-  childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifierInput]
+  taskSpecifiers: [TaskSpecifierInput!]!
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTaskInput]!
 }
 
 input TaskSpecifierInput {
-  patchAlias: String!
-  taskRegex: String!
-  variantRegex: String!
+  patchAlias: String
+  taskRegex: String
+  variantRegex: String
 }
 
 input ProjectVarsInput {
@@ -40284,14 +40282,6 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 			if err != nil {
 				return it, err
 			}
-		case "childProjectId":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("childProjectId"))
-			it.ChildProjectId, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "childProjectIdentifier":
 			var err error
 
@@ -40304,7 +40294,7 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskSpecifiers"))
-			it.TaskSpecifiers, err = ec.unmarshalOTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, v)
+			it.TaskSpecifiers, err = ec.unmarshalNTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40321,14 +40311,6 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentAsModule"))
 			it.ParentAsModule, err = ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "variantsTasks":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantsTasks"))
-			it.VariantsTasks, err = ec.unmarshalNVariantTaskInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41823,7 +41805,7 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchAlias"))
-			it.PatchAlias, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.PatchAlias, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41831,7 +41813,7 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskRegex"))
-			it.TaskRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.TaskRegex, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41839,7 +41821,7 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantRegex"))
-			it.VariantRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.VariantRegex, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -51866,6 +51848,32 @@ func (ec *executionContext) marshalNTaskSortCategory2githubᚗcomᚋevergreenᚑ
 	return v
 }
 
+func (ec *executionContext) unmarshalNTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, v interface{}) (model.APITaskSpecifier, error) {
+	res, err := ec.unmarshalInputTaskSpecifierInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, v interface{}) ([]model.APITaskSpecifier, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]model.APITaskSpecifier, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalNTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {
 	return ec._TaskSyncOptions(ctx, sel, &v)
 }
@@ -52117,27 +52125,6 @@ func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑci
 	wg.Wait()
 
 	return ret
-}
-
-func (ec *executionContext) unmarshalNVariantTaskInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, v interface{}) ([]model.VariantTask, error) {
-	var vSlice []interface{}
-	if v != nil {
-		if tmp1, ok := v.([]interface{}); ok {
-			vSlice = tmp1
-		} else {
-			vSlice = []interface{}{v}
-		}
-	}
-	var err error
-	res := make([]model.VariantTask, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalOVariantTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
 }
 
 func (ec *executionContext) unmarshalNVariantTasks2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasksᚄ(ctx context.Context, v interface{}) ([]*VariantTasks, error) {
@@ -54430,35 +54417,6 @@ func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑ
 	return ret
 }
 
-func (ec *executionContext) unmarshalOTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, v interface{}) (model.APITaskSpecifier, error) {
-	res, err := ec.unmarshalInputTaskSpecifierInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, v interface{}) ([]model.APITaskSpecifier, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []interface{}
-	if v != nil {
-		if tmp1, ok := v.([]interface{}); ok {
-			vSlice = tmp1
-		} else {
-			vSlice = []interface{}{v}
-		}
-	}
-	var err error
-	res := make([]model.APITaskSpecifier, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalOTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
 func (ec *executionContext) unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, v interface{}) (model.APITaskSyncOptions, error) {
 	res, err := ec.unmarshalInputTaskSyncOptionsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -54668,11 +54626,6 @@ func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergr
 
 func (ec *executionContext) marshalOVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
 	return ec._VariantTask(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalOVariantTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, v interface{}) (model.VariantTask, error) {
-	res, err := ec.unmarshalInputVariantTaskInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v []*model.APIVersion) graphql.Marshaler {

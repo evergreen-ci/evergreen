@@ -608,18 +608,16 @@ input WorkstationSetupCommandInput {
 
 input PatchTriggerAliasInput {
   alias: String!
-  childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifierInput]
+  taskSpecifiers: [TaskSpecifierInput!]!
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTaskInput]!
 }
 
 input TaskSpecifierInput {
-  patchAlias: String!
-  taskRegex: String!
-  variantRegex: String!
+  patchAlias: String
+  taskRegex: String
+  variantRegex: String
 }
 
 input ProjectVarsInput {
