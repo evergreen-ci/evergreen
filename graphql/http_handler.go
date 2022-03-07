@@ -21,6 +21,9 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	// Apollo tracing support https://github.com/apollographql/apollo-tracing
 	srv.Use(apollotracing.Tracer{})
 
+	// Log graphql requests to splunk
+	srv.Use(SplunkTracing{})
+
 	// Handler to log graphql panics to splunk
 	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
