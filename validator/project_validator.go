@@ -246,9 +246,27 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 	return validationErrs
 }
 
+func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	if len(patchedProjectConfig) <= 0 {
+		return validationErrs
+	}
+	projectConfig, err := model.CreateProjectConfig([]byte(patchedProjectConfig))
+	if err != nil {
+		validationErrs = append(validationErrs, ValidationError{
+			Message: fmt.Sprintf("Error unmarshalling patched project config: %s", err.Error()),
+		})
+		return validationErrs
+	}
+	return CheckProjectConfigErrors(projectConfig)
+}
+
 // verify that the project configuration syntax is valid
 func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErrors {
 	validationErrs := ValidationErrors{}
+	if projectConfig == nil {
+		return validationErrs
+	}
 	for _, projectConfigErrorValidator := range projectConfigErrorValidators {
 		validationErrs = append(validationErrs,
 			projectConfigErrorValidator(projectConfig)...)

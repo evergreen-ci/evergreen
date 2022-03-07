@@ -2,6 +2,7 @@ package repotracker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -393,7 +394,7 @@ func TestBatchTimes(t *testing.T) {
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
-		So(db.ClearCollections(model.VersionCollection, distro.Collection), ShouldBeNil)
+		So(db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection), ShouldBeNil)
 		previouslyActivatedVersion := model.Version{
 			Id:         "previously activated",
 			Identifier: "testproject",
@@ -651,7 +652,13 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
 	pp.BuildVariants[1].Tasks[0].RunOn = []string{"test-distro-one"}
 
-	pp.AddTask("t1", nil)
+	pp.AddTask("t1", []model.PluginCommandConf{model.PluginCommandConf{
+		Command: "shell.exec",
+		Params: map[string]interface{}{
+			"script": "echo hi",
+		},
+	}})
+	pp.Tasks[0].ExecTimeoutSecs = 3
 
 	return pp
 }
@@ -835,7 +842,9 @@ buildvariants:
   - name: task2
 tasks:
 - name: task1
+  exec_timeout_secs: 3
 - name: task2
+  exec_timeout_secs: 3
 `
 	p := &model.Project{}
 	ctx := context.Background()
@@ -854,8 +863,13 @@ tasks:
 	dbVersion, err := model.VersionFindOneId(v.Id)
 	s.NoError(err)
 	s.Equal(v.Config, dbVersion.Config)
+	fmt.Println(dbVersion.Errors)
+	fmt.Println(dbVersion.Warnings)
 	s.Require().Len(dbVersion.Errors, 1)
+	s.Require().Len(dbVersion.Warnings, 2)
 	s.Equal("buildvariant 'bv' must either specify run_on field or have every task specify run_on", dbVersion.Errors[0])
+	s.Equal("task 'task1' does not contain any commands", dbVersion.Warnings[0])
+	s.Equal("task 'task2' does not contain any commands", dbVersion.Warnings[1])
 
 	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
 	s.NoError(err)
@@ -876,7 +890,17 @@ buildvariants:
   - name: task2
 tasks:
 - name: task1
+  exec_timeout_secs: 100
+  commands:
+  - command: shell.exec
+    params:
+      script: echo "test"
 - name: task2
+  exec_timeout_secs: 100
+  commands:
+  - command: shell.exec
+    params:
+      script: echo "test"
 `
 	p := &model.Project{}
 	ctx := context.Background()
