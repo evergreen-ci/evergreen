@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -63,7 +64,7 @@ type Task struct {
 	// time information for task
 	// Create - the creation time for the task, derived from the commit time or the patch creation time.
 	// Dispatch - the time the task runner starts up the agent on the host.
-	// Scheduled - the time the commit is scheduled.
+	// Scheduled - the time the task is scheduled.
 	// Start - the time the agent starts the task on the host after spinning it up.
 	// Finish - the time the task was completed on the remote host.
 	// Activated - the time the task was marked as available to be scheduled, automatically or by a developer.
@@ -260,6 +261,8 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
+	// Finished indicates if the dependency has finished running or not.
+	Finished bool `bson:"finished" json:"finished"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -773,6 +776,34 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// MarkDependenciesFinished updates all direct dependencies on this task to
+// cache whether or not this task has finished running based on its current
+// status.
+func (t *Task) MarkDependenciesFinished() error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
+		bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey: t.Id,
+			}},
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): t.IsFinished()},
+		},
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
+		}}),
+	)
+	if err != nil {
+		return errors.Wrap(err, "marking finished dependencies")
+	}
+
+	return nil
 }
 
 // HasFailedTests returns true if the task had any failed tests.

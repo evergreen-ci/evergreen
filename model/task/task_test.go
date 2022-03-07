@@ -349,6 +349,187 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 	})
 }
 
+func TestUpdateDependenciesFinished(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"NoopsForNoDependencies": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id: "task1",
+			}
+			t2 := Task{
+				Id: "task2",
+				DependsOn: []Dependency{
+					{TaskId: "task1"},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished())
+
+			dbTask2, err := FindOneId(t2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask2)
+			require.Len(t, dbTask2.DependsOn, 1)
+			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
+		},
+		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskFailed,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskFailed,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished())
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished)
+		},
+		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskFailed,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished())
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished)
+		},
+		"UpdatesSpecificDependency": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskFailed,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{TaskId: "task2"},
+					{TaskId: "task3"},
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+					{TaskId: "task4"},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished())
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 4)
+			assert.False(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, dbTask1.DependsOn[1].Finished)
+			assert.True(t, dbTask1.DependsOn[2].Finished)
+			assert.False(t, dbTask1.DependsOn[3].Finished)
+		},
+		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{TaskId: "task0"},
+				},
+			}
+			t2 := Task{
+				Id: "task2",
+				DependsOn: []Dependency{
+					{TaskId: "task1"},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished())
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+
+			dbTask2, err := FindOneId(t2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask2)
+			require.Len(t, dbTask2.DependsOn, 1)
+			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
+		},
+		"MarksDependencyUnfinishedWhenTaskIsUnfinished": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskUndispatched,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId:   "task0",
+						Finished: true,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished())
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			tCase(t)
+		})
+	}
+}
+
 func TestSetTasksScheduledTime(t *testing.T) {
 	Convey("With some tasks", t, func() {
 
