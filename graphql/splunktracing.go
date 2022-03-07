@@ -9,6 +9,9 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+// SplunkTracing is a graphql extension that adds splunk logging to graphql.
+// It is used to log the duration of a query and the user that made the request.
+// It does this by hooking into lifecycle events that gqlgen uses.
 type SplunkTracing struct{}
 
 func (SplunkTracing) ExtensionName() string {
