@@ -87,7 +87,7 @@ type s3put struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
-	// NoOverwrite, when set to true, will not upload files if they already exist in s3
+	// NoOverwrite, when set to true, will not upload files if they already exist in s3.
 	NoOverwrite string `mapstructure:"no_overwrite" plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
@@ -355,13 +355,12 @@ retryLoop:
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
 				if s3pc.noOverwriteBool {
-					// check if the file exists
-					exists, err := s3pc.fileExists(remoteName)
+					exists, err := s3pc.remoteFileExists(remoteName)
 					if err != nil {
 						return errors.Wrapf(err, "error checking if file %s exists", remoteName)
 					}
 					if exists {
-						logger.Task().Infof("noop: file '%s' already exists. Continuing to upload other files.", fpath)
+						logger.Task().Infof("noop: not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
 						continue uploadLoop
 					}
 				}
@@ -492,12 +491,13 @@ func (s3pc *s3put) isPublic() bool {
 		(s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite)
 }
 
-func (s3pc *s3put) fileExists(remoteName string) (bool, error) {
+func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 	requestParams := thirdparty.RequestParams{
 		Bucket:    s3pc.Bucket,
 		FileKey:   remoteName,
 		AwsKey:    s3pc.AwsKey,
 		AwsSecret: s3pc.AwsSecret,
+		Region:    s3pc.Region,
 	}
 	_, err := thirdparty.GetHeadObject(requestParams)
 	if err != nil {

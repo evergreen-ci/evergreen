@@ -11,20 +11,22 @@ import (
 )
 
 const (
-	//PresignExpireTime sets the amount of time the link is live before expiring
+	// PresignExpireTime sets the amount of time the link is live before expiring.
 	PresignExpireTime = 24 * time.Hour
-	NotFoundError     = "NotFound"
+	// NotFound is returned by s3 when headObject doesn't exist
+	NotFoundError = "NotFound"
 )
 
-//RequestParams holds all the parameters needed to sign a url or fetch headObject
+// RequestParams holds all the parameters needed to sign a url or fetch headObject.
 type RequestParams struct {
 	Bucket    string `json:"bucket"`
 	FileKey   string `json:"fileKey"`
 	AwsKey    string `json:"awsKey"`
 	AwsSecret string `json:"awsSecret"`
+	Region    string `json:"region"`
 }
 
-//PreSign returns a presigned url that expires in 24 hours
+// PreSign returns a presigned url that expires in 24 hours.
 func PreSign(r RequestParams) (string, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(endpoints.UsEast1RegionID),
@@ -47,9 +49,10 @@ func PreSign(r RequestParams) (string, error) {
 	return urlStr, err
 }
 
+// GetHeadObject fetches the metadata of an s3 object
 func GetHeadObject(r RequestParams) (*s3.HeadObjectOutput, error) {
 	session, err := session.NewSession(&aws.Config{
-		Region: aws.String(endpoints.UsEast1RegionID),
+		Region: &r.Region,
 		Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
 			AccessKeyID:     r.AwsKey,
 			SecretAccessKey: r.AwsSecret,
@@ -69,5 +72,5 @@ func GetHeadObject(r RequestParams) (*s3.HeadObjectOutput, error) {
 		return nil, err
 	}
 
-	return headObject, err
+	return headObject, nil
 }
