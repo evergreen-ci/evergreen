@@ -13,7 +13,7 @@ import (
 const (
 	// PresignExpireTime sets the amount of time the link is live before expiring.
 	PresignExpireTime = 24 * time.Hour
-	// NotFound is returned by S3 when an object does not exist
+	// NotFound is returned by S3 when an object does not exist.
 	NotFoundError = "NotFound"
 )
 
