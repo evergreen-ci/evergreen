@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -537,9 +538,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	// kim: TODO: test
+	pp.Println("kim: MarkDependenciesFinished")
 	if err = t.MarkDependenciesFinished(); err != nil {
 		return errors.Wrap(err, "could not update dependency met status")
 	}
+	pp.Println("kim: dependencies were marked finished")
 
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
