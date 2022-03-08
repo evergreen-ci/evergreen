@@ -73,7 +73,7 @@ task_groups:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, _, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
+	_, err := model.LoadProjectInto(ctx, []byte(projYml), nil, "", p)
 	require.NoError(t, err)
 	v := model.Version{
 		Id:     "v1",

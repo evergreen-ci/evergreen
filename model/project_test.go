@@ -28,7 +28,11 @@ func init() {
 }
 
 func TestFindProject(t *testing.T) {
-
+	assert.NoError(t, db.Clear(ProjectRefCollection))
+	projRef := &ProjectRef{
+		Id: "project_test",
+	}
+	assert.NoError(t, projRef.Insert())
 	Convey("When finding a project", t, func() {
 		Convey("an error should be thrown if the project ref's identifier is nil", func() {
 			projRef := &ProjectRef{
