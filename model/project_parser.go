@@ -615,11 +615,11 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		}
 		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to load configs from '%s'", LoadProjectError, path.FileName)
 		}
 		err = intermediateProject.mergeMultipleParserProjects(add)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to merge configs from '%s'", LoadProjectError, path.FileName)
 		}
 	}
 	intermediateProject.Include = nil
