@@ -251,7 +251,7 @@ func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErro
 	if len(patchedProjectConfig) <= 0 {
 		return validationErrs
 	}
-	projectConfig, err := model.CreateProjectConfig([]byte(patchedProjectConfig))
+	projectConfig, err := model.CreateProjectConfig([]byte(patchedProjectConfig), "")
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{
 			Message: fmt.Sprintf("Error unmarshalling patched project config: %s", err.Error()),
