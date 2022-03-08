@@ -10,12 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-const (
-	// PresignExpireTime sets the amount of time the link is live before expiring.
-	PresignExpireTime = 24 * time.Hour
-	// NotFound is returned by S3 when an object does not exist.
-	NotFoundError = "NotFound"
-)
+// PresignExpireTime sets the amount of time the link is live before expiring.
+const PresignExpireTime = 24 * time.Hour
 
 // RequestParams holds all the parameters needed to sign a url or fetch headObject.
 type RequestParams struct {

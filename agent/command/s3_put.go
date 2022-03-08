@@ -87,20 +87,23 @@ type s3put struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
-	// NoOverwrite, when set to true, will not upload files if they already exist in s3.
-	NoOverwrite string `mapstructure:"no_overwrite" plugin:"expand"`
+	// SkipExisting, when set to true, will not upload files if they already exist in s3.
+	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
-	workDir         string
-	skipMissing     bool
-	noOverwriteBool bool
+	workDir          string
+	skipMissing      bool
+	skipExistingBool bool
 
 	bucket pail.Bucket
 
 	taskdata client.TaskData
 	base
 }
+
+// NotFound is returned by S3 when an object does not exist.
+const NotFoundError = "NotFound"
 
 func s3PutFactory() Command      { return &s3put{} }
 func (s3pc *s3put) Name() string { return "s3.put" }
@@ -198,13 +201,11 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		s3pc.skipMissing = false
 	}
 
-	if s3pc.NoOverwrite != "" {
-		s3pc.noOverwriteBool, err = strconv.ParseBool(s3pc.NoOverwrite)
+	if s3pc.SkipExisting != "" {
+		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	} else {
-		s3pc.noOverwriteBool = false
 	}
 	return nil
 }
@@ -354,10 +355,10 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
-				if s3pc.noOverwriteBool {
+				if s3pc.skipExistingBool {
 					exists, err := s3pc.remoteFileExists(remoteName)
 					if err != nil {
-						return errors.Wrapf(err, "error checking if file %s exists", remoteName)
+						return errors.Wrapf(err, "error checking if file '%s' exists", remoteName)
 					}
 					if exists {
 						logger.Task().Infof("noop: not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
@@ -503,7 +504,7 @@ func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
-			case thirdparty.NotFoundError:
+			case NotFoundError:
 				return false, nil
 			default:
 				return false, errors.Wrapf(err, "error getting head object for: %s", remoteName)
