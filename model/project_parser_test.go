@@ -2309,7 +2309,6 @@ buildvariants:
 	}
 	err = p1.mergeMultipleParserProjects(p3)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "matrixes can only be defined in one yaml")
 }
 
 func TestUpdateForFile(t *testing.T) {
