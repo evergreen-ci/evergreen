@@ -652,10 +652,6 @@ type ComplexityRoot struct {
 		EventLogEntries func(childComplexity int) int
 	}
 
-	ProjectPermissions struct {
-		CreateProject func(childComplexity int) int
-	}
-
 	ProjectSettings struct {
 		Aliases               func(childComplexity int) int
 		GitHubWebhooksEnabled func(childComplexity int) int
@@ -4391,13 +4387,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectEvents.EventLogEntries(childComplexity), true
-
-	case "ProjectPermissions.CreateProject":
-		if e.complexity.ProjectPermissions.CreateProject == nil {
-			break
-		}
-
-		return e.complexity.ProjectPermissions.CreateProject(childComplexity), true
 
 	case "ProjectSettings.aliases":
 		if e.complexity.ProjectSettings.Aliases == nil {
@@ -8588,10 +8577,6 @@ type GithubProjectConflicts {
   commitQueueIdentifiers: [String!]
   prTestingIdentifiers: [String!]
   commitCheckIdentifiers: [String!]
-}
-
-type ProjectPermissions {
-  CreateProject: Boolean!
 }
 
 type ProjectSettings {
@@ -24420,41 +24405,6 @@ func (ec *executionContext) _ProjectEvents_count(ctx context.Context, field grap
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _ProjectPermissions_CreateProject(ctx context.Context, field graphql.CollectedField, obj *ProjectPermissions) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "ProjectPermissions",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CreateProject, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ProjectSettings_gitHubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
@@ -45549,33 +45499,6 @@ func (ec *executionContext) _ProjectEvents(ctx context.Context, sel ast.Selectio
 			}
 		case "count":
 			out.Values[i] = ec._ProjectEvents_count(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var projectPermissionsImplementors = []string{"ProjectPermissions"}
-
-func (ec *executionContext) _ProjectPermissions(ctx context.Context, sel ast.SelectionSet, obj *ProjectPermissions) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, projectPermissionsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ProjectPermissions")
-		case "CreateProject":
-			out.Values[i] = ec._ProjectPermissions_CreateProject(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

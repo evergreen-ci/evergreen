@@ -1132,10 +1132,6 @@ type GithubProjectConflicts {
   commitCheckIdentifiers: [String!]
 }
 
-type ProjectPermissions {
-  CreateProject: Boolean!
-}
-
 type ProjectSettings {
   gitHubWebhooksEnabled: Boolean!
   projectRef: Project

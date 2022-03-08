@@ -1661,6 +1661,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 func (r *queryResolver) CanCreateProject(ctx context.Context) (bool, error) {
 	usr := MustHaveUser(ctx)
 	return usr.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
 		Permission:    evergreen.PermissionProjectCreate,
 		RequiredLevel: evergreen.ProjectCreate.Value,
