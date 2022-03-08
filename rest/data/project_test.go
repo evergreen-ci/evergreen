@@ -23,7 +23,7 @@ import (
 // Tests for fetch patch by project route
 
 type ProjectConnectorGetSuite struct {
-	ctx      Connector
+	ctx      DBProjectConnector
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -79,8 +79,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	s.setup = func() error {
-		s.ctx = &DBConnector{}
-
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 
 		projects := []*model.ProjectRef{

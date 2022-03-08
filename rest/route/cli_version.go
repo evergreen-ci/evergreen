@@ -8,20 +8,14 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-type cliVersion struct {
-	sc data.Connector
-}
+type cliVersion struct{}
 
-func makeFetchCLIVersionRoute(sc data.Connector) gimlet.RouteHandler {
-	return &cliVersion{
-		sc: sc,
-	}
+func makeFetchCLIVersionRoute() gimlet.RouteHandler {
+	return &cliVersion{}
 }
 
 func (gh *cliVersion) Factory() gimlet.RouteHandler {
-	return &cliVersion{
-		sc: gh.sc,
-	}
+	return &cliVersion{}
 }
 
 func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
@@ -29,7 +23,8 @@ func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
-	version, err := gh.sc.GetCLIUpdate()
+	dc := data.CLIUpdateConnector{}
+	version, err := dc.GetCLIUpdate()
 	if err != nil || version == nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

@@ -22,7 +22,7 @@ func TestSetBanner(t *testing.T) {
 	sc := &data.DBConnector{}
 
 	// test getting the route handler
-	routeManager := makeSetAdminBanner(sc)
+	routeManager := makeSetAdminBanner()
 	assert.NotNil(routeManager)
 	assert.IsType(&bannerPostHandler{}, routeManager)
 

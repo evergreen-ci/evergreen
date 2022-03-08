@@ -27,19 +27,14 @@ type testGetHandler struct {
 	testExecution int
 	key           string
 	limit         int
-	sc            data.Connector
 }
 
-func makeFetchTestsForTask(sc data.Connector) gimlet.RouteHandler {
-	return &testGetHandler{
-		sc: sc,
-	}
+func makeFetchTestsForTask() gimlet.RouteHandler {
+	return &testGetHandler{}
 }
 
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
-	return &testGetHandler{
-		sc: hgh.sc,
-	}
+	return &testGetHandler{}
 }
 
 // ParseAndValidate fetches the task Id and 'status' from the url and
@@ -122,16 +117,17 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	var tests []testresult.TestResult
+	dc := data.DBTestConnector{}
 	if tgh.testID != "" {
 		// When testID is populated, search the test results collection
 		// for the given ID.
-		tests, err = tgh.sc.FindTestById(tgh.testID)
+		tests, err = dc.FindTestById(tgh.testID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 		}
 	} else {
 		// we're going in here, and we've provided nothing so the limit is 101
-		tests, err = tgh.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+		tests, err = dc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 			Execution: tgh.testExecution,
 			Limit:     tgh.limit + 1,
 			Statuses:  tgh.testStatus, // we haven't provided a status or execution or test name
@@ -168,7 +164,7 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tgh.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             key,
 				Limit:           tgh.limit,
 			},

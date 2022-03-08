@@ -22,7 +22,6 @@ import (
 // Tests for fetch build by id
 
 type BuildByIdSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 	suite.Suite
 }
@@ -42,13 +41,10 @@ func (s *BuildByIdSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	s.sc = &data.DBConnector{
-		DBBuildConnector: data.DBBuildConnector{},
-	}
 }
 
 func (s *BuildByIdSuite) SetupTest() {
-	s.rm = makeGetBuildByID(s.sc)
+	s.rm = makeGetBuildByID()
 }
 
 func (s *BuildByIdSuite) TestFindByIdProjFound() {
@@ -96,7 +92,7 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	s.rm = makeChangeStatusForBuild(s.sc)
+	s.rm = makeChangeStatusForBuild()
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivation() {
@@ -188,7 +184,7 @@ func (s *BuildAbortSuite) SetupSuite() {
 }
 
 func (s *BuildAbortSuite) SetupTest() {
-	s.rm = makeAbortBuild(s.sc)
+	s.rm = makeAbortBuild()
 }
 
 func (s *BuildAbortSuite) TestAbort() {
@@ -253,7 +249,7 @@ func (s *BuildRestartSuite) SetupSuite() {
 }
 
 func (s *BuildRestartSuite) SetupTest() {
-	s.rm = makeRestartBuild(s.sc)
+	s.rm = makeRestartBuild()
 }
 
 func (s *BuildRestartSuite) TestRestart() {

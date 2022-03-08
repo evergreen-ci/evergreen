@@ -33,15 +33,14 @@ const (
 type taskReliabilityHandler struct {
 	StatsHandler
 	filter reliability.TaskReliabilityFilter
-	sc     data.Connector
 }
 
-func makeGetProjectTaskReliability(sc data.Connector) gimlet.RouteHandler {
-	return &taskReliabilityHandler{sc: sc}
+func makeGetProjectTaskReliability() gimlet.RouteHandler {
+	return &taskReliabilityHandler{}
 }
 
 func (trh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
-	return &taskReliabilityHandler{sc: trh.sc}
+	return &taskReliabilityHandler{}
 }
 
 // Get the default before_date.
@@ -246,7 +245,8 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var taskReliabilityResult []model.APITaskReliability
 
-	taskReliabilityResult, err = trh.sc.GetTaskReliabilityScores(trh.filter)
+	dc := data.TaskReliabilityConnector{}
+	taskReliabilityResult, err = dc.GetTaskReliabilityScores(trh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}
@@ -264,7 +264,7 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         trh.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             last.StartAtKey(),
 				Limit:           requestLimit,
 			},

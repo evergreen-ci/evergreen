@@ -61,7 +61,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
+func SetScheduled(ctx context.Context, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := MustHaveUser(ctx)
 	t, err := task.FindOneId(taskID)
 	if err != nil {
@@ -90,7 +90,7 @@ func SetScheduled(ctx context.Context, sc data.Connector, taskID string, isActiv
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	err = apiTask.BuildFromService(sc.GetURL())
+	err = apiTask.BuildFromService(data.GetURL())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -114,8 +114,9 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 	return &newTime, nil
 }
 
-func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error) {
-	version, err := d.FindVersionById(versionID)
+func getVersionBaseTasks(versionID string) ([]task.Task, error) {
+	dc := data.DBVersionConnector{}
+	version, err := dc.FindVersionById(versionID)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
 	}
@@ -143,8 +144,8 @@ func getVersionBaseTasks(d data.Connector, versionID string) ([]task.Task, error
 type BaseTaskStatuses map[string]map[string]string
 
 // GetBaseTaskStatusesFromPatchID gets the status of each base build associated with a task
-func GetBaseTaskStatusesFromPatchID(d data.Connector, patchID string) (BaseTaskStatuses, error) {
-	baseTasks, err := getVersionBaseTasks(d, patchID)
+func GetBaseTaskStatusesFromPatchID(patchID string) (BaseTaskStatuses, error) {
+	baseTasks, err := getVersionBaseTasks(patchID)
 	if err != nil {
 		return nil, err
 	}
@@ -469,13 +470,13 @@ func (p *PatchUpdate) BuildFromGqlInput(r PatchConfigure) {
 }
 
 // GetAPITaskFromTask builds an APITask from the given task
-func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) (*restModel.APITask, error) {
+func GetAPITaskFromTask(ctx context.Context, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
 	err := apiTask.BuildFromService(&task)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
 	}
-	err = apiTask.BuildFromService(sc.GetURL())
+	err = apiTask.BuildFromService(data.GetURL())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", task.Id, err.Error()))
 	}
@@ -483,7 +484,7 @@ func GetAPITaskFromTask(ctx context.Context, sc data.Connector, task task.Task) 
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(sc data.Connector, versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
@@ -497,8 +498,9 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		IncludeBaseTasks:               true,
 		IncludeBuildVariantDisplayName: true,
 	}
+	dc := data.DBTaskConnector{}
 	start := time.Now()
-	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
+	tasks, _, err := dc.FindTasksByVersion(versionId, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
 	}
@@ -672,8 +674,9 @@ func ModifyVersion(version model.Version, user user.DBUser, modifications Versio
 }
 
 // ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
-func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, patchID string, modifications VersionModifications) error {
-	version, err := dataConnector.FindVersionById(patchID)
+func ModifyVersionHandler(ctx context.Context, patchID string, modifications VersionModifications) error {
+	dc := data.DBVersionConnector{}
+	version, err := dc.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
@@ -706,7 +709,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 					}
 					// only modify the child patch if it is finalized
 					if p.Version != "" {
-						err = ModifyVersionHandler(ctx, dataConnector, childPatchId, modifications)
+						err = ModifyVersionHandler(ctx, childPatchId, modifications)
 						if err != nil {
 							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
 						}
@@ -1250,7 +1253,7 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 	return nil
 }
 
-func setVersionActivationStatus(sc data.Connector, version *model.Version) error {
+func setVersionActivationStatus(version *model.Version) error {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
@@ -1259,7 +1262,8 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := sc.FindTasksByVersion(version.Id, opts)
+	dc := data.DBTaskConnector{}
+	tasks, _, err := dc.FindTasksByVersion(version.Id, opts)
 	if err != nil {
 		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
 	}

@@ -140,7 +140,6 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				handler := &hostGetHandler{
-					sc:    &serviceContext,
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
 				}
@@ -195,7 +194,6 @@ func TestHostPaginator(t *testing.T) {
 				handler := &hostGetHandler{
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
@@ -247,7 +245,6 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				handler := &hostGetHandler{
-					sc:    &serviceContext,
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
 				}
@@ -300,7 +297,6 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				handler := &hostGetHandler{
-					sc:    &serviceContext,
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
 				}
@@ -597,7 +593,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
-					sc:    &serviceContext,
 				}
 
 				// SPARTA
@@ -640,7 +635,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -681,7 +675,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -722,7 +715,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", 0, taskToStartAt),
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -755,7 +747,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit:              1,
 					key:                "0build0",
-					sc:                 &serviceContext,
 					fetchAllExecutions: true,
 				}
 
@@ -1301,7 +1292,6 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.NoError(t, randomTask.Insert())
 	tbh := &tasksByBuildHandler{
 		limit: 100,
-		sc:    &sc,
 	}
 	route := "/rest/v2/builds/test/tasks?fetch_all_executions=false&fetch_parent_ids=true&start_at=execTask0"
 	r, err := http.NewRequest("GET", route, nil)

@@ -65,7 +65,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 }
 
 func (s *PatchByIdSuite) SetupTest() {
-	s.route = makeFetchPatchByID(s.sc).(*patchByIdHandler)
+	s.route = makeFetchPatchByID().(*patchByIdHandler)
 }
 
 func (s *PatchByIdSuite) TestFindById() {
@@ -157,7 +157,7 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 }
 
 func (s *PatchesByProjectSuite) SetupTest() {
-	s.route = makePatchesByProjectRoute(s.sc).(*patchesByProjectHandler)
+	s.route = makePatchesByProjectRoute().(*patchesByProjectHandler)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldSucceedIfNoResults() {
@@ -304,7 +304,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
+	rm := makeAbortPatch().(*patchAbortHandler)
 	rm.patchId = s.objIds[0]
 	res := rm.Run(ctx)
 	s.NotNil(res)
@@ -345,7 +345,7 @@ func (s *PatchAbortSuite) TestAbortFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
+	rm := makeAbortPatch().(*patchAbortHandler)
 	new_id := mgobson.NewObjectId()
 	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
@@ -411,7 +411,7 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	env := testutil.NewEnvironment(ctx, s.T())
-	rm := makeChangePatchStatus(s.sc, env).(*patchChangeStatusHandler)
+	rm := makeChangePatchStatus(env).(*patchChangeStatusHandler)
 
 	rm.patchId = s.objIds[0]
 	var tmp_true = true
@@ -490,7 +490,7 @@ func (s *PatchRestartSuite) TestRestart() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := makeRestartPatch(s.sc).(*patchRestartHandler)
+	rm := makeRestartPatch().(*patchRestartHandler)
 	rm.patchId = s.objIds[0]
 	res := rm.Run(ctx)
 	s.NotNil(res)
@@ -524,9 +524,7 @@ func TestPatchesByUserSuite(t *testing.T) {
 
 func (s *PatchesByUserSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.route = &patchesByUserHandler{
-		sc: s.sc,
-	}
+	s.route = &patchesByUserHandler{}
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
 	user2 := "user2"
@@ -659,10 +657,6 @@ func TestPatchRawHandler(t *testing.T) {
 	assert.NoError(t, patchToInsert.Insert())
 
 	route := &patchRawHandler{
-		sc: &data.DBConnector{
-			URL:              "https://evergreen.example.net",
-			DBPatchConnector: data.DBPatchConnector{},
-		},
 		patchID:    patchId,
 		moduleName: "main",
 	}
@@ -830,7 +824,7 @@ buildvariants:
 		PatchedParserProject: config,
 	}
 	require.NoError(t, unfinalized.Insert())
-	handler := makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	handler := makeSchedulePatchHandler().(*schedulePatchHandler)
 
 	// nonexistent patch ID should error
 	req, err := http.NewRequest(http.MethodPost, "", nil)
@@ -839,7 +833,7 @@ buildvariants:
 	assert.Error(t, handler.Parse(ctx, req))
 
 	// valid request, scheduling patch for the first time
-	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
 	description := "some text"
 	body := patchTasks{
 		Description: description,
@@ -872,7 +866,7 @@ buildvariants:
 	assert.True(t, foundPassing)
 
 	// valid request, reconfiguring a finalized patch
-	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "ubuntu", Tasks: []string{"failing_test"}}},
 	}
@@ -915,7 +909,7 @@ buildvariants:
 		PatchedParserProject: config,
 	}
 	assert.NoError(t, patch2.Insert())
-	handler = makeSchedulePatchHandler(&data.DBConnector{}).(*schedulePatchHandler)
+	handler = makeSchedulePatchHandler().(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "ubuntu", Tasks: []string{"*"}}},
 	}

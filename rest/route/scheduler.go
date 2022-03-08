@@ -12,19 +12,14 @@ import (
 
 type compareTasksRoute struct {
 	request model.CompareTasksRequest
-	sc      data.Connector
 }
 
-func makeCompareTasksRoute(sc data.Connector) gimlet.RouteHandler {
-	return &compareTasksRoute{
-		sc: sc,
-	}
+func makeCompareTasksRoute() gimlet.RouteHandler {
+	return &compareTasksRoute{}
 }
 
 func (p *compareTasksRoute) Factory() gimlet.RouteHandler {
-	return &compareTasksRoute{
-		sc: p.sc,
-	}
+	return &compareTasksRoute{}
 }
 
 func (p *compareTasksRoute) Parse(ctx context.Context, r *http.Request) error {
@@ -41,7 +36,8 @@ func (p *compareTasksRoute) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *compareTasksRoute) Run(ctx context.Context) gimlet.Responder {
-	order, logic, err := p.sc.CompareTasks(p.request.Tasks, p.request.UseLegacy)
+	dc := data.SchedulerConnector{}
+	order, logic, err := dc.CompareTasks(p.request.Tasks, p.request.UseLegacy)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

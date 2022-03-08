@@ -53,7 +53,7 @@ func (s *CommitQueueSuite) SetupTest() {
 
 func (s *CommitQueueSuite) TestParse() {
 	ctx := context.Background()
-	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
+	route := makeCommitQueueEnqueueItem().(*commitQueueEnqueueItemHandler)
 	patchID := "aabbccddeeff001122334455"
 	projectID := "proj"
 	p1 := patch.Patch{Id: patch.NewId(patchID), Project: projectID}
@@ -65,7 +65,7 @@ func (s *CommitQueueSuite) TestParse() {
 }
 
 func (s *CommitQueueSuite) TestGetCommitQueue() {
-	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
+	route := makeGetCommitQueueItems().(*commitQueueGetHandler)
 	route.project = "mci"
 	pos, err := s.sc.EnqueueItem(
 		"mci",
@@ -140,7 +140,7 @@ func (s *CommitQueueSuite) TestClearAll() {
 	s.Require().NoError(commitqueue.InsertQueue(cq0))
 	s.Require().NoError(commitqueue.InsertQueue(cq1))
 
-	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
+	route := makeClearCommitQueuesHandler().(*commitQueueClearAllHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -168,7 +168,7 @@ func (s *CommitQueueSuite) TestClearAll() {
 }
 
 func (s *CommitQueueSuite) TestEnqueueItem() {
-	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
+	route := makeCommitQueueEnqueueItem().(*commitQueueEnqueueItemHandler)
 	id := "aabbccddeeff112233445566"
 	patch1 := patch.Patch{
 		Id: patch.NewId(id),
@@ -228,7 +228,7 @@ func TestAdditionalPatches(t *testing.T) {
 	}
 	assert.NoError(t, commitqueue.InsertQueue(&cq))
 
-	handler := makeCommitQueueAdditionalPatches(&data.DBConnector{})
+	handler := makeCommitQueueAdditionalPatches()
 	ctx := context.Background()
 
 	request, err := http.NewRequest(http.MethodGet, "", nil)

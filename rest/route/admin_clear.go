@@ -12,15 +12,14 @@ import (
 
 type clearTaskQueueHandler struct {
 	distro string
-	sc     data.Connector
 }
 
-func makeClearTaskQueueHandler(sc data.Connector) gimlet.RouteHandler {
-	return &clearTaskQueueHandler{sc: sc}
+func makeClearTaskQueueHandler() gimlet.RouteHandler {
+	return &clearTaskQueueHandler{}
 }
 
 func (h *clearTaskQueueHandler) Factory() gimlet.RouteHandler {
-	return &clearTaskQueueHandler{sc: h.sc}
+	return &clearTaskQueueHandler{}
 }
 
 func (h *clearTaskQueueHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -37,7 +36,8 @@ func (h *clearTaskQueueHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *clearTaskQueueHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.sc.ClearTaskQueue(h.distro); err != nil {
+	dc := data.DBDistroConnector{}
+	if err := dc.ClearTaskQueue(h.distro); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

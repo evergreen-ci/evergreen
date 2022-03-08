@@ -21,19 +21,14 @@ import (
 
 type buildGetHandler struct {
 	buildId string
-	sc      data.Connector
 }
 
-func makeGetBuildByID(sc data.Connector) gimlet.RouteHandler {
-	return &buildGetHandler{
-		sc: sc,
-	}
+func makeGetBuildByID() gimlet.RouteHandler {
+	return &buildGetHandler{}
 }
 
 func (b *buildGetHandler) Factory() gimlet.RouteHandler {
-	return &buildGetHandler{
-		sc: b.sc,
-	}
+	return &buildGetHandler{}
 }
 
 func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -42,7 +37,8 @@ func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	dc := data.DBBuildConnector{}
+	foundBuild, err := dc.FindBuildById(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -50,7 +46,8 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, t := range foundBuild.Tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	tasks, err := b.sc.FindTasksByIds(taskIDs)
+	tc := data.DBTaskConnector{}
+	tasks, err := tc.FindTasksByIds(taskIDs)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -74,20 +71,15 @@ type buildChangeStatusHandler struct {
 	Priority  *int64 `json:"priority"`
 
 	buildId string
-	sc      data.Connector
 }
 
-func makeChangeStatusForBuild(sc data.Connector) gimlet.RouteHandler {
-	return &buildChangeStatusHandler{
-		sc: sc,
-	}
+func makeChangeStatusForBuild() gimlet.RouteHandler {
+	return &buildChangeStatusHandler{}
 
 }
 
 func (b *buildChangeStatusHandler) Factory() gimlet.RouteHandler {
-	return &buildChangeStatusHandler{
-		sc: b.sc,
-	}
+	return &buildChangeStatusHandler{}
 }
 
 func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -111,14 +103,15 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	dc := data.DBBuildConnector{}
+	foundBuild, err := dc.FindBuildById(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	if b.Priority != nil {
 		priority := *b.Priority
-		if ok := validPriority(priority, foundBuild.Project, user, b.sc); !ok {
+		if ok := validPriority(priority, foundBuild.Project, user); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
@@ -126,13 +119,13 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err = b.sc.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
+		if err = dc.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 
 	if b.Activated != nil {
-		if err = b.sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
+		if err = dc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
@@ -154,19 +147,14 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 
 type buildAbortHandler struct {
 	buildId string
-	sc      data.Connector
 }
 
-func makeAbortBuild(sc data.Connector) gimlet.RouteHandler {
-	return &buildAbortHandler{
-		sc: sc,
-	}
+func makeAbortBuild() gimlet.RouteHandler {
+	return &buildAbortHandler{}
 }
 
 func (b *buildAbortHandler) Factory() gimlet.RouteHandler {
-	return &buildAbortHandler{
-		sc: b.sc,
-	}
+	return &buildAbortHandler{}
 }
 
 func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -176,12 +164,12 @@ func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-
-	if err := b.sc.AbortBuild(b.buildId, usr.Id); err != nil {
+	dc := data.DBBuildConnector{}
+	if err := dc.AbortBuild(b.buildId, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	foundBuild, err := dc.FindBuildById(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -203,19 +191,14 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 
 type buildRestartHandler struct {
 	buildId string
-	sc      data.Connector
 }
 
-func makeRestartBuild(sc data.Connector) gimlet.RouteHandler {
-	return &buildRestartHandler{
-		sc: sc,
-	}
+func makeRestartBuild() gimlet.RouteHandler {
+	return &buildRestartHandler{}
 }
 
 func (b *buildRestartHandler) Factory() gimlet.RouteHandler {
-	return &buildRestartHandler{
-		sc: b.sc,
-	}
+	return &buildRestartHandler{}
 }
 
 func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -225,12 +208,13 @@ func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	err := b.sc.RestartBuild(b.buildId, usr.Id)
+	dc := data.DBBuildConnector{}
+	err := dc.RestartBuild(b.buildId, usr.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	foundBuild, err := dc.FindBuildById(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}

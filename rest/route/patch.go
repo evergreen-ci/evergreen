@@ -27,19 +27,16 @@ type patchChangeStatusHandler struct {
 
 	patchId string
 	env     evergreen.Environment
-	sc      data.Connector
 }
 
-func makeChangePatchStatus(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeChangePatchStatus(env evergreen.Environment) gimlet.RouteHandler {
 	return &patchChangeStatusHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (p *patchChangeStatusHandler) Factory() gimlet.RouteHandler {
 	return &patchChangeStatusHandler{
-		sc:  p.sc,
 		env: p.env,
 	}
 }
@@ -64,29 +61,29 @@ func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
-	foundPatch, err := p.sc.FindPatchById(p.patchId)
+	dc := data.DBPatchConnector{}
+	foundPatch, err := dc.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	if p.Priority != nil {
 		priority := *p.Priority
-		if ok := validPriority(priority, *foundPatch.ProjectId, user, p.sc); !ok {
+		if ok := validPriority(priority, *foundPatch.ProjectId, user); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := p.sc.SetPatchPriority(p.patchId, priority, ""); err != nil {
+		if err := dc.SetPatchPriority(p.patchId, priority, ""); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 	if p.Activated != nil {
 		ctx, cancel := p.env.Context()
 		defer cancel()
-		if err := p.sc.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
+		if err := dc.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
@@ -100,17 +97,14 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 
 type patchByIdHandler struct {
 	patchId string
-	sc      data.Connector
 }
 
-func makeFetchPatchByID(sc data.Connector) gimlet.RouteHandler {
-	return &patchByIdHandler{
-		sc: sc,
-	}
+func makeFetchPatchByID() gimlet.RouteHandler {
+	return &patchByIdHandler{}
 }
 
 func (p *patchByIdHandler) Factory() gimlet.RouteHandler {
-	return &patchByIdHandler{sc: p.sc}
+	return &patchByIdHandler{}
 }
 
 func (p *patchByIdHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -119,7 +113,8 @@ func (p *patchByIdHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
-	foundPatch, err := p.sc.FindPatchById(p.patchId)
+	dc := data.DBPatchConnector{}
+	foundPatch, err := dc.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -134,17 +129,14 @@ func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
 type patchRawHandler struct {
 	patchID    string
 	moduleName string
-	sc         data.Connector
 }
 
-func makePatchRawHandler(sc data.Connector) gimlet.RouteHandler {
-	return &patchByIdHandler{
-		sc: sc,
-	}
+func makePatchRawHandler() gimlet.RouteHandler {
+	return &patchByIdHandler{}
 }
 
 func (p *patchRawHandler) Factory() gimlet.RouteHandler {
-	return &patchByIdHandler{sc: p.sc}
+	return &patchByIdHandler{}
 }
 
 func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -155,7 +147,8 @@ func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
-	patchMap, err := p.sc.GetPatchRawPatches(p.patchID)
+	dc := data.DBPatchConnector{}
+	patchMap, err := dc.GetPatchRawPatches(p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -171,19 +164,14 @@ type patchesByUserHandler struct {
 	limit int
 	key   time.Time
 	user  string
-	sc    data.Connector
 }
 
-func makeUserPatchHandler(sc data.Connector) gimlet.RouteHandler {
-	return &patchesByUserHandler{
-		sc: sc,
-	}
+func makeUserPatchHandler() gimlet.RouteHandler {
+	return &patchesByUserHandler{}
 }
 
 func (p *patchesByUserHandler) Factory() gimlet.RouteHandler {
-	return &patchesByUserHandler{
-		sc: p.sc,
-	}
+	return &patchesByUserHandler{}
 }
 
 func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -213,7 +201,8 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 	// sortAsc set to false in order to display patches in desc chronological order
-	patches, err := p.sc.FindPatchesByUser(p.user, p.key, p.limit+1)
+	dc := data.DBPatchConnector{}
+	patches, err := dc.FindPatchesByUser(p.user, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -229,7 +218,7 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         p.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
@@ -260,19 +249,14 @@ type patchesByProjectHandler struct {
 	projectId string
 	key       time.Time
 	limit     int
-	sc        data.Connector
 }
 
-func makePatchesByProjectRoute(sc data.Connector) gimlet.RouteHandler {
-	return &patchesByProjectHandler{
-		sc: sc,
-	}
+func makePatchesByProjectRoute() gimlet.RouteHandler {
+	return &patchesByProjectHandler{}
 }
 
 func (p *patchesByProjectHandler) Factory() gimlet.RouteHandler {
-	return &patchesByProjectHandler{
-		sc: p.sc,
-	}
+	return &patchesByProjectHandler{}
 }
 
 func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -302,7 +286,8 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	patches, err := p.sc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
+	dc := data.DBPatchConnector{}
+	patches, err := dc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -318,7 +303,7 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         p.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
@@ -351,17 +336,14 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 type patchAbortHandler struct {
 	patchId string
-	sc      data.Connector
 }
 
-func makeAbortPatch(sc data.Connector) gimlet.RouteHandler {
-	return &patchAbortHandler{
-		sc: sc,
-	}
+func makeAbortPatch() gimlet.RouteHandler {
+	return &patchAbortHandler{}
 }
 
 func (p *patchAbortHandler) Factory() gimlet.RouteHandler {
-	return &patchAbortHandler{sc: p.sc}
+	return &patchAbortHandler{}
 }
 
 func (p *patchAbortHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -371,13 +353,13 @@ func (p *patchAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-
-	if err := p.sc.AbortPatch(p.patchId, usr.Id); err != nil {
+	dc := data.DBPatchConnector{}
+	if err := dc.AbortPatch(p.patchId, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
 	// Patch may be deleted by abort (eg not finalized) and not found here
-	foundPatch, err := p.sc.FindPatchById(p.patchId)
+	foundPatch, err := dc.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -393,19 +375,14 @@ func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 
 type patchRestartHandler struct {
 	patchId string
-	sc      data.Connector
 }
 
-func makeRestartPatch(sc data.Connector) gimlet.RouteHandler {
-	return &patchRestartHandler{
-		sc: sc,
-	}
+func makeRestartPatch() gimlet.RouteHandler {
+	return &patchRestartHandler{}
 }
 
 func (p *patchRestartHandler) Factory() gimlet.RouteHandler {
-	return &patchRestartHandler{
-		sc: p.sc,
-	}
+	return &patchRestartHandler{}
 }
 
 func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -416,12 +393,13 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-
-	if err := p.sc.RestartVersion(p.patchId, usr.Id); err != nil {
+	dc := data.DBPatchConnector{}
+	vc := data.DBVersionConnector{}
+	if err := vc.RestartVersion(p.patchId, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 
-	foundPatch, err := p.sc.FindPatchById(p.patchId)
+	foundPatch, err := dc.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -438,19 +416,14 @@ type mergePatchHandler struct {
 	CommitMessage string `json:"commit_message"`
 
 	patchId string
-	sc      data.Connector
 }
 
-func makeMergePatch(sc data.Connector) gimlet.RouteHandler {
-	return &mergePatchHandler{
-		sc: sc,
-	}
+func makeMergePatch() gimlet.RouteHandler {
+	return &mergePatchHandler{}
 }
 
 func (p *mergePatchHandler) Factory() gimlet.RouteHandler {
-	return &mergePatchHandler{
-		sc: p.sc,
-	}
+	return &mergePatchHandler{}
 }
 
 func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -466,7 +439,8 @@ func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	apiPatch, err := p.sc.CreatePatchForMerge(ctx, p.patchId, p.CommitMessage)
+	dc := data.DBCommitQueueConnector{}
+	apiPatch, err := dc.CreatePatchForMerge(ctx, p.patchId, p.CommitMessage)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't create merge patch"))
 	}
@@ -488,28 +462,24 @@ type schedulePatchHandler struct {
 
 	patchId string
 	patch   patch.Patch
-	sc      data.Connector
 }
 
-func makeSchedulePatchHandler(sc data.Connector) gimlet.RouteHandler {
-	return &schedulePatchHandler{
-		sc: sc,
-	}
+func makeSchedulePatchHandler() gimlet.RouteHandler {
+	return &schedulePatchHandler{}
 }
 
 func (p *schedulePatchHandler) Factory() gimlet.RouteHandler {
-	return &schedulePatchHandler{
-		sc: p.sc,
-	}
+	return &schedulePatchHandler{}
 }
 
 func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error {
+	dc := data.DBPatchConnector{}
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	if p.patchId == "" {
 		return errors.New("must specify a patch ID")
 	}
 	var err error
-	apiPatch, err := p.sc.FindPatchById(p.patchId)
+	apiPatch, err := dc.FindPatchById(p.patchId)
 	if err != nil {
 		return err
 	}
@@ -543,7 +513,8 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to get token"))
 	}
-	dbVersion, _ := p.sc.FindVersionById(p.patchId)
+	dc := data.DBVersionConnector{}
+	dbVersion, _ := dc.FindVersionById(p.patchId)
 	var project *dbModel.Project
 	if dbVersion == nil {
 		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
@@ -595,7 +566,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		_ = resp.AddData(msg)
 		return resp
 	}
-	dbVersion, err = p.sc.FindVersionById(versionId)
+	dbVersion, err = dc.FindVersionById(versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find patch version"))
 	}

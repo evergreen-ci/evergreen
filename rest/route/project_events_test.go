@@ -98,7 +98,6 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.route.Id = s.projectId
 	s.route.Limit = 100
 	s.route.Timestamp = time.Now().Add(time.Second * 10)
-	s.route.sc = s.sc
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)

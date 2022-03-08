@@ -17,19 +17,14 @@ import (
 type projectCopyHandler struct {
 	oldProject string
 	newProject string
-	sc         data.Connector
 }
 
-func makeCopyProject(sc data.Connector) gimlet.RouteHandler {
-	return &projectCopyHandler{
-		sc: sc,
-	}
+func makeCopyProject() gimlet.RouteHandler {
+	return &projectCopyHandler{}
 }
 
 func (p *projectCopyHandler) Factory() gimlet.RouteHandler {
-	return &projectCopyHandler{
-		sc: p.sc,
-	}
+	return &projectCopyHandler{}
 }
 
 func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -49,7 +44,8 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		ProjectIdToCopy:      p.oldProject,
 		NewProjectIdentifier: p.newProject,
 	}
-	apiProjectRef, err := p.sc.CopyProject(ctx, opts)
+	dc := data.DBProjectConnector{}
+	apiProjectRef, err := dc.CopyProject(ctx, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -63,7 +59,6 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 type copyVariablesHandler struct {
 	copyFrom string
 	opts     copyVariablesOptions
-	sc       data.Connector
 }
 
 type copyVariablesOptions struct {
@@ -73,16 +68,12 @@ type copyVariablesOptions struct {
 	Overwrite      bool   `json:"overwrite"`
 }
 
-func makeCopyVariables(sc data.Connector) gimlet.RouteHandler {
-	return &copyVariablesHandler{
-		sc: sc,
-	}
+func makeCopyVariables() gimlet.RouteHandler {
+	return &copyVariablesHandler{}
 }
 
 func (p *copyVariablesHandler) Factory() gimlet.RouteHandler {
-	return &copyVariablesHandler{
-		sc: p.sc,
-	}
+	return &copyVariablesHandler{}
 }
 
 func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -103,17 +94,18 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProject, err := p.sc.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
+	dc := data.DBProjectConnector{}
+	copyToProject, err := dc.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	copyFromProject, err := p.sc.FindProjectById(p.copyFrom, false, false) // ensure project is existing
+	copyFromProject, err := dc.FindProjectById(p.copyFrom, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
 	}
 
-	varsToCopy, err := p.sc.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
+	varsToCopy, err := dc.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding variables for '%s'", p.copyFrom))
 	}
@@ -133,7 +125,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(varsToCopy)
 	}
 
-	if err := p.sc.UpdateProjectVars(copyToProject.Id, varsToCopy, p.opts.Overwrite); err != nil {
+	if err := dc.UpdateProjectVars(copyToProject.Id, varsToCopy, p.opts.Overwrite); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.copyFrom))
 	}
 

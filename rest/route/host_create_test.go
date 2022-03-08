@@ -29,9 +29,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
-	handler := hostCreateHandler{
-		sc: &data.DBConnector{},
-	}
+	handler := hostCreateHandler{}
 
 	d := distro.Distro{
 		Id:       "archlinux-test",
@@ -64,7 +62,8 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	dc := data.DBCreateHostConnector{}
+	h, err := dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
 
@@ -110,7 +109,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -132,7 +131,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	require.NoError(err)
 	require.NotNil(h)
 
@@ -161,7 +160,7 @@ func TestMakeIntentHost(t *testing.T) {
 		KeyName:             "mock_key",
 	}
 	handler.createHost = c
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -201,7 +200,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -243,7 +242,7 @@ func TestMakeIntentHost(t *testing.T) {
 		SecurityGroups:      []string{"1234"},
 	}
 	handler.createHost = c
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	require.NoError(err)
 	require.NotNil(h)
 	assert.Equal("", h.Distro.Id)
@@ -275,7 +274,7 @@ func TestMakeIntentHost(t *testing.T) {
 		KeyName:             "mock_key",
 	}
 	handler.createHost = c
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -285,7 +284,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
 
 	handler.createHost.Region = "us-west-1"
-	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -299,9 +298,7 @@ func TestHostCreateDocker(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
-	handler := hostCreateHandler{
-		sc: &data.DBConnector{},
-	}
+	handler := hostCreateHandler{}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
@@ -343,7 +340,8 @@ func TestHostCreateDocker(t *testing.T) {
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
-	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	dc := data.DBCreateHostConnector{}
+	h, err := dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
 	assert.Equal("distro", h.Distro.Id)
@@ -363,9 +361,7 @@ func TestGetDockerLogs(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
-	handler := containerLogsHandler{
-		sc: &data.DBConnector{},
-	}
+	handler := containerLogsHandler{}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
@@ -407,7 +403,8 @@ func TestGetDockerLogs(t *testing.T) {
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
-	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
+	dc := data.DBCreateHostConnector{}
+	h, err := dc.MakeIntentHost("task-id", "", "", c)
 	require.NoError(err)
 	require.NotNil(h)
 	assert.NotEmpty(h.ParentID)
@@ -469,9 +466,7 @@ func TestGetDockerStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection, evergreen.ConfigCollection))
-	handler := containerStatusHandler{
-		sc: &data.DBConnector{},
-	}
+	handler := containerStatusHandler{}
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}
 	settings := evergreen.Settings{ContainerPools: poolConfig}
@@ -512,7 +507,8 @@ func TestGetDockerStatus(t *testing.T) {
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
-	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
+	dc := data.DBCreateHostConnector{}
+	h, err := dc.MakeIntentHost("task-id", "", "", c)
 	require.NoError(err)
 	assert.NotEmpty(h.ParentID)
 

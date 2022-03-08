@@ -91,11 +91,10 @@ func TestPostPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			p := makePostPod(env, sc)
+			p := makePostPod(env)
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podPostHandler))
@@ -148,7 +147,7 @@ func TestGetPod(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			p := makeGetPod(env, sc)
+			p := makeGetPod(env)
 			require.NotZero(t, p)
 
 			tCase(ctx, t, sc, p.(*podGetHandler))

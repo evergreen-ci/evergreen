@@ -47,7 +47,7 @@ func TestDistroSetupByIDSuite(t *testing.T) {
 func (s *DistroSetupByIDSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(distro.Collection))
 	s.sc = getMockDistrosConnector()
-	s.rm = makeGetDistroSetup(s.sc)
+	s.rm = makeGetDistroSetup()
 }
 
 func (s *DistroSetupByIDSuite) TestRunValidId() {
@@ -91,7 +91,7 @@ func TestDistroPatchSetupByIDSuite(t *testing.T) {
 func (s *DistroPatchSetupByIDSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(distro.Collection))
 	s.sc = getMockDistrosConnector()
-	s.rm = makeChangeDistroSetup(s.sc)
+	s.rm = makeChangeDistroSetup()
 }
 
 func (s *DistroPatchSetupByIDSuite) TestParseValidJSON() {
@@ -196,7 +196,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 }
 
 func (s *DistroByIDSuite) SetupTest() {
-	s.rm = makeGetDistroByID(s.sc)
+	s.rm = makeGetDistroByID()
 }
 
 func (s *DistroByIDSuite) TestFindByIdFound() {
@@ -255,7 +255,7 @@ func TestDistroAMIHandler(t *testing.T) {
 		},
 	}
 	assert.NoError(t, d.Insert())
-	h := makeGetDistroAMI(&data.DBConnector{}).(*distroAMIHandler)
+	h := makeGetDistroAMI().(*distroAMIHandler)
 
 	// default region
 	r, err := http.NewRequest("GET", "/distros/d1/ami", nil)
@@ -314,7 +314,7 @@ func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
 		},
 	}
 	assert.NoError(t, d.Insert())
-	h := makeModifyDistrosSettings(&data.DBConnector{}).(*modifyDistrosSettingsHandler)
+	h := makeModifyDistrosSettings().(*modifyDistrosSettingsHandler)
 
 	jsonChanges := `{"region": ""}`
 	body := bytes.NewBuffer([]byte(jsonChanges))
@@ -322,7 +322,7 @@ func TestUpdateDistrosSettingsHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Error(t, h.Parse(context.TODO(), r))
 
-	h = makeModifyDistrosSettings(&data.DBConnector{}).(*modifyDistrosSettingsHandler)
+	h = makeModifyDistrosSettings().(*modifyDistrosSettingsHandler)
 	jsonChanges = `{"region": "us-east-1", "ami": "ami-new"}`
 	body = bytes.NewBuffer([]byte(jsonChanges))
 	r, err = http.NewRequest("PATCH", "/distros/settings", body)
@@ -382,7 +382,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 		},
 	}
 	assert.NoError(t, d.Insert())
-	h := makeModifyDistrosSettings(&data.DBConnector{}).(*modifyDistrosSettingsHandler)
+	h := makeModifyDistrosSettings().(*modifyDistrosSettingsHandler)
 
 	h.settings = birch.NewDocument(
 		birch.EC.String("region", "us-west-1"),
@@ -461,7 +461,7 @@ func (s *DistroPutSuite) SetupTest() {
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
-	s.rm = makePutDistro(s.sc)
+	s.rm = makePutDistro()
 }
 
 func (s *DistroPutSuite) TestParse() {
@@ -631,7 +631,7 @@ func (s *DistroDeleteByIDSuite) SetupTest() {
 		err := s.sc.CreateDistro(d)
 		s.NoError(err)
 	}
-	s.rm = makeDeleteDistroByID(s.sc)
+	s.rm = makeDeleteDistroByID()
 }
 
 func (s *DistroDeleteByIDSuite) TestParse() {
@@ -762,7 +762,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
-	s.rm = makePatchDistroByID(s.sc)
+	s.rm = makePatchDistroByID()
 }
 
 func (s *DistroPatchByIDSuite) TestParse() {
@@ -1578,7 +1578,7 @@ func (s *distroExecuteSuite) SetupTest() {
 	}
 	s.Require().NoError(hostToAdd.Insert())
 	s.Require().NoError(env.Configure(ctx))
-	h := makeDistroExecute(s.sc, s.env)
+	h := makeDistroExecute(s.env)
 	rh, ok := h.(*distroExecuteHandler)
 	s.Require().True(ok)
 	s.rh = rh
@@ -1683,7 +1683,7 @@ func (s *distroClientURLsGetSuite) SetupTest() {
 	env := &mock.Environment{}
 	s.env = env
 	s.Require().NoError(env.Configure(ctx))
-	h := makeGetDistroClientURLs(s.sc, s.env)
+	h := makeGetDistroClientURLs(s.env)
 	rh, ok := h.(*distroClientURLsGetHandler)
 	s.Require().True(ok)
 	s.rh = rh

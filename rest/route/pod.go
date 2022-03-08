@@ -22,21 +22,18 @@ import (
 
 type podPostHandler struct {
 	env evergreen.Environment
-	sc  data.Connector
 	p   model.APICreatePod
 }
 
-func makePostPod(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
+func makePostPod(env evergreen.Environment) gimlet.RouteHandler {
 	return &podPostHandler{
 		env: env,
-		sc:  sc,
 	}
 }
 
 func (h *podPostHandler) Factory() gimlet.RouteHandler {
 	return &podPostHandler{
 		env: h.env,
-		sc:  h.sc,
 	}
 }
 
@@ -54,7 +51,8 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run creates a new pod based on the request payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := h.sc.CreatePod(h.p)
+	dc := data.DBPodConnector{}
+	res, err := dc.CreatePod(h.p)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating new pod"))
 	}
@@ -83,21 +81,18 @@ func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 type podGetHandler struct {
 	env   evergreen.Environment
-	sc    data.Connector
 	podID string
 }
 
-func makeGetPod(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
+func makeGetPod(env evergreen.Environment) gimlet.RouteHandler {
 	return &podGetHandler{
 		env: env,
-		sc:  sc,
 	}
 }
 
 func (h *podGetHandler) Factory() gimlet.RouteHandler {
 	return &podGetHandler{
 		env: h.env,
-		sc:  h.sc,
 	}
 }
 
@@ -109,7 +104,8 @@ func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run finds and returns the REST pod.
 func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := h.sc.FindPodByID(h.podID)
+	dc := data.DBPodConnector{}
+	p, err := dc.FindPodByID(h.podID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding pod"))
 	}

@@ -24,19 +24,14 @@ type recentTasksGetHandler struct {
 	byProject      bool
 	byAgentVersion bool
 	taskType       string
-	sc             data.Connector
 }
 
-func makeRecentTaskStatusHandler(sc data.Connector) gimlet.RouteHandler {
-	return &recentTasksGetHandler{
-		sc: sc,
-	}
+func makeRecentTaskStatusHandler() gimlet.RouteHandler {
+	return &recentTasksGetHandler{}
 }
 
 func (h *recentTasksGetHandler) Factory() gimlet.RouteHandler {
-	return &recentTasksGetHandler{
-		sc: h.sc,
-	}
+	return &recentTasksGetHandler{}
 }
 
 func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -82,7 +77,8 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, stats, err := h.sc.FindRecentTasks(h.minutes)
+	dc := data.DBStatusConnector{}
+	tasks, stats, err := dc.FindRecentTasks(h.minutes)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -111,11 +107,11 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		var stats *model.APIRecentTaskStatsList
 		switch {
 		case h.byDistro:
-			stats, err = h.sc.FindRecentTaskListDistro(h.minutes)
+			stats, err = dc.FindRecentTaskListDistro(h.minutes)
 		case h.byProject:
-			stats, err = h.sc.FindRecentTaskListProject(h.minutes)
+			stats, err = dc.FindRecentTaskListProject(h.minutes)
 		case h.byAgentVersion:
-			stats, err = h.sc.FindRecentTaskListAgentVersion(h.minutes)
+			stats, err = dc.FindRecentTaskListAgentVersion(h.minutes)
 		}
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
@@ -136,14 +132,12 @@ type hostStatsByDistroHandler struct {
 	sc data.Connector
 }
 
-func makeHostStatusByDistroRoute(sc data.Connector) gimlet.RouteHandler {
-	return &hostStatsByDistroHandler{
-		sc: sc,
-	}
+func makeHostStatusByDistroRoute() gimlet.RouteHandler {
+	return &hostStatsByDistroHandler{}
 }
 
 func (h *hostStatsByDistroHandler) Factory() gimlet.RouteHandler {
-	return &hostStatsByDistroHandler{sc: h.sc}
+	return &hostStatsByDistroHandler{}
 }
 
 func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -151,7 +145,8 @@ func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
-	stats, err := h.sc.GetHostStatsByDistro()
+	dc := data.DBStatusConnector{}
+	stats, err := dc.GetHostStatsByDistro()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

@@ -8,18 +8,14 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-func makeFetchSpawnHostUsage(sc data.Connector) gimlet.RouteHandler {
-	return &adminSpawnHostHandler{sc: sc}
+func makeFetchSpawnHostUsage() gimlet.RouteHandler {
+	return &adminSpawnHostHandler{}
 }
 
-type adminSpawnHostHandler struct {
-	sc data.Connector
-}
+type adminSpawnHostHandler struct{}
 
 func (h *adminSpawnHostHandler) Factory() gimlet.RouteHandler {
-	return &adminSpawnHostHandler{
-		sc: h.sc,
-	}
+	return &adminSpawnHostHandler{}
 }
 
 func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -27,7 +23,8 @@ func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *adminSpawnHostHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := h.sc.AggregateSpawnhostData()
+	dc := data.DBHostConnector{}
+	res, err := dc.AggregateSpawnhostData()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

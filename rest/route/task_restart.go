@@ -16,19 +16,14 @@ import (
 type taskRestartHandler struct {
 	taskId   string
 	username string
-	sc       data.Connector
 }
 
-func makeTaskRestartHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskRestartHandler{
-		sc: sc,
-	}
+func makeTaskRestartHandler() gimlet.RouteHandler {
+	return &taskRestartHandler{}
 }
 
 func (trh *taskRestartHandler) Factory() gimlet.RouteHandler {
-	return &taskRestartHandler{
-		sc: trh.sc,
-	}
+	return &taskRestartHandler{}
 }
 
 // ParseAndValidate fetches the taskId and Project from the request context and
@@ -56,12 +51,13 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := trh.sc.ResetTask(trh.taskId, trh.username)
+	dc := data.DBTaskConnector{}
+	err := dc.ResetTask(trh.taskId, trh.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	refreshedTask, err := trh.sc.FindTaskById(trh.taskId)
+	refreshedTask, err := dc.FindTaskById(trh.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

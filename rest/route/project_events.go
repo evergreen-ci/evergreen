@@ -12,15 +12,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeFetchProjectEvents(sc data.Connector) gimlet.RouteHandler {
-	return &projectEventsGet{sc: sc}
+func makeFetchProjectEvents() gimlet.RouteHandler {
+	return &projectEventsGet{}
 }
 
 type projectEventsGet struct {
 	Timestamp time.Time
 	Limit     int
 	Id        string
-	sc        data.Connector
 }
 
 func (h *projectEventsGet) Factory() gimlet.RouteHandler {
@@ -28,7 +27,6 @@ func (h *projectEventsGet) Factory() gimlet.RouteHandler {
 		Timestamp: time.Now(),
 		Limit:     10,
 		Id:        "",
-		sc:        h.sc,
 	}
 }
 
@@ -55,7 +53,8 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
-	events, err := h.sc.GetProjectEventLog(h.Id, h.Timestamp, h.Limit+1)
+	dc := data.DBProjectConnector{}
+	events, err := dc.GetProjectEventLog(h.Id, h.Timestamp, h.Limit+1)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
@@ -67,7 +66,7 @@ func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 		lastIndex = h.Limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
-				BaseURL:         h.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				KeyQueryParam:   "ts",
 				LimitQueryParam: "limit",
 				Relation:        "next",

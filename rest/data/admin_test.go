@@ -22,7 +22,6 @@ import (
 )
 
 type AdminDataSuite struct {
-	ctx Connector
 	env *mock.Environment
 	suite.Suite
 }
@@ -33,7 +32,6 @@ func TestDataConnectorSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
@@ -102,11 +100,12 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig()
 	s.NoError(err)
-	_, err = s.ctx.SetEvergreenSettings(restSettings, oldSettings, u, true)
+	dc := DBAdminConnector{}
+	_, err = dc.SetEvergreenSettings(restSettings, oldSettings, u, true)
 	s.Require().NoError(err)
 
 	// read the settings and spot check values
-	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
+	settingsFromConnector, err := dc.GetEvergreenSettings()
 	s.Require().NoError(err)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
@@ -221,9 +220,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	}
 	oldSettings, err = evergreen.GetConfig()
 	s.NoError(err)
-	_, err = s.ctx.SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
+	_, err = dc.SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
 	s.NoError(err)
-	settingsFromConnector, err = s.ctx.GetEvergreenSettings()
+	settingsFromConnector, err = dc.GetEvergreenSettings()
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
@@ -292,22 +291,24 @@ func (s *AdminDataSuite) TestRestart() {
 		EndTime:   endTime,
 		User:      userName,
 	}
-	dryRunResp, err := s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
+	dc := DBAdminConnector{}
+	dryRunResp, err := dc.RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
 	s.NotZero(len(dryRunResp.ItemsRestarted))
 	s.Nil(dryRunResp.ItemsErrored)
 
 	// test that restarting tasks successfully puts a job on the queue
 	opts.DryRun = false
-	_, err = s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
+	_, err = dc.RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
 }
 
 func (s *AdminDataSuite) TestGetBanner() {
 	u := &user.DBUser{Id: "me"}
-	s.NoError(s.ctx.SetAdminBanner("banner text", u))
-	s.NoError(s.ctx.SetBannerTheme(evergreen.Important, u))
-	text, theme, err := s.ctx.GetBanner()
+	dc := DBAdminConnector{}
+	s.NoError(dc.SetAdminBanner("banner text", u))
+	s.NoError(dc.SetBannerTheme(evergreen.Important, u))
+	text, theme, err := dc.GetBanner()
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(evergreen.Important, theme)

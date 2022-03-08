@@ -18,22 +18,19 @@ type tasksByBuildHandler struct {
 	status             string
 	fetchAllExecutions bool
 	fetchParentIds     bool
-	sc                 data.Connector
 	limit              int
 	key                string
 }
 
-func makeFetchTasksByBuild(sc data.Connector) gimlet.RouteHandler {
+func makeFetchTasksByBuild() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit: defaultLimit,
-		sc:    sc,
 	}
 }
 
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit: tbh.limit,
-		sc:    tbh.sc,
 	}
 }
 
@@ -66,7 +63,8 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	// Fetch all of the tasks to be returned in this page plus the tasks used for
 	// calculating information about the next page. Here the limit is multiplied
 	// by two to fetch the next page.
-	tasks, err := tbh.sc.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
+	dc := data.DBTaskConnector{}
+	tasks, err := dc.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -84,7 +82,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tbh.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             tasks[tbh.limit].Id,
 				Limit:           tbh.limit,
 			},
@@ -107,19 +105,19 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
-		if err = taskModel.BuildFromService(tbh.sc.GetURL()); err != nil {
+		if err = taskModel.BuildFromService(data.GetURL()); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
 		if tbh.fetchAllExecutions {
 			var oldTasks []task.Task
 
-			oldTasks, err = tbh.sc.FindOldTasksByIDWithDisplayTasks(tasks[i].Id)
+			oldTasks, err = dc.FindOldTasksByIDWithDisplayTasks(tasks[i].Id)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 
-			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.sc.GetURL()); err != nil {
+			if err = taskModel.BuildPreviousExecutions(oldTasks, data.GetURL()); err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 		}

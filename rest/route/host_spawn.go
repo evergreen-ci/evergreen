@@ -29,15 +29,13 @@ import (
 //
 // POST /rest/v2/hosts/{host_id}
 
-func makeSpawnHostCreateRoute(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+func makeSpawnHostCreateRoute(settings *evergreen.Settings) gimlet.RouteHandler {
 	return &hostPostHandler{
-		sc:       sc,
 		settings: settings,
 	}
 }
 
 type hostPostHandler struct {
-	sc       data.Connector
 	settings *evergreen.Settings
 
 	options *model.HostRequestOptions
@@ -45,7 +43,6 @@ type hostPostHandler struct {
 
 func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 	return &hostPostHandler{
-		sc:       hph.sc,
 		settings: hph.settings,
 	}
 }
@@ -57,14 +54,14 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
+	dc := data.DBHostConnector{}
 	if hph.options.NoExpiration {
 		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
 
-	intentHost, err := hph.sc.NewIntentHost(ctx, hph.options, user, hph.settings)
+	intentHost, err := dc.NewIntentHost(ctx, hph.options, user, hph.settings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
 	}
@@ -84,22 +81,19 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 type hostModifyHandler struct {
 	hostID string
-	sc     data.Connector
 	env    evergreen.Environment
 
 	options *host.HostModifyOptions
 }
 
-func makeHostModifyRouteManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostModifyRouteManager(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostModifyHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *hostModifyHandler) Factory() gimlet.RouteHandler {
 	return &hostModifyHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -119,9 +113,10 @@ func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
+	dc := data.DBHostConnector{}
+	sc := data.DBSubscriptionConnector{}
 	// Find host to be modified
-	foundHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	foundHost, err := dc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
@@ -161,7 +156,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
+		if err = sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
@@ -233,20 +228,17 @@ func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
 type hostStopHandler struct {
 	hostID           string
 	subscriptionType string
-	sc               data.Connector
 	env              evergreen.Environment
 }
 
-func makeHostStopManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostStopManager(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostStopHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *hostStopHandler) Factory() gimlet.RouteHandler {
 	return &hostStopHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -273,9 +265,10 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
+	dc := data.DBHostConnector{}
+	sc := data.DBSubscriptionConnector{}
 	// Find host to be stopped
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	host, err := dc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by host id '%s'", h.hostID))
 	}
@@ -305,7 +298,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
+		if err = sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
@@ -320,20 +313,17 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 type hostStartHandler struct {
 	hostID           string
 	subscriptionType string
-	sc               data.Connector
 	env              evergreen.Environment
 }
 
-func makeHostStartManager(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostStartManager(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostStartHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *hostStartHandler) Factory() gimlet.RouteHandler {
 	return &hostStartHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -360,9 +350,10 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
+	dc := data.DBHostConnector{}
+	sc := data.DBSubscriptionConnector{}
 	// Find host to be started
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	host, err := dc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
@@ -387,7 +378,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
 		}
-		if err = h.sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
+		if err = sc.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
 		}
 	}
@@ -400,23 +391,20 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/hosts/{host_id}/attach
 
 type attachVolumeHandler struct {
-	sc     data.Connector
 	env    evergreen.Environment
 	hostID string
 
 	attachment *host.VolumeAttachment
 }
 
-func makeAttachVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeAttachVolume(env evergreen.Environment) gimlet.RouteHandler {
 	return &attachVolumeHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *attachVolumeHandler) Factory() gimlet.RouteHandler {
 	return &attachVolumeHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -442,8 +430,8 @@ func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
-	targetHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	dc := data.DBHostConnector{}
+	targetHost, err := dc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
 	}
@@ -464,7 +452,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Check whether attachment already attached to a host
-	attachedHost, err := h.sc.FindHostWithVolume(h.attachment.VolumeID)
+	attachedHost, err := dc.FindHostWithVolume(h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -478,7 +466,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := h.sc.FindVolumeById(h.attachment.VolumeID)
+	v, err := dc.FindVolumeById(h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -536,23 +524,20 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/hosts/{host_id}/detach
 
 type detachVolumeHandler struct {
-	sc     data.Connector
 	env    evergreen.Environment
 	hostID string
 
 	attachment *host.VolumeAttachment
 }
 
-func makeDetachVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDetachVolume(env evergreen.Environment) gimlet.RouteHandler {
 	return &detachVolumeHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *detachVolumeHandler) Factory() gimlet.RouteHandler {
 	return &detachVolumeHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -577,8 +562,8 @@ func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
-	targetHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
+	dc := data.DBHostConnector{}
+	targetHost, err := dc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting targetHost '%s'", h.hostID))
 	}
@@ -635,23 +620,20 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/volumes
 
 type createVolumeHandler struct {
-	sc  data.Connector
 	env evergreen.Environment
 
 	volume   *host.Volume
 	provider string
 }
 
-func makeCreateVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeCreateVolume(env evergreen.Environment) gimlet.RouteHandler {
 	return &createVolumeHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 	return &createVolumeHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -713,23 +695,20 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 // DELETE /rest/v2/volumes/{volume_id}
 
 type deleteVolumeHandler struct {
-	sc  data.Connector
 	env evergreen.Environment
 
 	VolumeID string
 	provider string
 }
 
-func makeDeleteVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDeleteVolume(env evergreen.Environment) gimlet.RouteHandler {
 	return &deleteVolumeHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *deleteVolumeHandler) Factory() gimlet.RouteHandler {
 	return &deleteVolumeHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -743,8 +722,8 @@ func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	volume, err := h.sc.FindVolumeById(h.VolumeID)
+	dc := data.DBHostConnector{}
+	volume, err := dc.FindVolumeById(h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -765,7 +744,7 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	attachedHost, err := h.sc.FindHostWithVolume(h.VolumeID)
+	attachedHost, err := dc.FindHostWithVolume(h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -805,7 +784,6 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/volumes/{volume_id}
 
 type modifyVolumeHandler struct {
-	sc  data.Connector
 	env evergreen.Environment
 
 	provider string
@@ -813,16 +791,14 @@ type modifyVolumeHandler struct {
 	opts     *model.VolumeModifyOptions
 }
 
-func makeModifyVolume(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeModifyVolume(env evergreen.Environment) gimlet.RouteHandler {
 	return &modifyVolumeHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
 	return &modifyVolumeHandler{
-		sc:   h.sc,
 		env:  h.env,
 		opts: &model.VolumeModifyOptions{},
 	}
@@ -844,8 +820,8 @@ func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	volume, err := h.sc.FindVolumeById(h.volumeID)
+	dc := data.DBHostConnector{}
+	volume, err := dc.FindVolumeById(h.volumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -867,7 +843,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.opts.NewName != "" {
-		if err = h.sc.SetVolumeName(volume, h.opts.NewName); err != nil {
+		if err = dc.SetVolumeName(volume, h.opts.NewName); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -966,20 +942,14 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/volumes
 
-type getVolumesHandler struct {
-	sc data.Connector
-}
+type getVolumesHandler struct{}
 
-func makeGetVolumes(sc data.Connector) gimlet.RouteHandler {
-	return &getVolumesHandler{
-		sc: sc,
-	}
+func makeGetVolumes() gimlet.RouteHandler {
+	return &getVolumesHandler{}
 }
 
 func (h *getVolumesHandler) Factory() gimlet.RouteHandler {
-	return &getVolumesHandler{
-		sc: h.sc,
-	}
+	return &getVolumesHandler{}
 }
 
 func (h *getVolumesHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -988,8 +958,8 @@ func (h *getVolumesHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	volumes, err := h.sc.FindVolumesByUser(u.Username())
+	dc := data.DBHostConnector{}
+	volumes, err := dc.FindVolumesByUser(u.Username())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1003,7 +973,7 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 
 		// if the volume is attached to a host, also return the host ID and volume device name
 		if v.Host != "" {
-			h, err := h.sc.FindHostById(v.Host)
+			h, err := dc.FindHostById(v.Host)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
 			}
@@ -1026,19 +996,14 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 
 type getVolumeByIDHandler struct {
 	volumeID string
-	sc       data.Connector
 }
 
-func makeGetVolumeByID(sc data.Connector) gimlet.RouteHandler {
-	return &getVolumeByIDHandler{
-		sc: sc,
-	}
+func makeGetVolumeByID() gimlet.RouteHandler {
+	return &getVolumeByIDHandler{}
 }
 
 func (h *getVolumeByIDHandler) Factory() gimlet.RouteHandler {
-	return &getVolumeByIDHandler{
-		sc: h.sc,
-	}
+	return &getVolumeByIDHandler{}
 }
 
 func (h *getVolumeByIDHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1050,7 +1015,8 @@ func (h *getVolumeByIDHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
-	v, err := h.sc.FindVolumeById(h.volumeID)
+	dc := data.DBHostConnector{}
+	v, err := dc.FindVolumeById(h.volumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1066,7 +1032,7 @@ func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	// if the volume is attached to a host, also return the host ID and volume device name
 	if v.Host != "" {
-		attachedHost, err := h.sc.FindHostById(v.Host)
+		attachedHost, err := dc.FindHostById(v.Host)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
 		}
@@ -1091,19 +1057,14 @@ func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 
 type hostTerminateHandler struct {
 	hostID string
-	sc     data.Connector
 }
 
-func makeTerminateHostRoute(sc data.Connector) gimlet.RouteHandler {
-	return &hostTerminateHandler{
-		sc: sc,
-	}
+func makeTerminateHostRoute() gimlet.RouteHandler {
+	return &hostTerminateHandler{}
 }
 
 func (h *hostTerminateHandler) Factory() gimlet.RouteHandler {
-	return &hostTerminateHandler{
-		sc: h.sc,
-	}
+	return &hostTerminateHandler{}
 }
 
 func (h *hostTerminateHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1116,8 +1077,8 @@ func (h *hostTerminateHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, u)
+	dc := data.DBHostConnector{}
+	host, err := dc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -1129,7 +1090,7 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 
 	} else if host.Status == evergreen.HostUninitialized {
-		if err := h.sc.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
+		if err := dc.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
@@ -1137,7 +1098,7 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	} else {
-		if err := h.sc.TerminateHost(ctx, host, u.Id); err != nil {
+		if err := dc.TerminateHost(ctx, host, u.Id); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
@@ -1158,13 +1119,11 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 type hostChangeRDPPasswordHandler struct {
 	hostID      string
 	rdpPassword string
-	sc          data.Connector
 	env         evergreen.Environment
 }
 
-func makeHostChangePassword(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostChangePassword(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostChangeRDPPasswordHandler{
-		sc:  sc,
 		env: env,
 	}
 
@@ -1172,7 +1131,6 @@ func makeHostChangePassword(sc data.Connector, env evergreen.Environment) gimlet
 
 func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
 	return &hostChangeRDPPasswordHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -1202,8 +1160,8 @@ func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Reques
 
 func (h *hostChangeRDPPasswordHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, u)
+	dc := data.DBHostConnector{}
+	host, err := dc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -1238,19 +1196,14 @@ func (h *hostChangeRDPPasswordHandler) Run(ctx context.Context) gimlet.Responder
 type hostExtendExpirationHandler struct {
 	hostID   string
 	addHours time.Duration
-	sc       data.Connector
 }
 
-func makeExtendHostExpiration(sc data.Connector) gimlet.RouteHandler {
-	return &hostExtendExpirationHandler{
-		sc: sc,
-	}
+func makeExtendHostExpiration() gimlet.RouteHandler {
+	return &hostExtendExpirationHandler{}
 }
 
 func (h *hostExtendExpirationHandler) Factory() gimlet.RouteHandler {
-	return &hostExtendExpirationHandler{
-		sc: h.sc,
-	}
+	return &hostExtendExpirationHandler{}
 }
 
 func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1292,8 +1245,8 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 
 func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
-	host, err := h.sc.FindHostByIdWithOwner(h.hostID, u)
+	dc := data.DBHostConnector{}
+	host, err := dc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -1313,7 +1266,7 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
-	if err := h.sc.SetHostExpirationTime(host, newExp); err != nil {
+	if err := dc.SetHostExpirationTime(host, newExp); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -1328,23 +1281,20 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 // POST /rest/v2/host/start_process
 //
 type hostStartProcesses struct {
-	sc  data.Connector
 	env evergreen.Environment
 
 	hostIDs []string
 	script  string
 }
 
-func makeHostStartProcesses(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostStartProcesses(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostStartProcesses{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (hs *hostStartProcesses) Factory() gimlet.RouteHandler {
 	return &hostStartProcesses{
-		sc:  hs.sc,
 		env: hs.env,
 	}
 }
@@ -1363,10 +1313,10 @@ func (hs *hostStartProcesses) Parse(ctx context.Context, r *http.Request) error 
 
 func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
+	dc := data.DBHostConnector{}
 	response := gimlet.NewResponseBuilder()
 	for _, hostID := range hs.hostIDs {
-		h, err := hs.sc.FindHostByIdWithOwner(hostID, u)
+		h, err := dc.FindHostByIdWithOwner(hostID, u)
 		if err != nil {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
@@ -1425,22 +1375,19 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 // GET /rest/v2/host/get_process
 //
 type hostGetProcesses struct {
-	sc  data.Connector
 	env evergreen.Environment
 
 	hostProcesses []model.APIHostProcess
 }
 
-func makeHostGetProcesses(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeHostGetProcesses(env evergreen.Environment) gimlet.RouteHandler {
 	return &hostGetProcesses{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *hostGetProcesses) Factory() gimlet.RouteHandler {
 	return &hostGetProcesses{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -1458,10 +1405,10 @@ func (h *hostGetProcesses) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
+	dc := data.DBHostConnector{}
 	response := gimlet.NewResponseBuilder()
 	for _, process := range h.hostProcesses {
-		host, err := h.sc.FindHostByIdWithOwner(process.HostID, u)
+		host, err := dc.FindHostByIdWithOwner(process.HostID, u)
 		if err != nil {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   process.HostID,

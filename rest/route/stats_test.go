@@ -79,7 +79,7 @@ func (s *StatsSuite) TestRunTestHandler() {
 		StatsConnector: data.StatsConnector{},
 		URL:            "https://example.net/test",
 	}
-	handler := makeGetProjectTestStats(sc).(*testStatsHandler)
+	handler := makeGetProjectTestStats().(*testStatsHandler)
 	s.Require().NoError(err)
 
 	// 100 documents will be returned
@@ -129,7 +129,7 @@ func (s *StatsSuite) TestRunTaskHandler() {
 		StatsConnector: data.StatsConnector{},
 		URL:            "https://example.net/task",
 	}
-	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
+	handler := makeGetProjectTaskStats().(*taskStatsHandler)
 	s.Require().NoError(err)
 
 	// 100 documents will be returned

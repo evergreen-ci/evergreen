@@ -11,21 +11,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeSetServiceFlagsRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &flagsPostHandler{
-		sc: sc,
-	}
+func makeSetServiceFlagsRouteManager() gimlet.RouteHandler {
+	return &flagsPostHandler{}
 }
 
 type flagsPostHandler struct {
 	Flags model.APIServiceFlags `json:"service_flags"`
-	sc    data.Connector
 }
 
 func (h *flagsPostHandler) Factory() gimlet.RouteHandler {
-	return &flagsPostHandler{
-		sc: h.sc,
-	}
+	return &flagsPostHandler{}
 }
 
 func (h *flagsPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -39,7 +34,8 @@ func (h *flagsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	err = h.sc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
+	dc := data.DBAdminConnector{}
+	err = dc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

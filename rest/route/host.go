@@ -33,19 +33,14 @@ type hostStatus struct {
 
 type hostsChangeStatusesHandler struct {
 	HostToStatus map[string]hostStatus
-	sc           data.Connector
 }
 
-func makeChangeHostsStatuses(sc data.Connector) gimlet.RouteHandler {
-	return &hostsChangeStatusesHandler{
-		sc: sc,
-	}
+func makeChangeHostsStatuses() gimlet.RouteHandler {
+	return &hostsChangeStatusesHandler{}
 }
 
 func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
-	return &hostsChangeStatusesHandler{
-		sc: h.sc,
-	}
+	return &hostsChangeStatusesHandler{}
 }
 
 func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -70,8 +65,9 @@ func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request)
 
 func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
+	dc := data.DBHostConnector{}
 	for id := range h.HostToStatus {
-		foundHost, err := h.sc.FindHostByIdWithOwner(id, user)
+		foundHost, err := dc.FindHostByIdWithOwner(id, user)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
 		}
@@ -89,19 +85,19 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	for id, status := range h.HostToStatus {
-		foundHost, err := h.sc.FindHostByIdWithOwner(id, user)
+		foundHost, err := dc.FindHostByIdWithOwner(id, user)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
 		}
 		if status.Status == evergreen.HostTerminated {
-			if err = h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
+			if err = dc.TerminateHost(ctx, foundHost, user.Id); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
 				})
 			}
 		} else {
-			if err = h.sc.SetHostStatus(foundHost, status.Status, user.Id); err != nil {
+			if err = dc.SetHostStatus(foundHost, status.Status, user.Id); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
@@ -125,21 +121,16 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/hosts/{host_id}
 
-func makeGetHostByID(sc data.Connector) gimlet.RouteHandler {
-	return &hostIDGetHandler{
-		sc: sc,
-	}
+func makeGetHostByID() gimlet.RouteHandler {
+	return &hostIDGetHandler{}
 }
 
 type hostIDGetHandler struct {
 	hostID string
-	sc     data.Connector
 }
 
 func (high *hostIDGetHandler) Factory() gimlet.RouteHandler {
-	return &hostIDGetHandler{
-		sc: high.sc,
-	}
+	return &hostIDGetHandler{}
 }
 
 // ParseAndValidate fetches the hostId from the http request.
@@ -152,7 +143,9 @@ func (high *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error 
 // Execute calls the data FindHostById function and returns the host
 // from the provider.
 func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost, err := high.sc.FindHostById(high.hostID)
+	dc := data.DBHostConnector{}
+	tc := data.DBTaskConnector{}
+	foundHost, err := dc.FindHostById(high.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", high.hostID))
 	}
@@ -169,7 +162,7 @@ func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if foundHost.RunningTask != "" {
-		runningTask, err := high.sc.FindTaskById(foundHost.RunningTask)
+		runningTask, err := tc.FindTaskById(foundHost.RunningTask)
 		if err != nil {
 			if apiErr, ok := err.(gimlet.ErrorResponse); !ok || (ok && apiErr.StatusCode != http.StatusNotFound) {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
@@ -189,10 +182,8 @@ func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /hosts
 // GET /users/{user_id}/hosts
 
-func makeFetchHosts(sc data.Connector) gimlet.RouteHandler {
-	return &hostGetHandler{
-		sc: sc,
-	}
+func makeFetchHosts() gimlet.RouteHandler {
+	return &hostGetHandler{}
 }
 
 type hostGetHandler struct {
@@ -200,14 +191,10 @@ type hostGetHandler struct {
 	key    string
 	status string
 	user   string
-
-	sc data.Connector
 }
 
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
-	return &hostGetHandler{
-		sc: hgh.sc,
-	}
+	return &hostGetHandler{}
 }
 
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -228,7 +215,9 @@ func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := hgh.sc.FindHostsById(hgh.key, hgh.status, hgh.user, hgh.limit+1)
+	dc := data.DBHostConnector{}
+	tc := data.DBTaskConnector{}
+	hosts, err := dc.FindHostsById(hgh.key, hgh.status, hgh.user, hgh.limit+1)
 	if err != nil {
 		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
@@ -243,7 +232,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		lastIndex = hgh.limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
-				BaseURL:         hgh.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "host_id",
 				Relation:        "next",
@@ -268,7 +257,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	tasks, err := hgh.sc.FindTasksByIds(taskIds)
+	tasks, err := tc.FindTasksByIds(taskIds)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
@@ -330,9 +319,8 @@ func getLimit(vals url.Values) (int, error) {
 //
 // POST /users/offboard_user
 
-func makeOffboardUser(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeOffboardUser(env evergreen.Environment) gimlet.RouteHandler {
 	return &offboardUserHandler{
-		sc:  sc,
 		env: env,
 	}
 }
@@ -342,12 +330,10 @@ type offboardUserHandler struct {
 	dryRun bool
 
 	env evergreen.Environment
-	sc  data.Connector
 }
 
 func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
 	return &offboardUserHandler{
-		sc:  ch.sc,
 		env: ch.env,
 	}
 }
@@ -375,7 +361,8 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	u, err := ch.sc.FindUserById(ch.user)
+	dc := data.DBUserConnector{}
+	u, err := dc.FindUserById(ch.user)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "problem finding user",
@@ -396,16 +383,17 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
+	dc := data.DBHostConnector{}
 	opts := model.APIHostParams{
 		UserSpawned: true,
 	}
 	// returns all up-hosts for user
-	hosts, err := ch.sc.FindHostsInRange(opts, ch.user)
+	hosts, err := dc.FindHostsInRange(opts, ch.user)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting hosts"))
 	}
 
-	volumes, err := ch.sc.FindVolumesByUser(ch.user)
+	volumes, err := dc.FindVolumesByUser(ch.user)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting volumes"))
 	}
@@ -442,7 +430,8 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"terminated_volumes": toTerminate.TerminatedVolumes,
 		})
 
-		grip.Error(message.WrapError(ch.sc.RemoveAdminFromProjects(ch.user), message.Fields{
+		pc := data.DBProjectConnector{}
+		grip.Error(message.WrapError(pc.RemoveAdminFromProjects(ch.user), message.Fields{
 			"message": "could not remove user as an admin",
 			"context": "user offboarding",
 			"user":    ch.user,
@@ -485,21 +474,16 @@ func (ch *offboardUserHandler) clearLogin() error {
 //
 // GET /host/filter
 
-func makeFetchHostFilter(sc data.Connector) gimlet.RouteHandler {
-	return &hostFilterGetHandler{
-		sc: sc,
-	}
+func makeFetchHostFilter() gimlet.RouteHandler {
+	return &hostFilterGetHandler{}
 }
 
 type hostFilterGetHandler struct {
 	params model.APIHostParams
-	sc     data.Connector
 }
 
 func (h *hostFilterGetHandler) Factory() gimlet.RouteHandler {
-	return &hostFilterGetHandler{
-		sc: h.sc,
-	}
+	return &hostFilterGetHandler{}
 }
 
 func (h *hostFilterGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -525,7 +509,8 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 		username = dbUser.Username()
 	}
 
-	hosts, err := h.sc.FindHostsInRange(h.params, username)
+	dc := data.DBHostConnector{}
+	hosts, err := dc.FindHostsInRange(h.params, username)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
@@ -550,20 +535,15 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /hosts/{host_id}/provisioning_options
 
 type hostProvisioningOptionsGetHandler struct {
-	sc     data.Connector
 	hostID string
 }
 
-func makeHostProvisioningOptionsGetHandler(sc data.Connector) gimlet.RouteHandler {
-	return &hostProvisioningOptionsGetHandler{
-		sc: sc,
-	}
+func makeHostProvisioningOptionsGetHandler() gimlet.RouteHandler {
+	return &hostProvisioningOptionsGetHandler{}
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Factory() gimlet.RouteHandler {
-	return &hostProvisioningOptionsGetHandler{
-		sc: rh.sc,
-	}
+	return &hostProvisioningOptionsGetHandler{}
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -576,7 +556,8 @@ func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	script, err := rh.sc.GenerateHostProvisioningScript(ctx, rh.hostID)
+	dc := data.DBHostConnector{}
+	script, err := dc.GenerateHostProvisioningScript(ctx, rh.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -590,23 +571,20 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 //
 // GET /rest/v2/host/{host_id}/disable
 type disableHost struct {
-	sc  data.Connector
 	env evergreen.Environment
 
 	hostID string
 	reason string
 }
 
-func makeDisableHostHandler(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDisableHostHandler(env evergreen.Environment) gimlet.RouteHandler {
 	return &disableHost{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *disableHost) Factory() gimlet.RouteHandler {
 	return &disableHost{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -629,7 +607,8 @@ func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
-	host, err := h.sc.FindHostById(h.hostID)
+	dc := data.DBHostConnector{}
+	host, err := dc.FindHostById(h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -640,7 +619,7 @@ func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
 		)
 	}
 
-	if err = h.sc.DisableHost(ctx, h.env, host, h.reason); err != nil {
+	if err = dc.DisableHost(ctx, h.env, host, h.reason); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
@@ -654,19 +633,14 @@ func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
 type hostIpAddressGetHandler struct {
 	IP   string
 	Host *host.Host
-	sc   data.Connector
 }
 
-func makeGetHostByIpAddress(sc data.Connector) gimlet.RouteHandler {
-	return &hostIpAddressGetHandler{
-		sc: sc,
-	}
+func makeGetHostByIpAddress() gimlet.RouteHandler {
+	return &hostIpAddressGetHandler{}
 }
 
 func (h *hostIpAddressGetHandler) Factory() gimlet.RouteHandler {
-	return &hostIpAddressGetHandler{
-		sc: h.sc,
-	}
+	return &hostIpAddressGetHandler{}
 }
 func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.IP = gimlet.GetVars(r)["ip_address"]
@@ -682,7 +656,8 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := h.sc.FindHostByIpAddress(h.IP)
+	dc := data.DBHostConnector{}
+	host, err := dc.FindHostByIpAddress(h.IP)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error fetching host information for '%s'", h.IP))
 	}

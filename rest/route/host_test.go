@@ -33,7 +33,6 @@ import (
 
 type HostsChangeStatusesSuite struct {
 	route *hostsChangeStatusesHandler
-	sc    *data.DBConnector
 	suite.Suite
 }
 
@@ -42,8 +41,8 @@ func TestHostsChangeStatusesSuite(t *testing.T) {
 }
 
 func (s *HostsChangeStatusesSuite) SetupTest() {
-	s.sc = getMockHostsConnector()
-	s.route = makeChangeHostsStatuses(s.sc).(*hostsChangeStatusesHandler)
+	getMockHostsConnector()
+	s.route = makeChangeHostsStatuses().(*hostsChangeStatusesHandler)
 }
 
 func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
@@ -183,8 +182,6 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 
 type HostModifySuite struct {
 	route *hostModifyHandler
-	sc    *data.DBConnector
-
 	suite.Suite
 }
 
@@ -193,8 +190,8 @@ func TestHostModifySuite(t *testing.T) {
 }
 
 func (s *HostModifySuite) SetupTest() {
-	s.sc = getMockHostsConnector()
-	s.route = makeHostModifyRouteManager(s.sc, evergreen.GetEnvironment()).(*hostModifyHandler)
+	getMockHostsConnector()
+	s.route = makeHostModifyRouteManager(evergreen.GetEnvironment()).(*hostModifyHandler)
 }
 
 func (s *HostModifySuite) TestRunHostNotFound() {
@@ -269,8 +266,6 @@ func (s *HostModifySuite) TestParse() {
 
 type HostSuite struct {
 	route *hostIDGetHandler
-	sc    *data.DBConnector
-
 	suite.Suite
 }
 
@@ -279,13 +274,11 @@ func TestHostSuite(t *testing.T) {
 }
 
 func (s *HostSuite) SetupSuite() {
-	s.sc = getMockHostsConnector()
+	getMockHostsConnector()
 }
 
 func (s *HostSuite) SetupTest() {
-	s.route = &hostIDGetHandler{
-		sc: s.sc,
-	}
+	s.route = &hostIDGetHandler{}
 }
 
 func (s *HostSuite) TestFindByIdFirst() {
@@ -326,7 +319,8 @@ func (s *HostSuite) TestFindByIdFail() {
 }
 
 func (s *HostSuite) TestBuildFromServiceHost() {
-	host, err := s.sc.DBHostConnector.FindHostById("host1")
+	dc := data.DBHostConnector{}
+	host, err := dc.FindHostById("host1")
 	s.NoError(err)
 	apiHost := model.APIHost{}
 	s.NoError(apiHost.BuildFromService(host))
@@ -347,8 +341,6 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 
 type hostTerminateHostHandlerSuite struct {
 	rm *hostTerminateHandler
-	sc *data.DBConnector
-
 	suite.Suite
 }
 
@@ -358,8 +350,8 @@ func TestTerminateHostHandler(t *testing.T) {
 }
 
 func (s *hostTerminateHostHandlerSuite) SetupTest() {
-	s.sc = getMockHostsConnector()
-	s.rm = makeTerminateHostRoute(s.sc).(*hostTerminateHandler)
+	getMockHostsConnector()
+	s.rm = makeTerminateHostRoute().(*hostTerminateHandler)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithNoUserPanics() {
@@ -380,6 +372,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
+	dc := data.DBHostConnector{}
 	h.hostID = "host1"
 
 	ctx := context.Background()
@@ -390,16 +383,17 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 
 	apiErr := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host1")
+	foundHost, err := dc.FindHostById("host1")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
+	dc := data.DBHostConnector{}
 	h.hostID = "host3"
 
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host3")
+	foundHost, err := dc.FindHostById("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostUninitialized, foundHost.Status)
 	ctx := context.Background()
@@ -407,13 +401,14 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host3")
+	foundHost, err = dc.FindHostById("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
+	dc := data.DBHostConnector{}
 	h.hostID = "host2"
 
 	mock := cloud.GetMockProvider()
@@ -422,7 +417,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 		Status: cloud.StatusRunning,
 	})
 
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err := dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
@@ -430,16 +425,17 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
+	dc := data.DBHostConnector{}
 	h.hostID = "host3"
 
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err := dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
@@ -447,16 +443,17 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host3")
+	foundHost, err = dc.FindHostById("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
+	dc := data.DBHostConnector{}
 	h.hostID = "host2"
 
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err := dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
@@ -465,7 +462,7 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	s.Equal(http.StatusUnauthorized, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 }
@@ -474,7 +471,6 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 
 type hostChangeRDPPasswordHandlerSuite struct {
 	rm         gimlet.RouteHandler
-	sc         *data.DBConnector
 	env        evergreen.Environment
 	sshKeyName string
 	suite.Suite
@@ -494,8 +490,8 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
-	s.sc = getMockHostsConnector()
-	s.rm = makeHostChangePassword(s.sc, s.env)
+	getMockHostsConnector()
+	s.rm = makeHostChangePassword(s.env)
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
@@ -602,7 +598,6 @@ func (s *hostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpa
 
 type hostExtendExpirationHandlerSuite struct {
 	rm gimlet.RouteHandler
-	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -612,8 +607,8 @@ func TestHostExtendExpirationHandler(t *testing.T) {
 }
 
 func (s *hostExtendExpirationHandlerSuite) SetupTest() {
-	s.sc = getMockHostsConnector()
-	s.rm = makeExtendHostExpiration(s.sc)
+	getMockHostsConnector()
+	s.rm = makeExtendHostExpiration()
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
@@ -668,7 +663,8 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	dc := data.DBHostConnector{}
+	foundHost, err := dc.FindHostById("host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
@@ -680,13 +676,14 @@ func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host1")
+	dc := data.DBHostConnector{}
+	foundHost, err := dc.FindHostById("host1")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime
 
@@ -697,13 +694,14 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host1")
+	foundHost, err = dc.FindHostById("host1")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	dc := data.DBHostConnector{}
+	foundHost, err := dc.FindHostById("host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
@@ -716,13 +714,14 @@ func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
-	foundHost, err := s.sc.DBHostConnector.FindHostById("host2")
+	dc := data.DBHostConnector{}
+	foundHost, err := dc.FindHostById("host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime
 
@@ -735,7 +734,7 @@ func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsers
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	foundHost, err = s.sc.DBHostConnector.FindHostById("host2")
+	foundHost, err = dc.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
@@ -764,17 +763,13 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	return r, nil
 }
 
-func getMockHostsConnector() *data.DBConnector {
+func getMockHostsConnector() {
 	grip.Error(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
 	windowsDistro := distro.Distro{
 		Id:       "windows",
 		Arch:     "windows_amd64",
 		Provider: evergreen.ProviderNameMock,
 		SSHKey:   "ssh_key_name",
-	}
-	connector := &data.DBConnector{
-		DBHostConnector: data.DBHostConnector{},
-		DBUserConnector: data.DBUserConnector{},
 	}
 	users := []user.DBUser{
 		{
@@ -862,7 +857,6 @@ func getMockHostsConnector() *data.DBConnector {
 			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
 		},
 	}))
-	return connector
 }
 
 func TestClearHostsHandler(t *testing.T) {
@@ -911,9 +905,7 @@ func TestClearHostsHandler(t *testing.T) {
 	assert.NoError(t, h3.Insert())
 	assert.NoError(t, v1.Insert())
 
-	handler := offboardUserHandler{
-		sc: &data.DBConnector{},
-	}
+	handler := offboardUserHandler{}
 	json := []byte(`{"email": "user0@mongodb.com"}`)
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"})
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
@@ -969,7 +961,6 @@ func TestRemoveAdminHandler(t *testing.T) {
 	userManager := env.UserManager()
 
 	handler := offboardUserHandler{
-		sc:     &data.DBConnector{},
 		dryRun: true,
 		env:    env,
 		user:   offboardedUser,
@@ -993,9 +984,6 @@ func TestRemoveAdminHandler(t *testing.T) {
 }
 
 func TestHostFilterGetHandler(t *testing.T) {
-	connector := &data.DBConnector{
-		DBHostConnector: data.DBHostConnector{},
-	}
 	newHosts := []host.Host{
 		{
 			Id:           "h0",
@@ -1024,7 +1012,6 @@ func TestHostFilterGetHandler(t *testing.T) {
 		assert.NoError(t, hostToAdd.Insert())
 	}
 	handler := hostFilterGetHandler{
-		sc:     connector,
 		params: model.APIHostParams{Status: evergreen.HostTerminated},
 	}
 	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
@@ -1034,7 +1021,6 @@ func TestHostFilterGetHandler(t *testing.T) {
 	assert.Equal(t, "h0", utility.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
 	handler = hostFilterGetHandler{
-		sc:     connector,
 		params: model.APIHostParams{Distro: "ubuntu-1604"},
 	}
 	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
@@ -1044,7 +1030,6 @@ func TestHostFilterGetHandler(t *testing.T) {
 	assert.Equal(t, "h1", utility.FromStringPtr(hosts[0].(*model.APIHost).Id))
 
 	handler = hostFilterGetHandler{
-		sc:     connector,
 		params: model.APIHostParams{CreatedAfter: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 	}
 	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user1"}))
@@ -1056,10 +1041,8 @@ func TestHostFilterGetHandler(t *testing.T) {
 
 func TestDisableHostHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.Collection))
+	dc := data.DBHostConnector{}
 	hostID := "h1"
-	connector := data.DBConnector{
-		DBHostConnector: data.DBHostConnector{},
-	}
 	hosts := []host.Host{
 		{
 			Id:     hostID,
@@ -1070,14 +1053,13 @@ func TestDisableHostHandler(t *testing.T) {
 		assert.NoError(t, hostToAdd.Insert())
 	}
 	dh := disableHost{
-		sc:     &connector,
 		hostID: hostID,
 		env:    evergreen.GetEnvironment(),
 	}
 
 	responder := dh.Run(context.Background())
 	assert.Equal(t, http.StatusOK, responder.Status())
-	foundHost, err := connector.FindHostById(hostID)
+	foundHost, err := dc.FindHostById(hostID)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
 }
@@ -1100,7 +1082,6 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 
 	t.Run("SucceedsWithValidHostID", func(t *testing.T) {
 		rh := hostProvisioningOptionsGetHandler{
-			sc:     &data.DBConnector{},
 			hostID: h.Id,
 		}
 		resp := rh.Run(ctx)
@@ -1110,15 +1091,12 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 		assert.NotEmpty(t, opts.Content)
 	})
 	t.Run("FailsWithoutHostID", func(t *testing.T) {
-		rh := hostProvisioningOptionsGetHandler{
-			sc: &data.DBConnector{},
-		}
+		rh := hostProvisioningOptionsGetHandler{}
 		resp := rh.Run(ctx)
 		assert.NotEqual(t, http.StatusOK, resp.Status())
 	})
 	t.Run("FailsWithInvalidHostID", func(t *testing.T) {
 		rh := hostProvisioningOptionsGetHandler{
-			sc:     &data.DBConnector{},
 			hostID: "foo",
 		}
 		resp := rh.Run(ctx)

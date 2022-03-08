@@ -23,15 +23,13 @@ import (
 type hostCreateHandler struct {
 	taskID     string
 	createHost apimodels.CreateHost
-
-	sc data.Connector
 }
 
-func makeHostCreateRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &hostCreateHandler{sc: sc}
+func makeHostCreateRouteManager() gimlet.RouteHandler {
+	return &hostCreateHandler{}
 }
 
-func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{sc: h.sc} }
+func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{} }
 
 func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
@@ -53,6 +51,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
+	dc := data.DBCreateHostConnector{}
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -60,7 +59,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
-		intentHost, err := h.sc.MakeIntentHost(h.taskID, "", "", h.createHost)
+		intentHost, err := dc.MakeIntentHost(h.taskID, "", "", h.createHost)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -77,15 +76,13 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 type hostListHandler struct {
 	taskID string
-
-	sc data.Connector
 }
 
-func makeHostListRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &hostListHandler{sc: sc}
+func makeHostListRouteManager() gimlet.RouteHandler {
+	return &hostListHandler{}
 }
 
-func (h *hostListHandler) Factory() gimlet.RouteHandler { return &hostListHandler{sc: h.sc} }
+func (h *hostListHandler) Factory() gimlet.RouteHandler { return &hostListHandler{} }
 
 func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
@@ -101,11 +98,13 @@ func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := h.sc.ListHostsForTask(ctx, h.taskID)
+	dc := data.DBCreateHostConnector{}
+	tc := data.DBTaskConnector{}
+	hosts, err := dc.ListHostsForTask(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	t, err := h.sc.FindTaskById(h.taskID)
+	t, err := tc.FindTaskById(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -148,15 +147,14 @@ type containerLogsHandler struct {
 	host *host.Host
 
 	isError bool
-	sc      data.Connector
 }
 
-func makeContainerLogsRouteManager(sc data.Connector, isError bool) *containerLogsHandler {
-	return &containerLogsHandler{sc: sc, isError: isError}
+func makeContainerLogsRouteManager(isError bool) *containerLogsHandler {
+	return &containerLogsHandler{isError: isError}
 }
 
 func (h *containerLogsHandler) Factory() gimlet.RouteHandler {
-	h = &containerLogsHandler{sc: h.sc, isError: h.isError}
+	h = &containerLogsHandler{isError: h.isError}
 	return h
 }
 
@@ -214,6 +212,7 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
+	dc := data.DBCreateHostConnector{}
 	parent, err := h.host.GetParent()
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
@@ -233,7 +232,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	} else {
 		options.ShowStdout = true
 	}
-	logs, err := h.sc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
+	logs, err := dc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker logs"))
 	}
@@ -246,16 +245,14 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 
 type containerStatusHandler struct {
 	host *host.Host
-
-	sc data.Connector
 }
 
-func makeContainerStatusManager(sc data.Connector) *containerStatusHandler {
-	return &containerStatusHandler{sc: sc}
+func makeContainerStatusManager() *containerStatusHandler {
+	return &containerStatusHandler{}
 }
 
 func (h *containerStatusHandler) Factory() gimlet.RouteHandler {
-	return &containerStatusHandler{sc: h.sc}
+	return &containerStatusHandler{}
 }
 
 func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -279,6 +276,7 @@ func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
+	dc := data.DBCreateHostConnector{}
 	parent, err := h.host.GetParent()
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
@@ -287,7 +285,7 @@ func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
-	status, err := h.sc.GetDockerStatus(ctx, h.host.Id, parent, settings)
+	status, err := dc.GetDockerStatus(ctx, h.host.Id, parent, settings)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker status"))
 	}

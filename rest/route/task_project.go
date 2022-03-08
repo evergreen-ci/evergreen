@@ -18,17 +18,14 @@ type tasksByProjectHandler struct {
 	status     string
 	limit      int
 	key        string
-	sc         data.Connector
 }
 
-func makeTasksByProjectAndCommitHandler(sc data.Connector) gimlet.RouteHandler {
-	return &tasksByProjectHandler{
-		sc: sc,
-	}
+func makeTasksByProjectAndCommitHandler() gimlet.RouteHandler {
+	return &tasksByProjectHandler{}
 }
 
 func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
-	return &tasksByProjectHandler{sc: tph.sc}
+	return &tasksByProjectHandler{}
 }
 
 // ParseAndValidate fetches the project context and task status from the request
@@ -67,7 +64,8 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, err := tph.sc.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.limit+1)
+	dc := data.DBTaskConnector{}
+	tasks, err := dc.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.limit+1)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
@@ -85,7 +83,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tph.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             tasks[tph.limit].Id,
 				Limit:           tph.limit,
 			},
@@ -104,7 +102,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		err = taskModel.BuildFromService(tph.sc.GetURL())
+		err = taskModel.BuildFromService(data.GetURL())
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}

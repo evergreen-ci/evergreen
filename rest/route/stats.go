@@ -317,12 +317,11 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 ///////////////////////////////////////////////
 
 type testStatsHandler struct {
-	sc data.Connector
 	StatsHandler
 }
 
 func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
-	return &testStatsHandler{sc: tsh.sc}
+	return &testStatsHandler{}
 }
 
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -356,7 +355,8 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var testStatsResult []model.APITestStats
 
-	testStatsResult, err = tsh.sc.GetTestStats(tsh.filter)
+	dc := data.StatsConnector{}
+	testStatsResult, err = dc.GetTestStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the test stats"))
 	}
@@ -376,7 +376,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tsh.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             testStatsResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},
@@ -397,8 +397,8 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
-	return &testStatsHandler{sc: sc}
+func makeGetProjectTestStats() gimlet.RouteHandler {
+	return &testStatsHandler{}
 }
 
 ///////////////////////////////////////////////
@@ -406,12 +406,11 @@ func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
 ///////////////////////////////////////////////
 
 type taskStatsHandler struct {
-	sc data.Connector
 	StatsHandler
 }
 
 func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
-	return &taskStatsHandler{sc: tsh.sc}
+	return &taskStatsHandler{}
 }
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -445,7 +444,8 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var taskStatsResult []model.APITaskStats
 
-	taskStatsResult, err = tsh.sc.GetTaskStats(tsh.filter)
+	dc := data.StatsConnector{}
+	taskStatsResult, err = dc.GetTaskStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}
@@ -465,7 +465,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tsh.sc.GetURL(),
+				BaseURL:         data.GetURL(),
 				Key:             taskStatsResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},
@@ -486,8 +486,8 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-func makeGetProjectTaskStats(sc data.Connector) gimlet.RouteHandler {
-	return &taskStatsHandler{sc: sc}
+func makeGetProjectTaskStats() gimlet.RouteHandler {
+	return &taskStatsHandler{}
 }
 
 type cedarTestStatsMiddleware struct {

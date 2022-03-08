@@ -77,8 +77,8 @@ func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
 	return h, nil
 }
 
-func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	return findHostByIdWithOwner(dbc, hostID, user)
+func (dbc *DBHostConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
+	return findHostByIdWithOwner(*dbc, hostID, user)
 }
 
 func (hc *DBHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
@@ -247,7 +247,7 @@ func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, h
 	return script, nil
 }
 
-func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
+func findHostByIdWithOwner(c DBHostConnector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

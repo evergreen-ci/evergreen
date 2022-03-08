@@ -29,19 +29,14 @@ import (
 
 type distroIDGetSetupHandler struct {
 	distroID string
-	sc       data.Connector
 }
 
-func makeGetDistroSetup(sc data.Connector) gimlet.RouteHandler {
-	return &distroIDGetSetupHandler{
-		sc: sc,
-	}
+func makeGetDistroSetup() gimlet.RouteHandler {
+	return &distroIDGetSetupHandler{}
 }
 
 func (h *distroIDGetSetupHandler) Factory() gimlet.RouteHandler {
-	return &distroIDGetSetupHandler{
-		sc: h.sc,
-	}
+	return &distroIDGetSetupHandler{}
 }
 
 // Parse fetches the distroId from the http request.
@@ -53,7 +48,8 @@ func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) er
 
 // Run returns the given distro's setup script.
 func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	d, err := dc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -73,19 +69,14 @@ func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
 type distroIDChangeSetupHandler struct {
 	Setup    string
 	distroID string
-	sc       data.Connector
 }
 
-func makeChangeDistroSetup(sc data.Connector) gimlet.RouteHandler {
-	return &distroIDChangeSetupHandler{
-		sc: sc,
-	}
+func makeChangeDistroSetup() gimlet.RouteHandler {
+	return &distroIDChangeSetupHandler{}
 }
 
 func (h *distroIDChangeSetupHandler) Factory() gimlet.RouteHandler {
-	return &distroIDChangeSetupHandler{
-		sc: h.sc,
-	}
+	return &distroIDChangeSetupHandler{}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
@@ -103,13 +94,14 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 
 // Run updates the setup script for the given distroId.
 func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	d, err := dc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	d.Setup = h.Setup
-	if err = h.sc.UpdateDistro(d, d); err != nil {
+	if err = dc.UpdateDistro(d, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -128,19 +120,14 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 type distroIDPutHandler struct {
 	distroID string
 	body     []byte
-	sc       data.Connector
 }
 
-func makePutDistro(sc data.Connector) gimlet.RouteHandler {
-	return &distroIDPutHandler{
-		sc: sc,
-	}
+func makePutDistro() gimlet.RouteHandler {
+	return &distroIDPutHandler{}
 }
 
 func (h *distroIDPutHandler) Factory() gimlet.RouteHandler {
-	return &distroIDPutHandler{
-		sc: h.sc,
-	}
+	return &distroIDPutHandler{}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
@@ -163,8 +150,8 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
-	original, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	original, err := dc.FindDistroById(h.distroID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -204,7 +191,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			return respErr
 		}
 
-		if err = h.sc.UpdateDistro(original, newDistro); err != nil {
+		if err = dc.UpdateDistro(original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
@@ -220,7 +207,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
-	if err = h.sc.CreateDistro(newDistro); err != nil {
+	if err = dc.CreateDistro(newDistro); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.distroID))
 	}
 
@@ -233,19 +220,14 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 type distroIDDeleteHandler struct {
 	distroID string
-	sc       data.Connector
 }
 
-func makeDeleteDistroByID(sc data.Connector) gimlet.RouteHandler {
-	return &distroIDDeleteHandler{
-		sc: sc,
-	}
+func makeDeleteDistroByID() gimlet.RouteHandler {
+	return &distroIDDeleteHandler{}
 }
 
 func (h *distroIDDeleteHandler) Factory() gimlet.RouteHandler {
-	return &distroIDDeleteHandler{
-		sc: h.sc,
-	}
+	return &distroIDDeleteHandler{}
 }
 
 // Parse fetches the distroId from the http request.
@@ -257,12 +239,13 @@ func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	_, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	_, err := dc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	err = h.sc.DeleteDistroById(h.distroID)
+	err = dc.DeleteDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for remove() by distro id '%s'", h.distroID))
 	}
@@ -277,19 +260,14 @@ func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 type distroIDPatchHandler struct {
 	distroID string
 	body     []byte
-	sc       data.Connector
 }
 
-func makePatchDistroByID(sc data.Connector) gimlet.RouteHandler {
-	return &distroIDPatchHandler{
-		sc: sc,
-	}
+func makePatchDistroByID() gimlet.RouteHandler {
+	return &distroIDPatchHandler{}
 }
 
 func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
-	return &distroIDPatchHandler{
-		sc: h.sc,
-	}
+	return &distroIDPatchHandler{}
 }
 
 // Parse fetches the distroId from the http request.
@@ -309,7 +287,8 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	old, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	old, err := dc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -336,7 +315,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return respErr
 	}
 
-	if err = h.sc.UpdateDistro(old, d); err != nil {
+	if err = dc.UpdateDistro(old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())
@@ -350,19 +329,14 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 type distroIDGetHandler struct {
 	distroID string
-	sc       data.Connector
 }
 
-func makeGetDistroByID(sc data.Connector) gimlet.RouteHandler {
-	return &distroIDGetHandler{
-		sc: sc,
-	}
+func makeGetDistroByID() gimlet.RouteHandler {
+	return &distroIDGetHandler{}
 }
 
 func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
-	return &distroIDGetHandler{
-		sc: h.sc,
-	}
+	return &distroIDGetHandler{}
 }
 
 // Parse fetches the distroId from the http request.
@@ -374,7 +348,8 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	d, err := dc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -394,20 +369,14 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 type distroAMIHandler struct {
 	distroID string
 	region   string
-
-	sc data.Connector
 }
 
-func makeGetDistroAMI(sc data.Connector) gimlet.RouteHandler {
-	return &distroAMIHandler{
-		sc: sc,
-	}
+func makeGetDistroAMI() gimlet.RouteHandler {
+	return &distroAMIHandler{}
 }
 
 func (h *distroAMIHandler) Factory() gimlet.RouteHandler {
-	return &distroAMIHandler{
-		sc: h.sc,
-	}
+	return &distroAMIHandler{}
 }
 
 func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -421,7 +390,8 @@ func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroID)
+	dc := data.DBDistroConnector{}
+	d, err := dc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -450,21 +420,17 @@ type modifyDistrosSettingsHandler struct {
 	settings *birch.Document
 	region   string
 	dryRun   bool
-
-	sc data.Connector
 }
 
-func makeModifyDistrosSettings(sc data.Connector) gimlet.RouteHandler {
+func makeModifyDistrosSettings() gimlet.RouteHandler {
 	return &modifyDistrosSettingsHandler{
 		settings: &birch.Document{},
-		sc:       sc,
 	}
 }
 
 func (h *modifyDistrosSettingsHandler) Factory() gimlet.RouteHandler {
 	return &modifyDistrosSettingsHandler{
 		settings: &birch.Document{},
-		sc:       h.sc,
 	}
 }
 
@@ -496,7 +462,8 @@ func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Reques
 
 func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	allDistros, err := h.sc.FindAllDistros()
+	dc := data.DBDistroConnector{}
+	allDistros, err := dc.FindAllDistros()
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding distros"))
 	}
@@ -587,20 +554,14 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 //
 // GET /rest/v2/distros
 
-type distroGetHandler struct {
-	sc data.Connector
-}
+type distroGetHandler struct{}
 
-func makeDistroRoute(sc data.Connector) gimlet.RouteHandler {
-	return &distroGetHandler{
-		sc: sc,
-	}
+func makeDistroRoute() gimlet.RouteHandler {
+	return &distroGetHandler{}
 }
 
 func (h *distroGetHandler) Factory() gimlet.RouteHandler {
-	return &distroGetHandler{
-		sc: h.sc,
-	}
+	return &distroGetHandler{}
 }
 
 func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -608,7 +569,8 @@ func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
-	distros, err := h.sc.FindAllDistros()
+	dc := data.DBDistroConnector{}
+	distros, err := dc.FindAllDistros()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for find() all distros"))
 	}
@@ -680,20 +642,17 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 type distroExecuteHandler struct {
 	opts   model.APIDistroScriptOptions
 	distro string
-	sc     data.Connector
 	env    evergreen.Environment
 }
 
-func makeDistroExecute(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDistroExecute(env evergreen.Environment) gimlet.RouteHandler {
 	return &distroExecuteHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *distroExecuteHandler) Factory() gimlet.RouteHandler {
 	return &distroExecuteHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -721,7 +680,8 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 // Run enqueues a job to run a script on all selected hosts that are not down
 // for the given given distro ID.
 func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := h.sc.FindHostsByDistro(h.distro)
+	dc := data.DBHostConnector{}
+	hosts, err := dc.FindHostsByDistro(h.distro)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
 	}
@@ -758,20 +718,17 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 type distroIcecreamConfigHandler struct {
 	distro string
 	opts   model.APIDistroScriptOptions
-	sc     data.Connector
 	env    evergreen.Environment
 }
 
-func makeDistroIcecreamConfig(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDistroIcecreamConfig(env evergreen.Environment) gimlet.RouteHandler {
 	return &distroIcecreamConfigHandler{
-		sc:  sc,
 		env: env,
 	}
 }
 
 func (h *distroIcecreamConfigHandler) Factory() gimlet.RouteHandler {
 	return &distroIcecreamConfigHandler{
-		sc:  h.sc,
 		env: h.env,
 	}
 }
@@ -792,7 +749,8 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 // Run enqueues a job to run a script on all hosts that are not down for the
 // given given distro ID.
 func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := h.sc.FindHostsByDistro(h.distro)
+	dc := data.DBHostConnector{}
+	hosts, err := dc.FindHostsByDistro(h.distro)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro '%s'", h.distro))
 	}
@@ -858,22 +816,19 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 // GET /rest/v2/distros/{distro_id}/client_urls
 
 type distroClientURLsGetHandler struct {
-	sc       data.Connector
 	env      evergreen.Environment
 	distroID string
 }
 
-func makeGetDistroClientURLs(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeGetDistroClientURLs(env evergreen.Environment) gimlet.RouteHandler {
 	return &distroClientURLsGetHandler{
 		env: env,
-		sc:  sc,
 	}
 }
 
 func (rh *distroClientURLsGetHandler) Factory() gimlet.RouteHandler {
 	return &distroClientURLsGetHandler{
 		env: rh.env,
-		sc:  rh.sc,
 	}
 }
 
@@ -883,7 +838,8 @@ func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := rh.sc.FindDistroById(rh.distroID)
+	dc := data.DBDistroConnector{}
+	d, err := dc.FindDistroById(rh.distroID)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding distro '%s'", rh.distroID))
 	}

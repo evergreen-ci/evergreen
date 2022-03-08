@@ -64,7 +64,7 @@ func TestGenerateExecute(t *testing.T) {
 		Id: "task1",
 	}
 	require.NoError(t, task1.Insert())
-	h := &generateHandler{sc: &data.DBConnector{}}
+	h := &generateHandler{}
 	h.taskID = "task1"
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})

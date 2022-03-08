@@ -24,7 +24,7 @@ type CopyProjectOpts struct {
 	NewProjectId         string
 }
 
-func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func (sc *DBProjectConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
@@ -64,10 +64,12 @@ func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*
 	if err := sc.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying project vars from project '%s'", oldIdentifier)
 	}
-	if err := sc.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+	ac := DBAliasConnector{}
+	sbc := DBSubscriptionConnector{}
+	if err := ac.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying aliases from project '%s'", oldIdentifier)
 	}
-	if err := sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+	if err := sbc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// set the same admin roles from the old project on the newly copied project.
@@ -77,8 +79,10 @@ func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*
 	return apiProjectRef, nil
 }
 
-func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+func (sc *DBProjectConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
+	ac := DBAliasConnector{}
+	sbc := DBSubscriptionConnector{}
 	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
 	before, err := model.GetProjectSettingsById(projectId, isRepo)
 	if err != nil {
@@ -184,13 +188,13 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			return nil, err
 		}
 
-		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = ac.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
-		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = ac.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
-		if err = sc.SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
+		if err = sbc.SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
 			return nil, errors.Wrapf(err, "Database error saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
@@ -206,7 +210,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 				toDelete = append(toDelete, originalSub.ID)
 			}
 		}
-		catcher.Wrapf(sc.DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
+		catcher.Wrapf(sbc.DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
 	}
 
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)

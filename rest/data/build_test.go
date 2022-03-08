@@ -17,7 +17,7 @@ import (
 // Tests for fetch build by id route
 
 type BuildConnectorFetchByIdSuite struct {
-	ctx Connector
+	ctx DBBuildConnector
 	suite.Suite
 }
 
@@ -27,12 +27,10 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
 	s.NoError(db.ClearCollections(build.Collection, model.ProjectRefCollection, model.VersionCollection))
 	vId := "v"
 	version := &model.Version{Id: vId}
@@ -71,7 +69,7 @@ func (s *BuildConnectorFetchByIdSuite) TestFindByIdFail() {
 // Tests for change build status route
 
 type BuildConnectorChangeStatusSuite struct {
-	ctx Connector
+	ctx DBBuildConnector
 	suite.Suite
 }
 
@@ -81,13 +79,10 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
-
 	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
@@ -129,7 +124,7 @@ func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
 // Tests for abort build by id route
 
 type BuildConnectorAbortSuite struct {
-	ctx Connector
+	ctx DBBuildConnector
 	suite.Suite
 }
 
@@ -139,13 +134,11 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
+	s.ctx = DBBuildConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorAbortSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
-
 	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
@@ -169,7 +162,7 @@ func (s *BuildConnectorAbortSuite) TestAbort() {
 // Tests for restart build route
 
 type BuildConnectorRestartSuite struct {
-	ctx Connector
+	ctx DBBuildConnector
 	suite.Suite
 }
 
@@ -179,12 +172,11 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorRestartSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
+	s.ctx = DBBuildConnector{}
 
 	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 

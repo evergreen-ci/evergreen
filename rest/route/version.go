@@ -16,20 +16,15 @@ import (
 
 type versionHandler struct {
 	versionId string
-	sc        data.Connector
 }
 
-func makeGetVersionByID(sc data.Connector) gimlet.RouteHandler {
-	return &versionHandler{
-		sc: sc,
-	}
+func makeGetVersionByID() gimlet.RouteHandler {
+	return &versionHandler{}
 }
 
 // Handler returns a pointer to a new versionHandler.
 func (vh *versionHandler) Factory() gimlet.RouteHandler {
-	return &versionHandler{
-		sc: vh.sc,
-	}
+	return &versionHandler{}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
@@ -46,7 +41,8 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 // Execute calls the data FindVersionById function and returns the version
 // from the provider.
 func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
-	foundVersion, err := vh.sc.FindVersionById(vh.versionId)
+	dc := data.DBVersionConnector{}
+	foundVersion, err := dc.FindVersionById(vh.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -67,20 +63,15 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 type buildsForVersionHandler struct {
 	versionId string
 	variant   string
-	sc        data.Connector
 }
 
-func makeGetVersionBuilds(sc data.Connector) gimlet.RouteHandler {
-	return &buildsForVersionHandler{
-		sc: sc,
-	}
+func makeGetVersionBuilds() gimlet.RouteHandler {
+	return &buildsForVersionHandler{}
 }
 
 // Handler returns a pointer to a new buildsForVersionHandler.
 func (h *buildsForVersionHandler) Factory() gimlet.RouteHandler {
-	return &buildsForVersionHandler{
-		sc: h.sc,
-	}
+	return &buildsForVersionHandler{}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
@@ -99,7 +90,9 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 // build variant for the version, and returns the data.
 func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	// First, find the version by its ID.
-	foundVersion, err := h.sc.FindVersionById(h.versionId)
+	dc := data.DBVersionConnector{}
+	bc := data.DBBuildConnector{}
+	foundVersion, err := dc.FindVersionById(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the version"))
 	}
@@ -111,7 +104,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.variant != "" && buildStatus.BuildVariant != h.variant {
 			continue
 		}
-		foundBuild, err := h.sc.FindBuildById(buildStatus.BuildId)
+		foundBuild, err := bc.FindBuildById(buildStatus.BuildId)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the build"))
 		}
@@ -130,20 +123,15 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 type versionAbortHandler struct {
 	versionId string
 	userId    string
-	sc        data.Connector
 }
 
-func makeAbortVersion(sc data.Connector) gimlet.RouteHandler {
-	return &versionAbortHandler{
-		sc: sc,
-	}
+func makeAbortVersion() gimlet.RouteHandler {
+	return &versionAbortHandler{}
 }
 
 // Handler returns a pointer to a new versionAbortHandler.
 func (h *versionAbortHandler) Factory() gimlet.RouteHandler {
-	return &versionAbortHandler{
-		sc: h.sc,
-	}
+	return &versionAbortHandler{}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
@@ -163,11 +151,12 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.sc.AbortVersion(h.versionId, h.userId); err != nil {
+	dc := data.DBVersionConnector{}
+	if err := dc.AbortVersion(h.versionId, h.userId); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
 	}
 
-	foundVersion, err := h.sc.FindVersionById(h.versionId)
+	foundVersion, err := dc.FindVersionById(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version"))
 	}
@@ -184,18 +173,15 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 // of a version.
 type versionRestartHandler struct {
 	versionId string
-	sc        data.Connector
 }
 
-func makeRestartVersion(sc data.Connector) gimlet.RouteHandler {
-	return &versionRestartHandler{
-		sc: sc,
-	}
+func makeRestartVersion() gimlet.RouteHandler {
+	return &versionRestartHandler{}
 }
 
 // Handler returns a pointer to a new versionRestartHandler.
 func (h *versionRestartHandler) Factory() gimlet.RouteHandler {
-	return &versionRestartHandler{sc: h.sc}
+	return &versionRestartHandler{}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
@@ -212,13 +198,14 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// Restart the version
-	err := h.sc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
+	dc := data.DBVersionConnector{}
+	err := dc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in restarting version"))
 	}
 
 	// Find the version to return updated status.
-	foundVersion, err := h.sc.FindVersionById(h.versionId)
+	foundVersion, err := dc.FindVersionById(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version:"))
 	}

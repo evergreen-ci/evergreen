@@ -81,7 +81,7 @@ func (s *StatusSuite) SetupTest() {
 	for _, t := range tasks {
 		s.NoError(t.Insert())
 	}
-	s.h = &recentTasksGetHandler{sc: s.sc}
+	s.h = &recentTasksGetHandler{}
 }
 
 func (s *StatusSuite) TestParseAndValidateDefault() {
