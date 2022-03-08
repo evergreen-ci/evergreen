@@ -12,7 +12,7 @@ import (
 
 type cliUpdateConnectorSuite struct {
 	suite.Suite
-	ctx     Connector
+	ctx     CLIUpdateConnector
 	setup   func()
 	degrade func()
 }
@@ -22,9 +22,7 @@ func TestUpdateConnector(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s := &cliUpdateConnectorSuite{
-		ctx: &DBConnector{},
-	}
+	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	}

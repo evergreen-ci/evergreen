@@ -199,7 +199,7 @@ func TestCqMessageForPatch(t *testing.T) {
 		Project: "mci",
 	}
 	assert.NoError(t, p.Insert())
-	handler := makecqMessageForPatch(&data.DBConnector{})
+	handler := makecqMessageForPatch()
 	ctx := context.Background()
 
 	request, err := http.NewRequest(http.MethodGet, "", nil)

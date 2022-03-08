@@ -22,7 +22,7 @@ import (
 )
 
 type CommitQueueSuite struct {
-	ctx      Connector
+	ctx      DBCommitQueueConnector
 	mockCtx  MockGitHubConnector
 	settings *evergreen.Settings
 	suite.Suite
@@ -75,7 +75,6 @@ func (s *CommitQueueSuite) SetupTest() {
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
@@ -100,14 +99,12 @@ func (s *CommitQueueSuite) TestEnqueue() {
 }
 
 func (s *CommitQueueSuite) TestFindCommitQueueByID() {
-	s.ctx = &DBConnector{}
 	cq, err := s.ctx.FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("mci"), cq.ProjectID)
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -132,7 +129,6 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 }
 
 func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -151,7 +147,6 @@ func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestCommitQueueClearAll() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -209,7 +204,6 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 }
 
 func (s *CommitQueueSuite) TestCreatePatchForMerge() {
-	s.ctx = &DBConnector{}
 	s.Require().NoError(db.ClearCollections(patch.Collection, model.ProjectAliasCollection, user.Collection))
 
 	u := &user.DBUser{Id: "octocat"}
@@ -265,7 +259,6 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
@@ -295,7 +288,6 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 }
 
 func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -307,7 +299,6 @@ func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -332,7 +323,6 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 }
 
 func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
@@ -351,7 +341,6 @@ func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
-	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)

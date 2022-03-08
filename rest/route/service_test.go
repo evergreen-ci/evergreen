@@ -379,7 +379,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					project:    projectName,
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
-					sc:         &serviceContext,
 					limit:      limit,
 				}
 
@@ -421,7 +420,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				handler := &tasksByProjectHandler{
 					project:    projectName,
 					commitHash: commit,
-					sc:         &serviceContext,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 				}
@@ -465,7 +463,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				handler := &tasksByProjectHandler{
 					project:    projectName,
 					commitHash: commit,
-					sc:         &serviceContext,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
 				}
@@ -509,7 +506,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				handler := &tasksByProjectHandler{
 					project:    projectName,
 					commitHash: commit,
-					sc:         &serviceContext,
 					key:        fmt.Sprintf("%dtask_%d", 0, taskToStartAt),
 					limit:      limit,
 				}
@@ -801,7 +797,6 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					limit: limit,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -831,7 +826,6 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					limit: 50,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -861,7 +855,6 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
-					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -890,7 +883,6 @@ func TestTestPaginator(t *testing.T) {
 
 				handler := &testGetHandler{
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					sc:    &serviceContext,
 					limit: limit,
 				}
 
@@ -1014,7 +1006,6 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 	evergreen.SetEnvironment(env)
 	Convey("With a task in the DB and a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
-		sc := data.DBConnector{}
 		version := serviceModel.Version{
 			Id: "v1",
 		}
@@ -1045,7 +1036,6 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 				user: &user.DBUser{
 					Id: "testUser",
 				},
-				sc: &sc,
 			}
 			res := tep.Run(ctx)
 			So(res.Status(), ShouldEqual, http.StatusOK)
@@ -1114,7 +1104,7 @@ func TestTaskGetHandler(t *testing.T) {
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		sc := &data.DBConnector{}
-		rm := makeGetTaskRoute(sc)
+		rm := makeGetTaskRoute()
 		sc.SetPrefix("rest")
 
 		Convey("and task is in the service context", func() {
@@ -1224,7 +1214,6 @@ func TestTaskResetExecute(t *testing.T) {
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId2",
 				username: "testUser",
-				sc:       &sc,
 			}
 			resp := trh.Run(ctx)
 			So(resp.Status(), ShouldNotEqual, http.StatusOK)
@@ -1238,7 +1227,6 @@ func TestTaskResetExecute(t *testing.T) {
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
 				username: "testUser",
-				sc:       &sc,
 			}
 
 			res := trh.Run(ctx)
@@ -1261,10 +1249,6 @@ func TestParentTaskInfo(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
-
-	sc := data.DBConnector{
-		URL: "http://evergreen.example.net",
-	}
 	buildID := "test"
 	dtID := "displayTask"
 	displayTask := task.Task{

@@ -440,7 +440,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	routeManager := makeSetAdminSettings(&data.DBConnector{})
+	routeManager := makeSetAdminSettings()
 
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
@@ -488,9 +488,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 }
 
 func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
-	route := &clearTaskQueueHandler{
-		sc: &data.DBConnector{},
-	}
+	route := &clearTaskQueueHandler{}
 	distro := "d1"
 	tasks := []model.TaskQueueItem{
 		{

@@ -149,9 +149,7 @@ func TestFetchBanner(t *testing.T) {
 	}
 	_, err := connector.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
 	require.NoError(t, err)
-	routeManager := makeFetchAdminBanner(&data.DBConnector{
-		DBAdminConnector: connector,
-	})
+	routeManager := makeFetchAdminBanner()
 	assert.NotNil(routeManager)
 
 	// test getting what we just sets
