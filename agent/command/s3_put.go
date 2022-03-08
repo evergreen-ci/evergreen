@@ -103,7 +103,7 @@ type s3put struct {
 }
 
 // NotFound is returned by S3 when an object does not exist.
-const NotFoundError = "NotFound"
+const notFoundError = "NotFound"
 
 func s3PutFactory() Command      { return &s3put{} }
 func (s3pc *s3put) Name() string { return "s3.put" }
@@ -197,8 +197,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	} else {
-		s3pc.skipMissing = false
 	}
 
 	if s3pc.SkipExisting != "" {
@@ -504,7 +502,7 @@ func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
-			case NotFoundError:
+			case notFoundError:
 				return false, nil
 			default:
 				return false, errors.Wrapf(err, "error getting head object for: %s", remoteName)
