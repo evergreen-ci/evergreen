@@ -187,6 +187,13 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
+		for i := range changes.ProjectRef.PatchTriggerAliases {
+			mergedProjectRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedProjectRef.PatchTriggerAliases[i], projectId)
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "error validating patch trigger aliases")
+		}
 		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
