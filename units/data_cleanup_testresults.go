@@ -82,7 +82,7 @@ func (j *dataCleanupTestResults) Run(ctx context.Context) {
 	)
 
 	totalDocs, _ := j.env.DB().Collection(testresult.Collection).EstimatedDocumentCount(ctx)
-	timestamp := time.Now().Add(time.Duration(-365*24) * time.Hour)
+	timestamp := time.Now().Add(time.Duration(-180*24) * time.Hour)
 
 deleteDocs:
 	for {
