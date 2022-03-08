@@ -197,6 +197,8 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
+	} else {
+		s3pc.skipMissing = false
 	}
 
 	if s3pc.SkipExisting != "" {
@@ -204,6 +206,8 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
+	} else {
+		s3pc.skipExistingBool = false
 	}
 	return nil
 }
