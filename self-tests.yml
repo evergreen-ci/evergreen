@@ -4,7 +4,7 @@ ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
   - "scripts/*" # our scripts are untested, so don't schedule tests for them
   - ".github/*" # github CODEOWNERS configuration
-
+# this is for testing
 post:
   - func: attach-test-results
   - command: s3.put
