@@ -1560,7 +1560,7 @@ func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]Pr
 	}
 	if !shouldExit && len(vars) == 0 {
 		if len(patchDoc.PatchedProjectConfig) > 0 {
-			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), p.Identifier)
 			if err != nil {
 				return nil, errors.Wrap(err, "can't retrieve aliases from patched config")
 			}

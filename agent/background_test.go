@@ -145,7 +145,7 @@ early_termination:
 `
 	p := &model.Project{}
 	ctx := context.Background()
-	_, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", p)
+	_, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", p)
 	s.NoError(err)
 	s.tc.project = p
 	s.tc.taskConfig = &internal.TaskConfig{
