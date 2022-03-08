@@ -13,7 +13,7 @@ import (
 const (
 	// PresignExpireTime sets the amount of time the link is live before expiring.
 	PresignExpireTime = 24 * time.Hour
-	// NotFound is returned by s3 when headObject doesn't exist
+	// NotFound is returned by S3 when an object does not exist
 	NotFoundError = "NotFound"
 )
 
@@ -49,10 +49,10 @@ func PreSign(r RequestParams) (string, error) {
 	return urlStr, err
 }
 
-// GetHeadObject fetches the metadata of an s3 object
+// GetHeadObject fetches the metadata of an s3 object.
 func GetHeadObject(r RequestParams) (*s3.HeadObjectOutput, error) {
 	session, err := session.NewSession(&aws.Config{
-		Region: &r.Region,
+		Region: aws.String(r.Region),
 		Credentials: credentials.NewStaticCredentialsFromCreds(credentials.Value{
 			AccessKeyID:     r.AwsKey,
 			SecretAccessKey: r.AwsSecret,
