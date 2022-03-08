@@ -187,7 +187,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
-		for i := range changes.ProjectRef.PatchTriggerAliases {
+		for i := range mergedProjectRef.PatchTriggerAliases {
 			mergedProjectRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedProjectRef.PatchTriggerAliases[i], projectId)
 			catcher.Add(err)
 		}
@@ -215,7 +215,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		}
 		catcher.Wrapf(sc.DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
 	}
-
+	fmt.Println("GETTING TO SAVE FOR SECTION")
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)

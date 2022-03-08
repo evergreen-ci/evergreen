@@ -1444,7 +1444,6 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 
 		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
 			Alias:                  utility.ToStringPtr(alias.Alias),
-			ChildProject:           utility.ToStringPtr(alias.ChildProject),
 			ChildProjectId:         utility.ToStringPtr(alias.ChildProject),
 			ChildProjectIdentifier: utility.ToStringPtr(identifier),
 			VariantsTasks:          variantsTasks,

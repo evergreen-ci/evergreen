@@ -827,7 +827,6 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String @deprecated
   childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]

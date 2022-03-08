@@ -554,7 +554,6 @@ type ComplexityRoot struct {
 
 	PatchTriggerAlias struct {
 		Alias                  func(childComplexity int) int
-		ChildProject           func(childComplexity int) int
 		ChildProjectId         func(childComplexity int) int
 		ChildProjectIdentifier func(childComplexity int) int
 		ParentAsModule         func(childComplexity int) int
@@ -3861,13 +3860,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchTriggerAlias.Alias(childComplexity), true
-
-	case "PatchTriggerAlias.childProject":
-		if e.complexity.PatchTriggerAlias.ChildProject == nil {
-			break
-		}
-
-		return e.complexity.PatchTriggerAlias.ChildProject(childComplexity), true
 
 	case "PatchTriggerAlias.childProjectId":
 		if e.complexity.PatchTriggerAlias.ChildProjectId == nil {
@@ -8271,7 +8263,6 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String @deprecated
   childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]
@@ -21902,38 +21893,6 @@ func (ec *executionContext) _PatchTriggerAlias_alias(ctx context.Context, field 
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchTriggerAlias_childProject(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "PatchTriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ChildProject, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_childProjectId(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -45021,8 +44980,6 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "childProject":
-			out.Values[i] = ec._PatchTriggerAlias_childProject(ctx, field, obj)
 		case "childProjectId":
 			out.Values[i] = ec._PatchTriggerAlias_childProjectId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
