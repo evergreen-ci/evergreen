@@ -10,7 +10,6 @@ type Query {
   viewableProjectRefs: [GroupedProjects]!
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
   project(projectId: String!): Project!
-  permissions(userId: String!): Permissions!
   patchTasks(
     patchId: String!
     sorts: [SortOrder!]
@@ -1455,6 +1454,7 @@ type User {
   userId: String!
   emailAddress: String!
   patches(patchesInput: PatchesInput!): Patches!
+  permissions: Permissions!
 }
 
 type TaskLogs {

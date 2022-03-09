@@ -1088,25 +1088,6 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	return apiHosts, nil
 }
 
-func (r *queryResolver) Permissions(ctx context.Context, userID string) (*Permissions, error) {
-	userId := ""
-	if userID == "" {
-		usr := MustHaveUser(ctx)
-		userId = usr.Id
-	} else {
-		usr, err := user.FindOneById(userID)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, "error finding user")
-		}
-		if usr == nil {
-			return nil, ResourceNotFound.Send(ctx, "user doesn't exist")
-		}
-		userId = usr.Id
-	}
-
-	return &Permissions{UserID: userId}, nil
-}
-
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
 	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
@@ -3187,6 +3168,10 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		apiPatches = append(apiPatches, &apiPatch)
 	}
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
+}
+
+func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser) (*Permissions, error) {
+	return &Permissions{UserID: utility.FromStringPtr(obj.UserID)}, nil
 }
 
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
