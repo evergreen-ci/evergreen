@@ -291,11 +291,11 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 	}).Insert())
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:            "me",
-		Project:         s.project,
-		BaseGitHash:     s.hash,
-		Description:     s.desc,
-		ReuseDefinition: true,
+		User:             "me",
+		Project:          s.project,
+		BaseGitHash:      s.hash,
+		Description:      s.desc,
+		RepeatDefinition: true,
 	})
 	s.NoError(err)
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
@@ -314,7 +314,7 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 		},
 	}}
-	vt, err := j.getPreviousPatchDefinition(&project)
+	vt, err := j.getPreviousPatchDefinition(&project, false)
 	s.NoError(err)
 	s.Require().Len(vt, 2)
 	s.Equal("bv1", vt[0].Variant)
