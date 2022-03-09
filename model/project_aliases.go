@@ -140,7 +140,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 
 // findMatchingAliasForProjectConfig finds any aliases matching the alias input in the project config.
 func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias, error) {
-	projectConfig, err := FindProjectConfigToMerge(projectID, "")
+	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project config")
 	}
@@ -223,7 +223,7 @@ func FindAliasInProjectRepoOrPatchedConfig(projectID, alias, patchedConfig strin
 	if len(aliases) > 0 || shouldExit || patchedConfig == "" {
 		return aliases, nil
 	}
-	projectConfig, err := CreateProjectConfig([]byte(patchedConfig))
+	projectConfig, err := CreateProjectConfig([]byte(patchedConfig), "")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating project config from patch")
 	}

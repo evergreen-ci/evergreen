@@ -1561,7 +1561,7 @@ func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]Pr
 	}
 	if !shouldExit && len(vars) == 0 {
 		if len(patchDoc.PatchedProjectConfig) > 0 {
-			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig))
+			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), p.Identifier)
 			if err != nil {
 				return nil, errors.Wrap(err, "can't retrieve aliases from patched config")
 			}
@@ -1851,7 +1851,7 @@ type VariantsAndTasksFromProject struct {
 // GetVariantsAndTasksFromProject formats variants and tasks as used by the UI pages.
 func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &Project{}
-	if _, _, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
+	if _, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 

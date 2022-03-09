@@ -1243,16 +1243,18 @@ func TestValidateProjectTaskIdsAndTags(t *testing.T) {
 func TestValidatePeriodicBuilds(t *testing.T) {
 	projectConfig := &model.ProjectConfig{
 		Id: "project-1",
-		PeriodicBuilds: []model.PeriodicBuildDefinition{
-			{
-				ID:            "so_occasional",
-				ConfigFile:    "build.yml",
-				IntervalHours: -1,
-			},
-			{
-				ID:            "more_frequent",
-				ConfigFile:    "",
-				IntervalHours: 1,
+		ProjectConfigFields: model.ProjectConfigFields{
+			PeriodicBuilds: []model.PeriodicBuildDefinition{
+				{
+					ID:            "so_occasional",
+					ConfigFile:    "build.yml",
+					IntervalHours: -1,
+				},
+				{
+					ID:            "more_frequent",
+					ConfigFile:    "",
+					IntervalHours: 1,
+				},
 			},
 		},
 	}
@@ -1273,86 +1275,85 @@ func TestValidatePlugins(t *testing.T) {
 	assert.Nil(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject: "BFG",
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketSearchProjects: []string{"BF", "BFG"},
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionUsername:    "user",
 				BFSuggestionPassword:    "pass",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldResemble, ValidationErrors{})
+			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 				BFSuggestionUsername: "user",
 				BFSuggestionPassword: "pass",
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionPassword:    "pass",
 				BFSuggestionTimeoutSecs: 10,
-			}}), ShouldNotBeNil)
-
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			}}}), ShouldNotBeNil)
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 0,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Project: "p1", BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: -1,
-			}}), ShouldNotBeNil)
+			}}}), ShouldNotBeNil)
 		})
 	})
 }
@@ -1362,83 +1363,85 @@ func TestValidateProjectAliases(t *testing.T) {
 		Convey("ensure misconfigured aliases throw an error", func() {
 			projectConfig := &model.ProjectConfig{
 				Id: "project-1",
-				PatchAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "",
-						Variant:   "v1",
-						Task:      "^test",
+				ProjectConfigFields: model.ProjectConfigFields{
+					PatchAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "",
+							Variant:   "v1",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Variant:   "v1",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Variant:   "[0-9]++",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     "alias-1",
+							Variant:   "v1",
+							Task:      "[0-9]++",
+						},
 					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Task:      "^test",
+					CommitQueueAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.CommitQueueAlias,
+							Variant:   "v1",
+							Task:      "^test",
+						},
 					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Variant:   "v1",
+					GitHubChecksAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.GithubChecksAlias,
+							Variant:   "v1",
+							Task:      "^test",
+						},
 					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Variant:   "[0-9]++",
-						Task:      "^test",
-					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     "alias-1",
-						Variant:   "v1",
-						Task:      "[0-9]++",
-					},
-				},
-				CommitQueueAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.CommitQueueAlias,
-						Variant:   "v1",
-						Task:      "^test",
-					},
-				},
-				GitHubChecksAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.GithubChecksAlias,
-						Variant:   "v1",
-						Task:      "^test",
-					},
-				},
-				GitTagAliases: []model.ProjectAlias{
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.GitTagAlias,
-						Variant:   "v1",
-						Task:      "^test",
-					},
-					{
-						ID:        mgobson.NewObjectId(),
-						ProjectID: "project-1",
-						Alias:     evergreen.GitTagAlias,
-						Variant:   "v1",
-						Task:      "^test",
-						GitTag:    "[0-9]++",
-					},
-					{
-						ID:         mgobson.NewObjectId(),
-						ProjectID:  "project-1",
-						Alias:      evergreen.GitTagAlias,
-						Variant:    "v1",
-						Task:       "^test",
-						RemotePath: "remote/path",
-						GitTag:     "^test",
+					GitTagAliases: []model.ProjectAlias{
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.GitTagAlias,
+							Variant:   "v1",
+							Task:      "^test",
+						},
+						{
+							ID:        mgobson.NewObjectId(),
+							ProjectID: "project-1",
+							Alias:     evergreen.GitTagAlias,
+							Variant:   "v1",
+							Task:      "^test",
+							GitTag:    "[0-9]++",
+						},
+						{
+							ID:         mgobson.NewObjectId(),
+							ProjectID:  "project-1",
+							Alias:      evergreen.GitTagAlias,
+							Variant:    "v1",
+							Task:       "^test",
+							RemotePath: "remote/path",
+							GitTag:     "^test",
+						},
 					},
 				},
 			}
@@ -1651,7 +1654,7 @@ tasks:
 `
 			proj := model.Project{}
 			ctx := context.Background()
-			pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+			pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 			So(pp, ShouldNotBeNil)
 			So(proj, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -2323,7 +2326,7 @@ func TestTaskValidation(t *testing.T) {
 `
 	var proj model.Project
 	ctx := context.Background()
-	_, _, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
+	_, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "spaces are unauthorized")
 }
@@ -2350,7 +2353,7 @@ func TestTaskGroupValidation(t *testing.T) {
   `
 	var proj model.Project
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(duplicateYml), nil, "", &proj)
+	pp, err := model.LoadProjectInto(ctx, []byte(duplicateYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2390,7 +2393,7 @@ func TestTaskGroupValidation(t *testing.T) {
     tasks:
     - name: foo
   `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "", &proj)
+	pp, err = model.LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2416,7 +2419,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
+	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2457,7 +2460,7 @@ task_groups:
   - command: %s
 `, commandName)
 		attachTeardownYml := fmt.Sprintf("%s\n%s", baseYml, attachCommand)
-		pp, _, err := model.LoadProjectInto(ctx, []byte(attachTeardownYml), nil, "", &proj)
+		pp, err := model.LoadProjectInto(ctx, []byte(attachTeardownYml), nil, "", &proj)
 		assert.NotNil(t, proj)
 		assert.NotNil(t, pp)
 		assert.NoError(t, err)
@@ -2513,7 +2516,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2565,7 +2568,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2624,7 +2627,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -2659,7 +2662,7 @@ func TestValidateCreateHosts(t *testing.T) {
   `
 	var p model.Project
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
+	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs := validateHostCreates(&p)
@@ -2680,7 +2683,7 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
+	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs = validateHostCreates(&p)
@@ -2729,7 +2732,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
   `
 	var p model.Project
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs := validateDuplicateBVTasks(&p)
@@ -2751,7 +2754,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
     - tg1
   `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = validateDuplicateBVTasks(&p)
@@ -2776,7 +2779,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - tg1
     - tg2
   `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = validateDuplicateBVTasks(&p)
@@ -2804,7 +2807,7 @@ tasks:
 `
 	project := &model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
+	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs := checkTasks(project)
@@ -2823,7 +2826,7 @@ tasks:
     `
 
 	project = &model.Project{}
-	pp, _, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
+	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = checkLoggerConfig(&project.Tasks[0])
@@ -2866,7 +2869,7 @@ buildvariants:
 `
 	proj := model.Project{}
 	ctx := context.Background()
-	pp, _, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
@@ -2889,7 +2892,7 @@ buildvariants:
     tasks:
       - name: taskA
 `
-	pp, _, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotNil(pp)
 	assert.NotEmpty(proj)

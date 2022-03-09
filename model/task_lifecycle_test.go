@@ -867,6 +867,11 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 }
 
 func TestTaskStatusImpactedByFailedTest(t *testing.T) {
+	assert.NoError(t, db.Clear(ProjectRefCollection))
+	projRef := &ProjectRef{
+		Id: "p1",
+	}
+	assert.NoError(t, projRef.Insert())
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
 		displayName := "testName"
 
@@ -884,9 +889,10 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Activated: true,
 			}
 			v = &Version{
-				Id:     b.Version,
-				Status: evergreen.VersionStarted,
-				Config: "identifier: sample",
+				Id:         b.Version,
+				Identifier: "p1",
+				Status:     evergreen.VersionStarted,
+				Config:     "identifier: sample",
 			}
 			testTask = &task.Task{
 				Id:          "testone",
@@ -1078,7 +1084,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 func TestMarkEnd(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection),
 		"Error clearing collections")
 
 	displayName := "testName"
@@ -1089,9 +1095,13 @@ func TestMarkEnd(t *testing.T) {
 		Version: "abc",
 	}
 	v := &Version{
-		Id:     b.Version,
-		Status: evergreen.VersionStarted,
-		Config: "identifier: sample",
+		Id:         b.Version,
+		Identifier: "p1",
+		Status:     evergreen.VersionStarted,
+		Config:     "identifier: sample",
+	}
+	projRef := &ProjectRef{
+		Id: "p1",
 	}
 	testTask := task.Task{
 		Id:          "testone",
@@ -1103,6 +1113,7 @@ func TestMarkEnd(t *testing.T) {
 		Version:     b.Version,
 	}
 
+	assert.NoError(projRef.Insert())
 	assert.NoError(b.Insert())
 	assert.NoError(testTask.Insert())
 	assert.NoError(v.Insert())
@@ -2075,10 +2086,15 @@ buildvariants:
    stepback: false
 `
 		ver := &Version{
-			Id:     "version_id",
-			Config: config,
+			Id:         "version_id",
+			Identifier: "p1",
+			Config:     config,
 		}
 		So(ver.Insert(), ShouldBeNil)
+		projRef := &ProjectRef{
+			Id: "p1",
+		}
+		So(projRef.Insert(), ShouldBeNil)
 
 		Convey("if the task does not override the setting", func() {
 			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: "sample", Version: ver.Id}
@@ -2761,8 +2777,12 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection, ProjectRefCollection))
 
+	projRef := &ProjectRef{
+		Id: "sample",
+	}
+	require.NoError(projRef.Insert())
 	v := &Version{
 		Id:         "sample_version",
 		Identifier: "sample",
