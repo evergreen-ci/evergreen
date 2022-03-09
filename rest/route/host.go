@@ -182,8 +182,8 @@ func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /hosts
 // GET /users/{user_id}/hosts
 
-func makeFetchHosts() gimlet.RouteHandler {
-	return &hostGetHandler{}
+func makeFetchHosts(url string) gimlet.RouteHandler {
+	return &hostGetHandler{url: url}
 }
 
 type hostGetHandler struct {
@@ -191,10 +191,11 @@ type hostGetHandler struct {
 	key    string
 	status string
 	user   string
+	url    string
 }
 
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
-	return &hostGetHandler{}
+	return &hostGetHandler{url: hgh.url}
 }
 
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -232,7 +233,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		lastIndex = hgh.limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
-				BaseURL:         data.GetURL(),
+				BaseURL:         hgh.url,
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "host_id",
 				Relation:        "next",

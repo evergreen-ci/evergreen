@@ -27,14 +27,15 @@ type testGetHandler struct {
 	testExecution int
 	key           string
 	limit         int
+	url           string
 }
 
-func makeFetchTestsForTask() gimlet.RouteHandler {
-	return &testGetHandler{}
+func makeFetchTestsForTask(url string) gimlet.RouteHandler {
+	return &testGetHandler{url: url}
 }
 
 func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
-	return &testGetHandler{}
+	return &testGetHandler{url: hgh.url}
 }
 
 // ParseAndValidate fetches the task Id and 'status' from the url and
@@ -164,7 +165,7 @@ func (tgh *testGetHandler) buildResponse(cedarTestResults []apimodels.CedarTestR
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         tgh.url,
 				Key:             key,
 				Limit:           tgh.limit,
 			},

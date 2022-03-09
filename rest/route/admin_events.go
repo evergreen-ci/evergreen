@@ -12,19 +12,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeFetchAdminEvents() gimlet.RouteHandler {
-	return &adminEventsGet{}
+func makeFetchAdminEvents(url string) gimlet.RouteHandler {
+	return &adminEventsGet{url: url}
 }
 
 type adminEventsGet struct {
 	Timestamp time.Time
 	Limit     int
+	url       string
 }
 
 func (h *adminEventsGet) Factory() gimlet.RouteHandler {
 	return &adminEventsGet{
 		Timestamp: time.Now(),
 		Limit:     10,
+		url:       h.url,
 	}
 }
 
@@ -62,7 +64,7 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 		lastIndex = h.Limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
-				BaseURL:         data.GetURL(),
+				BaseURL:         h.url,
 				KeyQueryParam:   "ts",
 				LimitQueryParam: "limit",
 				Relation:        "next",

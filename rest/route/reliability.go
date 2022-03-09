@@ -33,14 +33,15 @@ const (
 type taskReliabilityHandler struct {
 	StatsHandler
 	filter reliability.TaskReliabilityFilter
+	url    string
 }
 
-func makeGetProjectTaskReliability() gimlet.RouteHandler {
-	return &taskReliabilityHandler{}
+func makeGetProjectTaskReliability(url string) gimlet.RouteHandler {
+	return &taskReliabilityHandler{url: url}
 }
 
 func (trh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
-	return &taskReliabilityHandler{}
+	return &taskReliabilityHandler{url: trh.url}
 }
 
 // Get the default before_date.
@@ -264,7 +265,7 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         trh.url,
 				Key:             last.StartAtKey(),
 				Limit:           requestLimit,
 			},

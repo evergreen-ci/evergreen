@@ -26,14 +26,15 @@ type taskGetHandler struct {
 	taskID             string
 	fetchAllExecutions bool
 	execution          int
+	url                string
 }
 
-func makeGetTaskRoute() gimlet.RouteHandler {
-	return &taskGetHandler{}
+func makeGetTaskRoute(url string) gimlet.RouteHandler {
+	return &taskGetHandler{url: url}
 }
 
 func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
-	return &taskGetHandler{}
+	return &taskGetHandler{url: tgh.url}
 }
 
 // ParseAndValidate fetches the taskId from the http request.
@@ -88,7 +89,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	err = taskModel.BuildFromService(data.GetURL())
+	err = taskModel.BuildFromService(tgh.url)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
@@ -100,7 +101,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(tasks, data.GetURL()); err != nil {
+		if err = taskModel.BuildPreviousExecutions(tasks, tgh.url); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 	}

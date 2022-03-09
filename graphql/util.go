@@ -61,7 +61,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func SetScheduled(ctx context.Context, taskID string, isActive bool) (*restModel.APITask, error) {
+func SetScheduled(ctx context.Context, url string, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := MustHaveUser(ctx)
 	t, err := task.FindOneId(taskID)
 	if err != nil {
@@ -90,7 +90,7 @@ func SetScheduled(ctx context.Context, taskID string, isActive bool) (*restModel
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	err = apiTask.BuildFromService(data.GetURL())
+	err = apiTask.BuildFromService(url)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -470,13 +470,13 @@ func (p *PatchUpdate) BuildFromGqlInput(r PatchConfigure) {
 }
 
 // GetAPITaskFromTask builds an APITask from the given task
-func GetAPITaskFromTask(ctx context.Context, task task.Task) (*restModel.APITask, error) {
+func GetAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
 	err := apiTask.BuildFromService(&task)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
 	}
-	err = apiTask.BuildFromService(data.GetURL())
+	err = apiTask.BuildFromService(url)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", task.Id, err.Error()))
 	}

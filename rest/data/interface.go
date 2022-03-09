@@ -26,10 +26,6 @@ type FindTestsByTaskIdOpts struct {
 	TestName string
 }
 
-func GetURL() string {
-	return "https://www.example.com"
-}
-
 // Connector is an interface that contains all of the methods which
 // connect to the service layer of evergreen. These methods abstract the link
 // between the service and the API layers, allowing for changes in the

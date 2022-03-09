@@ -18,14 +18,17 @@ type tasksByProjectHandler struct {
 	status     string
 	limit      int
 	key        string
+	url        string
 }
 
-func makeTasksByProjectAndCommitHandler() gimlet.RouteHandler {
-	return &tasksByProjectHandler{}
+func makeTasksByProjectAndCommitHandler(url string) gimlet.RouteHandler {
+	return &tasksByProjectHandler{
+		url: url,
+	}
 }
 
 func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
-	return &tasksByProjectHandler{}
+	return &tasksByProjectHandler{url: tph.url}
 }
 
 // ParseAndValidate fetches the project context and task status from the request
@@ -83,7 +86,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         tph.url,
 				Key:             tasks[tph.limit].Id,
 				Limit:           tph.limit,
 			},
@@ -102,7 +105,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		err = taskModel.BuildFromService(data.GetURL())
+		err = taskModel.BuildFromService(tph.url)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}

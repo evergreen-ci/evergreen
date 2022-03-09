@@ -318,10 +318,15 @@ func (sh *StatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error)
 
 type testStatsHandler struct {
 	StatsHandler
+	url string
 }
 
 func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
-	return &testStatsHandler{}
+	return &testStatsHandler{url: tsh.url}
+}
+
+func makeGetProjectTestStats(url string) gimlet.RouteHandler {
+	return &testStatsHandler{url: url}
 }
 
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -376,7 +381,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         tsh.url,
 				Key:             testStatsResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},
@@ -397,20 +402,21 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-func makeGetProjectTestStats() gimlet.RouteHandler {
-	return &testStatsHandler{}
-}
-
 ///////////////////////////////////////////////
 // /projects/<project_id>/task_stats handler //
 ///////////////////////////////////////////////
 
 type taskStatsHandler struct {
 	StatsHandler
+	url string
 }
 
 func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
-	return &taskStatsHandler{}
+	return &taskStatsHandler{url: tsh.url}
+}
+
+func makeGetProjectTaskStats(url string) gimlet.RouteHandler {
+	return &taskStatsHandler{url: url}
 }
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -465,7 +471,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         tsh.url,
 				Key:             taskStatsResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},
@@ -484,10 +490,6 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-func makeGetProjectTaskStats() gimlet.RouteHandler {
-	return &taskStatsHandler{}
 }
 
 type cedarTestStatsMiddleware struct {

@@ -20,17 +20,20 @@ type tasksByBuildHandler struct {
 	fetchParentIds     bool
 	limit              int
 	key                string
+	url                string
 }
 
-func makeFetchTasksByBuild() gimlet.RouteHandler {
+func makeFetchTasksByBuild(url string) gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit: defaultLimit,
+		url:   url,
 	}
 }
 
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit: tbh.limit,
+		url:   tbh.url,
 	}
 }
 
@@ -82,7 +85,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         tbh.url,
 				Key:             tasks[tbh.limit].Id,
 				Limit:           tbh.limit,
 			},
@@ -105,7 +108,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
-		if err = taskModel.BuildFromService(data.GetURL()); err != nil {
+		if err = taskModel.BuildFromService(tbh.url); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
@@ -117,7 +120,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 
-			if err = taskModel.BuildPreviousExecutions(oldTasks, data.GetURL()); err != nil {
+			if err = taskModel.BuildPreviousExecutions(oldTasks, tbh.url); err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 		}

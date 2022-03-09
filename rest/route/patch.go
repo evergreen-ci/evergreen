@@ -164,14 +164,15 @@ type patchesByUserHandler struct {
 	limit int
 	key   time.Time
 	user  string
+	url   string
 }
 
-func makeUserPatchHandler() gimlet.RouteHandler {
-	return &patchesByUserHandler{}
+func makeUserPatchHandler(url string) gimlet.RouteHandler {
+	return &patchesByUserHandler{url: url}
 }
 
 func (p *patchesByUserHandler) Factory() gimlet.RouteHandler {
-	return &patchesByUserHandler{}
+	return &patchesByUserHandler{url: p.url}
 }
 
 func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -218,7 +219,7 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         p.url,
 				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},
@@ -249,14 +250,15 @@ type patchesByProjectHandler struct {
 	projectId string
 	key       time.Time
 	limit     int
+	url       string
 }
 
-func makePatchesByProjectRoute() gimlet.RouteHandler {
-	return &patchesByProjectHandler{}
+func makePatchesByProjectRoute(url string) gimlet.RouteHandler {
+	return &patchesByProjectHandler{url: url}
 }
 
 func (p *patchesByProjectHandler) Factory() gimlet.RouteHandler {
-	return &patchesByProjectHandler{}
+	return &patchesByProjectHandler{url: p.url}
 }
 
 func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -303,7 +305,7 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         p.url,
 				Key:             patches[p.limit].CreateTime.Format(model.APITimeFormat),
 				Limit:           p.limit,
 			},

@@ -27,14 +27,15 @@ type projectGetHandler struct {
 	key   string
 	limit int
 	user  *user.DBUser
+	url   string
 }
 
-func makeFetchProjectsRoute() gimlet.RouteHandler {
-	return &projectGetHandler{}
+func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
+	return &projectGetHandler{url: url}
 }
 
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
-	return &projectGetHandler{}
+	return &projectGetHandler{url: p.url}
 }
 
 func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -80,7 +81,7 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         data.GetURL(),
+				BaseURL:         p.url,
 				Key:             projects[p.limit].Id,
 				Limit:           p.limit,
 			},
@@ -862,14 +863,15 @@ const defaultVersionLimit = 20
 type getProjectVersionsHandler struct {
 	projectName string
 	opts        dbModel.GetVersionsOptions
+	url         string
 }
 
-func makeGetProjectVersionsHandler() gimlet.RouteHandler {
-	return &getProjectVersionsHandler{}
+func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
+	return &getProjectVersionsHandler{url: url}
 }
 
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
-	return &getProjectVersionsHandler{}
+	return &getProjectVersionsHandler{url: h.url}
 }
 
 func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -947,7 +949,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
-				BaseURL:         data.GetURL(),
+				BaseURL:         h.url,
 				Key:             strconv.Itoa(versions[len(versions)-1].Order),
 				Limit:           h.opts.Limit,
 			},

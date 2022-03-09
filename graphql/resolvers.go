@@ -41,7 +41,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Resolver struct{}
+type Resolver struct {
+	url string
+}
 
 func (r *Resolver) Mutation() MutationResolver {
 	return &mutationResolver{r}
@@ -1579,7 +1581,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	if dbTask == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, *dbTask)
+	apiTask, err := GetAPITaskFromTask(ctx, r.url, *dbTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
@@ -1606,13 +1608,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, errors.Errorf("unable to find task %s", taskID)
 		}
 		var apiTask *restModel.APITask
-		apiTask, err = GetAPITaskFromTask(ctx, *dbTask)
+		apiTask, err = GetAPITaskFromTask(ctx, r.url, *dbTask)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "error converting task")
 		}
 		allTasks = append(allTasks, apiTask)
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, *latestTask)
+	apiTask, err := GetAPITaskFromTask(ctx, r.url, *latestTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
@@ -2564,7 +2566,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, *t)
+	apiTask, err := GetAPITaskFromTask(ctx, r.url, *t)
 	return apiTask, err
 }
 
@@ -2581,7 +2583,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
 	t.DisplayStatus = t.GetDisplayStatus()
-	return GetAPITaskFromTask(ctx, *t)
+	return GetAPITaskFromTask(ctx, r.url, *t)
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
@@ -2688,7 +2690,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 
 	for taskId := range tasksToSchedule {
-		task, err := SetScheduled(ctx, taskId, true)
+		task, err := SetScheduled(ctx, r.url, taskId, true)
 		if err != nil {
 			return nil, err
 		}
@@ -2806,7 +2808,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	scheduledTasks := []*restModel.APITask{}
 	count := 0
 	for _, taskId := range taskIds {
-		task, err := SetScheduled(ctx, taskId, true)
+		task, err := SetScheduled(ctx, r.url, taskId, true)
 		if err != nil {
 			return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule %d task : %s", len(taskIds)-count, err.Error()))
 		}
@@ -2816,7 +2818,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	return scheduledTasks, nil
 }
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := SetScheduled(ctx, taskID, true)
+	task, err := SetScheduled(ctx, r.url, taskID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2824,7 +2826,7 @@ func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*re
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := SetScheduled(ctx, taskID, false)
+	task, err := SetScheduled(ctx, r.url, taskID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2852,7 +2854,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, *t)
+	apiTask, err := GetAPITaskFromTask(ctx, r.url, *t)
 	return apiTask, err
 }
 
@@ -2869,7 +2871,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, *t)
+	apiTask, err := GetAPITaskFromTask(ctx, r.url, *t)
 	return apiTask, err
 }
 
@@ -4189,7 +4191,9 @@ func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIs
 // New injects resources into the resolvers, such as the data connector
 func New(apiURL string) Config {
 	c := Config{
-		Resolvers: &Resolver{},
+		Resolvers: &Resolver{
+			url: apiURL,
+		},
 	}
 	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		user := gimlet.GetUser(ctx)

@@ -12,14 +12,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeFetchProjectEvents() gimlet.RouteHandler {
-	return &projectEventsGet{}
+func makeFetchProjectEvents(url string) gimlet.RouteHandler {
+	return &projectEventsGet{Url: url}
 }
 
 type projectEventsGet struct {
 	Timestamp time.Time
 	Limit     int
 	Id        string
+	Url       string
 }
 
 func (h *projectEventsGet) Factory() gimlet.RouteHandler {
@@ -27,6 +28,7 @@ func (h *projectEventsGet) Factory() gimlet.RouteHandler {
 		Timestamp: time.Now(),
 		Limit:     10,
 		Id:        "",
+		Url:       h.Url,
 	}
 }
 
@@ -66,7 +68,7 @@ func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 		lastIndex = h.Limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
-				BaseURL:         data.GetURL(),
+				BaseURL:         h.Url,
 				KeyQueryParam:   "ts",
 				LimitQueryParam: "limit",
 				Relation:        "next",
