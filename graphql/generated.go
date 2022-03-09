@@ -7364,14 +7364,14 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.WorkstationConfig.SetupCommands(childComplexity), true
 
-	case "WorkstationSetupCommand.Command":
+	case "WorkstationSetupCommand.command":
 		if e.complexity.WorkstationSetupCommand.Command == nil {
 			break
 		}
 
 		return e.complexity.WorkstationSetupCommand.Command(childComplexity), true
 
-	case "WorkstationSetupCommand.Directory":
+	case "WorkstationSetupCommand.directory":
 		if e.complexity.WorkstationSetupCommand.Directory == nil {
 			break
 		}
@@ -8046,8 +8046,8 @@ input WorkstationConfigInput {
 }
 
 input WorkstationSetupCommandInput {
-  Command: String!
-  Directory: String
+  command: String!
+  directory: String
 }
 
 input PatchTriggerAliasInput {
@@ -8872,8 +8872,8 @@ type RepoWorkstationConfig {
 }
 
 type WorkstationSetupCommand {
-  Command: String!
-  Directory: String!
+  command: String!
+  directory: String!
 }
 
 type TaskSpecifier {
@@ -38317,7 +38317,7 @@ func (ec *executionContext) _WorkstationConfig_gitClone(ctx context.Context, fie
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _WorkstationSetupCommand_Command(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationSetupCommand) (ret graphql.Marshaler) {
+func (ec *executionContext) _WorkstationSetupCommand_command(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationSetupCommand) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -38352,7 +38352,7 @@ func (ec *executionContext) _WorkstationSetupCommand_Command(ctx context.Context
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _WorkstationSetupCommand_Directory(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationSetupCommand) (ret graphql.Marshaler) {
+func (ec *executionContext) _WorkstationSetupCommand_directory(ctx context.Context, field graphql.CollectedField, obj *model.APIWorkstationSetupCommand) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -42358,18 +42358,18 @@ func (ec *executionContext) unmarshalInputWorkstationSetupCommandInput(ctx conte
 
 	for k, v := range asMap {
 		switch k {
-		case "Command":
+		case "command":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("Command"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("command"))
 			it.Command, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-		case "Directory":
+		case "directory":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("Directory"))
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
 			it.Directory, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
@@ -49232,13 +49232,13 @@ func (ec *executionContext) _WorkstationSetupCommand(ctx context.Context, sel as
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("WorkstationSetupCommand")
-		case "Command":
-			out.Values[i] = ec._WorkstationSetupCommand_Command(ctx, field, obj)
+		case "command":
+			out.Values[i] = ec._WorkstationSetupCommand_command(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Directory":
-			out.Values[i] = ec._WorkstationSetupCommand_Directory(ctx, field, obj)
+		case "directory":
+			out.Values[i] = ec._WorkstationSetupCommand_directory(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
