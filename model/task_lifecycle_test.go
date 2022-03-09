@@ -1124,10 +1124,6 @@ func TestMarkEnd(t *testing.T) {
 		},
 	}
 
-	assert.NoError(projRef.Insert())
-	assert.NoError(b.Insert())
-	assert.NoError(testTask.Insert())
-	assert.NoError(v.Insert())
 	require.NoError(projRef.Insert())
 	require.NoError(b.Insert())
 	require.NoError(testTask.Insert())
