@@ -142,6 +142,7 @@ func TestHostPaginator(t *testing.T) {
 				handler := &hostGetHandler{
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
+					url:   "http://evergreen.example.net/",
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -380,6 +381,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
+					url:        "http://evergreen.example.net/",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -589,6 +591,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
+					url:   "http://evergreen.example.net",
 				}
 
 				// SPARTA
@@ -797,6 +800,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					limit: limit,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					url:   "http://evergreen.example.net/",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)

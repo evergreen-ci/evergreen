@@ -524,7 +524,9 @@ func TestPatchesByUserSuite(t *testing.T) {
 
 func (s *PatchesByUserSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection))
-	s.route = &patchesByUserHandler{}
+	s.route = &patchesByUserHandler{
+		url: "http://evergreen.example.net/",
+	}
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
 	user2 := "user2"

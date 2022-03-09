@@ -61,6 +61,7 @@ func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 	return &githubHookApi{
 		queue:    gh.queue,
 		secret:   gh.secret,
+		sc:       gh.sc,
 		settings: gh.settings,
 	}
 }

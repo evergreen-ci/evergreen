@@ -559,7 +559,9 @@ func (s *ProjectGetSuite) SetupSuite() {
 }
 
 func (s *ProjectGetSuite) SetupTest() {
-	s.route = &projectGetHandler{}
+	s.route = &projectGetHandler{
+		url: "http://evergreen.example.net/",
+	}
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldErrorIfNoResults() {
