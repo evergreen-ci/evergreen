@@ -142,7 +142,7 @@ func TestHostPaginator(t *testing.T) {
 				handler := &hostGetHandler{
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
-					url:   "http://evergreen.example.net/",
+					url:   "http://evergreen.example.net",
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -195,6 +195,7 @@ func TestHostPaginator(t *testing.T) {
 				handler := &hostGetHandler{
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
@@ -248,6 +249,7 @@ func TestHostPaginator(t *testing.T) {
 				handler := &hostGetHandler{
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
+					url:   "http://evergreen.example.net",
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -300,6 +302,7 @@ func TestHostPaginator(t *testing.T) {
 				handler := &hostGetHandler{
 					key:   cachedHosts[hostToStartAt].Id,
 					limit: limit,
+					url:   "http://evergreen.example.net",
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -381,7 +384,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
-					url:        "http://evergreen.example.net/",
+					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -424,6 +427,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
+					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -467,6 +471,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
+					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -510,6 +515,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", 0, taskToStartAt),
 					limit:      limit,
+					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -634,6 +640,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -674,6 +681,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -714,6 +722,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit: limit,
 					key:   fmt.Sprintf("%dbuild%d", 0, taskToStartAt),
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -747,6 +756,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					limit:              1,
 					key:                "0build0",
 					fetchAllExecutions: true,
+					url:                "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, tbh, expectedTasks, expectedPages)
@@ -759,7 +769,7 @@ func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
 		serviceContext := data.MockGitHubConnector{
-			URL: "http://evergreen.example.net/",
+			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are tasks with tests to be found", func() {
 			cachedTests := []testresult.TestResult{}
@@ -830,6 +840,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					limit: 50,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -859,6 +870,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -888,6 +900,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
+					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -1280,6 +1293,7 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.NoError(t, randomTask.Insert())
 	tbh := &tasksByBuildHandler{
 		limit: 100,
+		url:   "http://evergreen.example.net",
 	}
 	route := "/rest/v2/builds/test/tasks?fetch_all_executions=false&fetch_parent_ids=true&start_at=execTask0"
 	r, err := http.NewRequest("GET", route, nil)
