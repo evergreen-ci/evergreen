@@ -13,14 +13,13 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/event"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -214,7 +213,7 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if _, _, err = model.LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project); err != nil {
+	if _, err = model.LoadProjectInto(ctx, []byte(p.PatchedParserProject), nil, p.Project, project); err != nil {
 		return errors.Errorf("Error unmarshaling project config: %v", err), http.StatusInternalServerError, "", ""
 	}
 
@@ -366,7 +365,7 @@ type VariantsAndTasksFromProject struct {
 
 func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &model.Project{}
-	if _, _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
+	if _, err := model.LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
 		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
 	}
 
@@ -491,11 +490,12 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Statuses:         getValidTaskStatusesFilter(statuses),
-		Variants:         searchVariants,
-		TaskNames:        searchTasks,
-		Sorts:            defaultSort,
-		IncludeBaseTasks: true,
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		Variants:                       searchVariants,
+		TaskNames:                      searchTasks,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               true,
+		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()
 	tasks, _, err := sc.FindTasksByVersion(versionId, opts)
@@ -545,7 +545,7 @@ func generateBuildVariants(sc data.Connector, versionId string, searchVariants [
 		"timeToBuildTasksMS": timeToBuildTasks.Milliseconds(),
 		"timeToGroupTasksMS": timeToGroupTasks.Milliseconds(),
 		"timeToSortTasksMS":  timeToSortTasks.Milliseconds(),
-		"totalTime":          totalTime,
+		"totalTimeMS":        totalTime.Milliseconds(),
 		"versionId":          versionId,
 		"taskCount":          len(tasks),
 		"buildVariantCount":  len(result),
@@ -598,7 +598,7 @@ type VersionModifications struct {
 	TaskIds           []string                  `json:"task_ids"` // deprecated
 }
 
-func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectRef, modifications VersionModifications) (int, error) {
+func ModifyVersion(version model.Version, user user.DBUser, modifications VersionModifications) (int, error) {
 	switch modifications.Action {
 	case Restart:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
@@ -624,20 +624,11 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
-			var projId string
-			if proj == nil {
-				id, err := model.GetIdForProject(version.Identifier)
-				if err != nil {
-					return http.StatusNotFound, errors.Errorf("error getting project ref: %s", err.Error())
-				}
-				if id == "" {
-					return http.StatusNotFound, errors.Errorf("project %s does not exist", version.Branch)
-				}
-				projId = id
-			} else {
-				projId = proj.Id
+			err := model.RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
 			}
-			_, err := commitqueue.RemoveCommitQueueItemForVersion(projId, version.Id, user.DisplayName())
+			_, err = commitqueue.RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
 			if err != nil {
 				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
 			}
@@ -653,10 +644,7 @@ func ModifyVersion(version model.Version, user user.DBUser, proj *model.ProjectR
 				"message": "unable to send github status",
 				"patch":   version.Id,
 			}))
-			err = model.RestartItemsAfterVersion(nil, projId, version.Id, user.Id)
-			if err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
-			}
+
 		}
 	case SetPriority:
 		projId := version.Identifier
@@ -690,7 +678,7 @@ func ModifyVersionHandler(ctx context.Context, dataConnector data.Connector, pat
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
 	user := MustHaveUser(ctx)
-	httpStatus, err := ModifyVersion(*version, *user, nil, modifications)
+	httpStatus, err := ModifyVersion(*version, *user, modifications)
 	if err != nil {
 		return mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -1267,7 +1255,9 @@ func setVersionActivationStatus(sc data.Connector, version *model.Version) error
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts: defaultSort,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := sc.FindTasksByVersion(version.Id, opts)
 	if err != nil {

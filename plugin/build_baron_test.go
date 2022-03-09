@@ -31,9 +31,11 @@ func TestBbGetProject(t *testing.T) {
 	}
 	myProjectConfig := model.ProjectConfig{
 		Id: "proj2",
-		BuildBaronSettings: &evergreen.BuildBaronSettings{
-			TicketCreateProject:  "ABC",
-			TicketSearchProjects: []string{"EVG"},
+		ProjectConfigFields: model.ProjectConfigFields{
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject:  "ABC",
+				TicketSearchProjects: []string{"EVG"},
+			},
 		},
 	}
 	testTask := task.Task{

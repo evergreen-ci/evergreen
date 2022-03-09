@@ -121,7 +121,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedParserProject != "" {
-		if _, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project); err != nil {
+		if _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project); err != nil {
 			return nil, nil, errors.WithStack(err)
 		}
 		patchConfig := &PatchConfig{
@@ -166,9 +166,16 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 			return nil, nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}
 	}
-	pp, pc, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
+	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
+	}
+	var pc *ProjectConfig
+	if projectRef.IsVersionControlEnabled() {
+		pc, err = CreateProjectConfig(projectFileBytes, p.Project)
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
 	}
 	ppOut, err := yaml.Marshal(pp)
 	if err != nil {
@@ -289,17 +296,20 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Error fetching project opts for patch")
 	}
-	intermediateProject, _, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
+	intermediateProject, err := LoadProjectInto(ctx, []byte(p.PatchedParserProject), opts, p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched parser project from repository revision “%v”",
 			p.Githash)
 	}
-	config, err := CreateProjectConfig([]byte(p.PatchedProjectConfig))
-	if err != nil {
-		return nil, errors.Wrapf(err,
-			"Error marshaling patched project config from repository revision “%v”",
-			p.Githash)
+	var config *ProjectConfig
+	if projectRef.IsVersionControlEnabled() {
+		config, err = CreateProjectConfig([]byte(p.PatchedProjectConfig), p.Project)
+		if err != nil {
+			return nil, errors.Wrapf(err,
+				"Error marshaling patched project config from repository revision “%v”",
+				p.Githash)
+		}
 	}
 	intermediateProject.Id = p.Id.Hex()
 	if config != nil {
@@ -622,7 +632,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, closed bool, newPa
 				if mergeTask == nil {
 					return errors.New("no merge task found")
 				}
-				catcher.Add(DequeueAndRestart(mergeTask, evergreen.APIServerTaskActivator, "new push to pull request"))
+				catcher.Add(DequeueAndRestartForTask(nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
 			} else if err = CancelPatch(&p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed}); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":         "github hook",
@@ -737,7 +747,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 	}
 
 	project := &Project{}
-	if _, _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedParserProject), nil, existingPatch.Project, project); err != nil {
+	if _, err = LoadProjectInto(ctx, []byte(existingPatch.PatchedParserProject), nil, existingPatch.Project, project); err != nil {
 		return nil, errors.Wrap(err, "problem loading project")
 	}
 

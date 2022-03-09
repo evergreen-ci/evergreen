@@ -12,8 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -45,12 +48,11 @@ func getFiles(root string) ([]string, error) {
 	return out, nil
 }
 
-func insertFileDocsToDb(ctx context.Context, fn string, catcher grip.Catcher, db *mongo.Database, logsDb *mongo.Database) {
+func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database, logsDb *mongo.Database) error {
 	var file *os.File
 	file, err := os.Open(fn)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "problem opening file"))
-		return
+		return errors.Wrap(err, "opening file")
 	}
 	defer file.Close()
 
@@ -61,9 +63,18 @@ func insertFileDocsToDb(ctx context.Context, fn string, catcher grip.Catcher, db
 		collection = logsDb.Collection(collName)
 	}
 	if collName == testresult.Collection { // add the necessary test results index
-		_, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-			Keys: testresult.TestResultsIndex})
-		catcher.Add(err)
+		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+			Keys: testresult.TestResultsIndex,
+		}); err != nil {
+			return errors.Wrap(err, "creating test results index")
+		}
+	}
+	if collName == task.Collection { // add the necessary tasks index
+		if _, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+			Keys: task.ActivatedTasksByDistroIndex,
+		}); err != nil {
+			return errors.Wrap(err, "creating activated tasks by distro index")
+		}
 	}
 	scanner := bufio.NewScanner(file)
 	count := 0
@@ -75,55 +86,120 @@ func insertFileDocsToDb(ctx context.Context, fn string, catcher grip.Catcher, db
 		if collName == model.TaskLogCollection {
 			taskLog := model.TaskLog{}
 			if err = bson.UnmarshalExtJSON(bytes, false, &taskLog); err != nil {
-				catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s into TaskLog struct", count, fn))
-				continue
+				return errors.Wrapf(err, "reading document #%d from %s into task log", count, fn)
 			}
-			_, err := collection.DeleteOne(ctx, bson.M{"_id": taskLog.Id})
-			catcher.Add(err)
+			if _, err := collection.DeleteOne(ctx, bson.M{"_id": taskLog.Id}); err != nil {
+				return errors.Wrapf(err, "deleting task log '%s'", taskLog.Id)
+			}
 		}
 		doc := bson.D{}
-		if err = bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
-			catcher.Add(errors.Wrapf(err, "problem reading document #%d from %s", count, fn))
-			continue
+		if err := bson.UnmarshalExtJSON(bytes, false, &doc); err != nil {
+			return errors.Wrapf(err, "reading document #%d from file '%s'", count, fn)
 		}
 
-		_, err := collection.InsertOne(ctx, doc)
-		catcher.Add(err)
+		if _, err := collection.InsertOne(ctx, doc); err != nil {
+			return errors.Wrapf(err, "inserting doc #%d from file '%s'", count, fn)
+		}
 	}
-	catcher.Add(scanner.Err())
+
+	if err := scanner.Err(); err != nil {
+		return errors.Wrapf(err, "scanning documents from file '%s'", fn)
+	}
+
 	grip.Infof("imported %d documents into %s", count, collName)
+
+	return nil
 }
 
-func writeDummyGridFSFile(ctx context.Context, catcher grip.Catcher, db *mongo.Database) {
+func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 	bucket, err := gridfs.NewBucket(db, &options.BucketOptions{Name: utility.ToStringPtr(patch.GridFSPrefix)})
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "problem creating GridFS bucket"))
-		return
+		return errors.Wrap(err, "creating GridFS bucket")
 	}
 	_, err = bucket.UploadFromStream(gridFSFileID, strings.NewReader("sample_patch"), nil)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "problem writing GridFS file"))
-		return
+		return errors.Wrap(err, "writing GridFS file")
 	}
 
 	grip.Infof("wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
+
+	return nil
 }
 
-func getFilesFromPathAndInsert(ctx context.Context, path string, catcher grip.Catcher, db *mongo.Database, logsDb *mongo.Database) {
+func getFilesFromPathAndInsert(ctx context.Context, path string, db *mongo.Database, logsDb *mongo.Database) error {
 	files, err := getFiles(path)
-	grip.EmergencyFatal(err)
+	if err != nil {
+		return errors.Wrap(err, "getting files")
+	}
 
 	for _, fn := range files {
 		fileInfo, err := os.Stat(fn)
 		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem getting file info for %s", fn))
+			return errors.Wrapf(err, "getting file info for %s", fn)
 		}
 		switch mode := fileInfo.Mode(); {
 		case mode.IsDir():
-			getFilesFromPathAndInsert(ctx, fn, catcher, db, logsDb)
+			if err := getFilesFromPathAndInsert(ctx, fn, db, logsDb); err != nil {
+				return errors.Wrapf(err, "recursively adding DB documents from directory '%s'", fn)
+			}
 		case mode.IsRegular():
-			insertFileDocsToDb(ctx, fn, catcher, db, logsDb)
+			if err := insertFileDocsToDB(ctx, fn, db, logsDb); err != nil {
+				return errors.Wrapf(err, "adding DB documents from file '%s'", fn)
+			}
 		}
+	}
+
+	return nil
+}
+
+// buildAmboyIndexes builds the required indexes necessary to run the
+// application's Amboy queues.
+func buildAmboyIndexes(ctx context.Context, dbURI string, db *mongo.Database) error {
+	queueOpts := getAmboyQueueOptions(dbURI, db)
+	// The queue is only set up to initiate the remote queue index builds.
+	rq, err := queue.NewMongoDBQueue(ctx, queueOpts)
+	if err != nil {
+		return errors.Wrap(err, "creating remote queue")
+	}
+	rq.Close(ctx)
+
+	queueGroupOpts := getAmboyQueueOptions(dbURI, db)
+	queueGroupOpts.DB.UseGroups = true
+	groupOpts := queue.MongoDBQueueGroupOptions{
+		DefaultQueue: queueGroupOpts,
+	}
+	queueGroup, err := queue.NewMongoDBSingleQueueGroup(ctx, groupOpts)
+	if err != nil {
+		return errors.Wrap(err, "creating remote queue group")
+	}
+	// The queue is only generated within the queue group to initiate the queue
+	// group index builds.
+	if _, err := queueGroup.Get(ctx, "fake-group"); err != nil {
+		return errors.Wrap(err, "creating queue within remote queue group")
+	}
+	if err := queueGroup.Close(ctx); err != nil {
+		return errors.Wrap(err, "closing queue group")
+	}
+
+	grip.Info("successfully built required Amboy indexes")
+
+	return nil
+}
+
+// getAmboyQueueOptions returns the options to set up the Amboy queue to create
+// indexes.
+func getAmboyQueueOptions(dbURI string, db *mongo.Database) queue.MongoDBQueueOptions {
+	dbOpts := queue.DefaultMongoDBOptions()
+	dbOpts.URI = dbURI
+	dbOpts.DB = db.Name()
+	dbOpts.Client = db.Client()
+	dbOpts.Collection = evergreen.DefaultAmboyQueueName
+	dbOpts.Format = amboy.BSON2
+	dbOpts.SkipQueueIndexBuilds = false
+	dbOpts.SkipReportingIndexBuilds = false
+	return queue.MongoDBQueueOptions{
+		DB:         &dbOpts,
+		NumWorkers: utility.ToIntPtr(1),
 	}
 }
 
@@ -131,20 +207,24 @@ func main() {
 	wd, err := os.Getwd()
 	grip.EmergencyFatal(err)
 	var (
-		path       string
-		dbName     string
-		logsDbName string
+		path        string
+		dbName      string
+		logsDBName  string
+		amboyDBName string
 	)
 
 	flag.StringVar(&path, "path", filepath.Join(wd, "testdata", "smoke"), "load data from json files from these paths")
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
-	flag.StringVar(&logsDbName, "logsDbName", "logs", "logs database name for directory")
+	flag.StringVar(&logsDBName, "logsDBName", "logs", "logs database name for directory")
+	flag.StringVar(&amboyDBName, "amboyDBName", "amboy_smoke", "name of the Amboy DB to use")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5 * time.Second)
+	const dbURI = "mongodb://localhost:27017"
+
+	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
 	envAuth := os.Getenv(evergreen.MongodbAuthFile)
 	if envAuth != "" {
 		ymlUser, ymlPwd, err := evergreen.GetAuthFromYAML(envAuth)
@@ -165,11 +245,16 @@ func main() {
 	db := client.Database(dbName)
 	grip.EmergencyFatal(db.Drop(ctx))
 
-	logsDb := client.Database(logsDbName)
-	catcher := grip.NewBasicCatcher()
+	logsDB := client.Database(logsDBName)
 
-	getFilesFromPathAndInsert(ctx, path, catcher, db, logsDb)
-	writeDummyGridFSFile(ctx, catcher, db)
+	amboyDB := client.Database(amboyDBName)
+	grip.EmergencyFatal(amboyDB.Drop(ctx))
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
+
+	catcher.Wrapf(getFilesFromPathAndInsert(ctx, path, db, logsDB), "adding DB documents from file path '%s'", path)
+	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
 
 	catcher.Add(client.Disconnect(ctx))
 	grip.EmergencyFatal(catcher.Resolve())

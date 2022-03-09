@@ -1960,7 +1960,6 @@ type APIServiceFlags struct {
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
-	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled  bool `json:"background_cleanup_disabled"`
@@ -2224,7 +2223,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
-		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
@@ -2261,7 +2259,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
-		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 		BackgroundCleanupDisabled:    as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,

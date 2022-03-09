@@ -493,6 +493,12 @@ func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
+// ShouldAllocateContainer indicates whether a task should be allocated a
+// container or not.
+func (t *Task) ShouldAllocateContainer() bool {
+	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+}
+
 // SatisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.
@@ -848,10 +854,12 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
-// Mark that the task has been dispatched onto a particular host. Sets the
-// running task field on the host and the host id field on the task.
-// Returns an error if any of the database updates fail.
-func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatchTime time.Time) error {
+// MarkAsHostDispatched marks that the task has been dispatched onto a
+// particular host. If the task is part of a display task, the display task is
+// also marked as dispatched to a host. Returns an error if any of the database
+// updates fail.
+func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
+	dispatchTime time.Time) error {
 	t.DispatchTime = dispatchTime
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostId
@@ -884,16 +892,15 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 
 	//when dispatching an execution task, mark its parent as dispatched
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		return dt.MarkAsDispatched("", "", "", dispatchTime)
+		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
 	return nil
 }
 
-// MarkAsUndispatched marks that the task has been undispatched from a
-// particular host. Unsets the running task field on the host and the
-// host id field on the task
-// Returns an error if any of the database updates fail.
-func (t *Task) MarkAsUndispatched() error {
+// MarkAsHostUndispatched marks that the host task is undispatched. If the task
+// is already dispatched to a host, it unsets the host ID field on the task. It
+// returns an error if any of the database updates fail.
+func (t *Task) MarkAsHostUndispatched() error {
 	// then, update the task document
 	t.Status = evergreen.TaskUndispatched
 
@@ -1075,7 +1082,9 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 		},
 	}
 
-	info, err := UpdateAll(query, update)
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1'
+	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
+	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
 		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
 	}
@@ -2999,17 +3008,18 @@ type TasksSortOrder struct {
 }
 
 type GetTasksByVersionOptions struct {
-	Statuses              []string
-	BaseStatuses          []string
-	Variants              []string
-	TaskNames             []string
-	Page                  int
-	Limit                 int
-	FieldsToProject       []string
-	Sorts                 []TasksSortOrder
-	IncludeExecutionTasks bool
-	IncludeBaseTasks      bool
-	IncludeEmptyActivaton bool
+	Statuses                       []string
+	BaseStatuses                   []string
+	Variants                       []string
+	TaskNames                      []string
+	Page                           int
+	Limit                          int
+	FieldsToProject                []string
+	Sorts                          []TasksSortOrder
+	IncludeExecutionTasks          bool
+	IncludeBaseTasks               bool
+	IncludeEmptyActivaton          bool
+	IncludeBuildVariantDisplayName bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3306,7 +3316,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
-	if len(opts.Variants) > 0 {
+	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	pipeline = append(pipeline,
@@ -3470,7 +3480,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		)
 	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(opts.Variants) == 0 {
+	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(opts.Statuses) > 0 {

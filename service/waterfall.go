@@ -217,16 +217,18 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 	var lastRolledUpVersion *waterfallVersion
 
 	numTestResultCalls := 0
+	versionsCheckedCount := 0
+	if numVersionElements > model.MaxMainlineCommitVersionLimit {
+		numVersionElements = model.MaxMainlineCommitVersionLimit
+	}
 	// loop until we have enough from the db
-	for len(finalVersions) < numVersionElements {
+	for len(finalVersions) < numVersionElements && versionsCheckedCount < model.MaxMainlineCommitVersionLimit {
 
 		// fetch the versions and associated builds
 		versionsFromDB, buildsByVersion, tasksByBuild, err :=
-			model.FetchVersionsBuildsAndTasks(project, skip, numVersionElements, showTriggered)
-
+			model.FetchVersionsBuildsAndTasks(project, skip+versionsCheckedCount, numVersionElements, showTriggered)
 		if err != nil {
-			return versionVariantData{}, errors.Wrap(err,
-				"error fetching versions and builds:")
+			return versionVariantData{}, errors.Wrap(err, "fetching versions and builds")
 		}
 
 		// if we've reached the beginning of all versions
@@ -234,8 +236,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			break
 		}
 
-		// update the amount skipped
-		skip += len(versionsFromDB)
+		versionsCheckedCount += len(versionsFromDB)
 
 		// create the necessary versions, rolling up inactive ones
 		for _, versionFromDB := range versionsFromDB {

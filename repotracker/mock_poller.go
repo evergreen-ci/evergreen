@@ -61,7 +61,7 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (mo
 	return model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: d.parserProject,
-		Config:              &model.ProjectConfig{},
+		Config:              nil,
 	}, nil
 }
 

@@ -63,15 +63,15 @@ func ByExternalID(id string) bson.M {
 }
 
 // Find finds all pods matching the given query.
-func Find(q bson.M) ([]Pod, error) {
+func Find(q db.Q) ([]Pod, error) {
 	pods := []Pod{}
-	return pods, errors.WithStack(db.FindAllQ(Collection, db.Query(q), &pods))
+	return pods, errors.WithStack(db.FindAllQ(Collection, q, &pods))
 }
 
 // FindOne finds one pod by the given query.
-func FindOne(q bson.M) (*Pod, error) {
+func FindOne(q db.Q) (*Pod, error) {
 	var p Pod
-	err := db.FindOneQ(Collection, db.Query(q), &p)
+	err := db.FindOneQ(Collection, q, &p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -80,7 +80,7 @@ func FindOne(q bson.M) (*Pod, error) {
 
 // FindOneByID finds one pod by its ID.
 func FindOneByID(id string) (*Pod, error) {
-	p, err := FindOne(ByID(id))
+	p, err := FindOne(db.Query(ByID(id)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod '%s'", id)
 	}
@@ -102,7 +102,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 // * Pods that are decommissioned.
 func FindByNeedsTermination() ([]Pod, error) {
 	staleCutoff := time.Now().Add(-15 * time.Minute)
-	return Find(bson.M{
+	return Find(db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				StatusKey: StatusInitializing,
@@ -116,20 +116,20 @@ func FindByNeedsTermination() ([]Pod, error) {
 				StatusKey: StatusDecommissioned,
 			},
 		},
-	})
+	}))
 }
 
 // FindByInitializing find all pods that are initializing but have not started
 // any containers.
 func FindByInitializing() ([]Pod, error) {
-	return Find(bson.M{
+	return Find(db.Query(bson.M{
 		StatusKey: StatusInitializing,
-	})
+	}))
 }
 
 // FindOneByExternalID finds a pod that has a matching external identifier.
 func FindOneByExternalID(id string) (*Pod, error) {
-	return FindOne(ByExternalID(id))
+	return FindOne(db.Query(ByExternalID(id)))
 }
 
 // UpdateOneStatus updates a pod's status by ID along with any relevant metadata

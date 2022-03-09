@@ -82,6 +82,7 @@ type ClientSettings struct {
 	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
 	User                  string              `json:"user" yaml:"user,omitempty"`
 	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	AutoUpgradeCLI        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
 	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
@@ -147,7 +148,7 @@ func (s *ClientSettings) Write(fn string) error {
 // To avoid printing these messages, call getRestCommunicator instead.
 func (s *ClientSettings) setupRestCommunicator(ctx context.Context) client.Communicator {
 	c := s.getRestCommunicator(ctx)
-	printUserMessages(ctx, c)
+	printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	return c
 }
 
@@ -165,7 +166,7 @@ func (s *ClientSettings) getRestCommunicator(ctx context.Context) client.Communi
 }
 
 // printUserMessages prints any available info messages.
-func printUserMessages(ctx context.Context, c client.Communicator) {
+func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdate bool) {
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
 		grip.Debug(err)
@@ -174,15 +175,17 @@ func printUserMessages(ctx context.Context, c client.Communicator) {
 		grip.Noticef("Banner: %s", banner)
 	}
 
-	update, err := checkUpdate(c, true, false)
-	if err != nil {
-		grip.Debug(err)
-	}
-	if update.needsUpdate {
-		if runtime.GOOS == "windows" {
-			fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
-		} else {
-			fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
+	if checkForUpdate {
+		update, err := checkUpdate(c, true, false)
+		if err != nil {
+			grip.Debug(err)
+		}
+		if update.needsUpdate {
+			if runtime.GOOS == "windows" {
+				fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
+			} else {
+				fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
+			}
 		}
 	}
 }
@@ -366,4 +369,9 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 	}
 	s.ProjectsForDirectory[cwd] = project
 	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
+}
+
+func (s *ClientSettings) SetAutoUpgradeCLI() {
+	s.AutoUpgradeCLI = true
+	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }

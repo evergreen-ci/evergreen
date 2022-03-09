@@ -71,6 +71,7 @@ func Patch() cli.Command {
 	return cli.Command{
 		Name: "patch",
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			func(c *cli.Context) error {
@@ -214,7 +215,7 @@ func PatchFile() cli.Command {
 				Usage: "path to a file for diff of the patch",
 			},
 		),
-		Before: mergeBeforeFuncs(requireFileExists(diffPathFlagName)),
+		Before: mergeBeforeFuncs(autoUpdateCLI, requireFileExists(diffPathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
