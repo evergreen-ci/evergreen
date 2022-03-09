@@ -97,6 +97,10 @@ func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
 	return &projectSubscriberResolver{r}
 }
 
+func (r *Resolver) Permissions() PermissionsResolver {
+	return &permissionsResolver{r}
+}
+
 // IssueLink returns IssueLinkResolver implementation.
 func (r *Resolver) IssueLink() IssueLinkResolver {
 	return &issueLinkResolver{r}
@@ -120,6 +124,7 @@ type repoSettingsResolver struct{ *Resolver }
 type projectSubscriberResolver struct{ *Resolver }
 type projectVarsResolver struct{ *Resolver }
 type taskLogsResolver struct{ *Resolver }
+type permissionsResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -430,6 +435,20 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restMode
 		return true, nil
 	}
 	return false, nil
+}
+
+func (r *permissionsResolver) CanCreateProject(ctx context.Context, permissions *Permissions) (bool, error) {
+	usr, err := user.FindOneById(permissions.UserID)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, "user not found")
+	}
+	fmt.Println("Found user and getting permission")
+	return usr.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	}), nil
 }
 
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
@@ -1070,6 +1089,15 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	return apiHosts, nil
 }
 
+func (r *queryResolver) Permissions(ctx context.Context, userID string) (*Permissions, error) {
+	usr, err := user.FindOneById(userID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, "user doesn't exist")
+	}
+	fmt.Println("Found a user")
+	return &Permissions{UserID: usr.Id}, nil
+}
+
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
 	projectRef, err := model.FindBranchProjectRef(identifier)
 	if err != nil {
@@ -1656,16 +1684,6 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project conflicts: %v", err.Error()))
 	}
 	return &conflicts, nil
-}
-
-func (r *queryResolver) CanCreateProject(ctx context.Context) (bool, error) {
-	usr := MustHaveUser(ctx)
-	return usr.HasPermission(gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionProjectCreate,
-		RequiredLevel: evergreen.ProjectCreate.Value,
-	}), nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {

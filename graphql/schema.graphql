@@ -9,8 +9,8 @@ type Query {
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
-  canCreateProject: Boolean!
   project(projectId: String!): Project!
+  permissions(userId: String!): Permissions!
   patchTasks(
     patchId: String!
     sorts: [SortOrder!]
@@ -1124,6 +1124,11 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type Permissions {
+  userId: String!
+  canCreateProject: Boolean!
 }
 
 type GithubProjectConflicts {

@@ -48,6 +48,7 @@ type ResolverRoot interface {
 	IssueLink() IssueLinkResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
+	Permissions() PermissionsResolver
 	Project() ProjectResolver
 	ProjectSettings() ProjectSettingsResolver
 	ProjectSubscriber() ProjectSubscriberResolver
@@ -576,6 +577,11 @@ type ComplexityRoot struct {
 		NextRunTime   func(childComplexity int) int
 	}
 
+	Permissions struct {
+		CanCreateProject func(childComplexity int) int
+		UserID           func(childComplexity int) int
+	}
+
 	Project struct {
 		Admins                  func(childComplexity int) int
 		BatchTime               func(childComplexity int) int
@@ -692,7 +698,6 @@ type ComplexityRoot struct {
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
 		BuildVariantsForTaskName func(childComplexity int, projectID string, taskName string) int
-		CanCreateProject         func(childComplexity int) int
 		ClientConfig             func(childComplexity int) int
 		CommitQueue              func(childComplexity int, id string) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
@@ -710,6 +715,7 @@ type ComplexityRoot struct {
 		Patch                    func(childComplexity int, id string) int
 		PatchBuildVariants       func(childComplexity int, patchID string) int
 		PatchTasks               func(childComplexity int, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) int
+		Permissions              func(childComplexity int, userID string) int
 		Project                  func(childComplexity int, projectID string) int
 		ProjectEvents            func(childComplexity int, identifier string, limit *int, before *time.Time) int
 		ProjectSettings          func(childComplexity int, identifier string) int
@@ -1306,6 +1312,9 @@ type PatchResolver interface {
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 }
+type PermissionsResolver interface {
+	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
+}
 type ProjectResolver interface {
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
 	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
@@ -1331,8 +1340,8 @@ type QueryResolver interface {
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
-	CanCreateProject(ctx context.Context) (bool, error)
 	Project(ctx context.Context, projectID string) (*model.APIProjectRef, error)
+	Permissions(ctx context.Context, userID string) (*Permissions, error)
 	PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error)
 	TaskTests(ctx context.Context, taskID string, execution *int, sortCategory *TestSortCategory, sortDirection *SortDirection, page *int, limit *int, testName *string, statuses []string, groupID *string) (*TaskTestResult, error)
 	TaskTestSample(ctx context.Context, tasks []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
@@ -3956,6 +3965,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PeriodicBuild.NextRunTime(childComplexity), true
 
+	case "Permissions.canCreateProject":
+		if e.complexity.Permissions.CanCreateProject == nil {
+			break
+		}
+
+		return e.complexity.Permissions.CanCreateProject(childComplexity), true
+
+	case "Permissions.userId":
+		if e.complexity.Permissions.UserID == nil {
+			break
+		}
+
+		return e.complexity.Permissions.UserID(childComplexity), true
+
 	case "Project.admins":
 		if e.complexity.Project.Admins == nil {
 			break
@@ -4571,13 +4594,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.BuildVariantsForTaskName(childComplexity, args["projectId"].(string), args["taskName"].(string)), true
 
-	case "Query.canCreateProject":
-		if e.complexity.Query.CanCreateProject == nil {
-			break
-		}
-
-		return e.complexity.Query.CanCreateProject(childComplexity), true
-
 	case "Query.clientConfig":
 		if e.complexity.Query.ClientConfig == nil {
 			break
@@ -4756,6 +4772,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.PatchTasks(childComplexity, args["patchId"].(string), args["sorts"].([]*SortOrder), args["page"].(*int), args["limit"].(*int), args["statuses"].([]string), args["baseStatuses"].([]string), args["variant"].(*string), args["taskName"].(*string), args["includeEmptyActivation"].(*bool)), true
+
+	case "Query.permissions":
+		if e.complexity.Query.Permissions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_permissions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Permissions(childComplexity, args["userId"].(string)), true
 
 	case "Query.project":
 		if e.complexity.Query.Project == nil {
@@ -7456,8 +7484,8 @@ type Query {
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
   githubProjectConflicts(projectId: String!): GithubProjectConflicts!
-  canCreateProject: Boolean!
   project(projectId: String!): Project!
+  permissions(userId: String!): Permissions!
   patchTasks(
     patchId: String!
     sorts: [SortOrder!]
@@ -8571,6 +8599,11 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type Permissions {
+  userId: String!
+  canCreateProject: Boolean!
 }
 
 type GithubProjectConflicts {
@@ -10648,6 +10681,21 @@ func (ec *executionContext) field_Query_patch_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_permissions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["userId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["userId"] = arg0
 	return args, nil
 }
 
@@ -22343,6 +22391,76 @@ func (ec *executionContext) _PeriodicBuild_nextRunTime(ctx context.Context, fiel
 	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Permissions_userId(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Permissions_canCreateProject(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().CanCreateProject(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -25357,41 +25475,6 @@ func (ec *executionContext) _Query_githubProjectConflicts(ctx context.Context, f
 	return ec.marshalNGithubProjectConflicts2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐGithubProjectConflicts(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_canCreateProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CanCreateProject(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Query_project(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -25432,6 +25515,48 @@ func (ec *executionContext) _Query_project(ctx context.Context, field graphql.Co
 	res := resTmp.(*model.APIProjectRef)
 	fc.Result = res
 	return ec.marshalNProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_permissions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_permissions_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Permissions(rctx, args["userId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Permissions)
+	fc.Result = res
+	return ec.marshalNPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_patchTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -45149,6 +45274,47 @@ func (ec *executionContext) _PeriodicBuild(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var permissionsImplementors = []string{"Permissions"}
+
+func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionSet, obj *Permissions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, permissionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Permissions")
+		case "userId":
+			out.Values[i] = ec._Permissions_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "canCreateProject":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_canCreateProject(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var projectImplementors = []string{"Project"}
 
 func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectRef) graphql.Marshaler {
@@ -45860,20 +46026,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "canCreateProject":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_canCreateProject(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "project":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -45883,6 +46035,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_project(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "permissions":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_permissions(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -50851,6 +51017,20 @@ func (ec *executionContext) marshalNPeriodicBuild2githubᚗcomᚋevergreenᚑci�
 func (ec *executionContext) unmarshalNPeriodicBuildInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx context.Context, v interface{}) (model.APIPeriodicBuildDefinition, error) {
 	res, err := ec.unmarshalInputPeriodicBuildInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v Permissions) graphql.Marshaler {
+	return ec._Permissions(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v *Permissions) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Permissions(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
