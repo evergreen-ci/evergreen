@@ -26,7 +26,7 @@
               "patchTriggerAliases" : [
                 {
                   "alias" : "my_alias_sandbox",
-                  "childProject" : "mci",
+                  "childProjectIdentifier" : "varsTest",
                   "taskSpecifiers": [
                     {
                       "taskRegex" : "test-util",

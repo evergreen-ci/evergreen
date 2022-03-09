@@ -608,12 +608,10 @@ input WorkstationSetupCommandInput {
 
 input PatchTriggerAliasInput {
   alias: String!
-  childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifierInput]
+  taskSpecifiers: [TaskSpecifierInput!]!
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTaskInput]!
 }
 
 input TaskSpecifierInput {
@@ -829,7 +827,6 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String @deprecated
   childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]

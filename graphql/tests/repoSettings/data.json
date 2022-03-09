@@ -17,7 +17,7 @@
       "patch_trigger_aliases" : [
         {
           "alias" : "my_alias_sandbox",
-          "child_project" : "mci",
+          "child_project" : "vars_test",
           "task_specifiers" : [
             {
               "task_regex" : "test-util",
@@ -69,6 +69,13 @@
         "git_clone" : false
       },
       "hidden" : false
+    }
+  ],
+  "project_ref": [
+    {
+      "_id" : "vars_test",
+      "identifier" : "varsTest",
+      "display_name" : "Vars test"
     }
   ],
   "project_aliases": [
