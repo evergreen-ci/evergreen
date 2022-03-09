@@ -8051,9 +8051,9 @@ input PatchTriggerAliasInput {
 }
 
 input TaskSpecifierInput {
-  patchAlias: String
-  taskRegex: String
-  variantRegex: String
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
 }
 
 input ProjectVarsInput {
@@ -41764,7 +41764,7 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchAlias"))
-			it.PatchAlias, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.PatchAlias, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41772,7 +41772,7 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskRegex"))
-			it.TaskRegex, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.TaskRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41780,7 +41780,7 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantRegex"))
-			it.VariantRegex, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.VariantRegex, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

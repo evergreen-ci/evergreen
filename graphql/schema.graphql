@@ -615,9 +615,9 @@ input PatchTriggerAliasInput {
 }
 
 input TaskSpecifierInput {
-  patchAlias: String
-  taskRegex: String
-  variantRegex: String
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
 }
 
 input ProjectVarsInput {
