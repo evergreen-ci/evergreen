@@ -195,7 +195,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().Wrap(requireTask).RouteHandler(makeGenerateTasksPollHandler(opts.QueueGroup))
 	app.AddRoute("/tasks/{task_id}/manifest").Version(2).Get().Wrap(viewTasks).RouteHandler(makeGetManifestHandler())
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, requireUser, editTasks).RouteHandler(makeTaskRestartHandler())
-	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestsForTask(opts.URL))
+	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject, viewTasks).RouteHandler(makeFetchTestsForTask(sc))
 	app.AddRoute("/tasks/{task_id}/sync_path").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncPathGetHandler())
 	app.AddRoute("/tasks/{task_id}/set_has_cedar_results").Version(2).Post().Wrap(requireTask).RouteHandler(makeTaskSetHasCedarResultsHandler())
 	app.AddRoute("/task/sync_read_credentials").Version(2).Get().Wrap(requireUser).RouteHandler(makeTaskSyncReadCredentialsGetHandler())

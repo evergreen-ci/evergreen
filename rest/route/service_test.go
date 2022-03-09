@@ -769,7 +769,7 @@ func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
 		serviceContext := data.MockGitHubConnector{
-			URL: "http://evergreen.example.net",
+			URL: "http://evergreen.example.net/",
 		}
 		Convey("and there are tasks with tests to be found", func() {
 			cachedTests := []testresult.TestResult{}
@@ -810,7 +810,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					limit: limit,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					url:   "http://evergreen.example.net/",
+					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -840,7 +840,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					limit: 50,
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
-					url:   "http://evergreen.example.net",
+					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -870,7 +870,7 @@ func TestTestPaginator(t *testing.T) {
 				handler := &testGetHandler{
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit: limit,
-					url:   "http://evergreen.example.net",
+					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
@@ -899,8 +899,8 @@ func TestTestPaginator(t *testing.T) {
 
 				handler := &testGetHandler{
 					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:    &serviceContext,
 					limit: limit,
-					url:   "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
