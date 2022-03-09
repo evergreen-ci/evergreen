@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"kimutil"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -263,7 +261,7 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
-	// Finished indicates if the dependency has finished running or not.
+	// Finished indicates if the task's dependency has finished running or not.
 	Finished bool `bson:"finished" json:"finished"`
 }
 
@@ -782,10 +780,6 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 
 // MarkDependenciesFinished updates all direct dependencies on this task to
 // cache whether or not this task has finished running.
-// kim: TODO: manually test in staging (with extra stacktrace logs) that it
-// sets/unsets Finished properly when used to run/restart:
-// - Task with dependency
-// - Display task (for MarkTasksReset insurance)
 func (t *Task) MarkDependenciesFinished(finished bool) error {
 	if t.DisplayOnly {
 		// This update can be skipped for display tasks since tasks are not
@@ -796,16 +790,6 @@ func (t *Task) MarkDependenciesFinished(finished bool) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-
-	grip.Info(message.Fields{
-		"message":       "kim: marking dependencies as finished",
-		"finished":      finished,
-		"task":          t.Id,
-		"build_variant": t.BuildVariant,
-		"version":       t.Version,
-		"op":            "MarkDependenciesFinished",
-		"stack":         kimutil.StackTrace(),
-	})
 
 	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
 		bson.M{

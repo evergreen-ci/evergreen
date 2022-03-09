@@ -497,7 +497,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.Len(t, dbTask2.DependsOn, 1)
 			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
 		},
-		"MarksDependencyUnfinished": func(t *testing.T) {
+		"UpdateDependencyToUnfinished": func(t *testing.T) {
 			t0 := Task{
 				Id:     "task0",
 				Status: evergreen.TaskUndispatched,
