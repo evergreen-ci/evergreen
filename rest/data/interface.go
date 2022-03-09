@@ -27,7 +27,7 @@ type FindTestsByTaskIdOpts struct {
 }
 
 func GetURL() string {
-	return ""
+	return "https://www.example.com"
 }
 
 // Connector is an interface that contains all of the methods which
