@@ -602,8 +602,8 @@ input WorkstationConfigInput {
 }
 
 input WorkstationSetupCommandInput {
-  Command: String!
-  Directory: String
+  command: String!
+  directory: String
 }
 
 input PatchTriggerAliasInput {
@@ -1428,8 +1428,8 @@ type RepoWorkstationConfig {
 }
 
 type WorkstationSetupCommand {
-  Command: String!
-  Directory: String!
+  command: String!
+  directory: String!
 }
 
 type TaskSpecifier {
