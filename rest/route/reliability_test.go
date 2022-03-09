@@ -721,7 +721,7 @@ func TestRun(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability("https://example.net/test").(*taskReliabilityHandler)
 					withSetupAndTeardown(t, env, func() {
 						testCase(paginationContext, t, handler)
 					})
@@ -781,7 +781,12 @@ func TestReliability(t *testing.T) {
 				"Less Than One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "aggregation_expression_multiversion_fuzzer",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
+					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 1 page size of documents are available but 2 page sizes requested.
@@ -835,7 +840,7 @@ func TestReliability(t *testing.T) {
 						TaskReliabilityConnector: data.TaskReliabilityConnector{},
 						URL:                      url,
 					}
-					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 1 page size of documents will be returned
@@ -892,7 +897,7 @@ func TestReliability(t *testing.T) {
 						TaskReliabilityConnector: data.TaskReliabilityConnector{},
 						URL:                      url,
 					}
-					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 2 pages of documents are available.

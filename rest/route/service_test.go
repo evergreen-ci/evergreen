@@ -1104,7 +1104,7 @@ func TestTaskGetHandler(t *testing.T) {
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		sc := &data.DBConnector{}
-		rm := makeGetTaskRoute()
+		rm := makeGetTaskRoute("https://example.net/test")
 		sc.SetPrefix("rest")
 
 		Convey("and task is in the service context", func() {
