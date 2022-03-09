@@ -3,11 +3,12 @@ name := evergreen
 buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-util agent-internal agent-internal-client operations cloud cloud-userdata
-packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service service-graphql repotracker cmd-codegen-core mock
+packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker cmd-codegen-core mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-global model-notification model-stats model-reliability
-lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil db-mgo db-mgo-bson db-mgo-internal-json
+lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json
+testOnlyPackages := service-graphql # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
@@ -177,7 +178,7 @@ local-evergreen:$(localClientBinary) load-local-data
 # specific to evergreen; though the dist targets are more specific than the rest.
 
 # start output files
-testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
+testOutput := $(foreach target,$(packages) $(testOnlyPackages),$(buildDir)/output.$(target).test)
 lintOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
@@ -250,7 +251,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 # userfacing targets for basic build and development operations
 build:cli
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
-test:$(foreach target,$(packages),test-$(target))
+test:$(foreach target,$(packages) $(testOnlyPackages),test-$(target))
 js-test:$(buildDir)/.npmSetup
 	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
