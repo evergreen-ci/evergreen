@@ -367,12 +367,20 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-internal-client
+    depends_on:
+      - name: test-auth
+        variant: ubuntu1604
+      - name: test-agent-internal
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-util
+    depends_on:
+      - name: test-agent-internal-client
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
     name: test-agent-command
+    depends_on:
+      - name: test-agent-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-data
@@ -595,6 +603,10 @@ buildvariants:
       - name: "docker-cleanup"
       - name: test-db-auth
       - name: test-cloud
+    display_tasks:
+      - name: kim-display-task
+        execution_tasks:
+          - test-rest-route
 
   - name: race-detector
     display_name: Race Detector

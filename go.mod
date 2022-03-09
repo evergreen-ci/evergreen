@@ -2,6 +2,8 @@ module github.com/evergreen-ci/evergreen
 
 go 1.16
 
+replace kimutil => /home/kim/go/src/kimutil
+
 require (
 	github.com/99designs/gqlgen v0.14.0
 	github.com/PuerkitoBio/rehttp v1.1.0
@@ -68,4 +70,5 @@ require (
 	github.com/shirou/gopsutil/v3 v3.21.11
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
+	kimutil v0.0.0-00010101000000-000000000000 // indirect
 )

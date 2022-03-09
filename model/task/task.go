@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"kimutil"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -779,12 +781,31 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 }
 
 // MarkDependenciesFinished updates all direct dependencies on this task to
-// cache whether or not this task has finished running based on its current
-// status.
-func (t *Task) MarkDependenciesFinished() error {
+// cache whether or not this task has finished running.
+// kim: TODO: manually test in staging (with extra stacktrace logs) that it
+// sets/unsets Finished properly when used to run/restart:
+// - Task with dependency
+// - Display task (for MarkTasksReset insurance)
+func (t *Task) MarkDependenciesFinished(finished bool) error {
+	if t.DisplayOnly {
+		// This update can be skipped for display tasks since tasks are not
+		// allowed to have dependencies on display tasks.
+		return nil
+	}
+
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
+
+	grip.Info(message.Fields{
+		"message":       "kim: marking dependencies as finished",
+		"finished":      finished,
+		"task":          t.Id,
+		"build_variant": t.BuildVariant,
+		"version":       t.Version,
+		"op":            "MarkDependenciesFinished",
+		"stack":         kimutil.StackTrace(),
+	})
 
 	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
 		bson.M{
@@ -793,7 +814,7 @@ func (t *Task) MarkDependenciesFinished() error {
 			}},
 		},
 		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): t.IsFinished()},
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
 		},
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},

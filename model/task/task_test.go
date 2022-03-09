@@ -349,7 +349,7 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 	})
 }
 
-func TestUpdateDependenciesFinished(t *testing.T) {
+func TestMarkDependenciesFinished(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -373,7 +373,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished())
+			require.NoError(t, t0.MarkDependenciesFinished(true))
 
 			dbTask2, err := FindOneId(t2.Id)
 			require.NoError(t, err)
@@ -398,7 +398,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished())
+			require.NoError(t, t0.MarkDependenciesFinished(true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -423,7 +423,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished())
+			require.NoError(t, t0.MarkDependenciesFinished(true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -451,7 +451,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished())
+			require.NoError(t, t0.MarkDependenciesFinished(true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -483,7 +483,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished())
+			require.NoError(t, t0.MarkDependenciesFinished(true))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
@@ -497,7 +497,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.Len(t, dbTask2.DependsOn, 1)
 			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
 		},
-		"MarksDependencyUnfinishedWhenTaskIsUnfinished": func(t *testing.T) {
+		"MarksDependencyUnfinished": func(t *testing.T) {
 			t0 := Task{
 				Id:     "task0",
 				Status: evergreen.TaskUndispatched,
@@ -514,7 +514,7 @@ func TestUpdateDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
-			require.NoError(t, t0.MarkDependenciesFinished())
+			require.NoError(t, t0.MarkDependenciesFinished(false))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)

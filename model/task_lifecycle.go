@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -537,12 +536,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "could not update blocked dependencies")
 	}
 
-	// kim: TODO: test
-	pp.Println("kim: MarkDependenciesFinished")
-	if err = t.MarkDependenciesFinished(); err != nil {
+	if err = t.MarkDependenciesFinished(true); err != nil {
 		return errors.Wrap(err, "could not update dependency met status")
 	}
-	pp.Println("kim: dependencies were marked finished")
 
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
@@ -1249,8 +1245,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 		return errors.Wrap(err, "can't clear cached unattainable dependencies")
 	}
 
-	// kim: TODO: test
-	if err := t.MarkDependenciesFinished(); err != nil {
+	if err := t.MarkDependenciesFinished(false); err != nil {
 		return errors.Wrap(err, "marking direct dependencies unfinished")
 	}
 
@@ -1280,8 +1275,7 @@ func MarkTasksReset(taskIds []string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		catcher.Wrap(UpdateUnblockedDependencies(&t, false, ""), "can't clear cached unattainable dependencies")
-		// kim: TODO: test
-		catcher.Wrap(t.MarkDependenciesFinished(), "marking direct dependencies unfinished")
+		catcher.Wrap(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished")
 	}
 
 	return catcher.Resolve()

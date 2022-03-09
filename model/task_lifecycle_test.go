@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1857,7 +1856,6 @@ func TestDequeueAndRestart(t *testing.T) {
 		},
 	}
 	require.NoError(t, t3.Insert())
-	pp.Println(t3.DependsOn)
 	t4 := task.Task{
 		Id:        "4",
 		Version:   v3.Hex(),
@@ -1939,10 +1937,8 @@ func TestDequeueAndRestart(t *testing.T) {
 	assert.Equal(t, 0, dbTask3.Execution)
 	assert.Equal(t, evergreen.TaskUndispatched, dbTask3.Status)
 	require.Len(t, dbTask3.DependsOn, 1)
-	pp.Println(dbTask3.DependsOn)
-	// kim: TODO: figure out why this commitqueue test changes the dependency's
-	// task ID.
 	assert.Equal(t, t1.Id, dbTask3.DependsOn[0].TaskId)
+	assert.False(t, dbTask3.DependsOn[0].Finished)
 	dbTask4, err := task.FindOneId(t4.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, dbTask4.Execution)
