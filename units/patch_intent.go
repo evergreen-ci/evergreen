@@ -494,7 +494,7 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 }
 
 func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {
-	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
+	failedTasks, err := task.FindAll(db.Query(task.FailedExecutionTasksByVersionAndBV(version, vt.Variant)))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
 	}
