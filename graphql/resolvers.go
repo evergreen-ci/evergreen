@@ -442,7 +442,6 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, permissions 
 	if err != nil {
 		return false, ResourceNotFound.Send(ctx, "user not found")
 	}
-	fmt.Println("Found user and getting permission")
 	return usr.HasPermission(gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
@@ -1090,12 +1089,22 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 }
 
 func (r *queryResolver) Permissions(ctx context.Context, userID string) (*Permissions, error) {
-	usr, err := user.FindOneById(userID)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "user doesn't exist")
+	userId := ""
+	if userID == "" {
+		usr := MustHaveUser(ctx)
+		userId = usr.Id
+	} else {
+		usr, err := user.FindOneById(userID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, "error finding user")
+		}
+		if usr == nil {
+			return nil, ResourceNotFound.Send(ctx, "user doesn't exist")
+		}
+		userId = usr.Id
 	}
-	fmt.Println("Found a user")
-	return &Permissions{UserID: usr.Id}, nil
+
+	return &Permissions{UserID: userId}, nil
 }
 
 func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) (*restModel.APIProjectSettings, error) {
