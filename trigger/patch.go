@@ -63,28 +63,13 @@ func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *patchTriggers) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.patch.Id.Hex(),
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectPatch,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.patch.Project,
-		},
-		{
-			Type: event.SelectorOwner,
-			Data: t.patch.Author,
-		},
-		{
-			Type: event.SelectorStatus,
-			Data: t.patch.Status,
-		},
+func (t *patchTriggers) Selectors() map[string][]string {
+	return map[string][]string{
+		event.SelectorID:      {t.patch.Id.Hex()},
+		event.SelectorObject:  {event.ObjectPatch},
+		event.SelectorProject: {t.patch.Project},
+		event.SelectorOwner:   {t.patch.Author},
+		event.SelectorStatus:  {t.patch.Status},
 	}
 }
 

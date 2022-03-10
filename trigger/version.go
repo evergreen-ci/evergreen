@@ -70,33 +70,19 @@ func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *versionTriggers) Selectors() []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.version.Id,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.version.Identifier,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectVersion,
-		},
-		{
-			Type: event.SelectorRequester,
-			Data: t.version.Requester,
-		},
+func (t *versionTriggers) Selectors() map[string][]string {
+	selectors := map[string][]string{
+		event.SelectorID:        {t.version.Id},
+		event.SelectorProject:   {t.version.Identifier},
+		event.SelectorObject:    {event.ObjectVersion},
+		event.SelectorRequester: {t.version.Requester},
 	}
+
 	if t.version.Requester == evergreen.TriggerRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.RepotrackerVersionRequester,
-		})
+		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.RepotrackerVersionRequester)
 	}
 	if t.version.AuthorID != "" {
-		selectors = append(selectors, event.Selector{Type: event.SelectorOwner, Data: t.version.AuthorID})
+		selectors[event.SelectorOwner] = append(selectors[event.SelectorOwner], t.version.AuthorID)
 	}
 	return selectors
 }

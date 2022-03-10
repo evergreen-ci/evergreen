@@ -166,42 +166,19 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *buildTriggers) Selectors() []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.build.Id,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectBuild,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.build.Project,
-		},
-		{
-			Type: event.SelectorRequester,
-			Data: t.build.Requester,
-		},
-		{
-			Type: event.SelectorInVersion,
-			Data: t.build.Version,
-		},
-		{
-			Type: event.SelectorDisplayName,
-			Data: t.build.DisplayName,
-		},
-		{
-			Type: event.SelectorBuildVariant,
-			Data: t.build.BuildVariant,
-		},
+func (t *buildTriggers) Selectors() map[string][]string {
+	selectors := map[string][]string{
+		event.SelectorID:           {t.build.Id},
+		event.SelectorObject:       {event.ObjectBuild},
+		event.SelectorProject:      {t.build.Project},
+		event.SelectorRequester:    {t.build.Requester},
+		event.SelectorInVersion:    {t.build.Version},
+		event.SelectorDisplayName:  {t.build.DisplayName},
+		event.SelectorBuildVariant: {t.build.BuildVariant},
 	}
+
 	if t.build.Requester == evergreen.TriggerRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.RepotrackerVersionRequester,
-		})
+		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.RepotrackerVersionRequester)
 	}
 	return selectors
 }

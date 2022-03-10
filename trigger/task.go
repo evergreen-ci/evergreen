@@ -189,58 +189,26 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *taskTriggers) Selectors() []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.task.Id,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectTask,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.task.Project,
-		},
-		{
-			Type: event.SelectorInVersion,
-			Data: t.task.Version,
-		},
-		{
-			Type: event.SelectorInBuild,
-			Data: t.task.BuildId,
-		},
-		{
-			Type: event.SelectorDisplayName,
-			Data: t.task.DisplayName,
-		},
-		{
-			Type: event.SelectorBuildVariant,
-			Data: t.task.BuildVariant,
-		},
-		{
-			Type: event.SelectorRequester,
-			Data: t.task.Requester,
-		},
+func (t *taskTriggers) Selectors() map[string][]string {
+	selectors := map[string][]string{
+		event.SelectorID:           {t.task.Id},
+		event.SelectorObject:       {event.ObjectTask},
+		event.SelectorProject:      {t.task.Project},
+		event.SelectorInVersion:    {t.task.Version},
+		event.SelectorInBuild:      {t.task.BuildId},
+		event.SelectorDisplayName:  {t.task.DisplayName},
+		event.SelectorBuildVariant: {t.task.BuildVariant},
+		event.SelectorRequester:    {t.task.Requester},
 	}
+
 	if t.task.Requester == evergreen.TriggerRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.RepotrackerVersionRequester,
-		})
+		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.RepotrackerVersionRequester)
 	}
 	if t.task.Requester == evergreen.GithubPRRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.PatchVersionRequester,
-		})
+		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.PatchVersionRequester)
 	}
 	if t.version != nil && t.version.AuthorID != "" {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorOwner,
-			Data: t.version.AuthorID,
-		})
+		selectors[event.SelectorOwner] = append(selectors[event.SelectorOwner], t.version.AuthorID)
 	}
 
 	return selectors

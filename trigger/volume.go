@@ -58,20 +58,11 @@ func (t *volumeTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *volumeTriggers) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.volume.ID,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectHost,
-		},
-		{
-			Type: event.SelectorOwner,
-			Data: t.volume.CreatedBy,
-		},
+func (t *volumeTriggers) Selectors() map[string][]string {
+	return map[string][]string{
+		event.SelectorID:     {t.volume.ID},
+		event.SelectorObject: {event.ObjectHost},
+		event.SelectorOwner:  {t.volume.CreatedBy},
 	}
 }
 
@@ -94,9 +85,9 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostExpirationEmailPayload(t.templateData, expiringVolumeEmailSubject, expiringVolumeEmailBody, sub.Selectors)
+		payload, err = hostExpirationEmailPayload(t.templateData, expiringVolumeEmailSubject, expiringVolumeEmailBody, t.Selectors())
 	case event.SlackSubscriberType:
-		payload, err = hostExpirationSlackPayload(t.templateData, expiringVolumeSlackBody, expiringVolumeSlackAttachmentTitle, sub.Selectors)
+		payload, err = hostExpirationSlackPayload(t.templateData, expiringVolumeSlackBody, expiringVolumeSlackAttachmentTitle)
 	default:
 		return nil, nil
 	}

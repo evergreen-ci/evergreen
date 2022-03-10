@@ -242,15 +242,19 @@ var filterKeyForSelectorType = map[string]string{
 
 // FindSubscriptions finds all subscriptions of matching resourceType, and whose
 // filter matches the attributes of the event.
-func FindSubscriptions(resourceType string, eventAttributes map[string]string) ([]Subscription, error) {
+func FindSubscriptions(resourceType string, eventAttributes map[string][]string) ([]Subscription, error) {
 	if len(eventAttributes) == 0 {
 		return nil, nil
 	}
 
 	query := bson.M{subscriptionResourceTypeKey: resourceType}
 	for selector, filterKey := range filterKeyForSelectorType {
-		if attributeValue, ok := eventAttributes[selector]; ok {
-			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = bson.M{"$in": bson.A{attributeValue, nil}}
+		if attributeValues, ok := eventAttributes[selector]; ok {
+			in := bson.A{nil}
+			for _, attribute := range attributeValues {
+				in = append(in, attribute)
+			}
+			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = bson.M{"$in": in}
 		} else {
 			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = nil
 		}
@@ -273,16 +277,22 @@ func FindSubscriptions(resourceType string, eventAttributes map[string]string) (
 	return out, nil
 }
 
-func regexSelectorsMatch(eventAttributes map[string]string, regexSelectors []Selector) bool {
+func regexSelectorsMatch(eventAttributes map[string][]string, regexSelectors []Selector) bool {
+selectorLoop:
 	for _, regexSelector := range regexSelectors {
-		attributeValue, ok := eventAttributes[regexSelector.Type]
+		attributeValues, ok := eventAttributes[regexSelector.Type]
 		if !ok {
 			return false
 		}
 
-		matched, err := regexp.MatchString(regexSelector.Data, attributeValue)
-		if err != nil || !matched {
-			return false
+		for _, value := range attributeValues {
+			matched, err := regexp.MatchString(regexSelector.Data, value)
+			if err != nil {
+				return false
+			}
+			if matched {
+				continue selectorLoop
+			}
 		}
 	}
 

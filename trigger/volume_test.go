@@ -49,7 +49,7 @@ func TestVolumeExpiration(t *testing.T) {
 			assert.Contains(t, email.Body, "Your volume with id v0 is unattached and will be terminated at")
 		},
 		"Slack": func(*testing.T) {
-			slack, err := hostExpirationSlackPayload(testData, expiringVolumeSlackBody, "linkTitle", triggers.Selectors())
+			slack, err := hostExpirationSlackPayload(testData, expiringVolumeSlackBody, "linkTitle")
 			assert.NoError(t, err)
 			assert.Contains(t, slack.Body, "Your volume with id v0 is unattached and will be terminated at")
 		},

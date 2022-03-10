@@ -61,12 +61,9 @@ func (t *commitQueueTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *commitQueueTriggers) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: event.SelectorOwner,
-			Data: t.patch.Author,
-		},
+func (t *commitQueueTriggers) Selectors() map[string][]string {
+	return map[string][]string{
+		event.SelectorOwner: {t.patch.Author},
 	}
 }
 

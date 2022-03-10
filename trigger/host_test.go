@@ -79,7 +79,7 @@ func (s *hostSuite) TestEmailMessage() {
 }
 
 func (s *hostSuite) TestSlackMessage() {
-	msg, err := hostExpirationSlackPayload(s.testData, expiringHostSlackBody, "linkTitle", s.t.Selectors())
+	msg, err := hostExpirationSlackPayload(s.testData, expiringHostSlackBody, "linkTitle")
 	s.NoError(err)
 	s.Contains(msg.Body, "Your myDistro host 'hostName' will be terminated at")
 }

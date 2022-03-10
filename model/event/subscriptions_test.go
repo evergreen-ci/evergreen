@@ -184,22 +184,16 @@ func (s *subscriptionsSuite) TestFindSubscriptions() {
 	})
 
 	s.Run("NothingMatches", func() {
-		subs, err := FindSubscriptions("type1", []Selector{
-			{
-				Type: SelectorObject,
-				Data: "nothing_matches",
-			},
+		subs, err := FindSubscriptions("type1", map[string][]string{
+			SelectorObject: {"nothing_matches"},
 		})
 		s.NoError(err)
 		s.Empty(subs)
 	})
 
 	s.Run("MatchesMultipleSubscriptions", func() {
-		subs, err := FindSubscriptions("type2", []Selector{
-			{
-				Type: SelectorObject,
-				Data: "somethingspecial",
-			},
+		subs, err := FindSubscriptions("type2", map[string][]string{
+			SelectorObject: {"somethingspecial"},
 		})
 		s.NoError(err)
 		s.Require().Len(subs, 2)
@@ -218,47 +212,19 @@ func (s *subscriptionsSuite) TestFindSubscriptions() {
 
 	s.Run("MatchesRegexSelector", func() {
 		// this query hits a subscriber with a regex selector
-		subs, err := FindSubscriptions("type1", []Selector{
-			{
-				Type: SelectorID,
-				Data: "something",
-			},
-			{
-				Type: SelectorProject,
-				Data: "somethingelse",
-			},
+		subs, err := FindSubscriptions("type1", map[string][]string{
+			SelectorID:      {"something"},
+			SelectorProject: {"somethingelse"},
 		})
 		s.NoError(err)
 		s.Len(subs, 3)
 	})
 }
 
-func (s *subscriptionsSuite) TestFindSelectors() {
-	selectors := []Selector{
-		{
-			Type: "type",
-			Data: "something",
-		},
-		{
-			Type: "type2",
-			Data: "something",
-		},
-	}
-
-	s.Equal(&selectors[0], findSelector(selectors, "type"))
-	s.Nil(findSelector(selectors, "nope"))
-}
-
 func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
-	selectors := []Selector{
-		{
-			Type: "type",
-			Data: "something",
-		},
-		{
-			Type: "type2",
-			Data: "somethingelse",
-		},
+	selectors := map[string][]string{
+		"type":  {"something"},
+		"type2": {"somethingelse"},
 	}
 
 	a := Subscription{

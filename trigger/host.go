@@ -60,20 +60,11 @@ func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *hostBase) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.host.Id,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectHost,
-		},
-		{
-			Type: event.SelectorOwner,
-			Data: t.host.StartedBy,
-		},
+func (t *hostBase) Selectors() map[string][]string {
+	return map[string][]string{
+		event.SelectorID:     {t.host.Id},
+		event.SelectorObject: {event.ObjectHost},
+		event.SelectorOwner:  {t.host.StartedBy},
 	}
 }
 
@@ -124,9 +115,9 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostExpirationEmailPayload(t.templateData, expiringHostEmailSubject, expiringHostEmailBody, sub.Selectors)
+		payload, err = hostExpirationEmailPayload(t.templateData, expiringHostEmailSubject, expiringHostEmailBody, t.Selectors())
 	case event.SlackSubscriberType:
-		payload, err = hostExpirationSlackPayload(t.templateData, expiringHostSlackBody, expiringHostSlackAttachmentTitle, sub.Selectors)
+		payload, err = hostExpirationSlackPayload(t.templateData, expiringHostSlackBody, expiringHostSlackAttachmentTitle)
 	default:
 		return nil, nil
 	}
@@ -137,7 +128,7 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString string, selectors []event.Selector) (*message.Email, error) {
+func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString string, selectors map[string][]string) (*message.Email, error) {
 	subjectTemplate, err := template.New("subject").Parse(subjectString)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse subject template")
@@ -168,7 +159,7 @@ func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString st
 	}, nil
 }
 
-func hostExpirationSlackPayload(t hostTemplateData, messageString string, linkTitle string, selectors []event.Selector) (*notification.SlackPayload, error) {
+func hostExpirationSlackPayload(t hostTemplateData, messageString string, linkTitle string) (*notification.SlackPayload, error) {
 	messageTemplate, err := template.New("subject").Parse(messageString)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
