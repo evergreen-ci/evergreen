@@ -47,6 +47,7 @@ type Build struct {
 	DisplayName         string        `bson:"display_name" json:"display_name,omitempty"`
 	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan,omitempty"`
 	ActualMakespan      time.Duration `bson:"actual_makespan" json:"actual_makespan,omitempty"`
+	Aborted             bool          `bson:"aborted" json:"aborted,omitempty"`
 
 	// The status of the subset of the build that's used for github checks
 	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`

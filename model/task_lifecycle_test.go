@@ -780,6 +780,76 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.Equal(t, evergreen.VersionStarted, data.Status)
 }
 
+func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection),
+		"Error clearing task and build collections")
+	displayName := "testName"
+	b1 := &build.Build{
+		Id:        "buildtest1",
+		Status:    evergreen.BuildFailed,
+		Version:   "abc",
+		Activated: true,
+	}
+	b2 := &build.Build{
+		Id:        "buildtest2",
+		Status:    evergreen.BuildSucceeded,
+		Version:   "abc",
+		Activated: true,
+	}
+	v := &Version{
+		Id:     b1.Version,
+		Status: evergreen.VersionFailed,
+	}
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b1.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		Version:     b1.Version,
+	}
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b2.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskFailed,
+		StartTime:   time.Now().Add(-time.Hour),
+		Version:     b2.Version,
+	}
+
+	assert.NoError(t, b1.Insert())
+	assert.NoError(t, b2.Insert())
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, testTask.Insert())
+	assert.NoError(t, anotherTask.Insert())
+
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
+	dbBuild1, err := build.FindOneId(b1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbBuild1.Aborted)
+	dbBuild2, err := build.FindOneId(b2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbBuild2.Aborted)
+	dbVersion, err := VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbVersion.Aborted)
+
+	assert.NoError(t, testTask.SetAborted(task.AbortInfo{}))
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
+	dbBuild1, err = build.FindOneId(b1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, true, dbBuild1.Aborted)
+	dbBuild2, err = build.FindOneId(b2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbBuild2.Aborted)
+	dbVersion, err = VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, true, dbVersion.Aborted)
+}
+
 func TestGetBuildStatus(t *testing.T) {
 	// the build isn't started until a task starts running
 	buildTasks := []task.Task{

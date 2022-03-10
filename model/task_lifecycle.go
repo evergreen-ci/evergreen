@@ -919,6 +919,13 @@ func UpdateBuildStatus(b *build.Build) (bool, error) {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
 
+	b.Aborted = false
+	for _, t := range buildTasks {
+		if t.Aborted {
+			b.Aborted = true
+			break
+		}
+	}
 	buildStatus := getBuildStatus(buildTasks)
 
 	if buildStatus == b.Status {
@@ -1003,6 +1010,13 @@ func UpdateVersionStatus(v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey, build.IsGithubCheckKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
+	}
+
+	for _, b := range builds {
+		if b.Aborted {
+			v.Aborted = true
+			break
+		}
 	}
 	versionStatus := getVersionStatus(builds)
 
