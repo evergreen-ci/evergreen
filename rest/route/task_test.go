@@ -67,8 +67,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 
 	s.NotNil(res)
-	dc := data.DBTaskConnector{}
-	tasks, err := dc.FindTasksByIds([]string{"task1", "task2"})
+	tasks, err := data.FindTasksByIds([]string{"task1", "task2"})
 	s.NoError(err)
 	s.Equal("user1", tasks[0].ActivatedBy)
 	s.Equal("", tasks[1].ActivatedBy)
@@ -79,7 +78,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	tasks, err = dc.FindTasksByIds([]string{"task1", "task2"})
+	tasks, err = data.FindTasksByIds([]string{"task1", "task2"})
 	s.NoError(err)
 	s.Equal("user1", tasks[0].AbortInfo.User)
 	s.Equal("", tasks[1].AbortInfo.User)
@@ -169,8 +168,7 @@ func TestFetchArtifacts(t *testing.T) {
 }
 
 type ProjectTaskWithinDatesSuite struct {
-	sc *data.DBConnector
-	h  *projectTaskGetHandler
+	h *projectTaskGetHandler
 
 	suite.Suite
 }
@@ -288,7 +286,6 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 		Secret: utility.ToStringPtr("secret"),
 		Bucket: utility.ToStringPtr("bucket"),
 	}
-	connector := data.DBAdminConnector{}
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
 	}
@@ -338,7 +335,7 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 			},
 		},
 	}
-	_, err := connector.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
+	_, err := data.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
 	require.NoError(t, err)
 	rh := makeTaskSyncReadCredentialsGetHandler()
 	defer cancel()

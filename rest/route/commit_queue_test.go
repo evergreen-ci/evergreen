@@ -23,7 +23,6 @@ import (
 )
 
 type CommitQueueSuite struct {
-	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -32,9 +31,6 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
-	s.sc = &data.DBConnector{
-		DBCommitQueueConnector: data.DBCommitQueueConnector{},
-	}
 	s.NoError(db.ClearCollections(dbModel.ProjectRefCollection, patch.Collection, commitqueue.Collection))
 	projRef := dbModel.ProjectRef{
 		Id: "proj",
@@ -67,7 +63,7 @@ func (s *CommitQueueSuite) TestParse() {
 func (s *CommitQueueSuite) TestGetCommitQueue() {
 	route := makeGetCommitQueueItems().(*commitQueueGetHandler)
 	route.project = "mci"
-	pos, err := s.sc.EnqueueItem(
+	pos, err := data.EnqueueItem(
 		"mci",
 		model.APICommitQueueItem{
 			Issue:  utility.ToStringPtr("1"),
@@ -82,7 +78,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 	s.NoError(err)
 	s.Equal(0, pos)
 
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	pos, err = data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -101,11 +97,11 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(ctx))
 
-	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	route := makeDeleteCommitQueueItems(env).(*commitQueueDeleteItemHandler)
+	pos, err := data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	pos, err = data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
@@ -141,16 +137,16 @@ func (s *CommitQueueSuite) TestClearAll() {
 	s.Require().NoError(commitqueue.InsertQueue(cq1))
 
 	route := makeClearCommitQueuesHandler().(*commitQueueClearAllHandler)
-	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
+	pos, err := data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("23")}, false)
+	pos, err = data.EnqueueItem("mci", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("23")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
+	pos, err = data.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("45")}, false)
+	pos, err = data.EnqueueItem("logkeeper", model.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("45")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 

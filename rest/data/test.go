@@ -16,7 +16,7 @@ import (
 // from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
 
-func (tc *DBTestConnector) FindTestById(id string) ([]testresult.TestResult, error) {
+func FindTestById(id string) ([]testresult.TestResult, error) {
 	if !bson.IsObjectIdHex(id) {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -34,7 +34,7 @@ func (tc *DBTestConnector) FindTestById(id string) ([]testresult.TestResult, err
 	return results, nil
 }
 
-func (tc *DBTestConnector) GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
+func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	t, err := task.FindOneIdNewOrOld(taskId)
 	if err != nil {
 		return 0, errors.Wrapf(err, fmt.Sprintf("error finding task %s", taskId))

@@ -34,7 +34,6 @@ import (
 // Tests for GET /rest/v2/distros/{distro_id}/setup
 
 type DistroSetupByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -46,7 +45,7 @@ func TestDistroSetupByIDSuite(t *testing.T) {
 
 func (s *DistroSetupByIDSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.sc = getMockDistrosConnector()
+	s.NoError(getMockDistrosdata())
 	s.rm = makeGetDistroSetup()
 }
 
@@ -78,7 +77,6 @@ func (s *DistroSetupByIDSuite) TestRunInvalidId() {
 // Tests for PATCH /rest/v2/distros/{distro_id}/setup
 
 type DistroPatchSetupByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -90,7 +88,7 @@ func TestDistroPatchSetupByIDSuite(t *testing.T) {
 
 func (s *DistroPatchSetupByIDSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.sc = getMockDistrosConnector()
+	s.NoError(getMockDistrosdata())
 	s.rm = makeChangeDistroSetup()
 }
 
@@ -144,7 +142,6 @@ func (s *DistroPatchSetupByIDSuite) TestRunInvalidId() {
 // Tests for GET /rest/v2/distros/{distro_id}
 
 type DistroByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -186,11 +183,8 @@ func (s *DistroByIDSuite) SetupSuite() {
 		{Id: "distro2"},
 	}
 
-	s.sc = &data.DBConnector{
-		DBDistroConnector: data.DBDistroConnector{},
-	}
 	for _, d := range distros {
-		err := s.sc.CreateDistro(d)
+		err := data.CreateDistro(d)
 		s.NoError(err)
 	}
 }
@@ -420,7 +414,6 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 // Tests for PUT /rest/v2/distros/{distro_id}
 
 type DistroPutSuite struct {
-	sc       *data.DBConnector
 	rm       gimlet.RouteHandler
 	settings *evergreen.Settings
 
@@ -433,9 +426,6 @@ func TestDistroPutSuite(t *testing.T) {
 
 func (s *DistroPutSuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.sc = &data.DBConnector{
-		DBDistroConnector: data.DBDistroConnector{},
-	}
 	distros := []*distro.Distro{
 		{
 			Id: "distro1",
@@ -457,7 +447,7 @@ func (s *DistroPutSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := s.sc.CreateDistro(d)
+		err := data.CreateDistro(d)
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
@@ -601,7 +591,6 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 // Tests for DELETE /rest/v2/distros/{distro_id}
 
 type DistroDeleteByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -613,9 +602,6 @@ func TestDistroDeleteSuite(t *testing.T) {
 
 func (s *DistroDeleteByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection, model.TaskAliasQueuesCollection, model.TaskQueuesCollection))
-	s.sc = &data.DBConnector{
-		DBDistroConnector: data.DBDistroConnector{},
-	}
 	distros := []*distro.Distro{
 		{
 			Id: "distro1",
@@ -628,7 +614,7 @@ func (s *DistroDeleteByIDSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := s.sc.CreateDistro(d)
+		err := data.CreateDistro(d)
 		s.NoError(err)
 	}
 	s.rm = makeDeleteDistroByID()
@@ -676,7 +662,6 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 // Tests for PATCH /rest/v2/distros/{distro_id}
 
 type DistroPatchByIDSuite struct {
-	sc       *data.DBConnector
 	rm       gimlet.RouteHandler
 	settings *evergreen.Settings
 
@@ -703,9 +688,6 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		)),
 	)}
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.sc = &data.DBConnector{
-		DBDistroConnector: data.DBDistroConnector{},
-	}
 	distros := []*distro.Distro{
 		{
 			Id:      "fedora8",
@@ -758,7 +740,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := s.sc.CreateDistro(d)
+		err := data.CreateDistro(d)
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
@@ -813,7 +795,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	allDistros, err := s.sc.DBDistroConnector.FindAllDistros()
+	allDistros, err := data.FindAllDistros()
 	s.NoError(err)
 	distro1 := allDistros[0]
 	s.Len(distro1.ProviderSettingsList, 1)
@@ -1477,10 +1459,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 	s.Equal(gimlet.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
 }
 
-func getMockDistrosConnector() *data.DBConnector {
-	connector := data.DBConnector{
-		DBDistroConnector: data.DBDistroConnector{},
-	}
+func getMockDistrosdata() error {
 	distros := []*distro.Distro{
 		{
 			Id:      "fedora8",
@@ -1534,13 +1513,12 @@ func getMockDistrosConnector() *data.DBConnector {
 		},
 	}
 	for _, d := range distros {
-		err := connector.CreateDistro(d)
+		err := data.CreateDistro(d)
 		if err != nil {
 			return nil
 		}
 	}
-
-	return &connector
+	return nil
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -1548,7 +1526,6 @@ func getMockDistrosConnector() *data.DBConnector {
 // Tests for PATCH /rest/v2/distro/{distro}/execute
 
 type distroExecuteSuite struct {
-	sc     *data.DBConnector
 	rh     *distroExecuteHandler
 	env    evergreen.Environment
 	cancel context.CancelFunc
@@ -1562,9 +1539,6 @@ func TestDistroExecuteSuite(t *testing.T) {
 
 func (s *distroExecuteSuite) SetupTest() {
 	s.NoError(db.ClearCollections(host.Collection))
-	s.sc = &data.DBConnector{
-		DBHostConnector: data.DBHostConnector{},
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	env := &mock.Environment{}
@@ -1658,7 +1632,6 @@ func (s *distroExecuteSuite) TestRunNonexistentDistro() {
 // Tests for GET /rest/v2/distros/{distro_id}/client_urls
 
 type distroClientURLsGetSuite struct {
-	sc     *data.DBConnector
 	rh     *distroClientURLsGetHandler
 	env    evergreen.Environment
 	cancel context.CancelFunc
@@ -1673,10 +1646,7 @@ func TestDistroClientURLsGetSuite(t *testing.T) {
 func (s *distroClientURLsGetSuite) SetupTest() {
 	d := distro.Distro{Id: "distroID"}
 	s.NoError(db.ClearCollections(distro.Collection))
-	s.sc = &data.DBConnector{
-		DBDistroConnector: data.DBDistroConnector{},
-	}
-	err := s.sc.CreateDistro(&d)
+	err := data.CreateDistro(&d)
 	s.NoError(err)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel

@@ -62,8 +62,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	dc := data.DBCreateHostConnector{}
-	h, err := dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err := data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
 
@@ -109,7 +108,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -131,7 +130,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	require.NoError(err)
 	require.NotNil(h)
 
@@ -160,7 +159,7 @@ func TestMakeIntentHost(t *testing.T) {
 		KeyName:             "mock_key",
 	}
 	handler.createHost = c
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -200,7 +199,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -242,7 +241,7 @@ func TestMakeIntentHost(t *testing.T) {
 		SecurityGroups:      []string{"1234"},
 	}
 	handler.createHost = c
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	require.NoError(err)
 	require.NotNil(h)
 	assert.Equal("", h.Distro.Id)
@@ -274,7 +273,7 @@ func TestMakeIntentHost(t *testing.T) {
 		KeyName:             "mock_key",
 	}
 	handler.createHost = c
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -284,7 +283,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(ec2Settings2.AMI, "ami-123456")
 
 	handler.createHost.Region = "us-west-1"
-	h, err = dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err = data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -340,8 +339,7 @@ func TestHostCreateDocker(t *testing.T) {
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
-	dc := data.DBCreateHostConnector{}
-	h, err := dc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	h, err := data.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	require.NotNil(h)
 	assert.Equal("distro", h.Distro.Id)
@@ -403,8 +401,7 @@ func TestGetDockerLogs(t *testing.T) {
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
-	dc := data.DBCreateHostConnector{}
-	h, err := dc.MakeIntentHost("task-id", "", "", c)
+	h, err := data.MakeIntentHost("task-id", "", "", c)
 	require.NoError(err)
 	require.NotNil(h)
 	assert.NotEmpty(h.ParentID)
@@ -507,8 +504,7 @@ func TestGetDockerStatus(t *testing.T) {
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
-	dc := data.DBCreateHostConnector{}
-	h, err := dc.MakeIntentHost("task-id", "", "", c)
+	h, err := data.MakeIntentHost("task-id", "", "", c)
 	require.NoError(err)
 	assert.NotEmpty(h.ParentID)
 

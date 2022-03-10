@@ -53,8 +53,7 @@ func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 
-	dc := data.DBAdminConnector{}
-	events, err := dc.GetAdminEventLog(h.Timestamp, h.Limit+1)
+	events, err := data.GetAdminEventLog(h.Timestamp, h.Limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
 	}
@@ -121,8 +120,7 @@ func (h *revertHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *revertHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	dc := data.DBAdminConnector{}
-	err := dc.RevertConfigTo(h.GUID, u.Username())
+	err := data.RevertConfigTo(h.GUID, u.Username())
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

@@ -44,8 +44,7 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		ProjectIdToCopy:      p.oldProject,
 		NewProjectIdentifier: p.newProject,
 	}
-	dc := data.DBProjectConnector{}
-	apiProjectRef, err := dc.CopyProject(ctx, opts)
+	apiProjectRef, err := data.CopyProject(ctx, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -94,18 +93,17 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBProjectConnector{}
-	copyToProject, err := dc.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
+	copyToProject, err := data.FindProjectById(p.opts.CopyTo, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.opts.CopyTo))
 	}
 
-	copyFromProject, err := dc.FindProjectById(p.copyFrom, false, false) // ensure project is existing
+	copyFromProject, err := data.FindProjectById(p.copyFrom, false, false) // ensure project is existing
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding project '%s'", p.copyFrom))
 	}
 
-	varsToCopy, err := dc.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
+	varsToCopy, err := data.FindProjectVarsById(copyFromProject.Id, "", p.opts.DryRun) //dont redact private variables unless it's a dry run
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error finding variables for '%s'", p.copyFrom))
 	}
@@ -125,7 +123,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(varsToCopy)
 	}
 
-	if err := dc.UpdateProjectVars(copyToProject.Id, varsToCopy, p.opts.Overwrite); err != nil {
+	if err := data.UpdateProjectVars(copyToProject.Id, varsToCopy, p.opts.Overwrite); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.copyFrom))
 	}
 

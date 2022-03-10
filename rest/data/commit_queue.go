@@ -165,7 +165,7 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, 
 	return nil
 }
 
-func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
+func EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	q, err := commitqueue.FindOneId(projectID)
 	if err != nil {
 		return 0, errors.Wrapf(err, "can't query for queue id '%s'", projectID)
@@ -197,7 +197,7 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 	return position, nil
 }
 
-func (pc *DBCommitQueueConnector) FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
+func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 	id, err := model.GetIdForProject(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -218,7 +218,7 @@ func (pc *DBCommitQueueConnector) FindCommitQueueForProject(name string) (*restM
 	return apiCommitQueue, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommitQueueItem, error) {
+func CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommitQueueItem, error) {
 	id, err := model.GetIdForProject(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't find projectRef for '%s'", identifier)
@@ -248,7 +248,7 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(identifier, issue, user 
 	return &apiRemovedItem, nil
 }
 
-func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
+func IsItemOnCommitQueue(id, item string) (bool, error) {
 	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
@@ -264,7 +264,7 @@ func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, er
 	return false, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
+func CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
 }
 
@@ -310,7 +310,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
+func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage string) (*restModel.APIPatch, error) {
 	existingPatch, err := patch.FindOneId(existingPatchID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get patch")
@@ -331,7 +331,7 @@ func (pc *DBCommitQueueConnector) CreatePatchForMerge(ctx context.Context, exist
 	return apiPatch, nil
 }
 
-func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, error) {
+func GetMessageForPatch(patchID string) (string, error) {
 	requestedPatch, err := patch.FindOneId(patchID)
 	if err != nil {
 		return "", errors.Wrap(err, "error finding patch")
@@ -350,7 +350,7 @@ func (pc *DBCommitQueueConnector) GetMessageForPatch(patchID string) (string, er
 	return project.CommitQueue.Message, nil
 }
 
-func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
+func ConcludeMerge(patchID, status string) error {
 	event.LogCommitQueueConcludeTest(patchID, status)
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
@@ -397,7 +397,7 @@ func (pc *DBCommitQueueConnector) ConcludeMerge(patchID, status string) error {
 	return nil
 }
 
-func (pc *DBCommitQueueConnector) GetAdditionalPatches(patchId string) ([]string, error) {
+func GetAdditionalPatches(patchId string) ([]string, error) {
 	p, err := patch.FindOneId(patchId)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

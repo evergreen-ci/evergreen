@@ -8,14 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBAliasConnector is a struct that implements the Alias related methods
-// from the Connector through interactions with the backing database.
-type DBAliasConnector struct{}
-
 // FindProjectAliases queries the database to find all aliases.
 // If the repoId is given, we default to repo aliases if there are no project aliases.
 // If aliasesToAdd are given, then we fold those aliases in and remove any that are marked as deleted.
-func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
+func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
 	var err error
 	var aliases model.ProjectAliases
 	// should this logic just be folded into FindProjectAliases?
@@ -59,7 +55,7 @@ func (d *DBAliasConnector) FindProjectAliases(projectId, repoId string, aliasesT
 }
 
 // CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
-func (d *DBAliasConnector) CopyProjectAliases(oldProjectId, newProjectId string) error {
+func CopyProjectAliases(oldProjectId, newProjectId string) error {
 	aliases, err := model.FindAliasesForProjectFromDb(oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "error finding aliases for project '%s'", oldProjectId)
@@ -72,7 +68,7 @@ func (d *DBAliasConnector) CopyProjectAliases(oldProjectId, newProjectId string)
 	return nil
 }
 
-func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
+func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
 	aliasesToUpsert := []model.ProjectAlias{}
 	aliasesToDelete := []string{}
 	catcher := grip.NewBasicCatcher()
@@ -107,7 +103,7 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 	return catcher.Resolve()
 }
 
-func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
+func UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
 	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}
 	aliasesToUpdate := []restModel.APIProjectAlias{}
@@ -119,7 +115,7 @@ func (pc *DBAliasConnector) UpdateAliasesForSection(projectId string, updatedAli
 		aliasesToUpdate = append(aliasesToUpdate, a)
 		aliasesIdMap[utility.FromStringPtr(a.ID)] = true
 	}
-	if err := pc.UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
+	if err := UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
 		return false, errors.Wrap(err, "error updating project aliases")
 	}
 	modified := len(aliasesToUpdate) > 0
@@ -152,7 +148,7 @@ func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) b
 }
 
 //  GetMatchingGitTagAliasesForProject returns matching git tag aliases that match the given git tag
-func (d *DBAliasConnector) HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
+func HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
 	aliases, err := model.FindMatchingGitTagAliasesInProject(projectId, tag)
 	if err != nil {
 		return false, "", err

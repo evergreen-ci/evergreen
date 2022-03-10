@@ -51,7 +51,6 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCreateHostConnector{}
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
@@ -59,7 +58,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
-		intentHost, err := dc.MakeIntentHost(h.taskID, "", "", h.createHost)
+		intentHost, err := data.MakeIntentHost(h.taskID, "", "", h.createHost)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -98,13 +97,11 @@ func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCreateHostConnector{}
-	tc := data.DBTaskConnector{}
-	hosts, err := dc.ListHostsForTask(ctx, h.taskID)
+	hosts, err := data.ListHostsForTask(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	t, err := tc.FindTaskById(h.taskID)
+	t, err := data.FindTaskById(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -212,7 +209,6 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCreateHostConnector{}
 	parent, err := h.host.GetParent()
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
@@ -232,7 +228,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	} else {
 		options.ShowStdout = true
 	}
-	logs, err := dc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
+	logs, err := data.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker logs"))
 	}
@@ -276,7 +272,6 @@ func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCreateHostConnector{}
 	parent, err := h.host.GetParent()
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
@@ -285,7 +280,7 @@ func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
-	status, err := dc.GetDockerStatus(ctx, h.host.Id, parent, settings)
+	status, err := data.GetDockerStatus(ctx, h.host.Id, parent, settings)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker status"))
 	}

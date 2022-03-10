@@ -14,9 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DBSubscriptionConnector struct{}
-
-func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
+func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
 	for _, subscription := range subscriptions {
 		subscriptionInterface, err := subscription.ToService()
@@ -130,7 +128,7 @@ func getVersionChildren(versionId string) ([]string, error) {
 
 }
 
-func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
+func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	if len(owner) == 0 {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -155,7 +153,7 @@ func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType even
 	return apiSubs, nil
 }
 
-func (dc *DBSubscriptionConnector) DeleteSubscriptions(owner string, ids []string) error {
+func DeleteSubscriptions(owner string, ids []string) error {
 	for _, id := range ids {
 		subscription, err := event.FindSubscriptionByID(id)
 		if err != nil {
@@ -185,7 +183,7 @@ func (dc *DBSubscriptionConnector) DeleteSubscriptions(owner string, ids []strin
 	return catcher.Resolve()
 }
 
-func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
+func CopyProjectSubscriptions(oldProject, newProject string) error {
 	subs, err := event.FindSubscriptionsByOwner(oldProject, event.OwnerTypeProject)
 	if err != nil {
 		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)

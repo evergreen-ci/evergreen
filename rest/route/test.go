@@ -122,11 +122,10 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	var tests []testresult.TestResult
-	dc := data.DBTestConnector{}
 	if tgh.testID != "" {
 		// When testID is populated, search the test results collection
 		// for the given ID.
-		tests, err = dc.FindTestById(tgh.testID)
+		tests, err = data.FindTestById(tgh.testID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 		}

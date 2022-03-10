@@ -8,9 +8,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-type CLIUpdateConnector struct{}
-
-func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
+func GetCLIUpdate() (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
 	env := evergreen.GetEnvironment()
 	config := env.ClientConfig()

@@ -78,13 +78,12 @@ func (s *VersionConnectorSuite) SetupTest() {
 
 func (s *VersionConnectorSuite) TestFindVersionByIdSuccess() {
 	// Finding existing versions should succeed
-	dc := DBVersionConnector{}
-	v, err := dc.FindVersionById("version1")
+	v, err := FindVersionById("version1")
 	s.NoError(err)
 	s.NotNil(v)
 	s.Equal("version1", v.Id)
 
-	v, err = dc.FindVersionById("version2")
+	v, err = FindVersionById("version2")
 	s.NoError(err)
 	s.NotNil(v)
 	s.Equal("version2", v.Id)
@@ -92,17 +91,14 @@ func (s *VersionConnectorSuite) TestFindVersionByIdSuccess() {
 
 func (s *VersionConnectorSuite) TestFindVersionByIdFail() {
 	// Finding a non-existent version should fail
-	dc := DBVersionConnector{}
-	v, err := dc.FindVersionById("build3")
+	v, err := FindVersionById("build3")
 	s.Error(err)
 	s.Nil(v)
 }
 
 func (s *VersionConnectorSuite) TestAbortVersion() {
 	versionId := "version1"
-	dc := DBVersionConnector{}
-	tc := DBTaskConnector{}
-	err := dc.AbortVersion(versionId, "")
+	err := AbortVersion(versionId, "")
 	s.NoError(err)
 
 	// NOTE: TestAbort() has been written in this following way because FindTaskbyVersionId()
@@ -114,39 +110,36 @@ func (s *VersionConnectorSuite) TestAbortVersion() {
 	// Task1 and Task2, which are of the aborted version and tasks with abortable statuses
 	// should be aborted. Task3 have been already aborted. Task4 is of another version and should
 	// not have been aborted.
-	t1, _ := tc.FindTaskById("task1")
+	t1, _ := FindTaskById("task1")
 	s.Equal(versionId, t1.Version)
 	s.Equal(true, t1.Aborted)
 
-	t2, _ := tc.FindTaskById("task2")
+	t2, _ := FindTaskById("task2")
 	s.Equal(versionId, t2.Version)
 	s.Equal(true, t2.Aborted)
 
-	t3, _ := tc.FindTaskById("task3")
+	t3, _ := FindTaskById("task3")
 	s.Equal(versionId, t3.Version)
 	s.Equal(true, t3.Aborted)
 
-	t4, _ := tc.FindTaskById("task4")
+	t4, _ := FindTaskById("task4")
 	s.NotEqual(true, t4.Aborted)
 }
 
 func (s *VersionConnectorSuite) TestRestartVersion() {
 	versionId := "version3"
-	dc := DBVersionConnector{}
-	tc := DBTaskConnector{}
-	bc := DBBuildConnector{}
-	err := dc.RestartVersion(versionId, "caller3")
+	err := RestartVersion(versionId, "caller3")
 	s.NoError(err)
 
 	// When a version is restarted, all of its completed tasks should be reset.
 	// (task.Status should be undispatched)
-	t5, _ := tc.FindTaskById("task5")
+	t5, _ := FindTaskById("task5")
 	s.Equal(versionId, t5.Version)
 	s.Equal(evergreen.TaskUndispatched, t5.Status)
 
 	// Build status for all builds containing the tasks that we touched
 	// should be updated.
-	b1, _ := bc.FindBuildById("build1")
+	b1, _ := FindBuildById("build1")
 	s.Equal(evergreen.BuildStarted, b1.Status)
 	s.Equal("caller3", b1.ActivatedBy)
 }
@@ -308,8 +301,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	for _, t := range tasks {
 		s.NoError(t.Insert())
 	}
-	dc := DBVersionConnector{}
-	results, err := dc.GetVersionsAndVariants(0, 10, &proj)
+	results, err := GetVersionsAndVariants(0, 10, &proj)
 	s.NoError(err)
 
 	bv1 := results.Rows["bv1"]

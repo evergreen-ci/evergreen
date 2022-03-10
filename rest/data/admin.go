@@ -18,14 +18,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DBAdminConnector struct{}
-
 // GetEvergreenSettings retrieves the admin settings document from the DB
-func (ac *DBAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) {
+func GetEvergreenSettings() (*evergreen.Settings, error) {
 	return evergreen.GetConfig()
 }
 
-func (ac *DBAdminConnector) GetBanner() (string, string, error) {
+func GetBanner() (string, string, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return "", "", errors.Wrap(err, "error retrieving settings from DB")
@@ -34,7 +32,7 @@ func (ac *DBAdminConnector) GetBanner() (string, string, error) {
 }
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
-func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSettings,
+func SetEvergreenSettings(changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
 
 	settingsAPI := restModel.NewConfigModel()
@@ -135,12 +133,12 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 }
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
+func SetAdminBanner(text string, u *user.DBUser) error {
 	return evergreen.SetBanner(text)
 }
 
 // SetBannerTheme sets the banner theme in the DB and event logs it
-func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) error {
+func SetBannerTheme(themeString string, u *user.DBUser) error {
 	valid, theme := evergreen.IsValidBannerTheme(themeString)
 	if !valid {
 		return fmt.Errorf("%s is not a valid banner theme type", themeString)
@@ -150,13 +148,13 @@ func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) e
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
-func (ac *DBAdminConnector) SetServiceFlags(flags evergreen.ServiceFlags, u *user.DBUser) error {
+func SetServiceFlags(flags evergreen.ServiceFlags, u *user.DBUser) error {
 
 	return evergreen.SetServiceFlags(flags)
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
+func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	var results model.RestartResults
 	var err error
 
@@ -177,7 +175,7 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 	}, nil
 }
 
-func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
+func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	totalRestarted := []string{}
 	totalNotRestarted := []string{}
 	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
@@ -204,11 +202,11 @@ func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartO
 	}, nil
 }
 
-func (ac *DBAdminConnector) RevertConfigTo(guid string, user string) error {
+func RevertConfigTo(guid string, user string) error {
 	return event.RevertConfig(guid, user)
 }
 
-func (ac *DBAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
+func GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
 	events, err := event.FindAdmin(event.AdminEventsBefore(before, n))
 	if err != nil {
 		return nil, err
@@ -228,12 +226,12 @@ func (ac *DBAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restMod
 	return out, catcher.Resolve()
 }
 
-func (ac *DBAdminConnector) MapLDAPGroupToRole(group, roleID string) error {
+func MapLDAPGroupToRole(group, roleID string) error {
 	mapping := &evergreen.LDAPRoleMap{}
 	return errors.Wrapf(mapping.Add(group, roleID), "error mapping %s to %s", group, roleID)
 }
 
-func (ac *DBAdminConnector) UnmapLDAPGroupToRole(group string) error {
+func UnmapLDAPGroupToRole(group string) error {
 	mapping := &evergreen.LDAPRoleMap{}
 	return errors.Wrapf(mapping.Remove(group), "error unmapping %s", group)
 }

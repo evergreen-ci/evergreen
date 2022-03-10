@@ -23,8 +23,7 @@ func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *adminSpawnHostHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBHostConnector{}
-	res, err := dc.AggregateSpawnhostData()
+	res, err := data.AggregateSpawnhostData()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

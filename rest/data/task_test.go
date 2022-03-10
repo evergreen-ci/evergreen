@@ -57,9 +57,8 @@ func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindById() {
-	dc := DBTaskConnector{}
 	for i := 0; i < 10; i++ {
-		found, err := dc.FindTaskById(fmt.Sprintf("task_%d", i))
+		found, err := FindTaskById(fmt.Sprintf("task_%d", i))
 		s.Nil(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
 	}
@@ -77,9 +76,8 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		s.NoError(testTask1.Archive())
 		testTask1.Execution += 1
 	}
-	dc := DBTaskConnector{}
 	for i := 0; i < 10; i++ {
-		task, err := dc.FindTaskByIdAndExecution("task_1", i)
+		task, err := FindTaskByIdAndExecution("task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
 		s.Equal(task.Execution, i)
@@ -133,24 +131,23 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.NoError(a_with_empty_issues.Upsert())
 
 	opts := TaskFilterOptions{}
-	dc := DBTaskConnector{}
-	task, _, err := dc.FindTasksByVersion("version_known", opts)
+	task, _, err := FindTasksByVersion("version_known", opts)
 	s.NoError(err)
 	// ignore annotation for successful task
 	s.Equal(evergreen.TaskSucceeded, task[0].DisplayStatus)
 
 	// test with empty issues list
-	task, _, err = dc.FindTasksByVersion("version_not_known", opts)
+	task, _, err = FindTasksByVersion("version_not_known", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
 	// test with no annotation document
-	task, _, err = dc.FindTasksByVersion("version_no_annotation", opts)
+	task, _, err = FindTasksByVersion("version_no_annotation", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
 	// test with empty issues
-	task, _, err = dc.FindTasksByVersion("version_with_empty_issues", opts)
+	task, _, err = FindTasksByVersion("version_with_empty_issues", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
 
@@ -177,15 +174,14 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		s.NoError(testTask2.Archive())
 		testTask2.Execution += 1
 	}
-	dc := DBTaskConnector{}
-	tasks, err := dc.FindOldTasksByIDWithDisplayTasks("task_1")
+	tasks, err := FindOldTasksByIDWithDisplayTasks("task_1")
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
 		s.Equal(i, tasks[i].Execution)
 	}
 
-	tasks, err = dc.FindOldTasksByIDWithDisplayTasks("task_2")
+	tasks, err = FindOldTasksByIDWithDisplayTasks("task_2")
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
@@ -194,8 +190,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
-	dc := DBTaskConnector{}
-	found, err := dc.FindTaskById("fake_task")
+	found, err := FindTaskById("fake_task")
 	s.NotNil(err)
 	s.Nil(found)
 
@@ -257,9 +252,8 @@ func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 }
 
 func (s *TaskConnectorFetchByBuildSuite) TestFindByBuild() {
-	dc := DBTaskConnector{}
 	for bix := 0; bix < s.numBuilds; bix++ {
-		foundTasks, err := dc.FindTasksByBuildId(fmt.Sprintf("build_%d", bix),
+		foundTasks, err := FindTasksByBuildId(fmt.Sprintf("build_%d", bix),
 			"", "", 0, 1)
 		s.Nil(err)
 		s.Equal(s.numTasks, len(foundTasks))
@@ -270,10 +264,9 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindByBuild() {
 }
 
 func (s *TaskConnectorFetchByBuildSuite) TestFindByBuildFail() {
-	dc := DBTaskConnector{}
 	for _, status := range []string{"pass", "fail"} {
 		for bix := 0; bix < s.numBuilds; bix++ {
-			foundTasks, err := dc.FindTasksByBuildId(fmt.Sprintf("build_%d", bix),
+			foundTasks, err := FindTasksByBuildId(fmt.Sprintf("build_%d", bix),
 				"", status, 0, 1)
 			s.Nil(err)
 			s.Equal(s.numTasks/2, len(foundTasks))
@@ -287,10 +280,9 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindByBuildFail() {
 func (s *TaskConnectorFetchByBuildSuite) TestFindByBuildAndStatus() {
 	buildId := "build_1"
 	tids := s.taskIds[1]
-	dc := DBTaskConnector{}
 	for _, sort := range []int{1, -1} {
 		for i := 0; i < s.numTasks; i++ {
-			foundTasks, err := dc.FindTasksByBuildId(buildId, tids[i],
+			foundTasks, err := FindTasksByBuildId(buildId, tids[i],
 				"", 0, sort)
 			s.Nil(err)
 
@@ -317,11 +309,10 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddle() {
 	buildId := "build_0"
 	limit := 2
 	tids := s.taskIds[0]
-	dc := DBTaskConnector{}
 	for i := 0; i < s.numTasks/limit; i++ {
 		index := i * limit
 		taskName := tids[index]
-		foundTasks, err := dc.FindTasksByBuildId(buildId, taskName,
+		foundTasks, err := FindTasksByBuildId(buildId, taskName,
 			"", limit, 1)
 		s.Nil(err)
 		s.Equal(limit, len(foundTasks))
@@ -332,8 +323,7 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddle() {
 }
 
 func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleTaskFail() {
-	dc := DBTaskConnector{}
-	foundTests, err := dc.FindTasksByBuildId("build_0", "fake_task", "", 0, 1)
+	foundTests, err := FindTasksByBuildId("build_0", "fake_task", "", 0, 1)
 	s.NotNil(err)
 	s.Equal(0, len(foundTests))
 
@@ -344,15 +334,13 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleTaskFail() {
 }
 
 func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleBuildFail() {
-	dc := DBTaskConnector{}
-	foundTests, err := dc.FindTasksByBuildId("fake_build", "", "", 0, 1)
+	foundTests, err := FindTasksByBuildId("fake_build", "", "", 0, 1)
 	s.NoError(err)
 	s.Equal(0, len(foundTests))
 }
 func (s *TaskConnectorFetchByBuildSuite) TestFindEmptyTaskId() {
-	dc := DBTaskConnector{}
 	buildId := "build_0"
-	foundTasks, err := dc.FindTasksByBuildId(buildId, "", "", 1, 1)
+	foundTasks, err := FindTasksByBuildId(buildId, "", "", 1, 1)
 	s.Nil(err)
 	s.Equal(1, len(foundTasks))
 	task1 := foundTasks[0]
@@ -424,10 +412,9 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit() {
-	dc := DBTaskConnector{}
 	for pix := 0; pix < s.numProjects; pix++ {
 		for cix := 0; cix < s.numCommits; cix++ {
-			foundTasks, err := dc.FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
+			foundTasks, err := FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
 				fmt.Sprintf("commit_%d", cix), "", "", 0)
 			s.NoError(err)
 			s.Equal(s.numTasks, len(foundTasks))
@@ -439,8 +426,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit()
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
-	dc := DBTaskConnector{}
-	foundTests, err := dc.FindTasksByProjectAndCommit("fake_project", "commit_0", "", "", 0)
+	foundTests, err := FindTasksByProjectAndCommit("fake_project", "commit_0", "", "", 0)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
@@ -451,8 +437,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByCommitFail() {
-	dc := DBTaskConnector{}
-	foundTests, err := dc.FindTasksByProjectAndCommit("project_0", "fake_commit", "", "", 0)
+	foundTests, err := FindTasksByProjectAndCommit("project_0", "fake_commit", "", "", 0)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
@@ -463,11 +448,10 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByCommitFail() {
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAndStatus() {
-	dc := DBTaskConnector{}
 	for _, status := range []string{"pass", "fail"} {
 		for pix := 0; pix < s.numProjects; pix++ {
 			for cix := 0; cix < s.numCommits; cix++ {
-				foundTasks, err := dc.FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
+				foundTasks, err := FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
 					fmt.Sprintf("commit_%d", cix), "", status, 0)
 				s.Nil(err)
 				s.Equal(s.numTasks/2, len(foundTasks))
@@ -483,9 +467,8 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 	commitId := "commit_1"
 	projectId := "project_1"
 	tids := s.taskIds[1][1]
-	dc := DBTaskConnector{}
 	for i := 0; i < s.numTasks; i++ {
-		foundTasks, err := dc.FindTasksByProjectAndCommit(projectId, commitId, tids[i], "", 0)
+		foundTasks, err := FindTasksByProjectAndCommit(projectId, commitId, tids[i], "", 0)
 		s.NoError(err)
 
 		startAt := 0
@@ -500,8 +483,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddleFail() {
-	dc := DBTaskConnector{}
-	foundTests, err := dc.FindTasksByProjectAndCommit("project_0", "commit_0", "fake_task", "", 0)
+	foundTests, err := FindTasksByProjectAndCommit("project_0", "commit_0", "fake_task", "", 0)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
@@ -516,11 +498,10 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 	projectId := "project_0"
 	limit := 2
 	tids := s.taskIds[0][0]
-	dc := DBTaskConnector{}
 	for i := 0; i < s.numTasks/limit; i++ {
 		index := i * limit
 		taskName := tids[index]
-		foundTasks, err := dc.FindTasksByProjectAndCommit(projectId, commitId, taskName, "", limit)
+		foundTasks, err := FindTasksByProjectAndCommit(projectId, commitId, taskName, "", limit)
 		s.NoError(err)
 		s.Equal(limit, len(foundTasks))
 		for ix, t := range foundTasks {
@@ -532,8 +513,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindEmptyProjectAndCommit() {
 	projectId := "project_0"
 	commitId := "commit_0"
-	dc := DBTaskConnector{}
-	foundTasks, err := dc.FindTasksByProjectAndCommit(projectId, commitId, "", "", 1)
+	foundTasks, err := FindTasksByProjectAndCommit(projectId, commitId, "", "", 1)
 	s.NoError(err)
 	s.Equal(1, len(foundTasks))
 	task1 := foundTasks[0]
@@ -567,10 +547,9 @@ func (s *TaskConnectorAbortTaskSuite) TestAbort() {
 		Id: "user1",
 	}
 	s.NoError(u.Insert())
-	dc := DBTaskConnector{}
-	err := dc.AbortTask("task1", "user1")
+	err := AbortTask("task1", "user1")
 	s.NoError(err)
-	foundTask, err := dc.FindTaskById("task1")
+	foundTask, err := FindTaskById("task1")
 	s.NoError(err)
 	s.Equal("user1", foundTask.AbortInfo.User)
 	s.Equal(true, foundTask.Aborted)
@@ -584,8 +563,7 @@ func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
 		Id: "user1",
 	}
 	s.NoError(u.Insert())
-	dc := DBTaskConnector{}
-	err := dc.AbortTask("task1", "user1")
+	err := AbortTask("task1", "user1")
 	s.Error(err)
 }
 
@@ -596,8 +574,6 @@ func TestCheckTaskSecret(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection))
-
-	sc := &DBConnector{}
 
 	task := task.Task{
 		Id:     "task1",
@@ -610,12 +586,12 @@ func TestCheckTaskSecret(t *testing.T) {
 			evergreen.TaskHeader: []string{"task1"},
 		},
 	}
-	code, err := sc.CheckTaskSecret("task1", r)
+	code, err := CheckTaskSecret("task1", r)
 	assert.Error(err)
 	assert.Equal(http.StatusUnauthorized, code)
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
-	code, err = sc.CheckTaskSecret("task1", r)
+	code, err = CheckTaskSecret("task1", r)
 	assert.NoError(err)
 	assert.Equal(http.StatusOK, code)
 }

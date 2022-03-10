@@ -66,8 +66,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	// Fetch all of the tasks to be returned in this page plus the tasks used for
 	// calculating information about the next page. Here the limit is multiplied
 	// by two to fetch the next page.
-	dc := data.DBTaskConnector{}
-	tasks, err := dc.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
+	tasks, err := data.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -115,7 +114,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		if tbh.fetchAllExecutions {
 			var oldTasks []task.Task
 
-			oldTasks, err = dc.FindOldTasksByIDWithDisplayTasks(tasks[i].Id)
+			oldTasks, err = data.FindOldTasksByIDWithDisplayTasks(tasks[i].Id)
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}

@@ -41,20 +41,19 @@ func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) er
 
 func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	dc := data.DBUserConnector{}
 	userSettings, err := model.UpdateUserSettings(ctx, u, h.settings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	if err = dc.UpdateSettings(u, *userSettings); err != nil {
+	if err = data.UpdateSettings(u, *userSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error saving user settings"))
 	}
 
 	if h.settings.SpruceFeedback != nil {
 		h.settings.SpruceFeedback.SubmittedAt = model.ToTimePtr(time.Now())
 		h.settings.SpruceFeedback.User = utility.ToStringPtr(u.Username())
-		if err = dc.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
+		if err = data.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
@@ -132,8 +131,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBUserConnector{}
-	u, err := dc.FindUserById(h.userID)
+	u, err := data.FindUserById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -214,8 +212,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBUserConnector{}
-	u, err := dc.FindUserById(h.userID)
+	u, err := data.FindUserById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -491,8 +488,7 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBUserConnector{}
-	u, err := dc.FindUserById(h.userID)
+	u, err := data.FindUserById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -624,8 +620,7 @@ func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.u == nil {
 		return gimlet.NewJSONInternalErrorResponse("error reading request body")
 	}
-	dc := data.DBUserConnector{}
-	err := dc.AddOrUpdateServiceUser(*h.u)
+	err := data.AddOrUpdateServiceUser(*h.u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -654,8 +649,7 @@ func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBUserConnector{}
-	err := dc.DeleteServiceUser(h.username)
+	err := data.DeleteServiceUser(h.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -679,8 +673,7 @@ func (h *serviceUsersGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *serviceUsersGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBUserConnector{}
-	users, err := dc.GetServiceUsers()
+	users, err := data.GetServiceUsers()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

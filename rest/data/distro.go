@@ -13,12 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBDistroConnector is a struct that implements the Distro related methods
-// from the Connector through interactions with the backing database.
-type DBDistroConnector struct{}
-
 // FindDistroById queries the database to find a given distros.
-func (dc *DBDistroConnector) FindDistroById(distroId string) (*distro.Distro, error) {
+func FindDistroById(distroId string) (*distro.Distro, error) {
 	d, err := distro.FindOne(distro.ById(distroId))
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -30,7 +26,7 @@ func (dc *DBDistroConnector) FindDistroById(distroId string) (*distro.Distro, er
 }
 
 // FindAllDistros queries the database to find all distros.
-func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
+func FindAllDistros() ([]distro.Distro, error) {
 	distros, err := distro.Find(distro.All)
 	if err != nil {
 		return nil, err
@@ -45,7 +41,7 @@ func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 }
 
 // UpdateDistro updates the given distro.Distro.
-func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
+func UpdateDistro(old, new *distro.Distro) error {
 	if old.Id != new.Id {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -73,7 +69,7 @@ func (dc *DBDistroConnector) UpdateDistro(old, new *distro.Distro) error {
 }
 
 // CreateDistro inserts the given distro.Distro.
-func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
+func CreateDistro(distro *distro.Distro) error {
 	err := distro.Insert()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -85,7 +81,7 @@ func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
 }
 
 // DeleteDistroById removes a given distro from the database based on its id.
-func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
+func DeleteDistroById(distroId string) error {
 	d, err := distro.FindByID(distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -138,6 +134,6 @@ func getDefaultProviderSettings(d *distro.Distro) (map[string]interface{}, error
 }
 
 // ClearTaskQueue deletes all tasks from the task queue for a distro
-func (tc *DBDistroConnector) ClearTaskQueue(distroId string) error {
+func ClearTaskQueue(distroId string) error {
 	return model.ClearTaskQueue(distroId)
 }

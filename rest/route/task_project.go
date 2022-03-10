@@ -67,8 +67,7 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	tasks, err := dc.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.limit+1)
+	tasks, err := data.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.limit+1)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}

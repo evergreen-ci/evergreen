@@ -132,8 +132,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	dc := data.DBProjectConnector{}
-	vars, err := dc.FindProjectVarsById("dimoxinil", "", false)
+	vars, err := data.FindProjectVarsById("dimoxinil", "", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)
@@ -173,8 +172,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
-	dc := data.DBProjectConnector{}
-	pRef, err := dc.FindProjectById("dimoxinil", false, false)
+	pRef, err := data.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().Equal("EVG", pRef.BuildBaronSettings.TicketCreateProject)
 }
@@ -229,8 +227,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	// verify that the repo fields weren't saved with the branch
-	dc := data.DBProjectConnector{}
-	p, err := dc.FindProjectById("dimoxinil", false, false)
+	p, err := data.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.Empty(p.GitTagAuthorizedUsers)
@@ -255,8 +252,7 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	dc := data.DBProjectConnector{}
-	p, err := dc.FindProjectById("dimoxinil", true, false)
+	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.False(p.FilesIgnoredFromCache == nil)
 	s.Len(p.FilesIgnoredFromCache, 0)
@@ -289,8 +285,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	dc := data.DBProjectConnector{}
-	p, err := dc.FindProjectById("dimoxinil", true, false)
+	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.False(p.PatchTriggerAliases == nil)
 	s.Len(p.PatchTriggerAliases, 1)
@@ -307,7 +302,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err = dc.FindProjectById("dimoxinil", true, false)
+	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.NotNil(p.PatchTriggerAliases)
 	s.Len(p.PatchTriggerAliases, 0)
@@ -322,7 +317,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err = dc.FindProjectById("dimoxinil", true, false)
+	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.Nil(p.PatchTriggerAliases)
 }
@@ -332,7 +327,6 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 // Tests for PUT /rest/v2/projects/{project_id}
 
 type ProjectPutSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -416,8 +410,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusCreated)
 
-	dc := data.DBProjectConnector{}
-	p, err := dc.FindProjectById("nutsandgum", false, false)
+	p, err := data.FindProjectById("nutsandgum", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.NotEqual("nutsandgum", p.Id)
@@ -447,7 +440,6 @@ func (s *ProjectPutSuite) TestRunExistingFails() {
 // Tests for GET /rest/v2/projects/{project_id}
 
 type ProjectGetByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -489,8 +481,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
-	dc := data.DBProjectConnector{}
-	cachedProject, err := dc.FindProjectById(h.projectName, false, false)
+	cachedProject, err := data.FindProjectById(h.projectName, false, false)
 	s.NoError(err)
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
@@ -518,7 +509,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
-	sc    *data.DBConnector
 	route *projectGetHandler
 
 	suite.Suite
@@ -1003,7 +993,6 @@ func TestDetachProjectFromRepo(t *testing.T) {
 // Tests for PUT /rest/v2/projects/variables/rotate
 
 type ProjectPutRotateSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite

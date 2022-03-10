@@ -21,7 +21,7 @@ import (
 type DBVersionConnector struct{}
 
 // FindVersionById queries the backing database for the version with the given versionId.
-func (vc *DBVersionConnector) FindVersionById(versionId string) (*model.Version, error) {
+func FindVersionById(versionId string) (*model.Version, error) {
 	v, err := model.VersionFindOne(model.VersionById(versionId))
 	if err != nil {
 		return nil, err
@@ -35,17 +35,17 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*model.Version,
 	return v, nil
 }
 
-func (vc *DBVersionConnector) FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
+func FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
 	return model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
 }
 
-func (vc *DBVersionConnector) AddGitTagToVersion(versionId string, gitTag model.GitTag) error {
+func AddGitTagToVersion(versionId string, gitTag model.GitTag) error {
 	return model.AddGitTag(versionId, gitTag)
 }
 
 // AbortVersion aborts all tasks of a version given its ID.
 // It wraps the service level AbortModel.Version
-func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
+func AbortVersion(versionId, caller string) error {
 	return task.AbortVersion(versionId, task.AbortInfo{User: caller})
 }
 
@@ -53,16 +53,16 @@ func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
 // completed tasks associated with a given versionId. If abortInProgress is
 // true, it also sets the abort flag on any in-progress tasks. In addition, it
 // updates all builds containing the tasks affected.
-func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) error {
+func RestartVersion(versionId string, caller string) error {
 	return model.RestartTasksInVersion(versionId, true, caller)
 }
 
-func (bc *DBVersionConnector) LoadProjectForVersion(v *model.Version, projectId string) (model.ProjectInfo, error) {
+func LoadProjectForVersion(v *model.Version, projectId string) (model.ProjectInfo, error) {
 	return model.LoadProjectForVersion(v, projectId, false)
 }
 
 // GetProjectVersionsWithOptions returns the versions that fit the given constraint.
-func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
 	versions, err := model.GetVersionsWithOptions(projectName, opts)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (vc *DBVersionConnector) GetProjectVersionsWithOptions(projectName string, 
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements int, project *model.Project) (*restModel.VersionVariantData, error) {
+func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project) (*restModel.VersionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []restModel.APIVersions{}
 

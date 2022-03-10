@@ -52,16 +52,13 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = repoModel.BuildFromService(repo.ProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem converting repo document"))
 	}
-
-	dc := data.DBProjectConnector{}
-	ac := data.DBAliasConnector{}
-	repoVars, err := dc.FindProjectVarsById("", repo.Id, true)
+	repoVars, err := data.FindProjectVarsById("", repo.Id, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	repoModel.Variables = *repoVars
 
-	if repoModel.Aliases, err = ac.FindProjectAliases("", repo.Id, nil); err != nil {
+	if repoModel.Aliases, err = data.FindProjectAliases("", repo.Id, nil); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
@@ -139,10 +136,7 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBProjectConnector{}
-	ac := data.DBAliasConnector{}
-	sc := data.DBSubscriptionConnector{}
-	before, err := dc.GetProjectSettings(&h.newRepoRef.ProjectRef)
+	before, err := data.GetProjectSettings(&h.newRepoRef.ProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings before update for repo '%s'", h.repoName))
 	}
@@ -182,7 +176,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalRepo.GitTagAuthorizedTeams, h.newRepoRef.GitTagAuthorizedTeams...))
 	h.newRepoRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	repoAliases, err := ac.FindProjectAliases("", h.newRepoRef.Id, h.apiNewRepoRef.Aliases)
+	repoAliases, err := data.FindProjectAliases("", h.newRepoRef.Id, h.apiNewRepoRef.Aliases)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -207,13 +201,13 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = dc.UpdateRepo(h.newRepoRef); err != nil {
+	if err = data.UpdateRepo(h.newRepoRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() for '%s'", h.repoName))
 	}
-	if err = dc.UpdateProjectVars(h.newRepoRef.Id, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
+	if err = data.UpdateProjectVars(h.newRepoRef.Id, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.repoName))
 	}
-	if err = ac.UpdateProjectAliases(h.newRepoRef.Id, h.apiNewRepoRef.Aliases); err != nil {
+	if err = data.UpdateProjectAliases(h.newRepoRef.Id, h.apiNewRepoRef.Aliases); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.repoName))
 	}
 
@@ -221,7 +215,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.repoName))
 	}
 
-	if err = sc.SaveSubscriptions(h.newRepoRef.Id, h.apiNewRepoRef.Subscriptions, true); err != nil {
+	if err = data.SaveSubscriptions(h.newRepoRef.Id, h.apiNewRepoRef.Subscriptions, true); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.repoName))
 	}
 
@@ -229,11 +223,11 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, deleteSub := range h.apiNewRepoRef.DeleteSubscriptions {
 		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
-	if err = sc.DeleteSubscriptions(h.newRepoRef.Id, toDelete); err != nil {
+	if err = data.DeleteSubscriptions(h.newRepoRef.Id, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.repoName))
 	}
 
-	after, err := dc.GetProjectSettings(&h.newRepoRef.ProjectRef)
+	after, err := data.GetProjectSettings(&h.newRepoRef.ProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings after update for project '%s'", h.repoName))
 	}
@@ -255,9 +249,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepoRef *dbModel.RepoRef, mergedRepos []dbModel.ProjectRef, aliases []model.APIProjectAlias) error {
-	dc := data.DBProjectConnector{}
-	ac := data.DBAliasConnector{}
-	hasHook, err := dc.EnableWebhooks(ctx, &newRepoRef.ProjectRef)
+	hasHook, err := data.EnableWebhooks(ctx, &newRepoRef.ProjectRef)
 	if err != nil {
 		return errors.Wrapf(err, "error enabling webhooks for repo '%s'", h.repoName)
 	}
@@ -319,7 +311,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 					catcher.Errorf("if repo PR testing enabled, must have aliases")
 				} else if len(info.prTestingIds) > 0 {
 					// verify that the project with PR testing enabled has aliases defined
-					branchAliases, err := ac.FindProjectAliases(info.prTestingIds[0], "", nil)
+					branchAliases, err := data.FindProjectAliases(info.prTestingIds[0], "", nil)
 					if err != nil {
 						return errors.Wrapf(err, "error getting branch '%s' aliases", info.prTestingIds[0])
 					}
@@ -335,7 +327,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 					catcher.Errorf("if repo commit queue enabled, must have aliases")
 				} else if len(info.commitQueueIds) > 0 {
 					// verify that the branch with the commit queue enabled has aliases defined in the branch
-					branchAliases, err := ac.FindProjectAliases(info.commitQueueIds[0], "", nil)
+					branchAliases, err := data.FindProjectAliases(info.commitQueueIds[0], "", nil)
 					if err != nil {
 						return errors.Wrapf(err, "error getting branch '%s' aliases", info.commitQueueIds[0])
 					}
@@ -351,7 +343,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 				} else if len(info.gitTagIds) > 0 {
 					for _, branchId := range info.gitTagIds {
 						// verify that the branch with git tag versions enabled has aliases defined in the branch
-						branchAliases, err := ac.FindProjectAliases(branchId, "", nil)
+						branchAliases, err := data.FindProjectAliases(branchId, "", nil)
 						if err != nil {
 							return errors.Wrapf(err, "error getting branch '%s' aliases", branchId)
 						}
@@ -367,7 +359,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 				} else if len(info.githubCheckIds) > 0 {
 					for _, branchId := range info.githubCheckIds {
 						// verify that the branch with github checks versions enabled has aliases defined in the branch
-						branchAliases, err := ac.FindProjectAliases(branchId, "", nil)
+						branchAliases, err := data.FindProjectAliases(branchId, "", nil)
 						if err != nil {
 							return errors.Wrapf(err, "error getting branch '%s' aliases", branchId)
 						}

@@ -115,8 +115,7 @@ func GetFormattedDate(t *time.Time, timezone string) (*string, error) {
 }
 
 func getVersionBaseTasks(versionID string) ([]task.Task, error) {
-	dc := data.DBVersionConnector{}
-	version, err := dc.FindVersionById(versionID)
+	version, err := data.FindVersionById(versionID)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
 	}
@@ -498,9 +497,8 @@ func generateBuildVariants(versionId string, searchVariants []string, searchTask
 		IncludeBaseTasks:               true,
 		IncludeBuildVariantDisplayName: true,
 	}
-	dc := data.DBTaskConnector{}
 	start := time.Now()
-	tasks, _, err := dc.FindTasksByVersion(versionId, opts)
+	tasks, _, err := data.FindTasksByVersion(versionId, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
 	}
@@ -675,8 +673,7 @@ func ModifyVersion(version model.Version, user user.DBUser, modifications Versio
 
 // ModifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
 func ModifyVersionHandler(ctx context.Context, patchID string, modifications VersionModifications) error {
-	dc := data.DBVersionConnector{}
-	version, err := dc.FindVersionById(patchID)
+	version, err := data.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}
@@ -1262,8 +1259,7 @@ func setVersionActivationStatus(version *model.Version) error {
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	dc := data.DBTaskConnector{}
-	tasks, _, err := dc.FindTasksByVersion(version.Id, opts)
+	tasks, _, err := data.FindTasksByVersion(version.Id, opts)
 	if err != nil {
 		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
 	}

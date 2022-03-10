@@ -72,7 +72,6 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.mockSc = &data.MockGitHubConnector{
 		MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{},
 	}
-	s.sc = &data.DBConnector{}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
@@ -375,10 +374,10 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 
 	// try dequeue works when an item matches
-	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: utility.ToStringPtr("1")}, false)
+	_, err := data.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: utility.ToStringPtr("1")}, false)
 	s.NoError(err)
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
-	queue, err := s.sc.FindCommitQueueForProject("bth")
+	queue, err := data.FindCommitQueueForProject("bth")
 	s.NoError(err)
 	s.Empty(queue.Queue)
 

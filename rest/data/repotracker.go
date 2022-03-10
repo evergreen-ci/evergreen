@@ -21,9 +21,7 @@ import (
 
 const branchRefPrefix = "refs/heads/"
 
-type RepoTrackerConnector struct{}
-
-func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) error {
+func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) error {
 	branch, err := validatePushEvent(event)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

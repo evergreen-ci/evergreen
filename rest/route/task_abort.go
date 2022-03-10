@@ -28,13 +28,12 @@ func (t *taskAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	err := dc.AbortTask(t.taskId, MustHaveUser(ctx).Id)
+	err := data.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
-	foundTask, err := dc.FindTaskById(t.taskId)
+	foundTask, err := data.FindTaskById(t.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

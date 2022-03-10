@@ -57,8 +57,7 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.GenerateConnector{}
-	if err := dc.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
+	if err := data.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
 			"task_id": h.taskID,
@@ -93,8 +92,7 @@ func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.GenerateConnector{}
-	finished, jobErrs, err := dc.GeneratePoll(ctx, h.taskID, h.queue)
+	finished, jobErrs, err := data.GeneratePoll(ctx, h.taskID, h.queue)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error polling for generated tasks",

@@ -108,14 +108,13 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Len(newProject.Admins, 1)
 	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
-	dc := data.DBProjectConnector{}
-	res, err := dc.FindProjectById("projectC", false, false)
+	res, err := data.FindProjectById("projectC", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	res, err = dc.FindProjectById("projectA", false, false)
+	res, err = data.FindProjectById("projectA", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	vars, err := dc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
+	vars, err := data.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
 	s.NoError(err)
 	s.Require().NotNil(vars)
 	s.Len(vars.Vars, 2)

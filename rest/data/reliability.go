@@ -7,10 +7,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TaskReliabilityConnector struct{}
-
 // GetTaskReliabilityScores queries the service backend to retrieve the task reliability scores that match the given filter.
-func (sc *TaskReliabilityConnector) GetTaskReliabilityScores(filter reliability.TaskReliabilityFilter) ([]restModel.APITaskReliability, error) {
+func GetTaskReliabilityScores(filter reliability.TaskReliabilityFilter) ([]restModel.APITaskReliability, error) {
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {

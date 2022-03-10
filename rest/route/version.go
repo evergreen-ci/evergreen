@@ -41,8 +41,7 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 // Execute calls the data FindVersionById function and returns the version
 // from the provider.
 func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBVersionConnector{}
-	foundVersion, err := dc.FindVersionById(vh.versionId)
+	foundVersion, err := data.FindVersionById(vh.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -90,9 +89,7 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 // build variant for the version, and returns the data.
 func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	// First, find the version by its ID.
-	dc := data.DBVersionConnector{}
-	bc := data.DBBuildConnector{}
-	foundVersion, err := dc.FindVersionById(h.versionId)
+	foundVersion, err := data.FindVersionById(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the version"))
 	}
@@ -104,7 +101,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.variant != "" && buildStatus.BuildVariant != h.variant {
 			continue
 		}
-		foundBuild, err := bc.FindBuildById(buildStatus.BuildId)
+		foundBuild, err := data.FindBuildById(buildStatus.BuildId)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the build"))
 		}
@@ -151,12 +148,11 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBVersionConnector{}
-	if err := dc.AbortVersion(h.versionId, h.userId); err != nil {
+	if err := data.AbortVersion(h.versionId, h.userId); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
 	}
 
-	foundVersion, err := dc.FindVersionById(h.versionId)
+	foundVersion, err := data.FindVersionById(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version"))
 	}
@@ -198,14 +194,13 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// Restart the version
-	dc := data.DBVersionConnector{}
-	err := dc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
+	err := data.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in restarting version"))
 	}
 
 	// Find the version to return updated status.
-	foundVersion, err := dc.FindVersionById(h.versionId)
+	foundVersion, err := data.FindVersionById(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version:"))
 	}

@@ -36,8 +36,7 @@ func (h *clearTaskQueueHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *clearTaskQueueHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBDistroConnector{}
-	if err := dc.ClearTaskQueue(h.distro); err != nil {
+	if err := data.ClearTaskQueue(h.distro); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

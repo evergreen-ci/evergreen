@@ -72,16 +72,15 @@ func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 		EndTime:            h.EndTime,
 		User:               u.Username(),
 	}
-	dc := data.DBAdminConnector{}
 	if h.restartType == evergreen.RestartVersions {
-		resp, err := dc.RestartFailedCommitQueueVersions(opts)
+		resp, err := data.RestartFailedCommitQueueVersions(opts)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error restarting versions"))
 		}
 		return gimlet.NewJSONResponse(resp)
 	}
 
-	resp, err := dc.RestartFailedTasks(h.queue, opts)
+	resp, err := data.RestartFailedTasks(h.queue, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error restarting tasks"))
 	}

@@ -47,9 +47,8 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
-	dc := data.DBContextConnector{}
 
-	opCtx, err := dc.FetchContext(taskId, buildId, versionId, patchId, projectId)
+	opCtx, err := data.FetchContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -236,9 +235,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	dc := data.DBHostConnector{}
-	tc := data.DBTaskConnector{}
-	h, err := dc.FindHostById(hostID)
+	h, err := data.FindHostById(hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -258,12 +255,12 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-	t, err := tc.FindTaskById(h.StartedBy)
+	t, err := data.FindTaskById(h.StartedBy)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
-	if code, err := dc.CheckHostSecret(t.HostId, r); err != nil {
+	if code, err := data.CheckHostSecret(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
@@ -294,8 +291,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	dc := data.DBHostConnector{}
-	if statusCode, err := dc.CheckHostSecret(hostID, r); err != nil {
+	if statusCode, err := data.CheckHostSecret(hostID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
 			Message:    err.Error(),
@@ -327,8 +323,7 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
 		return
 	}
-	dc := data.DBPodConnector{}
-	if err := dc.CheckPodSecret(id, secret); err != nil {
+	if err := data.CheckPodSecret(id, secret); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
@@ -355,16 +350,14 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	dc := data.DBHostConnector{}
-	tc := data.DBTaskConnector{}
-	if code, err := tc.CheckTaskSecret(taskID, r); err != nil {
+	if code, err := data.CheckTaskSecret(taskID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
 		}))
 		return
 	}
-	if code, err := dc.CheckHostSecret("", r); err != nil {
+	if code, err := data.CheckHostSecret("", r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
@@ -390,7 +383,6 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 	user := MustHaveUser(ctx)
 	opCtx := MustHaveProjectContext(ctx)
 	projRef, err := opCtx.GetProjectRef()
-	dc := data.DBPatchConnector{}
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -434,7 +426,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 	}
 
 	if bson.IsObjectIdHex(itemId) {
-		patch, err := dc.FindPatchById(itemId)
+		patch, err := data.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
 			return
@@ -525,8 +517,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	if bson.IsObjectIdHex(itemId) {
-		dc := data.DBPatchConnector{}
-		patch, err := dc.FindPatchById(itemId)
+		patch, err := data.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
 			return

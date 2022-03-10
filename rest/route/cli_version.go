@@ -23,8 +23,7 @@ func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
-	dc := data.CLIUpdateConnector{}
-	version, err := dc.GetCLIUpdate()
+	version, err := data.GetCLIUpdate()
 	if err != nil || version == nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

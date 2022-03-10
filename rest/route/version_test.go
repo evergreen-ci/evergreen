@@ -214,8 +214,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	dc := data.DBVersionConnector{}
-	v, err := dc.FindVersionById("versionId")
+	v, err := data.FindVersionById("versionId")
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
 }

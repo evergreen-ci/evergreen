@@ -75,10 +75,10 @@ func (s *CommitQueueSuite) SetupTest() {
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("5678")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("5678")}, false)
 	s.NoError(err)
 	s.Equal(1, pos)
 
@@ -89,7 +89,7 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Equal("5678", q.Queue[1].Issue)
 
 	// move to front
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
 	s.NoError(err)
 	s.Equal(0, pos)
 	q, err = commitqueue.FindOneId("mci")
@@ -99,79 +99,79 @@ func (s *CommitQueueSuite) TestEnqueue() {
 }
 
 func (s *CommitQueueSuite) TestFindCommitQueueByID() {
-	cq, err := s.ctx.FindCommitQueueForProject("mci")
+	cq, err := FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("mci"), cq.ProjectID)
 }
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("3")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("3")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
-	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
+	found, err := CommitQueueRemoveItem("mci", "not_here", "user")
 	s.Error(err)
 	s.Nil(found)
 
-	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
+	found, err = CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.NotNil(found)
-	cq, err := s.ctx.FindCommitQueueForProject("mci")
+	cq, err := FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(utility.ToStringPtr("3"), cq.Queue[1].Issue)
 }
 
 func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
 
-	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
+	exists, err := IsItemOnCommitQueue("mci", "1")
 	s.NoError(err)
 	s.True(exists)
 
-	exists, err = s.ctx.IsItemOnCommitQueue("mci", "2")
+	exists, err = IsItemOnCommitQueue("mci", "2")
 	s.NoError(err)
 	s.False(exists)
 
-	exists, err = s.ctx.IsItemOnCommitQueue("not-a-project", "1")
+	exists, err = IsItemOnCommitQueue("not-a-project", "1")
 	s.Error(err)
 	s.False(exists)
 }
 
 func (s *CommitQueueSuite) TestCommitQueueClearAll() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("56")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("56")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
 	q := &commitqueue.CommitQueue{ProjectID: "logkeeper"}
 
 	// Only one queue is cleared since the second is empty
-	clearedCount, err := s.ctx.CommitQueueClearAll()
+	clearedCount, err := CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(1, clearedCount)
 
 	// both queues have items
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
 	pos, err = q.Enqueue(commitqueue.CommitQueueItem{Issue: "78"})
 	s.NoError(err)
 	s.Equal(0, pos)
-	clearedCount, err = s.ctx.CommitQueueClearAll()
+	clearedCount, err = CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
 }
@@ -238,7 +238,7 @@ buildvariants:
 	s.Require().NoError(err)
 	s.Require().NotNil(existingPatch)
 
-	newPatch, err := s.ctx.CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), "")
+	newPatch, err := CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), "")
 	s.NoError(err)
 	s.NotNil(newPatch)
 
@@ -259,10 +259,10 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.NoError(err)
 	s.Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("5678")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("5678")}, false)
 	s.NoError(err)
 	s.Equal(1, pos)
 
@@ -274,7 +274,7 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.Equal("5678", utility.FromStringPtr(&cq.Queue[1].Issue))
 
 	// move to front
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("important")}, true)
 	s.NoError(err)
 	s.Equal(0, pos)
 	cq, err = commitqueue.FindOneId("mci")
@@ -288,74 +288,74 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 }
 
 func (s *CommitQueueSuite) TestMockFindCommitQueueForProject() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1234")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
 
-	cq, err := s.ctx.FindCommitQueueForProject("mci")
+	cq, err := FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("mci"), cq.ProjectID)
 	s.Equal(utility.ToStringPtr("1234"), cq.Queue[0].Issue)
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("2")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("3")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("3")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(2, pos)
 
-	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here", "user")
+	found, err := CommitQueueRemoveItem("mci", "not_here", "user")
 	s.Error(err)
 	s.Nil(found)
 
-	found, err = s.ctx.CommitQueueRemoveItem("mci", "1", "user")
+	found, err = CommitQueueRemoveItem("mci", "1", "user")
 	s.NoError(err)
 	s.NotNil(found)
-	cq, err := s.ctx.FindCommitQueueForProject("mci")
+	cq, err := FindCommitQueueForProject("mci")
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(utility.ToStringPtr("3"), cq.Queue[1].Issue)
 }
 
 func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
 
-	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
+	exists, err := IsItemOnCommitQueue("mci", "1")
 	s.NoError(err)
 	s.True(exists)
 
-	exists, err = s.ctx.IsItemOnCommitQueue("mci", "2")
+	exists, err = IsItemOnCommitQueue("mci", "2")
 	s.NoError(err)
 	s.False(exists)
 
-	exists, err = s.ctx.IsItemOnCommitQueue("not-a-project", "1")
+	exists, err = IsItemOnCommitQueue("not-a-project", "1")
 	s.Error(err)
 	s.False(exists)
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
-	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
+	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
+	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
-	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
+	pos, err = EnqueueItem("logkeeper", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(0, pos)
-	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
+	pos, err = EnqueueItem("logkeeper", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
-	clearedCount, err := s.ctx.CommitQueueClearAll()
+	clearedCount, err := CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
 }
@@ -411,9 +411,8 @@ func TestConcludeMerge(t *testing.T) {
 		Queue:     []commitqueue.CommitQueueItem{{Issue: itemID.Hex(), Version: itemID.Hex()}},
 	}
 	require.NoError(t, commitqueue.InsertQueue(queue))
-	dc := &DBCommitQueueConnector{}
 
-	assert.NoError(t, dc.ConcludeMerge(itemID.Hex(), "foo"))
+	assert.NoError(t, ConcludeMerge(itemID.Hex(), "foo"))
 
 	queue, err := commitqueue.FindOneId(projectID)
 	require.NoError(t, err)

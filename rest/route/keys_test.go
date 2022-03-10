@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -157,14 +156,12 @@ func TestKeyValidation(t *testing.T) {
 }
 
 type UserConnectorDeleteSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 	suite.Suite
 }
 
 func (s *UserConnectorDeleteSuite) SetupTest() {
 	s.NoError(db.ClearCollections(user.Collection))
-	s.sc = &data.DBConnector{DBUserConnector: data.DBUserConnector{}}
 	user0 := user.DBUser{
 		Id:     "user0",
 		APIKey: "apikey0",

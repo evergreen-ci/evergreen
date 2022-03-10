@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -21,8 +20,7 @@ import (
 
 // StatusSuite enables testing for version related routes.
 type StatusSuite struct {
-	sc *data.DBConnector
-	h  *recentTasksGetHandler
+	h *recentTasksGetHandler
 
 	suite.Suite
 }
@@ -33,11 +31,6 @@ func TestStatusSuite(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatusSuite))
-}
-func (s *StatusSuite) SetupSuite() {
-	s.sc = &data.DBConnector{
-		DBStatusConnector: data.DBStatusConnector{},
-	}
 }
 
 func (s *StatusSuite) SetupTest() {

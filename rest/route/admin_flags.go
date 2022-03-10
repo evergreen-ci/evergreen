@@ -34,8 +34,7 @@ func (h *flagsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	dc := data.DBAdminConnector{}
-	err = dc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
+	err = data.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

@@ -27,8 +27,7 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBAdminConnector{}
-	settings, err := dc.GetEvergreenSettings()
+	settings, err := data.GetEvergreenSettings()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -57,8 +56,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBAdminConnector{}
-	settings, err := dc.GetEvergreenSettings()
+	settings, err := data.GetEvergreenSettings()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -86,14 +84,13 @@ func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	dc := data.DBAdminConnector{}
-	oldSettings, err := dc.GetEvergreenSettings()
+	oldSettings, err := data.GetEvergreenSettings()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving existing settings"))
 	}
 
 	// validate the changes
-	newSettings, err := dc.SetEvergreenSettings(h.model, oldSettings, u, false)
+	newSettings, err := data.SetEvergreenSettings(h.model, oldSettings, u, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error applying new settings"))
 	}
@@ -106,7 +103,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Validation error"))
 	}
 
-	_, err = dc.SetEvergreenSettings(h.model, oldSettings, u, true)
+	_, err = data.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

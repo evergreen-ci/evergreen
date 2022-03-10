@@ -35,8 +35,7 @@ func (cq *commitQueueGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (cq *commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	commitQueue, err := dc.FindCommitQueueForProject(cq.project)
+	commitQueue, err := data.FindCommitQueueForProject(cq.project)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get commit queue"))
 	}
@@ -56,7 +55,7 @@ type commitQueueDeleteItemHandler struct {
 	env     evergreen.Environment
 }
 
-func makeDeleteCommitQueueItems(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
+func makeDeleteCommitQueueItems(env evergreen.Environment) gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
 		env: env,
 	}
@@ -78,8 +77,7 @@ func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reque
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
 	dc := data.DBCommitQueueConnector{}
-	pc := data.DBProjectConnector{}
-	projectRef, err := pc.FindProjectById(cq.project, true, false)
+	projectRef, err := data.FindProjectById(cq.project, true, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
 	}
@@ -87,7 +85,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
 	}
 
-	removed, err := dc.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
+	removed, err := data.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
@@ -141,8 +139,7 @@ func (cq *commitQueueClearAllHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	clearedCount, err := dc.CommitQueueClearAll()
+	clearedCount, err := data.CommitQueueClearAll()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't clear commit queues"))
 	}
@@ -167,10 +164,9 @@ func (cq commitQueueEnqueueItemHandler) Factory() gimlet.RouteHandler {
 }
 
 func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Request) error {
-	dc := data.DBPatchConnector{}
 	vars := gimlet.GetVars(r)
 	cq.item = vars["patch_id"]
-	patch, err := dc.FindPatchById(cq.item)
+	patch, err := data.FindPatchById(cq.item)
 	if err != nil {
 		return errors.Wrap(err, "can't find item")
 	}
@@ -184,9 +180,7 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 }
 
 func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	pc := data.DBPatchConnector{}
-	patchEmpty, err := pc.IsPatchEmpty(cq.item)
+	patchEmpty, err := data.IsPatchEmpty(cq.item)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find patch to enqueue"))
 	}
@@ -194,7 +188,7 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(errors.New("can't enqueue item, patch is empty"))
 	}
 	patchId := utility.ToStringPtr(cq.item)
-	position, err := dc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: patchId, PatchId: patchId, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
+	position, err := data.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: patchId, PatchId: patchId, Source: utility.ToStringPtr(commitqueue.SourceDiff)}, cq.force)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}
@@ -224,8 +218,7 @@ func (p *cqMessageForPatch) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *cqMessageForPatch) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	message, err := dc.GetMessageForPatch(p.patchID)
+	message, err := data.GetMessageForPatch(p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -266,8 +259,7 @@ func (p *commitQueueConcludeMerge) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (p *commitQueueConcludeMerge) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	err := dc.ConcludeMerge(p.patchId, p.Status)
+	err := data.ConcludeMerge(p.patchId, p.Status)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -296,8 +288,7 @@ func (p *commitQueueAdditionalPatches) Parse(ctx context.Context, r *http.Reques
 }
 
 func (p *commitQueueAdditionalPatches) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	additional, err := dc.GetAdditionalPatches(p.patchId)
+	additional, err := data.GetAdditionalPatches(p.patchId)
 	if err != nil {
 		gimlet.NewJSONErrorResponse(err)
 	}

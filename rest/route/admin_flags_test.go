@@ -16,7 +16,6 @@ import (
 
 func TestAdminFlagsRouteSuite(t *testing.T) {
 	assert := assert.New(t)
-	sc := &data.DBConnector{}
 
 	postHandler := makeSetServiceFlagsRouteManager()
 	assert.NotNil(postHandler)
@@ -48,7 +47,7 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	settings, err := sc.GetEvergreenSettings()
+	settings, err := data.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(body.Flags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
 	assert.Equal(body.Flags.AgentStartDisabled, settings.ServiceFlags.AgentStartDisabled)

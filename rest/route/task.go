@@ -73,11 +73,10 @@ func (tgh *taskGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	var foundTask *task.Task
 	var err error
-	dc := data.DBTaskConnector{}
 	if tgh.execution == -1 {
-		foundTask, err = dc.FindTaskById(tgh.taskID)
+		foundTask, err = data.FindTaskById(tgh.taskID)
 	} else {
-		foundTask, err = dc.FindTaskByIdAndExecution(tgh.taskID, tgh.execution)
+		foundTask, err = data.FindTaskByIdAndExecution(tgh.taskID, tgh.execution)
 	}
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
@@ -96,7 +95,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
-		tasks, err = dc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		tasks, err = data.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
@@ -188,8 +187,7 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	dc := data.DBTaskConnector{}
-	tasks, err := dc.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
+	tasks, err := data.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -277,7 +275,6 @@ func (tep *taskExecutionPatchHandler) Parse(ctx context.Context, r *http.Request
 // Execute sets the Activated and Priority field of the given task and returns
 // an updated version of the task.
 func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
 	if tep.Priority != nil {
 		priority := *tep.Priority
 		if priority > evergreen.MaxTaskPriority {
@@ -295,17 +292,17 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				})
 			}
 		}
-		if err := dc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
+		if err := data.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
-		if err := dc.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
+		if err := data.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
-	refreshedTask, err := dc.FindTaskById(tep.task.Id)
+	refreshedTask, err := data.FindTaskById(tep.task.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -341,8 +338,7 @@ func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	t, err := dc.FindTaskById(rh.taskID)
+	t, err := data.FindTaskById(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task with ID %s", rh.taskID))
 	}
@@ -386,8 +382,7 @@ func (rh *taskSyncPathGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	t, err := dc.FindTaskById(rh.taskID)
+	t, err := data.FindTaskById(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
@@ -420,8 +415,7 @@ func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Requ
 }
 
 func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	t, err := dc.FindTaskById(rh.taskID)
+	t, err := data.FindTaskById(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
 	}
@@ -451,8 +445,7 @@ func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBAdminConnector{}
-	settings, err := dc.GetEvergreenSettings()
+	settings, err := data.GetEvergreenSettings()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

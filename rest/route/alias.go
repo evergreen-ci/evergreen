@@ -35,8 +35,7 @@ func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if pRef == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", a.name))
 	}
-	dc := data.DBAliasConnector{}
-	aliasModels, err := dc.FindProjectAliases(pRef.Id, pRef.RepoRefId, nil)
+	aliasModels, err := data.FindProjectAliases(pRef.Id, pRef.RepoRefId, nil)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

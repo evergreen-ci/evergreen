@@ -64,20 +64,19 @@ func TestGetSubscriptions(t *testing.T) {
 		assert.NoError(subs[i].Upsert())
 	}
 
-	c := &DBSubscriptionConnector{}
-	apiSubs, err := c.GetSubscriptions("someone", event.OwnerTypePerson)
+	apiSubs, err := GetSubscriptions("someone", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 1)
 
-	apiSubs, err = c.GetSubscriptions("someoneelse", event.OwnerTypePerson)
+	apiSubs, err = GetSubscriptions("someoneelse", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 1)
 
-	apiSubs, err = c.GetSubscriptions("who", event.OwnerTypePerson)
+	apiSubs, err = GetSubscriptions("who", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 0)
 
-	apiSubs, err = c.GetSubscriptions("", event.OwnerTypePerson)
+	apiSubs, err = GetSubscriptions("", event.OwnerTypePerson)
 	assert.EqualError(err, "400 (Bad Request): no subscription owner provided")
 	assert.Len(apiSubs, 0)
 }
@@ -87,27 +86,26 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
 			subs[0].RegexSelectors[0].Data = utility.ToStringPtr("")
-			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
+			assert.Error(t, SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			assert.NoError(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
+			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ModifyExistingSubscription": func(t *testing.T, subs []restModel.APISubscription) {
 			newData := utility.ToStringPtr("5678")
 			subs[1].Selectors[0].Data = newData
-			assert.NoError(t, c.SaveSubscriptions("my-project", []restModel.APISubscription{subs[1]}, true))
+			assert.NoError(t, SaveSubscriptions("my-project", []restModel.APISubscription{subs[1]}, true))
 
-			dbSubs, err := c.GetSubscriptions("my-project", event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions("my-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, dbSubs[0].Selectors[0].Data, newData)
 		},
 		"DisallowedSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[2]}, false))
+			assert.Error(t, SaveSubscriptions("me", []restModel.APISubscription{subs[2]}, false))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -195,13 +193,12 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, ids []string){
 		"InvalidOwner": func(t *testing.T, ids []string) {
-			assert.Error(t, c.DeleteSubscriptions("my-project", ids))
+			assert.Error(t, DeleteSubscriptions("my-project", ids))
 		},
 		"ValidOwner": func(t *testing.T, ids []string) {
-			assert.NoError(t, c.DeleteSubscriptions("my-project", []string{ids[0]}))
+			assert.NoError(t, DeleteSubscriptions("my-project", []string{ids[0]}))
 			subs, err := event.FindSubscriptionsByOwner("my-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
 			assert.Len(t, subs, 0)
@@ -301,18 +298,17 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 	for _, sub := range subs {
 		assert.NoError(t, sub.Upsert())
 	}
-	c := &DBSubscriptionConnector{}
 
 	for name, test := range map[string]func(t *testing.T){
 		"FromNonExistentProject": func(t *testing.T) {
-			assert.NoError(t, c.CopyProjectSubscriptions("not-a-project", "my-new-project"))
+			assert.NoError(t, CopyProjectSubscriptions("not-a-project", "my-new-project"))
 			apiSubs, err := event.FindSubscriptionsByOwner("my-new-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 0)
 		},
 		"FromExistentProject": func(t *testing.T) {
 			newProjectId := "my-newest-project"
-			assert.NoError(t, c.CopyProjectSubscriptions(oldProjectId, newProjectId))
+			assert.NoError(t, CopyProjectSubscriptions(oldProjectId, newProjectId))
 			apiSubs, err := event.FindSubscriptionsByOwner(oldProjectId, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)

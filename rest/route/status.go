@@ -77,8 +77,7 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBStatusConnector{}
-	tasks, stats, err := dc.FindRecentTasks(h.minutes)
+	tasks, stats, err := data.FindRecentTasks(h.minutes)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -107,11 +106,11 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		var stats *model.APIRecentTaskStatsList
 		switch {
 		case h.byDistro:
-			stats, err = dc.FindRecentTaskListDistro(h.minutes)
+			stats, err = data.FindRecentTaskListDistro(h.minutes)
 		case h.byProject:
-			stats, err = dc.FindRecentTaskListProject(h.minutes)
+			stats, err = data.FindRecentTaskListProject(h.minutes)
 		case h.byAgentVersion:
-			stats, err = dc.FindRecentTaskListAgentVersion(h.minutes)
+			stats, err = data.FindRecentTaskListAgentVersion(h.minutes)
 		}
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
@@ -145,8 +144,7 @@ func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBStatusConnector{}
-	stats, err := dc.GetHostStatsByDistro()
+	stats, err := data.GetHostStatsByDistro()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

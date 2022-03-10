@@ -12,7 +12,6 @@ import (
 
 type cliUpdateConnectorSuite struct {
 	suite.Suite
-	ctx     CLIUpdateConnector
 	setup   func()
 	degrade func()
 }
@@ -40,7 +39,7 @@ func (s *cliUpdateConnectorSuite) SetupSuite() {
 }
 
 func (s *cliUpdateConnectorSuite) Test() {
-	v, err := s.ctx.GetCLIUpdate()
+	v, err := GetCLIUpdate()
 	s.Require().NoError(err)
 	s.Require().NotNil(v)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
@@ -48,7 +47,7 @@ func (s *cliUpdateConnectorSuite) Test() {
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	s.degrade()
-	v, err := s.ctx.GetCLIUpdate()
+	v, err := GetCLIUpdate()
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)

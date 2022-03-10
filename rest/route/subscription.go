@@ -39,8 +39,7 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBSubscriptionConnector{}
-	err := dc.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
+	err := data.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -103,8 +102,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBSubscriptionConnector{}
-	subs, err := dc.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
+	subs, err := data.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -142,8 +140,7 @@ func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (s *subscriptionDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBSubscriptionConnector{}
-	if err := dc.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
+	if err := data.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

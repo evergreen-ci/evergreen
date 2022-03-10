@@ -246,8 +246,7 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var taskReliabilityResult []model.APITaskReliability
 
-	dc := data.TaskReliabilityConnector{}
-	taskReliabilityResult, err = dc.GetTaskReliabilityScores(trh.filter)
+	taskReliabilityResult, err = data.GetTaskReliabilityScores(trh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}

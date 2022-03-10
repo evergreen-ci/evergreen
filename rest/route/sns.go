@@ -196,8 +196,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 }
 
 func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	dc := data.DBHostConnector{}
-	h, err := dc.FindHostById(instanceID)
+	h, err := data.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -269,8 +268,7 @@ func (sns *ec2SNS) skipEarlyTermination(h *host.Host) bool {
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
-	dc := data.DBHostConnector{}
-	h, err := dc.FindHostById(instanceID)
+	h, err := data.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -294,8 +292,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
 func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
-	dc := data.DBHostConnector{}
-	h, err := dc.FindHostById(instanceID)
+	h, err := data.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -389,8 +386,7 @@ func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
 func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEventBridgeNotification) error {
 	switch notification.DetailType {
 	case ecsTaskStateChangeType:
-		dc := data.DBPodConnector{}
-		p, err := dc.FindPodByExternalID(notification.Detail.TaskARN)
+		p, err := data.FindPodByExternalID(notification.Detail.TaskARN)
 		if err != nil {
 			return err
 		}
@@ -449,8 +445,7 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 	}
 	id := utility.FromStringPtr(p.ID)
 
-	dc := data.DBPodConnector{}
-	if err := dc.UpdatePodStatus(id, p.Status, model.PodStatusDecommissioned); err != nil {
+	if err := data.UpdatePodStatus(id, p.Status, model.PodStatusDecommissioned); err != nil {
 		return err
 	}
 

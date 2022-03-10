@@ -26,7 +26,7 @@ const EventLogLimit = 10
 type DBProjectConnector struct{}
 
 // FindProjectById queries the database for the project matching the projectRef.Id.
-func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
+func FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
 	if includeRepo && includeParserProject {
@@ -49,14 +49,14 @@ func (pc *DBProjectConnector) FindProjectById(id string, includeRepo bool, inclu
 }
 
 // CreateProject inserts the given model.ProjectRef.
-func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
+func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	if projectRef.Identifier != "" {
-		if err := pc.VerifyUniqueProject(projectRef.Identifier); err != nil {
+		if err := VerifyUniqueProject(projectRef.Identifier); err != nil {
 			return err
 		}
 	}
 	if projectRef.Id != "" {
-		if err := pc.VerifyUniqueProject(projectRef.Id); err != nil {
+		if err := VerifyUniqueProject(projectRef.Id); err != nil {
 			return err
 		}
 	}
@@ -71,7 +71,7 @@ func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *use
 }
 
 // UpdateProject updates the given model.ProjectRef.Id.
-func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
+func UpdateProject(projectRef *model.ProjectRef) error {
 	err := projectRef.Update()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -82,8 +82,8 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 	return nil
 }
 
-func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
-	_, err := sc.FindProjectById(name, false, false)
+func VerifyUniqueProject(name string) error {
+	_, err := FindProjectById(name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -101,7 +101,7 @@ func (sc *DBProjectConnector) VerifyUniqueProject(name string) error {
 }
 
 // UpdateRepo updates the given model.RepoRef.Id. We use EnsureCommitQueueExistsForProject to ensure that only values relevant to repos get updated.
-func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
+func UpdateRepo(repoRef *model.RepoRef) error {
 	err := repoRef.Upsert()
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -112,18 +112,8 @@ func (pc *DBProjectConnector) UpdateRepo(repoRef *model.RepoRef) error {
 	return nil
 }
 
-func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
-	opts := model.GetProjectOpts{
-		Ref:        &pRef,
-		Revision:   pRef.Branch,
-		RemotePath: file,
-		Token:      token,
-	}
-	return model.GetProjectFromFile(ctx, opts)
-}
-
 // EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
-func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
+func EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	hook, err := model.FindGithubHook(projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
@@ -162,7 +152,7 @@ func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *mo
 	return true, nil
 }
 
-func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
+func EnablePRTesting(projectRef *model.ProjectRef) error {
 	conflicts, err := projectRef.GetGithubProjectConflicts()
 	if err != nil {
 		return errors.Wrap(err, "error finding project refs")
@@ -174,7 +164,7 @@ func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) erro
 	return nil
 }
 
-func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef) error {
+func EnableCommitQueue(projectRef *model.ProjectRef) error {
 	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
 		return errors.Wrap(err, "error enabling commit queue")
 	} else if !ok {
@@ -184,7 +174,7 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef) er
 	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
 }
 
-func (pc *DBProjectConnector) UpdateProjectRevision(projectID, revision string) error {
+func UpdateProjectRevision(projectID, revision string) error {
 	if err := model.UpdateLastRevision(projectID, revision); err != nil {
 		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
 	}
@@ -193,7 +183,7 @@ func (pc *DBProjectConnector) UpdateProjectRevision(projectID, revision string) 
 }
 
 // FindProjects queries the backing database for the specified projects
-func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int) ([]model.ProjectRef, error) {
+func FindProjects(key string, limit int, sortDir int) ([]model.ProjectRef, error) {
 	projects, err := model.FindProjectRefs(key, limit, sortDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
@@ -203,7 +193,7 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int) (
 }
 
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
-func (pc *DBProjectConnector) FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
+func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	var repoVars *model.ProjectVars
 	var err error
 	if repoId != "" {
@@ -246,7 +236,7 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string, repoId string, reda
 	return &varsModel, nil
 }
 
-func (pc *DBProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
+func UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
 	if project == nil {
 		return errors.New("no project found")
 	}
@@ -255,12 +245,12 @@ func (pc *DBProjectConnector) UpdateAdminRoles(project *model.ProjectRef, toAdd,
 }
 
 // RemoveAdminFromProjects removes a user from all Admins slices of every project
-func (pc *DBProjectConnector) RemoveAdminFromProjects(toDelete string) error {
+func RemoveAdminFromProjects(toDelete string) error {
 	return model.RemoveAdminFromProjects(toDelete)
 }
 
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
-func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
+func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
 	}
@@ -291,7 +281,7 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
-func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := model.GetVarsByValue(toReplace)
 	if err != nil {
@@ -340,7 +330,7 @@ func (pc *DBProjectConnector) UpdateProjectVarsByValue(toReplace, replacement, u
 	return changes, catcher.Resolve()
 }
 
-func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
+func CopyProjectVars(oldProjectId, newProjectId string) error {
 	vars, err := model.FindOneProjectVars(oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
@@ -349,7 +339,7 @@ func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string)
 	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
 }
 
-func (ac *DBProjectConnector) GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	id, err := model.GetIdForProject(project)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -363,7 +353,7 @@ func (ac *DBProjectConnector) GetProjectEventLog(project string, before time.Tim
 	return getEventsById(id, before, n)
 }
 
-func (ac *DBProjectConnector) GetRepoEventLog(repoId string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+func GetRepoEventLog(repoId string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	return getEventsById(repoId, before, n)
 }
 
@@ -391,7 +381,7 @@ func getEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 	return out, catcher.Resolve()
 }
 
-func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
+func GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
 	proj, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for projectRef %s/%s tracking %s", owner, repo, branch)
@@ -400,15 +390,15 @@ func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owne
 	return proj, nil
 }
 
-func (ac *DBProjectConnector) FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
+func FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
 	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
 }
 
-func (pc *DBProjectConnector) GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
+func GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
 	return model.GetProjectSettings(p)
 }
 
-func (pc *DBProjectConnector) GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
+func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
 	projectAliases, err := model.FindAliasInProjectRepoOrConfig(p.Identifier, alias)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -439,4 +429,14 @@ func getRequesterFromAlias(alias string) string {
 		return evergreen.MergeTestRequester
 	}
 	return evergreen.PatchVersionRequester
+}
+
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
+	opts := model.GetProjectOpts{
+		Ref:        &pRef,
+		Revision:   pRef.Branch,
+		RemotePath: file,
+		Token:      token,
+	}
+	return model.GetProjectFromFile(ctx, opts)
 }

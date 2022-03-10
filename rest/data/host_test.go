@@ -205,34 +205,31 @@ func (s *HostConnectorSuite) TearDownSuite() {
 }
 
 func (s *HostConnectorSuite) TestFindById() {
-	dc := DBHostConnector{}
-	h1, ok := dc.FindHostById("host1")
+	h1, ok := FindHostById("host1")
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 
-	h2, ok := dc.FindHostById("host2")
+	h2, ok := FindHostById("host2")
 	s.NoError(ok)
 	s.NotNil(h2)
 	s.Equal("host2", h2.Id)
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
-	dc := DBHostConnector{}
-	h, ok := dc.FindHostById("nonexistent")
+	h, ok := FindHostById("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindByIP() {
-	dc := DBHostConnector{}
-	h1, ok := dc.FindHostByIpAddress("ip1")
+	h1, ok := FindHostByIpAddress("ip1")
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 	s.Equal("ip1", h1.IP)
 
-	h2, ok := dc.FindHostByIpAddress("ip2")
+	h2, ok := FindHostByIpAddress("ip2")
 	s.NoError(ok)
 	s.NotNil(h2)
 	s.Equal("host2", h2.Id)
@@ -240,20 +237,18 @@ func (s *HostConnectorSuite) TestFindByIP() {
 }
 
 func (s *HostConnectorSuite) TestFindByIPFail() {
-	dc := DBHostConnector{}
-	h, ok := dc.FindHostByIpAddress("nonexistent")
+	h, ok := FindHostByIpAddress("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostsByDistro() {
-	dc := DBHostConnector{}
-	hosts, err := dc.FindHostsByDistro("distro5")
+	hosts, err := FindHostsByDistro("distro5")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
 
-	hosts, err = dc.FindHostsByDistro("alias125")
+	hosts, err = FindHostsByDistro("alias125")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 2)
 	var host1Found, host5Found bool
@@ -270,8 +265,7 @@ func (s *HostConnectorSuite) TestFindHostsByDistro() {
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
-	dc := DBHostConnector{}
-	hosts, err := dc.FindHostsById("", "", testUser, 100)
+	hosts, err := FindHostsById("", "", testUser, 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -280,8 +274,7 @@ func (s *HostConnectorSuite) TestFindByUser() {
 }
 
 func (s *HostConnectorSuite) TestStatusFiltering() {
-	dc := DBHostConnector{}
-	hosts, err := dc.FindHostsById("", "", "", 100)
+	hosts, err := FindHostsById("", "", "", 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -296,15 +289,14 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 }
 
 func (s *HostConnectorSuite) TestLimit() {
-	dc := DBHostConnector{}
-	hosts, err := dc.FindHostsById("", evergreen.HostTerminated, "", 2)
+	hosts, err := FindHostsById("", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(2, len(hosts))
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
-	hosts, err = dc.FindHostsById("", evergreen.HostTerminated, "", 3)
+	hosts, err = FindHostsById("", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(3, len(hosts))
@@ -349,7 +341,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		InstanceTags: nil,
 	}
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
+	intentHost, err := NewIntentHost(ctx, options, testUser, config)
 	s.NoError(err)
 	s.Require().NotNil(intentHost)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
@@ -365,7 +357,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 
 	// with instance type
 	options.InstanceType = testInstanceType
-	_, err = (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
+	_, err = NewIntentHost(ctx, options, testUser, config)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not been allowed by admins")
 	config.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
@@ -373,60 +365,52 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {
-	dc := DBHostConnector{}
-	h, err := dc.FindHostById("host1")
+	h, err := FindHostById("host1")
 	s.NoError(err)
-	s.NoError(dc.SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
+	s.NoError(SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
 
 	for i := 1; i < 5; i++ {
-		h, err := dc.FindHostById(fmt.Sprintf("host%d", i))
+		h, err := FindHostById(fmt.Sprintf("host%d", i))
 		s.NoError(err)
 		s.Equal(evergreen.HostTerminated, h.Status)
 	}
 }
 
 func (s *HostConnectorSuite) TestExtendHostExpiration() {
-	dc := DBHostConnector{}
-	h, err := dc.FindHostById("host1")
+	h, err := FindHostById("host1")
 	s.NoError(err)
 	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
-	s.NoError(dc.SetHostExpirationTime(h, expectedTime))
+	s.NoError(SetHostExpirationTime(h, expectedTime))
 
-	hCheck, err := dc.FindHostById("host1")
+	hCheck, err := FindHostById("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
 	s.NoError(err)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
-	dc := DBHostConnector{}
-	uc := DBUserConnector{}
-	u, err := uc.FindUserById(testUser)
+	u, err := FindUserById(testUser)
 	s.NoError(err)
 
-	h, err := dc.FindHostByIdWithOwner("host1", u)
+	h, err := FindHostByIdWithOwner("host1", u)
 	s.NoError(err)
 	s.NotNil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
-	uc := DBUserConnector{}
-	dc := DBHostConnector{}
-	u, err := uc.FindUserById(testUser)
+	u, err := FindUserById(testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
-	h, err := dc.FindHostByIdWithOwner("host2", u)
+	h, err := FindHostByIdWithOwner("host2", u)
 	s.Error(err)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
-	dc := DBHostConnector{}
-	uc := DBUserConnector{}
-	u, err := uc.FindUserById("root")
+	u, err := FindUserById("root")
 	s.NoError(err)
 
-	h, err := dc.FindHostByIdWithOwner("host2", u)
+	h, err := FindHostByIdWithOwner("host2", u)
 	s.NoError(err)
 	s.NotNil(h)
 }
@@ -437,17 +421,16 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 			evergreen.HostHeader: []string{"host1"},
 		},
 	}
-	dc := DBHostConnector{}
-	code, err := dc.CheckHostSecret("", r)
+	code, err := CheckHostSecret("", r)
 	s.Error(err)
 	s.Equal(http.StatusBadRequest, code)
 
 	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
-	code, err = dc.CheckHostSecret("host1", r)
+	code, err = CheckHostSecret("host1", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 
-	code, err = dc.CheckHostSecret("", r)
+	code, err = CheckHostSecret("", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 }
@@ -456,8 +439,7 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.withNewEnvironment(ctx, func() {
-		dc := DBHostConnector{}
-		script, err := dc.GenerateHostProvisioningScript(ctx, "host1")
+		script, err := GenerateHostProvisioningScript(ctx, "host1")
 		s.Require().NoError(err)
 		s.NotZero(script)
 	})
@@ -468,8 +450,7 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.withNewEnvironment(ctx, func() {
-		dc := DBHostConnector{}
-		script, err := dc.GenerateHostProvisioningScript(ctx, "foo")
+		script, err := GenerateHostProvisioningScript(ctx, "foo")
 		s.Error(err)
 		s.Zero(script)
 	})

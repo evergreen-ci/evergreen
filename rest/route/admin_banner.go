@@ -41,11 +41,10 @@ func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	dc := data.DBAdminConnector{}
-	if err := dc.SetAdminBanner(utility.FromStringPtr(h.Banner), u); err != nil {
+	if err := data.SetAdminBanner(utility.FromStringPtr(h.Banner), u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner text"))
 	}
-	if err := dc.SetBannerTheme(utility.FromStringPtr(h.Theme), u); err != nil {
+	if err := data.SetBannerTheme(utility.FromStringPtr(h.Theme), u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner theme"))
 	}
 
@@ -68,8 +67,7 @@ func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBAdminConnector{}
-	banner, theme, err := dc.GetBanner()
+	banner, theme, err := data.GetBanner()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}

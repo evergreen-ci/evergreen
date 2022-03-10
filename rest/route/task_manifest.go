@@ -31,8 +31,7 @@ func (h *getManifestHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Execute returns the manifest for the given task.
 func (h *getManifestHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	manifest, err := dc.GetManifestByTask(h.taskID)
+	manifest, err := data.GetManifestByTask(h.taskID)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error getting manifest using task '%s'", h.taskID))
 	}

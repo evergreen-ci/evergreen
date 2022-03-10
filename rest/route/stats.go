@@ -360,8 +360,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var testStatsResult []model.APITestStats
 
-	dc := data.StatsConnector{}
-	testStatsResult, err = dc.GetTestStats(tsh.filter)
+	testStatsResult, err = data.GetTestStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the test stats"))
 	}
@@ -450,8 +449,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var taskStatsResult []model.APITaskStats
 
-	dc := data.StatsConnector{}
-	taskStatsResult, err = dc.GetTaskStats(tsh.filter)
+	taskStatsResult, err = data.GetTaskStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}

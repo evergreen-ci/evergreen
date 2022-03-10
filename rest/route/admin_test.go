@@ -244,8 +244,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 		ApiUrl: utility.ToStringPtr("foo"),
 	}
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
-	dc := data.DBAdminConnector{}
-	_, err := dc.SetEvergreenSettings(&changes, before, user, true)
+	_, err := data.SetEvergreenSettings(&changes, before, user, true)
 	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
 	s.NoError(err)

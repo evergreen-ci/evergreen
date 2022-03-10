@@ -21,8 +21,7 @@ func (gh *notificationsStatusHandler) Factory() gimlet.RouteHandler {
 func (gh *notificationsStatusHandler) Parse(_ context.Context, _ *http.Request) error { return nil }
 
 func (gh *notificationsStatusHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.NotificationConnector{}
-	stats, err := dc.GetNotificationsStats()
+	stats, err := data.GetNotificationsStats()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

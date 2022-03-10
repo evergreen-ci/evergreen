@@ -10,9 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type NotificationConnector struct{}
-
-func (c *NotificationConnector) GetNotificationsStats() (*restModel.APIEventStats, error) {
+func GetNotificationsStats() (*restModel.APIEventStats, error) {
 	stats := restModel.APIEventStats{}
 
 	e, err := event.FindLastProcessedEvent()

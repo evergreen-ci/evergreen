@@ -82,7 +82,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/builds/{build_id}/tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchTasksByBuild(opts.URL))
 	app.AddRoute("/builds/{build_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByBuild())
 	app.AddRoute("/commit_queue/{project_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetCommitQueueItems())
-	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(requireUser, addProject, requireCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(sc, env))
+	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(requireUser, addProject, requireCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(env))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(requireUser, addProject, requireCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem())
 	app.AddRoute("/commit_queue/{patch_id}/additional").Version(2).Get().Wrap(requireTask).RouteHandler(makeCommitQueueAdditionalPatches())
 	app.AddRoute("/commit_queue/{patch_id}/conclude_merge").Version(2).Post().Wrap(requireTask).RouteHandler(makeCommitQueueConcludeMerge())

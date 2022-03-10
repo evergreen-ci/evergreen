@@ -16,13 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBTaskConnector is a struct that implements the Task related methods
-// from the Connector through interactions with he backing database.
-type DBTaskConnector struct{}
-
 // FindTaskById uses the service layer's task type to query the backing database for
 // the task with the given taskId.
-func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
+func FindTaskById(taskId string) (*task.Task, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return nil, err
@@ -36,7 +32,7 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return t, nil
 }
 
-func (tc *DBTaskConnector) FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
+func FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
 	t, err := task.FindOneIdAndExecution(taskId, execution)
 	if err != nil {
 		return nil, err
@@ -50,7 +46,7 @@ func (tc *DBTaskConnector) FindTaskByIdAndExecution(taskId string, execution int
 	return t, nil
 }
 
-func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
+func FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
 	project string, statuses []string) ([]task.Task, error) {
 	id, err := model.GetIdForProject(project)
 	if err != nil {
@@ -75,7 +71,7 @@ func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore
 // FindTasksByBuildId uses the service layer's task type to query the backing database for a
 // list of task that matches buildId. It accepts the startTaskId and a limit
 // to allow for pagination of the queries. It returns results sorted by taskId.
-func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) ([]task.Task, error) {
+func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) ([]task.Task, error) {
 	pipeline := task.TasksByBuildIdPipeline(buildId, taskId, status, limit, sortDir)
 	res := []task.Task{}
 
@@ -102,7 +98,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 	return res, nil
 }
 
-func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
+func FindTasksByIds(ids []string) ([]task.Task, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -119,7 +115,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	return ts, nil
 }
 
-func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
+func FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
 	ts, err := task.FindOldWithDisplayTasks(task.ByOldTaskID(id))
 	if err != nil {
 		return nil, err
@@ -128,7 +124,7 @@ func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.T
 	return ts, nil
 }
 
-func (tc *DBTaskConnector) FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
+func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
 	projectId, err := model.GetIdForProject(project)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -179,7 +175,7 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(project, commitHash, task
 
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
-func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority int64) error {
+func SetTaskPriority(t *task.Task, user string, priority int64) error {
 	if t == nil {
 		return errors.New("task cannot be nil")
 	}
@@ -188,7 +184,7 @@ func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority i
 
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
-func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
+func SetTaskActivated(taskId, user string, activated bool) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task '%s'", t)
@@ -203,7 +199,7 @@ func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool)
 
 // ResetTask sets the task to be in an unexecuted state and prepares it to be run again.
 // If given an execution task, marks the display task for reset.
-func (tc *DBTaskConnector) ResetTask(taskId, username string) error {
+func ResetTask(taskId, username string) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task '%s'", t)
@@ -215,11 +211,11 @@ func (tc *DBTaskConnector) ResetTask(taskId, username string) error {
 		"Reset task error")
 }
 
-func (tc *DBTaskConnector) AbortTask(taskId string, user string) error {
+func AbortTask(taskId string, user string) error {
 	return serviceModel.AbortTask(taskId, user)
 }
 
-func (tc *DBTaskConnector) CheckTaskSecret(taskID string, r *http.Request) (int, error) {
+func CheckTaskSecret(taskID string, r *http.Request) (int, error) {
 	_, code, err := serviceModel.ValidateTask(taskID, true, r)
 	if code == http.StatusConflict {
 		return http.StatusUnauthorized, errors.New("Not authorized")
@@ -228,7 +224,7 @@ func (tc *DBTaskConnector) CheckTaskSecret(taskID string, r *http.Request) (int,
 }
 
 // GetManifestByTask finds the manifest corresponding to the given task.
-func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest, error) {
+func GetManifestByTask(taskId string) (*manifest.Manifest, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding task '%s'", t)
@@ -263,7 +259,7 @@ type TaskFilterOptions struct {
 
 // FindTasksByVersion gets all tasks for a specific version
 // Results can be filtered by task name, variant name and status in addition to being paginated and limited
-func (tc *DBTaskConnector) FindTasksByVersion(versionID string, opts TaskFilterOptions) ([]task.Task, int, error) {
+func FindTasksByVersion(versionID string, opts TaskFilterOptions) ([]task.Task, int, error) {
 	getTaskByVersionOpts := task.GetTasksByVersionOptions{
 		Statuses:                       opts.Statuses,
 		BaseStatuses:                   opts.BaseStatuses,

@@ -28,13 +28,12 @@ func TestFindDistroById(t *testing.T) {
 
 	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
-	sc := &DBConnector{}
 	id := fmt.Sprintf("distro_%d", rand.Int())
 	d := &distro.Distro{
 		Id: id,
 	}
 	assert.Nil(d.Insert())
-	found, err := sc.FindDistroById(id)
+	found, err := FindDistroById(id)
 	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
@@ -52,8 +51,6 @@ func TestFindAllDistros(t *testing.T) {
 	defer session.Close()
 	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
-	sc := &DBConnector{}
-
 	numDistros := 10
 	for i := 0; i < numDistros; i++ {
 		d := &distro.Distro{
@@ -62,7 +59,7 @@ func TestFindAllDistros(t *testing.T) {
 		assert.Nil(d.Insert())
 	}
 
-	found, err := sc.FindAllDistros()
+	found, err := FindAllDistros()
 	assert.NoError(err)
 	assert.Len(found, numDistros)
 }
@@ -80,8 +77,6 @@ func TestDeleteDistroById(t *testing.T) {
 		assert.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 	}()
 
-	sc := &DBConnector{}
-
 	d := distro.Distro{
 		Id: "distro",
 	}
@@ -93,9 +88,9 @@ func TestDeleteDistroById(t *testing.T) {
 	}
 	require.NoError(t, queue.Save())
 
-	require.NoError(t, sc.DeleteDistroById(d.Id))
+	require.NoError(t, DeleteDistroById(d.Id))
 
-	dbDistro, err := sc.FindDistroById(d.Id)
+	dbDistro, err := FindDistroById(d.Id)
 	assert.Error(t, err)
 	assert.Zero(t, dbDistro)
 

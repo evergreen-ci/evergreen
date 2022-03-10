@@ -136,7 +136,6 @@ func validateKeyValue(keyValue string) error {
 
 func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	dc := data.DBUserConnector{}
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -144,7 +143,7 @@ func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := dc.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
+	if err := data.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to add key"))
 	}
 
@@ -181,7 +180,6 @@ func (h *keysDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	dc := data.DBUserConnector{}
 	if _, err := user.GetPublicKey(h.keyName); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -189,7 +187,7 @@ func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := dc.DeletePublicKey(user, h.keyName); err != nil {
+	if err := data.DeletePublicKey(user, h.keyName); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.New("couldn't delete key"))
 	}
 

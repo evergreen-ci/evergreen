@@ -61,8 +61,7 @@ func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	dc := data.DBPatchConnector{}
-	foundPatch, err := dc.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -76,14 +75,14 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := dc.SetPatchPriority(p.patchId, priority, ""); err != nil {
+		if err := data.SetPatchPriority(p.patchId, priority, ""); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 	if p.Activated != nil {
 		ctx, cancel := p.env.Context()
 		defer cancel()
-		if err := dc.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
+		if err := data.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
@@ -113,8 +112,7 @@ func (p *patchByIdHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBPatchConnector{}
-	foundPatch, err := dc.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -147,8 +145,7 @@ func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBPatchConnector{}
-	patchMap, err := dc.GetPatchRawPatches(p.patchID)
+	patchMap, err := data.GetPatchRawPatches(p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -202,8 +199,7 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 	// sortAsc set to false in order to display patches in desc chronological order
-	dc := data.DBPatchConnector{}
-	patches, err := dc.FindPatchesByUser(p.user, p.key, p.limit+1)
+	patches, err := data.FindPatchesByUser(p.user, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -288,8 +284,7 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBPatchConnector{}
-	patches, err := dc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
+	patches, err := data.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -355,13 +350,12 @@ func (p *patchAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	dc := data.DBPatchConnector{}
-	if err := dc.AbortPatch(p.patchId, usr.Id); err != nil {
+	if err := data.AbortPatch(p.patchId, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
 	// Patch may be deleted by abort (eg not finalized) and not found here
-	foundPatch, err := dc.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -395,13 +389,11 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	dc := data.DBPatchConnector{}
-	vc := data.DBVersionConnector{}
-	if err := vc.RestartVersion(p.patchId, usr.Id); err != nil {
+	if err := data.RestartVersion(p.patchId, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 
-	foundPatch, err := dc.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -441,8 +433,7 @@ func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBCommitQueueConnector{}
-	apiPatch, err := dc.CreatePatchForMerge(ctx, p.patchId, p.CommitMessage)
+	apiPatch, err := data.CreatePatchForMerge(ctx, p.patchId, p.CommitMessage)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't create merge patch"))
 	}
@@ -475,13 +466,12 @@ func (p *schedulePatchHandler) Factory() gimlet.RouteHandler {
 }
 
 func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	dc := data.DBPatchConnector{}
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	if p.patchId == "" {
 		return errors.New("must specify a patch ID")
 	}
 	var err error
-	apiPatch, err := dc.FindPatchById(p.patchId)
+	apiPatch, err := data.FindPatchById(p.patchId)
 	if err != nil {
 		return err
 	}
@@ -515,8 +505,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to get token"))
 	}
-	dc := data.DBVersionConnector{}
-	dbVersion, _ := dc.FindVersionById(p.patchId)
+	dbVersion, _ := data.FindVersionById(p.patchId)
 	var project *dbModel.Project
 	if dbVersion == nil {
 		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
@@ -568,7 +557,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		_ = resp.AddData(msg)
 		return resp
 	}
-	dbVersion, err = dc.FindVersionById(versionId)
+	dbVersion, err = data.FindVersionById(versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find patch version"))
 	}

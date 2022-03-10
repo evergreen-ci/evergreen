@@ -28,11 +28,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBCreateHostConnector supports `host.create` commands from the agent.
-type DBCreateHostConnector struct{}
-
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (dc *DBCreateHostConnector) ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
+func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	env := evergreen.GetEnvironment()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
@@ -84,7 +81,7 @@ func (dc *DBCreateHostConnector) ListHostsForTask(ctx context.Context, taskID st
 	return hosts, nil
 }
 
-func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) error {
+func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) error {
 	if t == nil {
 		return errors.New("no task to create hosts from")
 	}
@@ -152,7 +149,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			continue
 		}
 		for i := 0; i < numHosts; i++ {
-			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
+			intent, err := MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "error creating host document")
 			}
@@ -240,7 +237,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	return createHost, nil
 }
 
-func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if cloud.IsDockerProvider(createHost.CloudProvider) {
 		return makeDockerIntentHost(taskID, userID, createHost)
 	}
@@ -465,7 +462,7 @@ func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodel
 }
 
 // GetDockerLogs is used by the /host/{host_id}/logs route to retrieve the logs for the given container.
-func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
+func GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
 	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
 	c := cloud.GetDockerClient(settings)
 
@@ -481,7 +478,7 @@ func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId 
 	return logs, nil
 }
 
-func (db *DBCreateHostConnector) GetDockerStatus(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings) (*cloud.ContainerStatus, error) {
+func GetDockerStatus(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings) (*cloud.ContainerStatus, error) {
 	c := cloud.GetDockerClient(settings)
 
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {

@@ -51,13 +51,12 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	dc := data.DBTaskConnector{}
-	err := dc.ResetTask(trh.taskId, trh.username)
+	err := data.ResetTask(trh.taskId, trh.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	refreshedTask, err := dc.FindTaskById(trh.taskId)
+	refreshedTask, err := data.FindTaskById(trh.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

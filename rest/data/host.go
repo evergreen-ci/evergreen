@@ -18,13 +18,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBHostConnector is a struct that implements the Host related methods
-// from the Connector through interactions with the backing database.
-type DBHostConnector struct{}
-
 // FindHostsById uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
+func FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
 	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
 	if err != nil {
 		return nil, err
@@ -38,7 +34,7 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]
 	return hostRes, nil
 }
 
-func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
+func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
 	params := host.HostsInRangeParams{
 		CreatedBefore: apiParams.CreatedBefore,
 		CreatedAfter:  apiParams.CreatedAfter,
@@ -58,7 +54,7 @@ func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, u
 }
 
 // FindHostById queries the database for the host with id matching the hostId
-func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
+func FindHostById(id string) (*host.Host, error) {
 	h, err := host.FindOne(host.ById(id))
 	if err != nil {
 		return nil, err
@@ -68,7 +64,7 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 }
 
 // FindHostByIP queries the database for the host with ip matching the ip address
-func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
+func FindHostByIpAddress(ip string) (*host.Host, error) {
 	h, err := host.FindOne(host.ByIP(ip))
 	if err != nil {
 		return nil, err
@@ -77,11 +73,11 @@ func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
 	return h, nil
 }
 
-func (dbc *DBHostConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	return findHostByIdWithOwner(*dbc, hostID, user)
+func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
+	return findHostByIdWithOwner(hostID, user)
 }
 
-func (hc *DBHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
+func FindHostsByDistro(distro string) ([]host.Host, error) {
 	return host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(distro)))
 }
 
@@ -93,7 +89,7 @@ func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID 
 	return hosts, filteredHostsCount, totalHostsCount, nil
 }
 
-func (hc *DBConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
+func GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
 	host, err := host.GetHostByIdOrTagWithTask(hostID)
 	if err != nil {
 		return nil, err
@@ -103,7 +99,7 @@ func (hc *DBConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, erro
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
+func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
 	settings *evergreen.Settings) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
@@ -151,11 +147,11 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 	return intentHost, nil
 }
 
-func (hc *DBHostConnector) SetHostStatus(host *host.Host, status, user string) error {
+func SetHostStatus(host *host.Host, status, user string) error {
 	return host.SetStatus(status, user, fmt.Sprintf("changed by %s from API", user))
 }
 
-func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
+func SetHostExpirationTime(host *host.Host, newExp time.Time) error {
 	if err := host.SetExpirationTime(newExp); err != nil {
 		return errors.Wrap(err, "Error extending host expiration time")
 	}
@@ -163,38 +159,38 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 	return nil
 }
 
-func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
+func TerminateHost(ctx context.Context, host *host.Host, user string) error {
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
 }
 
 // DisableHost disables the host, notifies it's been disabled,
 // and clears and resets its running task.
-func (hc *DBHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
+func DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
 	return units.HandlePoisonedHost(ctx, env, host, reason)
 }
 
-func (hc *DBHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
+func CheckHostSecret(hostID string, r *http.Request) (int, error) {
 	_, code, err := model.ValidateHost(hostID, r)
 	return code, errors.WithStack(err)
 }
 
-func (hc *DBHostConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
+func FindVolumeById(volumeID string) (*host.Volume, error) {
 	return host.FindVolumeByID(volumeID)
 }
 
-func (hc *DBHostConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
+func FindVolumesByUser(user string) ([]host.Volume, error) {
 	return host.FindVolumesByUser(user)
 }
 
-func (hc *DBHostConnector) SetVolumeName(v *host.Volume, name string) error {
+func SetVolumeName(v *host.Volume, name string) error {
 	return v.SetDisplayName(name)
 }
 
-func (hc *DBHostConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
+func FindHostWithVolume(volumeID string) (*host.Host, error) {
 	return host.FindHostWithVolume(volumeID)
 }
 
-func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
+func AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
 	data, err := host.AggregateSpawnhostData()
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting spawn host data")
@@ -202,7 +198,7 @@ func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error
 	return data, nil
 }
 
-func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
+func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
 	if hostID == "" {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -247,8 +243,8 @@ func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, h
 	return script, nil
 }
 
-func findHostByIdWithOwner(c DBHostConnector, hostID string, user gimlet.User) (*host.Host, error) {
-	host, err := c.FindHostById(hostID)
+func findHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
+	host, err := FindHostById(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

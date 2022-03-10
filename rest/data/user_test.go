@@ -19,14 +19,12 @@ func init() {
 
 type DBUserConnectorSuite struct {
 	suite.Suite
-	sc       *DBConnector
 	numUsers int
 	users    []*user.DBUser
 }
 
 func (s *DBUserConnectorSuite) SetupTest() {
 	s.NoError(db.ClearCollections(user.Collection, event.SubscriptionsCollection))
-	s.sc = &DBConnector{}
 	s.numUsers = 10
 
 	for i := 0; i < s.numUsers; i++ {
@@ -49,19 +47,19 @@ func (s *DBUserConnectorSuite) SetupTest() {
 
 func (s *DBUserConnectorSuite) TestFindUserById() {
 	for i := 0; i < s.numUsers; i++ {
-		found, err := s.sc.FindUserById(fmt.Sprintf("user_%d", i))
+		found, err := FindUserById(fmt.Sprintf("user_%d", i))
 		s.NoError(err)
 		s.Equal(found.GetAPIKey(), fmt.Sprintf("apikey_%d", i))
 	}
 
-	found, err := s.sc.FindUserById("fake_user")
+	found, err := FindUserById("fake_user")
 	s.Nil(found)
 	s.NoError(err)
 }
 
 func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 	for _, u := range s.users {
-		s.NoError(s.sc.DeletePublicKey(u, u.Id+"_0"))
+		s.NoError(DeletePublicKey(u, u.Id+"_0"))
 
 		dbUser, err := user.FindOne(user.ById(u.Id))
 		s.NoError(err)
@@ -70,7 +68,7 @@ func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 }
 
 func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
-	found, err := s.sc.FindUserById(s.users[index].Id)
+	found, err := FindUserById(s.users[index].Id)
 	s.NoError(err)
 	s.Require().NotNil(found)
 	user, ok := found.(*user.DBUser)
@@ -91,14 +89,14 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	}
 	settings.Notifications.PatchFinish = ""
 
-	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	s.NoError(UpdateSettings(s.users[0], settings))
 	pref := s.getNotificationSettings(0)
 	s.NotNil(pref)
 	s.Equal("", pref.PatchFinishID)
 
 	// Should create a new subscription
 	settings.Notifications.PatchFinish = user.PreferenceSlack
-	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	s.NoError(UpdateSettings(s.users[0], settings))
 	pref = s.getNotificationSettings(0)
 	s.NotEqual("", pref.PatchFinishID)
 	sub, err := event.FindSubscriptionByID(pref.PatchFinishID)
@@ -109,7 +107,7 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 
 	// should modify the existing subscription
 	settings.Notifications.PatchFinish = user.PreferenceEmail
-	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	s.NoError(UpdateSettings(s.users[0], settings))
 	pref = s.getNotificationSettings(0)
 	s.NotNil(pref)
 	s.NotEqual("", pref.PatchFinishID)
@@ -121,14 +119,14 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 
 	// should delete the existing subscription
 	settings.Notifications.PatchFinish = ""
-	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	s.NoError(UpdateSettings(s.users[0], settings))
 	pref = s.getNotificationSettings(0)
 	s.NotNil(pref)
 	s.Equal("", pref.PatchFinishID)
 	settings.Notifications = *pref
 
 	settings.SlackUsername = "#Test"
-	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
+	s.EqualError(UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
 }
 
 func (s *DBUserConnectorSuite) TestUpdateSettingsCommitQueue() {
@@ -140,7 +138,7 @@ func (s *DBUserConnectorSuite) TestUpdateSettingsCommitQueue() {
 	}
 
 	// Should create a new subscription
-	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	s.NoError(UpdateSettings(s.users[0], settings))
 	pref := s.getNotificationSettings(0)
 	s.NotEqual("", pref.CommitQueueID)
 	sub, err := event.FindSubscriptionByID(pref.CommitQueueID)

@@ -160,8 +160,7 @@ func TestHostStopHandler(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	sc := data.DBSubscriptionConnector{}
-	subscriptions, err := sc.GetSubscriptions("user", event.OwnerTypePerson)
+	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
 	assert.Len(t, subscriptions, 1)
 }
@@ -202,8 +201,7 @@ func TestHostStartHandler(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	subscriptionConnector := data.DBSubscriptionConnector{}
-	subscriptions, err := subscriptionConnector.GetSubscriptions("user", event.OwnerTypePerson)
+	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
 	assert.Len(t, subscriptions, 2)
 }

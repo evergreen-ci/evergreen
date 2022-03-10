@@ -7,32 +7,10 @@ package data
 type DBConnector struct {
 	URL    string
 	Prefix string
-
-	DBUserConnector
-	DBTaskConnector
-	DBContextConnector
-	DBDistroConnector
-	DBHostConnector
-	DBPodConnector
 	DBTestConnector
-	DBBuildConnector
-	DBVersionConnector
-	DBPatchConnector
-	DBPatchIntentConnector
-	DBProjectConnector
-	DBAdminConnector
-	DBStatusConnector
-	DBAliasConnector
-	RepoTrackerConnector
-	CLIUpdateConnector
-	GenerateConnector
-	DBSubscriptionConnector
-	NotificationConnector
-	DBCreateHostConnector
-	StatsConnector
-	TaskReliabilityConnector
 	DBCommitQueueConnector
-	SchedulerConnector
+	DBProjectConnector
+	DBVersionConnector
 }
 
 func (ctx *DBConnector) GetURL() string          { return ctx.URL }
