@@ -597,8 +597,8 @@ input WebhookInput {
 }
 
 input WorkstationConfigInput {
-  setupCommands: [WorkstationSetupCommandInput]
-  gitClone: Boolean!
+  setupCommands: [WorkstationSetupCommandInput!]
+  gitClone: Boolean
 }
 
 input WorkstationSetupCommandInput {

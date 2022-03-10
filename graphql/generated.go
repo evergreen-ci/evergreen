@@ -8065,8 +8065,8 @@ input WebhookInput {
 }
 
 input WorkstationConfigInput {
-  setupCommands: [WorkstationSetupCommandInput]
-  gitClone: Boolean!
+  setupCommands: [WorkstationSetupCommandInput!]
+  gitClone: Boolean
 }
 
 input WorkstationSetupCommandInput {
@@ -42415,7 +42415,7 @@ func (ec *executionContext) unmarshalInputWorkstationConfigInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("setupCommands"))
-			it.SetupCommands, err = ec.unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, v)
+			it.SetupCommands, err = ec.unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommandᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42423,7 +42423,7 @@ func (ec *executionContext) unmarshalInputWorkstationConfigInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitClone"))
-			it.GitClone, err = ec.unmarshalNBoolean2ᚖbool(ctx, v)
+			it.GitClone, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -52471,6 +52471,11 @@ func (ec *executionContext) marshalNWorkstationSetupCommand2githubᚗcomᚋeverg
 	return ec._WorkstationSetupCommand(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalNWorkstationSetupCommandInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, v interface{}) (model.APIWorkstationSetupCommand, error) {
+	res, err := ec.unmarshalInputWorkstationSetupCommandInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
 	return ec.___Directive(ctx, sel, &v)
 }
@@ -54974,12 +54979,7 @@ func (ec *executionContext) marshalOWorkstationSetupCommand2ᚕgithubᚗcomᚋev
 	return ret
 }
 
-func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, v interface{}) (model.APIWorkstationSetupCommand, error) {
-	res, err := ec.unmarshalInputWorkstationSetupCommandInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx context.Context, v interface{}) ([]model.APIWorkstationSetupCommand, error) {
+func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommandᚄ(ctx context.Context, v interface{}) ([]model.APIWorkstationSetupCommand, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -54995,7 +54995,7 @@ func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗc
 	res := make([]model.APIWorkstationSetupCommand, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalOWorkstationSetupCommandInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNWorkstationSetupCommandInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationSetupCommand(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
