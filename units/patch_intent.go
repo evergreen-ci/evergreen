@@ -501,27 +501,28 @@ func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displ
 
 	failedTaskNames := make([]string, 0, len(failedTasks))
 	for _, failedTask := range failedTasks {
-		if !failedTask.DisplayOnly && !failedTask.IsPartOfDisplay() {
-			failedTaskNames = append(failedTaskNames, failedTask.DisplayName)
-		}
+		failedTaskNames = append(failedTaskNames, failedTask.DisplayName)
 	}
+	// I want the subset of vt.tasks that exist in tasksForVariant
+	tasks := utility.StringSliceIntersection(tasksInProjectVariant, failedTaskNames)
 
 	var displayTasks []patch.DisplayTask
+	failedDisplayTasks, err := task.FindAll(db.Query(task.FailedDisplayTasksByVersionAndBV(version, vt.Variant)))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error querying for failed display tasks from previous patch")
+	}
 	for _, dt := range vt.DisplayTasks {
-		for _, failedTask := range failedTasks {
-			if failedTask.DisplayName == dt.Name && failedTask.DisplayOnly && utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
+		for _, failedTask := range failedDisplayTasks {
+			if failedTask.DisplayName == dt.Name && utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
 				displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
 			}
 		}
 	}
-
-	// I want the subset of vt.tasks that exists in tasksForVariant
-	tasks := utility.StringSliceIntersection(tasksInProjectVariant, failedTaskNames)
 	return tasks, displayTasks, nil
 }
 
 func getPreviousTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks) ([]string, []patch.DisplayTask) {
-	// I want the subset of vt.tasks that exists in tasksForVariant
+	// I want the subset of vt.tasks that exist in tasksForVariant
 	tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
 	var displayTasks []patch.DisplayTask
 	for _, dt := range vt.DisplayTasks {

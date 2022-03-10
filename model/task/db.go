@@ -411,6 +411,15 @@ func FailedExecutionTasksByVersionAndBV(version string, variant string) bson.M {
 	}
 }
 
+func FailedDisplayTasksByVersionAndBV(version string, variant string) bson.M {
+	return bson.M{
+		VersionKey:      version,
+		BuildVariantKey: variant,
+		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
+		DisplayOnlyKey:  true,
+	}
+}
+
 // ByVersion produces a query that returns tasks for the given version.
 func ByVersions(versions []string) bson.M {
 	return bson.M{VersionKey: bson.M{"$in": versions}}
