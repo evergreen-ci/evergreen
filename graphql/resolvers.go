@@ -100,6 +100,10 @@ func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
 	return &projectSubscriberResolver{r}
 }
 
+func (r *Resolver) Permissions() PermissionsResolver {
+	return &permissionsResolver{r}
+}
+
 // IssueLink returns IssueLinkResolver implementation.
 func (r *Resolver) IssueLink() IssueLinkResolver {
 	return &issueLinkResolver{r}
@@ -123,6 +127,7 @@ type repoSettingsResolver struct{ *Resolver }
 type projectSubscriberResolver struct{ *Resolver }
 type projectVarsResolver struct{ *Resolver }
 type taskLogsResolver struct{ *Resolver }
+type permissionsResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -433,6 +438,19 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restMode
 		return true, nil
 	}
 	return false, nil
+}
+
+func (r *permissionsResolver) CanCreateProject(ctx context.Context, permissions *Permissions) (bool, error) {
+	usr, err := user.FindOneById(permissions.UserID)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, "user not found")
+	}
+	return usr.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	}), nil
 }
 
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
@@ -3148,6 +3166,10 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		apiPatches = append(apiPatches, &apiPatch)
 	}
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
+}
+
+func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser) (*Permissions, error) {
+	return &Permissions{UserID: utility.FromStringPtr(obj.UserID)}, nil
 }
 
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {

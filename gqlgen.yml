@@ -337,3 +337,7 @@ models:
         resolver: true
       allLogs:
         resolver: true
+  Permissions:
+    fields:
+      canCreateProject:
+        resolver: true

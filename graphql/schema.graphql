@@ -1123,6 +1123,11 @@ type GroupedProjects {
   projects: [Project!]!
 }
 
+type Permissions {
+  userId: String!
+  canCreateProject: Boolean!
+}
+
 type GithubProjectConflicts {
   commitQueueIdentifiers: [String!]
   prTestingIdentifiers: [String!]
@@ -1446,6 +1451,7 @@ type User {
   userId: String!
   emailAddress: String!
   patches(patchesInput: PatchesInput!): Patches!
+  permissions: Permissions!
 }
 
 type TaskLogs {
