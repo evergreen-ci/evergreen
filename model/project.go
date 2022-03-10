@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -1839,4 +1840,53 @@ func (tg *TaskGroup) InjectInfo(t *task.Task) {
 			break
 		}
 	}
+}
+
+type VariantsAndTasksFromProject struct {
+	Variants map[string]BuildVariant
+	Tasks    []struct{ Name string }
+	Project  Project
+}
+
+// GetVariantsAndTasksFromProject formats variants and tasks as used by the UI pages.
+func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
+	project := &Project{}
+	if _, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
+		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
+	}
+
+	// retrieve tasks and variant mappings' names
+	variantMappings := make(map[string]BuildVariant)
+	for _, variant := range project.BuildVariants {
+		tasksForVariant := []BuildVariantTaskUnit{}
+		for _, taskFromVariant := range variant.Tasks {
+			// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+			if !taskFromVariant.IsDisabled() && utility.FromBoolTPtr(taskFromVariant.Patchable) && !utility.FromBoolPtr(taskFromVariant.GitTagOnly) {
+				if taskFromVariant.IsGroup {
+					tasksForVariant = append(tasksForVariant, CreateTasksFromGroup(taskFromVariant, project, evergreen.PatchVersionRequester)...)
+				} else {
+					tasksForVariant = append(tasksForVariant, taskFromVariant)
+				}
+			}
+		}
+		if len(tasksForVariant) > 0 {
+			variant.Tasks = tasksForVariant
+			variantMappings[variant.Name] = variant
+		}
+	}
+
+	tasksList := []struct{ Name string }{}
+	for _, task := range project.Tasks {
+		// add a task name to the list if it's patchable and not restricted to git tags and not disabled
+		if !utility.FromBoolPtr(task.Disable) && utility.FromBoolTPtr(task.Patchable) && !utility.FromBoolPtr(task.GitTagOnly) {
+			tasksList = append(tasksList, struct{ Name string }{task.Name})
+		}
+	}
+
+	variantsAndTasksFromProject := VariantsAndTasksFromProject{
+		Variants: variantMappings,
+		Tasks:    tasksList,
+		Project:  *project,
+	}
+	return &variantsAndTasksFromProject, nil
 }

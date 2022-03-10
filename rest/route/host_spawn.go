@@ -1208,21 +1208,9 @@ func (h *hostChangeRDPPasswordHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	if !host.Distro.IsWindows() {
+	if statusCode, err := cloud.SetHostRDPPassword(ctx, h.env, host, h.rdpPassword); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "RDP passwords can only be set on Windows hosts",
-		})
-	}
-	if host.Status != evergreen.HostRunning {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "RDP passwords can only be set on running hosts",
-		})
-	}
-	if err := cloud.SetHostRDPPassword(ctx, h.env, host, h.rdpPassword); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
+			StatusCode: statusCode,
 			Message:    err.Error(),
 		})
 	}

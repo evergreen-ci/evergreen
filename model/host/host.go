@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
+
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
@@ -426,6 +429,22 @@ func (h *Host) IsContainer() bool {
 
 func (h *Host) NeedsPortBindings() bool {
 	return h.DockerOptions.PublishPorts && h.PortBindings == nil
+}
+
+// CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
+func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
+	if usr.Username() != h.StartedBy {
+		if !usr.HasPermission(gimlet.PermissionOpts{
+			Resource:      h.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
+			return false
+		}
+		return true
+	}
+	return true
 }
 
 // IsIntentHostId returns whether or not the host ID is for an intent host

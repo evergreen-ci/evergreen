@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/graphql"
+	"github.com/evergreen-ci/evergreen/rest/data"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -132,7 +133,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	taskId := vars["task_id"]
 	exec := vars["execution"]
 
-	searchReturnInfo, bbConfig, err := graphql.GetSearchReturnInfo(taskId, exec)
+	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(taskId, exec)
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
@@ -161,14 +162,10 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONInternalError(w, err.Error())
 	}
 	// the execution doesn't matter here. It only matters for custom webhooks, which will only be used in Spruce
-	taskNotFound, err := graphql.BbFileTicket(r.Context(), input.TaskId, 0)
+	httpStatus, err := data.BbFileTicket(r.Context(), input.TaskId, 0)
 
-	if taskNotFound && err != nil {
-		gimlet.WriteJSON(w, err.Error())
-		return
-	}
 	if err != nil {
-		gimlet.WriteJSONInternalError(w, err.Error())
+		gimlet.WriteJSONResponse(w, httpStatus, err)
 		return
 	}
 

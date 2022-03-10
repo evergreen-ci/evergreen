@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -251,12 +250,12 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	user := MustHaveUser(r)
 
-	modifications := graphql.VersionModifications{}
-	if err = utility.ReadJSON(utility.NewRequestReader(r), &modifications); err != nil {
+	modification := model.VersionModification{}
+	if err = utility.ReadJSON(utility.NewRequestReader(r), &modification); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	httpStatus, err := graphql.ModifyVersion(*projCtx.Version, *user, modifications)
+	httpStatus, err := model.ModifyVersion(*projCtx.Version, *user, modification)
 	if err != nil {
 		http.Error(w, err.Error(), httpStatus)
 		return

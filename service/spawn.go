@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	graphql "github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -211,15 +210,22 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 }
 
 func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
-	volumes, err := graphql.GetMyVolumes(user)
-
+	usr := MustHaveUser(r)
+	volumes, err := host.FindSortedVolumesByUser(usr.Username())
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting volumes for '%s'", user.Username()))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting volumes for '%s'", usr.Username()))
 		return
 	}
-
-	gimlet.WriteJSON(w, volumes)
+	apiVolumes := make([]restModel.APIVolume, 0, len(volumes))
+	for _, vol := range volumes {
+		apiVolume := restModel.APIVolume{}
+		if err := apiVolume.BuildFromService(vol); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error building volume '%s'", vol.ID))
+			return
+		}
+		apiVolumes = append(apiVolumes, apiVolume)
+	}
+	gimlet.WriteJSON(w, apiVolumes)
 }
 
 func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +346,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !graphql.CanUpdateSpawnHost(h, u) {
+	if !host.CanUpdateSpawnHost(h, u) {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this host"))
 		return
 	}
@@ -355,7 +361,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		var cancel func()
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
-		_, _, err = graphql.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, err = data.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), u, h)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -364,7 +370,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStop:
-		_, _, err = graphql.StopSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, err = data.StopSpawnHost(ctx, evergreen.GetEnvironment(), u, h)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -373,7 +379,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostStart:
-		_, _, err = graphql.StartSpawnHost(ctx, evergreen.GetEnvironment(), h, u, r)
+		_, err = data.StartSpawnHost(ctx, evergreen.GetEnvironment(), u, h)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -383,7 +389,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 	case HostPasswordUpdate:
 		pwd := utility.FromStringPtr(updateParams.RDPPwd)
-		_, _, err = graphql.UpdateHostPassword(ctx, evergreen.GetEnvironment(), h, u, pwd, r)
+		_, err = cloud.SetHostRDPPassword(ctx, evergreen.GetEnvironment(), h, pwd)
 		if err != nil {
 			gimlet.WriteJSONError(w, err)
 		}
@@ -517,7 +523,8 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	if volume.Type == "" {
 		volume.Type = evergreen.DefaultEBSType
 	}
-	_, httpStatusCode, _, err, _ := graphql.RequestNewVolume(r.Context(), *volume)
+	volume.CreatedBy = MustHaveUser(r).Id
+	_, httpStatusCode, err := cloud.RequestNewVolume(r.Context(), *volume)
 	if err != nil {
 		uis.LoggedError(w, r, httpStatusCode, err)
 		return
@@ -593,11 +600,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeSetNoExpiration:
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(vol.AvailabilityZone),
-		}
-		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		mgr, err := cloud.GetEC2ManagerForVolume(ctx, vol)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
 			return
@@ -611,11 +614,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeSetHasExpiration:
-		mgrOpts := cloud.ManagerOpts{
-			Provider: evergreen.ProviderNameEc2OnDemand,
-			Region:   cloud.AztoRegion(vol.AvailabilityZone),
-		}
-		mgr, err := cloud.GetManager(ctx, uis.env, mgrOpts)
+		mgr, err := cloud.GetEC2ManagerForVolume(ctx, vol)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))
 			return
@@ -629,21 +628,21 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case VolumeAttach:
-		_, httpStatusCode, _, err := graphql.AttachVolume(ctx, vol.ID, *updateParams.HostID)
+		httpStatusCode, err := cloud.AttachVolume(ctx, vol.ID, *updateParams.HostID)
 		if err != nil {
 			uis.LoggedError(w, r, httpStatusCode, err)
 			return
 		}
 
 	case VolumeDetach:
-		_, httpStatusCode, _, err := graphql.DetachVolume(ctx, vol.ID)
+		httpStatusCode, err := cloud.DetachVolume(ctx, vol.ID)
 		if err != nil {
 			uis.LoggedError(w, r, httpStatusCode, err)
 			return
 		}
 
 	case VolumeDelete:
-		_, httpStatusCode, _, err := graphql.DeleteVolume(ctx, vol.ID)
+		httpStatusCode, err := cloud.DeleteVolume(ctx, vol.ID)
 		if err != nil {
 			uis.LoggedError(w, r, httpStatusCode, err)
 			return
