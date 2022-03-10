@@ -121,7 +121,6 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		for key, isPrivate := range varsToCopy.PrivateVars {
 			if isPrivate {
 				delete(varsToCopy.Vars, key)
-				delete(varsToCopy.RestrictedVars, key)
 				delete(varsToCopy.AdminOnlyVars, key)
 			}
 		}
