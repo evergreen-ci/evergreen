@@ -32,6 +32,7 @@ type StatusChanges struct {
 }
 
 func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
+	tasksToSet := []task.Task{}
 	for _, t := range tasks {
 		originalTasks := []task.Task{*t}
 		if t.DisplayOnly {
@@ -45,7 +46,6 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 		if active {
 			// if the task is being activated and it doesn't override its dependencies
 			// activate the task's dependencies as well
-			tasksToActivate := []task.Task{}
 			if !t.OverrideDependencies {
 				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
 				if err != nil {
@@ -59,11 +59,11 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 								return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
 							}
 						} else {
-							tasksToActivate = append(tasksToActivate, dep)
+							tasksToSet = append(tasksToSet, dep)
 						}
 					}
 				} else {
-					tasksToActivate = append(tasksToActivate, deps...)
+					tasksToSet = append(tasksToSet, deps...)
 				}
 			}
 
@@ -73,10 +73,7 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 					return errors.Wrap(err, "error resetting task")
 				}
 			} else {
-				tasksToActivate = append(tasksToActivate, originalTasks...)
-			}
-			if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
-				return errors.Wrapf(err, "can't activate tasks")
+				tasksToSet = append(tasksToSet, originalTasks...)
 			}
 
 			if t.DistroId == "" && !t.DisplayOnly {
@@ -107,15 +104,12 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 				if err != nil {
 					return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
 				}
+				tasksToSet = append(tasksToSet, originalTasks...)
 				for _, taskInGroup := range tasksInGroup {
 					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
-						originalTasks = append(originalTasks, taskInGroup)
+						tasksToSet = append(tasksToSet, taskInGroup)
 					}
 				}
-			}
-			err = task.DeactivateTasks(originalTasks, caller)
-			if err != nil {
-				return errors.Wrap(err, "error deactivating task")
 			}
 
 			if t.Requester == evergreen.MergeTestRequester {
@@ -135,6 +129,15 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 
 		if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
 			return errors.Wrap(err, "problem updating build and version status for task")
+		}
+	}
+	if active {
+		if err := task.ActivateTasks(tasksToSet, time.Now(), caller); err != nil {
+			return errors.Wrapf(err, "can't activate tasks")
+		}
+	} else {
+		if err := task.DeactivateTasks(tasksToSet, caller); err != nil {
+			return errors.Wrap(err, "error deactivating task")
 		}
 	}
 	return nil
