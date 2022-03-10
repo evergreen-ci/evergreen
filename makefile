@@ -185,12 +185,10 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
 	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.40.0 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
-	@mkdir -p $(buildDir)
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets
 
@@ -223,7 +221,6 @@ $(buildDir)/expansions.yml:$(buildDir)/parse-host-file
 
 # npm setup
 $(buildDir)/.npmSetup:
-	@mkdir -p $(buildDir)
 	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)npm install
 	touch $@
 # end npm setup
@@ -231,17 +228,14 @@ $(buildDir)/.npmSetup:
 
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
 $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
-	@mkdir -p $(buildDir)
-	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
+	$(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
 
 $(buildDir)/sign-executable:cmd/sign-executable/sign-executable.go
-	@mkdir -p $(buildDir)
-	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
+	$(gobin) build -o $@ $<
 $(buildDir)/macnotary:$(buildDir)/sign-executable
 	./$< get-client --download-url $(NOTARY_CLIENT_URL) --destination $@
 $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(unixBinaryBasename) $(buildDir)/macnotary

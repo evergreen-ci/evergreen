@@ -23,13 +23,13 @@ const (
 )
 
 func zipFile(inputFilePath, destinationPath string) error {
-	zipFile, err := os.Create(destinationPath)
+	outputFile, err := os.Create(destinationPath)
 	if err != nil {
 		return errors.Wrap(err, "creating zip file")
 	}
-	defer zipFile.Close()
+	defer outputFile.Close()
 
-	zipWriter := zip.NewWriter(zipFile)
+	zipWriter := zip.NewWriter(outputFile)
 	defer zipWriter.Close()
 
 	inputFile, err := os.Open(inputFilePath)
@@ -57,7 +57,7 @@ func zipFile(inputFilePath, destinationPath string) error {
 	return errors.Wrap(err, "copying input file into zip file")
 }
 
-func zipFileToFile(file *zip.File, destination string) error {
+func extractToFile(file *zip.File, destination string) error {
 	fileReader, err := file.Open()
 	if err != nil {
 		return errors.Wrap(err, "opening zip file")
@@ -88,7 +88,7 @@ func extractFileFromZip(zipBytes []byte, targetFile, destination string) error {
 			continue
 		}
 		targetFound = true
-		if err = zipFileToFile(file, destination); err != nil {
+		if err = extractToFile(file, destination); err != nil {
 			return errors.Wrap(err, "extracting zip file")
 		}
 	}
@@ -101,7 +101,7 @@ func extractFileFromZip(zipBytes []byte, targetFile, destination string) error {
 }
 
 func downloadZip(ctx context.Context, downloadURL string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "making get request")
 	}
