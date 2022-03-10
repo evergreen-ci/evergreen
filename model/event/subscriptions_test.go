@@ -176,54 +176,61 @@ func (s *subscriptionsSuite) TestRemove() {
 	}
 }
 
-func (s *subscriptionsSuite) TestFind() {
-	// Empty selectors should select nothing (because technically, they match everything)
-	subs, err := FindSubscriptions("type2", nil)
-	s.NoError(err)
-	s.Empty(subs)
-
-	subs, err = FindSubscriptions("type1", []Selector{
-		{
-			Type: "data",
-			Data: "nothing_matches",
-		},
+func (s *subscriptionsSuite) TestFindSubscriptions() {
+	s.Run("EmptySelectors", func() {
+		subs, err := FindSubscriptions("type2", nil)
+		s.NoError(err)
+		s.Empty(subs)
 	})
-	s.NoError(err)
-	s.Empty(subs)
 
-	subs, err = FindSubscriptions("type2", []Selector{
-		{
-			Type: SelectorObject,
-			Data: "somethingspecial",
-		},
+	s.Run("NothingMatches", func() {
+		subs, err := FindSubscriptions("type1", []Selector{
+			{
+				Type: SelectorObject,
+				Data: "nothing_matches",
+			},
+		})
+		s.NoError(err)
+		s.Empty(subs)
 	})
-	s.NoError(err)
-	s.Require().Len(subs, 2)
-	for i := range subs {
-		if subs[i].Subscriber.Type == EmailSubscriberType {
-			s.Equal("someone4@example.com", *subs[i].Subscriber.Target.(*string))
 
-		} else if subs[i].Subscriber.Type == SlackSubscriberType {
-			s.Equal("slack_user", *subs[i].Subscriber.Target.(*string))
+	s.Run("MatchesMultipleSubscriptions", func() {
+		subs, err := FindSubscriptions("type2", []Selector{
+			{
+				Type: SelectorObject,
+				Data: "somethingspecial",
+			},
+		})
+		s.NoError(err)
+		s.Require().Len(subs, 2)
+		for i := range subs {
+			if subs[i].Subscriber.Type == EmailSubscriberType {
+				s.Equal("someone4@example.com", *subs[i].Subscriber.Target.(*string))
 
-		} else {
-			s.T().Errorf("unknown subscriber type: %s", subs[i].Subscriber.Type)
+			} else if subs[i].Subscriber.Type == SlackSubscriberType {
+				s.Equal("slack_user", *subs[i].Subscriber.Target.(*string))
+
+			} else {
+				s.T().Errorf("unknown subscriber type: %s", subs[i].Subscriber.Type)
+			}
 		}
-	}
-
-	// this query hits a subscriber with a regex selector
-	subs, err = FindSubscriptions("type1", []Selector{
-		{
-			Type: SelectorID,
-			Data: "something",
-		},
-		{
-			Type: SelectorProject,
-			Data: "somethingelse",
-		},
 	})
-	s.NoError(err)
-	s.Len(subs, 3)
+
+	s.Run("MatchesRegexSelector", func() {
+		// this query hits a subscriber with a regex selector
+		subs, err := FindSubscriptions("type1", []Selector{
+			{
+				Type: SelectorID,
+				Data: "something",
+			},
+			{
+				Type: SelectorProject,
+				Data: "somethingelse",
+			},
+		})
+		s.NoError(err)
+		s.Len(subs, 3)
+	})
 }
 
 func (s *subscriptionsSuite) TestFindSelectors() {

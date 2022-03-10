@@ -35,6 +35,17 @@ var (
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
 	subscriptionTriggerDataKey    = bsonutil.MustHaveTag(Subscription{}, "TriggerData")
 	subscriptionLastUpdatedKey    = bsonutil.MustHaveTag(Subscription{}, "LastUpdated")
+
+	filterObjectKey       = bsonutil.MustHaveTag(Filter{}, "Object")
+	filterIDKey           = bsonutil.MustHaveTag(Filter{}, "ID")
+	filterProjectKey      = bsonutil.MustHaveTag(Filter{}, "Project")
+	filterOwnerKey        = bsonutil.MustHaveTag(Filter{}, "Owner")
+	filterRequesterKey    = bsonutil.MustHaveTag(Filter{}, "Requester")
+	filterStatusKey       = bsonutil.MustHaveTag(Filter{}, "Status")
+	filterDisplayNameKey  = bsonutil.MustHaveTag(Filter{}, "DisplayName")
+	filterBuildVariantKey = bsonutil.MustHaveTag(Filter{}, "BuildVariant")
+	filterInVersionKey    = bsonutil.MustHaveTag(Filter{}, "InVersion")
+	filterInBuildKey      = bsonutil.MustHaveTag(Filter{}, "InBuild")
 )
 
 type OwnerType string
@@ -216,41 +227,43 @@ const (
 	SelectorInBuild      = "in-build"
 )
 
+var filterKeyForSelectorType = map[string]string{
+	SelectorObject:       filterObjectKey,
+	SelectorID:           filterIDKey,
+	SelectorProject:      filterProjectKey,
+	SelectorOwner:        filterOwnerKey,
+	SelectorRequester:    filterRequesterKey,
+	SelectorStatus:       filterStatusKey,
+	SelectorDisplayName:  filterDisplayNameKey,
+	SelectorBuildVariant: filterBuildVariantKey,
+	SelectorInVersion:    filterInVersionKey,
+	SelectorInBuild:      filterInBuildKey,
+}
+
 // FindSubscriptions finds all subscriptions of matching resourceType, and whose
-// selectors match the selectors slice
-func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
-	if len(selectors) == 0 {
+// filter matches the attributes of the event.
+func FindSubscriptions(resourceType string, eventAttributes map[string]string) ([]Subscription, error) {
+	if len(eventAttributes) == 0 {
 		return nil, nil
 	}
 
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				subscriptionResourceTypeKey: resourceType,
-			},
-		},
-		{
-			"$addFields": bson.M{
-				"keep": bson.M{
-					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
-				},
-			},
-		},
-		{
-			"$match": bson.M{
-				"keep": true,
-			},
-		},
+	query := bson.M{subscriptionResourceTypeKey: resourceType}
+	for selector, filterKey := range filterKeyForSelectorType {
+		if attributeValue, ok := eventAttributes[selector]; ok {
+			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = bson.M{"$in": bson.A{attributeValue, nil}}
+		} else {
+			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = nil
+		}
 	}
 
 	rawSubs := []Subscription{}
-	if err := db.Aggregate(SubscriptionsCollection, pipeline, &rawSubs); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch subscriptions")
+	if err := db.FindAllQ(SubscriptionsCollection, db.Query(query), &rawSubs); err != nil {
+		return nil, errors.Wrap(err, "finding subscriptions for selectors")
 	}
 
 	out := []Subscription{}
 	for i := range rawSubs {
-		if len(rawSubs[i].RegexSelectors) > 0 && !regexSelectorsMatch(selectors, rawSubs[i].RegexSelectors) {
+		if len(rawSubs[i].RegexSelectors) > 0 && !regexSelectorsMatch(eventAttributes, rawSubs[i].RegexSelectors) {
 			continue
 		}
 
@@ -260,30 +273,20 @@ func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscriptio
 	return out, nil
 }
 
-func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
-	for i := range regexSelectors {
-		selector := findSelector(selectors, regexSelectors[i].Type)
-		if selector == nil {
+func regexSelectorsMatch(eventAttributes map[string]string, regexSelectors []Selector) bool {
+	for _, regexSelector := range regexSelectors {
+		attributeValue, ok := eventAttributes[regexSelector.Type]
+		if !ok {
 			return false
 		}
 
-		matched, err := regexp.MatchString(regexSelectors[i].Data, selector.Data)
+		matched, err := regexp.MatchString(regexSelector.Data, attributeValue)
 		if err != nil || !matched {
 			return false
 		}
 	}
 
 	return true
-}
-
-func findSelector(selectors []Selector, selectorResourceType string) *Selector {
-	for i := range selectors {
-		if selectors[i].Type == selectorResourceType {
-			return &selectors[i]
-		}
-	}
-
-	return nil
 }
 
 func (s *Subscription) Upsert() error {
