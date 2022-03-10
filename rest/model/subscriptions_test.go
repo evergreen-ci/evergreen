@@ -38,9 +38,7 @@ func TestSubscriptionModels(t *testing.T) {
 			},
 		},
 		Filter: event.Filter{
-			ID:      id,
-			Owner:   owner,
-			Project: project,
+			ID: id,
 		},
 		Subscriber: event.Subscriber{
 			Type:   event.EmailSubscriberType,

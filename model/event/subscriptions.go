@@ -374,8 +374,8 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	return true, ""
 }
 
-func (s *Subscription) ValidateFilter() error {
-	if s.Filter == (Filter{}) {
+func (s *Subscription) ValidateSelectors() error {
+	if s.Filter == (Filter{}) && len(s.RegexSelectors) == 0 {
 		return errors.New("no filter parameters specified")
 	}
 
@@ -399,7 +399,7 @@ func (s *Subscription) Validate() error {
 		s.Subscriber.Type == JIRACommentSubscriberType {
 		catcher.New("JIRA comment subscription not allowed for all tasks in the project")
 	}
-	catcher.Add(s.ValidateFilter())
+	catcher.Add(s.ValidateSelectors())
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
