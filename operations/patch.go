@@ -62,7 +62,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Usage: "use all of the same tasks/variants defined for the last patch you scheduled for this project",
 			},
 			cli.BoolFlag{
-				Name:  joinFlagNames(repeatFailedDefinitionFlag, "failed", "rf"),
+				Name:  joinFlagNames(repeatFailedDefinitionFlag, "rf"),
 				Usage: "use only the failed tasks/variants defined for the last patch you scheduled for this project",
 			},
 			cli.StringFlag{

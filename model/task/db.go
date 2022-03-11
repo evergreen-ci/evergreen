@@ -398,25 +398,11 @@ func FailedTasksByVersion(version string) bson.M {
 	}
 }
 
-func FailedExecutionTasksByVersionAndBV(version string, variant string) bson.M {
+func FailedTasksByVersionAndBV(version string, variant string) bson.M {
 	return bson.M{
 		VersionKey:      version,
 		BuildVariantKey: variant,
 		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
-		DisplayOnlyKey:  bson.M{"$ne": true},
-		"$or": []bson.M{
-			{DisplayTaskIdKey: bson.M{"$exists": false}},
-			{DisplayTaskIdKey: ""},
-		},
-	}
-}
-
-func FailedDisplayTasksByVersionAndBV(version string, variant string) bson.M {
-	return bson.M{
-		VersionKey:      version,
-		BuildVariantKey: variant,
-		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
-		DisplayOnlyKey:  true,
 	}
 }
 
