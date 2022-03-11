@@ -1001,7 +1001,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			continue
 		}
 		for key, val := range commonProjectVariables {
-			// if the key is private/admin only in any of the projects, make it private/admin only in the repo
+			// If the key is private/admin only in any of the projects, make it private/admin only in the repo.
 			if vars.Vars[key] == val {
 				if vars.PrivateVars[key] {
 					commonPrivate[key] = true

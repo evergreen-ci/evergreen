@@ -206,24 +206,16 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 	vars := map[string]string{}
 	for k, v := range projectVars.Vars {
-		if !projectVars.AdminOnlyVars[k] {
+		if !projectVars.AdminOnlyVars[k] || projectVars.ShouldGetAdminOnlyVars(t) {
 			vars[k] = v
 		}
-	}
-	for k, v := range projectVars.GetAdminOnlyVars(t) {
-		vars[k] = v
 	}
 	return vars
 }
 
-func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string {
-	adminOnlyVars := map[string]string{}
+func (projectVars *ProjectVars) ShouldGetAdminOnlyVars(t *task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
-		for k, v := range projectVars.Vars {
-			if projectVars.AdminOnlyVars[k] {
-				adminOnlyVars[k] = v
-			}
-		}
+		return true
 	} else if t.ActivatedBy != "" {
 		u, err := user.FindOneById(t.ActivatedBy)
 		if err != nil {
@@ -231,7 +223,7 @@ func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string
 				"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
 				"task_id": t.Id,
 			}))
-			return adminOnlyVars
+			return false
 		}
 		if u != nil {
 			isAdmin := u.HasPermission(gimlet.PermissionOpts{
@@ -241,16 +233,12 @@ func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string
 				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 			})
 			if isAdmin {
-				for k, v := range projectVars.Vars {
-					if projectVars.AdminOnlyVars[k] {
-						adminOnlyVars[k] = v
-					}
-				}
+				return true
 			}
 		}
 	}
 
-	return adminOnlyVars
+	return false
 }
 
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
