@@ -445,7 +445,7 @@ func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := data.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

@@ -444,7 +444,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Check whether attachment already attached to a host
-	attachedHost, err := data.FindHostWithVolume(h.attachment.VolumeID)
+	attachedHost, err := host.FindHostWithVolume(h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -458,7 +458,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := data.FindVolumeById(h.attachment.VolumeID)
+	v, err := host.FindVolumeByID(h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -713,7 +713,7 @@ func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	volume, err := data.FindVolumeById(h.VolumeID)
+	volume, err := host.FindVolumeByID(h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -734,7 +734,7 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	attachedHost, err := data.FindHostWithVolume(h.VolumeID)
+	attachedHost, err := host.FindHostWithVolume(h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -810,7 +810,7 @@ func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	volume, err := data.FindVolumeById(h.volumeID)
+	volume, err := host.FindVolumeByID(h.volumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -832,7 +832,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.opts.NewName != "" {
-		if err = data.SetVolumeName(volume, h.opts.NewName); err != nil {
+		if err = volume.SetDisplayName(h.opts.NewName); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -947,7 +947,7 @@ func (h *getVolumesHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	volumes, err := data.FindVolumesByUser(u.Username())
+	volumes, err := host.FindVolumesByUser(u.Username())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1003,7 +1003,7 @@ func (h *getVolumeByIDHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
-	v, err := data.FindVolumeById(h.volumeID)
+	v, err := host.FindVolumeByID(h.volumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1076,7 +1076,7 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 
 	} else if host.Status == evergreen.HostUninitialized {
-		if err := data.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
+		if err := host.SetStatus(evergreen.HostTerminated, u.Id, fmt.Sprintf("changed by %s from API", u.Id)); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

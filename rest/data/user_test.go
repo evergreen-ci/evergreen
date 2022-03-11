@@ -59,7 +59,7 @@ func (s *DBUserConnectorSuite) TestFindUserById() {
 
 func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 	for _, u := range s.users {
-		s.NoError(DeletePublicKey(u, u.Id+"_0"))
+		s.NoError(u.DeletePublicKey(u.Id + "_0"))
 
 		dbUser, err := user.FindOne(user.ById(u.Id))
 		s.NoError(err)

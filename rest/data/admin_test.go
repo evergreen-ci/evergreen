@@ -104,7 +104,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Require().NoError(err)
 
 	// read the settings and spot check values
-	settingsFromConnector, err := GetEvergreenSettings()
+	settingsFromConnector, err := evergreen.GetConfig()
 	s.Require().NoError(err)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
@@ -221,7 +221,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.NoError(err)
 	_, err = SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
 	s.NoError(err)
-	settingsFromConnector, err = GetEvergreenSettings()
+	settingsFromConnector, err = evergreen.GetConfig()
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
@@ -303,7 +303,7 @@ func (s *AdminDataSuite) TestRestart() {
 
 func (s *AdminDataSuite) TestGetBanner() {
 	u := &user.DBUser{Id: "me"}
-	s.NoError(SetAdminBanner("banner text", u))
+	s.NoError(evergreen.SetBanner("banner text"))
 	s.NoError(SetBannerTheme(evergreen.Important, u))
 	text, theme, err := GetBanner()
 	s.NoError(err)

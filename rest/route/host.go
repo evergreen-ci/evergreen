@@ -8,14 +8,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/user"
-
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -96,7 +97,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 		} else {
-			if err = data.SetHostStatus(foundHost, status.Status, user.Id); err != nil {
+			if err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id)); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
@@ -387,7 +388,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting hosts"))
 	}
 
-	volumes, err := data.FindVolumesByUser(ch.user)
+	volumes, err := host.FindVolumesByUser(ch.user)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "database error getting volumes"))
 	}
@@ -424,7 +425,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"terminated_volumes": toTerminate.TerminatedVolumes,
 		})
 
-		grip.Error(message.WrapError(data.RemoveAdminFromProjects(ch.user), message.Fields{
+		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ch.user), message.Fields{
 			"message": "could not remove user as an admin",
 			"context": "user offboarding",
 			"user":    ch.user,
@@ -609,7 +610,7 @@ func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
 		)
 	}
 
-	if err = data.DisableHost(ctx, h.env, host, h.reason); err != nil {
+	if err = units.HandlePoisonedHost(ctx, h.env, host, h.reason); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

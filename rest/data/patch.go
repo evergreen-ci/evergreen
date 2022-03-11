@@ -101,36 +101,6 @@ func GetChildPatchIds(patchId string) ([]string, error) {
 	return p.Triggers.ChildPatches, nil
 }
 
-func FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
-	patchObjectIDs := []mgobson.ObjectId{}
-	for _, patchID := range patchIds {
-		if err := validatePatchID(patchID); err != nil {
-			return nil, errors.Wrap(err, "problem validating patchId")
-		}
-		patchObjectIDs = append(patchObjectIDs, mgobson.ObjectIdHex(patchID))
-	}
-
-	p, err := patch.Find(patch.ByIds(patchObjectIDs))
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding patches")
-	}
-	if p == nil {
-		return nil, errors.New("patches not found")
-	}
-
-	apiPatches := []restModel.APIPatch{}
-	for _, patch := range p {
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(patch)
-		if err != nil {
-			return nil, errors.Wrap(err, "problem converting patch")
-		}
-		apiPatches = append(apiPatches, apiPatch)
-	}
-	return apiPatches, nil
-
-}
-
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
 func AbortPatch(patchId string, user string) error {
@@ -149,12 +119,6 @@ func AbortPatch(patchId string, user string) error {
 		}
 	}
 	return model.CancelPatch(p, task.AbortInfo{User: user})
-}
-
-// SetPatchPriority attempts to set the priority on the corresponding version.
-// Will not error if no version exists.
-func SetPatchPriority(patchId string, priority int64, caller string) error {
-	return model.SetVersionPriority(patchId, priority, caller)
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)

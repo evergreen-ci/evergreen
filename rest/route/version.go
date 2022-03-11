@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -148,7 +150,7 @@ func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.AbortVersion(h.versionId, h.userId); err != nil {
+	if err := task.AbortVersion(h.versionId, task.AbortInfo{User: h.userId}); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
 	}
 
@@ -194,7 +196,7 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// Restart the version
-	err := data.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
+	err := dbModel.RestartTasksInVersion(h.versionId, true, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in restarting version"))
 	}

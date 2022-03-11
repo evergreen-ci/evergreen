@@ -260,7 +260,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettings() {
 		Admins:  []string{},
 		Repo:    "SomeRepo",
 	}
-	projectSettingsEvent, err := GetProjectSettings(projRef)
+	projectSettingsEvent, err := model.GetProjectSettings(projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 }
@@ -273,7 +273,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 		Id:      projectId,
 		Admins:  []string{},
 	}
-	projectSettingsEvent, err := GetProjectSettings(projRef)
+	projectSettingsEvent, err := model.GetProjectSettings(projRef)
 	s.Nil(err)
 	s.NotNil(projectSettingsEvent)
 	s.False(projectSettingsEvent.GitHubHooksEnabled)

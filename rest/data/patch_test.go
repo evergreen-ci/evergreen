@@ -413,7 +413,7 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
-	err := SetPatchPriority(s.obj_ids[0], 7, "")
+	err := dbModel.SetVersionPriority(s.obj_ids[0], 7, "")
 	s.NoError(err)
 	t, err := FindTaskById("t1")
 	s.NoError(err)

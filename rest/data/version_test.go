@@ -98,7 +98,7 @@ func (s *VersionConnectorSuite) TestFindVersionByIdFail() {
 
 func (s *VersionConnectorSuite) TestAbortVersion() {
 	versionId := "version1"
-	err := AbortVersion(versionId, "")
+	err := task.AbortVersion(versionId, task.AbortInfo{User: ""})
 	s.NoError(err)
 
 	// NOTE: TestAbort() has been written in this following way because FindTaskbyVersionId()
@@ -128,7 +128,7 @@ func (s *VersionConnectorSuite) TestAbortVersion() {
 
 func (s *VersionConnectorSuite) TestRestartVersion() {
 	versionId := "version3"
-	err := RestartVersion(versionId, "caller3")
+	err := model.RestartTasksInVersion(versionId, true, "caller3")
 	s.NoError(err)
 
 	// When a version is restarted, all of its completed tasks should be reset.

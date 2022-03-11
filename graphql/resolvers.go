@@ -128,7 +128,7 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
 	if utility.FromStringPtr(obj.HomeVolumeID) != "" {
 		volId := utility.FromStringPtr(obj.HomeVolumeID)
-		volume, err := data.FindVolumeById(volId)
+		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
 		}
@@ -162,7 +162,7 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
 	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
 	for _, volId := range obj.AttachedVolumeIDs {
-		volume, err := data.FindVolumeById(volId)
+		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
 			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
 		}
@@ -641,7 +641,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 }
 
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
-	volume, err := data.FindVolumeById(updateVolumeInput.VolumeID)
+	volume, err := host.FindVolumeByID(updateVolumeInput.VolumeID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
 	}
@@ -822,7 +822,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if editSpawnHostInput.Volume != nil {
-		v, err = data.FindVolumeById(*editSpawnHostInput.Volume)
+		v, err = host.FindVolumeByID(*editSpawnHostInput.Volume)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
 		}
@@ -839,7 +839,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		}
 		opts.AddKey = editSpawnHostInput.PublicKey.Key
 		if opts.AddKey == "" {
-			opts.AddKey, err = data.GetPublicKey(usr, editSpawnHostInput.PublicKey.Name)
+			opts.AddKey, err = usr.GetPublicKey(editSpawnHostInput.PublicKey.Name)
 			if err != nil {
 				return nil, InputValidationError.Send(ctx, fmt.Sprintf("No matching key found for name '%s'", editSpawnHostInput.PublicKey.Name))
 			}

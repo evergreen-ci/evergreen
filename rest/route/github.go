@@ -292,7 +292,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
-	settings, err := data.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
 	}
@@ -355,7 +355,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}))
 		return errors.Wrapf(err, "error getting commit for tag '%s'", tag.Tag)
 	}
-	projectRefs, err := data.FindEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
+	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "github hook",
@@ -403,7 +403,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
-				existingVersion, err = data.FindVersionByProjectAndRevision(pRef.Id, hash)
+				existingVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
 				if err != nil {
 					retryCatcher.Wrapf(err, "problem finding version for project '%s' with revision '%s'", pRef.Id, hash)
 					continue
@@ -426,7 +426,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					"tag":     tag,
 				})
 
-				if err = data.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
+				if err = model.AddGitTag(existingVersion.Id, tag); err != nil {
 					catcher.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id)
 					continue
 				}
@@ -523,7 +523,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		projectInfo, err = data.LoadProjectForVersion(existingVersion, pRef.Id)
+		projectInfo, err = model.LoadProjectForVersion(existingVersion, pRef.Id, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier)
 		}
@@ -648,7 +648,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 }
 
 func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, baseBranch string, pr *github.PullRequest, prNum int) error {
-	settings, err := data.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
 	}

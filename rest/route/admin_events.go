@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -120,7 +121,7 @@ func (h *revertHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *revertHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	err := data.RevertConfigTo(h.GUID, u.Username())
+	err := event.RevertConfig(h.GUID, u.Username())
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

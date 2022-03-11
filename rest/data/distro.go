@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 )
 
 // FindDistroById queries the database to find a given distros.
@@ -114,26 +112,4 @@ func DeleteDistroById(distroId string) error {
 		}
 	}
 	return nil
-}
-
-func getDefaultProviderSettings(d *distro.Distro) (map[string]interface{}, error) {
-	var doc *birch.Document
-	var err error
-	if len(d.ProviderSettingsList) == 1 {
-		doc = d.ProviderSettingsList[0]
-	} else if len(d.ProviderSettingsList) > 1 {
-		doc, err = d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
-		if err != nil {
-			return nil, errors.Wrapf(err, "providers list doesn't contain region '%s'", evergreen.DefaultEC2Region)
-		}
-	}
-	if doc != nil {
-		return doc.ExportMap(), nil
-	}
-	return nil, nil
-}
-
-// ClearTaskQueue deletes all tasks from the task queue for a distro
-func ClearTaskQueue(distroId string) error {
-	return model.ClearTaskQueue(distroId)
 }

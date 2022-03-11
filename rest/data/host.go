@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -73,10 +72,6 @@ func FindHostByIpAddress(ip string) (*host.Host, error) {
 	return h, nil
 }
 
-func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	return findHostByIdWithOwner(hostID, user)
-}
-
 func FindHostsByDistro(distro string) ([]host.Host, error) {
 	return host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(distro)))
 }
@@ -87,14 +82,6 @@ func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID 
 		return nil, nil, 0, err
 	}
 	return hosts, filteredHostsCount, totalHostsCount, nil
-}
-
-func GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
-	host, err := host.GetHostByIdOrTagWithTask(hostID)
-	if err != nil {
-		return nil, err
-	}
-	return host, nil
 }
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
@@ -147,10 +134,6 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	return intentHost, nil
 }
 
-func SetHostStatus(host *host.Host, status, user string) error {
-	return host.SetStatus(status, user, fmt.Sprintf("changed by %s from API", user))
-}
-
 func SetHostExpirationTime(host *host.Host, newExp time.Time) error {
 	if err := host.SetExpirationTime(newExp); err != nil {
 		return errors.Wrap(err, "Error extending host expiration time")
@@ -163,31 +146,9 @@ func TerminateHost(ctx context.Context, host *host.Host, user string) error {
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
 }
 
-// DisableHost disables the host, notifies it's been disabled,
-// and clears and resets its running task.
-func DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
-	return units.HandlePoisonedHost(ctx, env, host, reason)
-}
-
 func CheckHostSecret(hostID string, r *http.Request) (int, error) {
 	_, code, err := model.ValidateHost(hostID, r)
 	return code, errors.WithStack(err)
-}
-
-func FindVolumeById(volumeID string) (*host.Volume, error) {
-	return host.FindVolumeByID(volumeID)
-}
-
-func FindVolumesByUser(user string) ([]host.Volume, error) {
-	return host.FindVolumesByUser(user)
-}
-
-func SetVolumeName(v *host.Volume, name string) error {
-	return v.SetDisplayName(name)
-}
-
-func FindHostWithVolume(volumeID string) (*host.Host, error) {
-	return host.FindHostWithVolume(volumeID)
 }
 
 func AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
@@ -243,24 +204,24 @@ func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string,
 	return script, nil
 }
 
-func findHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	host, err := FindHostById(hostID)
+func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
+	hostById, err := FindHostById(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
 		}
 	}
-	if host == nil {
+	if hostById == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
 		}
 	}
 
-	if user.Username() != host.StartedBy {
+	if user.Username() != hostById.StartedBy {
 		if !user.HasPermission(gimlet.PermissionOpts{
-			Resource:      host.Distro.Id,
+			Resource:      hostById.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
 			RequiredLevel: evergreen.HostsEdit.Value,
@@ -272,5 +233,5 @@ func findHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) 
 		}
 	}
 
-	return host, nil
+	return hostById, nil
 }

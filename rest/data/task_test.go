@@ -547,7 +547,7 @@ func (s *TaskConnectorAbortTaskSuite) TestAbort() {
 		Id: "user1",
 	}
 	s.NoError(u.Insert())
-	err := AbortTask("task1", "user1")
+	err := model.AbortTask("task1", "user1")
 	s.NoError(err)
 	foundTask, err := FindTaskById("task1")
 	s.NoError(err)
@@ -563,7 +563,7 @@ func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
 		Id: "user1",
 	}
 	s.NoError(u.Insert())
-	err := AbortTask("task1", "user1")
+	err := model.AbortTask("task1", "user1")
 	s.Error(err)
 }
 

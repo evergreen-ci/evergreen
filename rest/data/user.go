@@ -23,22 +23,6 @@ func FindUserById(userId string) (gimlet.User, error) {
 	return t, nil
 }
 
-func FindUserByGithubName(name string) (gimlet.User, error) {
-	return user.FindByGithubName(name)
-}
-
-func AddPublicKey(user *user.DBUser, keyName, keyValue string) error {
-	return user.AddPublicKey(keyName, keyValue)
-}
-
-func DeletePublicKey(user *user.DBUser, keyName string) error {
-	return user.DeletePublicKey(keyName)
-}
-
-func GetPublicKey(user *user.DBUser, keyName string) (string, error) {
-	return user.GetPublicKey(keyName)
-}
-
 func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return gimlet.ErrorResponse{
@@ -196,8 +180,4 @@ func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
 	toUpdate.OnlyApi = true
 	dbUser := restModel.APIDBUserToService(toUpdate)
 	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "unable to update service user")
-}
-
-func DeleteServiceUser(id string) error {
-	return user.DeleteServiceUser(id)
 }

@@ -18,11 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GetEvergreenSettings retrieves the admin settings document from the DB
-func GetEvergreenSettings() (*evergreen.Settings, error) {
-	return evergreen.GetConfig()
-}
-
 func GetBanner() (string, string, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -132,11 +127,6 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 	return errors.WithStack(catcher.Resolve())
 }
 
-// SetAdminBanner sets the admin banner in the DB and event logs it
-func SetAdminBanner(text string, u *user.DBUser) error {
-	return evergreen.SetBanner(text)
-}
-
 // SetBannerTheme sets the banner theme in the DB and event logs it
 func SetBannerTheme(themeString string, u *user.DBUser) error {
 	valid, theme := evergreen.IsValidBannerTheme(themeString)
@@ -145,12 +135,6 @@ func SetBannerTheme(themeString string, u *user.DBUser) error {
 	}
 
 	return evergreen.SetBannerTheme(theme)
-}
-
-// SetServiceFlags sets the service flags in the DB and event logs it
-func SetServiceFlags(flags evergreen.ServiceFlags, u *user.DBUser) error {
-
-	return evergreen.SetServiceFlags(flags)
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
@@ -200,10 +184,6 @@ func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.Res
 		ItemsRestarted: totalRestarted,
 		ItemsErrored:   totalNotRestarted,
 	}, nil
-}
-
-func RevertConfigTo(guid string, user string) error {
-	return event.RevertConfig(guid, user)
 }
 
 func GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {

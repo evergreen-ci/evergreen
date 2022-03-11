@@ -35,32 +35,6 @@ func FindVersionById(versionId string) (*model.Version, error) {
 	return v, nil
 }
 
-func FindVersionByProjectAndRevision(projectId, revision string) (*model.Version, error) {
-	return model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
-}
-
-func AddGitTagToVersion(versionId string, gitTag model.GitTag) error {
-	return model.AddGitTag(versionId, gitTag)
-}
-
-// AbortVersion aborts all tasks of a version given its ID.
-// It wraps the service level AbortModel.Version
-func AbortVersion(versionId, caller string) error {
-	return task.AbortVersion(versionId, task.AbortInfo{User: caller})
-}
-
-// RestartVersion wraps the service level RestartVersion, which restarts
-// completed tasks associated with a given versionId. If abortInProgress is
-// true, it also sets the abort flag on any in-progress tasks. In addition, it
-// updates all builds containing the tasks affected.
-func RestartVersion(versionId string, caller string) error {
-	return model.RestartTasksInVersion(versionId, true, caller)
-}
-
-func LoadProjectForVersion(v *model.Version, projectId string) (model.ProjectInfo, error) {
-	return model.LoadProjectForVersion(v, projectId, false)
-}
-
 // GetProjectVersionsWithOptions returns the versions that fit the given constraint.
 func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
 	versions, err := model.GetVersionsWithOptions(projectName, opts)

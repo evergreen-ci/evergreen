@@ -244,11 +244,6 @@ func UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error
 	return err
 }
 
-// RemoveAdminFromProjects removes a user from all Admins slices of every project
-func RemoveAdminFromProjects(toDelete string) error {
-	return model.RemoveAdminFromProjects(toDelete)
-}
-
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
@@ -388,14 +383,6 @@ func GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (
 	}
 
 	return proj, nil
-}
-
-func FindEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]model.ProjectRef, error) {
-	return model.FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo)
-}
-
-func GetProjectSettings(p *model.ProjectRef) (*model.ProjectSettings, error) {
-	return model.GetProjectSettings(p)
 }
 
 func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {

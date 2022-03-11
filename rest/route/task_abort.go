@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -28,7 +29,7 @@ func (t *taskAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	err := data.AbortTask(t.taskId, MustHaveUser(ctx).Id)
+	err := serviceModel.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}

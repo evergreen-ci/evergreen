@@ -367,7 +367,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 func (s *HostConnectorSuite) TestSetHostStatus() {
 	h, err := FindHostById("host1")
 	s.NoError(err)
-	s.NoError(SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
+	s.NoError(h.SetStatus(evergreen.HostTerminated, evergreen.User, fmt.Sprintf("changed by %s from API", evergreen.User)))
 
 	for i := 1; i < 5; i++ {
 		h, err := FindHostById(fmt.Sprintf("host%d", i))

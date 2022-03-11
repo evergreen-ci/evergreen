@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +47,7 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	settings, err := data.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	assert.NoError(err)
 	assert.Equal(body.Flags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
 	assert.Equal(body.Flags.AgentStartDisabled, settings.ServiceFlags.AgentStartDisabled)

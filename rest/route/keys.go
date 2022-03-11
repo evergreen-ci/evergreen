@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -143,7 +142,7 @@ func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := data.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
+	if err := u.AddPublicKey(h.keyName, h.keyValue); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to add key"))
 	}
 
@@ -187,7 +186,7 @@ func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := data.DeletePublicKey(user, h.keyName); err != nil {
+	if err := user.DeletePublicKey(h.keyName); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.New("couldn't delete key"))
 	}
 

@@ -3,7 +3,6 @@ package data
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -51,9 +50,4 @@ func FindRecentTaskList(minutes int, key string) (*model.APIRecentTaskStatsList,
 	}
 
 	return &apiList, nil
-}
-
-// GetHostStatsByDistro returns counts of up hosts broken down by distro
-func GetHostStatsByDistro() ([]host.StatsByDistro, error) {
-	return host.GetStatsByDistro()
 }

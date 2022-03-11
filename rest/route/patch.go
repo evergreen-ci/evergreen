@@ -75,7 +75,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusForbidden,
 			})
 		}
-		if err := data.SetPatchPriority(p.patchId, priority, ""); err != nil {
+		if err := dbModel.SetVersionPriority(p.patchId, priority, ""); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
@@ -389,7 +389,7 @@ func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	if err := data.RestartVersion(p.patchId, usr.Id); err != nil {
+	if err := dbModel.RestartTasksInVersion(p.patchId, true, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 

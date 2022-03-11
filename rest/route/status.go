@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -144,7 +145,7 @@ func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
-	stats, err := data.GetHostStatsByDistro()
+	stats, err := host.GetStatsByDistro()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

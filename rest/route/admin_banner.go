@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -41,7 +42,7 @@ func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	if err := data.SetAdminBanner(utility.FromStringPtr(h.Banner), u); err != nil {
+	if err := evergreen.SetBanner(utility.FromStringPtr(h.Banner)); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner text"))
 	}
 	if err := data.SetBannerTheme(utility.FromStringPtr(h.Theme), u); err != nil {

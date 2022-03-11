@@ -136,7 +136,7 @@ func (h *repoIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	before, err := data.GetProjectSettings(&h.newRepoRef.ProjectRef)
+	before, err := dbModel.GetProjectSettings(&h.newRepoRef.ProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings before update for repo '%s'", h.repoName))
 	}
@@ -227,7 +227,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.repoName))
 	}
 
-	after, err := data.GetProjectSettings(&h.newRepoRef.ProjectRef)
+	after, err := dbModel.GetProjectSettings(&h.newRepoRef.ProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings after update for project '%s'", h.repoName))
 	}

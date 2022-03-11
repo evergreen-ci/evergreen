@@ -211,10 +211,6 @@ func ResetTask(taskId, username string) error {
 		"Reset task error")
 }
 
-func AbortTask(taskId string, user string) error {
-	return serviceModel.AbortTask(taskId, user)
-}
-
 func CheckTaskSecret(taskID string, r *http.Request) (int, error) {
 	_, code, err := serviceModel.ValidateTask(taskID, true, r)
 	if code == http.StatusConflict {

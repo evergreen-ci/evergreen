@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -27,7 +28,7 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := data.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -56,7 +57,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := data.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -84,7 +85,7 @@ func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	oldSettings, err := data.GetEvergreenSettings()
+	oldSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving existing settings"))
 	}

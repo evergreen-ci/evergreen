@@ -649,7 +649,7 @@ func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	err := data.DeleteServiceUser(h.username)
+	err := user.DeleteServiceUser(h.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

@@ -94,14 +94,14 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
-	err := SetBuildActivated("build1", "user1", true)
+	err := model.SetBuildActivation("build1", true, "user1")
 	s.NoError(err)
 	b, err := FindBuildById("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
-	err = SetBuildActivated("build1", "user1", false)
+	err = model.SetBuildActivation("build1", false, "user1")
 	s.NoError(err)
 	b, err = FindBuildById("build1")
 	s.NoError(err)
@@ -110,10 +110,10 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
-	err := SetBuildPriority("build1", int64(2), "")
+	err := model.SetBuildPriority("build1", int64(2), "")
 	s.NoError(err)
 
-	err = SetBuildPriority("build1", int64(3), "")
+	err = model.SetBuildPriority("build1", int64(3), "")
 	s.NoError(err)
 }
 
@@ -146,7 +146,7 @@ func (s *BuildConnectorAbortSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
-	err := AbortBuild("build1", "user1")
+	err := model.AbortBuild("build1", "user1")
 	s.NoError(err)
 	b, err := build.FindOne(build.ById("build1"))
 	s.NoError(err)
@@ -182,9 +182,9 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {
-	err := RestartBuild("build1", "user1")
+	err := model.RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 
-	err = RestartBuild("build1", "user1")
+	err = model.RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 }
