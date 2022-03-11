@@ -156,7 +156,7 @@ func (self *Version) SetNotActivated() error {
 	)
 }
 
-func (self *Version) SetAbortedStatus(aborted bool) error {
+func (self *Version) SetAborted(aborted bool) error {
 	self.Aborted = aborted
 	return VersionUpdateOne(
 		bson.M{VersionIdKey: self.Id},

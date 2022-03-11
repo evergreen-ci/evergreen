@@ -925,16 +925,16 @@ func UpdateBuildStatus(b *build.Build) (bool, error) {
 		return false, nil
 	}
 
-	abortStatus := false
+	isAborted := false
 	for _, t := range buildTasks {
 		if t.Aborted {
-			abortStatus = true
+			isAborted = true
 			break
 		}
 	}
-	if abortStatus != b.Aborted {
-		if err = b.SetAbortedStatus(abortStatus); err != nil {
-			return false, errors.Wrapf(err, "setting aborted status for build '%s'", b.Id)
+	if isAborted != b.Aborted {
+		if err = b.SetAborted(isAborted); err != nil {
+			return false, errors.Wrapf(err, "setting build '%s' as aborted", b.Id)
 		}
 	}
 
@@ -1024,16 +1024,16 @@ func UpdateVersionStatus(v *Version) (string, error) {
 		return versionStatus, nil
 	}
 
-	abortStatus := false
+	isAborted := false
 	for _, b := range builds {
 		if b.Aborted {
-			abortStatus = true
+			isAborted = true
 			break
 		}
 	}
-	if abortStatus != v.Aborted {
-		if err = v.SetAbortedStatus(abortStatus); err != nil {
-			return "", errors.Wrapf(err, "setting aborted status for version '%s'", v.Id)
+	if isAborted != v.Aborted {
+		if err = v.SetAborted(isAborted); err != nil {
+			return "", errors.Wrapf(err, "setting version '%s' as aborted", v.Id)
 		}
 	}
 

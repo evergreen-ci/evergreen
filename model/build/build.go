@@ -173,7 +173,7 @@ func (b *Build) UpdateStatus(status string) error {
 	)
 }
 
-func (b *Build) SetAbortedStatus(aborted bool) error {
+func (b *Build) SetAborted(aborted bool) error {
 	if b.Aborted == aborted {
 		return nil
 	}
