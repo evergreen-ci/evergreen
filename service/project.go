@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model/task"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -297,20 +299,21 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure   bool                                `json:"notify_on_failure"`
-		ForceRepotrackerRun    bool                                `json:"force_repotracker_run"`
-		Subscriptions          []restModel.APISubscription         `json:"subscriptions,omitempty"`
-		DeleteSubscriptions    []string                            `json:"delete_subscriptions"`
-		Triggers               []model.TriggerDefinition           `json:"triggers,omitempty"`
-		PatchTriggerAliases    []patch.PatchTriggerDefinition      `json:"patch_trigger_aliases,omitempty"`
-		GithubTriggerAliases   []string                            `json:"github_trigger_aliases,omitempty"`
-		FilesIgnoredFromCache  []string                            `json:"files_ignored_from_cache,omitempty"`
-		DisabledStatsCache     bool                                `json:"disabled_stats_cache"`
-		PeriodicBuilds         []*model.PeriodicBuildDefinition    `json:"periodic_builds,omitempty"`
-		WorkstationConfig      restModel.APIWorkstationConfig      `json:"workstation_config"`
-		PerfEnabled            bool                                `json:"perf_enabled"`
-		BuildBaronSettings     restModel.APIBuildBaronSettings     `json:"build_baron_settings"`
-		TaskAnnotationSettings restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
+		NotifyOnBuildFailure    bool                                `json:"notify_on_failure"`
+		ForceRepotrackerRun     bool                                `json:"force_repotracker_run"`
+		DeactivateStepbackTasks bool                                `json:"deactivate_stepback_tasks"`
+		Subscriptions           []restModel.APISubscription         `json:"subscriptions,omitempty"`
+		DeleteSubscriptions     []string                            `json:"delete_subscriptions"`
+		Triggers                []model.TriggerDefinition           `json:"triggers,omitempty"`
+		PatchTriggerAliases     []patch.PatchTriggerDefinition      `json:"patch_trigger_aliases,omitempty"`
+		GithubTriggerAliases    []string                            `json:"github_trigger_aliases,omitempty"`
+		FilesIgnoredFromCache   []string                            `json:"files_ignored_from_cache,omitempty"`
+		DisabledStatsCache      bool                                `json:"disabled_stats_cache"`
+		PeriodicBuilds          []*model.PeriodicBuildDefinition    `json:"periodic_builds,omitempty"`
+		WorkstationConfig       restModel.APIWorkstationConfig      `json:"workstation_config"`
+		PerfEnabled             bool                                `json:"perf_enabled"`
+		BuildBaronSettings      restModel.APIBuildBaronSettings     `json:"build_baron_settings"`
+		TaskAnnotationSettings  restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
 	}{}
 
 	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
@@ -650,6 +653,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Id)
 		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
+		}
+	}
+	if responseRef.DeactivateStepbackTasks {
+		if err = task.DeactivateStepbackTasksForProject(projectRef.Id, dbUser.Username()); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "deactivating current stepback tasks"))
 		}
 	}
 

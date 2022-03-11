@@ -1284,6 +1284,83 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert.EqualValues(-1, dbTask.Priority)
 }
 
+func TestDeactivateStepbackTasksForProject(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+
+	activatedStepbackTask := Task{
+		Id:          "activated",
+		Activated:   true,
+		Status:      evergreen.TaskUndispatched,
+		Project:     "p1",
+		ActivatedBy: evergreen.StepbackTaskActivator,
+	}
+	taskDependingOnStepbackTask := Task{
+		Id:          "dependent_task",
+		Activated:   true,
+		Status:      evergreen.TaskUndispatched,
+		Project:     "p1",
+		ActivatedBy: "someone else", // Doesn't matter if dependencies were activated by stepback or not
+		DependsOn: []Dependency{
+			{
+				TaskId: "activated",
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	}
+	wrongProjectTask := Task{
+		Id:          "wrong_project",
+		Activated:   true,
+		Status:      evergreen.TaskUndispatched,
+		Project:     "p2",
+		ActivatedBy: evergreen.StepbackTaskActivator,
+	}
+	runningStepbackTask := Task{
+		Id:          "running",
+		Activated:   true,
+		Status:      evergreen.TaskStarted, // should be aborted
+		Project:     "p1",
+		ActivatedBy: evergreen.StepbackTaskActivator,
+	}
+	notStepbackTask := Task{
+		Id:          "not_stepback",
+		Activated:   true,
+		Status:      evergreen.TaskUndispatched,
+		Project:     "p1",
+		ActivatedBy: "me",
+	}
+	assert.NoError(t, db.InsertMany(Collection, activatedStepbackTask, taskDependingOnStepbackTask, wrongProjectTask, runningStepbackTask, notStepbackTask))
+	assert.NoError(t, DeactivateStepbackTasksForProject("p1", "me"))
+
+	events, err := event.Find(event.AllLogCollection, db.Q{})
+	assert.NoError(t, err)
+	assert.Len(t, events, 4)
+	var numDeactivated, numAborted int
+	for _, e := range events {
+		if e.EventType == event.TaskAbortRequest {
+			numAborted++
+		} else if e.EventType == event.TaskDeactivated {
+			numDeactivated++
+		}
+	}
+	assert.Equal(t, numDeactivated, 3)
+	assert.Equal(t, numAborted, 1)
+
+	tasks, err := FindAll(db.Q{})
+	assert.NoError(t, err)
+	for _, dbTask := range tasks {
+		if dbTask.Id == activatedStepbackTask.Id || dbTask.Id == taskDependingOnStepbackTask.Id {
+			assert.False(t, dbTask.Activated)
+			assert.False(t, dbTask.Aborted)
+		} else if dbTask.Id == runningStepbackTask.Id {
+			assert.False(t, dbTask.Activated)
+			assert.True(t, dbTask.Aborted)
+		} else {
+			assert.True(t, dbTask.Activated)
+			assert.False(t, dbTask.Aborted)
+		}
+	}
+}
+
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
