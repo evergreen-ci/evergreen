@@ -342,9 +342,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
 	}
-	for key, val := range projectVars.GetAdminOnlyVars(t) {
-		res.Vars[key] = val
-	}
 	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
