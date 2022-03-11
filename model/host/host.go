@@ -113,9 +113,6 @@ type Host struct {
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
-	// stores information on expiration notifications for spawn hosts
-	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
-
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
 
@@ -1396,7 +1393,6 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
 	h.NoExpiration = false
-	h.Notifications = make(map[string]bool)
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -1405,28 +1401,6 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 			"$set": bson.M{
 				ExpirationTimeKey: expirationTime,
 				NoExpirationKey:   false,
-			},
-			"$unset": bson.M{
-				NotificationsKey: 1,
-			},
-		},
-	)
-}
-
-// SetExpirationNotification updates the notification time for a spawn host
-func (h *Host) SetExpirationNotification(thresholdKey string) error {
-	// update the in-memory host, then the database
-	if h.Notifications == nil {
-		h.Notifications = make(map[string]bool)
-	}
-	h.Notifications[thresholdKey] = true
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				NotificationsKey: h.Notifications,
 			},
 		},
 	)
