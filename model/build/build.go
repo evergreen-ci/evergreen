@@ -173,6 +173,17 @@ func (b *Build) UpdateStatus(status string) error {
 	)
 }
 
+func (b *Build) SetAbortedStatus(aborted bool) error {
+	if b.Aborted == aborted {
+		return nil
+	}
+	b.Aborted = aborted
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{AbortedKey: aborted}},
+	)
+}
+
 // SetTasksCache updates one build with the given id
 // to contain the given task caches.
 func SetTasksCache(buildId string, tasks []TaskCache) error {

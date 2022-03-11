@@ -879,7 +879,7 @@ func getBuildStatus(buildTasks []task.Task) string {
 
 	// finished but failed
 	for _, t := range buildTasks {
-		if evergreen.IsFailedTaskStatus(t.Status) || t.Status == evergreen.TaskAborted {
+		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
 			return evergreen.BuildFailed
 		}
 	}
@@ -914,22 +914,28 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 // UpdateBuildStatus updates the status of the build based on its tasks' statuses.
 // Returns true if the build's status has changed.
 func UpdateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey)
+	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
 
-	b.Aborted = false
-	for _, t := range buildTasks {
-		if t.Aborted {
-			b.Aborted = true
-			break
-		}
-	}
 	buildStatus := getBuildStatus(buildTasks)
 
 	if buildStatus == b.Status {
 		return false, nil
+	}
+
+	abortStatus := false
+	for _, t := range buildTasks {
+		if t.Aborted {
+			abortStatus = true
+			break
+		}
+	}
+	if abortStatus != b.Aborted {
+		if err = b.SetAbortedStatus(abortStatus); err != nil {
+			return false, errors.Wrapf(err, "setting aborted status for build '%s'", b.Id)
+		}
 	}
 
 	event.LogBuildStateChangeEvent(b.Id, buildStatus)
@@ -976,7 +982,7 @@ func getVersionStatus(builds []build.Build) string {
 
 	// finished but failed
 	for _, b := range builds {
-		if b.Status == evergreen.BuildFailed {
+		if b.Status == evergreen.BuildFailed || b.Aborted {
 			return evergreen.VersionFailed
 		}
 	}
@@ -1007,21 +1013,28 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func UpdateVersionStatus(v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey, build.IsGithubCheckKey))
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey, build.IsGithubCheckKey, build.AbortedKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
 
-	for _, b := range builds {
-		if b.Aborted {
-			v.Aborted = true
-			break
-		}
-	}
 	versionStatus := getVersionStatus(builds)
 
 	if versionStatus == v.Status {
 		return versionStatus, nil
+	}
+
+	abortStatus := false
+	for _, b := range builds {
+		if b.Aborted {
+			abortStatus = true
+			break
+		}
+	}
+	if abortStatus != v.Aborted {
+		if err = v.SetAbortedStatus(abortStatus); err != nil {
+			return "", errors.Wrapf(err, "setting aborted status for version '%s'", v.Id)
+		}
 	}
 
 	event.LogVersionStateChangeEvent(v.Id, versionStatus)

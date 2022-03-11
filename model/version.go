@@ -156,6 +156,18 @@ func (self *Version) SetNotActivated() error {
 	)
 }
 
+func (self *Version) SetAbortedStatus(aborted bool) error {
+	self.Aborted = aborted
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionAbortedKey: aborted,
+			},
+		},
+	)
+}
+
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
 }
