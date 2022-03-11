@@ -3,8 +3,6 @@ package data
 import (
 	"context"
 	"fmt"
-	"net/http"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,6 +11,7 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {

@@ -2,10 +2,10 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"net/http"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
