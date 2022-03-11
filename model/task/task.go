@@ -1128,6 +1128,8 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	return info.Updated, nil
 }
 
+// DeactivateStepbackTasksForProjects deactivates and aborts any scheduled/running tasks
+// for this project that were activated by stepback.
 func DeactivateStepbackTasksForProject(projectId, caller string) error {
 	tasks, err := FindActivatedStepbackTasks(projectId)
 	if err != nil {
