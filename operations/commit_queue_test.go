@@ -305,7 +305,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 
 func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection, patch.Collection))
-	validId := "aabbccddeeff112233445566"
+	validId := bson.NewObjectId().Hex()
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
 		Queue: []commitqueue.CommitQueueItem{
@@ -339,11 +339,7 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 		Id:      patch.NewId(validId),
 		Project: "mci",
 	}
-	version := model.Version{
-		Id: validId,
-	}
 	s.NoError(patch.Insert())
-	s.NoError(version.Insert())
 
 	s.Error(deleteCommitQueueItem(s.ctx, s.client, "not_here"))
 
