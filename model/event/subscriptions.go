@@ -375,7 +375,7 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 }
 
 func (s *Subscription) ValidateSelectors() error {
-	if s.Filter == (Filter{}) && len(s.RegexSelectors) == 0 {
+	if s.Filter == (Filter{}) {
 		return errors.New("no filter parameters specified")
 	}
 
