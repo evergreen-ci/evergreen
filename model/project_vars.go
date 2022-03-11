@@ -205,8 +205,9 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 	vars := map[string]string{}
+	isAdmin := projectVars.ShouldGetAdminOnlyVars(t)
 	for k, v := range projectVars.Vars {
-		if !projectVars.AdminOnlyVars[k] || projectVars.ShouldGetAdminOnlyVars(t) {
+		if !projectVars.AdminOnlyVars[k] || isAdmin {
 			vars[k] = v
 		}
 	}
