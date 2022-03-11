@@ -256,27 +256,6 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	return &res, nil
 }
 
-// GetLatestPatchByUser gets the latest patch from the given user id and returns it as a Patch.
-func (ac *legacyClient) GetLatestPatchByUser(userId string) (*patch.Patch, error) {
-	resp, err := ac.get2(fmt.Sprintf("users/%v/patches?limit=1", userId), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	patches := []patch.Patch{}
-	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
-		return nil, err
-	}
-	return &patches[0], nil
-}
-
 // GetProjectRef requests project details from the API server for a given project ID.
 func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, error) {
 	resp, err := ac.get(fmt.Sprintf("/ref/%s", projectId), nil)

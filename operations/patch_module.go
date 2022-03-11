@@ -19,11 +19,15 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
+		Flags: mergeFlagSlices(addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
 			addPatchFinalizeFlag(), addPreserveCommitsFlag(
 				cli.BoolFlag{
 					Name:  largeFlagName,
 					Usage: "enable submitting larger patches (>16MB)",
+				},
+				cli.StringFlag{
+					Name:  joinFlagNames(patchIDFlagName, "id", "i"),
+					Usage: "specify the ID of a patch (defaults to user's latest submitted patch)",
 				})),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
@@ -60,7 +64,7 @@ func PatchSetModule() cli.Command {
 			var existingPatch *patch.Patch
 			if patchID == "" {
 				patchList, err := ac.GetPatches(1)
-				if err != nil {
+				if err != nil || len(patchList) != 1 {
 					return errors.Wrapf(err, "problem getting patches from user")
 				}
 				existingPatch = &patchList[0]
