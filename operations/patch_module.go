@@ -64,8 +64,11 @@ func PatchSetModule() cli.Command {
 			var existingPatch *patch.Patch
 			if patchID == "" {
 				patchList, err := ac.GetPatches(1)
-				if err != nil || len(patchList) != 1 {
+				if err != nil {
 					return errors.Wrapf(err, "problem getting patches from user")
+				}
+				if len(patchList) == 0 {
+					return errors.New("no patches found from user")
 				}
 				existingPatch = &patchList[0]
 				patchID = existingPatch.Id.Hex()
