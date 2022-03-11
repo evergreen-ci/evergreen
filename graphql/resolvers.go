@@ -192,7 +192,7 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 	if obj.HostID == nil || *obj.HostID == "" {
 		return nil, nil
 	}
-	host, err := host.FindOneId(*obj.HostID)
+	host, err := data.FindHostById(*obj.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", *obj.HostID, err.Error()))
 	}
@@ -1248,7 +1248,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	if utility.FromStringPtr(obj.Version) == "" {
 		return nil, nil
 	}
-	v, err := model.VersionFindOneId(*obj.Version)
+	v, err := data.FindVersionById(*obj.Version)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", *obj.Version, err.Error()))
 	}
@@ -1510,7 +1510,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 }
 
 func (r *queryResolver) Version(ctx context.Context, id string) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneId(id)
+	v, err := data.FindVersionById(id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", id, err.Error()))
 	}
@@ -2521,7 +2521,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 }
 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
-	t, err := task.FindOneId(taskID)
+	t, err := data.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
 	}
@@ -2545,7 +2545,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
 	}
 
-	t, err = task.FindOneId(taskID)
+	t, err = data.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
@@ -2574,7 +2574,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
-	version, err := model.VersionFindOneId(patchID)
+	version, err := data.FindVersionById(patchID)
 	if err != nil {
 		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
 		// does not contain nil version err values before sending InternalServerError
@@ -2718,7 +2718,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, 
 	versions := []*restModel.APIVersion{}
 	for _, version := range versionsToRestart {
 		if version.VersionId != nil {
-			v, versionErr := model.VersionFindOneId(*version.VersionId)
+			v, versionErr := data.FindVersionById(*version.VersionId)
 			if versionErr != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", *version.VersionId, versionErr.Error()))
 			}
@@ -2813,7 +2813,7 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	t, err := task.FindOneId(taskID)
+	t, err := data.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
@@ -2825,7 +2825,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
 	}
-	t, err = task.FindOneId(taskID)
+	t, err = data.FindTaskById(taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
 	}
@@ -2963,7 +2963,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	}
 	switch idType {
 	case "task":
-		t, taskErr := task.FindOneId(id)
+		t, taskErr := data.FindTaskById(id)
 		if taskErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, taskErr.Error()))
 		}
@@ -2971,7 +2971,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
 		}
 	case "build":
-		b, buildErr := build.FindOneId(id)
+		b, buildErr := data.FindBuildById(id)
 		if buildErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, buildErr.Error()))
 		}
@@ -2979,7 +2979,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
 		}
 	case "version":
-		v, versionErr := model.VersionFindOneId(id)
+		v, versionErr := data.FindVersionById(id)
 		if versionErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, versionErr.Error()))
 		}
@@ -3180,7 +3180,7 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 type taskResolver struct{ *Resolver }
 
 func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
-	t, err := task.FindOneId(*obj.Id)
+	t, err := data.FindTaskById(*obj.Id)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
 	}
@@ -3261,7 +3261,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 
 // TODO: deprecated
 func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
-	version, err := model.VersionFindOneId(*obj.Version)
+	version, err := data.FindVersionById(*obj.Version)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving version %s: %s", *obj.Version, err.Error()))
 	}
@@ -3442,7 +3442,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	var baseTask *task.Task
 	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
 	if t.BaseTask.Id != "" {
-		baseTask, err = task.FindOneId(t.BaseTask.Id)
+		baseTask, err = data.FindTaskById(t.BaseTask.Id)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
 		}
@@ -3499,7 +3499,7 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 }
 
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Version))
+	v, err := data.FindVersionById(utility.FromStringPtr(obj.Version))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find version id: %s for task: %s", *obj.Version, utility.FromStringPtr(obj.Id)))
 	}
@@ -4126,7 +4126,7 @@ func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.A
 }
 
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
-	t, err := task.FindOneId(*obj.TaskId)
+	t, err := data.FindTaskById(*obj.TaskId)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
 	}

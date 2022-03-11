@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -57,7 +56,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	refreshedTask, err := task.FindOneId(trh.taskId)
+	refreshedTask, err := data.FindTaskById(trh.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

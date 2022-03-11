@@ -131,7 +131,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOne(user.ById(h.userID))
+	u, err := data.FindUserById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -146,7 +146,17 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
-	if err = u.AddRole(newRole.ID); err != nil {
+	dbuser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.NewTextInternalErrorResponse("unexpected type of user found")
+	}
+	if dbuser == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching DB user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+	if err = dbuser.AddRole(newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
@@ -202,7 +212,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOne(user.ById(h.userID))
+	u, err := data.FindUserById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -212,9 +222,19 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 			StatusCode: http.StatusNotFound,
 		})
 	}
+	dbUser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("user exists, but is of invalid type"))
+	}
+	if dbUser == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("no matching DB user for '%s'", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
+	}
 
 	if h.resourceType == allResourceType {
-		err = u.DeleteAllRoles()
+		err = dbUser.DeleteAllRoles()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error deleting roles",
@@ -254,11 +274,11 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 
 	grip.Info(message.Fields{
 		"removed_roles": rolesToRemove,
-		"user":          u.Id,
+		"user":          dbUser.Id,
 		"resource_type": h.resourceType,
 		"resource_id":   h.resourceId,
 	})
-	err = u.DeleteRoles(rolesToRemove)
+	err = dbUser.DeleteRoles(rolesToRemove)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error deleting roles for user",
@@ -468,11 +488,18 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOne(user.ById(h.userID))
+	u, err := data.FindUserById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
-	if u == nil {
+	dbUser, valid := u.(*user.DBUser)
+	if !valid {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "unexpected structure for user",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+	if dbUser == nil {
 		if h.createUser {
 			um := evergreen.GetEnvironment().UserManager()
 			newUser := user.DBUser{
@@ -513,7 +540,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	for _, toAdd := range h.roles {
-		if err = u.AddRole(toAdd); err != nil {
+		if err = dbUser.AddRole(toAdd); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to add role",
 				"role":    toAdd,

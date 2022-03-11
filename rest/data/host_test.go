@@ -205,31 +205,31 @@ func (s *HostConnectorSuite) TearDownSuite() {
 }
 
 func (s *HostConnectorSuite) TestFindById() {
-	h1, ok := host.FindOneId("host1")
+	h1, ok := FindHostById("host1")
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 
-	h2, ok := host.FindOneId("host2")
+	h2, ok := FindHostById("host2")
 	s.NoError(ok)
 	s.NotNil(h2)
 	s.Equal("host2", h2.Id)
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
-	h, ok := host.FindOneId("nonexistent")
+	h, ok := FindHostById("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindByIP() {
-	h1, ok := host.FindOne(host.ByIP("ip1"))
+	h1, ok := FindHostByIpAddress("ip1")
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 	s.Equal("ip1", h1.IP)
 
-	h2, ok := host.FindOne(host.ByIP("ip2"))
+	h2, ok := FindHostByIpAddress("ip2")
 	s.NoError(ok)
 	s.NotNil(h2)
 	s.Equal("host2", h2.Id)
@@ -237,18 +237,18 @@ func (s *HostConnectorSuite) TestFindByIP() {
 }
 
 func (s *HostConnectorSuite) TestFindByIPFail() {
-	h, ok := host.FindOne(host.ByIP("nonexistent"))
+	h, ok := FindHostByIpAddress("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostsByDistro() {
-	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning("distro5")))
+	hosts, err := FindHostsByDistro("distro5")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
 
-	hosts, err = host.Find(db.Query(host.ByDistroIDsOrAliasesRunning("alias125")))
+	hosts, err = FindHostsByDistro("alias125")
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 2)
 	var host1Found, host5Found bool
@@ -265,7 +265,7 @@ func (s *HostConnectorSuite) TestFindHostsByDistro() {
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
-	hosts, err := host.GetHostsByFromIDWithStatus("", "", testUser, 100)
+	hosts, err := FindHostsById("", "", testUser, 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -274,7 +274,7 @@ func (s *HostConnectorSuite) TestFindByUser() {
 }
 
 func (s *HostConnectorSuite) TestStatusFiltering() {
-	hosts, err := host.GetHostsByFromIDWithStatus("", "", "", 100)
+	hosts, err := FindHostsById("", "", "", 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -289,14 +289,14 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 }
 
 func (s *HostConnectorSuite) TestLimit() {
-	hosts, err := host.GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 2)
+	hosts, err := FindHostsById("", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(2, len(hosts))
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
-	hosts, err = host.GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 3)
+	hosts, err = FindHostsById("", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(3, len(hosts))
@@ -365,30 +365,30 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {
-	h, err := host.FindOneId("host1")
+	h, err := FindHostById("host1")
 	s.NoError(err)
 	s.NoError(h.SetStatus(evergreen.HostTerminated, evergreen.User, fmt.Sprintf("changed by %s from API", evergreen.User)))
 
 	for i := 1; i < 5; i++ {
-		h, err := host.FindOneId(fmt.Sprintf("host%d", i))
+		h, err := FindHostById(fmt.Sprintf("host%d", i))
 		s.NoError(err)
 		s.Equal(evergreen.HostTerminated, h.Status)
 	}
 }
 
 func (s *HostConnectorSuite) TestExtendHostExpiration() {
-	h, err := host.FindOneId("host1")
+	h, err := FindHostById("host1")
 	s.NoError(err)
 	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
-	s.NoError(h.SetExpirationTime(expectedTime))
+	s.NoError(SetHostExpirationTime(h, expectedTime))
 
-	hCheck, err := host.FindOneId("host1")
+	hCheck, err := FindHostById("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
 	s.NoError(err)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
-	u, err := user.FindOne(user.ById(testUser))
+	u, err := FindUserById(testUser)
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner("host1", u)
@@ -397,7 +397,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
-	u, err := user.FindOne(user.ById(testUser))
+	u, err := FindUserById(testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -407,7 +407,7 @@ func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
-	u, err := user.FindOne(user.ById("root"))
+	u, err := FindUserById("root")
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner("host2", u)

@@ -46,19 +46,19 @@ func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindById() {
-	b, err := build.FindOneId("build1")
+	b, err := FindBuildById("build1")
 	s.NoError(err)
 	s.NotNil(b)
 	s.Equal("build1", b.Id)
 
-	b, err = build.FindOneId("build2")
+	b, err = FindBuildById("build2")
 	s.NoError(err)
 	s.NotNil(b)
 	s.Equal("build2", b.Id)
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindByIdFail() {
-	b, err := build.FindOneId("build3")
+	b, err := FindBuildById("build3")
 	s.Error(err)
 	s.Nil(b)
 }
@@ -96,14 +96,14 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 	err := model.SetBuildActivation("build1", true, "user1")
 	s.NoError(err)
-	b, err := build.FindOneId("build1")
+	b, err := FindBuildById("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
 	err = model.SetBuildActivation("build1", false, "user1")
 	s.NoError(err)
-	b, err = build.FindOneId("build1")
+	b, err = FindBuildById("build1")
 	s.NoError(err)
 	s.False(b.Activated)
 	s.Equal("user1", b.ActivatedBy)

@@ -16,6 +16,36 @@ import (
 	"github.com/pkg/errors"
 )
 
+// FindTaskById uses the service layer's task type to query the backing database for
+// the task with the given taskId.
+func FindTaskById(taskId string) (*task.Task, error) {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", taskId),
+		}
+	}
+	return t, nil
+}
+
+func FindTaskByIdAndExecution(taskId string, execution int) (*task.Task, error) {
+	t, err := task.FindOneIdAndExecution(taskId, execution)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+		}
+	}
+	return t, nil
+}
+
 func FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
 	project string, statuses []string) ([]task.Task, error) {
 	id, err := model.GetIdForProject(project)
@@ -82,6 +112,15 @@ func FindTasksByIds(ids []string) ([]task.Task, error) {
 			Message:    "no tasks found",
 		}
 	}
+	return ts, nil
+}
+
+func FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
+	ts, err := task.FindOldWithDisplayTasks(task.ByOldTaskID(id))
+	if err != nil {
+		return nil, err
+	}
+
 	return ts, nil
 }
 

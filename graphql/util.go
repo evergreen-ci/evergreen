@@ -113,7 +113,7 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 }
 
 func getVersionBaseTasks(versionID string) ([]task.Task, error) {
-	version, err := model.VersionFindOneId(versionID)
+	version, err := data.FindVersionById(versionID)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting version %s: %s", versionID, err.Error())
 	}
@@ -341,7 +341,7 @@ func getCedarFailedTestResultsSample(ctx context.Context, tasks []task.Task, tes
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
 func modifyVersionHandler(ctx context.Context, patchID string, modification model.VersionModification) error {
-	v, err := model.VersionFindOneId(patchID)
+	v, err := data.FindVersionById(patchID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", patchID, err.Error()))
 	}

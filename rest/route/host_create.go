@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"net/http"
 	"strconv"
 	"time"
@@ -102,7 +101,7 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	t, err := task.FindOneId(h.taskID)
+	t, err := data.FindTaskById(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

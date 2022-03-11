@@ -2,8 +2,6 @@ package host
 
 import (
 	"context"
-	"github.com/evergreen-ci/gimlet"
-	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -1070,12 +1068,6 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")
-	}
-	if len(hosts) == 0 {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "no hosts found",
-		}
 	}
 	return hosts, nil
 }

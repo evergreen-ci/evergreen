@@ -3,16 +3,35 @@ package data
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"net/http"
 )
+
+// FindHostsById uses the service layer's host type to query the backing database for
+// the hosts.
+func FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
+	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(hostRes) == 0 {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "no hosts found",
+		}
+	}
+	return hostRes, nil
+}
 
 func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
 	params := host.HostsInRangeParams{
@@ -31,6 +50,30 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 	}
 
 	return hostRes, nil
+}
+
+// FindHostById queries the database for the host with id matching the hostId
+func FindHostById(id string) (*host.Host, error) {
+	h, err := host.FindOne(host.ById(id))
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
+
+// FindHostByIP queries the database for the host with ip matching the ip address
+func FindHostByIpAddress(ip string) (*host.Host, error) {
+	h, err := host.FindOne(host.ByIP(ip))
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
+
+func FindHostsByDistro(distro string) ([]host.Host, error) {
+	return host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(distro)))
 }
 
 func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
@@ -89,6 +132,14 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		return nil, err
 	}
 	return intentHost, nil
+}
+
+func SetHostExpirationTime(host *host.Host, newExp time.Time) error {
+	if err := host.SetExpirationTime(newExp); err != nil {
+		return errors.Wrap(err, "Error extending host expiration time")
+	}
+
+	return nil
 }
 
 func TerminateHost(ctx context.Context, host *host.Host, user string) error {
@@ -154,7 +205,7 @@ func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string,
 }
 
 func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	hostById, err := host.FindOneId(hostID)
+	hostById, err := FindHostById(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

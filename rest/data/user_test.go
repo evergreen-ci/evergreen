@@ -47,12 +47,12 @@ func (s *DBUserConnectorSuite) SetupTest() {
 
 func (s *DBUserConnectorSuite) TestFindUserById() {
 	for i := 0; i < s.numUsers; i++ {
-		found, err := user.FindOne(user.ById(fmt.Sprintf("user_%d", i)))
+		found, err := FindUserById(fmt.Sprintf("user_%d", i))
 		s.NoError(err)
 		s.Equal(found.GetAPIKey(), fmt.Sprintf("apikey_%d", i))
 	}
 
-	found, err := user.FindOne(user.ById("fake_user"))
+	found, err := FindUserById("fake_user")
 	s.Nil(found)
 	s.NoError(err)
 }
@@ -68,13 +68,15 @@ func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 }
 
 func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
-	found, err := user.FindOne(user.ById(s.users[index].Id))
+	found, err := FindUserById(s.users[index].Id)
 	s.NoError(err)
 	s.Require().NotNil(found)
+	user, ok := found.(*user.DBUser)
+	s.Require().True(ok)
 
-	s.users[index].Settings = found.Settings
+	s.users[index].Settings = user.Settings
 
-	return &found.Settings.Notifications
+	return &user.Settings.Notifications
 }
 
 func (s *DBUserConnectorSuite) TestUpdateSettings() {

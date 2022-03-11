@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -318,7 +319,7 @@ func (s *HostSuite) TestFindByIdFail() {
 }
 
 func (s *HostSuite) TestBuildFromServiceHost() {
-	host, err := host.FindOneId("host1")
+	host, err := data.FindHostById("host1")
 	s.NoError(err)
 	apiHost := model.APIHost{}
 	s.NoError(apiHost.BuildFromService(host))
@@ -380,7 +381,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 
 	apiErr := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
-	foundHost, err := host.FindOneId("host1")
+	foundHost, err := data.FindHostById("host1")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
@@ -389,7 +390,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
-	foundHost, err := host.FindOneId("host3")
+	foundHost, err := data.FindHostById("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostUninitialized, foundHost.Status)
 	ctx := context.Background()
@@ -397,7 +398,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host3")
+	foundHost, err = data.FindHostById("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
@@ -412,7 +413,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 		Status: cloud.StatusRunning,
 	})
 
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
@@ -420,7 +421,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
@@ -429,7 +430,7 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
@@ -437,7 +438,7 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host3")
+	foundHost, err = data.FindHostById("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, foundHost.Status)
 }
@@ -446,7 +447,7 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 	ctx := context.Background()
@@ -455,7 +456,7 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	s.Equal(http.StatusUnauthorized, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
 }
@@ -656,7 +657,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := data.FindHostById("host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
@@ -668,13 +669,13 @@ func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
-	foundHost, err := host.FindOneId("host1")
+	foundHost, err := data.FindHostById("host1")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime
 
@@ -685,13 +686,13 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, resp.Status())
-	foundHost, err = host.FindOneId("host1")
+	foundHost, err = data.FindHostById("host1")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := data.FindHostById("host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime.Add(1 * time.Hour)
 
@@ -704,13 +705,13 @@ func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
-	foundHost, err := host.FindOneId("host2")
+	foundHost, err := data.FindHostById("host2")
 	s.NoError(err)
 	expectedTime := foundHost.ExpirationTime
 
@@ -723,7 +724,7 @@ func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsers
 
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	foundHost, err = host.FindOneId("host2")
+	foundHost, err = data.FindHostById("host2")
 	s.NoError(err)
 	s.Equal(expectedTime, foundHost.ExpirationTime)
 }
@@ -1047,7 +1048,7 @@ func TestDisableHostHandler(t *testing.T) {
 
 	responder := dh.Run(context.Background())
 	assert.Equal(t, http.StatusOK, responder.Status())
-	foundHost, err := host.FindOneId(hostID)
+	foundHost, err := data.FindHostById(hostID)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
 }

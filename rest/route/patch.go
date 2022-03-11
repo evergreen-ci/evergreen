@@ -505,7 +505,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to get token"))
 	}
-	dbVersion, _ := dbModel.VersionFindOneId(p.patchId)
+	dbVersion, _ := data.FindVersionById(p.patchId)
 	var project *dbModel.Project
 	if dbVersion == nil {
 		project, _, err = dbModel.GetPatchedProject(ctx, &p.patch, token)
@@ -556,7 +556,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		_ = resp.SetStatus(code)
 		return resp
 	}
-	dbVersion, err = dbModel.VersionFindOneId(p.patchId)
+	dbVersion, err = data.FindVersionById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find patch version"))
 	}

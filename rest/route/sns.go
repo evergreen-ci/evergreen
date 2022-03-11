@@ -196,7 +196,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 }
 
 func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := data.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func (sns *ec2SNS) skipEarlyTermination(h *host.Host) bool {
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := data.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}
@@ -292,7 +292,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
 func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
+	h, err := data.FindHostById(instanceID)
 	if err != nil {
 		return err
 	}

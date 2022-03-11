@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -50,7 +48,7 @@ func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) er
 
 // Run returns the given distro's setup script.
 func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindByID(h.distroID)
+	d, err := data.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -95,7 +93,7 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 
 // Run updates the setup script for the given distroId.
 func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindByID(h.distroID)
+	d, err := data.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -150,7 +148,7 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	original, err := distro.FindByID(h.distroID)
+	original, err := data.FindDistroById(h.distroID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -238,7 +236,7 @@ func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	_, err := distro.FindByID(h.distroID)
+	_, err := data.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -285,7 +283,7 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	old, err := distro.FindByID(h.distroID)
+	old, err := data.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -343,9 +341,9 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Run calls the data distro.FindByID function and returns the distro from the provider.
+// Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindByID(h.distroID)
+	d, err := data.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -386,7 +384,7 @@ func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindByID(h.distroID)
+	d, err := data.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
@@ -673,7 +671,7 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 // Run enqueues a job to run a script on all selected hosts that are not down
 // for the given given distro ID.
 func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
+	hosts, err := data.FindHostsByDistro(h.distro)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
 	}
@@ -741,7 +739,7 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 // Run enqueues a job to run a script on all hosts that are not down for the
 // given given distro ID.
 func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
+	hosts, err := data.FindHostsByDistro(h.distro)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro '%s'", h.distro))
 	}
@@ -829,7 +827,7 @@ func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindByID(rh.distroID)
+	d, err := data.FindDistroById(rh.distroID)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding distro '%s'", rh.distroID))
 	}

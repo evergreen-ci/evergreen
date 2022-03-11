@@ -10,6 +10,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -187,10 +188,10 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 
-	build1, err := build.FindOneId("build1")
+	build1, err := data.FindBuildById("build1")
 	s.NoError(err)
 	s.Equal("user1", build1.ActivatedBy)
-	build2, err := build.FindOneId("build2")
+	build2, err := data.FindBuildById("build2")
 	s.NoError(err)
 	s.Equal("", build2.ActivatedBy)
 	b, ok := res.Data().(*model.APIBuild)
@@ -199,10 +200,10 @@ func (s *BuildAbortSuite) TestAbort() {
 
 	res = s.rm.Run(ctx)
 	s.NotNil(res)
-	build1, err = build.FindOneId("build1")
+	build1, err = data.FindBuildById("build1")
 	s.NoError(err)
 	s.Equal("user1", build1.ActivatedBy)
-	build2, err = build.FindOneId("build2")
+	build2, err = data.FindBuildById("build2")
 	s.NoError(err)
 	s.Equal("", build2.ActivatedBy)
 	b, ok = res.Data().(*model.APIBuild)
