@@ -2,11 +2,11 @@ package route
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"net/http"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -43,7 +43,7 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 // Execute calls the data FindVersionById function and returns the version
 // from the provider.
 func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
-	foundVersion, err := data.FindVersionById(vh.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(vh.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -87,11 +87,11 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 	return nil
 }
 
-// Execute calls the FindVersionById function to find the version by its ID, calls FindBuildById for each
+// Execute calls the FindVersionById function to find the version by its ID, calls build.FindOneId for each
 // build variant for the version, and returns the data.
 func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	// First, find the version by its ID.
-	foundVersion, err := data.FindVersionById(h.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the version"))
 	}
@@ -103,7 +103,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.variant != "" && buildStatus.BuildVariant != h.variant {
 			continue
 		}
-		foundBuild, err := data.FindBuildById(buildStatus.BuildId)
+		foundBuild, err := build.FindOneId(buildStatus.BuildId)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the build"))
 		}
@@ -154,7 +154,7 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
 	}
 
-	foundVersion, err := data.FindVersionById(h.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version"))
 	}
@@ -202,7 +202,7 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Find the version to return updated status.
-	foundVersion, err := data.FindVersionById(h.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version:"))
 	}

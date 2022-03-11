@@ -1240,7 +1240,7 @@ func TestTaskResetExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
 			So(resTask.DispatchTime, ShouldEqual, nil)
-			dbTask, err := data.FindTaskById("testTaskId")
+			dbTask, err := task.FindOneId("testTaskId")
 			So(err, ShouldBeNil)
 			So(dbTask.Secret, ShouldNotResemble, "initialSecret")
 		})

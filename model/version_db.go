@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/gimlet"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -281,7 +283,17 @@ func VersionFindOne(query db.Q) (*Version, error) {
 }
 
 func VersionFindOneId(id string) (*Version, error) {
-	return VersionFindOne(VersionById(id))
+	v, err := VersionFindOne(VersionById(id))
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with id %s not found", id),
+		}
+	}
+	return v, err
 }
 
 func VersionFindByIds(ids []string) ([]Version, error) {

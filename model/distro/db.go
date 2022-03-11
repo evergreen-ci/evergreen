@@ -1,13 +1,16 @@
 package distro
 
 import (
+	"fmt"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"net/http"
 )
 
 var (
@@ -96,7 +99,10 @@ func FindByID(id string) (*Distro, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding distro")
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro with id '%s' not found", id),
+		}
 	}
 
 	return &d, nil

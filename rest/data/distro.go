@@ -11,18 +11,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-// FindDistroById queries the database to find a given distros.
-func FindDistroById(distroId string) (*distro.Distro, error) {
-	d, err := distro.FindOne(distro.ById(distroId))
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", distroId),
-		}
-	}
-	return &d, nil
-}
-
 // FindAllDistros queries the database to find all distros.
 func FindAllDistros() ([]distro.Distro, error) {
 	distros, err := distro.Find(distro.All)

@@ -2,6 +2,8 @@ package task
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/gimlet"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1112,6 +1114,12 @@ func FindOneId(id string) (*Task, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding task by id")
 	}
+	if task == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", id),
+		}
+	}
 
 	return task, nil
 }
@@ -1141,6 +1149,12 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 		return nil, errors.Wrap(err, "finding task by id and execution")
 	}
 
+	if task == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id '%s' not found", id),
+		}
+	}
 	return task, nil
 }
 

@@ -1,6 +1,9 @@
 package build
 
 import (
+	"fmt"
+	"github.com/evergreen-ci/gimlet"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -229,7 +232,14 @@ func FindOne(query db.Q) (*Build, error) {
 
 // FindOneId returns one build by Id.
 func FindOneId(id string) (*Build, error) {
-	return FindOne(ById(id))
+	build, err := FindOne(ById(id))
+	if build == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build with id %s not found", id),
+		}
+	}
+	return build, err
 }
 
 func FindBuildsByVersions(versionIds []string) ([]Build, error) {

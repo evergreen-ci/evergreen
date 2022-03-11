@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -38,7 +39,7 @@ func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundBuild, err := data.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -102,7 +103,7 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
-	foundBuild, err := data.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -166,7 +167,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
-	foundBuild, err := data.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -210,7 +211,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 
-	foundBuild, err := data.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}

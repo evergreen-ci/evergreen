@@ -235,7 +235,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	h, err := data.FindHostById(hostID)
+	h, err := host.FindOneId(hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -255,7 +255,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-	t, err := data.FindTaskById(h.StartedBy)
+	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return

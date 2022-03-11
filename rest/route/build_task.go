@@ -114,7 +114,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		if tbh.fetchAllExecutions {
 			var oldTasks []task.Task
 
-			oldTasks, err = data.FindOldTasksByIDWithDisplayTasks(tasks[i].Id)
+			oldTasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tasks[i].Id))
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
