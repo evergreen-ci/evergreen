@@ -1108,17 +1108,14 @@ func FindOneId(id string) (*Task, error) {
 	query := db.Query(bson.M{IdKey: id})
 	err := db.FindOneQ(Collection, query, task)
 
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding task by id")
-	}
-	if task == nil {
+	if adb.ResultsNotFound(err) || task == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task with id %s not found", id),
 		}
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task by id")
 	}
 
 	return task, nil

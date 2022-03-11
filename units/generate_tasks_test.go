@@ -397,12 +397,11 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 		Status:                evergreen.TaskStarted,
 	}
 	require.NoError(t, sampleTask.Insert())
-
 	j := NewGenerateTasksJob(sampleTask.Id, "1")
 	j.Run(context.Background())
 	assert.Error(t, j.Error())
 	dbTask, err := task.FindOneId(sampleTask.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, "unable to find version sample_version", dbTask.GenerateTasksError)
+	assert.Contains(t, dbTask.GenerateTasksError, "version with id sample_version not found")
 	assert.False(t, dbTask.GeneratedTasks)
 }

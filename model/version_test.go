@@ -144,11 +144,11 @@ func TestGetVersionForCommitQueueItem(t *testing.T) {
 	assert.NotNil(t, version)
 
 	version, err = GetVersionForCommitQueueItem(&cq, cq.Queue[1].Issue)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, version)
 
 	version, err = GetVersionForCommitQueueItem(&cq, cq.Queue[2].Issue)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, version)
 
 }

@@ -2,7 +2,6 @@ package host
 
 import (
 	"context"
-	"github.com/evergreen-ci/gimlet"
 	"net/http"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"

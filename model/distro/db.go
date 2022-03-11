@@ -96,13 +96,13 @@ func Find(query db.Q) ([]Distro, error) {
 func FindByID(id string) (*Distro, error) {
 	d, err := FindOne(ById(id))
 	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", id),
 		}
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding distro")
 	}
 
 	return &d, nil
