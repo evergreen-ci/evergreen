@@ -61,7 +61,7 @@ func GetGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func SetScheduled(ctx context.Context, url string, taskID string, isActive bool) (*restModel.APITask, error) {
+func SetScheduled(ctx context.Context, url, taskID string, isActive bool) (*restModel.APITask, error) {
 	usr := MustHaveUser(ctx)
 	t, err := task.FindOneId(taskID)
 	if err != nil {
