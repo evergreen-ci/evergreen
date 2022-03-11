@@ -760,7 +760,7 @@ func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
 		serviceContext := data.MockGitHubConnector{
-			URL: "http://evergreen.example.net/",
+			URL: "http://evergreen.example.net",
 		}
 		Convey("and there are tasks with tests to be found", func() {
 			cachedTests := []testresult.TestResult{}
