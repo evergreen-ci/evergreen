@@ -184,6 +184,11 @@ type PatchesInput struct {
 	OnlyCommitQueue    *bool    `json:"onlyCommitQueue"`
 }
 
+type Permissions struct {
+	UserID           string `json:"userId"`
+	CanCreateProject bool   `json:"canCreateProject"`
+}
+
 type ProjectBuildVariant struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"displayName"`

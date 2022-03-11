@@ -400,6 +400,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
+  - <<: *run-go-test-suite-with-mongodb-useast
+    tags: ["db", "test"]
+    name: test-service-graphql
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen

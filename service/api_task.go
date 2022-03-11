@@ -260,7 +260,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost); err != nil {
+		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost, r.RemoteAddr); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",
 				"host_id":       currentHost.Id,
@@ -476,7 +476,7 @@ func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h
 // hosts, as the host may continue running, but it must stop all agent-related
 // activity for now. For a terminated host, the host should already have been
 // terminated but is nonetheless alive, so terminate it again.
-func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) (shouldExit bool, err error) {
+func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host, remoteAddr string) (shouldExit bool, err error) {
 	switch h.Status {
 	case evergreen.HostQuarantined:
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -499,9 +499,11 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 		// has clearly not been terminated in the cloud.
 		if time.Now().Sub(h.TerminationTime) > 10*time.Minute {
 			grip.Error(message.Fields{
-				"message": "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
-				"host_id": h.Id,
-				"distro":  h.Distro.Id,
+				"message":    "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
+				"host_id":    h.Id,
+				"distro":     h.Distro.Id,
+				"remote":     remoteAddr,
+				"request_id": gimlet.GetRequestID(ctx),
 			})
 		}
 		return true, nil
@@ -954,7 +956,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		shouldExit, err := as.prepareHostForAgentExit(ctx, h)
+		shouldExit, err := as.prepareHostForAgentExit(ctx, h, r.RemoteAddr)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",

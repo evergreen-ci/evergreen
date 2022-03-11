@@ -505,11 +505,21 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	var pp *ParserProject
 	var err error
 
+	pRef, err := FindMergedProjectRef(id, "", false)
+	if err != nil {
+		return ProjectInfo{}, errors.Wrap(err, "error finding project ref")
+	}
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "error finding parser project")
 	}
-
+	var pc *ProjectConfig
+	if pRef.IsVersionControlEnabled() {
+		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
+		if err != nil {
+			return ProjectInfo{}, errors.Wrap(err, "error finding project config")
+		}
+	}
 	// if parser project config number is old then we should default to legacy
 	if pp != nil && pp.ConfigUpdateNumber >= v.ConfigUpdateNumber {
 		if pp.Functions == nil {
@@ -521,6 +531,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 		return ProjectInfo{
 			Project:             p,
 			IntermediateProject: pp,
+			Config:              pc,
 		}, err
 	}
 
@@ -530,7 +541,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	p := &Project{}
 	// opts empty because project yaml with `include` will not hit this case
 	ctx := context.Background()
-	pp, pc, err := LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
+	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "error loading project")
 	}
@@ -552,7 +563,6 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	return ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		Config:              pc,
 	}, nil
 }
 
@@ -568,25 +578,21 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 // and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, *ProjectConfig, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 	}
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, LoadProjectError)
-	}
-	config, err := CreateProjectConfig(data)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, LoadProjectError)
+		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
 	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		if opts == nil {
 			err = errors.New("Trying to open include files with empty opts")
-			return nil, nil, errors.Wrapf(err, LoadProjectError)
+			return nil, errors.Wrapf(err, LoadProjectError)
 		}
 		opts.UpdateForFile(path.FileName)
 
@@ -605,15 +611,15 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			yaml, err = retrieveFile(ctx, *opts)
 		}
 		if err != nil {
-			return intermediateProject, config, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
 		}
 		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
 		if err != nil {
-			return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to load '%s'", LoadProjectError, path.FileName)
 		}
 		err = intermediateProject.mergeMultipleParserProjects(add)
 		if err != nil {
-			return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
+			return intermediateProject, errors.Wrapf(err, "%s: failed to merge '%s'", LoadProjectError, path.FileName)
 		}
 	}
 	intermediateProject.Include = nil
@@ -624,10 +630,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		*project = *p
 	}
 	project.Identifier = identifier
-	if config != nil {
-		config.Project = identifier
-	}
-	return intermediateProject, config, errors.Wrapf(err, LoadProjectError)
+	return intermediateProject, errors.Wrapf(err, LoadProjectError)
 }
 
 const (
@@ -785,9 +788,16 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	}
 
 	config := Project{}
-	pp, pc, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
+	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
+	}
+	var pc *ProjectConfig
+	if opts.Ref.IsVersionControlEnabled() {
+		pc, err = CreateProjectConfig(fileContents, opts.Ref.Id)
+		if err != nil {
+			return ProjectInfo{}, errors.Wrapf(err, "error parsing project config for '%s'", opts.Ref.Id)
+		}
 	}
 	return ProjectInfo{
 		Project:             &config,
@@ -804,7 +814,8 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	p := ParserProject{}
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
-			ParserProject `yaml:"pp,inline"`
+			ParserProject       `yaml:"pp,inline"`
+			ProjectConfigFields `yaml:"pc,inline"`
 			// Variables is only used to suppress yaml unmarshalling errors related
 			// to a non-existent variables field.
 			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
@@ -824,7 +835,6 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
-
 	return &p, nil
 }
 

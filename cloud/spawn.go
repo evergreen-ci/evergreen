@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -203,22 +204,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
-func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.Volume, provider string) (*host.Volume, error) {
-	mgrOpts := ManagerOpts{
-		Provider: provider,
-		Region:   AztoRegion(volume.AvailabilityZone),
-	}
-	mgr, err := GetManager(ctx, env, mgrOpts)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting manager")
-	}
-
-	if volume, err = mgr.CreateVolume(ctx, volume); err != nil {
-		return nil, errors.Wrapf(err, "error creating volume")
-	}
-	return volume, nil
-}
-
 // assumes distro already modified to have one region
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !utility.StringSliceContains(allowedTypes, requestedType) {
@@ -243,7 +228,25 @@ func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType 
 	return nil
 }
 
-func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
+// SetHostRDPPassword is a shared utility function to change the password on a windows host
+func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, h *host.Host, pwd string) (int, error) {
+	if !h.Distro.IsWindows() {
+		return http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts")
+	}
+	if !host.ValidateRDPPassword(pwd) {
+		return http.StatusBadRequest, errors.New("Invalid password")
+	}
+	if h.Status != evergreen.HostRunning {
+		return http.StatusBadRequest, errors.New("RDP passwords can only be set on running hosts")
+	}
+
+	if err := updateRDPPassword(ctx, env, h, pwd); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
+
+func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
 	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, env, host, password)
 	if err != nil {
 		return errors.Wrap(err, "Error constructing host RDP password")

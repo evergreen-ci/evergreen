@@ -187,6 +187,13 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified, err = UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
+		for i := range mergedProjectRef.PatchTriggerAliases {
+			mergedProjectRef.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedProjectRef.PatchTriggerAliases[i], projectId)
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "error validating patch trigger aliases")
+		}
 		modified, err = UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
@@ -208,7 +215,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
 	}
-
+	fmt.Println("GETTING TO SAVE FOR SECTION")
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -28,7 +29,11 @@ func init() {
 }
 
 func TestFindProject(t *testing.T) {
-
+	assert.NoError(t, db.Clear(ProjectRefCollection))
+	projRef := &ProjectRef{
+		Id: "project_test",
+	}
+	assert.NoError(t, projRef.Insert())
 	Convey("When finding a project", t, func() {
 		Convey("an error should be thrown if the project ref's identifier is nil", func() {
 			projRef := &ProjectRef{
@@ -1789,4 +1794,31 @@ func TestSkipOnNonGitTagBuild(t *testing.T) {
 	bvt.GitTagOnly = nil
 	assert.False(t, !evergreen.IsGitTagRequester(r) && bvt.SkipOnNonGitTagBuild())
 	assert.False(t, bvt.SkipOnRequester(r))
+}
+
+func TestGetVariantsAndTasksFromProject(t *testing.T) {
+	ctx := context.Background()
+	patchedConfig := `
+buildvariants:
+  - name: bv1
+    display_name: bv1_display
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: task1
+        disable: true
+      - name: task2
+      - name: task3
+        depends_on:
+          - name: task1
+            status: success
+tasks:
+  - name: task1
+  - name: task2
+    disable: true
+  - name: task3
+`
+	variantsAndTasks, err := GetVariantsAndTasksFromProject(ctx, patchedConfig, "")
+	assert.NoError(t, err)
+	assert.Len(t, variantsAndTasks.Variants["bv1"].Tasks, 1)
 }

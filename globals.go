@@ -375,6 +375,15 @@ func VersionStatusToPatchStatus(versionStatus string) (string, error) {
 	}
 }
 
+type ModificationAction string
+
+const (
+	RestartAction     ModificationAction = "restart"
+	SetActiveAction   ModificationAction = "set_active"
+	SetPriorityAction ModificationAction = "set_priority"
+	AbortAction       ModificationAction = "abort"
+)
+
 // evergreen package names
 const (
 	UIPackage      = "EVERGREEN_UI"

@@ -264,7 +264,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
 
-	jsonBody := []byte(`{"patch_trigger_aliases": [{"child_project": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]}`)
+	jsonBody := []byte(`{"patch_trigger_aliases": [{"child_project_identifier": "child", "task_specifiers": [ {"task_regex": ".*", "variant_regex": ".*" }]}]}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	s.NoError(s.rm.Parse(ctx, req))

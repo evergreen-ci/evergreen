@@ -192,31 +192,32 @@ func (s *ProjectAliasSuite) TestMergeAliasesWithProjectConfig() {
 	projectConfig := &ProjectConfig{
 		Id:      "project-1",
 		Project: "project-1",
-		PatchAliases: []ProjectAlias{
-			{
-				ID:        mgobson.NewObjectId(),
-				ProjectID: "project-1",
-				Alias:     "alias-2",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchAliases: []ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     "alias-2",
+				},
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     "alias-1",
+				},
 			},
-			{
-				ID:        mgobson.NewObjectId(),
-				ProjectID: "project-1",
-				Alias:     "alias-1",
+			CommitQueueAliases: []ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+				},
 			},
-		},
-		CommitQueueAliases: []ProjectAlias{
-			{
-				ID:        mgobson.NewObjectId(),
-				ProjectID: "project-1",
+			GitHubChecksAliases: []ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+				},
 			},
-		},
-		GitHubChecksAliases: []ProjectAlias{
-			{
-				ID:        mgobson.NewObjectId(),
-				ProjectID: "project-1",
-			},
-		},
-	}
+		}}
 	s.NoError(projectConfig.Insert())
 
 	projectAliases, err := FindAliasInProjectRepoOrConfig("project-1", evergreen.CommitQueueAlias)
