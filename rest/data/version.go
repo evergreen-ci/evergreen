@@ -20,21 +20,6 @@ import (
 // from the Connector through interactions with the backing database.
 type DBVersionConnector struct{}
 
-// FindVersionById queries the backing database for the version with the given versionId.
-func FindVersionById(versionId string) (*model.Version, error) {
-	v, err := model.VersionFindOne(model.VersionById(versionId))
-	if err != nil {
-		return nil, err
-	}
-	if v == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with id %s not found", versionId),
-		}
-	}
-	return v, nil
-}
-
 // GetProjectVersionsWithOptions returns the versions that fit the given constraint.
 func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
 	versions, err := model.GetVersionsWithOptions(projectName, opts)

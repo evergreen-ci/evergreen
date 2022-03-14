@@ -2,6 +2,8 @@ package route
 
 import (
 	"context"
+	"fmt"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -56,9 +58,15 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	refreshedTask, err := data.FindTaskById(trh.taskId)
+	refreshedTask, err := task.FindOneId(trh.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
+	}
+	if refreshedTask == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", trh.taskId),
+		})
 	}
 
 	taskModel := &model.APITask{}

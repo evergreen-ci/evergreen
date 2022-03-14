@@ -143,7 +143,7 @@ func (high *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error 
 // Execute calls the data FindHostById function and returns the host
 // from the provider.
 func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost, err := data.FindHostById(high.hostID)
+	foundHost, err := host.FindOneId(high.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", high.hostID))
 	}
@@ -160,11 +160,15 @@ func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if foundHost.RunningTask != "" {
-		runningTask, err := data.FindTaskById(foundHost.RunningTask)
+		runningTask, err := task.FindOneId(foundHost.RunningTask)
 		if err != nil {
-			if apiErr, ok := err.(gimlet.ErrorResponse); !ok || (ok && apiErr.StatusCode != http.StatusNotFound) {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
-			}
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		}
+		if runningTask == nil {
+			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task with id %s not found", foundHost.RunningTask),
+			})
 		}
 
 		if err = hostModel.BuildFromService(runningTask); err != nil {
@@ -358,14 +362,14 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	u, err := data.FindUserById(ch.user)
+	u, err := user.FindOneById(ch.user)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "problem finding user",
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
-	if u.(*user.DBUser) == nil {
+	if u == nil {
 		return gimlet.ErrorResponse{
 			Message:    "user not found",
 			StatusCode: http.StatusNotFound,
@@ -599,7 +603,7 @@ func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
-	host, err := data.FindHostById(h.hostID)
+	host, err := host.FindOneId(h.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
 	}
@@ -647,7 +651,7 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := data.FindHostByIpAddress(h.IP)
+	host, err := host.FindOne(host.ByIP(h.IP))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error fetching host information for '%s'", h.IP))
 	}

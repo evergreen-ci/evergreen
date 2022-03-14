@@ -2,10 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"net/http"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -34,9 +35,15 @@ func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
-	foundTask, err := data.FindTaskById(t.taskId)
+	foundTask, err := task.FindOneId(t.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundTask == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", t.taskId),
+		})
 	}
 	taskModel := &model.APITask{}
 

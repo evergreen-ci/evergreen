@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -671,7 +673,7 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 // Run enqueues a job to run a script on all selected hosts that are not down
 // for the given given distro ID.
 func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := data.FindHostsByDistro(h.distro)
+	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
 	}
@@ -739,7 +741,7 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 // Run enqueues a job to run a script on all hosts that are not down for the
 // given given distro ID.
 func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := data.FindHostsByDistro(h.distro)
+	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro '%s'", h.distro))
 	}

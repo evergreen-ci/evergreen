@@ -58,7 +58,7 @@ func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 
 func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	for i := 0; i < 10; i++ {
-		found, err := FindTaskById(fmt.Sprintf("task_%d", i))
+		found, err := task.FindOneId(fmt.Sprintf("task_%d", i))
 		s.Nil(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
 	}
@@ -77,7 +77,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		testTask1.Execution += 1
 	}
 	for i := 0; i < 10; i++ {
-		task, err := FindTaskByIdAndExecution("task_1", i)
+		task, err := task.FindOneIdAndExecution("task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
 		s.Equal(task.Execution, i)
@@ -190,14 +190,9 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
-	found, err := FindTaskById("fake_task")
-	s.NotNil(err)
+	found, err := task.FindOneId("fake_task")
+	s.NoError(err)
 	s.Nil(found)
-
-	s.IsType(gimlet.ErrorResponse{}, err)
-	apiErr, ok := err.(gimlet.ErrorResponse)
-	s.True(ok)
-	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -549,7 +544,7 @@ func (s *TaskConnectorAbortTaskSuite) TestAbort() {
 	s.NoError(u.Insert())
 	err := model.AbortTask("task1", "user1")
 	s.NoError(err)
-	foundTask, err := FindTaskById("task1")
+	foundTask, err := task.FindOneId("task1")
 	s.NoError(err)
 	s.Equal("user1", foundTask.AbortInfo.User)
 	s.Equal(true, foundTask.Aborted)

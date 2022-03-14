@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -50,30 +49,6 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 	}
 
 	return hostRes, nil
-}
-
-// FindHostById queries the database for the host with id matching the hostId
-func FindHostById(id string) (*host.Host, error) {
-	h, err := host.FindOne(host.ById(id))
-	if err != nil {
-		return nil, err
-	}
-
-	return h, nil
-}
-
-// FindHostByIP queries the database for the host with ip matching the ip address
-func FindHostByIpAddress(ip string) (*host.Host, error) {
-	h, err := host.FindOne(host.ByIP(ip))
-	if err != nil {
-		return nil, err
-	}
-
-	return h, nil
-}
-
-func FindHostsByDistro(distro string) ([]host.Host, error) {
-	return host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(distro)))
 }
 
 func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
@@ -205,7 +180,7 @@ func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string,
 }
 
 func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	hostById, err := FindHostById(hostID)
+	hostById, err := host.FindOneId(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

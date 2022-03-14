@@ -13,16 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FindUserById uses the service layer's user type to query the backing database for
-// the user with the given Id.
-func FindUserById(userId string) (gimlet.User, error) {
-	t, err := user.FindOne(user.ById(userId))
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
-}
-
 func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return gimlet.ErrorResponse{

@@ -961,7 +961,7 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 
 		// if the volume is attached to a host, also return the host ID and volume device name
 		if v.Host != "" {
-			h, err := data.FindHostById(v.Host)
+			h, err := host.FindOneId(v.Host)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
 			}
@@ -1019,7 +1019,7 @@ func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	// if the volume is attached to a host, also return the host ID and volume device name
 	if v.Host != "" {
-		attachedHost, err := data.FindHostById(v.Host)
+		attachedHost, err := host.FindOneId(v.Host)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
 		}

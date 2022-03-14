@@ -2,11 +2,12 @@ package route
 
 import (
 	"context"
+	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"net/http"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -40,12 +41,18 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Execute calls the data FindVersionById function and returns the version
+// Execute calls the data model.VersionFindOneId function and returns the version
 // from the provider.
 func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
-	foundVersion, err := data.FindVersionById(vh.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(vh.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundVersion == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with id %s not found", vh.versionId),
+		})
 	}
 
 	versionModel := &model.APIVersion{}
@@ -87,13 +94,19 @@ func (h *buildsForVersionHandler) Parse(ctx context.Context, r *http.Request) er
 	return nil
 }
 
-// Execute calls the FindVersionById function to find the version by its ID, calls FindBuildById for each
+// Execute calls the model.VersionFindOneId function to find the version by its ID, calls build.FindOneId for each
 // build variant for the version, and returns the data.
 func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	// First, find the version by its ID.
-	foundVersion, err := data.FindVersionById(h.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the version"))
+	}
+	if foundVersion == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with id %s not found", h.versionId),
+		})
 	}
 
 	// Then, find each build variant in the found version by its ID.
@@ -103,9 +116,15 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.variant != "" && buildStatus.BuildVariant != h.variant {
 			continue
 		}
-		foundBuild, err := data.FindBuildById(buildStatus.BuildId)
+		foundBuild, err := build.FindOneId(buildStatus.BuildId)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding the build"))
+		}
+		if foundBuild == nil {
+			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("build with id %s not found", buildStatus.BuildId),
+			})
 		}
 		buildModel := &model.APIBuild{}
 		err = buildModel.BuildFromService(*foundBuild)
@@ -154,9 +173,15 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
 	}
 
-	foundVersion, err := data.FindVersionById(h.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version"))
+	}
+	if foundVersion == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with id %s not found", h.versionId),
+		})
 	}
 
 	versionModel := &model.APIVersion{}
@@ -202,9 +227,15 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Find the version to return updated status.
-	foundVersion, err := data.FindVersionById(h.versionId)
+	foundVersion, err := dbModel.VersionFindOneId(h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version:"))
+	}
+	if foundVersion == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with id %s not found", h.versionId),
+		})
 	}
 
 	versionModel := &model.APIVersion{}
