@@ -201,6 +201,7 @@ func MockConfig() *evergreen.Settings {
 		Keys: map[string]string{"k3": "v3"},
 		LoggerConfig: evergreen.LoggerConfig{
 			Buffer: evergreen.LogBuffering{
+				UseAsync:             true,
 				Count:                101,
 				IncomingBufferFactor: 20,
 			},

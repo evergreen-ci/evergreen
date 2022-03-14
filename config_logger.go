@@ -88,9 +88,10 @@ func (c *LoggerConfig) ValidateAndDefault() error {
 }
 
 type LogBuffering struct {
-	DurationSeconds      int `bson:"duration_seconds" json:"duration_seconds" yaml:"duration_seconds"`
-	Count                int `bson:"count" json:"count" yaml:"count"`
-	IncomingBufferFactor int `bson:"incoming_buffer_factor" json:"incoming_buffer_factor" yaml:"incoming_buffer_factor"`
+	UseAsync             bool `bson:"use_async" json:"use_async" yaml:"use_async"`
+	DurationSeconds      int  `bson:"duration_seconds" json:"duration_seconds" yaml:"duration_seconds"`
+	Count                int  `bson:"count" json:"count" yaml:"count"`
+	IncomingBufferFactor int  `bson:"incoming_buffer_factor" json:"incoming_buffer_factor" yaml:"incoming_buffer_factor"`
 }
 
 func (b *LogBuffering) validateAndDefault() error {
@@ -108,10 +109,12 @@ func (b *LogBuffering) validateAndDefault() error {
 		b.Count = defaultLogBufferingCount
 	}
 
-	if b.IncomingBufferFactor < 0 {
-		catcher.New("incoming buffer factor can not be negative")
-	} else if b.IncomingBufferFactor == 0 {
-		b.IncomingBufferFactor = defaultLogBufferingIncomingFactor
+	if b.UseAsync {
+		if b.IncomingBufferFactor < 0 {
+			catcher.New("incoming buffer factor can not be negative")
+		} else if b.IncomingBufferFactor == 0 {
+			b.IncomingBufferFactor = defaultLogBufferingIncomingFactor
+		}
 	}
 
 	return catcher.Resolve()

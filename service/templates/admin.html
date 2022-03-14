@@ -1476,10 +1476,15 @@ Admin Settings
 										<input type="number" ng-model="Settings.logger_config.buffer.count">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>Incoming Buffer Factor</label>
-										<input type="number" ng-model="Settings.logger_config.buffer.incoming_buffer_factor">
+										<md-checkbox ng-model="Settings.logger_config.buffer.use_async">
+											Use asynchronous buffered logger
+										</md-checkbox>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Incoming Buffer Factor</label>
+										<input type="number" ng-disabled="!Settings.logger_config.buffer.use_async" ng-model="Settings.logger_config.buffer.incoming_buffer_factor">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Logkeeper URL</label>
 										<input type="text" ng-model="Settings.logger_config.logkeeper_url">
 									</md-input-container>

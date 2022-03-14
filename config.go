@@ -556,12 +556,23 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 		return nil, errors.Wrap(err, "setting splunk error handler")
 	}
 
-	opts := send.BufferedAsyncSenderOptions{}
-	opts.FlushInterval = time.Duration(s.LoggerConfig.Buffer.DurationSeconds) * time.Second
-	opts.BufferSize = s.LoggerConfig.Buffer.Count
-	opts.IncomingBufferFactor = s.LoggerConfig.Buffer.IncomingBufferFactor
-	if sender, err = send.NewBufferedAsyncSender(ctx, sender, opts); err != nil {
-		return nil, errors.Wrap(err, "making splunk buffered sender")
+	opts := send.BufferedSenderOptions{
+		FlushInterval: time.Duration(s.LoggerConfig.Buffer.DurationSeconds) * time.Second,
+		BufferSize:    s.LoggerConfig.Buffer.Count,
+	}
+	if s.LoggerConfig.Buffer.UseAsync {
+		if sender, err = send.NewBufferedAsyncSender(ctx,
+			sender,
+			send.BufferedAsyncSenderOptions{
+				BufferedSenderOptions: opts,
+				IncomingBufferFactor:  s.LoggerConfig.Buffer.IncomingBufferFactor,
+			}); err != nil {
+			return nil, errors.Wrap(err, "making splunk async buffered sender")
+		}
+	} else {
+		if sender, err = send.NewBufferedSender(ctx, sender, opts); err != nil {
+			return nil, errors.Wrap(err, "making splunk buffered sender")
+		}
 	}
 
 	return sender, nil
