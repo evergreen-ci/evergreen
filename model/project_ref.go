@@ -1661,7 +1661,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
 					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
 					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
-					projectRefGithubTriggerAliasesKey:   p.PatchTriggerAliases,
 					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
 					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
@@ -1694,7 +1693,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPatchTriggerAliasesKey: p.PatchTriggerAliases,
+					projectRefPatchTriggerAliasesKey:  p.PatchTriggerAliases,
+					projectRefGithubTriggerAliasesKey: p.GithubTriggerAliases,
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
