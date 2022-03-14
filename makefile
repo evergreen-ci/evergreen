@@ -228,11 +228,9 @@ $(buildDir)/.npmSetup:
 
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
-	@echo $(gobin) build -o $@ $<
+	$(gobin) build -o $@ $<
 $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	$(gobin) build -o $@ $<
-	@echo $(gobin) build -o $@ $<
 
 $(buildDir)/sign-executable:cmd/sign-executable/sign-executable.go
 	$(gobin) build -o $@ $<
