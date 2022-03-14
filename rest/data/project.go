@@ -285,7 +285,6 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	vars = vars.RedactPrivateVars()
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
-	varsModel.RestrictedVars = vars.RestrictedVars
 	varsModel.AdminOnlyVars = vars.AdminOnlyVars
 	varsModel.VarsToDelete = []string{}
 	return nil

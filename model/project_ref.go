@@ -979,7 +979,6 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	// add in project variables and aliases here
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
-	commonRestricted := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
@@ -996,22 +995,16 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			if vars.PrivateVars != nil {
 				commonPrivate = vars.PrivateVars
 			}
-			if vars.RestrictedVars != nil {
-				commonRestricted = vars.RestrictedVars
-			}
 			if vars.AdminOnlyVars != nil {
 				commonAdminOnly = vars.AdminOnlyVars
 			}
 			continue
 		}
 		for key, val := range commonProjectVariables {
-			// if the key is private/restricted in any of the projects, make it private/restricted in the repo
+			// If the key is private/admin only in any of the projects, make it private/admin only in the repo.
 			if vars.Vars[key] == val {
 				if vars.PrivateVars[key] {
 					commonPrivate[key] = true
-				}
-				if vars.RestrictedVars[key] {
-					commonRestricted[key] = true
 				}
 				if vars.AdminOnlyVars[key] {
 					commonAdminOnly[key] = true
@@ -1023,10 +1016,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 		}
 	}
 	return &ProjectVars{
-		Vars:           commonProjectVariables,
-		PrivateVars:    commonPrivate,
-		RestrictedVars: commonRestricted,
-		AdminOnlyVars:  commonAdminOnly,
+		Vars:          commonProjectVariables,
+		PrivateVars:   commonPrivate,
+		AdminOnlyVars: commonAdminOnly,
 	}, nil
 }
 
@@ -1740,10 +1732,9 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$unset": bson.M{
-					projectVarsMapKey:    1,
-					privateVarsMapKey:    1,
-					restrictedVarsMapKey: 1,
-					adminOnlyVarsMapKey:  1,
+					projectVarsMapKey:   1,
+					privateVarsMapKey:   1,
+					adminOnlyVarsMapKey: 1,
 				},
 			})
 		if err == nil {
