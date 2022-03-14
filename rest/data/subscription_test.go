@@ -1,12 +1,15 @@
 package data
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +17,10 @@ import (
 
 func TestGetSubscriptions(t *testing.T) {
 	assert := assert.New(t)
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(event.SubscriptionsCollection))
 
 	subs := []event.Subscription{
@@ -77,10 +83,14 @@ func TestGetSubscriptions(t *testing.T) {
 }
 
 func TestSaveProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			subs[0].RegexSelectors[0].Data = utility.ToStringPtr("")
+			subs[0].Selectors[0].Data = utility.ToStringPtr("")
 			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
@@ -111,7 +121,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
-							Type: "id",
+							Type: event.SelectorID,
 							Data: "1234",
 						},
 					},
@@ -128,7 +138,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
-							Type: "id",
+							Type: event.SelectorID,
 							Data: "1234",
 						},
 					},
@@ -143,9 +153,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				Trigger:      utility.ToStringPtr("outcome"),
 				Owner:        utility.ToStringPtr("me"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
-				RegexSelectors: []restModel.APISelector{
+				Selectors: []restModel.APISelector{
 					{
-						Type: utility.ToStringPtr("object"),
+						Type: utility.ToStringPtr(event.SelectorObject),
 						Data: utility.ToStringPtr("object_data"),
 					},
 				},
@@ -159,9 +169,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				Trigger:      utility.ToStringPtr("outcome"),
 				Owner:        utility.ToStringPtr("me"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
-				RegexSelectors: []restModel.APISelector{
+				Selectors: []restModel.APISelector{
 					{
-						Type: utility.ToStringPtr("object"),
+						Type: utility.ToStringPtr(event.SelectorObject),
 						Data: utility.ToStringPtr("object_data"),
 					},
 				},
@@ -181,6 +191,10 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 }
 
 func TestDeleteProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, ids []string){
 		"InvalidOwner": func(t *testing.T, ids []string) {
@@ -242,6 +256,10 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 }
 
 func TestCopyProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
 	oldProjectId := "my-project"
 	subs := []event.Subscription{

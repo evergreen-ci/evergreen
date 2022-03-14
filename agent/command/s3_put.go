@@ -10,12 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -85,16 +87,23 @@ type s3put struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
+	// SkipExisting, when set to true, will not upload files if they already exist in s3.
+	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
+
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
-	workDir     string
-	skipMissing bool
+	workDir          string
+	skipMissing      bool
+	skipExistingBool bool
 
 	bucket pail.Bucket
 
 	taskdata client.TaskData
 	base
 }
+
+// NotFound is returned by S3 when an object does not exist.
+const notFoundError = "NotFound"
 
 func s3PutFactory() Command      { return &s3put{} }
 func (s3pc *s3put) Name() string { return "s3.put" }
@@ -169,11 +178,11 @@ func (s3pc *s3put) validate() error {
 	return catcher.Resolve()
 }
 
-// Apply the expansions from the relevant task config (including restricted expansion)
+// Apply the expansions from the relevant task config
 // to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	var err error
-	if err = util.ExpandValues(s3pc, conf.GetExpansionsWithRestricted()); err != nil {
+	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -190,6 +199,15 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	} else {
 		s3pc.skipMissing = false
+	}
+
+	if s3pc.SkipExisting != "" {
+		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	} else {
+		s3pc.skipExistingBool = false
 	}
 	return nil
 }
@@ -338,6 +356,17 @@ retryLoop:
 				}
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
+
+				if s3pc.skipExistingBool {
+					exists, err := s3pc.remoteFileExists(remoteName)
+					if err != nil {
+						return errors.Wrapf(err, "error checking if file '%s' exists", remoteName)
+					}
+					if exists {
+						logger.Task().Infof("noop: not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
+						continue uploadLoop
+					}
+				}
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
@@ -463,4 +492,28 @@ func (s3pc *s3put) isPrivate(visibility string) bool {
 func (s3pc *s3put) isPublic() bool {
 	return (s3pc.Visibility == "" || s3pc.Visibility == artifact.Public) &&
 		(s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite)
+}
+
+func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
+	requestParams := thirdparty.RequestParams{
+		Bucket:    s3pc.Bucket,
+		FileKey:   remoteName,
+		AwsKey:    s3pc.AwsKey,
+		AwsSecret: s3pc.AwsSecret,
+		Region:    s3pc.Region,
+	}
+	_, err := thirdparty.GetHeadObject(requestParams)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case notFoundError:
+				return false, nil
+			default:
+				return false, errors.Wrapf(err, "error getting head object for: %s", remoteName)
+			}
+		} else {
+			return false, errors.Wrapf(err, "error reading error while getting head object '%s'", remoteName)
+		}
+	}
+	return true, nil
 }

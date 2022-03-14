@@ -1,4 +1,4 @@
-package graphql_test
+package graphql
 
 // This test takes a specification and runs GraphQL queries, comparing the output of the query to what is expected.
 // To add a new test:
@@ -18,12 +18,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -32,11 +32,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,43 +41,21 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type atomicGraphQLState struct {
-	server      *service.TestServer
-	apiUser     string
-	apiKey      string
-	directory   string
-	taskLogDB   string
-	taskLogColl string
-	testData    map[string]json.RawMessage
-	settings    *evergreen.Settings
-}
-
-func TestAtomicGQLQueries(t *testing.T) {
-	grip.Warning(grip.SetSender(send.MakePlainLogger()))
-	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, "TestAtomicGQLQueries")
-	testDirectories, err := ioutil.ReadDir("tests")
-	require.NoError(t, err)
-	server, err := service.CreateTestServer(settings, nil, true)
-	require.NoError(t, err)
-	defer server.Close()
-
-	for _, dir := range testDirectories {
-		state := atomicGraphQLState{
-			taskLogDB:   model.TaskLogDB,
-			taskLogColl: model.TaskLogCollection,
-			directory:   dir.Name(),
-			settings:    settings,
-			server:      server,
-		}
-		t.Run(state.directory, makeTestsInDirectory(t, &state))
-	}
+type AtomicGraphQLState struct {
+	ServerURL   string
+	ApiUser     string
+	ApiKey      string
+	Directory   string
+	TaskLogDB   string
+	TaskLogColl string
+	TestData    map[string]json.RawMessage
+	Settings    *evergreen.Settings
 }
 
 const apiUser = "testuser"
+const apiKey = "testapikey"
 
-func setup(t *testing.T, state *atomicGraphQLState) {
-	const apiKey = "testapikey"
+func setup(t *testing.T, state *AtomicGraphQLState) {
 	const slackUsername = "testslackuser"
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -121,7 +96,7 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
 	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
 
-	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.taskLogDB), state.testData, *state))
+	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
 	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
@@ -177,13 +152,13 @@ func setup(t *testing.T, state *atomicGraphQLState) {
 		ID:        "superuser_scope",
 		Name:      "superuser scope",
 		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{"super_user", "sandbox_project_id", "repo_id"},
+		Resources: []string{"super_user", "sandbox_project_id", "repo_id", "vars_test"},
 	}
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
-	state.apiKey = apiKey
-	state.apiUser = apiUser
+	state.ApiKey = apiKey
+	state.ApiUser = apiUser
 
 	directorySpecificTestSetup(t, *state)
 }
@@ -192,18 +167,28 @@ type testsCases struct {
 	Tests []test `json:"tests"`
 }
 
-func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testing.T) {
+type test struct {
+	QueryFile string          `json:"query_file"`
+	Result    json.RawMessage `json:"result"`
+}
+
+// escapeGQLQuery replaces literal newlines with '\n' and literal double quotes with '\"'
+func escapeGQLQuery(in string) string {
+	return strings.Replace(strings.Replace(in, "\n", "\\n", -1), "\"", "\\\"", -1)
+}
+
+func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t *testing.T) {
 	return func(t *testing.T) {
-		dataFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "data.json"))
+		dataFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "data.json"))
 		require.NoError(t, err)
 
-		resultsFile, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "results.json"))
+		resultsFile, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "results.json"))
 		require.NoError(t, err)
 
 		var testData map[string]json.RawMessage
 		err = json.Unmarshal(dataFile, &testData)
 		require.NoError(t, err)
-		state.testData = testData
+		state.TestData = testData
 
 		var tests testsCases
 		err = json.Unmarshal(resultsFile, &tests)
@@ -211,30 +196,30 @@ func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testi
 
 		// Delete exactly the documents added to the task_logg coll instead of dropping task log db
 		// we do this to minimize deleting data that was not added from this test suite
-		if testData[state.taskLogColl] != nil {
-			logsDb := evergreen.GetEnvironment().Client().Database(state.taskLogDB)
+		if testData[state.TaskLogColl] != nil {
+			logsDb := evergreen.GetEnvironment().Client().Database(state.TaskLogDB)
 			idArr := []string{}
 			var docs []model.TaskLog
-			require.NoError(t, bson.UnmarshalExtJSON(testData[state.taskLogColl], false, &docs))
+			require.NoError(t, bson.UnmarshalExtJSON(testData[state.TaskLogColl], false, &docs))
 			for _, d := range docs {
 				idArr = append(idArr, d.Id)
 			}
-			_, err := logsDb.Collection(state.taskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
+			_, err := logsDb.Collection(state.TaskLogColl).DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": idArr}})
 			require.NoError(t, err)
 		}
 
 		setup(t, state)
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
-				f, err := ioutil.ReadFile(filepath.Join("tests", state.directory, "queries", testCase.QueryFile))
+				f, err := ioutil.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
 				require.NoError(t, err)
 				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 				body := bytes.NewBuffer([]byte(jsonQuery))
 				client := http.Client{}
-				r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.server.URL), body)
+				r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.ServerURL), body)
 				require.NoError(t, err)
-				r.Header.Add(evergreen.APIKeyHeader, state.apiKey)
-				r.Header.Add(evergreen.APIUserHeader, state.apiUser)
+				r.Header.Add(evergreen.APIKeyHeader, state.ApiKey)
+				r.Header.Add(evergreen.APIUserHeader, state.ApiUser)
 				r.Header.Add("content-type", "application/json")
 				resp, err := client.Do(r)
 				require.NoError(t, err)
@@ -268,11 +253,11 @@ func makeTestsInDirectory(t *testing.T, state *atomicGraphQLState) func(t *testi
 
 			t.Run(testCase.QueryFile, singleTest)
 		}
-		directorySpecificTestCleanup(t, state.directory)
+		directorySpecificTestCleanup(t, state.Directory)
 	}
 }
 
-func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state atomicGraphQLState) error {
+func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.RawMessage, state AtomicGraphQLState) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, d := range data {
@@ -281,7 +266,7 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 		// test spec is normal JSON
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
 		// task_logg collection belongs to the logs db
-		if coll == state.taskLogColl {
+		if coll == state.TaskLogColl {
 			_, err := logsDb.Collection(coll).InsertMany(ctx, docs)
 			catcher.Add(err)
 		} else {
@@ -292,13 +277,13 @@ func setupData(db mongo.Database, logsDb mongo.Database, data map[string]json.Ra
 	return catcher.Resolve()
 }
 
-func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
+func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 	persistTestSettings := func(t *testing.T) {
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.VersionCollection})
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
-		require.NoError(t, state.settings.Set())
+		require.NoError(t, state.Settings.Set())
 
 	}
 	type setupFn func(*testing.T)
@@ -311,8 +296,8 @@ func directorySpecificTestSetup(t *testing.T, state atomicGraphQLState) {
 		"updateVolume":         {spawnTestHostAndVolume},
 		"schedulePatch":        {persistTestSettings},
 	}
-	if m[state.directory] != nil {
-		for _, exec := range m[state.directory] {
+	if m[state.Directory] != nil {
+		for _, exec := range m[state.Directory] {
 			exec(t)
 		}
 	}
@@ -378,7 +363,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	}
 	require.NoError(t, h.Insert())
 	ctx := context.Background()
-	err = graphql.SpawnHostForTestCode(ctx, &mountedVolume, &h)
+	err = SpawnHostForTestCode(ctx, &mountedVolume, &h)
 	require.NoError(t, err)
 }
 

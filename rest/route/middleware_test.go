@@ -16,8 +16,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -28,9 +30,11 @@ import (
 
 // PrefetchProjectContext gets the information related to the project that the request contains
 // and fetches the associated project context and attaches that to the request context.
-func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request) (context.Context, error) {
+func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request, input map[string]string) (context.Context, error) {
 	r = r.WithContext(ctx)
-
+	if input != nil {
+		r = gimlet.SetURLVars(r, input)
+	}
 	rw := httptest.NewRecorder()
 	NewProjectContextMiddleware(sc).ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
@@ -47,19 +51,26 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 }
 
 func TestPrefetchProject(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, user.Collection))
+	doc := &model.ProjectRef{
+		Id:      "mci",
+		Private: utility.TruePtr(),
+	}
+	require.NoError(t, doc.Insert())
+	patchDoc := &patch.Patch{
+		Id: bson.ObjectIdHex("aabbccddeeff112233445566"),
+	}
+	require.NoError(t, patchDoc.Insert())
+	testUser := &user.DBUser{Id: "test_user"}
+	require.NoError(t, testUser.Insert())
 	Convey("When there is a data and a request", t, func() {
-		serviceContext := &data.MockConnector{}
+		serviceContext := &data.DBConnector{}
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		Convey("When fetching the project context", func() {
 			ctx := context.Background()
 			Convey("should error if project is private and no user is set", func() {
-				opCtx := model.Context{}
-				opCtx.ProjectRef = &model.ProjectRef{
-					Private: utility.TruePtr(),
-				}
-				serviceContext.MockContextConnector.CachedContext = opCtx
-				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req, map[string]string{"project_id": "mci"})
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
 				errToResemble := gimlet.ErrorResponse{
@@ -71,8 +82,7 @@ func TestPrefetchProject(t *testing.T) {
 			Convey("should error if patch exists and no user is set", func() {
 				opCtx := model.Context{}
 				opCtx.Patch = &patch.Patch{}
-				serviceContext.MockContextConnector.CachedContext = opCtx
-				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req, map[string]string{"patch_id": "aabbccddeeff112233445566"})
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
 				errToResemble := gimlet.ErrorResponse{
@@ -85,10 +95,10 @@ func TestPrefetchProject(t *testing.T) {
 				opCtx := model.Context{}
 				opCtx.ProjectRef = &model.ProjectRef{
 					Private: utility.TruePtr(),
+					Id:      "mci",
 				}
 				ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
-				serviceContext.MockContextConnector.CachedContext = opCtx
-				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req, map[string]string{"project_id": "mci"})
 				So(err, ShouldBeNil)
 
 				So(ctx.Value(RequestContext), ShouldResemble, &opCtx)
@@ -129,8 +139,8 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
-	mockConnector := &data.MockConnector{}
-	mw := NewProjectAdminMiddleware(mockConnector)
+	connector := &data.DBConnector{}
+	mw := NewProjectAdminMiddleware(connector)
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -146,7 +156,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
 
 	ctx := context.Background()
 	opCtx := model.Context{}
@@ -169,6 +179,10 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		},
 	}
 	assert.NoError(commitqueue.InsertQueue(&cq))
+	p := patch.Patch{
+		Id: patch.NewId("aabbccddeeff112233445566"),
+	}
+	assert.NoError(p.Insert())
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -184,11 +198,11 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"item":       "1234",
+		"item":       "aabbccddeeff112233445566",
 	})
 
-	mockDataConnector := &data.MockConnector{}
-	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	mockDataConnector := &data.DBConnector{}
+	mw := NewMockCommitQueueItemOwnerMiddleware(mockDataConnector)
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -238,8 +252,8 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		"item":       "1234",
 	})
 
-	mockDataConnector := &data.MockConnector{}
-	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	mockDataConnector := &data.DBConnector{}
+	mw := NewMockCommitQueueItemOwnerMiddleware(mockDataConnector)
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -314,7 +328,23 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 
 func TestTaskAuthMiddleware(t *testing.T) {
 	assert := assert.New(t)
-	m := NewTaskAuthMiddleware(&data.MockConnector{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+
+	assert.NoError(db.ClearCollections(host.Collection, task.Collection))
+	task1 := task.Task{
+		Id:     "task1",
+		Secret: "abcdef",
+	}
+	host1 := &host.Host{
+		Id:     "host1",
+		Secret: "abcdef",
+	}
+	assert.NoError(task1.Insert())
+	assert.NoError(host1.Insert())
+	m := NewTaskAuthMiddleware(&data.DBConnector{})
 	r := &http.Request{
 		Header: http.Header{
 			evergreen.HostHeader:       []string{"host1"},
@@ -334,6 +364,10 @@ func TestTaskAuthMiddleware(t *testing.T) {
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	m := NewHostAuthMiddleware(&data.DBConnector{})
 	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
@@ -394,13 +428,19 @@ func TestHostAuthMiddleware(t *testing.T) {
 }
 
 func TestPodAuthMiddleware(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	m := NewPodAuthMiddleware(&data.DBConnector{})
 	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder){
 		"Succeeds": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
+			s, err := p.GetSecret()
+			require.NoError(t, err)
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{p.ID},
-					evergreen.PodSecretHeader: []string{p.Secret.Value},
+					evergreen.PodSecretHeader: []string{s.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -426,19 +466,23 @@ func TestPodAuthMiddleware(t *testing.T) {
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithoutPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
+			s, err := p.GetSecret()
+			require.NoError(t, err)
 			r := &http.Request{
 				Header: http.Header{
-					evergreen.PodSecretHeader: []string{p.Secret.Value},
+					evergreen.PodSecretHeader: []string{s.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithInvalidPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
+			s, err := p.GetSecret()
+			require.NoError(t, err)
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{"foo"},
-					evergreen.PodSecretHeader: []string{p.Secret.Value},
+					evergreen.PodSecretHeader: []string{s.Value},
 				},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -452,11 +496,16 @@ func TestPodAuthMiddleware(t *testing.T) {
 			}()
 			p := &pod.Pod{
 				ID: "id",
-				Secret: pod.Secret{
-					Name:   "name",
-					Value:  "value",
-					Exists: utility.FalsePtr(),
-					Owned:  utility.TruePtr(),
+				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
+					EnvSecrets: map[string]pod.Secret{
+						pod.PodSecretEnvVar: {
+							Name:       "name",
+							Value:      "value",
+							ExternalID: "external_id",
+							Exists:     utility.FalsePtr(),
+							Owned:      utility.TruePtr(),
+						},
+					},
 				},
 			}
 			require.NoError(t, p.Insert())
@@ -469,13 +518,16 @@ func TestPodAuthMiddleware(t *testing.T) {
 func TestProjectViewPermission(t *testing.T) {
 	//setup
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require := require.New(t)
 	counter := 0
 	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
 		counter++
 		rw.WriteHeader(http.StatusOK)
 	}
-	env := evergreen.GetEnvironment()
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection))
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	role1 := gimlet.Role{
@@ -545,7 +597,7 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(1, counter)
 
 	// attach a user, but with no permissions yet
-	ctx := gimlet.AttachUser(req.Context(), user)
+	ctx = gimlet.AttachUser(req.Context(), user)
 	req = req.WithContext(ctx)
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
@@ -569,13 +621,16 @@ func TestProjectViewPermission(t *testing.T) {
 func TestEventLogPermission(t *testing.T) {
 	//setup
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require := require.New(t)
 	counter := 0
 	counterFunc := func(rw http.ResponseWriter, r *http.Request) {
 		counter++
 		rw.WriteHeader(http.StatusOK)
 	}
-	env := evergreen.GetEnvironment()
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection, distro.Collection))
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	projRole := gimlet.Role{

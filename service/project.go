@@ -166,24 +166,11 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	matchingRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+
+	conflicts, err := projRef.GetGithubProjectConflicts()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-	PRConflictingRefs := []string{}
-	CQConflictingRefs := []string{}
-	githubChecksConflictingRefs := []string{}
-	for _, ref := range matchingRefs {
-		if ref.IsPRTestingEnabled() && ref.Id != projRef.Id {
-			PRConflictingRefs = append(PRConflictingRefs, ref.Id)
-		}
-		if ref.CommitQueue.IsEnabled() && ref.Id != projRef.Id {
-			CQConflictingRefs = append(CQConflictingRefs, ref.Id)
-		}
-		if ref.IsGithubChecksEnabled() && ref.Id != projRef.Id {
-			githubChecksConflictingRefs = append(githubChecksConflictingRefs, ref.Id)
-		}
 	}
 	var hook *model.GithubHook
 	hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
@@ -225,8 +212,8 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		GithubValidOrgs             []string                    `json:"github_valid_orgs"`
 		Subscriptions               []restModel.APISubscription `json:"subscriptions"`
 		Permissions                 gimlet.Permissions          `json:"permissions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs,
-		CQConflictingRefs, githubChecksConflictingRefs, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
+	}{projRef, projVars, projectAliases, conflicts.PRTestingIdentifiers,
+		conflicts.CommitQueueIdentifiers, conflicts.CommitCheckIdentifiers, hook != nil, settings.GithubOrgs, apiSubscriptions, permissions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -285,7 +272,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DefaultLogger           string                         `json:"default_logger"`
 		CedarTestResultsEnabled bool                           `json:"cedar_test_results_enabled"`
 		PrivateVars             map[string]bool                `json:"private_vars"`
-		RestrictedVars          map[string]bool                `json:"restricted_vars"`
 		AdminOnlyVars           map[string]bool                `json:"admin_only_vars"`
 		Enabled                 bool                           `json:"enabled"`
 		Private                 bool                           `json:"private"`
@@ -682,18 +668,18 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		subscription := subscriptionIface.(event.Subscription)
 		subscription.Selectors = []event.Selector{
 			{
-				Type: "project",
+				Type: event.SelectorProject,
 				Data: projectRef.Id,
 			},
 		}
 		if subscription.TriggerData != nil && subscription.TriggerData[event.SelectorRequester] != "" {
 			subscription.Selectors = append(subscription.Selectors, event.Selector{
-				Type: "requester",
+				Type: event.SelectorRequester,
 				Data: subscription.TriggerData[event.SelectorRequester],
 			})
 		} else {
 			subscription.Selectors = append(subscription.Selectors, event.Selector{
-				Type: "requester",
+				Type: event.SelectorRequester,
 				Data: evergreen.RepotrackerVersionRequester,
 			})
 		}
@@ -759,7 +745,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		projectVars.Vars = responseRef.ProjVarsMap
 		projectVars.PrivateVars = responseRef.PrivateVars
-		projectVars.RestrictedVars = responseRef.RestrictedVars
 		projectVars.AdminOnlyVars = responseRef.AdminOnlyVars
 	}
 
@@ -989,9 +974,8 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	DBUser := MustHaveUser(r)
-	authorized := isAdmin(DBUser, projectRef)
 	template := "not_admin.html"
-	if authorized {
+	if isAdmin(DBUser, projectRef.Id) {
 		template = "project_events.html"
 	}
 

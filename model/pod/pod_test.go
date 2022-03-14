@@ -26,13 +26,7 @@ func TestInsertAndFindOneByID(t *testing.T) {
 		},
 		"InsertSucceedsAndIsFoundByID": func(t *testing.T) {
 			p := Pod{
-				ID: "id",
-				Secret: Secret{
-					Name:   "name",
-					Value:  "value",
-					Exists: utility.FalsePtr(),
-					Owned:  utility.TruePtr(),
-				},
+				ID:     "id",
 				Status: StatusRunning,
 				TaskContainerCreationOpts: TaskContainerCreationOptions{
 					Image:          "alpine",
@@ -68,7 +62,6 @@ func TestInsertAndFindOneByID(t *testing.T) {
 
 			assert.Equal(t, p.ID, dbPod.ID)
 			assert.Equal(t, p.Status, dbPod.Status)
-			assert.Equal(t, p.Secret, dbPod.Secret)
 			assert.Equal(t, p.Resources, dbPod.Resources)
 			assert.Equal(t, p.TimeInfo, dbPod.TimeInfo)
 			assert.Equal(t, p.TaskContainerCreationOpts, dbPod.TaskContainerCreationOpts)
@@ -121,6 +114,80 @@ func TestRemove(t *testing.T) {
 			tCase(t)
 		})
 	}
+}
+
+func TestNewTaskIntentPod(t *testing.T) {
+	makeValidOpts := func() TaskIntentPodOptions {
+		return TaskIntentPodOptions{
+			ID:             "id",
+			Secret:         "secret",
+			CPU:            128,
+			MemoryMB:       256,
+			OS:             OSWindows,
+			Arch:           ArchAMD64,
+			WindowsVersion: WindowsVersionServer2022,
+			Image:          "image",
+			WorkingDir:     "/",
+			RepoUsername:   "username",
+			RepoPassword:   "password",
+		}
+	}
+	t.Run("SucceedsWithValidOptions", func(t *testing.T) {
+		opts := makeValidOpts()
+
+		p, err := NewTaskIntentPod(opts)
+		require.NoError(t, err)
+		assert.Equal(t, opts.ID, p.ID)
+		assert.Equal(t, opts.CPU, p.TaskContainerCreationOpts.CPU)
+		assert.Equal(t, opts.MemoryMB, p.TaskContainerCreationOpts.MemoryMB)
+		assert.Equal(t, opts.OS, p.TaskContainerCreationOpts.OS)
+		assert.Equal(t, opts.Arch, p.TaskContainerCreationOpts.Arch)
+		assert.Equal(t, opts.WindowsVersion, p.TaskContainerCreationOpts.WindowsVersion)
+		assert.Equal(t, opts.Image, p.TaskContainerCreationOpts.Image)
+		assert.Equal(t, opts.WorkingDir, p.TaskContainerCreationOpts.WorkingDir)
+		assert.Equal(t, opts.RepoUsername, p.TaskContainerCreationOpts.RepoUsername)
+		assert.Equal(t, opts.RepoPassword, p.TaskContainerCreationOpts.RepoPassword)
+		assert.Equal(t, opts.ID, p.TaskContainerCreationOpts.EnvVars[PodIDEnvVar])
+		s, err := p.GetSecret()
+		require.NoError(t, err)
+		assert.Zero(t, s.Name)
+		assert.Equal(t, opts.Secret, s.Value)
+		assert.Empty(t, s.ExternalID)
+		assert.False(t, utility.FromBoolPtr(s.Exists))
+		assert.True(t, utility.FromBoolPtr(s.Owned))
+	})
+	t.Run("SetsDefaultID", func(t *testing.T) {
+		opts := makeValidOpts()
+		opts.ID = ""
+
+		p, err := NewTaskIntentPod(opts)
+		require.NoError(t, err)
+		assert.NotZero(t, p.ID)
+		assert.Equal(t, p.ID, p.TaskContainerCreationOpts.EnvVars[PodIDEnvVar])
+	})
+	t.Run("SetsDefaultPodSecret", func(t *testing.T) {
+		opts := makeValidOpts()
+		opts.Secret = ""
+
+		p, err := NewTaskIntentPod(opts)
+		require.NoError(t, err)
+		assert.NotZero(t, p.ID)
+		s, err := p.GetSecret()
+		require.NoError(t, err)
+		assert.Zero(t, s.Name)
+		assert.NotZero(t, s.Value)
+		assert.Empty(t, s.ExternalID)
+		assert.False(t, utility.FromBoolPtr(s.Exists))
+		assert.True(t, utility.FromBoolPtr(s.Owned))
+	})
+	t.Run("FailsWithInvalidOptions", func(t *testing.T) {
+		opts := makeValidOpts()
+		opts.Image = ""
+
+		p, err := NewTaskIntentPod(opts)
+		assert.Error(t, err)
+		assert.Zero(t, p)
+	})
 }
 
 func TestUpdateStatus(t *testing.T) {
@@ -324,5 +391,32 @@ func TestUpdateResources(t *testing.T) {
 			})
 		})
 	}
+}
 
+func TestGetSecret(t *testing.T) {
+	t.Run("SucceedsWithPopulatedEnvSecret", func(t *testing.T) {
+		expected := Secret{
+			Name:       "secret_name",
+			Value:      "secret_value",
+			ExternalID: "external_id",
+		}
+		p := Pod{
+			ID: "id",
+			TaskContainerCreationOpts: TaskContainerCreationOptions{
+				EnvSecrets: map[string]Secret{
+					PodSecretEnvVar: expected,
+				},
+			},
+		}
+		s, err := p.GetSecret()
+		require.NoError(t, err)
+		require.NotZero(t, s)
+		assert.Equal(t, expected, *s)
+	})
+	t.Run("FailsWithoutSecret", func(t *testing.T) {
+		var p Pod
+		s, err := p.GetSecret()
+		assert.Error(t, err)
+		assert.Zero(t, s)
+	})
 }

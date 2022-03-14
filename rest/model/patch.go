@@ -151,6 +151,16 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		}
 	}
 
+	projectIdentifier := v.Project
+	if v.Project != "" {
+		identifier, err := model.GetIdentifierForProject(v.Project)
+		if err != nil {
+			return errors.Wrapf(err, "error getting project '%s'", v.Project)
+		}
+		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
+		projectIdentifier = identifier
+	}
+
 	if env := evergreen.GetEnvironment(); env != nil {
 		codeChanges := []APIModulePatch{}
 		apiURL := env.Settings().ApiUrl
@@ -158,7 +168,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		for patchNumber, modPatch := range v.Patches {
 			branchName := modPatch.ModuleName
 			if branchName == "" {
-				branchName = v.Project
+				branchName = projectIdentifier
 			}
 			htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
 			rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
@@ -217,14 +227,6 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 		apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatus(allStatuses))
 		apiPatch.ChildPatchAliases = childPatchAliases
 
-	}
-
-	if v.Project != "" {
-		identifier, err := model.GetIdentifierForProject(v.Project)
-		if err != nil {
-			return errors.Wrapf(err, "error getting project '%s'", v.Project)
-		}
-		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 	}
 
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))

@@ -1,4 +1,4 @@
-package graphql_test
+package graphql
 
 // This test takes a specification and runs GraphQL queries, comparing the output of the query to what is expected.
 // To add a new test:
@@ -16,79 +16,35 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type graphQLSuite struct {
-	url     string
-	apiUser string
-	apiKey  string
-
-	suite.Suite
-}
-
-func TestGraphQLSuite(t *testing.T) {
-	suite.Run(t, &graphQLSuite{})
-}
-
-func (s *graphQLSuite) SetupSuite() {
-	const apiKey = "testapikey"
-	const apiUser = "testuser"
-
-	server, err := service.CreateTestServer(testutil.TestConfig(), nil, true)
-	s.Require().NoError(err)
-	env := evergreen.GetEnvironment()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Require().NoError(env.DB().Drop(ctx))
-	testUser := user.DBUser{
-		Id:          apiUser,
-		APIKey:      apiKey,
-		Settings:    user.UserSettings{Timezone: "America/New_York"},
-		SystemRoles: []string{"unrestrictedTaskAccess"},
-	}
-	s.Require().NoError(testUser.Insert())
-	s.url = server.URL
-	s.apiKey = apiKey
-	s.apiUser = apiUser
-
-	s.Require().NoError(db.EnsureIndex(testresult.Collection, mongo.IndexModel{
-		Keys: testresult.TestResultsIndex}))
-}
-
-func (s *graphQLSuite) TestQueries() {
-	f, err := ioutil.ReadFile("integration_spec.json")
-	s.Require().NoError(err)
+func TestQueries(t *testing.T, serverURL, pathToTests string) {
+	f, err := ioutil.ReadFile(filepath.Join(pathToTests, "integration_spec.json"))
+	require.NoError(t, err)
 	var spec spec
 	err = json.Unmarshal(f, &spec)
-	s.Require().NoError(err)
-	s.Require().NoError(spec.SetupData(*evergreen.GetEnvironment().DB()))
+	require.NoError(t, err)
+	require.NoError(t, spec.setupData(*evergreen.GetEnvironment().DB()))
 
 	for _, testCase := range spec.Tests {
 		singleTest := func(t *testing.T) {
-			f, err := ioutil.ReadFile(filepath.Join("testdata", testCase.QueryFile))
+			f, err := ioutil.ReadFile(filepath.Join(pathToTests, "testdata", testCase.QueryFile))
 			require.NoError(t, err)
 			jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
 			body := bytes.NewBuffer([]byte(jsonQuery))
 			client := http.Client{}
-			r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", s.url), body)
-			s.Require().NoError(err)
-			r.Header.Add(evergreen.APIKeyHeader, s.apiKey)
-			r.Header.Add(evergreen.APIUserHeader, s.apiUser)
+			r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", serverURL), body)
+			require.NoError(t, err)
+			r.Header.Add(evergreen.APIKeyHeader, apiKey)
+			r.Header.Add(evergreen.APIUserHeader, apiUser)
 			r.Header.Add("content-type", "application/json")
 			resp, err := client.Do(r)
 			require.NoError(t, err)
@@ -107,7 +63,7 @@ func (s *graphQLSuite) TestQueries() {
 			assert.JSONEq(t, string(testCase.Result), string(b), fmt.Sprintf("expected %s but got %s", string(testCase.Result), string(b)))
 		}
 
-		s.T().Run(testCase.QueryFile, singleTest)
+		t.Run(testCase.QueryFile, singleTest)
 	}
 }
 
@@ -116,12 +72,7 @@ type spec struct {
 	Tests []test                     `json:"tests"`
 }
 
-type test struct {
-	QueryFile string          `json:"query_file"`
-	Result    json.RawMessage `json:"result"`
-}
-
-func (s *spec) SetupData(db mongo.Database) error {
+func (s *spec) setupData(db mongo.Database) error {
 	ctx := context.Background()
 	catcher := grip.NewBasicCatcher()
 	for coll, data := range s.Setup {
@@ -133,9 +84,4 @@ func (s *spec) SetupData(db mongo.Database) error {
 		catcher.Add(err)
 	}
 	return catcher.Resolve()
-}
-
-// escapeGQLQuery replaces literal newlines with '\n' and literal double quotes with '\"'
-func escapeGQLQuery(in string) string {
-	return strings.Replace(strings.Replace(in, "\n", "\\n", -1), "\"", "\\\"", -1)
 }

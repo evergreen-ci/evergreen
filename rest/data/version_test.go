@@ -12,47 +12,30 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type VersionConnectorSuite struct {
-	ctx    Connector
-	isMock bool
-
+	ctx Connector
 	suite.Suite
 }
 
 //----------------------------------------------------------------------------//
 //   Initialize the ConnectorSuites                                           //
 //----------------------------------------------------------------------------//
-func TestVersionConnectorSuite(t *testing.T) {
-	// Set up
+
+func TestDBVersionConnectorSuite(t *testing.T) {
 	s := new(VersionConnectorSuite)
-	s.ctx = &DBConnector{}
-
-	s.isMock = false
-
-	// Run the suite
-	suite.Run(t, s)
-}
-
-func TestMockVersionConnectorSuite(t *testing.T) {
-	s := new(VersionConnectorSuite)
-	s.ctx = &MockConnector{
-		MockVersionConnector: MockVersionConnector{
-			CachedVersions: []model.Version{{Id: "version1"}, {Id: "version2"}},
-			CachedTasks: []task.Task{
-				{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
-				{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
-				{Id: "task3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
-				{Id: "task4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
-			},
-			CachedRestartedVersions: make(map[string]string),
-		},
+	s.ctx = &DBConnector{
+		DBVersionConnector: DBVersionConnector{},
 	}
-	s.isMock = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -131,64 +114,41 @@ func (s *VersionConnectorSuite) TestAbortVersion() {
 	// Task1 and Task2, which are of the aborted version and tasks with abortable statuses
 	// should be aborted. Task3 have been already aborted. Task4 is of another version and should
 	// not have been aborted.
-	if s.isMock {
-		cachedTasks := s.ctx.(*MockConnector).MockVersionConnector.CachedTasks
-		s.Equal(true, cachedTasks[0].Aborted)
-		s.Equal(true, cachedTasks[1].Aborted)
-		s.Equal(true, cachedTasks[2].Aborted)
-		s.Equal(false, cachedTasks[3].Aborted)
-	} else {
-		t1, _ := s.ctx.FindTaskById("task1")
-		s.Equal(versionId, t1.Version)
-		s.Equal(true, t1.Aborted)
+	t1, _ := s.ctx.FindTaskById("task1")
+	s.Equal(versionId, t1.Version)
+	s.Equal(true, t1.Aborted)
 
-		t2, _ := s.ctx.FindTaskById("task2")
-		s.Equal(versionId, t2.Version)
-		s.Equal(true, t2.Aborted)
+	t2, _ := s.ctx.FindTaskById("task2")
+	s.Equal(versionId, t2.Version)
+	s.Equal(true, t2.Aborted)
 
-		t3, _ := s.ctx.FindTaskById("task3")
-		s.Equal(versionId, t3.Version)
-		s.Equal(true, t3.Aborted)
+	t3, _ := s.ctx.FindTaskById("task3")
+	s.Equal(versionId, t3.Version)
+	s.Equal(true, t3.Aborted)
 
-		t4, _ := s.ctx.FindTaskById("task4")
-		s.NotEqual(true, t4.Aborted)
-	}
+	t4, _ := s.ctx.FindTaskById("task4")
+	s.NotEqual(true, t4.Aborted)
 }
 
 func (s *VersionConnectorSuite) TestRestartVersion() {
-	if s.isMock {
-		// Testing with versions that have tasks under them should succeed.
-		err := s.ctx.RestartVersion("version1", "caller1")
-		s.NoError(err)
-		s.Equal(s.ctx.(*MockConnector).CachedRestartedVersions["version1"], "caller1")
+	versionId := "version3"
+	err := s.ctx.RestartVersion(versionId, "caller3")
+	s.NoError(err)
 
-		err = s.ctx.RestartVersion("version2", "caller2")
-		s.NoError(err)
-		s.Equal(s.ctx.(*MockConnector).CachedRestartedVersions["version2"], "caller2")
+	// When a version is restarted, all of its completed tasks should be reset.
+	// (task.Status should be undispatched)
+	t5, _ := s.ctx.FindTaskById("task5")
+	s.Equal(versionId, t5.Version)
+	s.Equal(evergreen.TaskUndispatched, t5.Status)
 
-	} else {
-		versionId := "version3"
-		err := s.ctx.RestartVersion(versionId, "caller3")
-		s.NoError(err)
-
-		// When a version is restarted, all of its completed tasks should be reset.
-		// (task.Status should be undispatched)
-		t5, _ := s.ctx.FindTaskById("task5")
-		s.Equal(versionId, t5.Version)
-		s.Equal(evergreen.TaskUndispatched, t5.Status)
-
-		// Build status for all builds containing the tasks that we touched
-		// should be updated.
-		b1, _ := s.ctx.FindBuildById("build1")
-		s.Equal(evergreen.BuildStarted, b1.Status)
-		s.Equal("caller3", b1.ActivatedBy)
-	}
+	// Build status for all builds containing the tasks that we touched
+	// should be updated.
+	b1, _ := s.ctx.FindBuildById("build1")
+	s.Equal(evergreen.BuildStarted, b1.Status)
+	s.Equal("caller3", b1.ActivatedBy)
 }
 
 func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
-	if s.isMock { // mock method not implemented
-		return
-	}
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 
 	projRef := model.ProjectRef{
@@ -377,6 +337,10 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 
 func TestCreateVersionFromConfig(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 
@@ -409,13 +373,12 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	p := &model.Project{}
-	ctx := context.Background()
-	pp, pc, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
+	ctx = context.Background()
+	pp, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{
 		Project:             p,
 		IntermediateProject: pp,
-		Config:              pc,
 		Ref:                 &ref,
 	}
 	metadata := model.VersionMetadata{
@@ -461,7 +424,7 @@ tasks:
 - name: t1
 `
 	p = &model.Project{}
-	pp, _, err = model.LoadProjectInto(ctx, []byte(config2), nil, ref.Id, p)
+	pp, err = model.LoadProjectInto(ctx, []byte(config2), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp

@@ -141,20 +141,15 @@ func TestFindOneByID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
 			p := Pod{
-				ID: "id",
-				Secret: Secret{
-					Name:   "name",
-					Value:  "value",
-					Exists: utility.FalsePtr(),
-					Owned:  utility.TruePtr(),
-				},
+				ID:     "id",
+				Status: StatusInitializing,
 			}
 			require.NoError(t, p.Insert())
 
 			dbPod, err := FindOneByID(p.ID)
 			require.NoError(t, err)
 			assert.Equal(t, p.ID, dbPod.ID)
-			assert.Equal(t, p.Secret, dbPod.Secret)
+			assert.Equal(t, p.Status, dbPod.Status)
 		},
 		"ReturnsNilWithNonexistentPod": func(t *testing.T) {
 			p, err := FindOneByID("nonexistent")
@@ -177,13 +172,8 @@ func TestFindOneByExternalID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
 			p := Pod{
-				ID: "id",
-				Secret: Secret{
-					Name:   "name",
-					Value:  "value",
-					Exists: utility.FalsePtr(),
-					Owned:  utility.TruePtr(),
-				},
+				ID:     "id",
+				Status: StatusStarting,
 				Resources: ResourceInfo{
 					ExternalID: "external_id",
 				},
@@ -193,7 +183,7 @@ func TestFindOneByExternalID(t *testing.T) {
 			dbPod, err := FindOneByExternalID(p.Resources.ExternalID)
 			require.NoError(t, err)
 			assert.Equal(t, p.ID, dbPod.ID)
-			assert.Equal(t, p.Secret, dbPod.Secret)
+			assert.Equal(t, p.Status, dbPod.Status)
 		},
 		"ReturnsNilWithNonexistentPod": func(t *testing.T) {
 			p, err := FindOneByExternalID("nonexistent")

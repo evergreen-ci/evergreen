@@ -28,7 +28,7 @@
               "patchTriggerAliases" : [
                 {
                   "alias" : "my_alias_sandbox",
-                  "childProject" : "mci",
+                  "childProjectIdentifier" : "varsTest",
                   "taskSpecifiers": [
                     {
                       "taskRegex" : "test-util",
@@ -119,8 +119,23 @@
         "data": {
           "projectSettings": {
             "vars": {
-              "vars": {"hello": "", "foo":  "bar"},
-              "privateVars": ["hello"]
+              "vars": {"admintest": "woo", "hello": "", "foo":  "bar"},
+              "privateVars": ["hello"],
+              "adminOnlyVars": ["admintest"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "project-settings-admin-private-vars.graphql",
+      "result": {
+        "data": {
+          "projectSettings": {
+            "vars": {
+              "vars": {"both": ""},
+              "privateVars": ["both"],
+              "adminOnlyVars": ["both"]
             }
           }
         }

@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 )
 
 type CLIUpdateConnector struct{}
@@ -41,28 +40,6 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 	}
 
 	update.IgnoreUpdate = flags.CLIUpdatesDisabled
-
-	return update, nil
-}
-
-type MockCLIUpdateConnector struct {
-	degradedModeOn bool
-}
-
-func (c *MockCLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
-	update := &model.APICLIUpdate{
-		ClientConfig: model.APIClientConfig{
-			ClientBinaries: []model.APIClientBinary{
-				{
-					Arch: utility.ToStringPtr("amd64"),
-					OS:   utility.ToStringPtr("darwin"),
-					URL:  utility.ToStringPtr("localhost/clients/darwin_amd64/evergreen"),
-				},
-			},
-			LatestRevision: utility.ToStringPtr("2017-12-29"),
-		},
-		IgnoreUpdate: c.degradedModeOn,
-	}
 
 	return update, nil
 }

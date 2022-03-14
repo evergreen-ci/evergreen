@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -272,7 +273,6 @@ func TestUpdatingHostStatus(t *testing.T) {
 			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
-
 		})
 
 		Convey("if the host is terminated, the status update should fail"+
@@ -285,11 +285,79 @@ func TestUpdatingHostStatus(t *testing.T) {
 			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
-
 		})
-
 	})
+}
 
+func TestSetStatusAndFields(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, h *Host){
+		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
+			assert.Error(t, h.SetStatusAndFields(evergreen.HostDecommissioned, bson.M{}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbHost)
+		},
+		"DoesNotUpdatesAnyFieldsIfStatusIsIdentical": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			currentStatus := h.Status
+			newDisplayName := "new-display-name"
+			require.NoError(t, h.SetStatusAndFields(currentStatus, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, currentStatus, dbHost.Status, "host status should not be updated when host status is identical")
+			assert.Zero(t, dbHost.DisplayName, "display name should not be updated when host status is identical")
+		},
+		"UpdatesOnlyStatus": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+			newStatus := evergreen.HostQuarantined
+			require.NoError(t, h.SetStatusAndFields(newStatus, bson.M{}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, newStatus, dbHost.Status)
+		},
+		"UpdatesStatusAndAdditionalFields": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			newStatus := evergreen.HostQuarantined
+			newDisplayName := "new-display-name"
+			require.NoError(t, h.SetStatusAndFields(newStatus, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, newStatus, dbHost.Status)
+			assert.Equal(t, newDisplayName, dbHost.DisplayName)
+		},
+		"FailsForAlreadyTerminatedHost": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostTerminated
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetStatusAndFields(evergreen.HostRunning, bson.M{}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status, "terminated host should remain terminated")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			h := Host{
+				Id:     "host",
+				Status: evergreen.HostRunning,
+			}
+			tCase(t, &h)
+		})
+	}
 }
 
 func TestSetStopped(t *testing.T) {
@@ -592,20 +660,16 @@ func TestHostSetExpirationTime(t *testing.T) {
 			" clearing '%v' collection", Collection)
 
 		initialExpirationTime := time.Now()
-		notifications := make(map[string]bool)
-		notifications["2h"] = true
-
 		memHost := &Host{
 			Id:             "hostOne",
 			NoExpiration:   true,
 			ExpirationTime: initialExpirationTime,
-			Notifications:  notifications,
 		}
 		So(memHost.Insert(), ShouldBeNil)
 
 		Convey("setting the expiration time for the host should change the "+
 			" expiration time for both the in-memory and database"+
-			" copies of the host and unset the notifications", func() {
+			" copies of the host", func() {
 
 			dbHost, err := FindOne(ById(memHost.Id))
 
@@ -617,8 +681,6 @@ func TestHostSetExpirationTime(t *testing.T) {
 				initialExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
 				initialExpirationTime.Round(time.Second)), ShouldBeTrue)
-			So(memHost.Notifications, ShouldResemble, notifications)
-			So(dbHost.Notifications, ShouldResemble, notifications)
 
 			// now update the expiration time
 			newExpirationTime := time.Now()
@@ -634,47 +696,6 @@ func TestHostSetExpirationTime(t *testing.T) {
 				newExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
 				newExpirationTime.Round(time.Second)), ShouldBeTrue)
-			So(memHost.Notifications, ShouldResemble, make(map[string]bool))
-			So(dbHost.Notifications, ShouldEqual, nil)
-		})
-	})
-}
-
-func TestSetExpirationNotification(t *testing.T) {
-
-	Convey("With a host", t, func() {
-
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
-
-		notifications := make(map[string]bool)
-		notifications["2h"] = true
-
-		memHost := &Host{
-			Id:            "hostOne",
-			Notifications: notifications,
-		}
-		So(memHost.Insert(), ShouldBeNil)
-
-		Convey("setting the expiration notification for the host should change "+
-			" the expiration notification for both the in-memory and database"+
-			" copies of the host and unset the notifications", func() {
-
-			dbHost, err := FindOne(ById(memHost.Id))
-
-			// ensure the db entries are as expected
-			So(err, ShouldBeNil)
-			So(memHost.Notifications, ShouldResemble, notifications)
-			So(dbHost.Notifications, ShouldResemble, notifications)
-
-			// now update the expiration notification
-			notifications["4h"] = true
-			So(memHost.SetExpirationNotification("4h"), ShouldBeNil)
-			dbHost, err = FindOne(ById(memHost.Id))
-			// ensure the db entries are as expected
-			So(err, ShouldBeNil)
-			So(memHost.Notifications, ShouldResemble, notifications)
-			So(dbHost.Notifications, ShouldResemble, notifications)
 		})
 	})
 }

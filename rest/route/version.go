@@ -211,7 +211,7 @@ func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	// Restart the version
+	// RestartAction the version
 	err := h.sc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in restarting version"))

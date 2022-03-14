@@ -336,20 +336,21 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyConfig struct {
-	Name                                  *string             `json:"name"`
-	SingleName                            *string             `json:"single_name"`
-	DB                                    *string             `json:"database"`
-	PoolSizeLocal                         int                 `json:"pool_size_local"`
-	PoolSizeRemote                        int                 `json:"pool_size_remote"`
-	LocalStorage                          int                 `json:"local_storage_size"`
-	GroupDefaultWorkers                   int                 `json:"group_default_workers"`
-	GroupBackgroundCreateFrequencyMinutes int                 `json:"group_background_create_frequency"`
-	GroupPruneFrequencyMinutes            int                 `json:"group_prune_frequency"`
-	GroupTTLMinutes                       int                 `json:"group_ttl"`
-	RequireRemotePriority                 bool                `json:"require_remote_priority"`
-	LockTimeoutMinutes                    int                 `json:"lock_timeout_minutes"`
-	SampleSize                            int                 `json:"sample_size"`
-	Retry                                 APIAmboyRetryConfig `json:"retry,omitempty"`
+	Name                                  *string                    `json:"name"`
+	SingleName                            *string                    `json:"single_name"`
+	DB                                    *string                    `json:"database"`
+	PoolSizeLocal                         int                        `json:"pool_size_local"`
+	PoolSizeRemote                        int                        `json:"pool_size_remote"`
+	LocalStorage                          int                        `json:"local_storage_size"`
+	GroupDefaultWorkers                   int                        `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int                        `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int                        `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int                        `json:"group_ttl"`
+	RequireRemotePriority                 bool                       `json:"require_remote_priority"`
+	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
+	SampleSize                            int                        `json:"sample_size"`
+	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
+	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues,omitempty"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -371,6 +372,11 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
 			return errors.Wrap(err, "building Amboy retry settings from service")
 		}
+		for _, dbNamedQueue := range v.NamedQueues {
+			var apiNamedQueue APIAmboyNamedQueueConfig
+			apiNamedQueue.BuildFromService(dbNamedQueue)
+			a.NamedQueues = append(a.NamedQueues, apiNamedQueue)
+		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -385,6 +391,10 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	retry, ok := i.(evergreen.AmboyRetryConfig)
 	if !ok {
 		return nil, errors.Errorf("expecting AmboyRetryConfig but got %T", i)
+	}
+	var dbNamedQueues []evergreen.AmboyNamedQueueConfig
+	for _, apiNamedQueue := range a.NamedQueues {
+		dbNamedQueues = append(dbNamedQueues, apiNamedQueue.ToService())
 	}
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
@@ -401,6 +411,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
+		NamedQueues:                           dbNamedQueues,
 	}, nil
 }
 
@@ -437,6 +448,30 @@ func (a *APIAmboyRetryConfig) ToService() (interface{}, error) {
 		RetryBackoffSeconds:                 a.RetryBackoffSeconds,
 		StaleRetryingMonitorIntervalSeconds: a.StaleRetryingMonitorIntervalSeconds,
 	}, nil
+}
+
+// APIAmboyNamedQueueConfig is the model for named Amboy queue settings.
+type APIAmboyNamedQueueConfig struct {
+	Name               *string `json:"name"`
+	NumWorkers         int     `json:"num_workers,omitempty"`
+	SampleSize         int     `json:"sample_size,omitempty"`
+	LockTimeoutSeconds int     `json:"lock_timeout_seconds,omitempty"`
+}
+
+func (a *APIAmboyNamedQueueConfig) BuildFromService(h evergreen.AmboyNamedQueueConfig) {
+	a.Name = utility.ToStringPtr(h.Name)
+	a.NumWorkers = h.NumWorkers
+	a.SampleSize = h.SampleSize
+	a.LockTimeoutSeconds = h.LockTimeoutSeconds
+}
+
+func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
+	return evergreen.AmboyNamedQueueConfig{
+		Name:               utility.FromStringPtr(a.Name),
+		NumWorkers:         a.NumWorkers,
+		SampleSize:         a.SampleSize,
+		LockTimeoutSeconds: a.LockTimeoutSeconds,
+	}
 }
 
 type APIapiConfig struct {
@@ -1117,7 +1152,6 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 type APINotifyConfig struct {
 	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
-	EventProcessingLimit    int           `json:"event_processing_limit"`
 	SMTP                    APISMTPConfig `json:"smtp"`
 }
 
@@ -1130,7 +1164,6 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
 		a.BufferIntervalSeconds = v.BufferIntervalSeconds
-		a.EventProcessingLimit = v.EventProcessingLimit
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1145,7 +1178,6 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		EventProcessingLimit:    a.EventProcessingLimit,
 		SMTP:                    smtp.(evergreen.SMTPConfig),
 	}, nil
 }
@@ -1934,7 +1966,6 @@ type APIServiceFlags struct {
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
-	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled  bool `json:"background_cleanup_disabled"`
@@ -2198,7 +2229,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
-		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
@@ -2235,7 +2265,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
-		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 		BackgroundCleanupDisabled:    as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,

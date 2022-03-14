@@ -49,6 +49,7 @@ var (
 	VersionSatisfiedTriggersKey   = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
 	VersionPeriodicBuildIDKey     = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
 	VersionActivatedKey           = bsonutil.MustHaveTag(Version{}, "Activated")
+	VersionAbortedKey             = bsonutil.MustHaveTag(Version{}, "Aborted")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -311,6 +312,17 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 		VersionCollection,
 		query,
 		update,
+	)
+}
+
+func UpdateVersionMessage(versionId, message string) error {
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: versionId},
+		bson.M{
+			"$set": bson.M{
+				VersionMessageKey: message,
+			},
+		},
 	)
 }
 

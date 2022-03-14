@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -31,7 +32,7 @@ func TestHostPostHandler(t *testing.T) {
 
 	config, err := evergreen.GetConfig()
 	assert.NoError(err)
-	config.Spawnhost.SpawnHostsPerUser = evergreen.DefaultMaxSpawnHostsPerUser
+	config.Spawnhost.SpawnHostsPerUser = 4
 	doc := birch.NewDocument(
 		birch.EC.String("ami", "ami-123"),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
@@ -49,22 +50,49 @@ func TestHostPostHandler(t *testing.T) {
 		options: &model.HostRequestOptions{
 			TaskID:   "task",
 			DistroID: "distro",
-			KeyName:  "keyname",
+			KeyName:  "ssh-rsa YWJjZDEyMzQK",
 		},
 	}
-	h.sc = &data.MockConnector{}
+	h.sc = &data.DBConnector{}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
 	resp := h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-	h.options.UserData = "#!/bin/bash\necho my script"
+
+	h0 := resp.Data().(*model.APIHost)
+	d0, err := distro.FindByID("distro")
+	assert.NoError(err)
+	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.False(ok)
+	assert.Empty(userdata)
+	assert.Empty(h0.InstanceTags)
+	assert.Empty(h0.InstanceType)
+
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
+
+	doc = birch.NewDocument(
+		birch.EC.String("ami", "ami-123"),
+		birch.EC.String("user_data", "#!/bin/bash\necho my script"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	)
+	d.ProviderSettingsList = []*birch.Document{doc}
+	assert.NoError(d.Update())
+
+	h1 := resp.Data().(*model.APIHost)
+	d1, err := distro.FindByID("distro")
+	assert.NoError(err)
+	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+	assert.True(ok)
+	assert.Equal("#!/bin/bash\necho my script", userdata)
+	assert.Empty(h1.InstanceTags)
+	assert.Empty(h1.InstanceType)
+
 	h.options.InstanceTags = []host.Tag{
 		host.Tag{
-			Key:           "key",
+			Key:           "ssh-rsa YWJjZDEyMzQK",
 			Value:         "value",
 			CanBeModified: true,
 		},
@@ -72,6 +100,10 @@ func TestHostPostHandler(t *testing.T) {
 	resp = h.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
+
+	h2 := resp.Data().(*model.APIHost)
+	assert.Equal([]host.Tag{host.Tag{Key: "ssh-rsa YWJjZDEyMzQK", Value: "value", CanBeModified: true}}, h2.InstanceTags)
+	assert.Empty(h2.InstanceType)
 
 	d.Provider = evergreen.ProviderNameMock
 	assert.NoError(d.Update())
@@ -82,41 +114,21 @@ func TestHostPostHandler(t *testing.T) {
 	require.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	assert.Len(h.sc.(*data.MockConnector).MockHostConnector.CachedHosts, 4)
-	h0 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[0]
-	d0 := h0.Distro
-	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
-	assert.False(ok)
-	assert.Empty(userdata)
-	assert.Empty(h0.InstanceTags)
-	assert.Empty(h0.InstanceType)
-
-	h1 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[1]
-	d1 := h1.Distro
-	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
-	assert.True(ok)
-	assert.Equal("#!/bin/bash\necho my script", userdata)
-	assert.Empty(h1.InstanceTags)
-	assert.Empty(h1.InstanceType)
-
-	h2 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[2]
-	assert.Equal([]host.Tag{host.Tag{Key: "key", Value: "value", CanBeModified: true}}, h2.InstanceTags)
-	assert.Empty(h2.InstanceType)
-
-	h3 := h.sc.(*data.MockConnector).MockHostConnector.CachedHosts[3]
-	assert.Equal("test_instance_type", h3.InstanceType)
+	h3 := resp.Data().(*model.APIHost)
+	assert.Equal("test_instance_type", *h3.InstanceType)
 }
 
 func TestHostStopHandler(t *testing.T) {
+	require.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStopHandler{
-		sc:  &data.MockConnector{},
+		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
-	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+	hosts := []host.Host{
 		host.Host{
 			Id:     "host-stopped",
 			Status: evergreen.HostStopped,
@@ -129,6 +141,9 @@ func TestHostStopHandler(t *testing.T) {
 			Id:     "host-running",
 			Status: evergreen.HostRunning,
 		},
+	}
+	for _, hostToAdd := range hosts {
+		assert.NoError(t, hostToAdd.Insert())
 	}
 
 	h.hostID = "host-stopped"
@@ -147,28 +162,35 @@ func TestHostStopHandler(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	subscriptionConnector := h.sc.(*data.MockConnector).MockSubscriptionConnector
-	assert.Len(t, subscriptionConnector.MockSubscriptions, 1)
+	subscriptions, err := h.sc.(*data.DBConnector).DBSubscriptionConnector.GetSubscriptions("user", event.OwnerTypePerson)
+	assert.NoError(t, err)
+	assert.Len(t, subscriptions, 1)
 }
 
 func TestHostStartHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStartHandler{
-		sc:  &data.MockConnector{},
+		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
-	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+	hosts := []host.Host{
 		host.Host{
-			Id:     "host-running",
-			Status: evergreen.HostRunning,
+			Id:       "host-running",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
 		},
 		host.Host{
-			Id:     "host-stopped",
-			Status: evergreen.HostStopped,
+			Id:       "host-stopped",
+			UserHost: true,
+			Status:   evergreen.HostStopped,
 		},
+	}
+	for _, hostToAdd := range hosts {
+		assert.NoError(t, hostToAdd.Insert())
 	}
 
 	h.hostID = "host-running"
@@ -182,14 +204,16 @@ func TestHostStartHandler(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	subscriptionConnector := h.sc.(*data.MockConnector).MockSubscriptionConnector
-	assert.Len(t, subscriptionConnector.MockSubscriptions, 1)
+	subscriptionConnector := h.sc.(*data.DBConnector).DBSubscriptionConnector
+	subscriptions, err := subscriptionConnector.GetSubscriptions("user", event.OwnerTypePerson)
+	assert.NoError(t, err)
+	assert.Len(t, subscriptions, 2)
 }
 
 func TestCreateVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
 	h := &createVolumeHandler{
-		sc:       &data.MockConnector{},
+		sc:       &data.DBConnector{},
 		env:      evergreen.GetEnvironment(),
 		provider: evergreen.ProviderNameMock,
 	}
@@ -219,36 +243,42 @@ func TestCreateVolumeHandler(t *testing.T) {
 }
 
 func TestDeleteVolumeHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &deleteVolumeHandler{
-		sc:       &data.MockConnector{},
+		sc:       &data.DBConnector{},
 		env:      evergreen.GetEnvironment(),
 		provider: evergreen.ProviderNameMock,
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
-	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
-		CachedHosts: []host.Host{
-			host.Host{
-				Id:        "my-host",
-				StartedBy: "user",
-				Status:    evergreen.HostRunning,
-				Volumes: []host.VolumeAttachment{
-					{
-						VolumeID:   "my-volume",
-						DeviceName: "my-device",
-					},
+	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
+	volumes := []host.Volume{
+		host.Volume{
+			ID:               "my-volume",
+			CreatedBy:        "user",
+			AvailabilityZone: utility.FromStringPtr(aws.String("us-east-1a")),
+		},
+	}
+	hosts := []host.Host{
+		host.Host{
+			Id:        "my-host",
+			UserHost:  true,
+			StartedBy: "user",
+			Status:    evergreen.HostRunning,
+			Volumes: []host.VolumeAttachment{
+				{
+					VolumeID:   "my-volume",
+					DeviceName: "my-device",
 				},
 			},
 		},
-		CachedVolumes: []host.Volume{
-			host.Volume{
-				ID:        "my-volume",
-				CreatedBy: "user",
-			},
-		},
 	}
-
+	for _, hostToAdd := range hosts {
+		assert.NoError(t, hostToAdd.Insert())
+	}
+	for _, volumeToAdd := range volumes {
+		assert.NoError(t, volumeToAdd.Insert())
+	}
 	h.VolumeID = "my-volume"
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
@@ -256,13 +286,13 @@ func TestDeleteVolumeHandler(t *testing.T) {
 }
 
 func TestAttachVolumeHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &attachVolumeHandler{
-		sc:  &data.MockConnector{},
+		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
-	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+	hosts := []host.Host{
 		host.Host{
 			Id:        "my-host",
 			Status:    evergreen.HostRunning,
@@ -272,6 +302,9 @@ func TestAttachVolumeHandler(t *testing.T) {
 		host.Host{
 			Id: "different-host",
 		},
+	}
+	for _, hostToAdd := range hosts {
+		assert.NoError(t, hostToAdd.Insert())
 	}
 
 	// no volume
@@ -288,11 +321,10 @@ func TestAttachVolumeHandler(t *testing.T) {
 
 	// wrong availability zone
 	v.VolumeID = "my-volume"
-	h.sc.(*data.MockConnector).MockHostConnector.CachedVolumes = []host.Volume{
-		host.Volume{
-			ID: v.VolumeID,
-		},
+	volume := host.Volume{
+		ID: v.VolumeID,
 	}
+	assert.NoError(t, volume.Insert())
 
 	jsonBody, err = json.Marshal(v)
 	assert.NoError(t, err)
@@ -314,13 +346,13 @@ func TestAttachVolumeHandler(t *testing.T) {
 }
 
 func TestDetachVolumeHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &detachVolumeHandler{
-		sc:  &data.MockConnector{},
+		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
-
-	h.sc.(*data.MockConnector).MockHostConnector.CachedHosts = []host.Host{
+	hosts := []host.Host{
 		host.Host{
 			Id:        "my-host",
 			StartedBy: "user",
@@ -332,6 +364,9 @@ func TestDetachVolumeHandler(t *testing.T) {
 				},
 			},
 		},
+	}
+	for _, hostToAdd := range hosts {
+		assert.NoError(t, hostToAdd.Insert())
 	}
 
 	v := host.VolumeAttachment{VolumeID: "not-a-volume"}
@@ -351,22 +386,20 @@ func TestDetachVolumeHandler(t *testing.T) {
 
 func TestModifyVolumeHandler(t *testing.T) {
 	h := &modifyVolumeHandler{
-		sc:   &data.MockConnector{},
+		sc:   &data.DBConnector{},
 		env:  evergreen.GetEnvironment(),
 		opts: &model.VolumeModifyOptions{},
 	}
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
 	h.env.Settings().Spawnhost.UnexpirableVolumesPerUser = 1
-	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
-		CachedVolumes: []host.Volume{
-			{
-				ID:               "volume1",
-				CreatedBy:        "user",
-				Size:             64,
-				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-			},
-		},
+	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
+	volume := host.Volume{
+		ID:               "volume1",
+		CreatedBy:        "user",
+		Size:             64,
+		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
+	assert.NoError(t, volume.Insert())
 
 	// parse request
 	opts := &model.VolumeModifyOptions{Size: 20, NewName: "my-favorite-volume"}
@@ -427,8 +460,9 @@ func TestModifyVolumeHandler(t *testing.T) {
 }
 
 func TestGetVolumesHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumesHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
@@ -440,31 +474,32 @@ func TestGetVolumesHandler(t *testing.T) {
 		},
 	}
 
-	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
-		CachedHosts: []host.Host{h1},
-		CachedVolumes: []host.Volume{
-			{
-				ID:               "volume1",
-				Host:             "has-a-volume",
-				CreatedBy:        "user",
-				Type:             evergreen.DefaultEBSType,
-				Size:             64,
-				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-			},
-			{
-				ID:               "volume2",
-				CreatedBy:        "user",
-				Type:             evergreen.DefaultEBSType,
-				Size:             36,
-				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-			},
-			{
-				ID:        "volume3",
-				CreatedBy: "different-user",
-			},
+	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
+	volumesToAdd := []host.Volume{
+		{
+			ID:               "volume1",
+			Host:             "has-a-volume",
+			CreatedBy:        "user",
+			Type:             evergreen.DefaultEBSType,
+			Size:             64,
+			AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+		},
+		{
+			ID:               "volume2",
+			CreatedBy:        "user",
+			Type:             evergreen.DefaultEBSType,
+			Size:             36,
+			AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
+		},
+		{
+			ID:        "volume3",
+			CreatedBy: "different-user",
 		},
 	}
-
+	for _, volumeToAdd := range volumesToAdd {
+		assert.NoError(t, volumeToAdd.Insert())
+	}
+	assert.NoError(t, h1.Insert())
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -490,8 +525,9 @@ func TestGetVolumesHandler(t *testing.T) {
 }
 
 func TestGetVolumeByIDHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumeByIDHandler{
-		sc: &data.MockConnector{},
+		sc: &data.DBConnector{},
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
@@ -503,19 +539,17 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 		},
 	}
 
-	h.sc.(*data.MockConnector).MockHostConnector = data.MockHostConnector{
-		CachedHosts: []host.Host{h1},
-		CachedVolumes: []host.Volume{
-			{
-				ID:               "volume1",
-				Host:             "has-a-volume",
-				CreatedBy:        "user",
-				Type:             evergreen.DefaultEBSType,
-				Size:             64,
-				AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
-			},
-		},
+	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
+	volume := host.Volume{
+		ID:               "volume1",
+		Host:             "has-a-volume",
+		CreatedBy:        "user",
+		Type:             evergreen.DefaultEBSType,
+		Size:             64,
+		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
+	assert.NoError(t, volume.Insert())
+	assert.NoError(t, h1.Insert())
 	r, err := http.NewRequest("GET", "/volumes/volume1", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})

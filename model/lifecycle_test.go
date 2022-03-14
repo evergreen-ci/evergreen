@@ -1367,7 +1367,7 @@ func TestCreateTaskGroup(t *testing.T) {
   `
 	proj := &Project{}
 	ctx := context.Background()
-	_, _, err := LoadProjectInto(ctx, []byte(projYml), nil, "test", proj)
+	_, err := LoadProjectInto(ctx, []byte(projYml), nil, "test", proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	v := &Version{
@@ -1784,7 +1784,8 @@ func TestSortTasks(t *testing.T) {
 
 func TestVersionRestart(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(resetTaskData())
+	require := require.New(t)
+	require.NoError(resetTaskData())
 
 	// test that restarting a version restarts its tasks
 	taskIds := []string{"task1", "task3", "task4"}
@@ -1795,7 +1796,20 @@ func TestVersionRestart(t *testing.T) {
 	for _, t := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, t.Status)
 		assert.True(t.Activated)
+
+		if t.Id == "task3" {
+			require.Len(t.DependsOn, 1)
+			assert.Equal("task1", t.DependsOn[0].TaskId)
+			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
+		}
 	}
+	dbTask5, err := task.FindOneId("task5")
+	require.NoError(err)
+	require.NotZero(dbTask5)
+	require.Len(dbTask5.DependsOn, 1)
+	assert.Equal("task1", dbTask5.DependsOn[0].TaskId)
+	assert.False(dbTask5.DependsOn[0].Finished, "restarting task1 should have marked dependency in execution task as unfinished")
+
 	dbVersion, err := VersionFindOneId("version")
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
@@ -1975,6 +1989,12 @@ func resetTaskData() error {
 		BuildId:     build2.Id,
 		Version:     v.Id,
 		Status:      evergreen.TaskSucceeded,
+		DependsOn: []task.Dependency{
+			{
+				TaskId:   task1.Id,
+				Finished: true,
+			},
+		},
 	}
 	if err := task3.Insert(); err != nil {
 		return err
@@ -1996,6 +2016,12 @@ func resetTaskData() error {
 		Version:      v.Id,
 		Status:       evergreen.TaskSucceeded,
 		DispatchTime: time.Now(),
+		DependsOn: []task.Dependency{
+			{
+				TaskId:   task1.Id,
+				Finished: true,
+			},
+		},
 	}
 	if err := task5.Insert(); err != nil {
 		return err
@@ -2068,7 +2094,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
 }
 
-func TestMarkAsDispatched(t *testing.T) {
+func TestMarkAsHostDispatched(t *testing.T) {
 
 	var (
 		taskId       string
@@ -2104,8 +2130,7 @@ func TestMarkAsDispatched(t *testing.T) {
 			" the task, the host it is on, and the build it is a part of"+
 			" should be set to reflect this", func() {
 
-			// mark the task as dispatched
-			So(taskDoc.MarkAsDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
+			So(taskDoc.MarkAsHostDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db

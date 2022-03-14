@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -182,6 +181,12 @@ type WorkstationConfig struct {
 type WorkstationSetupCommand struct {
 	Command   string `bson:"command" json:"command" yaml:"command"`
 	Directory string `bson:"directory" json:"directory" yaml:"directory"`
+}
+
+type GithubProjectConflicts struct {
+	CommitQueueIdentifiers []string
+	PRTestingIdentifiers   []string
+	CommitCheckIdentifiers []string
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -438,7 +443,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
 // the project ref.
 func (p *ProjectRef) MergeWithProjectConfig(version string) error {
-	projectConfig, err := FindProjectConfigToMerge(p.Id, version)
+	projectConfig, err := FindProjectConfigForProjectOrVersion(p.Id, version)
 	if err != nil {
 		return err
 	}
@@ -974,7 +979,6 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	// add in project variables and aliases here
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
-	commonRestricted := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
@@ -991,22 +995,16 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			if vars.PrivateVars != nil {
 				commonPrivate = vars.PrivateVars
 			}
-			if vars.RestrictedVars != nil {
-				commonRestricted = vars.RestrictedVars
-			}
 			if vars.AdminOnlyVars != nil {
 				commonAdminOnly = vars.AdminOnlyVars
 			}
 			continue
 		}
 		for key, val := range commonProjectVariables {
-			// if the key is private/restricted in any of the projects, make it private/restricted in the repo
+			// If the key is private/admin only in any of the projects, make it private/admin only in the repo.
 			if vars.Vars[key] == val {
 				if vars.PrivateVars[key] {
 					commonPrivate[key] = true
-				}
-				if vars.RestrictedVars[key] {
-					commonRestricted[key] = true
 				}
 				if vars.AdminOnlyVars[key] {
 					commonAdminOnly[key] = true
@@ -1018,10 +1016,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 		}
 	}
 	return &ProjectVars{
-		Vars:           commonProjectVariables,
-		PrivateVars:    commonPrivate,
-		RestrictedVars: commonRestricted,
-		AdminOnlyVars:  commonAdminOnly,
+		Vars:          commonProjectVariables,
+		PrivateVars:   commonPrivate,
+		AdminOnlyVars: commonAdminOnly,
 	}, nil
 }
 
@@ -1141,12 +1138,24 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 		ProjectRefRepoKey:  repoName,
 	}
 }
-func byOwnerRepoAndBranch(owner, repoName, branch string) bson.M {
-	return bson.M{
-		ProjectRefOwnerKey:  owner,
-		ProjectRefRepoKey:   repoName,
-		ProjectRefBranchKey: branch,
+
+// byOwnerRepoAndBranch excepts an owner, repoName, and branch.
+// If includeUndefinedBranches is set, also returns projects with an empty branch, so this can
+// be populated by the repo elsewhere.
+func byOwnerRepoAndBranch(owner, repoName, branch string, includeUndefinedBranches bool) bson.M {
+	q := bson.M{
+		ProjectRefOwnerKey: owner,
+		ProjectRefRepoKey:  repoName,
 	}
+	if includeUndefinedBranches {
+		q["$or"] = []bson.M{
+			{ProjectRefBranchKey: ""},
+			{ProjectRefBranchKey: branch},
+		}
+	} else {
+		q[ProjectRefBranchKey] = branch
+	}
+	return q
 }
 
 func byId(identifier string) db.Q {
@@ -1163,14 +1172,17 @@ func byId(identifier string) db.Q {
 func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch)}}
+	pipeline := []bson.M{{"$match": byOwnerRepoAndBranch(owner, repoName, branch, true)}}
 	pipeline = append(pipeline, projectRefPipelineForValueIsBool(ProjectRefEnabledKey, RepoRefEnabledKey, true)...)
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
-
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+	mergedProjects, err := addLoggerAndRepoSettingsToProjects(projectRefs)
+	if err != nil {
+		return nil, err
+	}
+	return filterProjectsByBranch(mergedProjects, branch), nil
 }
 
 // FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch finds ProjectRef with matching repo/branch that
@@ -1178,15 +1190,28 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string)
 func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	q := byOwnerRepoAndBranch(owner, repoName, branch)
+	q := byOwnerRepoAndBranch(owner, repoName, branch, true)
 	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
 	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
+	mergedProjects, err := addLoggerAndRepoSettingsToProjects(projectRefs)
+	if err != nil {
+		return nil, err
+	}
+	return filterProjectsByBranch(mergedProjects, branch), nil
+}
 
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
+	res := []ProjectRef{}
+	for _, p := range pRefs {
+		if p.Branch == branch {
+			res = append(res, p)
+		}
+	}
+	return res
 }
 
 func FindBranchAdminsForRepo(repoId string) ([]string, error) {
@@ -1348,7 +1373,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 }
 
 func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	q := byOwnerRepoAndBranch(owner, repo, branch)
+	// don't need to include undefined branches here since hidden projects explicitly define them
+	q := byOwnerRepoAndBranch(owner, repo, branch, false)
 	q[ProjectRefHiddenKey] = true
 
 	return findOneProjectRefQ(db.Query(q))
@@ -1537,11 +1563,11 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 }
 
 func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
-	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	conflicts, err := projectRef.GetGithubProjectConflicts()
 	if err != nil {
-		return false, errors.Wrapf(err, "database error finding project by repo and branch")
+		return false, errors.Wrapf(err, "database error finding github conflicts")
 	}
-	if resultRef != nil && resultRef.Id != projectRef.Id {
+	if len(conflicts.CommitQueueIdentifiers) > 0 {
 		return false, nil
 	}
 	return true, nil
@@ -1593,7 +1619,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 		if !isRepo && !p.UseRepoSettings() {
 			setUpdate[ProjectRefOwnerKey] = p.Owner
 			setUpdate[ProjectRefRepoKey] = p.Repo
-			setUpdate[ProjectRefRepoRefIdKey] = p.RepoRefId // just in case this is outdated somehow
 		}
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -1707,10 +1732,9 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$unset": bson.M{
-					projectVarsMapKey:    1,
-					privateVarsMapKey:    1,
-					restrictedVarsMapKey: 1,
-					adminOnlyVarsMapKey:  1,
+					projectVarsMapKey:   1,
+					privateVarsMapKey:   1,
+					adminOnlyVarsMapKey: 1,
 				},
 			})
 		if err == nil {
@@ -1868,6 +1892,37 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 		}
 	}
 	return defaultRes, nil
+}
+
+// GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not p has something enabled,
+// returns the project identifiers that it _would_ conflict with if it did.
+func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error) {
+	res := GithubProjectConflicts{}
+	// return early for projects that don't need to consider conflicts
+	if p.Owner == "" || p.Repo == "" || p.Branch == "" {
+		return res, nil
+	}
+
+	matchingProjects, err := FindMergedEnabledProjectRefsByRepoAndBranch(p.Owner, p.Repo, p.Branch)
+	if err != nil {
+		return res, errors.Wrap(err, "error getting conflicting projects")
+	}
+
+	for _, conflictingRef := range matchingProjects {
+		if conflictingRef.Id == p.Id {
+			continue
+		}
+		if conflictingRef.IsPRTestingEnabled() {
+			res.PRTestingIdentifiers = append(res.PRTestingIdentifiers, conflictingRef.Identifier)
+		}
+		if conflictingRef.CommitQueue.IsEnabled() {
+			res.CommitQueueIdentifiers = append(res.CommitQueueIdentifiers, conflictingRef.Identifier)
+		}
+		if conflictingRef.IsGithubChecksEnabled() {
+			res.CommitCheckIdentifiers = append(res.CommitCheckIdentifiers, conflictingRef.Identifier)
+		}
+	}
+	return res, nil
 }
 
 func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
@@ -2273,69 +2328,6 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
-// GetBuildBaronSettings retrieves build baron settings from project settings.
-// Project page settings takes precedence, otherwise fallback to project config yaml.
-// Returns build baron settings and ok if found.
-func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
-	projectRef, err := FindMergedProjectRef(projectId, version, true)
-	if err != nil || projectRef == nil {
-		return evergreen.BuildBaronSettings{}, false
-	}
-	return projectRef.BuildBaronSettings, true
-}
-
-func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
-	catcher := grip.NewBasicCatcher()
-	var err error
-	var webhookConfigured bool
-	if webhook == nil {
-		pRefWebHook, _, err := IsWebhookConfigured(projName, "")
-		if err != nil {
-			return errors.Wrapf(err, "Error retrieving webhook config for %s", projName)
-		}
-		webhook = &pRefWebHook
-		webhookConfigured = webhook != nil && webhook.Endpoint != ""
-	}
-
-	if !webhookConfigured && proj.TicketCreateProject == "" && len(proj.TicketSearchProjects) == 0 {
-		return nil
-	}
-	if !webhookConfigured && len(proj.TicketSearchProjects) == 0 {
-		catcher.New("Must provide projects to search")
-	}
-	if !webhookConfigured && proj.TicketCreateProject == "" {
-		catcher.Errorf("Must provide project to create tickets for")
-	}
-	if proj.BFSuggestionServer != "" {
-		if _, err = url.Parse(proj.BFSuggestionServer); err != nil {
-			catcher.Errorf("Failed to parse bf_suggestion_server for project '%s'", projName)
-		}
-		if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
-			catcher.Errorf("Failed validating configuration for project '%s': "+
-				"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
-		}
-		if proj.BFSuggestionTimeoutSecs <= 0 {
-			catcher.Errorf("Failed validating configuration for project '%s': "+
-				"bf_suggestion_timeout_secs must be positive", projName)
-		}
-	} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
-		catcher.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_username and bf_suggestion_password must be blank when alt_endpoint_url is blank", projName)
-	} else if proj.BFSuggestionTimeoutSecs != 0 {
-		catcher.Errorf("Failed validating configuration for project '%s': "+
-			"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
-	}
-	// the webhook cannot be used if the default build baron creation and search is configured
-	if webhookConfigured {
-		if len(proj.TicketCreateProject) != 0 {
-			catcher.Errorf("The custom file ticket webhook and the build baron should not both be configured")
-		}
-		if _, err = url.Parse(webhook.Endpoint); err != nil {
-			catcher.Errorf("Failed to parse webhook endpoint for project")
-		}
-	}
-	return catcher.Resolve()
-}
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -2419,19 +2411,6 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	} else {
 		return evergreen.WebHook{}, false, nil
 	}
-}
-
-// IsWebhookConfigured retrieves webhook configuration from the project settings.
-func IsBBTicketCreationDefined(project string, version string) (bool, error) {
-	projectRef, err := FindMergedProjectRef(project, version, true)
-	if err != nil || projectRef == nil {
-		return false, errors.Errorf("Unable to find merged project ref for project %s", project)
-	}
-	createProject := projectRef.BuildBaronSettings.TicketCreateProject
-	if createProject != "" {
-		return true, nil
-	}
-	return false, nil
 }
 
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {

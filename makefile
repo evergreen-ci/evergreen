@@ -7,7 +7,8 @@ packages += db util plugin units graphql thirdparty thirdparty-docker auth sched
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-global model-notification model-stats model-reliability
-lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil db-mgo db-mgo-bson db-mgo-internal-json
+lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json
+testOnlyPackages := service-graphql # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
@@ -146,7 +147,7 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
 $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
-	./$< --path testdata/local --dbName evergreen_local
+	./$< -path testdata/local -dbName evergreen_local -amboyDBName amboy_local
 	@touch $@
 smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
@@ -177,7 +178,7 @@ local-evergreen:$(localClientBinary) load-local-data
 # specific to evergreen; though the dist targets are more specific than the rest.
 
 # start output files
-testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
+testOutput := $(foreach target,$(packages) $(testOnlyPackages),$(buildDir)/output.$(target).test)
 lintOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
@@ -201,14 +202,6 @@ $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 	$(gobin) build -ldflags "-w" -o  $@ $<
 # end generate lint
-
-# generated config for go tests
-go-test-config:$(buildDir)/go-test-config.json
-$(buildDir)/go-test-config.json:$(buildDir)/go-test-config
-	./$(buildDir)/go-test-config
-$(buildDir)/go-test-config:cmd/go-test-config/make-config.go
-	$(gobin) build -o $@ $<
-#end generated config
 
 # generate rest model
 # build-codegen is a special target to build all packages before performing code generation so that goimports can
@@ -258,7 +251,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 # userfacing targets for basic build and development operations
 build:cli
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
-test:$(foreach target,$(packages),test-$(target))
+test:$(foreach target,$(packages) $(testOnlyPackages),test-$(target))
 js-test:$(buildDir)/.npmSetup
 	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
@@ -385,19 +378,18 @@ mongodb/.get-mongodb:
 get-mongodb:mongodb/.get-mongodb
 	@touch $<
 start-mongod:mongodb/.get-mongodb
-	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
-	@echo "waiting for mongod to start up"
-start-mongod-auth:mongodb/.get-mongodb
-	./mongodb/mongod --auth --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
-	@echo "starting up mongod with auth"
-init-rs:mongodb/.get-mongodb
-	./mongodb/mongo --eval 'rs.initiate()'
-	sleep 30
-init-auth:mongodb/.get-mongodb
-	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
-check-mongod:mongodb/.get-mongodb
+	./mongodb/mongod $(if $(AUTH_ENABLED),--auth,) --dbpath ./mongodb/db_files --port 27017 --replSet evg --oplogSize 10
+configure-mongod:mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
+	./mongodb/mongo --eval 'rs.initiate()'
+ifdef $(FCV)
+	./mongodb/mongo --eval 'db.adminCommand({setFeatureCompatibilityVersion: "$(FCV)"})'
+endif
+ifdef $(AUTH_ENABLED)
+	./mongodb/mongo --host `./mongodb/mongo --quiet --eval "db.isMaster()['primary']"` cmd/mongo-auth/create_auth_user.js
+endif
+	@echo "configured mongod"
 # end mongodb targets
 
 

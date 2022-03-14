@@ -206,6 +206,8 @@ models:
     fields:
       privateVars:
         resolver: true
+      adminOnlyVars:
+        resolver: true
   ProjectVarsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
   ProjectAlias:
@@ -260,6 +262,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   GithubUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
+  GithubProjectConflicts:
+    model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   ClientConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
   ClientBinary:
@@ -332,4 +336,8 @@ models:
       agentLogs:
         resolver: true
       allLogs:
+        resolver: true
+  Permissions:
+    fields:
+      canCreateProject:
         resolver: true

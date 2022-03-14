@@ -132,7 +132,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	s.NoError(logger.LogEvent(&e))
 	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
 
-	out, err := event.FindUnprocessedEvents(evergreen.DefaultEventProcessingLimit)
+	out, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(out, 1)
 }
@@ -300,50 +300,6 @@ func (s *cronsEventSuite) TestDispatchUnprocessedNotifications() {
 
 	stats := s.env.LocalQueue().Stats(s.ctx)
 	s.Equal(origStats.Total+6, stats.Total)
-}
-
-func (s *cronsEventSuite) TestBatchingCanCount() {
-	notifSettings := evergreen.NotifyConfig{
-		EventProcessingLimit: 2,
-	}
-	s.NoError(notifSettings.Set())
-	events := []event.EventLogEntry{
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-		{
-			ResourceType: event.ResourceTypeTask,
-			EventType:    event.TaskFinished,
-			Data:         &event.TaskEventData{},
-		},
-	}
-	logger := event.NewDBEventLogger(event.AllLogCollection)
-
-	for _, evt := range events {
-		s.NoError(logger.LogEvent(&evt))
-	}
-	origStats := s.env.LocalQueue().Stats(s.ctx)
-	s.NoError(PopulateEventNotifierJobs(s.env)(s.ctx, s.env.LocalQueue()))
-
-	stats := s.env.LocalQueue().Stats(s.ctx)
-	s.Equal(origStats.Total+len(events), stats.Total)
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {

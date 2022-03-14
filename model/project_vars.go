@@ -3,19 +3,25 @@ package model
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
-	projectVarIdKey      = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	privateVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	restrictedVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "RestrictedVars")
-	adminOnlyVarsMapKey  = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
+	projectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	adminOnlyVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
 )
 
 const (
@@ -39,9 +45,6 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
-
-	//RestrictedVars keeps track of variables that are restricted to commands that can't leak them
-	RestrictedVars map[string]bool `bson:"restricted_vars" json:"restricted_vars"`
 
 	// AdminOnlyVars keeps track of variables that are only accessible by project admins
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
@@ -143,10 +146,9 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				projectVarsMapKey:    projectVars.Vars,
-				privateVarsMapKey:    projectVars.PrivateVars,
-				restrictedVarsMapKey: projectVars.RestrictedVars,
-				adminOnlyVarsMapKey:  projectVars.AdminOnlyVars,
+				projectVarsMapKey:   projectVars.Vars,
+				privateVarsMapKey:   projectVars.PrivateVars,
+				adminOnlyVarsMapKey: projectVars.AdminOnlyVars,
 			},
 		},
 	)
@@ -164,7 +166,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	unsetUpdate := bson.M{}
 	update := bson.M{}
 	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.RestrictedVars) == 0 && len(projectVars.AdminOnlyVars) == 0 && len(varsToDelete) == 0 {
+		len(projectVars.AdminOnlyVars) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
 	for key, val := range projectVars.Vars {
@@ -172,9 +174,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	}
 	for key, val := range projectVars.PrivateVars {
 		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
-	}
-	for key, val := range projectVars.RestrictedVars {
-		setUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, key)] = val
 	}
 	for key, val := range projectVars.AdminOnlyVars {
 		setUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, key)] = val
@@ -186,7 +185,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	for _, val := range varsToDelete {
 		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
-		unsetUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
 	}
 	if len(unsetUpdate) > 0 {
@@ -205,33 +203,48 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
-	restrictedVars := map[string]string{}
-
+func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
+	vars := map[string]string{}
+	isAdmin := projectVars.ShouldGetAdminOnlyVars(t)
 	for k, v := range projectVars.Vars {
-		if projectVars.RestrictedVars[k] {
-			restrictedVars[k] = v
+		if !projectVars.AdminOnlyVars[k] || isAdmin {
+			vars[k] = v
 		}
 	}
-	return restrictedVars
+	return vars
 }
 
-func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
-	safeVars := map[string]string{}
-
-	for k, v := range projectVars.Vars {
-		if !projectVars.RestrictedVars[k] {
-			safeVars[k] = v
-		}
+func (projectVars *ProjectVars) ShouldGetAdminOnlyVars(t *task.Task) bool {
+	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
+		return true
+	} else if t.ActivatedBy == "" {
+		return false
 	}
-	return safeVars
+	u, err := user.FindOneById(t.ActivatedBy)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
+			"task_id": t.Id,
+		}))
+		return false
+	}
+	isAdmin := false
+	if u != nil {
+		isAdmin = u.HasPermission(gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+	}
+	return isAdmin
 }
 
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
-		Vars:           map[string]string{},
-		PrivateVars:    map[string]bool{},
-		RestrictedVars: projectVars.RestrictedVars,
+		Vars:          map[string]string{},
+		PrivateVars:   map[string]bool{},
+		AdminOnlyVars: map[string]bool{},
 	}
 	if projectVars == nil {
 		return res
@@ -239,6 +252,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res.Id = projectVars.Id
 	if projectVars.Vars == nil {
 		return res
+	}
+	if projectVars.AdminOnlyVars == nil {
+		res.AdminOnlyVars = map[string]bool{}
 	}
 	if projectVars.PrivateVars == nil {
 		res.PrivateVars = map[string]bool{}
@@ -251,7 +267,11 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		} else {
 			res.Vars[k] = v
 		}
+		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
+			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+		}
 	}
+
 	return res
 }
 
@@ -278,9 +298,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.PrivateVars == nil {
 		projectVars.PrivateVars = map[string]bool{}
 	}
-	if projectVars.RestrictedVars == nil {
-		projectVars.RestrictedVars = map[string]bool{}
-	}
 	if projectVars.AdminOnlyVars == nil {
 		projectVars.AdminOnlyVars = map[string]bool{}
 	}
@@ -293,9 +310,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			projectVars.Vars[key] = val
 			if v, ok := repoVars.PrivateVars[key]; ok {
 				projectVars.PrivateVars[key] = v
-			}
-			if v, ok := repoVars.RestrictedVars[key]; ok {
-				projectVars.RestrictedVars[key] = v
 			}
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v

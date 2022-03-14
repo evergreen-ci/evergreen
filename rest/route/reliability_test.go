@@ -12,11 +12,15 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,6 +78,8 @@ func TestParseParameters(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(groupContext, t)
+	evergreen.SetEnvironment(env)
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Tasks": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -366,6 +372,8 @@ func TestParse(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(groupContext, t)
+	evergreen.SetEnvironment(env)
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Parse": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -472,6 +480,13 @@ func TestRun(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(groupContext, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Run": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -480,7 +495,6 @@ func TestRun(t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
 
-					// taskReliabilityHandler.sc.(&data.MockConnector).URL
 					err = disableTaskReliability()
 					assert.NoError(t, err)
 
@@ -499,10 +513,18 @@ func TestRun(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					handler.sc.(*data.MockConnector).URL = url
+					handler.sc.(*data.DBConnector).URL = url
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: 1,
+							Limit:        100,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        []string{"no_such_task"},
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
 					}
 
@@ -522,15 +544,38 @@ func TestRun(t *testing.T) {
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
 					})
-					sc := handler.sc.(*data.MockConnector)
+					sc := handler.sc.(*data.DBConnector)
 					sc.URL = url
 
 					// 100 documents are available but only 1 will be returned
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
-
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < 100; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: 1,
+							Limit:        1,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
 					}
 
@@ -550,17 +595,40 @@ func TestRun(t *testing.T) {
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
 					})
-					sc := handler.sc.(*data.MockConnector)
+					sc := handler.sc.(*data.DBConnector)
 					sc.URL = url
 
+					// limit + 1 documents are available but only limit will be returned
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < 1001; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: 1000,
+							Limit:        1000,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
 					}
-
-					// limit + 1 documents are available but only limit will be returned
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", handler.filter.StatsFilter.Limit+1)
 
 					resp := handler.Run(ctx)
 
@@ -578,7 +646,7 @@ func TestRun(t *testing.T) {
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
 					})
-					sc := handler.sc.(*data.MockConnector)
+					sc := handler.sc.(*data.DBConnector)
 					sc.URL = url
 
 					handler.filter = reliability.TaskReliabilityFilter{
@@ -588,8 +656,36 @@ func TestRun(t *testing.T) {
 					}
 
 					// limit - 1 documents are available.
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", handler.filter.StatsFilter.Limit-1)
-
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < 99; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit:        100,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
+						},
+					}
 					resp := handler.Run(ctx)
 
 					require.NotNil(t, resp)
@@ -606,7 +702,7 @@ func TestRun(t *testing.T) {
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
 					})
-					sc := handler.sc.(*data.MockConnector)
+					sc := handler.sc.(*data.DBConnector)
 					sc.URL = url
 
 					handler.filter = reliability.TaskReliabilityFilter{
@@ -616,8 +712,36 @@ func TestRun(t *testing.T) {
 					}
 
 					// limit + 1 documents are available.
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", handler.filter.StatsFilter.Limit+1)
-
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < 101; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit:        100,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
+						},
+					}
 					resp := handler.Run(ctx)
 
 					require.NotNil(t, resp)
@@ -625,14 +749,15 @@ func TestRun(t *testing.T) {
 					data := resp.Data().([]interface{})
 					require.Equal(t, handler.filter.StatsFilter.Limit, len(data))
 					require.NotNil(t, resp.Pages())
-					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[handler.filter.StatsFilter.Limit-1]
-					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
+					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					require.NoError(t, err)
+					require.Equal(t, docs[handler.filter.StatsFilter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					sc := &data.MockConnector{
-						MockStatsConnector: data.MockStatsConnector{},
-						URL:                "https://example.net/test",
+					sc := &data.DBConnector{
+						StatsConnector: data.StatsConnector{},
+						URL:            "https://example.net/test",
 					}
 
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
@@ -675,9 +800,18 @@ func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
 }
 
 func TestReliability(t *testing.T) {
-
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	proj := model.ProjectRef{
+		Id: "project",
+	}
+	require.NoError(t, proj.Insert())
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Pagination": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -692,18 +826,42 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					sc := &data.MockConnector{
-						MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-						URL:                          url,
+					sc := &data.DBConnector{
+						TaskReliabilityConnector: data.TaskReliabilityConnector{},
+						URL:                      url,
 					}
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 1 page size of documents are available but 2 page sizes requested.
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", pageSize)
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < pageSize; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: pageSize * 2,
+							Limit:        pageSize * 2,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
 					}
 
@@ -722,18 +880,42 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					sc := &data.MockConnector{
-						MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-						URL:                          url,
+					sc := &data.DBConnector{
+						TaskReliabilityConnector: data.TaskReliabilityConnector{},
+						URL:                      url,
 					}
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 1 page size of documents will be returned
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", pageSize)
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < pageSize; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: pageSize,
+							Limit:        pageSize,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
 					}
 
@@ -742,8 +924,9 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[pageSize-1]
-					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
+					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					require.NoError(t, err)
+					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 				"More Than One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
@@ -754,18 +937,42 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					sc := &data.MockConnector{
-						MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-						URL:                          url,
+					sc := &data.DBConnector{
+						TaskReliabilityConnector: data.TaskReliabilityConnector{},
+						URL:                      url,
 					}
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 2 pages of documents are available.
-					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", pageSize*2)
+					day := time.Now()
+					tasks := []string{}
+					for i := 0; i < pageSize*2; i++ {
+						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
+						tasks = append(tasks, taskName)
+						err = db.Insert(stats.DailyTaskStatsCollection, mgobson.M{
+							"_id": stats.DbTaskStatsId{
+								Project:      "project",
+								Requester:    "requester",
+								TaskName:     taskName,
+								BuildVariant: "variant",
+								Distro:       "distro",
+								Date:         utility.GetUTCDay(day),
+							},
+						})
+						require.NoError(t, err)
+					}
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
-							Limit: pageSize,
+							Limit:        pageSize,
+							Project:      "project",
+							Requesters:   []string{"requester"},
+							Tasks:        tasks,
+							GroupBy:      "distro",
+							GroupNumDays: 1,
+							Sort:         stats.SortEarliestFirst,
+							BeforeDate:   utility.GetUTCDay(time.Now().Add(dayInHours)),
+							AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 						},
 					}
 
@@ -774,8 +981,9 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[pageSize-1]
-					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
+					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					require.NoError(t, err)
+					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 				"Invalid Start At": func(ctx context.Context, t *testing.T) {
 					handler := taskReliabilityHandler{}

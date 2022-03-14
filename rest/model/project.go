@@ -81,7 +81,6 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 
 type APIPatchTriggerDefinition struct {
 	Alias                  *string            `json:"alias"`
-	ChildProject           *string            `json:"child_project"` // deprecated
 	ChildProjectId         *string            `json:"child_project_id"`
 	ChildProjectIdentifier *string            `json:"child_project_identifier"`
 	TaskSpecifiers         []APITaskSpecifier `json:"task_specifiers"`
@@ -100,7 +99,13 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 	default:
 		return errors.Errorf("Invalid patch trigger definition of type '%T'", h)
 	}
-	t.ChildProject = utility.ToStringPtr(def.ChildProject)
+	t.ChildProjectId = utility.ToStringPtr(def.ChildProject) // we store the real ID in the child project field
+	identifier, err := model.GetIdentifierForProject(def.ChildProject)
+	if err != nil {
+		return errors.Wrap(err, "error getting identifier for child project ID")
+	}
+	t.ChildProjectIdentifier = utility.ToStringPtr(identifier)
+	// not sure in which direction this should go
 	t.Alias = utility.ToStringPtr(def.Alias)
 	t.Status = utility.ToStringPtr(def.Status)
 	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
@@ -119,7 +124,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 func (t *APIPatchTriggerDefinition) ToService() (interface{}, error) {
 	trigger := patch.PatchTriggerDefinition{}
 
-	trigger.ChildProject = utility.FromStringPtr(t.ChildProject)
+	trigger.ChildProject = utility.FromStringPtr(t.ChildProjectIdentifier) // we'll fix this to be the ID in case it's changed
 	trigger.Status = utility.FromStringPtr(t.Status)
 	trigger.Alias = utility.FromStringPtr(t.Alias)
 	trigger.ParentAsModule = utility.FromStringPtr(t.ParentAsModule)

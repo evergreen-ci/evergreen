@@ -1,19 +1,26 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFindDistroById(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
@@ -35,6 +42,10 @@ func TestFindDistroById(t *testing.T) {
 
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
@@ -57,6 +68,10 @@ func TestFindAllDistros(t *testing.T) {
 }
 
 func TestDeleteDistroById(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	require.NoError(t, err)
 	defer session.Close()

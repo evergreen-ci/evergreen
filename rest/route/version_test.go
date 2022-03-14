@@ -4,15 +4,16 @@ import (
 	"context"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
@@ -20,27 +21,27 @@ import (
 
 // VersionSuite enables testing for version related routes.
 type VersionSuite struct {
-	sc          *data.MockConnector
-	versionData data.MockVersionConnector
-	buildData   data.MockBuildConnector
-	bv, bi      []string // build variants and build indices for testing
+	sc     *data.DBConnector
+	bv, bi []string // build variants and build indices for testing
 
 	suite.Suite
 }
 
 func TestVersionSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	suite.Run(t, new(VersionSuite))
 }
 
 // Declare field variables to use across routes related to version.
-var timeField time.Time
 var versionId, revision, author, authorEmail, msg, status, repo, branch, project string
 
 // SetupSuite sets up the test suite for routes related to version.
 // More version-related routes will be implemented later.
 func (s *VersionSuite) SetupSuite() {
 	// Initialize values for version field variables.
-	timeField = time.Now()
 	versionId = "versionId"
 	revision = "revision"
 	author = "author"
@@ -51,6 +52,7 @@ func (s *VersionSuite) SetupSuite() {
 	branch = "branch"
 	project = "project"
 
+	s.NoError(db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
 	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
 	s.bi = append(s.bi, "buildId1", "buildId2")
 
@@ -67,9 +69,6 @@ func (s *VersionSuite) SetupSuite() {
 	}
 	testVersion1 := serviceModel.Version{
 		Id:            versionId,
-		CreateTime:    timeField,
-		StartTime:     timeField,
-		FinishTime:    timeField,
 		Revision:      revision,
 		Author:        author,
 		AuthorEmail:   authorEmail,
@@ -83,35 +82,36 @@ func (s *VersionSuite) SetupSuite() {
 
 	testBuild1 := build.Build{
 		Id:           s.bi[0],
-		CreateTime:   timeField,
-		StartTime:    timeField,
-		FinishTime:   timeField,
 		Version:      versionId,
 		BuildVariant: s.bv[0],
 	}
 	testBuild2 := build.Build{
 		Id:           s.bi[1],
-		CreateTime:   timeField,
-		StartTime:    timeField,
-		FinishTime:   timeField,
 		Version:      versionId,
 		BuildVariant: s.bv[1],
 	}
 
-	s.versionData = data.MockVersionConnector{
-		CachedVersions: []serviceModel.Version{testVersion1},
-		CachedTasks: []task.Task{
-			{Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
-			{Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
-		},
-		CachedRestartedVersions: make(map[string]string),
+	s.sc = &data.DBConnector{
+		DBVersionConnector: data.DBVersionConnector{},
+		DBBuildConnector:   data.DBBuildConnector{},
 	}
-	s.buildData = data.MockBuildConnector{
-		CachedBuilds: []build.Build{testBuild1, testBuild2},
+	versions := []serviceModel.Version{testVersion1}
+
+	tasks := []task.Task{
+		{Id: "task1", Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task2", Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
 	}
-	s.sc = &data.MockConnector{
-		MockVersionConnector: s.versionData,
-		MockBuildConnector:   s.buildData,
+
+	builds := []build.Build{testBuild1, testBuild2}
+
+	for _, item := range versions {
+		s.Require().NoError(item.Insert())
+	}
+	for _, item := range tasks {
+		s.Require().NoError(item.Insert())
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
 	}
 }
 
@@ -125,9 +125,6 @@ func (s *VersionSuite) TestFindByVersionId() {
 	h, ok := res.Data().(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	s.Equal(timeField, *h.CreateTime)
-	s.Equal(timeField, *h.StartTime)
-	s.Equal(timeField, *h.FinishTime)
 	s.Equal(utility.ToStringPtr(revision), h.Revision)
 	s.Equal(utility.ToStringPtr(author), h.Author)
 	s.Equal(utility.ToStringPtr(authorEmail), h.AuthorEmail)
@@ -155,9 +152,6 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 		s.True(ok)
 
 		s.Equal(utility.ToStringPtr(s.bi[idx]), b.Id)
-		s.Equal(timeField, *b.CreateTime)
-		s.Equal(timeField, *b.StartTime)
-		s.Equal(timeField, *b.FinishTime)
 		s.Equal(utility.ToStringPtr(versionId), b.Version)
 		s.Equal(utility.ToStringPtr(s.bv[idx]), b.BuildVariant)
 	}
@@ -200,8 +194,12 @@ func (s *VersionSuite) TestAbortVersion() {
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
 
 	// Check that all tasks have been aborted.
-	for _, t := range s.versionData.CachedTasks {
-		s.Equal(t.Aborted, true)
+	tasks, err := task.FindAllTaskIDsFromVersion("versionId")
+	s.NoError(err)
+	for _, t := range tasks {
+		foundTask, err := task.FindOneId(t)
+		s.NoError(err)
+		s.Equal(foundTask.Aborted, true)
 	}
 }
 
@@ -222,5 +220,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	s.Equal("caller1", s.versionData.CachedRestartedVersions["versionId"])
+	v, err := s.sc.FindVersionById("versionId")
+	s.NoError(err)
+	s.Equal(evergreen.VersionStarted, v.Status)
 }

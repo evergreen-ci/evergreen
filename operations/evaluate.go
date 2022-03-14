@@ -29,7 +29,7 @@ func Evaluate() cli.Command {
 				Name:  variantsFlagName,
 				Usage: "only show variant definitions",
 			}),
-		Before: requirePathFlag,
+		Before: mergeBeforeFuncs(autoUpdateCLI, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			path := c.String(pathFlagName)
 			showTasks := c.Bool(taskFlagName)
@@ -45,7 +45,7 @@ func Evaluate() cli.Command {
 			opts := &model.GetProjectOpts{
 				ReadFileFrom: model.ReadFromLocal,
 			}
-			_, _, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
+			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
 				return errors.Wrap(err, "error loading project")
 			}

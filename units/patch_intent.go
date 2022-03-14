@@ -257,6 +257,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 		}
 	}
+	if errs := validator.CheckPatchedProjectConfigErrors(patchConfig.PatchedProjectConfig); len(errs) != 0 {
+		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
+			validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
+		}
+	}
 	if validationCatcher.HasErrors() {
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")

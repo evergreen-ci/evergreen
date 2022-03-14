@@ -55,9 +55,11 @@ func TestFindMergedProjectRef(t *testing.T) {
 
 	projectConfig := &ProjectConfig{
 		Id: "ident",
-		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebhook: evergreen.WebHook{
-				Endpoint: "random2",
+		ProjectConfigFields: ProjectConfigFields{
+			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "random2",
+				},
 			},
 		},
 	}
@@ -607,7 +609,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, varsFromDb)
 			assert.Nil(t, varsFromDb.Vars)
 			assert.Nil(t, varsFromDb.PrivateVars)
-			assert.Nil(t, varsFromDb.RestrictedVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
@@ -741,10 +742,9 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NoError(t, pRef.Insert())
 
 			pVars := ProjectVars{
-				Id:             pRef.Id,
-				Vars:           map[string]string{"hello": "world"},
-				PrivateVars:    map[string]bool{"hello": true},
-				RestrictedVars: map[string]bool{"hello": true},
+				Id:          pRef.Id,
+				Vars:        map[string]string{"hello": "world"},
+				PrivateVars: map[string]bool{"hello": true},
 			}
 			assert.NoError(t, pVars.Insert())
 
@@ -930,9 +930,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 				"sdc":     "buggy",
 				"ever":    "green",
 			},
-			RestrictedVars: map[string]bool{
-				"ever": true,
-			},
 		},
 		{
 			Id: doc3.Id,
@@ -1019,12 +1016,10 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, projectVars.Vars, 3)
 	assert.Len(t, projectVars.PrivateVars, 1)
-	assert.Len(t, projectVars.RestrictedVars, 1)
 	assert.Equal(t, "world", projectVars.Vars["hello"])
 	assert.Equal(t, "buggy", projectVars.Vars["sdc"])
 	assert.Equal(t, "green", projectVars.Vars["ever"])
 	assert.True(t, projectVars.PrivateVars["sdc"])
-	assert.True(t, projectVars.RestrictedVars["ever"])
 
 	projectAliases, err = FindAliasesForRepo(repoRef.Id)
 	assert.NoError(t, err)
@@ -1869,25 +1864,27 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	}
 	projectConfig := &ProjectConfig{
 		Id: "version1",
-		TaskAnnotationSettings: &evergreen.AnnotationsSettings{
-			FileTicketWebhook: evergreen.WebHook{
-				Endpoint: "random2",
+		ProjectConfigFields: ProjectConfigFields{
+			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "random2",
+				},
 			},
-		},
-		WorkstationConfig: &WorkstationConfig{
-			GitClone: utility.FalsePtr(),
-			SetupCommands: []WorkstationSetupCommand{
-				{Command: "overridden"},
+			WorkstationConfig: &WorkstationConfig{
+				GitClone: utility.FalsePtr(),
+				SetupCommands: []WorkstationSetupCommand{
+					{Command: "overridden"},
+				},
 			},
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "https://evergreen.mongodb.com",
+				BFSuggestionTimeoutSecs: 10,
+			},
+			GithubTriggerAliases: []string{"one", "two"},
+			PeriodicBuilds:       []PeriodicBuildDefinition{{ID: "p1"}},
 		},
-		BuildBaronSettings: &evergreen.BuildBaronSettings{
-			TicketCreateProject:     "BFG",
-			TicketSearchProjects:    []string{"BF", "BFG"},
-			BFSuggestionServer:      "https://evergreen.mongodb.com",
-			BFSuggestionTimeoutSecs: 10,
-		},
-		GithubTriggerAliases: []string{"one", "two"},
-		PeriodicBuilds:       []PeriodicBuildDefinition{{ID: "p1"}},
 	}
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, projectConfig.Insert())

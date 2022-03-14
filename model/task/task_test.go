@@ -349,6 +349,187 @@ func TestBlockedOnDeactivatedDependency(t *testing.T) {
 	})
 }
 
+func TestMarkDependenciesFinished(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"NoopsForNoDependencies": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id: "task1",
+			}
+			t2 := Task{
+				Id: "task2",
+				DependsOn: []Dependency{
+					{TaskId: "task1"},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished(true))
+
+			dbTask2, err := FindOneId(t2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask2)
+			require.Len(t, dbTask2.DependsOn, 1)
+			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
+		},
+		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskFailed,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskFailed,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished(true))
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished)
+		},
+		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskFailed,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished(true))
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished)
+		},
+		"UpdatesSpecificDependency": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskFailed,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{TaskId: "task2"},
+					{TaskId: "task3"},
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+					{TaskId: "task4"},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished(true))
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 4)
+			assert.False(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, dbTask1.DependsOn[1].Finished)
+			assert.True(t, dbTask1.DependsOn[2].Finished)
+			assert.False(t, dbTask1.DependsOn[3].Finished)
+		},
+		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{TaskId: "task0"},
+				},
+			}
+			t2 := Task{
+				Id: "task2",
+				DependsOn: []Dependency{
+					{TaskId: "task1"},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished(true))
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+
+			dbTask2, err := FindOneId(t2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask2)
+			require.Len(t, dbTask2.DependsOn, 1)
+			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
+		},
+		"UpdateDependencyToUnfinished": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskUndispatched,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId:   "task0",
+						Finished: true,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			require.NoError(t, t0.MarkDependenciesFinished(false))
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			tCase(t)
+		})
+	}
+}
+
 func TestSetTasksScheduledTime(t *testing.T) {
 	Convey("With some tasks", t, func() {
 
@@ -454,23 +635,31 @@ func TestDisplayTasksByVersion(t *testing.T) {
 		Convey("only tasks that are display tasks should be returned", func() {
 			tasks := []Task{
 				{
-					Id:      "one",
-					Version: "v1",
+					Id:        "one",
+					Version:   "v1",
+					Activated: true,
 				},
 				{
 					Id:          "two",
 					Version:     "v1",
 					DisplayOnly: true,
+					Activated:   true,
 				},
 				{
 					Id:            "three",
 					Version:       "v1",
 					DisplayTaskId: utility.ToStringPtr(""),
+					Activated:     true,
 				},
 				{
 					Id:             "four",
 					Version:        "v1",
 					ExecutionTasks: []string{"execution_task_one, execution_task_two"},
+					Activated:      true,
+				},
+				{
+					Id:      "five",
+					Version: "v1",
 				},
 				{
 					Id:            "execution_task_one",
@@ -500,6 +689,11 @@ func TestDisplayTasksByVersion(t *testing.T) {
 			So(dbTasks[1].Id, ShouldNotEqual, "execution_task_two")
 			So(dbTasks[2].Id, ShouldNotEqual, "execution_task_two")
 			So(dbTasks[3].Id, ShouldNotEqual, "execution_task_two")
+
+			So(dbTasks[0].Id, ShouldNotEqual, "five")
+			So(dbTasks[1].Id, ShouldNotEqual, "five")
+			So(dbTasks[2].Id, ShouldNotEqual, "five")
+			So(dbTasks[3].Id, ShouldNotEqual, "five")
 
 		})
 	})
@@ -1483,9 +1677,12 @@ func TestBulkInsert(t *testing.T) {
 	}
 }
 
-func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
+func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.EnsureIndex(Collection,
+		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
+
 	t1 := Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
@@ -1495,16 +1692,33 @@ func TestUnscheduleStaleUnderwaterTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	_, err := UnscheduleStaleUnderwaterTasks("")
+	t2 := Task{
+		Id:            "t2",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+	}
+	assert.NoError(t2.Insert())
+
+	_, err := UnscheduleStaleUnderwaterHostTasks("")
 	assert.NoError(err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
 	assert.EqualValues(-1, dbTask.Priority)
+
+	dbTask, err = FindOneId("t2")
+	assert.NoError(err)
+	assert.False(dbTask.Activated)
+	assert.EqualValues(-1, dbTask.Priority)
 }
 
-func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
+func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	require.NoError(t, db.EnsureIndex(Collection,
+		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
+
 	t1 := Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
@@ -1520,7 +1734,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1528,8 +1742,11 @@ func TestUnscheduleStaleUnderwaterTasksWithDistro(t *testing.T) {
 	assert.EqualValues(t, -1, dbTask.Priority)
 }
 
-func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
+func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	require.NoError(t, db.EnsureIndex(Collection,
+		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
+
 	t1 := Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
@@ -1546,7 +1763,7 @@ func TestUnscheduleStaleUnderwaterTasksWithDistroAlias(t *testing.T) {
 	}
 	require.NoError(t, d.Insert())
 
-	_, err := UnscheduleStaleUnderwaterTasks("d0")
+	_, err := UnscheduleStaleUnderwaterHostTasks("d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
@@ -1772,7 +1989,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert.Len(unattainableTasks, 1)
 }
 
-func TestUnattainableScheduleableTasksQuery(t *testing.T) {
+func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
@@ -1826,7 +2043,7 @@ func TestUnattainableScheduleableTasksQuery(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	q := db.Query(scheduleableTasksQuery())
+	q := db.Query(schedulableHostTasksQuery())
 	schedulableTasks, err := FindAll(q)
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)

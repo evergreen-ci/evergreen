@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -61,21 +62,23 @@ type Task struct {
 	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
-	// create - the creation time for the task, derived from the commit time or the patch creation time.
-	// dispatch - the time the task runner starts up the agent on the host
-	// scheduled - the time the commit is scheduled
-	// start - the time the agent starts the task on the host after spinning it up
-	// finish - the time the task was completed on the remote host
-	// activated - the time the task was marked as available to be scheduled, automatically or by a developer
-	// DependenciesMetTime - for tasks that have dependencies, the time all dependencies are met
-	CreateTime          time.Time `bson:"create_time" json:"create_time"`
-	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime           time.Time `bson:"start_time" json:"start_time"`
-	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
+	// Create - the creation time for the task, derived from the commit time or the patch creation time.
+	// Dispatch - the time the task runner starts up the agent on the host.
+	// Scheduled - the time the task is scheduled.
+	// Start - the time the agent starts the task on the host after spinning it up.
+	// Finish - the time the task was completed on the remote host.
+	// Activated - the time the task was marked as available to be scheduled, automatically or by a developer.
+	// DependenciesMet - for tasks that have dependencies, the time all dependencies are met.
+	// ContainerAllocated - for tasks that run on containers, the time the container was allocated.
+	CreateTime             time.Time `bson:"create_time" json:"create_time"`
+	IngestTime             time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime           time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime          time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime              time.Time `bson:"start_time" json:"start_time"`
+	FinishTime             time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime          time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
+	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
 	Version            string              `bson:"version" json:"version,omitempty"`
 	Project            string              `bson:"branch" json:"branch,omitempty"`
@@ -106,6 +109,12 @@ type Task struct {
 	NumDependents            int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
+	// DistroAliases refer to the optional secondary distros that can be
+	// associated with a task. This is used for running tasks in case there are
+	// idle hosts in a distro with an empty primary queue. Despite the variable
+	// name, this is a distinct concept from actual distro aliases (i.e.
+	// alternative distro names).
+	// TODO (EVG-15148): rename this to represent secondary distros.
 	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
 	// Human-readable name
@@ -252,6 +261,8 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
+	// Finished indicates if the task's dependency has finished running or not.
+	Finished bool `bson:"finished" json:"finished"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -483,6 +494,12 @@ func (t *Task) IsFinished() bool {
 // IsDispatchable return true if the task should be dispatched
 func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
+// ShouldAllocateContainer indicates whether a task should be allocated a
+// container or not.
+func (t *Task) ShouldAllocateContainer() bool {
+	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -761,6 +778,39 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	return true, nil
 }
 
+// MarkDependenciesFinished updates all direct dependencies on this task to
+// cache whether or not this task has finished running.
+func (t *Task) MarkDependenciesFinished(finished bool) error {
+	if t.DisplayOnly {
+		// This update can be skipped for display tasks since tasks are not
+		// allowed to have dependencies on display tasks.
+		return nil
+	}
+
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
+		bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey: t.Id,
+			}},
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+		},
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
+		}}),
+	)
+	if err != nil {
+		return errors.Wrap(err, "marking finished dependencies")
+	}
+
+	return nil
+}
+
 // HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() (bool, error) {
 	// Check cedar flags before populating test results to avoid
@@ -840,10 +890,12 @@ func (t *Task) cacheExpectedDuration() error {
 	)
 }
 
-// Mark that the task has been dispatched onto a particular host. Sets the
-// running task field on the host and the host id field on the task.
-// Returns an error if any of the database updates fail.
-func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatchTime time.Time) error {
+// MarkAsHostDispatched marks that the task has been dispatched onto a
+// particular host. If the task is part of a display task, the display task is
+// also marked as dispatched to a host. Returns an error if any of the database
+// updates fail.
+func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
+	dispatchTime time.Time) error {
 	t.DispatchTime = dispatchTime
 	t.Status = evergreen.TaskDispatched
 	t.HostId = hostId
@@ -876,16 +928,15 @@ func (t *Task) MarkAsDispatched(hostId, distroId, agentRevision string, dispatch
 
 	//when dispatching an execution task, mark its parent as dispatched
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		return dt.MarkAsDispatched("", "", "", dispatchTime)
+		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
 	return nil
 }
 
-// MarkAsUndispatched marks that the task has been undispatched from a
-// particular host. Unsets the running task field on the host and the
-// host id field on the task
-// Returns an error if any of the database updates fail.
-func (t *Task) MarkAsUndispatched() error {
+// MarkAsHostUndispatched marks that the host task is undispatched. If the task
+// is already dispatched to a host, it unsets the host ID field on the task. It
+// returns an error if any of the database updates fail.
+func (t *Task) MarkAsHostUndispatched() error {
 	// then, update the task document
 	t.Status = evergreen.TaskUndispatched
 
@@ -1046,13 +1097,13 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// Removes tasks older than the unscheduable threshold (e.g. one
-// weeks) from the scheduler queue.
+// Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// the scheduler queue.
 //
-// If you pass an empty string as an argument to this function, this
-// operation will select tasks from all distros.
-func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
-	query := scheduleableTasksQuery()
+// If you pass an empty string as an argument to this function, this operation
+// will select tasks from all distros.
+func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
+	query := schedulableHostTasksQuery()
 
 	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
 		return 0, errors.WithStack(err)
@@ -1067,7 +1118,9 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 		},
 	}
 
-	info, err := UpdateAll(query, update)
+	// Force the query to use 'distro_1_status_1_activated_1_priority_1'
+	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
+	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
 		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
 	}
@@ -1387,6 +1440,7 @@ func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
+	t.ContainerAllocatedTime = utility.ZeroTime
 
 	return DeactivateTasks([]Task{*t}, caller)
 }
@@ -1403,9 +1457,10 @@ func DeactivateTasks(tasks []Task, caller string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:     false,
-				ActivatedByKey:   caller,
-				ScheduledTimeKey: utility.ZeroTime,
+				ActivatedKey:              false,
+				ActivatedByKey:            caller,
+				ScheduledTimeKey:          utility.ZeroTime,
+				ContainerAllocatedTimeKey: utility.ZeroTime,
 			},
 		},
 	)
@@ -1446,6 +1501,7 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			ActivatedKey:                false,
 			DeactivatedForDependencyKey: true,
 			ScheduledTimeKey:            utility.ZeroTime,
+			ContainerAllocatedTimeKey:   utility.ZeroTime,
 		}},
 	)
 	if err != nil {
@@ -1621,6 +1677,7 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
 		t.ScheduledTime = utility.ZeroTime
+		t.ContainerAllocatedTime = utility.ZeroTime
 		t.FinishTime = utility.ZeroTime
 		t.DependenciesMetTime = utility.ZeroTime
 		t.TimeTaken = 0
@@ -1635,18 +1692,19 @@ func resetTaskUpdate(t *Task) bson.M {
 	}
 	update := bson.M{
 		"$set": bson.M{
-			ActivatedKey:           true,
-			ActivatedTimeKey:       now,
-			SecretKey:              newSecret,
-			HostIdKey:              "",
-			StatusKey:              evergreen.TaskUndispatched,
-			DispatchTimeKey:        utility.ZeroTime,
-			StartTimeKey:           utility.ZeroTime,
-			ScheduledTimeKey:       utility.ZeroTime,
-			FinishTimeKey:          utility.ZeroTime,
-			DependenciesMetTimeKey: utility.ZeroTime,
-			TimeTakenKey:           0,
-			LastHeartbeatKey:       utility.ZeroTime,
+			ActivatedKey:              true,
+			ActivatedTimeKey:          now,
+			SecretKey:                 newSecret,
+			HostIdKey:                 "",
+			StatusKey:                 evergreen.TaskUndispatched,
+			DispatchTimeKey:           utility.ZeroTime,
+			StartTimeKey:              utility.ZeroTime,
+			ScheduledTimeKey:          utility.ZeroTime,
+			ContainerAllocatedTimeKey: utility.ZeroTime,
+			FinishTimeKey:             utility.ZeroTime,
+			DependenciesMetTimeKey:    utility.ZeroTime,
+			TimeTakenKey:              0,
+			LastHeartbeatKey:          utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:              "",
@@ -2017,6 +2075,7 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
+	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
 	taskStruct += fmt.Sprintf("DispatchTime: %v\n", t.DispatchTime)
 	taskStruct += fmt.Sprintf("StartTime: %v\n", t.StartTime)
 	taskStruct += fmt.Sprintf("FinishTime: %v\n", t.FinishTime)
@@ -2314,8 +2373,10 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	return out, nil
 }
 
-func FindSchedulable(distroID string) ([]Task, error) {
-	query := scheduleableTasksQuery()
+// FindHostSchedulable finds all tasks that can be scheduled for a distro
+// primary queue.
+func FindHostSchedulable(distroID string) ([]Task, error) {
+	query := schedulableHostTasksQuery()
 
 	if err := addApplicableDistroFilter(distroID, DistroIdKey, query); err != nil {
 		return nil, errors.WithStack(err)
@@ -2343,8 +2404,10 @@ func addApplicableDistroFilter(id string, fieldName string, query bson.M) error 
 	return nil
 }
 
-func FindSchedulableForAlias(id string) ([]Task, error) {
-	q := scheduleableTasksQuery()
+// FindHostSchedulableForAlias finds all tasks that can be scheduled for a
+// distro secondary queue.
+func FindHostSchedulableForAlias(id string) ([]Task, error) {
+	q := schedulableHostTasksQuery()
 
 	if err := addApplicableDistroFilter(id, DistroAliasesKey, q); err != nil {
 		return nil, errors.WithStack(err)
@@ -2358,8 +2421,11 @@ func FindSchedulableForAlias(id string) ([]Task, error) {
 	return FindAll(db.Query(q))
 }
 
-func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
-	match := scheduleableTasksQuery()
+// FindHostRunnable finds all hosts that can be scheduled for a distro with an
+// additional consideration for whether the task's dependencies are met. If
+// removeDeps is true, tasks with unmet dependencies are excluded.
+func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
+	match := schedulableHostTasksQuery()
 	var d distro.Distro
 	var err error
 	if distroID != "" {
@@ -2978,17 +3044,18 @@ type TasksSortOrder struct {
 }
 
 type GetTasksByVersionOptions struct {
-	Statuses              []string
-	BaseStatuses          []string
-	Variants              []string
-	TaskNames             []string
-	Page                  int
-	Limit                 int
-	FieldsToProject       []string
-	Sorts                 []TasksSortOrder
-	IncludeExecutionTasks bool
-	IncludeBaseTasks      bool
-	IncludeEmptyActivaton bool
+	Statuses                       []string
+	BaseStatuses                   []string
+	Variants                       []string
+	TaskNames                      []string
+	Page                           int
+	Limit                          int
+	FieldsToProject                []string
+	Sorts                          []TasksSortOrder
+	IncludeExecutionTasks          bool
+	IncludeBaseTasks               bool
+	IncludeEmptyActivaton          bool
+	IncludeBuildVariantDisplayName bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -2996,14 +3063,6 @@ type GetTasksByVersionOptions struct {
 func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task, int, error) {
 
 	pipeline := getTasksByVersionPipeline(versionID, opts)
-
-	if len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
-			},
-		})
-	}
 
 	if len(opts.Sorts) > 0 {
 		sortPipeline := []bson.M{}
@@ -3276,8 +3335,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 		match = bson.M{
 			"$or": []bson.M{
-				bson.M{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				bson.M{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 			},
 		}
 	}
@@ -3293,7 +3352,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	pipeline := []bson.M{}
 	// Add BuildVariantDisplayName to all the results if it we need to match on the entire set of results
 	// This is an expensive operation so we only want to do it if we have to
-	if len(opts.Variants) > 0 {
+	if len(opts.Variants) > 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	pipeline = append(pipeline,
@@ -3457,7 +3516,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		)
 	}
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
-	if len(opts.Variants) == 0 {
+	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
 	}
 	if len(opts.Statuses) > 0 {
@@ -3467,6 +3526,15 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			},
 		})
 	}
+
+	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+			},
+		})
+	}
+
 	return pipeline
 }
 

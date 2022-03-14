@@ -228,14 +228,6 @@ Evergreen Projects
           </div>
         </div>
       </div>
-      <div class="form-group">
-        <div class="col-lg-8">
-          <label class="control-label">Restricted Project&nbsp;&nbsp;
-          <input type="checkbox" ng-model="settingsFormData.restricted"/>
-          </label>
-          <div class="muted small">Logged-in users by default will not be able to access this project. Access must be granted manually.</div>
-        </div>
-      </div>
     </div>
     <div class="admins">
       <div class="form-group">
@@ -404,14 +396,6 @@ Evergreen Projects
           </label>
         </div>
         <div>
-          <label class="control-label">
-          <input type="checkbox" name="set_restricted" ng-model="proj_var.is_restricted" ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" /> <strong>Restricted Variable</strong>
-          </label>
-        </div>
-        <span class="warning-text" ng-show="proj_var.is_restricted"><i class="fa fa-warning"></i>
-        Restricted variables are only used with commands that won't leak the variables.
-        </span>
-        <div ng-show="false">
           <label class="control-label">
           <input type="checkbox" name="set_admin_only" ng-model="proj_var.is_admin_only" ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" /> <strong>Admin Only Variable</strong>
           </label>

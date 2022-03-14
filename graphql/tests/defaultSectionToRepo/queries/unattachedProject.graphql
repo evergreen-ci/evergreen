@@ -1,0 +1,3 @@
+mutation {
+    defaultSectionToRepo(projectId: "repo_id", section: GENERAL)
+}

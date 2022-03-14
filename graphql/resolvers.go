@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -97,6 +100,10 @@ func (r *Resolver) ProjectSubscriber() ProjectSubscriberResolver {
 	return &projectSubscriberResolver{r}
 }
 
+func (r *Resolver) Permissions() PermissionsResolver {
+	return &permissionsResolver{r}
+}
+
 // IssueLink returns IssueLinkResolver implementation.
 func (r *Resolver) IssueLink() IssueLinkResolver {
 	return &issueLinkResolver{r}
@@ -120,6 +127,7 @@ type repoSettingsResolver struct{ *Resolver }
 type projectSubscriberResolver struct{ *Resolver }
 type projectVarsResolver struct{ *Resolver }
 type taskLogsResolver struct{ *Resolver }
+type permissionsResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
@@ -412,7 +420,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]
 }
 
 func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restModel.APITask) (bool, error) {
-	currentUser := MustHaveUser(ctx)
+	currentUser := mustHaveUser(ctx)
 	if at.OverrideDependencies {
 		return false, nil
 	}
@@ -432,12 +440,25 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restMode
 	return false, nil
 }
 
+func (r *permissionsResolver) CanCreateProject(ctx context.Context, permissions *Permissions) (bool, error) {
+	usr, err := user.FindOneById(permissions.UserID)
+	if err != nil {
+		return false, ResourceNotFound.Send(ctx, "user not found")
+	}
+	return usr.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionProjectCreate,
+		RequiredLevel: evergreen.ProjectCreate.Value,
+	}), nil
+}
+
 func (r *projectResolver) IsFavorite(ctx context.Context, at *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*at.Identifier)
 	if err != nil || p == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *at.Identifier, err))
 	}
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if utility.StringSliceContains(usr.FavoriteProjects, *at.Identifier) {
 		return true, nil
 	}
@@ -501,6 +522,16 @@ func (r *projectVarsResolver) PrivateVars(ctx context.Context, obj *restModel.AP
 	return res, nil
 }
 
+func (r *projectVarsResolver) AdminOnlyVars(ctx context.Context, obj *restModel.APIProjectVars) ([]*string, error) {
+	res := []*string{}
+	for varAlias, isAdminOnly := range obj.AdminOnlyVars {
+		if isAdminOnly {
+			res = append(res, utility.ToStringPtr(varAlias))
+		}
+	}
+	return res, nil
+}
+
 func (r *projectSubscriberResolver) Subscriber(ctx context.Context, obj *restModel.APISubscriber) (*Subscriber, error) {
 	res := &Subscriber{}
 	subscriberType := utility.FromStringPtr(obj.Type)
@@ -557,7 +588,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier st
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
 	}
 
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
 	err = usr.AddFavoritedProject(identifier)
 	if err != nil {
@@ -577,7 +608,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
 	}
 
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
 	err = usr.RemoveFavoriteProject(identifier)
 	if err != nil {
@@ -596,9 +627,15 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, err
 	}
-	success, _, gqlErr, err, vol := RequestNewVolume(ctx, GetVolumeFromSpawnVolumeInput(spawnVolumeInput))
+	volumeRequest := host.Volume{
+		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
+		Size:             spawnVolumeInput.Size,
+		Type:             spawnVolumeInput.Type,
+		CreatedBy:        mustHaveUser(ctx).Id,
+	}
+	vol, statusCode, err := cloud.RequestNewVolume(ctx, volumeRequest)
 	if err != nil {
-		return false, gqlErr.Send(ctx, err.Error())
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
 	if vol == nil {
 		return false, InternalServerError.Send(ctx, "Unable to create volume")
@@ -609,7 +646,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		var newExpiration time.Time
 		newExpiration, err = restModel.FromTimePtr(spawnVolumeInput.Expiration)
 		if err != nil {
-			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+			return false, InternalServerError.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
 		}
 		additionalOptions.Expiration = newExpiration
 	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
@@ -621,13 +658,13 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", vol.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
-		_, _, gqlErr, err := AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
+		statusCode, err := cloud.AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
 		if err != nil {
-			return false, gqlErr.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
+			return false, mapHTTPStatusToGqlError(ctx, statusCode, errors.Wrapf(err, errorTemplate, vol.ID))
 		}
 	}
 
-	return success, nil
+	return true, nil
 }
 
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
@@ -676,7 +713,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 }
 
 func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnHostInput) (*restModel.APIHost, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if spawnHostInput.SavePublicKey {
 		if err := savePublicKey(ctx, *spawnHostInput.PublicKey); err != nil {
 			return nil, err
@@ -762,13 +799,13 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 
 func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput *EditSpawnHostInput) (*restModel.APIHost, error) {
 	var v *host.Volume
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(editSpawnHostInput.HostID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
 
-	if !CanUpdateSpawnHost(h, usr) {
+	if !host.CanUpdateSpawnHost(h, usr) {
 		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 	}
 
@@ -840,7 +877,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
 	}
 	if editSpawnHostInput.ServicePassword != nil {
-		_, _, err = UpdateHostPassword(ctx, evergreen.GetEnvironment(), h, usr, *editSpawnHostInput.ServicePassword, nil)
+		_, err = cloud.SetHostRDPPassword(ctx, evergreen.GetEnvironment(), h, *editSpawnHostInput.ServicePassword)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting spawn host password: %s", err))
 		}
@@ -855,54 +892,48 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 }
 
 func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID string, action SpawnHostStatusActions) (*restModel.APIHost, error) {
-	host, err := host.FindOneByIdOrTag(hostID)
+	h, err := host.FindOneByIdOrTag(hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
-	if !CanUpdateSpawnHost(host, usr) {
+	if !host.CanUpdateSpawnHost(h, usr) {
 		return nil, Forbidden.Send(ctx, "You are not authorized to modify this host")
 	}
 
+	var httpStatus int
 	switch action {
 	case SpawnHostStatusActionsStart:
-		h, httpStatus, err := StartSpawnHost(ctx, env, host, usr, nil)
-		if err != nil {
-			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
-		}
-		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(h)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
-		}
-		return &apiHost, nil
+		httpStatus, err = data.StartSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsStop:
-		h, httpStatus, err := StopSpawnHost(ctx, env, host, usr, nil)
-		if err != nil {
-			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
-		}
-		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(h)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
-		}
-		return &apiHost, nil
+		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsTerminate:
-		h, httpStatus, err := TerminateSpawnHost(ctx, env, host, usr, nil)
-		if err != nil {
-			return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
-		}
-		apiHost := restModel.APIHost{}
-		err = apiHost.BuildFromService(h)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
-		}
-		return &apiHost, nil
+		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
 	default:
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find matching status for action : %s", action))
 	}
+	if err != nil {
+		if httpStatus == http.StatusInternalServerError {
+			var parsedUrl, _ = url.Parse("/graphql/query")
+			grip.Error(message.WrapError(err, message.Fields{
+				"method":  "POST",
+				"url":     parsedUrl,
+				"code":    httpStatus,
+				"action":  action,
+				"request": gimlet.GetRequestID(ctx),
+				"stack":   string(debug.Stack()),
+			}))
+		}
+		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
+	}
+	apiHost := restModel.APIHost{}
+	err = apiHost.BuildFromService(h)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building apiHost from service: %s", err))
+	}
+	return &apiHost, nil
 
 }
 
@@ -1029,19 +1060,16 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 }
 
 func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
-	volumes, err := GetMyVolumes(MustHaveUser(ctx))
+	usr := mustHaveUser(ctx)
+	volumes, err := host.FindSortedVolumesByUser(usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	volumePointers := make([]*restModel.APIVolume, 0, len(volumes))
-	for i, _ := range volumes {
-		volumePointers = append(volumePointers, &volumes[i])
-	}
-	return volumePointers, nil
+	return getAPIVolumeList(volumes)
 }
 
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
@@ -1182,7 +1210,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 }
 
 func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, obj MoveProjectInput) (*restModel.APIProjectRef, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
 	pRef, err := r.sc.FindProjectById(obj.ProjectID, false, false)
 	if err != nil || pRef == nil {
@@ -1203,19 +1231,19 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, obj MoveP
 }
 
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
-	success, _, gqlErr, err := AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
+	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
-		return false, gqlErr.Send(ctx, err.Error())
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
-	return success, nil
+	return statusCode == http.StatusOK, nil
 }
 
 func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
-	success, _, gqlErr, err := DetachVolume(ctx, volumeID)
+	statusCode, err := cloud.DetachVolume(ctx, volumeID)
 	if err != nil {
-		return false, gqlErr.Send(ctx, err.Error())
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
-	return success, nil
+	return statusCode == http.StatusOK, nil
 }
 
 type patchResolver struct{ *Resolver }
@@ -1274,8 +1302,9 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {
@@ -1341,17 +1370,17 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 }
 
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
-	started, err := GetFormattedDate(obj.StartTime, usr.Settings.Timezone)
+	started, err := getFormattedDate(obj.StartTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	finished, err := GetFormattedDate(obj.FinishTime, usr.Settings.Timezone)
+	finished, err := getFormattedDate(obj.FinishTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	submittedAt, err := GetFormattedDate(obj.CreateTime, usr.Settings.Timezone)
+	submittedAt, err := getFormattedDate(obj.CreateTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1380,7 +1409,7 @@ func (r *patchResolver) BaseVersionID(ctx context.Context, obj *restModel.APIPat
 }
 
 func (r *patchResolver) Project(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
-	patchProject, err := GetPatchProjectVariantsAndTasksForUI(ctx, apiPatch)
+	patchProject, err := getPatchProjectVariantsAndTasksForUI(ctx, apiPatch)
 	if err != nil {
 		return nil, err
 	}
@@ -1433,7 +1462,6 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 
 		aliases = append(aliases, &restModel.APIPatchTriggerDefinition{
 			Alias:                  utility.ToStringPtr(alias.Alias),
-			ChildProject:           utility.ToStringPtr(alias.ChildProject),
 			ChildProjectId:         utility.ToStringPtr(alias.ChildProject),
 			ChildProjectIdentifier: utility.ToStringPtr(identifier),
 			VariantsTasks:          variantsTasks,
@@ -1452,9 +1480,10 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
 		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 		opts := data.TaskFilterOptions{
-			Statuses:         failedAndAbortedStatuses,
-			FieldsToProject:  []string{task.DisplayStatusKey},
-			IncludeBaseTasks: false,
+			Statuses:                       failedAndAbortedStatuses,
+			FieldsToProject:                []string{task.DisplayStatusKey},
+			IncludeBaseTasks:               false,
+			IncludeBuildVariantDisplayName: false,
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(id, opts)
 		if err != nil {
@@ -1536,7 +1565,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 }
 
 func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	userSettings := restModel.APIUserSettings{}
 	err := userSettings.BuildFromService(usr.Settings)
 	if err != nil {
@@ -1553,7 +1582,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	if dbTask == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *dbTask)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc, *dbTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
@@ -1580,13 +1609,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, errors.Errorf("unable to find task %s", taskID)
 		}
 		var apiTask *restModel.APITask
-		apiTask, err = GetAPITaskFromTask(ctx, r.sc, *dbTask)
+		apiTask, err = getAPITaskFromTask(ctx, r.sc, *dbTask)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "error converting task")
 		}
 		allTasks = append(allTasks, apiTask)
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *latestTask)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc, *latestTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
@@ -1606,7 +1635,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 			enabledProjects = append(enabledProjects, p)
 		}
 	}
-	groupedProjects, err := GroupProjects(enabledProjects, false)
+	groupedProjects, err := groupProjects(enabledProjects, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
@@ -1614,9 +1643,8 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 }
 
 func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings()
-
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
@@ -1626,11 +1654,27 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
 	}
 
-	groupedProjects, err := GroupProjects(projects, true)
+	groupedProjects, err := groupProjects(projects, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
 	}
 	return groupedProjects, nil
+}
+
+func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
+	pRef, err := model.FindMergedProjectRef(projectID, "", false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project: %v", err.Error()))
+	}
+	if pRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
+	}
+
+	conflicts, err := pRef.GetGithubProjectConflicts()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project conflicts: %v", err.Error()))
+	}
+	return &conflicts, nil
 }
 
 func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []*SortOrder, page *int, limit *int, statuses []string, baseStatuses []string, variant *string, taskName *string, includeEmptyActivation *bool) (*PatchTasks, error) {
@@ -1677,15 +1721,16 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	}
 
 	opts := data.TaskFilterOptions{
-		Statuses:               statuses,
-		BaseStatuses:           baseStatuses,
-		Variants:               []string{variantParam},
-		TaskNames:              []string{taskNameParam},
-		Page:                   pageParam,
-		Limit:                  limitParam,
-		Sorts:                  taskSorts,
-		IncludeBaseTasks:       true,
-		IncludeEmptyActivation: utility.FromBoolPtr(includeEmptyActivation),
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
+		Variants:                       []string{variantParam},
+		TaskNames:                      []string{taskNameParam},
+		Page:                           pageParam,
+		Limit:                          limitParam,
+		Sorts:                          taskSorts,
+		IncludeBaseTasks:               true,
+		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
+		IncludeBuildVariantDisplayName: true,
 	}
 	tasks, count, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -1935,7 +1980,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}
 		for _, execTask := range execTasks {
-			groupedFiles, err := GetGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
+			groupedFiles, err := getGroupedFiles(ctx, execTask.DisplayName, execTask.Id, t.Execution)
 			if err != nil {
 				return &emptyTaskFiles, err
 			}
@@ -1943,7 +1988,7 @@ func (r *queryResolver) TaskFiles(ctx context.Context, taskID string, execution 
 			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
 	} else {
-		groupedFiles, err := GetGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
+		groupedFiles, err := getGroupedFiles(ctx, t.DisplayName, taskID, t.Execution)
 		if err != nil {
 			return &emptyTaskFiles, err
 		}
@@ -2234,7 +2279,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.
 }
 
 func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	settings := evergreen.GetEnvironment().Settings()
 	config := &UserConfig{
 		User:          usr.Username(),
@@ -2401,7 +2446,7 @@ func (r *taskQueueItemResolver) Requester(ctx context.Context, obj *restModel.AP
 
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
@@ -2411,7 +2456,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, ob
 
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(obj.ProjectRef.Id)
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	changes, err := r.sc.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
@@ -2419,8 +2464,17 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *
 	return changes, nil
 }
 
+func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectId string, section ProjectSettingsSection) (*string, error) {
+	usr := mustHaveUser(ctx)
+	if err := model.DefaultSectionToRepo(projectId, model.ProjectPageSection(section), usr.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
+	}
+
+	return &projectId, nil
+}
+
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	pRef, err := r.sc.FindProjectById(projectID, false, false)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
@@ -2440,7 +2494,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 }
 
 func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	pRef, err := r.sc.FindProjectById(projectID, false, false)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
@@ -2500,12 +2554,12 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
 }
 
 func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	currentUser := MustHaveUser(ctx)
+	currentUser := mustHaveUser(ctx)
 	t, err := task.FindByIdExecution(taskID, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
@@ -2517,12 +2571,11 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
 	t.DisplayStatus = t.GetDisplayStatus()
-	return GetAPITaskFromTask(ctx, r.sc, *t)
+	return getAPITaskFromTask(ctx, r.sc, *t)
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
-	patchUpdateReq := PatchUpdate{}
-	patchUpdateReq.BuildFromGqlInput(configure)
+	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := r.sc.FindVersionById(patchID)
 	if err != nil {
 		// FindVersionById does not distinguish between nil version err and db err; therefore must check that err
@@ -2531,11 +2584,11 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
 		}
 	}
-	err, _, _, versionID := SchedulePatch(ctx, patchID, version, patchUpdateReq)
+	statusCode, err := units.SchedulePatch(ctx, patchID, version, patchUpdateReq)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error scheduling patch `%s`: %s", patchID, err))
+		return nil, mapHTTPStatusToGqlError(ctx, statusCode, errors.Errorf("Error scheduling patch `%s`: %s", patchID, err.Error()))
 	}
-	scheduledPatch, err := r.sc.FindPatchById(versionID)
+	scheduledPatch, err := r.sc.FindPatchById(patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch `%s`: %s", patchID, err))
 	}
@@ -2543,12 +2596,12 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 }
 
 func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID string) (*string, error) {
-	modifications := VersionModifications{
-		Action: SetActive,
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
 		Active: true,
 		Abort:  false,
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -2556,12 +2609,12 @@ func (r *mutationResolver) SchedulePatchTasks(ctx context.Context, patchID strin
 }
 
 func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID string, abort bool) (*string, error) {
-	modifications := VersionModifications{
-		Action: SetActive,
+	modifications := model.VersionModification{
+		Action: evergreen.SetActiveAction,
 		Active: false,
 		Abort:  abort,
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -2571,9 +2624,10 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 // ScheduleUndispatchedBaseTasks only allows scheduling undispatched base tasks for tasks that are failing on the current patch
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
 	opts := data.TaskFilterOptions{
-		Statuses:              evergreen.TaskFailureStatuses,
-		IncludeExecutionTasks: true,
-		IncludeBaseTasks:      false,
+		Statuses:                       evergreen.TaskFailureStatuses,
+		IncludeExecutionTasks:          true,
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(patchID, opts)
 	if err != nil {
@@ -2620,7 +2674,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 
 	for taskId := range tasksToSchedule {
-		task, err := SetScheduled(ctx, r.sc, taskId, true)
+		task, err := setScheduled(ctx, r.sc, taskId, true)
 		if err != nil {
 			return nil, err
 		}
@@ -2638,12 +2692,12 @@ func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abo
 	if len(taskIds) == 0 {
 		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
 	}
-	modifications := VersionModifications{
-		Action:  Restart,
+	modifications := model.VersionModification{
+		Action:  evergreen.RestartAction,
 		Abort:   abort,
 		TaskIds: taskIds,
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -2654,12 +2708,12 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, 
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
 	}
-	modifications := VersionModifications{
-		Action:            Restart,
+	modifications := model.VersionModification{
+		Action:            evergreen.RestartAction,
 		Abort:             abort,
 		VersionsToRestart: versionsToRestart,
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -2685,11 +2739,11 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, 
 }
 
 func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string, priority int) (*string, error) {
-	modifications := VersionModifications{
-		Action:   SetPriority,
+	modifications := model.VersionModification{
+		Action:   evergreen.SetPriorityAction,
 		Priority: int64(priority),
 	}
-	err := ModifyVersionHandler(ctx, r.sc, patchID, modifications)
+	err := modifyVersionHandler(ctx, r.sc, patchID, modifications)
 	if err != nil {
 		return nil, err
 	}
@@ -2697,7 +2751,7 @@ func (r *mutationResolver) SetPatchPriority(ctx context.Context, patchID string,
 }
 
 func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
-	user := MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	existingPatch, err := r.sc.FindPatchById(patchID)
 	if err != nil {
@@ -2736,7 +2790,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	scheduledTasks := []*restModel.APITask{}
 	count := 0
 	for _, taskId := range taskIds {
-		task, err := SetScheduled(ctx, r.sc, taskId, true)
+		task, err := setScheduled(ctx, r.sc, taskId, true)
 		if err != nil {
 			return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule %d task : %s", len(taskIds)-count, err.Error()))
 		}
@@ -2746,7 +2800,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	return scheduledTasks, nil
 }
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := SetScheduled(ctx, r.sc, taskID, true)
+	task, err := setScheduled(ctx, r.sc, taskID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2754,7 +2808,7 @@ func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*re
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := SetScheduled(ctx, r.sc, taskID, false)
+	task, err := setScheduled(ctx, r.sc, taskID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2781,12 +2835,12 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
 }
 
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	username := usr.Username()
 	if err := model.TryResetTask(taskID, username, evergreen.UIPackage, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task %s: %s", taskID, err.Error()))
@@ -2798,13 +2852,13 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := GetAPITaskFromTask(ctx, r.sc, *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc, *t)
 	return apiTask, err
 }
 
 // EditAnnotationNote updates the note for the annotation, assuming it hasn't been updated in the meantime.
 func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string, execution int, originalMessage, newMessage string) (bool, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	if err := annotations.UpdateAnnotationNote(taskID, execution, originalMessage, newMessage, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't update note: %s", err.Error()))
 	}
@@ -2814,7 +2868,7 @@ func (r *mutationResolver) EditAnnotationNote(ctx context.Context, taskID string
 // MoveAnnotationIssue moves an issue for the annotation. If isIssue is set, it removes the issue from Issues and adds it
 // to Suspected Issues, otherwise vice versa.
 func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
 		if err := annotations.MoveIssueToSuspectedIssue(taskID, execution, *issue, usr.Username()); err != nil {
@@ -2833,7 +2887,7 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 // If isIssue is set, it adds to Issues, otherwise it adds to Suspected Issues.
 func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string, execution int,
 	apiIssue restModel.APIIssueLink, isIssue bool) (bool, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if err := util.CheckURL(issue.URL); err != nil {
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
@@ -2883,7 +2937,7 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 }
 
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	username := usr.Username()
 	subs, err := r.sc.GetSubscriptions(username, event.OwnerTypePerson)
 	if err != nil {
@@ -2904,7 +2958,7 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	username := usr.Username()
 	idType, id, err := getResourceTypeAndIdFromSubscriptionSelectors(ctx, subscription.Selectors)
 	if err != nil {
@@ -2954,7 +3008,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 }
 
 func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings *restModel.APIUserSettings) (bool, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 
 	updatedUserSettings, err := restModel.UpdateUserSettings(ctx, usr, *userSettings)
 	if err != nil {
@@ -2968,7 +3022,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 }
 
 func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) (int, error) {
-	user := MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
@@ -2984,7 +3038,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 }
 
 func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []string) (int, error) {
-	user := MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
@@ -3000,7 +3054,7 @@ func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []strin
 }
 
 func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []string, status string, notes *string) (int, error) {
-	user := MustHaveUser(ctx)
+	user := mustHaveUser(ctx)
 
 	hosts, permissions, httpStatus, err := api.GetHostsAndUserPermissions(user, hostIds)
 	if err != nil {
@@ -3030,7 +3084,7 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error deleting public key. Provided key name, %s, does not exist.", keyName))
 	}
-	err := MustHaveUser(ctx).DeletePublicKey(keyName)
+	err := mustHaveUser(ctx).DeletePublicKey(keyName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting public key: %s", err.Error()))
 	}
@@ -3039,11 +3093,11 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 }
 
 func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
-	success, _, gqlErr, err := DeleteVolume(ctx, volumeID)
+	statusCode, err := cloud.DeleteVolume(ctx, volumeID)
 	if err != nil {
-		return false, gqlErr.Send(ctx, err.Error())
+		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
 	}
-	return success, nil
+	return statusCode == http.StatusOK, nil
 }
 
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
@@ -3057,7 +3111,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	if err != nil {
 		return nil, err
 	}
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating public key, %s: %s", targetKeyName, err.Error()))
@@ -3067,7 +3121,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 }
 
 func (r *queryResolver) User(ctx context.Context, userIdParam *string) (*restModel.APIDBUser, error) {
-	usr := MustHaveUser(ctx)
+	usr := mustHaveUser(ctx)
 	var err error
 	if userIdParam != nil {
 		usr, err = user.FindOneById(*userIdParam)
@@ -3112,6 +3166,10 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		apiPatches = append(apiPatches, &apiPatch)
 	}
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
+}
+
+func (r *userResolver) Permissions(ctx context.Context, obj *restModel.APIDBUser) (*Permissions, error) {
+	return &Permissions{UserID: utility.FromStringPtr(obj.UserID)}, nil
 }
 
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
@@ -3470,7 +3528,7 @@ func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*rest
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int) (*BuildBaron, error) {
 	execString := strconv.Itoa(exec)
 
-	searchReturnInfo, bbConfig, err := GetSearchReturnInfo(taskID, execString)
+	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(taskID, execString)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -3478,26 +3536,21 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, exec int)
 	return &BuildBaron{
 		SearchReturnInfo:        searchReturnInfo,
 		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
-		BbTicketCreationDefined: bbConfig.ticketCreationDefined,
+		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
 	}, nil
 }
 
 func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, execution *int) (bool, error) {
-	taskNotFound, err := BbFileTicket(ctx, taskID, *execution)
-	successful := true
-
+	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
 	if err != nil {
-		return !successful, InternalServerError.Send(ctx, err.Error())
-	}
-	if taskNotFound {
-		return !successful, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find task '%s'", taskID))
+		return false, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	return successful, nil
+	return true, nil
 }
 
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := BbGetCreatedTicketsPointers(taskID)
+	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -3517,7 +3570,7 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectId 
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(projectId, buildVariant, repo.RevisionOrderNumber)
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(pid, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
@@ -3539,7 +3592,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectId 
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", projectId))
 	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(projectId, taskName, repo.RevisionOrderNumber)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}
@@ -3638,7 +3691,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 			opts := task.HasMatchingTasksOptions{
 				TaskNames: buildVariantOptions.Tasks,
 				Variants:  buildVariantOptions.Variants,
-				Statuses:  buildVariantOptions.Statuses,
+				Statuses:  getValidTaskStatusesFilter(buildVariantOptions.Statuses),
 			}
 			hasTasks, err := task.HasMatchingTasks(v.Id, opts)
 			if err != nil {
@@ -3731,9 +3784,10 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
-		FieldsToProject:  []string{task.DisplayStatusKey},
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{task.DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 	if err != nil {
@@ -3751,9 +3805,10 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := data.TaskFilterOptions{
-		Sorts:            defaultSort,
-		IncludeBaseTasks: false,
-		FieldsToProject:  []string{task.DisplayStatusKey},
+		Sorts:                          defaultSort,
+		IncludeBaseTasks:               false,
+		FieldsToProject:                []string{task.DisplayStatusKey},
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(baseVersion.Id, opts)
 	if err != nil {
@@ -3769,7 +3824,10 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
-		Statuses:              options.Statuses,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+	}
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
 	}
 	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
@@ -3787,8 +3845,9 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 			{Key: task.DisplayNameKey, Order: 1},
 		}
 		opts := data.TaskFilterOptions{
-			Sorts:            defaultSort,
-			IncludeBaseTasks: true,
+			Sorts:                          defaultSort,
+			IncludeBaseTasks:               true,
+			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
 		tasks, _, err := r.sc.FindTasksByVersion(*v.Id, opts)
 		if err != nil {
@@ -3824,10 +3883,12 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 
 func (r *versionResolver) BuildVariantStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
 	opts := task.GetTasksByVersionOptions{
-		TaskNames: options.Tasks,
-		Variants:  options.Variants,
-		Statuses:  options.Statuses,
+		TaskNames:                      options.Tasks,
+		Variants:                       options.Variants,
+		Statuses:                       options.Statuses,
+		IncludeBuildVariantDisplayName: true,
 	}
+
 	stats, err := task.GetGroupedTaskStatsByVersion(utility.FromStringPtr(v.Id), opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
@@ -3949,9 +4010,10 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := data.TaskFilterOptions{
-		Statuses:         failedAndAbortedStatuses,
-		FieldsToProject:  []string{task.DisplayStatusKey},
-		IncludeBaseTasks: false,
+		Statuses:                       failedAndAbortedStatuses,
+		FieldsToProject:                []string{task.DisplayStatusKey},
+		IncludeBaseTasks:               false,
+		IncludeBuildVariantDisplayName: false,
 	}
 	tasks, _, err := r.sc.FindTasksByVersion(*obj.Id, opts)
 	if err != nil {

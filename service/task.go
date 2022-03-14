@@ -386,7 +386,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 && projCtx.Task.Requester == evergreen.PatchVersionRequester {
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
 	}
 
@@ -672,8 +672,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	putParams := struct {
-		Action   string `json:"action"`
-		Priority string `json:"priority"`
+		Action   evergreen.ModificationAction `json:"action"`
+		Priority string                       `json:"priority"`
 
 		// for the set_active option
 		Active bool `json:"active"`
@@ -698,7 +698,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 	// determine what action needs to be taken
 	switch putParams.Action {
-	case "restart":
+	case evergreen.RestartAction:
 		if err = model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
@@ -711,7 +711,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
-	case "abort":
+	case evergreen.AbortAction:
 		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
@@ -725,7 +725,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
-	case "set_active":
+	case evergreen.SetActiveAction:
 		active := putParams.Active
 		if active && projCtx.Task.Requester == evergreen.MergeTestRequester {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
@@ -744,7 +744,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
-	case "set_priority":
+	case evergreen.SetPriorityAction:
 		var priority int64
 		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {

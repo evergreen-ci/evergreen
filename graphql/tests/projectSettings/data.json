@@ -19,7 +19,7 @@
       "patch_trigger_aliases" : [
         {
           "alias" : "my_alias_sandbox",
-          "child_project" : "mci",
+          "child_project" : "vars_test",
           "task_specifiers" : [
             {
               "task_regex" : "test-util",
@@ -73,6 +73,11 @@
       "hidden" : false,
       "use_repo_settings" : true,
       "repo_ref_id" : "my_repo"
+    },
+    {
+      "_id" : "vars_test",
+      "identifier" : "varsTest",
+      "display_name" : "Vars test"
     }
   ],
   "project_aliases": [
@@ -107,9 +112,16 @@
   "project_vars": [
     {
     "_id": "sandbox_project_id",
-    "vars": {"hello": "world", "foo":  "bar"},
-    "private_vars": {"hello":  true, "foo":  false}
-    }
+    "vars": {"hello": "world", "foo":  "bar", "admintest": "woo"},
+    "private_vars": {"hello":  true, "foo":  false},
+    "admin_only_vars": {"admintest": true}
+    },
+    {
+      "_id": "vars_test",
+      "vars": {"both": "dos"},
+      "private_vars": {"both": true},
+      "admin_only_vars": {"both": true}
+      }
   ],
   "subscriptions": [
     {

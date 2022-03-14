@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -224,13 +225,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if t.Requester == evergreen.MergeTestRequester && details.Status != evergreen.TaskSucceeded && !t.Aborted {
-		if err = model.DequeueAndRestart(t, APIServerLockTitle, fmt.Sprintf("task '%s' failed", t.DisplayName)); err != nil {
-			err = errors.Wrapf(err, "Error dequeueing and aborting failed commit queue version")
+	if t.Requester == evergreen.MergeTestRequester {
+		if err = handleEndTaskForCommitQueueTask(t, details.Status); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	}
+
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
 	if details.Status == evergreen.TaskUndispatched {
@@ -238,8 +239,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			grip.Warningf("task %v is active and undispatched after being marked as finished", t.Id)
 			return
 		}
-		message := fmt.Sprintf("task %v has been aborted and will not run", t.Id)
-		grip.Infof(message)
+		abortMsg := fmt.Sprintf("task %v has been aborted and will not run", t.Id)
+		grip.Infof(abortMsg)
 		endTaskResp = &apimodels.EndTaskResponse{}
 		gimlet.WriteJSON(w, endTaskResp)
 		return
@@ -259,7 +260,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost); err != nil {
+		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost, r.RemoteAddr); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",
 				"host_id":       currentHost.Id,
@@ -317,6 +318,74 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	grip.Info(msg)
 	gimlet.WriteJSON(w, endTaskResp)
+}
+
+func handleEndTaskForCommitQueueTask(t *task.Task, status string) error {
+	cq, err := commitqueue.FindOneId(t.Project)
+	if err != nil {
+		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
+	}
+	if cq == nil {
+		return errors.Errorf("no commit queue found for '%s'", t.Project)
+	}
+	if status != evergreen.TaskSucceeded && !t.Aborted {
+		return dequeueAndRestartWithStepback(cq, t, APIServerLockTitle, fmt.Sprintf("task '%s' failed", t.DisplayName))
+	} else if status == evergreen.TaskSucceeded {
+		// Query for all cq version tasks after this one; they may have been waiting to see if this
+		// one was the cause of the failure, in which case we should dequeue and restart.
+		foundVersion := false
+		for _, item := range cq.Queue {
+			if item.Version == "" {
+				return nil // no longer looking at scheduled versions
+			}
+			if item.Version == t.Version {
+				foundVersion = true
+				continue
+			}
+			if foundVersion {
+				laterTask, err := task.FindTaskForVersion(item.Version, t.DisplayName, t.BuildVariant)
+				if err != nil {
+					return errors.Wrapf(err, "error finding task for version '%s'", item.Version)
+				}
+				if laterTask == nil {
+					return errors.Errorf("couldn't find task for version '%s'", item.Version)
+				}
+				if evergreen.IsFailedTaskStatus(laterTask.Status) {
+					// Because our task is successful, this task should have failed so we dequeue.
+					return dequeueAndRestartWithStepback(cq, laterTask, APIServerLockTitle,
+						fmt.Sprintf("task '%s' failed and was not impacted by previous task", t.DisplayName))
+				}
+				if !evergreen.IsFinishedTaskStatus(laterTask.Status) {
+					// When this task finishes, it will handle stepping back any later commit queue item, so we're done.
+					return nil
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+// dequeueAndRestartWithStepback dequeues the current task and restarts later tasks, if earlier tasks have all run.
+// Otherwise, the failure may be a result of those untested commits so we will wait for the earlier tasks to run
+// and handle dequeuing (merge still won't run for failed task versions because of dependencies).
+func dequeueAndRestartWithStepback(cq *commitqueue.CommitQueue, t *task.Task, caller, reason string) error {
+	if i := cq.FindItem(t.Version); i > 0 {
+		prevVersions := []string{}
+		for j := 0; j < i; j++ {
+			prevVersions = append(prevVersions, cq.Queue[j].Version)
+		}
+		// if any of the commit queue tasks higher on the queue haven't finished, then they will handle dequeuing.
+		previousTaskNeedsToRun, err := task.HasUnfinishedTaskForVersions(prevVersions, t.DisplayName, t.BuildVariant)
+		if err != nil {
+			return errors.Wrap(err, "error checking early commit queue tasks")
+		}
+		if previousTaskNeedsToRun {
+			return nil
+		}
+		// Otherwise, continue on and dequeue.
+	}
+	return model.DequeueAndRestartForTask(cq, t, message.GithubStateFailure, caller, reason)
 }
 
 // fixIntentHostRunningAgent handles an exceptional case in which an ephemeral
@@ -407,7 +476,7 @@ func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h
 // hosts, as the host may continue running, but it must stop all agent-related
 // activity for now. For a terminated host, the host should already have been
 // terminated but is nonetheless alive, so terminate it again.
-func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) (shouldExit bool, err error) {
+func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host, remoteAddr string) (shouldExit bool, err error) {
 	switch h.Status {
 	case evergreen.HostQuarantined:
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -430,9 +499,11 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host) 
 		// has clearly not been terminated in the cloud.
 		if time.Now().Sub(h.TerminationTime) > 10*time.Minute {
 			grip.Error(message.Fields{
-				"message": "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
-				"host_id": h.Id,
-				"distro":  h.Distro.Id,
+				"message":    "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
+				"host_id":    h.Id,
+				"distro":     h.Distro.Id,
+				"remote":     remoteAddr,
+				"request_id": gimlet.GetRequestID(ctx),
 			})
 		}
 		return true, nil
@@ -885,7 +956,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		shouldExit, err := as.prepareHostForAgentExit(ctx, h)
+		shouldExit, err := as.prepareHostForAgentExit(ctx, h, r.RemoteAddr)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",
@@ -996,7 +1067,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
-	if err := model.MarkTaskDispatched(nextTask, h); err != nil {
+	if err := model.MarkHostTaskDispatched(nextTask, h); err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
@@ -1173,7 +1244,7 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 
 	// if the task can be dispatched and activated dispatch it
 	if t.IsDispatchable() {
-		err = errors.WithStack(model.MarkTaskDispatched(t, h))
+		err = errors.WithStack(model.MarkHostTaskDispatched(t, h))
 		if err != nil {
 			grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))

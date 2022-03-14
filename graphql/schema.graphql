@@ -8,6 +8,7 @@ type Query {
   version(id: String!): Version!
   projects: [GroupedProjects]!
   viewableProjectRefs: [GroupedProjects]!
+  githubProjectConflicts(projectId: String!): GithubProjectConflicts!
   project(projectId: String!): Project!
   patchTasks(
     patchId: String!
@@ -99,6 +100,7 @@ type Mutation {
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
   saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
   saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  defaultSectionToRepo(projectId: String! @requireProjectAccess(access: EDIT), section: ProjectSettingsSection!): String
   attachProjectToRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(access: EDIT)): Boolean!
@@ -595,23 +597,21 @@ input WebhookInput {
 }
 
 input WorkstationConfigInput {
-  setupCommands: [WorkstationSetupCommandInput]
-  gitClone: Boolean!
+  setupCommands: [WorkstationSetupCommandInput!]
+  gitClone: Boolean
 }
 
 input WorkstationSetupCommandInput {
-  Command: String!
-  Directory: String
+  command: String!
+  directory: String
 }
 
 input PatchTriggerAliasInput {
   alias: String!
-  childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifierInput]
+  taskSpecifiers: [TaskSpecifierInput!]!
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTaskInput]!
 }
 
 input TaskSpecifierInput {
@@ -623,6 +623,7 @@ input TaskSpecifierInput {
 input ProjectVarsInput {
   vars: StringMap
   privateVarsList: [String]
+  adminOnlyVarsList: [String]
 }
 
 input VariantTaskInput {
@@ -826,7 +827,6 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String @deprecated
   childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier]
@@ -1099,6 +1099,7 @@ type Task {
   restarts: Int
   revision: String
   scheduledTime: Time
+  containerAllocatedTime: Time
   spawnHostLink: String
   startTime: Time
   status: String!
@@ -1120,6 +1121,17 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type Permissions {
+  userId: String!
+  canCreateProject: Boolean!
+}
+
+type GithubProjectConflicts {
+  commitQueueIdentifiers: [String!]
+  prTestingIdentifiers: [String!]
+  commitCheckIdentifiers: [String!]
 }
 
 type ProjectSettings {
@@ -1164,6 +1176,7 @@ type RepoEventLogEntry {
 type ProjectVars {
   vars: StringMap
   privateVars: [String]
+  adminOnlyVars: [String]
 }
 
 type ProjectAlias {
@@ -1280,7 +1293,6 @@ type Project {
   taskAnnotationSettings: TaskAnnotationSettings!
 
   hidden: Boolean
-  useRepoSettings: Boolean!
   repoRefId: String!
 
   isFavorite: Boolean!
@@ -1418,8 +1430,8 @@ type RepoWorkstationConfig {
 }
 
 type WorkstationSetupCommand {
-  Command: String!
-  Directory: String!
+  command: String!
+  directory: String!
 }
 
 type TaskSpecifier {
@@ -1439,6 +1451,7 @@ type User {
   userId: String!
   emailAddress: String!
   patches(patchesInput: PatchesInput!): Patches!
+  permissions: Permissions!
 }
 
 type TaskLogs {

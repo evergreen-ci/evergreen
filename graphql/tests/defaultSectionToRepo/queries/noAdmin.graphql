@@ -1,0 +1,3 @@
+mutation {
+    defaultSectionToRepo(projectId: "evergreen_id", section: GENERAL)
+}

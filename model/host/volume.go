@@ -1,6 +1,7 @@
 package host
 
 import (
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -161,6 +162,26 @@ func FindVolumesByUser(userID string) ([]Volume, error) {
 		VolumeCreatedByKey: userID,
 	}
 	return findVolumes(query)
+}
+
+func FindSortedVolumesByUser(userID string) ([]Volume, error) {
+	volumes, err := FindVolumesByUser(userID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting volumes for '%s'", userID)
+	}
+
+	sort.SliceStable(volumes, func(i, j int) bool {
+		// sort order: mounted < not mounted, expiration time asc
+		volumeI := volumes[i]
+		volumeJ := volumes[j]
+		isMountedI := volumeI.Host == ""
+		isMountedJ := volumeJ.Host == ""
+		if isMountedI == isMountedJ {
+			return volumeI.Expiration.Before(volumeJ.Expiration)
+		}
+		return isMountedJ
+	})
+	return volumes, nil
 }
 
 func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {

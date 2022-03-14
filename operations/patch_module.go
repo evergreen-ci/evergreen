@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -18,15 +19,19 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
+		Flags: mergeFlagSlices(addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
 			addPatchFinalizeFlag(), addPreserveCommitsFlag(
 				cli.BoolFlag{
 					Name:  largeFlagName,
 					Usage: "enable submitting larger patches (>16MB)",
+				},
+				cli.StringFlag{
+					Name:  joinFlagNames(patchIDFlagName, "id", "i"),
+					Usage: "specify the ID of a patch (defaults to user's latest submitted patch)",
 				})),
 		Before: mergeBeforeFuncs(
+			autoUpdateCLI,
 			setPlainLogger,
-			requirePatchIDFlag,
 			requireModuleFlag,
 			mutuallyExclusiveArgs(false, uncommittedChangesFlag, preserveCommitsFlag),
 		),
@@ -56,14 +61,26 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			existingPatch, err := ac.GetPatch(patchID)
+			var existingPatch *patch.Patch
+			if patchID == "" {
+				patchList, err := ac.GetPatches(1)
+				if err != nil {
+					return errors.Wrapf(err, "problem getting patches from user")
+				}
+				if len(patchList) == 0 {
+					return errors.New("no patches found from user")
+				}
+				existingPatch = &patchList[0]
+				patchID = existingPatch.Id.Hex()
+			} else {
+				existingPatch, err = ac.GetPatch(patchID)
+			}
 			if err != nil {
 				return errors.Wrapf(err, "problem getting patch '%s'", patchID)
 			}
 			if existingPatch.IsCommitQueuePatch() {
 				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit queue patches")
 			}
-
 			preserveCommits = preserveCommits || conf.PreserveCommits
 			if !skipConfirm {
 				var keepGoing bool
@@ -75,12 +92,10 @@ func PatchSetModule() cli.Command {
 					return errors.New("patch aborted")
 				}
 			}
-
 			proj, err := rc.GetPatchedConfig(patchID)
 			if err != nil {
 				return err
 			}
-
 			moduleBranch, err := getModuleBranch(module, proj)
 			if err != nil {
 				grip.Error(err)
