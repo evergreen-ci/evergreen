@@ -197,7 +197,7 @@ func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool)
 		return errors.Errorf("task '%s' not found", t.Id)
 	}
 
-	return errors.Wrap(serviceModel.SetActiveState(t, user, activated),
+	return errors.Wrap(serviceModel.SetActiveState(user, activated, t),
 		"Erorr setting task active")
 }
 

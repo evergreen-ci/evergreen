@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"os"
 	"regexp"
@@ -59,40 +60,48 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func setScheduled(ctx context.Context, sc data.Connector, taskID string, isActive bool) (*restModel.APITask, error) {
+func setScheduled(ctx context.Context, sc data.Connector, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
-	t, err := task.FindOneId(taskID)
+	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task %s not found", taskID).Error())
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task IDs %s not found", strings.Join(taskIDs, ",")).Error())
 	}
-	if t.Requester == evergreen.MergeTestRequester && isActive {
-		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+	taskPtrs := []*task.Task{}
+	for _, t := range tasks {
+		taskPtrs = append(taskPtrs, &t)
+		if t.Requester == evergreen.MergeTestRequester && isActive {
+			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+		}
 	}
-	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
+	if err = model.SetActiveState(usr.Username(), isActive, taskPtrs...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
 	// Get the modified task back out of the db
-	t, err = task.FindOneId(taskID)
+	tasks, err = task.FindAll(db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+	if tasks == nil {
+		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task IDs %s not found after active state was set", strings.Join(taskIDs, ",")).Error())
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(t)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
+	apiTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err = apiTask.BuildFromService(t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		err = apiTask.BuildFromService(sc.GetURL())
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		apiTasks = append(apiTasks, &apiTask)
 	}
-	err = apiTask.BuildFromService(sc.GetURL())
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	return &apiTask, nil
+	return apiTasks, nil
 }
 
 // getFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"
