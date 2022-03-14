@@ -668,18 +668,18 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		subscription := subscriptionIface.(event.Subscription)
 		subscription.Selectors = []event.Selector{
 			{
-				Type: "project",
+				Type: event.SelectorProject,
 				Data: projectRef.Id,
 			},
 		}
 		if subscription.TriggerData != nil && subscription.TriggerData[event.SelectorRequester] != "" {
 			subscription.Selectors = append(subscription.Selectors, event.Selector{
-				Type: "requester",
+				Type: event.SelectorRequester,
 				Data: subscription.TriggerData[event.SelectorRequester],
 			})
 		} else {
 			subscription.Selectors = append(subscription.Selectors, event.Selector{
-				Type: "requester",
+				Type: event.SelectorRequester,
 				Data: evergreen.RepotrackerVersionRequester,
 			})
 		}

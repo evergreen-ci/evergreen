@@ -374,12 +374,22 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	return true, ""
 }
 
-func (s *Subscription) ValidateFilter() error {
+func (s *Subscription) ValidateSelectors() error {
+	catcher := grip.NewBasicCatcher()
 	if s.Filter == (Filter{}) {
-		return errors.New("no filter parameters specified")
+		catcher.New("no filter parameters specified")
 	}
 
-	return nil
+	for _, selector := range s.RegexSelectors {
+		if selector.Type == "" {
+			catcher.New("selector has an empty type")
+		}
+		if selector.Data == "" {
+			catcher.Errorf("selector '%s' has no data", selector.Type)
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 func (s *Subscription) Validate() error {
@@ -399,7 +409,7 @@ func (s *Subscription) Validate() error {
 		s.Subscriber.Type == JIRACommentSubscriberType {
 		catcher.New("JIRA comment subscription not allowed for all tasks in the project")
 	}
-	catcher.Add(s.ValidateFilter())
+	catcher.Add(s.ValidateSelectors())
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
