@@ -84,6 +84,7 @@ const (
 	// Tasks can be filtered on the front end by `aborted` status
 	TaskAborted = "aborted"
 
+	// Not official task statuses; used to indicate if a task is unreachable or if it's still waiting on dependencies.
 	TaskStatusBlocked = "blocked"
 	TaskStatusPending = "pending"
 
@@ -724,7 +725,8 @@ var (
 	// are in a finished state.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
 	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
-	TaskUncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict, TaskInactive, TaskContainerAllocated}
+	TaskUncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict,
+		TaskInactive, TaskContainerUnallocated, TaskContainerAllocated}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
