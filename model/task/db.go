@@ -379,7 +379,10 @@ func DisplayTasksByVersion(version string) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
 	return bson.M{
 		"$and": []bson.M{
-			{VersionKey: version},
+			{
+				VersionKey:   version,
+				ActivatedKey: true,
+			},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
 				{DisplayOnlyKey: true},                       // ...

@@ -17,23 +17,28 @@
   "tasks": [
     {
       "_id": "1",
-      "version": "5e4ff3abe3c3317e352062e4"
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true
     },
     {
       "_id": "2",
-      "version": "5e4ff3abe3c3317e352062e4"
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true
     },
     {
       "_id": "3",
-      "version": "5e4ff3abe3c3317e352062e4"
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true
     },
     {
       "_id": "4",
-      "version": "5e4ff3abe3c3317e352062e4"
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true
     },
     {
       "_id": "5",
-      "version": "5e4ff3abe3c3317e352062e4"
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true
     },
     {
       "_id": "6",
