@@ -121,7 +121,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
-							Type: "id",
+							Type: event.SelectorID,
 							Data: "1234",
 						},
 					},
@@ -138,7 +138,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
-							Type: "id",
+							Type: event.SelectorID,
 							Data: "1234",
 						},
 					},
@@ -153,9 +153,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				Trigger:      utility.ToStringPtr("outcome"),
 				Owner:        utility.ToStringPtr("me"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
-				RegexSelectors: []restModel.APISelector{
+				Selectors: []restModel.APISelector{
 					{
-						Type: utility.ToStringPtr("object"),
+						Type: utility.ToStringPtr(event.SelectorObject),
 						Data: utility.ToStringPtr("object_data"),
 					},
 				},
@@ -169,9 +169,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				Trigger:      utility.ToStringPtr("outcome"),
 				Owner:        utility.ToStringPtr("me"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
-				RegexSelectors: []restModel.APISelector{
+				Selectors: []restModel.APISelector{
 					{
-						Type: utility.ToStringPtr("object"),
+						Type: utility.ToStringPtr(event.SelectorObject),
 						Data: utility.ToStringPtr("object_data"),
 					},
 				},

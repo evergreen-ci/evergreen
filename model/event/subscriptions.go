@@ -375,8 +375,18 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 }
 
 func (s *Subscription) ValidateSelectors() error {
+	catcher := grip.NewBasicCatcher()
 	if s.Filter == (Filter{}) {
-		return errors.New("no filter parameters specified")
+		catcher.New("no filter parameters specified")
+	}
+
+	for _, selector := range s.RegexSelectors {
+		if selector.Type == "" {
+			catcher.New("selector has an empty type")
+		}
+		if selector.Data == "" {
+			catcher.Errorf("selector '%s' has no data", selector.Type)
+		}
 	}
 
 	return nil
