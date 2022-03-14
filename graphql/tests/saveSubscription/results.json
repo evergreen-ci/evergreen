@@ -82,7 +82,7 @@
       "result": {
         "errors": [
           {
-            "message": "error saving subscription: 400 (Bad Request): Error parsing request body: setting filter from selectors: selector has an empty type\nselector '' has no data",
+            "message": "error saving subscription: 400 (Bad Request): Error validating subscription: selector has an empty type\nselector '' has no data",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
