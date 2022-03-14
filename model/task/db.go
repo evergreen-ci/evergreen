@@ -354,7 +354,7 @@ func ByAborted(aborted bool) bson.M {
 	}
 }
 
-// ByAborted creates a query to return tasks with an aborted state
+// ByActivation creates a query to return tasks with an activated state
 func ByActivation(active bool) bson.M {
 	return bson.M{
 		ActivatedKey: active,
@@ -373,7 +373,10 @@ func DisplayTasksByVersion(version string) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
 	return bson.M{
 		"$and": []bson.M{
-			{VersionKey: version},
+			{
+				VersionKey:   version,
+				ActivatedKey: true,
+			},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
 				{DisplayOnlyKey: true},                       // ...

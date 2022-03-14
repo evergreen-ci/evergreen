@@ -85,30 +85,37 @@ func TestFindTasksByIds(t *testing.T) {
 		})
 	})
 }
-
 func TestDisplayTasksByVersion(t *testing.T) {
 	Convey("When calling DisplayTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
 		Convey("only tasks that are display tasks should be returned", func() {
 			tasks := []Task{
 				{
-					Id:      "one",
-					Version: "v1",
+					Id:        "one",
+					Version:   "v1",
+					Activated: true,
 				},
 				{
 					Id:          "two",
 					Version:     "v1",
 					DisplayOnly: true,
+					Activated:   true,
 				},
 				{
 					Id:            "three",
 					Version:       "v1",
 					DisplayTaskId: utility.ToStringPtr(""),
+					Activated:     true,
 				},
 				{
 					Id:             "four",
 					Version:        "v1",
 					ExecutionTasks: []string{"execution_task_one, execution_task_two"},
+					Activated:      true,
+				},
+				{
+					Id:      "five",
+					Version: "v1",
 				},
 				{
 					Id:            "execution_task_one",
@@ -138,6 +145,11 @@ func TestDisplayTasksByVersion(t *testing.T) {
 			So(dbTasks[1].Id, ShouldNotEqual, "execution_task_two")
 			So(dbTasks[2].Id, ShouldNotEqual, "execution_task_two")
 			So(dbTasks[3].Id, ShouldNotEqual, "execution_task_two")
+
+			So(dbTasks[0].Id, ShouldNotEqual, "five")
+			So(dbTasks[1].Id, ShouldNotEqual, "five")
+			So(dbTasks[2].Id, ShouldNotEqual, "five")
+			So(dbTasks[3].Id, ShouldNotEqual, "five")
 
 		})
 	})

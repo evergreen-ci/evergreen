@@ -213,7 +213,7 @@ func updateExpansions(expansions *util.Expansions, projectId string, params []pa
 		return errors.New("project vars not found")
 	}
 
-	expansions.Update(projVars.GetUnrestrictedVars())
+	expansions.Update(projVars.Vars)
 
 	for _, param := range params {
 		expansions.Put(param.Key, param.Value)

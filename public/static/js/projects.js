@@ -404,7 +404,6 @@ mciModule.controller(
               // project variables will be copied in the route, so that we get private variables correctly
               item.project_vars = null;
               item.private_vars = null;
-              item.restricted_vars = null;
               $http.post("/project/" + $scope.newProject.identifier, item).then(
                 function (resp) {
                   $scope.refreshTrackedProjects(data_put.AllProjects);
@@ -456,7 +455,6 @@ mciModule.controller(
           }
           $scope.projectVars = data.ProjectVars.vars || {};
           $scope.privateVars = data.ProjectVars.private_vars || {};
-          $scope.restrictedVars = data.ProjectVars.restricted_vars || {};
           $scope.adminOnlyVars = data.ProjectVars.adminS_only_vars || {};
           $scope.github_webhooks_enabled = data.github_webhooks_enabled;
           $scope.githubChecksConflicts =
@@ -490,7 +488,6 @@ mciModule.controller(
             identifier: $scope.projectRef.identifier,
             project_vars: $scope.projectVars,
             private_vars: $scope.privateVars,
-            restricted_vars: $scope.restrictedVars,
             admin_only_vars: $scope.adminOnlyVars,
             display_name: $scope.projectRef.display_name,
             default_logger: $scope.projectRef.default_logger,
@@ -723,9 +720,6 @@ mciModule.controller(
         if ($scope.proj_var.is_private) {
           $scope.settingsFormData.private_vars[$scope.proj_var.name] = true;
         }
-        if ($scope.proj_var.is_restricted) {
-          $scope.settingsFormData.restricted_vars[$scope.proj_var.name] = true;
-        }
         if ($scope.proj_var.is_admin_only) {
           $scope.settingsFormData.admin_only_vars[$scope.proj_var.name] = true;
         }
@@ -734,7 +728,6 @@ mciModule.controller(
         $scope.proj_var.name = "";
         $scope.proj_var.value = "";
         $scope.proj_var.is_private = false;
-        $scope.proj_var.is_restricted = false;
         $scope.proj_var.is_admin_only = false;
       }
     };
@@ -835,7 +828,6 @@ mciModule.controller(
     $scope.removeProjectVar = function (name) {
       delete $scope.settingsFormData.project_vars[name];
       delete $scope.settingsFormData.private_vars[name];
-      delete $scope.settingsFormData.restricted_vars[name];
       $scope.isDirty = true;
     };
 
