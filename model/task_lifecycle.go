@@ -925,6 +925,7 @@ func UpdateBuildStatus(b *build.Build) (bool, error) {
 		return false, nil
 	}
 
+	// only need to check aborted if status has changed
 	isAborted := false
 	for _, t := range buildTasks {
 		if t.Aborted {
@@ -1024,6 +1025,7 @@ func UpdateVersionStatus(v *Version) (string, error) {
 		return versionStatus, nil
 	}
 
+	// only need to check aborted if status has changed
 	isAborted := false
 	for _, b := range builds {
 		if b.Aborted {
