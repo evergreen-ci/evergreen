@@ -360,7 +360,7 @@ func ByAborted(aborted bool) bson.M {
 	}
 }
 
-// ByAborted creates a query to return tasks with an aborted state
+// ByActivation creates a query to return tasks with an activated state
 func ByActivation(active bool) bson.M {
 	return bson.M{
 		ActivatedKey: active,

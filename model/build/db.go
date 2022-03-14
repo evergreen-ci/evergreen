@@ -40,6 +40,7 @@ var (
 	PredictedMakespanKey   = bsonutil.MustHaveTag(Build{}, "PredictedMakespan")
 	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
 	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
+	AbortedKey             = bsonutil.MustHaveTag(Build{}, "Aborted")
 
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
 )
