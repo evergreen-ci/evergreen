@@ -8078,8 +8078,8 @@ input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifierInput!]!
-  status: String
-  parentAsModule: String
+  status: String!
+  parentAsModule: String!
 }
 
 input TaskSpecifierInput {
@@ -8297,10 +8297,10 @@ type PatchTriggerAlias {
   alias: String!
   childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifier]
-  status: String
-  parentAsModule: String
-  variantsTasks: [VariantTask]!
+  taskSpecifiers: [TaskSpecifier!]
+  status: String!
+  parentAsModule: String!
+  variantsTasks: [VariantTask!]!
 }
 
 type UserPatches {
@@ -22032,7 +22032,7 @@ func (ec *executionContext) _PatchTriggerAlias_taskSpecifiers(ctx context.Contex
 	}
 	res := resTmp.([]model.APITaskSpecifier)
 	fc.Result = res
-	return ec.marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, field.Selections, res)
+	return ec.marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -22060,11 +22060,14 @@ func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -22092,11 +22095,14 @@ func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -22131,7 +22137,7 @@ func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context
 	}
 	res := resTmp.([]model.VariantTask)
 	fc.Result = res
-	return ec.marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, field.Selections, res)
+	return ec.marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTaskᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.CollectedField, obj *Patches) (ret graphql.Marshaler) {
@@ -40404,7 +40410,7 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			it.Status, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Status, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40412,7 +40418,7 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentAsModule"))
-			it.ParentAsModule, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.ParentAsModule, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45137,8 +45143,14 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._PatchTriggerAlias_taskSpecifiers(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._PatchTriggerAlias_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "parentAsModule":
 			out.Values[i] = ec._PatchTriggerAlias_parentAsModule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "variantsTasks":
 			out.Values[i] = ec._PatchTriggerAlias_variantsTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -52017,6 +52029,10 @@ func (ec *executionContext) marshalNTaskSortCategory2githubᚗcomᚋevergreenᚑ
 	return v
 }
 
+func (ec *executionContext) marshalNTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, sel ast.SelectionSet, v model.APITaskSpecifier) graphql.Marshaler {
+	return ec._TaskSpecifier(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalNTaskSpecifierInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, v interface{}) (model.APITaskSpecifier, error) {
 	res, err := ec.unmarshalInputTaskSpecifierInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -52258,6 +52274,10 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
+	return ec._VariantTask(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v []model.VariantTask) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -52292,6 +52312,50 @@ func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑci
 
 	}
 	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTaskᚄ(ctx context.Context, sel ast.SelectionSet, v []model.VariantTask) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
 
 	return ret
 }
@@ -54546,11 +54610,7 @@ func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋeve
 	return ec._TaskInfo(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, sel ast.SelectionSet, v model.APITaskSpecifier) graphql.Marshaler {
-	return ec._TaskSpecifier(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {
+func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -54577,7 +54637,7 @@ func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, sel, v[i])
+			ret[i] = ec.marshalNTaskSpecifier2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifier(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -54587,6 +54647,12 @@ func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑ
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
 
 	return ret
 }
