@@ -217,29 +217,27 @@ func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 func (projectVars *ProjectVars) ShouldGetAdminOnlyVars(t *task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return true
-	} else if t.ActivatedBy != "" {
-		u, err := user.FindOneById(t.ActivatedBy)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
-				"task_id": t.Id,
-			}))
-			return false
-		}
-		if u != nil {
-			isAdmin := u.HasPermission(gimlet.PermissionOpts{
-				Resource:      t.Project,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			})
-			if isAdmin {
-				return true
-			}
-		}
+	} else if t.ActivatedBy == "" {
+		return false
 	}
-
-	return false
+	u, err := user.FindOneById(t.ActivatedBy)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
+			"task_id": t.Id,
+		}))
+		return false
+	}
+	isAdmin := false
+	if u != nil {
+		isAdmin = u.HasPermission(gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+	}
+	return isAdmin
 }
 
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
