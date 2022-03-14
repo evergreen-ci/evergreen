@@ -90,7 +90,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 	c := &DBSubscriptionConnector{}
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			subs[0].RegexSelectors[0].Data = utility.ToStringPtr("")
+			subs[0].Selectors[0].Data = utility.ToStringPtr("")
 			assert.Error(t, c.SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {

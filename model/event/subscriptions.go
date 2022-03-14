@@ -389,7 +389,7 @@ func (s *Subscription) ValidateSelectors() error {
 		}
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 func (s *Subscription) Validate() error {
