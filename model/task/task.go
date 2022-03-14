@@ -3346,7 +3346,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
 	if !opts.IncludeEmptyActivaton {
-		match[ActivatedKey] = true
+		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	match[VersionKey] = versionID
 	pipeline := []bson.M{}
