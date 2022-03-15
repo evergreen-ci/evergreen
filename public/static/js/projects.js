@@ -522,6 +522,7 @@ mciModule.controller(
             workstation_config: data.ProjectRef.workstation_config || {},
             notify_on_failure: $scope.projectRef.notify_on_failure,
             force_repotracker_run: false,
+            deactivate_stepback_tasks: false,
             delete_aliases: [],
             delete_subscriptions: [],
             files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
@@ -701,6 +702,7 @@ mciModule.controller(
             $scope.refreshTrackedProjects(data.AllProjects);
             $scope.settingsForm.$setPristine();
             $scope.settingsFormData.force_repotracker_run = false;
+            $scope.settingsFormData.deactivate_stepback_tasks = false;
             $scope.loadProject($scope.settingsFormData.id);
             $scope.isDirty = false;
           },
