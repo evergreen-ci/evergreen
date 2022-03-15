@@ -610,8 +610,8 @@ input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifierInput!]!
-  status: String!
-  parentAsModule: String!
+  status: String
+  parentAsModule: String
 }
 
 input TaskSpecifierInput {
@@ -830,8 +830,8 @@ type PatchTriggerAlias {
   childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier!]
-  status: String!
-  parentAsModule: String!
+  status: String
+  parentAsModule: String
   variantsTasks: [VariantTask!]!
 }
 

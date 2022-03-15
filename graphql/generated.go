@@ -8078,8 +8078,8 @@ input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifierInput!]!
-  status: String!
-  parentAsModule: String!
+  status: String
+  parentAsModule: String
 }
 
 input TaskSpecifierInput {
@@ -8298,8 +8298,8 @@ type PatchTriggerAlias {
   childProjectId: String!
   childProjectIdentifier: String!
   taskSpecifiers: [TaskSpecifier!]
-  status: String!
-  parentAsModule: String!
+  status: String
+  parentAsModule: String
   variantsTasks: [VariantTask!]!
 }
 
@@ -22060,14 +22060,11 @@ func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -22095,14 +22092,11 @@ func (ec *executionContext) _PatchTriggerAlias_parentAsModule(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PatchTriggerAlias_variantsTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
@@ -40410,7 +40404,7 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			it.Status, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.Status, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40418,7 +40412,7 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentAsModule"))
-			it.ParentAsModule, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			it.ParentAsModule, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45143,14 +45137,8 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._PatchTriggerAlias_taskSpecifiers(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._PatchTriggerAlias_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "parentAsModule":
 			out.Values[i] = ec._PatchTriggerAlias_parentAsModule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "variantsTasks":
 			out.Values[i] = ec._PatchTriggerAlias_variantsTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
