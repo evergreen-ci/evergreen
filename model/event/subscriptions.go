@@ -240,13 +240,15 @@ var filterKeyForSelectorType = map[string]string{
 	SelectorInBuild:      filterInBuildKey,
 }
 
-// FindSubscriptions finds all subscriptions of matching resourceType, and whose
+// FindSubscriptionsByAttributes finds all subscriptions of matching resourceType, and whose
 // filter and regex selectors match the attributes of the event.
-func FindSubscriptions(resourceType string, eventAttributes map[string][]string) ([]Subscription, error) {
+func FindSubscriptionsByAttributes(resourceType string, eventAttributes map[string][]string) ([]Subscription, error) {
 	if len(eventAttributes) == 0 {
 		return nil, nil
 	}
 
+	// A subscription filter specifies the event attributes it should match.
+	// If a field is specified then it must match a corresponding attribute in the event.
 	query := bson.M{subscriptionResourceTypeKey: resourceType}
 	for selector, filterKey := range filterKeyForSelectorType {
 		if attributeValues, ok := eventAttributes[selector]; ok {
@@ -254,8 +256,10 @@ func FindSubscriptions(resourceType string, eventAttributes map[string][]string)
 			for _, attribute := range attributeValues {
 				in = append(in, attribute)
 			}
+			// Every filter field must either equal one of the corresponding attributes of the event or be unset.
 			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = bson.M{"$in": in}
 		} else {
+			// If there is no corresponding attribute then the filter field must be unset.
 			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = nil
 		}
 	}

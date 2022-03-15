@@ -33,7 +33,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		return nil, errors.Wrapf(err, "error fetching data for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
 	}
 
-	subscriptions, err := event.FindSubscriptions(e.ResourceType, h.Selectors())
+	subscriptions, err := event.FindSubscriptionsByAttributes(e.ResourceType, h.Selectors())
 	msg := message.Fields{
 		"source":              "events-processing",
 		"message":             "processing event",

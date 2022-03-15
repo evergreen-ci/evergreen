@@ -176,15 +176,15 @@ func (s *subscriptionsSuite) TestRemove() {
 	}
 }
 
-func (s *subscriptionsSuite) TestFindSubscriptions() {
+func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 	s.Run("EmptySelectors", func() {
-		subs, err := FindSubscriptions("type2", nil)
+		subs, err := FindSubscriptionsByAttributes("type2", nil)
 		s.NoError(err)
 		s.Empty(subs)
 	})
 
 	s.Run("NothingMatches", func() {
-		subs, err := FindSubscriptions("type1", map[string][]string{
+		subs, err := FindSubscriptionsByAttributes("type1", map[string][]string{
 			SelectorObject: {"nothing_matches"},
 		})
 		s.NoError(err)
@@ -192,31 +192,28 @@ func (s *subscriptionsSuite) TestFindSubscriptions() {
 	})
 
 	s.Run("MatchesMultipleSubscriptions", func() {
-		subs, err := FindSubscriptions("type2", map[string][]string{
+		subs, err := FindSubscriptionsByAttributes("type2", map[string][]string{
 			SelectorObject: {"somethingspecial"},
 		})
 		s.NoError(err)
-		s.Require().Len(subs, 2)
-		for i := range subs {
-			if subs[i].Subscriber.Type == EmailSubscriberType {
-				s.Equal("someone4@example.com", *subs[i].Subscriber.Target.(*string))
-
-			} else if subs[i].Subscriber.Type == SlackSubscriberType {
-				s.Equal("slack_user", *subs[i].Subscriber.Target.(*string))
-
-			} else {
-				s.T().Errorf("unknown subscriber type: %s", subs[i].Subscriber.Type)
-			}
+		s.Len(subs, 2)
+		expectedSubs := []Subscription{s.subscriptions[3], s.subscriptions[4]}
+		for _, sub := range subs {
+			s.Contains(expectedSubs, sub)
 		}
 	})
 
 	s.Run("MatchesRegexSelector", func() {
-		subs, err := FindSubscriptions("type1", map[string][]string{
+		subs, err := FindSubscriptionsByAttributes("type1", map[string][]string{
 			SelectorID:      {"something"},
 			SelectorProject: {"somethingelse"},
 		})
 		s.NoError(err)
 		s.Len(subs, 3)
+		expectedSubs := []Subscription{s.subscriptions[2], s.subscriptions[3], s.subscriptions[4]}
+		for _, sub := range subs {
+			s.Contains(expectedSubs, sub)
+		}
 	})
 }
 
@@ -246,7 +243,12 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			},
 		}
 
-		s.Len(filterRegexSelectors(subs, eventAttributes), 2)
+		filtered := filterRegexSelectors(subs, eventAttributes)
+		s.Len(filtered, 2)
+		expectedSubs := []Subscription{subs[0], subs[1]}
+		for _, sub := range filtered {
+			s.Contains(expectedSubs, sub)
+		}
 	})
 
 	s.Run("SingleMatch", func() {
@@ -269,7 +271,9 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			},
 		}
 
-		s.Len(filterRegexSelectors(subs, eventAttributes), 1)
+		filtered := filterRegexSelectors(subs, eventAttributes)
+		s.Require().Len(filtered, 1)
+		s.Equal(subs[0], filtered[0])
 	})
 
 	s.Run("NoMatches", func() {
@@ -296,8 +300,10 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 	})
 
 	s.Run("NoRegexSelectors", func() {
-		subs := []Subscription{{}}
-		s.Len(filterRegexSelectors(subs, eventAttributes), 1)
+		subs := []Subscription{{ID: "sub0"}}
+		filtered := filterRegexSelectors(subs, eventAttributes)
+		s.Require().Len(filtered, 1)
+		s.Equal(subs[0], filtered[0])
 	})
 }
 
