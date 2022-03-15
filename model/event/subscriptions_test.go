@@ -211,7 +211,6 @@ func (s *subscriptionsSuite) TestFindSubscriptions() {
 	})
 
 	s.Run("MatchesRegexSelector", func() {
-		// this query hits a subscriber with a regex selector
 		subs, err := FindSubscriptions("type1", map[string][]string{
 			SelectorID:      {"something"},
 			SelectorProject: {"somethingelse"},
@@ -221,29 +220,138 @@ func (s *subscriptionsSuite) TestFindSubscriptions() {
 	})
 }
 
-func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
-	selectors := map[string][]string{
-		"type":  {"something"},
-		"type2": {"somethingelse"},
+func (s *subscriptionsSuite) TestFilterRegexSelectors() {
+	eventAttributes := map[string][]string{
+		"type":  {"apple"},
+		"taste": {"sweet"},
 	}
 
-	a := Subscription{
-		RegexSelectors: []Selector{
+	s.Run("MultipleMatches", func() {
+		subs := []Subscription{
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: "type",
+						Data: "apple",
+					},
+				},
+			},
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: "taste",
+						Data: "sweet",
+					},
+				},
+			},
+		}
+
+		s.Len(filterRegexSelectors(subs, eventAttributes), 2)
+	})
+
+	s.Run("SingleMatch", func() {
+		subs := []Subscription{
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: "type",
+						Data: "apple",
+					},
+				},
+			},
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: "taste",
+						Data: "sour",
+					},
+				},
+			},
+		}
+
+		s.Len(filterRegexSelectors(subs, eventAttributes), 1)
+	})
+
+	s.Run("NoMatches", func() {
+		subs := []Subscription{
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: "type",
+						Data: "orange",
+					},
+				},
+			},
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: "taste",
+						Data: "tangy",
+					},
+				},
+			},
+		}
+
+		s.Empty(filterRegexSelectors(subs, eventAttributes))
+	})
+
+	s.Run("NoRegexSelectors", func() {
+		subs := []Subscription{{}}
+		s.Len(filterRegexSelectors(subs, eventAttributes), 1)
+	})
+}
+
+func (s *subscriptionsSuite) TestRegexSelectorsMatchEvent() {
+	eventAttributes := map[string][]string{
+		"type":  {"apple"},
+		"taste": {"sweet"},
+	}
+
+	s.Run("AllMatch", func() {
+		regexSelectors := []Selector{
 			{
 				Type: "type",
-				Data: "^some",
+				Data: "^apple",
 			},
 			{
-				Type: "type2",
-				Data: "else$",
+				Type: "taste",
+				Data: "sweet$",
 			},
-		},
-	}
+		}
+		s.True(regexSelectorsMatchEvent(regexSelectors, eventAttributes))
+	})
 
-	s.True(regexSelectorsMatch(selectors, a.RegexSelectors))
+	s.Run("MixedMatch", func() {
+		regexSelectors := []Selector{
+			{
+				Type: "type",
+				Data: "^apple",
+			},
+			{
+				Type: "taste",
+				Data: "sour",
+			},
+		}
+		s.False(regexSelectorsMatchEvent(regexSelectors, eventAttributes))
+	})
+}
 
-	a.RegexSelectors[0].Data = "^S"
-	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
+func (s *subscriptionsSuite) TestRegexMatchesValue() {
+	s.Run("NoValues", func() {
+		s.False(regexMatchesValue("regex", nil))
+	})
+
+	s.Run("NoMatch", func() {
+		s.False(regexMatchesValue("^hello", []string{"goodbye"}))
+	})
+
+	s.Run("MatchValue", func() {
+		s.False(regexMatchesValue("^hello", []string{"goodbye", "helloworld"}))
+	})
+
+	s.Run("InvalidRegex", func() {
+		s.False(regexMatchesValue("[", []string{"["}))
+	})
 }
 
 func (s *subscriptionsSuite) TestFilterFromSelectors() {

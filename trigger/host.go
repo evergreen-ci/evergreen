@@ -115,9 +115,9 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostExpirationEmailPayload(t.templateData, expiringHostEmailSubject, expiringHostEmailBody, t.Selectors())
+		payload, err = t.templateData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, t.Selectors())
 	case event.SlackSubscriberType:
-		payload, err = hostExpirationSlackPayload(t.templateData, expiringHostSlackBody, expiringHostSlackAttachmentTitle)
+		payload, err = t.templateData.hostExpirationSlackPayload(expiringHostSlackBody, expiringHostSlackAttachmentTitle)
 	default:
 		return nil, nil
 	}
@@ -128,51 +128,46 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString string, selectors map[string][]string) (*message.Email, error) {
+func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString string, selectors map[string][]string) (*message.Email, error) {
+	subjectBuf := &bytes.Buffer{}
 	subjectTemplate, err := template.New("subject").Parse(subjectString)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse subject template")
+		return nil, errors.Wrap(err, "parsing subject template")
 	}
-	buf := &bytes.Buffer{}
-	err = subjectTemplate.Execute(buf, t)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute subject template")
+	if err = subjectTemplate.Execute(subjectBuf, t); err != nil {
+		return nil, errors.Wrap(err, "executing subject template")
 	}
-	subject := buf.String()
 
-	bodyTemplate, err := template.New("subject").Parse(bodyString)
+	bodyBuf := &bytes.Buffer{}
+	bodyTemplate, err := template.New("body").Parse(bodyString)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse body template")
+		return nil, errors.Wrap(err, "parsing body template")
 	}
-	buf = &bytes.Buffer{}
-	err = bodyTemplate.Execute(buf, t)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute body template")
+	if err = bodyTemplate.Execute(bodyBuf, t); err != nil {
+		return nil, errors.Wrap(err, "executing body template")
 	}
-	body := buf.String()
 
 	return &message.Email{
-		Subject:           subject,
-		Body:              body,
+		Subject:           subjectBuf.String(),
+		Body:              bodyBuf.String(),
 		PlainTextContents: false,
 		Headers:           makeHeaders(selectors),
 	}, nil
 }
 
-func hostExpirationSlackPayload(t hostTemplateData, messageString string, linkTitle string) (*notification.SlackPayload, error) {
+func (t *hostTemplateData) hostExpirationSlackPayload(messageString string, linkTitle string) (*notification.SlackPayload, error) {
 	messageTemplate, err := template.New("subject").Parse(messageString)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse slack template")
+		return nil, errors.Wrap(err, "parsing slack template")
 	}
-	buf := &bytes.Buffer{}
-	err = messageTemplate.Execute(buf, t)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute slack template")
+
+	msgBuf := &bytes.Buffer{}
+	if err = messageTemplate.Execute(msgBuf, t); err != nil {
+		return nil, errors.Wrap(err, "executing slack template")
 	}
-	msg := buf.String()
 
 	return &notification.SlackPayload{
-		Body: msg,
+		Body: msgBuf.String(),
 		Attachments: []message.SlackAttachment{{
 			Title:     linkTitle,
 			TitleLink: t.URL,

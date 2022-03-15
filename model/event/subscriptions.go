@@ -241,7 +241,7 @@ var filterKeyForSelectorType = map[string]string{
 }
 
 // FindSubscriptions finds all subscriptions of matching resourceType, and whose
-// filter matches the attributes of the event.
+// filter and regex selectors match the attributes of the event.
 func FindSubscriptions(resourceType string, eventAttributes map[string][]string) ([]Subscription, error) {
 	if len(eventAttributes) == 0 {
 		return nil, nil
@@ -285,21 +285,21 @@ func regexSelectorsMatchEvent(regexSelectors []Selector, eventAttributes map[str
 		if !ok {
 			return false
 		}
-		if !regexMatch(attributeValues, regexSelector) {
+		if !regexMatchesValue(regexSelector.Data, attributeValues) {
 			return false
 		}
 	}
 	return true
 }
 
-func regexMatch(attributeValues []string, regexSelector Selector) bool {
-	regex, err := regexp.Compile(regexSelector.Data)
+func regexMatchesValue(regexString string, values []string) bool {
+	regex, err := regexp.Compile(regexString)
 	if err != nil {
 		return false
 	}
 
-	for _, attribute := range attributeValues {
-		matched := regex.MatchString(attribute)
+	for _, val := range values {
+		matched := regex.MatchString(val)
 		if matched {
 			return true
 		}
