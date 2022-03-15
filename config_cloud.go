@@ -91,6 +91,7 @@ type AWSConfig struct {
 	TaskSyncRead S3Credentials `bson:"task_sync_read" json:"task_sync_read" yaml:"task_sync_read"`
 
 	DefaultSecurityGroup string `bson:"default_security_group" json:"default_security_group" yaml:"default_security_group"`
+	EvergreenSecretRole  string `bson:"evergreen_secret_role" json:"evergreen_secret_role" yaml:"evergreen_secret_role"`
 
 	AllowedRegions []string `bson:"allowed_regions" json:"allowed_regions" yaml:"allowed_regions"`
 	// EC2 instance types for spawn hosts

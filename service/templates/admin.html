@@ -1705,6 +1705,10 @@ Admin Settings
 										<label>Total EBS Volume Size Per User</label>
 										<input type="number" ng-model="Settings.providers.aws.max_volume_size">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>AWS Role Name</label>
+										<input type="text" ng-model="Settings.providers.aws.evergreen_secret_role">
+									</md-input-container>
 									<br />
 									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Instance Types</label>

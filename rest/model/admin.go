@@ -1400,6 +1400,7 @@ type APIAWSConfig struct {
 	AllowedRegions       []*string         `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int              `json:"max_volume_size"`
 	Pod                  *APIAWSPodConfig  `json:"pod"`
+	EvergreenSecretRole  *string           `json:"evergreen_secret_role"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1443,6 +1444,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.MaxVolumeSizePerUser = &v.MaxVolumeSizePerUser
 		a.AllowedInstanceTypes = utility.ToStringPtrSlice(v.AllowedInstanceTypes)
 		a.AllowedRegions = utility.ToStringPtrSlice(v.AllowedRegions)
+		a.EvergreenSecretRole = utility.ToStringPtr(v.EvergreenSecretRole)
 
 		var pod APIAWSPodConfig
 		pod.BuildFromService(v.Pod)
@@ -1459,6 +1461,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	}
 	config := evergreen.AWSConfig{
 		DefaultSecurityGroup: utility.FromStringPtr(a.DefaultSecurityGroup),
+		EvergreenSecretRole:  utility.FromStringPtr(a.EvergreenSecretRole),
 		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
 	}
 
