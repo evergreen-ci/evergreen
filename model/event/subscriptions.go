@@ -260,43 +260,52 @@ func FindSubscriptions(resourceType string, eventAttributes map[string][]string)
 		}
 	}
 
-	rawSubs := []Subscription{}
-	if err := db.FindAllQ(SubscriptionsCollection, db.Query(query), &rawSubs); err != nil {
+	selectorFiltered := []Subscription{}
+	if err := db.FindAllQ(SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
 		return nil, errors.Wrap(err, "finding subscriptions for selectors")
 	}
 
-	out := []Subscription{}
-	for i := range rawSubs {
-		if len(rawSubs[i].RegexSelectors) > 0 && !regexSelectorsMatch(eventAttributes, rawSubs[i].RegexSelectors) {
-			continue
-		}
-
-		out = append(out, rawSubs[i])
-	}
-
-	return out, nil
+	return filterRegexSelectors(selectorFiltered, eventAttributes), nil
 }
 
-func regexSelectorsMatch(eventAttributes map[string][]string, regexSelectors []Selector) bool {
-selectorLoop:
+func filterRegexSelectors(subscriptions []Subscription, eventAttributes map[string][]string) []Subscription {
+	var regexFiltered []Subscription
+	for _, sub := range subscriptions {
+		if regexSelectorsMatchEvent(sub.RegexSelectors, eventAttributes) {
+			regexFiltered = append(regexFiltered, sub)
+		}
+	}
+
+	return regexFiltered
+}
+
+func regexSelectorsMatchEvent(regexSelectors []Selector, eventAttributes map[string][]string) bool {
 	for _, regexSelector := range regexSelectors {
 		attributeValues, ok := eventAttributes[regexSelector.Type]
 		if !ok {
 			return false
 		}
+		if !regexMatch(attributeValues, regexSelector) {
+			return false
+		}
+	}
+	return true
+}
 
-		for _, value := range attributeValues {
-			matched, err := regexp.MatchString(regexSelector.Data, value)
-			if err != nil {
-				return false
-			}
-			if matched {
-				continue selectorLoop
-			}
+func regexMatch(attributeValues []string, regexSelector Selector) bool {
+	regex, err := regexp.Compile(regexSelector.Data)
+	if err != nil {
+		return false
+	}
+
+	for _, attribute := range attributeValues {
+		matched := regex.MatchString(attribute)
+		if matched {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 func (s *Subscription) Upsert() error {
