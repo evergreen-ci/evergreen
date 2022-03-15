@@ -374,8 +374,8 @@ func DisplayTasksByVersion(version string) bson.M {
 	return bson.M{
 		"$and": []bson.M{
 			{
-				VersionKey:   version,
-				ActivatedKey: true,
+				VersionKey:       version,
+				ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
 			},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
