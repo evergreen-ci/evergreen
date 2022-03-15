@@ -3926,7 +3926,20 @@ func (r *versionResolver) ChildVersions(ctx context.Context, v *restModel.APIVer
 	if !evergreen.IsPatchRequester(*v.Requester) {
 		return nil, nil
 	}
-	childPatchIds, err := data.GetChildPatchIds(*v.Id)
+	if err := data.ValidatePatchID(*v.Id); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	foundPatch, err := patch.FindOneId(*v.Id)
+	if err != nil {
+		return nil, err
+	}
+	if foundPatch == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with id %s not found", *v.Id),
+		}
+	}
+	childPatchIds := foundPatch.Triggers.ChildPatches
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *v.Id, err.Error()))
 	}

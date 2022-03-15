@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func validatePatchID(patchId string) error {
+func ValidatePatchID(patchId string) error {
 	if !mgobson.IsObjectIdHex(patchId) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -58,7 +58,7 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 
 // FindPatchById queries the backing database for the patch matching patchId.
 func FindPatchById(patchId string) (*restModel.APIPatch, error) {
-	if err := validatePatchID(patchId); err != nil {
+	if err := ValidatePatchID(patchId); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -82,29 +82,10 @@ func FindPatchById(patchId string) (*restModel.APIPatch, error) {
 	return &apiPatch, nil
 }
 
-// GetChildPatchIds queries the backing database for the child patch ids
-func GetChildPatchIds(patchId string) ([]string, error) {
-	if err := validatePatchID(patchId); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	p, err := patch.FindOneId(patchId)
-	if err != nil {
-		return nil, err
-	}
-	if p == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch with id %s not found", patchId),
-		}
-	}
-
-	return p.Triggers.ChildPatches, nil
-}
-
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
 func AbortPatch(patchId string, user string) error {
-	if err := validatePatchID(patchId); err != nil {
+	if err := ValidatePatchID(patchId); err != nil {
 		return errors.WithStack(err)
 	}
 
