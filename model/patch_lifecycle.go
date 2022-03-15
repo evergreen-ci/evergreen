@@ -893,7 +893,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 }
 
 func RetryCommitQueueItems(projectID string, opts RestartOptions) ([]string, []string, error) {
-	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
+	patches, err := patch.FindFailedCommitQueuePatchesInTimeRange(projectID, opts.StartTime, opts.EndTime)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding failed commit queue patches for project in time range")
 	}
