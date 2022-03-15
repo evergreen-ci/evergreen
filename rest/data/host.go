@@ -4,33 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
-
-// FindHostsById uses the service layer's host type to query the backing database for
-// the hosts.
-func FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
-	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
-	if err != nil {
-		return nil, err
-	}
-	if len(hostRes) == 0 {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "no hosts found",
-		}
-	}
-	return hostRes, nil
-}
 
 func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
 	params := host.HostsInRangeParams{
@@ -49,14 +31,6 @@ func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]hos
 	}
 
 	return hostRes, nil
-}
-
-func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostID, distroID, currentTaskID, statuses, startedBy, sortBy, sortDir, page, limit)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	return hosts, filteredHostsCount, totalHostsCount, nil
 }
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
@@ -107,31 +81,6 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		return nil, err
 	}
 	return intentHost, nil
-}
-
-func SetHostExpirationTime(host *host.Host, newExp time.Time) error {
-	if err := host.SetExpirationTime(newExp); err != nil {
-		return errors.Wrap(err, "Error extending host expiration time")
-	}
-
-	return nil
-}
-
-func TerminateHost(ctx context.Context, host *host.Host, user string) error {
-	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
-}
-
-func CheckHostSecret(hostID string, r *http.Request) (int, error) {
-	_, code, err := model.ValidateHost(hostID, r)
-	return code, errors.WithStack(err)
-}
-
-func AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
-	data, err := host.AggregateSpawnhostData()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting spawn host data")
-	}
-	return data, nil
 }
 
 func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {

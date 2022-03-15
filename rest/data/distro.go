@@ -11,33 +11,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-// FindDistroById queries the database to find a given distros.
-func FindDistroById(distroId string) (*distro.Distro, error) {
-	d, err := distro.FindOne(distro.ById(distroId))
-	if err != nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", distroId),
-		}
-	}
-	return &d, nil
-}
-
-// FindAllDistros queries the database to find all distros.
-func FindAllDistros() ([]distro.Distro, error) {
-	distros, err := distro.Find(distro.All)
-	if err != nil {
-		return nil, err
-	}
-	if distros == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("no distros found"),
-		}
-	}
-	return distros, nil
-}
-
 // UpdateDistro updates the given distro.Distro.
 func UpdateDistro(old, new *distro.Distro) error {
 	if old.Id != new.Id {
@@ -61,18 +34,6 @@ func UpdateDistro(old, new *distro.Distro) error {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("distro with id '%s' was not updated", new.Id),
-		}
-	}
-	return nil
-}
-
-// CreateDistro inserts the given distro.Distro.
-func CreateDistro(distro *distro.Distro) error {
-	err := distro.Insert()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("distro with id '%s' was not inserted", distro.Id),
 		}
 	}
 	return nil

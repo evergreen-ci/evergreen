@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -90,7 +91,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
 		}
 		if status.Status == evergreen.HostTerminated {
-			if err = data.TerminateHost(ctx, foundHost, user.Id); err != nil {
+			if err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API")); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
@@ -218,9 +219,15 @@ func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
-	hosts, err := data.FindHostsById(hgh.key, hgh.status, hgh.user, hgh.limit+1)
+	hosts, err := host.GetHostsByFromIDWithStatus(hgh.key, hgh.status, hgh.user, hgh.limit+1)
 	if err != nil {
 		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
+	}
+	if len(hosts) == 0 {
+		gimlet.NewJSONErrorResponse(errors.Wrap(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "no hosts found",
+		}, "Database error"))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -258,9 +265,18 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	tasks, err := data.FindTasksByIds(taskIds)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+	var tasks []task.Task
+	if len(taskIds) > 0 {
+		tasks, err = task.Find(task.ByIds(taskIds))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+		}
+		if len(tasks) == 0 {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    "no tasks found",
+			}, "Database error"))
+		}
 	}
 
 	tasksById := make(map[string]task.Task, len(tasks))

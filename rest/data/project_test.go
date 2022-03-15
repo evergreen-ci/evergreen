@@ -177,60 +177,60 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
-	projects, err := FindProjects("", 8, 1)
+	projects, err := model.FindProjects("", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
-	projects, err := FindProjects("zzz", 8, -1)
+	projects, err := model.FindProjects("zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
-	projects, err := FindProjects("", 3, 1)
+	projects, err := model.FindProjects("", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
-	projects, err := FindProjects("", 2, 1)
+	projects, err := model.FindProjects("", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
-	projects, err := FindProjects("zzz", 2, -1)
+	projects, err := model.FindProjects("zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindProjects("projectB", 1, 1)
+	projects, err := model.FindProjects("projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindProjects("projectD", 1, -1)
+	projects, err := model.FindProjects("projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindProjects("zzz", 1, 1)
+	projects, err := model.FindProjects("zzz", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindProjects("aaa", 1, -1)
+	projects, err := model.FindProjects("aaa", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
@@ -242,11 +242,11 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
+	projRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
 	s.NoError(err)
 	s.Nil(projRef)
 
-	projRef, err = GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
+	projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotNil(projRef)
 }
@@ -360,7 +360,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-	resp, err := UpdateProjectVarsByValue("1", "11", "user", true)
+	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"a"}, resp[projectId])
@@ -370,7 +370,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Equal(t, "1", res.Vars["a"])
 
-	resp, err = UpdateProjectVarsByValue("1", "11", username, false)
+	resp, err = model.UpdateProjectVarsByValue("1", "11", username, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"a"}, resp[projectId])

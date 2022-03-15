@@ -8,12 +8,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -70,18 +68,6 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	return nil
 }
 
-// UpdateProject updates the given model.ProjectRef.Id.
-func UpdateProject(projectRef *model.ProjectRef) error {
-	err := projectRef.Update()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Id),
-		}
-	}
-	return nil
-}
-
 func VerifyUniqueProject(name string) error {
 	_, err := FindProjectById(name, false, false)
 	if err == nil {
@@ -98,98 +84,6 @@ func VerifyUniqueProject(name string) error {
 		return errors.Wrapf(err, "Database error verifying project '%s' doesn't already exist", name)
 	}
 	return nil
-}
-
-// UpdateRepo updates the given model.RepoRef.Id. We use EnsureCommitQueueExistsForProject to ensure that only values relevant to repos get updated.
-func UpdateRepo(repoRef *model.RepoRef) error {
-	err := repoRef.Upsert()
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("repo with id '%s' was not updated", repoRef.Id),
-		}
-	}
-	return nil
-}
-
-// EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
-func EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
-	hook, err := model.FindGithubHook(projectRef.Owner, projectRef.Repo)
-	if err != nil {
-		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
-	}
-	if hook != nil {
-		projectRef.TracksPushEvents = utility.TruePtr()
-		return true, nil
-	}
-
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return false, errors.Wrap(err, "error finding evergreen settings")
-	}
-
-	hook, err = model.SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
-	if err != nil {
-		// don't return error:
-		// sometimes people change a project to track a personal
-		// branch we don't have access to
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":             "patch project",
-			"message":            "can't setup webhook",
-			"project":            projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"owner":              projectRef.Owner,
-			"repo":               projectRef.Repo,
-		}))
-		projectRef.TracksPushEvents = utility.FalsePtr()
-		return false, nil
-	}
-
-	if err = hook.Insert(); err != nil {
-		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Id)
-	}
-	projectRef.TracksPushEvents = utility.TruePtr()
-	return true, nil
-}
-
-func EnablePRTesting(projectRef *model.ProjectRef) error {
-	conflicts, err := projectRef.GetGithubProjectConflicts()
-	if err != nil {
-		return errors.Wrap(err, "error finding project refs")
-	}
-	if len(conflicts.PRTestingIdentifiers) > 0 {
-		return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
-
-	}
-	return nil
-}
-
-func EnableCommitQueue(projectRef *model.ProjectRef) error {
-	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
-		return errors.Wrap(err, "error enabling commit queue")
-	} else if !ok {
-		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
-	}
-
-	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
-}
-
-func UpdateProjectRevision(projectID, revision string) error {
-	if err := model.UpdateLastRevision(projectID, revision); err != nil {
-		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
-	}
-
-	return nil
-}
-
-// FindProjects queries the backing database for the specified projects
-func FindProjects(key string, limit int, sortDir int) ([]model.ProjectRef, error) {
-	projects, err := model.FindProjectRefs(key, limit, sortDir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
-	}
-
-	return projects, nil
 }
 
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
@@ -236,14 +130,6 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 	return &varsModel, nil
 }
 
-func UpdateAdminRoles(project *model.ProjectRef, toAdd, toDelete []string) error {
-	if project == nil {
-		return errors.New("no project found")
-	}
-	_, err := project.UpdateAdminRoles(toAdd, toDelete)
-	return err
-}
-
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
@@ -276,55 +162,6 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	return nil
 }
 
-func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
-	catcher := grip.NewBasicCatcher()
-	matchingProjects, err := model.GetVarsByValue(toReplace)
-	if err != nil {
-		catcher.Wrap(err, "failed to fetch projects with matching value")
-	}
-	if matchingProjects == nil {
-		catcher.New("no projects with matching value found")
-	}
-	changes := map[string][]string{}
-	for _, project := range matchingProjects {
-		for key, val := range project.Vars {
-			if val == toReplace {
-				if !dryRun {
-					originalVars := make(map[string]string)
-					for k, v := range project.Vars {
-						originalVars[k] = v
-					}
-					before := model.ProjectSettings{
-						Vars: model.ProjectVars{
-							Id:   project.Id,
-							Vars: originalVars,
-						},
-					}
-
-					project.Vars[key] = replacement
-					_, err = project.Upsert()
-					if err != nil {
-						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
-					}
-
-					after := model.ProjectSettings{
-						Vars: model.ProjectVars{
-							Id:   project.Id,
-							Vars: project.Vars,
-						},
-					}
-
-					if err = model.LogProjectModified(project.Id, username, &before, &after); err != nil {
-						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
-					}
-				}
-				changes[project.Id] = append(changes[project.Id], key)
-			}
-		}
-	}
-	return changes, catcher.Resolve()
-}
-
 func CopyProjectVars(oldProjectId, newProjectId string) error {
 	vars, err := model.FindOneProjectVars(oldProjectId)
 	if err != nil {
@@ -345,14 +182,10 @@ func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.AP
 		// don't return an error here to preserve existing behavior
 		return nil, nil
 	}
-	return getEventsById(id, before, n)
+	return GetEventsById(id, before, n)
 }
 
-func GetRepoEventLog(repoId string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
-	return getEventsById(repoId, before, n)
-}
-
-func getEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	if n == 0 {
 		n = EventLogLimit
 	}
@@ -374,15 +207,6 @@ func getEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 		out = append(out, apiEvent)
 	}
 	return out, catcher.Resolve()
-}
-
-func GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
-	proj, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch)
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't query for projectRef %s/%s tracking %s", owner, repo, branch)
-	}
-
-	return proj, nil
 }
 
 func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {

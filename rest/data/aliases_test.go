@@ -102,7 +102,7 @@ func (a *AliasSuite) TestCopyProjectAliases() {
 	a.NoError(err)
 	a.Len(res, 0)
 
-	a.NoError(CopyProjectAliases("project_id", "new_project_id"))
+	a.NoError(model.CopyProjectAliases("project_id", "new_project_id"))
 
 	res, err = FindProjectAliases("project_id", "", nil)
 	a.NoError(err)
@@ -163,19 +163,19 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		RemotePath: "file.yml",
 	}
 	a.NoError(newAlias2.Upsert())
-	hasAliases, path, err := HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	hasAliases, path, err := model.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
 	a.Error(err)
 	a.False(hasAliases)
 	a.Empty(path)
 
 	newAlias2.RemotePath = ""
 	a.NoError(newAlias2.Upsert())
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	hasAliases, path, err = model.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
 	a.NoError(err)
 	a.True(hasAliases)
 	a.Empty(path)
 
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	hasAliases, path, err = model.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
 	a.Error(err)
 	a.False(hasAliases)
 	a.Empty(path)
@@ -187,7 +187,7 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		RemotePath: "file.yml",
 	}
 	a.NoError(newAlias3.Upsert())
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	hasAliases, path, err = model.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
 	a.NoError(err)
 	a.True(hasAliases)
 	a.Equal("file.yml", path)

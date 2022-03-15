@@ -496,7 +496,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		})
 		return nil, nil
 	}
-	hasAliases, remotePath, err := data.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
+	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -582,7 +582,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 
 	cqInfo := restModel.ParseGitHubComment(*event.Comment.Body)
 	baseBranch := *pr.Base.Ref
-	projectRef, err := data.GetProjectWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "can't get project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
@@ -680,7 +680,7 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	if err != nil {
 		return errors.Wrap(err, "GitHub sent an incomplete PR")
 	}
-	projRef, err := data.GetProjectWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+	projRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	if err != nil {
 		return errors.Wrapf(err, "can't find valid project for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	}

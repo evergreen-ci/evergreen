@@ -4,8 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 func makeFetchSpawnHostUsage() gimlet.RouteHandler {
@@ -23,9 +24,9 @@ func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *adminSpawnHostHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := data.AggregateSpawnhostData()
+	res, err := host.AggregateSpawnhostData()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting spawn host data"))
 	}
 	return gimlet.NewJSONResponse(res)
 }

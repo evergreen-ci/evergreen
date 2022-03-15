@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -53,9 +53,18 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, t := range foundBuild.Tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	tasks, err := data.FindTasksByIds(taskIDs)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+	var tasks []task.Task
+	if len(taskIDs) > 0 {
+		tasks, err = task.Find(task.ByIds(taskIDs))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		}
+		if len(tasks) == 0 {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    "no tasks found",
+			}, "Database error"))
+		}
 	}
 
 	buildModel := &model.APIBuild{}

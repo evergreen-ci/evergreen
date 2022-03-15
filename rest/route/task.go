@@ -101,7 +101,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
-		tasks, err = data.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tgh.taskID))
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
@@ -193,7 +193,7 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	tasks, err := data.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
+	tasks, err := dbModel.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -298,7 +298,10 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				})
 			}
 		}
-		if err := data.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
+		if tep.task == nil {
+			return gimlet.MakeJSONErrorResponder(errors.New("task cannot be nil"))
+		}
+		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}

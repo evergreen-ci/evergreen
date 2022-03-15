@@ -130,26 +130,26 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.NoError(a_with__suspected_issue.Upsert())
 	s.NoError(a_with_empty_issues.Upsert())
 
-	opts := TaskFilterOptions{}
-	task, _, err := FindTasksByVersion("version_known", opts)
+	opts := task.GetTasksByVersionOptions{}
+	t, _, err := task.GetTasksByVersion("version_known", opts)
 	s.NoError(err)
 	// ignore annotation for successful task
-	s.Equal(evergreen.TaskSucceeded, task[0].DisplayStatus)
+	s.Equal(evergreen.TaskSucceeded, t[0].DisplayStatus)
 
 	// test with empty issues list
-	task, _, err = FindTasksByVersion("version_not_known", opts)
+	t, _, err = task.GetTasksByVersion("version_not_known", opts)
 	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 
 	// test with no annotation document
-	task, _, err = FindTasksByVersion("version_no_annotation", opts)
+	t, _, err = task.GetTasksByVersion("version_no_annotation", opts)
 	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 
 	// test with empty issues
-	task, _, err = FindTasksByVersion("version_with_empty_issues", opts)
+	t, _, err = task.GetTasksByVersion("version_with_empty_issues", opts)
 	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, task[0].DisplayStatus)
+	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
 
 }
 
@@ -174,14 +174,14 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		s.NoError(testTask2.Archive())
 		testTask2.Execution += 1
 	}
-	tasks, err := FindOldTasksByIDWithDisplayTasks("task_1")
+	tasks, err := task.FindOldWithDisplayTasks(task.ByOldTaskID("task_1"))
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
 		s.Equal(i, tasks[i].Execution)
 	}
 
-	tasks, err = FindOldTasksByIDWithDisplayTasks("task_2")
+	tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID("task_2"))
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {

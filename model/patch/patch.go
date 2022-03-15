@@ -885,6 +885,17 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 	return patchSet, nil
 }
 
+func IsPatchEmpty(id string) (bool, error) {
+	patchDoc, err := FindOne(ByStringId(id).WithFields(PatchesKey))
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	if patchDoc == nil {
+		return false, errors.New("patch is empty")
+	}
+	return len(patchDoc.Patches) == 0, nil
+}
+
 func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
 	if !existingPatch.HasValidGitInfo() {
 		return nil, errors.New("can't make merge patches without GitInfo")

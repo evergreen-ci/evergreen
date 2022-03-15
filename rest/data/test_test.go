@@ -103,51 +103,51 @@ func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
-		count, err := GetTestCountByTaskIdAndFilters(taskId, "", []string{}, 0)
+		count, err := task.GetTestCountByTaskIdAndFilters(taskId, "", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests/2)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "", []string{"fail"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"fail"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests/2)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass", "fail"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass", "fail"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 10)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum1", []string{}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum1", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 1)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum2", []string{}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum2", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 1)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass", "fail"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass", "fail"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests/2)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "", []string{"pa"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pa"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 0)
 
-		count, err = GetTestCountByTaskIdAndFilters(taskId, "", []string{"not_a_real_status"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"not_a_real_status"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 0)
 	}
-	count, err := GetTestCountByTaskIdAndFilters("fake_task", "", []string{}, 0)
+	count, err := task.GetTestCountByTaskIdAndFilters("fake_task", "", []string{}, 0)
 	assert.Error(err)
 	assert.Equal(count, 0)
 }

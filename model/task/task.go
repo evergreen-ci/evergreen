@@ -2600,6 +2600,27 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	return runnableTasks, nil
 }
 
+func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
+	t, err := FindOneIdNewOrOld(taskId)
+	if err != nil {
+		return 0, errors.Wrapf(err, fmt.Sprintf("error finding task %s", taskId))
+	}
+	if t == nil {
+		return 0, errors.New(fmt.Sprintf("task not found %s", taskId))
+	}
+	var taskIds []string
+	if t.DisplayOnly {
+		taskIds = t.ExecutionTasks
+	} else {
+		taskIds = []string{taskId}
+	}
+	count, err := testresult.TestResultCount(taskIds, testName, statuses, execution)
+	if err != nil {
+		return 0, errors.Wrapf(err, fmt.Sprintf("Error counting test results for task %s", taskId))
+	}
+	return count, nil
+}
+
 // FindVariantsWithTask returns a list of build variants between specified commits that contain a specific task name
 func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]string, error) {
 	pipeline := []bson.M{
@@ -3054,7 +3075,7 @@ type GetTasksByVersionOptions struct {
 	Sorts                          []TasksSortOrder
 	IncludeExecutionTasks          bool
 	IncludeBaseTasks               bool
-	IncludeEmptyActivaton          bool
+	IncludeEmptyActivation         bool
 	IncludeBuildVariantDisplayName bool
 }
 
@@ -3345,7 +3366,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
 	// Activated Time is needed to filter out generated tasks that have been generated but not yet activated
-	if !opts.IncludeEmptyActivaton {
+	if !opts.IncludeEmptyActivation {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
 	match[VersionKey] = versionID

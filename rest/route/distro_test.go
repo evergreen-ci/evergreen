@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -184,7 +183,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 	}
 
 	for _, d := range distros {
-		err := data.CreateDistro(d)
+		err := d.Insert()
 		s.NoError(err)
 	}
 }
@@ -447,7 +446,7 @@ func (s *DistroPutSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := data.CreateDistro(d)
+		err := d.Insert()
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
@@ -614,7 +613,7 @@ func (s *DistroDeleteByIDSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := data.CreateDistro(d)
+		err := d.Insert()
 		s.NoError(err)
 	}
 	s.rm = makeDeleteDistroByID()
@@ -740,7 +739,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 		},
 	}
 	for _, d := range distros {
-		err := data.CreateDistro(d)
+		err := d.Insert()
 		s.NoError(err)
 	}
 	s.NoError(evergreen.UpdateConfig(settings))
@@ -795,7 +794,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	allDistros, err := data.FindAllDistros()
+	allDistros, err := distro.Find(distro.All)
 	s.NoError(err)
 	distro1 := allDistros[0]
 	s.Len(distro1.ProviderSettingsList, 1)
@@ -1513,7 +1512,7 @@ func getMockDistrosdata() error {
 		},
 	}
 	for _, d := range distros {
-		err := data.CreateDistro(d)
+		err := d.Insert()
 		if err != nil {
 			return nil
 		}
@@ -1646,7 +1645,7 @@ func TestDistroClientURLsGetSuite(t *testing.T) {
 func (s *distroClientURLsGetSuite) SetupTest() {
 	d := distro.Distro{Id: "distroID"}
 	s.NoError(db.ClearCollections(distro.Collection))
-	err := data.CreateDistro(&d)
+	err := d.Insert()
 	s.NoError(err)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel

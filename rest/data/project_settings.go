@@ -64,14 +64,14 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	if err := CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying project vars from project '%s'", oldIdentifier)
 	}
-	if err := CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying aliases from project '%s'", oldIdentifier)
 	}
 	if err := CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// set the same admin roles from the old project on the newly copied project.
-	if err := UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
+	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
 		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 	return apiProjectRef, nil
@@ -112,7 +112,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, err
 			}
 			// check if webhook is enabled if the owner/repo has changed
-			_, err = EnableWebhooks(ctx, mergedProjectRef)
+			_, err = model.EnableWebhooks(ctx, mergedProjectRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
 			}

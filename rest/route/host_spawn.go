@@ -1084,7 +1084,7 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	} else {
-		if err := data.TerminateHost(ctx, host, u.Id); err != nil {
+		if err := errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, u.Id, "terminated via REST API")); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
@@ -1238,10 +1238,10 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
-	if err := data.SetHostExpirationTime(host, newExp); err != nil {
+	if err := host.SetExpirationTime(newExp); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
+			Message:    errors.Wrap(err, "Error extending host expiration time").Error(),
 		})
 	}
 

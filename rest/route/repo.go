@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -201,8 +202,11 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = data.UpdateRepo(h.newRepoRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() for '%s'", h.repoName))
+	if err = h.newRepoRef.Upsert(); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("repo with id '%s' was not updated", h.newRepoRef.Id),
+		}, "Database error for update() for '%s'", h.repoName))
 	}
 	if err = data.UpdateProjectVars(h.newRepoRef.Id, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.repoName))
@@ -249,7 +253,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepoRef *dbModel.RepoRef, mergedRepos []dbModel.ProjectRef, aliases []model.APIProjectAlias) error {
-	hasHook, err := data.EnableWebhooks(ctx, &newRepoRef.ProjectRef)
+	hasHook, err := dbModel.EnableWebhooks(ctx, &newRepoRef.ProjectRef)
 	if err != nil {
 		return errors.Wrapf(err, "error enabling webhooks for repo '%s'", h.repoName)
 	}

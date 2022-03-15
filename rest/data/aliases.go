@@ -54,20 +54,6 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 	return aliasModels, nil
 }
 
-// CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
-func CopyProjectAliases(oldProjectId, newProjectId string) error {
-	aliases, err := model.FindAliasesForProjectFromDb(oldProjectId)
-	if err != nil {
-		return errors.Wrapf(err, "error finding aliases for project '%s'", oldProjectId)
-	}
-	if aliases != nil {
-		if err = model.UpsertAliasesForProject(aliases, newProjectId); err != nil {
-			return errors.Wrapf(err, "error inserting aliases for project '%s'", newProjectId)
-		}
-	}
-	return nil
-}
-
 func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
 	aliasesToUpsert := []model.ProjectAlias{}
 	aliasesToDelete := []string{}
@@ -145,17 +131,4 @@ func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) b
 		return true
 	}
 	return false
-}
-
-//  GetMatchingGitTagAliasesForProject returns matching git tag aliases that match the given git tag
-func HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
-	aliases, err := model.FindMatchingGitTagAliasesInProject(projectId, tag)
-	if err != nil {
-		return false, "", err
-	}
-
-	if len(aliases) == 1 && aliases[0].RemotePath != "" {
-		return true, aliases[0].RemotePath, nil
-	}
-	return len(aliases) > 0, "", nil
 }

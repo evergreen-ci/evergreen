@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -247,7 +246,7 @@ func generateBuildVariants(versionId string, searchVariants []string, searchTask
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(statuses),
 		Variants:                       searchVariants,
 		TaskNames:                      searchTasks,
@@ -256,7 +255,7 @@ func generateBuildVariants(versionId string, searchVariants []string, searchTask
 		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()
-	tasks, _, err := data.FindTasksByVersion(versionId, opts)
+	tasks, _, err := task.GetTasksByVersion(versionId, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
 	}
@@ -644,12 +643,12 @@ func setVersionActivationStatus(version *model.Version) error {
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := data.FindTasksByVersion(version.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(version.Id, opts)
 	if err != nil {
 		return errors.Wrapf(err, "error getting tasks for version %s", version.Id)
 	}

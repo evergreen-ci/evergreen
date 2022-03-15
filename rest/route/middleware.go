@@ -266,7 +266,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			Message:    fmt.Sprintf("task with id %s not found", h.StartedBy),
 		}))
 	}
-	if code, err := data.CheckHostSecret(t.HostId, r); err != nil {
+	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
@@ -297,7 +297,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	if statusCode, err := data.CheckHostSecret(hostID, r); err != nil {
+	if _, statusCode, err := model.ValidateHost(hostID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
 			Message:    err.Error(),
@@ -363,7 +363,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	if code, err := data.CheckHostSecret("", r); err != nil {
+	if _, code, err := model.ValidateHost("", r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),

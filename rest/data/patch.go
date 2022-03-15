@@ -201,17 +201,6 @@ func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	return nil
 }
 
-func IsPatchEmpty(id string) (bool, error) {
-	patchDoc, err := patch.FindOne(patch.ByStringId(id).WithFields(patch.PatchesKey))
-	if err != nil {
-		return false, errors.WithStack(err)
-	}
-	if patchDoc == nil {
-		return false, errors.New("patch is empty")
-	}
-	return len(patchDoc.Patches) == 0, nil
-}
-
 func GetPatchRawPatches(patchID string) (map[string]string, error) {
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {

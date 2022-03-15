@@ -3,7 +3,6 @@ package data
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -11,32 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
-
-func FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
-	project string, statuses []string) ([]task.Task, error) {
-	id, err := model.GetIdForProject(project)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"func":    "FindTaskWithinTimePeriod",
-			"message": "error getting id for project",
-			"project": project,
-		}))
-		// don't return an error here to preserve existing behavior
-		return nil, nil
-	}
-
-	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tasks, nil
-}
 
 // FindTasksByBuildId uses the service layer's task type to query the backing database for a
 // list of task that matches buildId. It accepts the startTaskId and a limit
@@ -66,32 +41,6 @@ func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) 
 		}
 	}
 	return res, nil
-}
-
-func FindTasksByIds(ids []string) ([]task.Task, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	ts, err := task.Find(task.ByIds(ids))
-	if err != nil {
-		return nil, err
-	}
-	if len(ts) == 0 {
-		return []task.Task{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "no tasks found",
-		}
-	}
-	return ts, nil
-}
-
-func FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
-	ts, err := task.FindOldWithDisplayTasks(task.ByOldTaskID(id))
-	if err != nil {
-		return nil, err
-	}
-
-	return ts, nil
 }
 
 func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
@@ -143,16 +92,7 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, lim
 	return res, nil
 }
 
-// SetTaskPriority changes the priority value of a task using a call to the
-// service layer function.
-func SetTaskPriority(t *task.Task, user string, priority int64) error {
-	if t == nil {
-		return errors.New("task cannot be nil")
-	}
-	return model.SetTaskPriority(*t, priority, user)
-}
-
-// SetTaskPriority changes the priority value of a task using a call to the
+// SetTaskActivated changes the priority value of a task using a call to the
 // service layer function.
 func SetTaskActivated(taskId, user string, activated bool) error {
 	t, err := task.FindOneId(taskId)
@@ -237,7 +177,7 @@ func FindTasksByVersion(versionID string, opts TaskFilterOptions) ([]task.Task, 
 		Sorts:                          opts.Sorts,
 		IncludeExecutionTasks:          opts.IncludeExecutionTasks,
 		IncludeBaseTasks:               opts.IncludeBaseTasks,
-		IncludeEmptyActivaton:          opts.IncludeEmptyActivation,
+		IncludeEmptyActivation:         opts.IncludeEmptyActivation,
 		IncludeBuildVariantDisplayName: opts.IncludeBuildVariantDisplayName,
 	}
 	tasks, total, err := task.GetTasksByVersion(versionID, getTaskByVersionOpts)

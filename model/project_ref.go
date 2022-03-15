@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -1030,6 +1031,28 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	}, nil
 }
 
+func FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
+	project string, statuses []string) ([]task.Task, error) {
+	id, err := GetIdForProject(project)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"func":    "FindTaskWithinTimePeriod",
+			"message": "error getting id for project",
+			"project": project,
+		}))
+		// don't return an error here to preserve existing behavior
+		return nil, nil
+	}
+
+	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
 func GetIdForProject(identifier string) (string, error) {
 	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
@@ -1378,6 +1401,143 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		"branch":  branch,
 	})
 	return nil, nil
+}
+
+// EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
+func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
+	hook, err := FindGithubHook(projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
+	}
+	if hook != nil {
+		projectRef.TracksPushEvents = utility.TruePtr()
+		return true, nil
+	}
+
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return false, errors.Wrap(err, "error finding evergreen settings")
+	}
+
+	hook, err = SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		// don't return error:
+		// sometimes people change a project to track a personal
+		// branch we don't have access to
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":             "patch project",
+			"message":            "can't setup webhook",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		}))
+		projectRef.TracksPushEvents = utility.FalsePtr()
+		return false, nil
+	}
+
+	if err = hook.Insert(); err != nil {
+		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Id)
+	}
+	projectRef.TracksPushEvents = utility.TruePtr()
+	return true, nil
+}
+
+func EnablePRTesting(projectRef *ProjectRef) error {
+	conflicts, err := projectRef.GetGithubProjectConflicts()
+	if err != nil {
+		return errors.Wrap(err, "error finding project refs")
+	}
+	if len(conflicts.PRTestingIdentifiers) > 0 {
+		return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
+
+	}
+	return nil
+}
+
+func EnableCommitQueue(projectRef *ProjectRef) error {
+	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
+		return errors.Wrap(err, "error enabling commit queue")
+	} else if !ok {
+		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
+	}
+
+	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
+}
+
+func UpdateAdminRoles(project *ProjectRef, toAdd, toDelete []string) error {
+	if project == nil {
+		return errors.New("no project found")
+	}
+	_, err := project.UpdateAdminRoles(toAdd, toDelete)
+	return err
+}
+
+// FindProjects queries the backing database for the specified projects
+func FindProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
+	projects, err := FindProjectRefs(key, limit, sortDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
+	}
+
+	return projects, nil
+}
+
+func UpdateProjectRevision(projectID, revision string) error {
+	if err := UpdateLastRevision(projectID, revision); err != nil {
+		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
+	}
+
+	return nil
+}
+
+func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+	catcher := grip.NewBasicCatcher()
+	matchingProjects, err := GetVarsByValue(toReplace)
+	if err != nil {
+		catcher.Wrap(err, "failed to fetch projects with matching value")
+	}
+	if matchingProjects == nil {
+		catcher.New("no projects with matching value found")
+	}
+	changes := map[string][]string{}
+	for _, project := range matchingProjects {
+		for key, val := range project.Vars {
+			if val == toReplace {
+				if !dryRun {
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
+					}
+					before := ProjectSettings{
+						Vars: ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
+					}
+
+					project.Vars[key] = replacement
+					_, err = project.Upsert()
+					if err != nil {
+						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					after := ProjectSettings{
+						Vars: ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
+					}
+
+					if err = LogProjectModified(project.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
+					}
+				}
+				changes[project.Id] = append(changes[project.Id], key)
+			}
+		}
+	}
+	return changes, catcher.Resolve()
 }
 
 func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {

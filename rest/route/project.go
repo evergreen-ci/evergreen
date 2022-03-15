@@ -54,7 +54,7 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projects, err := data.FindProjects(p.key, p.limit+1, 1)
+	projects, err := dbModel.FindProjects(p.key, p.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -393,7 +393,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.newProjectRef.IsEnabled() {
 		var hasHook bool
-		hasHook, err = data.EnableWebhooks(ctx, h.newProjectRef)
+		hasHook, err = dbModel.EnableWebhooks(ctx, h.newProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.project))
 		}
@@ -422,7 +422,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			if err = data.EnablePRTesting(h.newProjectRef); err != nil {
+			if err = dbModel.EnablePRTesting(h.newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.project))
 			}
 		}
@@ -462,7 +462,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "cannot enable commit queue without a commit queue patch definition",
 				})
 			}
-			if err = data.EnableCommitQueue(h.newProjectRef); err != nil {
+			if err = dbModel.EnableCommitQueue(h.newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.project))
 			}
 		}
@@ -491,7 +491,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
-		if err = data.UpdateProjectRevision(h.project, newRevision); err != nil {
+		if err = dbModel.UpdateProjectRevision(h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		h.newProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
@@ -523,8 +523,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = data.UpdateProject(h.newProjectRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.project))
+	if err = h.newProjectRef.Update(); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("project with id '%s' was not updated", h.newProjectRef.Id),
+		}, "Database error for update() by project id '%s'", h.project))
 	}
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.project))
@@ -533,7 +536,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.project))
 	}
 
-	if err = data.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
+	if err = dbModel.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.project))
 	}
 
@@ -754,7 +757,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
 	}
-	if err = data.UpdateAdminRoles(project, nil, project.Admins); err != nil {
+	if err = dbModel.UpdateAdminRoles(project, nil, project.Admins); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
 	}
 
@@ -1136,7 +1139,7 @@ func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := data.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
+	res, err := dbModel.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error updating projects with matching keys"))

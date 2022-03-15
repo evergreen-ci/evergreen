@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -265,7 +266,7 @@ func (s *HostConnectorSuite) TestFindHostsByDistro() {
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
-	hosts, err := FindHostsById("", "", testUser, 100)
+	hosts, err := host.GetHostsByFromIDWithStatus("", "", testUser, 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -274,7 +275,7 @@ func (s *HostConnectorSuite) TestFindByUser() {
 }
 
 func (s *HostConnectorSuite) TestStatusFiltering() {
-	hosts, err := FindHostsById("", "", "", 100)
+	hosts, err := host.GetHostsByFromIDWithStatus("", "", "", 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -289,14 +290,14 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 }
 
 func (s *HostConnectorSuite) TestLimit() {
-	hosts, err := FindHostsById("", evergreen.HostTerminated, "", 2)
+	hosts, err := host.GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(2, len(hosts))
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
-	hosts, err = FindHostsById("", evergreen.HostTerminated, "", 3)
+	hosts, err = host.GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(3, len(hosts))
@@ -380,7 +381,7 @@ func (s *HostConnectorSuite) TestExtendHostExpiration() {
 	h, err := host.FindOneId("host1")
 	s.NoError(err)
 	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
-	s.NoError(SetHostExpirationTime(h, expectedTime))
+	s.NoError(h.SetExpirationTime(expectedTime))
 
 	hCheck, err := host.FindOneId("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
@@ -421,16 +422,16 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 			evergreen.HostHeader: []string{"host1"},
 		},
 	}
-	code, err := CheckHostSecret("", r)
+	_, code, err := model.ValidateHost("", r)
 	s.Error(err)
 	s.Equal(http.StatusBadRequest, code)
 
 	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
-	code, err = CheckHostSecret("host1", r)
+	_, code, err = model.ValidateHost("host1", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 
-	code, err = CheckHostSecret("", r)
+	_, code, err = model.ValidateHost("", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 }

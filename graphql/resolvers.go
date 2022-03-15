@@ -45,7 +45,7 @@ import (
 )
 
 type Resolver struct {
-	url string
+	sc data.Connector
 }
 
 func (r *Resolver) Mutation() MutationResolver {
@@ -1143,7 +1143,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, identifier string, limit
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetRepoEventLog(identifier, timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetEventsById(identifier, timestamp, utility.FromIntPtr(limit))
 	res := &RepoEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -1300,12 +1300,12 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := data.FindTasksByVersion(*obj.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -1478,13 +1478,13 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 
 	if evergreen.IsFinishedPatchStatus(*patch.Status) {
 		failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-		opts := data.TaskFilterOptions{
+		opts := task.GetTasksByVersionOptions{
 			Statuses:                       failedAndAbortedStatuses,
 			FieldsToProject:                []string{task.DisplayStatusKey},
 			IncludeBaseTasks:               false,
 			IncludeBuildVariantDisplayName: false,
 		}
-		tasks, _, err := data.FindTasksByVersion(id, opts)
+		tasks, _, err := task.GetTasksByVersion(id, opts)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 		}
@@ -1492,7 +1492,7 @@ func (r *queryResolver) Patch(ctx context.Context, id string) (*restModel.APIPat
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
 				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := data.FindTasksByVersion(*cp.Id, opts)
+				childPatchTasks, _, err := task.GetTasksByVersion(*cp.Id, opts)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for child patch: %s ", err.Error()))
 				}
@@ -1584,7 +1584,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 	if dbTask == nil {
 		return nil, errors.Errorf("unable to find task %s", taskID)
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.url, *dbTask)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
@@ -1611,13 +1611,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 			return nil, errors.Errorf("unable to find task %s", taskID)
 		}
 		var apiTask *restModel.APITask
-		apiTask, err = getAPITaskFromTask(ctx, r.url, *dbTask)
+		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, "error converting task")
 		}
 		allTasks = append(allTasks, apiTask)
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.url, *latestTask)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *latestTask)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, "error converting task")
 	}
@@ -1722,7 +1722,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		}
 	}
 
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(statuses),
 		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
 		Variants:                       []string{variantParam},
@@ -1734,7 +1734,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
 		IncludeBuildVariantDisplayName: true,
 	}
-	tasks, count, err := data.FindTasksByVersion(patchID, opts)
+	tasks, count, err := task.GetTasksByVersion(patchID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting patch tasks for %s: %s", patchID, err.Error()))
 	}
@@ -1833,9 +1833,8 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	}
 
 	baseTestStatusMap := map[string]string{}
-	dc := data.DBTestConnector{}
 	if baseTask != nil {
-		baseTestResults, _ := dc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
+		baseTestResults, _ := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{TaskID: baseTask.Id, Execution: baseTask.Execution})
 		for _, t := range baseTestResults {
 			baseTestStatusMap[t.TestFile] = t.Status
 		}
@@ -1844,7 +1843,7 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 	if sortDirection != nil && *sortDirection == SortDirectionDesc {
 		sortDir = -1
 	}
-	filteredTestResults, err := dc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+	filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 		TaskID:    taskID,
 		Execution: dbTask.Execution,
 		TestName:  utility.FromStringPtr(testName),
@@ -1872,11 +1871,11 @@ func (r *queryResolver) TaskTests(ctx context.Context, taskID string, execution 
 
 		apiTestResults[i] = apiTest
 	}
-	totalTestCount, err := data.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
+	totalTestCount, err := task.GetTestCountByTaskIdAndFilters(taskID, "", []string{}, dbTask.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting total test count: %s", err))
 	}
-	filteredTestCount, err := data.GetTestCountByTaskIdAndFilters(taskID, utility.FromStringPtr(testName), statuses, dbTask.Execution)
+	filteredTestCount, err := task.GetTestCountByTaskIdAndFilters(taskID, utility.FromStringPtr(testName), statuses, dbTask.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting filtered test count: %s", err))
 	}
@@ -1929,8 +1928,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 		}
 		regexFilter := strings.Join(filters, "|")
 		for _, t := range dbTasks {
-			dc := data.DBTestConnector{}
-			filteredTestResults, err := dc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
+			filteredTestResults, err := r.sc.FindTestsByTaskId(data.FindTestsByTaskIdOpts{
 				TaskID:    t.Id,
 				Execution: t.Execution,
 				TestName:  regexFilter,
@@ -1943,7 +1941,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, tasks []string, test
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
 			}
-			failedTestCount, err := data.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
+			failedTestCount, err := task.GetTestCountByTaskIdAndFilters(t.Id, "", []string{evergreen.TestFailedStatus}, t.Execution)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 			}
@@ -2558,7 +2556,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.url, *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
 }
 
@@ -2575,7 +2573,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
 	t.DisplayStatus = t.GetDisplayStatus()
-	return getAPITaskFromTask(ctx, r.url, *t)
+	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 }
 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
@@ -2626,13 +2624,13 @@ func (r *mutationResolver) UnschedulePatchTasks(ctx context.Context, patchID str
 
 // ScheduleUndispatchedBaseTasks only allows scheduling undispatched base tasks for tasks that are failing on the current patch
 func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, patchID string) ([]*restModel.APITask, error) {
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Statuses:                       evergreen.TaskFailureStatuses,
 		IncludeExecutionTasks:          true,
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := data.FindTasksByVersion(patchID, opts)
+	tasks, _, err := task.GetTasksByVersion(patchID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 	}
@@ -2677,7 +2675,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	}
 
 	for taskId := range tasksToSchedule {
-		task, err := setScheduled(ctx, r.url, taskId, true)
+		task, err := setScheduled(ctx, r.sc.GetURL(), taskId, true)
 		if err != nil {
 			return nil, err
 		}
@@ -2792,7 +2790,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	scheduledTasks := []*restModel.APITask{}
 	count := 0
 	for _, taskId := range taskIds {
-		task, err := setScheduled(ctx, r.url, taskId, true)
+		task, err := setScheduled(ctx, r.sc.GetURL(), taskId, true)
 		if err != nil {
 			return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule %d task : %s", len(taskIds)-count, err.Error()))
 		}
@@ -2802,7 +2800,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	return scheduledTasks, nil
 }
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := setScheduled(ctx, r.url, taskID, true)
+	task, err := setScheduled(ctx, r.sc.GetURL(), taskID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2810,7 +2808,7 @@ func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*re
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := setScheduled(ctx, r.url, taskID, false)
+	task, err := setScheduled(ctx, r.sc.GetURL(), taskID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2837,7 +2835,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.url, *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
 }
 
@@ -2854,7 +2852,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string) (*res
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	apiTask, err := getAPITaskFromTask(ctx, r.url, *t)
+	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 	return apiTask, err
 }
 
@@ -3232,7 +3230,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 
 		return stats.TotalCount, nil
 	}
-	testCount, err := data.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
+	testCount, err := task.GetTestCountByTaskIdAndFilters(*obj.Id, "", nil, obj.Execution)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 	}
@@ -3256,7 +3254,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 		return stats.FailedCount, nil
 	}
 
-	failedTestCount, err := data.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
+	failedTestCount, err := task.GetTestCountByTaskIdAndFilters(*obj.Id, "", []string{evergreen.TestFailedStatus}, obj.Execution)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
 	}
@@ -3457,7 +3455,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		if baseTask == nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task with id %s not found", t.BaseTask.Id),
+				Message:    fmt.Sprintf("task with id '%s' not found", t.BaseTask.Id),
 			}
 		}
 	} else {
@@ -3796,13 +3794,13 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               false,
 		FieldsToProject:                []string{task.DisplayStatusKey},
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := data.FindTasksByVersion(*v.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(*v.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -3817,13 +3815,13 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Sorts:                          defaultSort,
 		IncludeBaseTasks:               false,
 		FieldsToProject:                []string{task.DisplayStatusKey},
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := data.FindTasksByVersion(baseVersion.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(baseVersion.Id, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
 	}
@@ -3857,12 +3855,12 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		defaultSort := []task.TasksSortOrder{
 			{Key: task.DisplayNameKey, Order: 1},
 		}
-		opts := data.TaskFilterOptions{
+		opts := task.GetTasksByVersionOptions{
 			Sorts:                          defaultSort,
 			IncludeBaseTasks:               true,
 			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
-		tasks, _, err := data.FindTasksByVersion(*v.Id, opts)
+		tasks, _, err := task.GetTasksByVersion(*v.Id, opts)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
 		}
@@ -4022,13 +4020,13 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-	opts := data.TaskFilterOptions{
+	opts := task.GetTasksByVersionOptions{
 		Statuses:                       failedAndAbortedStatuses,
 		FieldsToProject:                []string{task.DisplayStatusKey},
 		IncludeBaseTasks:               false,
 		IncludeBuildVariantDisplayName: false,
 	}
-	tasks, _, err := data.FindTasksByVersion(*obj.Id, opts)
+	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s", err.Error()))
 	}
@@ -4046,7 +4044,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 			for _, cp := range p.ChildPatches {
 				patchStatuses = append(patchStatuses, *cp.Status)
 				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := data.FindTasksByVersion(*cp.Id, opts)
+				childPatchTasks, _, err := task.GetTasksByVersion(*cp.Id, opts)
 				if err != nil {
 					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
 				}
@@ -4163,7 +4161,7 @@ func (r *issueLinkResolver) JiraTicket(ctx context.Context, obj *restModel.APIIs
 func New(apiURL string) Config {
 	c := Config{
 		Resolvers: &Resolver{
-			url: apiURL,
+			sc: &data.DBConnector{URL: apiURL},
 		},
 	}
 	c.Directives.RequireSuperUser = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {

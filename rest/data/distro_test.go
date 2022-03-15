@@ -33,7 +33,7 @@ func TestFindDistroById(t *testing.T) {
 		Id: id,
 	}
 	assert.Nil(d.Insert())
-	found, err := FindDistroById(id)
+	found, err := distro.FindOne(distro.ById(id))
 	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
@@ -59,7 +59,7 @@ func TestFindAllDistros(t *testing.T) {
 		assert.Nil(d.Insert())
 	}
 
-	found, err := FindAllDistros()
+	found, err := distro.Find(distro.All)
 	assert.NoError(err)
 	assert.Len(found, numDistros)
 }
@@ -90,7 +90,7 @@ func TestDeleteDistroById(t *testing.T) {
 
 	require.NoError(t, DeleteDistroById(d.Id))
 
-	dbDistro, err := FindDistroById(d.Id)
+	dbDistro, err := distro.FindOne(distro.ById(d.Id))
 	assert.Error(t, err)
 	assert.Zero(t, dbDistro)
 
