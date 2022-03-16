@@ -1121,15 +1121,19 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 }
 
 type APILogBuffering struct {
-	DurationSeconds int `json:"duration_seconds"`
-	Count           int `json:"count"`
+	UseAsync             bool `json:"use_async"`
+	DurationSeconds      int  `json:"duration_seconds"`
+	Count                int  `json:"count"`
+	IncomingBufferFactor int  `json:"incoming_buffer_factor"`
 }
 
 func (a *APILogBuffering) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.LogBuffering:
+		a.UseAsync = v.UseAsync
 		a.DurationSeconds = v.DurationSeconds
 		a.Count = v.Count
+		a.IncomingBufferFactor = v.IncomingBufferFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1138,8 +1142,10 @@ func (a *APILogBuffering) BuildFromService(h interface{}) error {
 
 func (a *APILogBuffering) ToService() (interface{}, error) {
 	return evergreen.LogBuffering{
-		DurationSeconds: a.DurationSeconds,
-		Count:           a.Count,
+		UseAsync:             a.UseAsync,
+		DurationSeconds:      a.DurationSeconds,
+		Count:                a.Count,
+		IncomingBufferFactor: a.IncomingBufferFactor,
 	}, nil
 }
 

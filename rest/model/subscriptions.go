@@ -111,6 +111,10 @@ func (s *APISubscription) ToService() (interface{}, error) {
 		}
 		out.Selectors = append(out.Selectors, newSelector)
 	}
+	if err = out.Filter.FromSelectors(out.Selectors); err != nil {
+		return nil, errors.Wrap(err, "setting filter from selectors")
+	}
+
 	for _, selector := range s.RegexSelectors {
 		selectorInterface, err := selector.ToService()
 		if err != nil {
@@ -121,10 +125,6 @@ func (s *APISubscription) ToService() (interface{}, error) {
 			return nil, errors.New("unable to convert selector")
 		}
 		out.RegexSelectors = append(out.RegexSelectors, newSelector)
-	}
-
-	if err = out.Filter.FromSelectors(append(out.Selectors, out.RegexSelectors...)); err != nil {
-		return nil, errors.Wrap(err, "setting filter from selectors")
 	}
 
 	return out, nil

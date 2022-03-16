@@ -156,7 +156,6 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	vars = vars.RedactPrivateVars()
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
-	varsModel.RestrictedVars = vars.RestrictedVars
 	varsModel.AdminOnlyVars = vars.AdminOnlyVars
 	varsModel.VarsToDelete = []string{}
 	return nil

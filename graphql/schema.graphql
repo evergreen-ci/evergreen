@@ -829,10 +829,10 @@ type PatchTriggerAlias {
   alias: String!
   childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifier]
+  taskSpecifiers: [TaskSpecifier!]
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTask]!
+  variantsTasks: [VariantTask!]!
 }
 
 type UserPatches {

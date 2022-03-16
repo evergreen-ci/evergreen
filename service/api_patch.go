@@ -58,7 +58,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Finalize          bool               `json:"finalize"`
 		TriggerAliases    []string           `json:"trigger_aliases"`
 		Alias             string             `json:"alias"`
-		ReuseDefinition   bool               `json:"reuse_definition"`
+		RepeatFailed      bool               `json:"repeat_failed"`
+		RepeatDefinition  bool               `json:"reuse_definition"`
 		GithubAuthor      string             `json:"github_author"`
 	}{}
 	if err := utility.ReadJSON(utility.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
@@ -147,22 +148,23 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:            author,
-		Project:         pref.Id,
-		Path:            data.Path,
-		BaseGitHash:     data.Githash,
-		Module:          r.FormValue("module"),
-		PatchContent:    patchString,
-		Description:     data.Description,
-		Finalize:        data.Finalize,
-		Parameters:      data.Parameters,
-		Variants:        data.Variants,
-		Tasks:           data.Tasks,
-		Alias:           data.Alias,
-		TriggerAliases:  data.TriggerAliases,
-		BackportOf:      data.BackportInfo,
-		GitInfo:         data.GitMetadata,
-		ReuseDefinition: data.ReuseDefinition,
+		User:             author,
+		Project:          pref.Id,
+		Path:             data.Path,
+		BaseGitHash:      data.Githash,
+		Module:           r.FormValue("module"),
+		PatchContent:     patchString,
+		Description:      data.Description,
+		Finalize:         data.Finalize,
+		Parameters:       data.Parameters,
+		Variants:         data.Variants,
+		Tasks:            data.Tasks,
+		Alias:            data.Alias,
+		TriggerAliases:   data.TriggerAliases,
+		BackportOf:       data.BackportInfo,
+		GitInfo:          data.GitMetadata,
+		RepeatDefinition: data.RepeatDefinition,
+		RepeatFailed:     data.RepeatFailed,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,

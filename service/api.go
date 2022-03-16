@@ -313,7 +313,7 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 }
 
 // FetchExpansionsForTask is an API hook for returning the
-// unrestricted project variables and parameters associated with a task.
+// project variables and parameters associated with a task.
 func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	projectVars, err := model.FindMergedProjectVars(t.Project)
@@ -322,16 +322,14 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	res := apimodels.ExpansionVars{
-		Vars:           map[string]string{},
-		RestrictedVars: map[string]string{},
-		PrivateVars:    map[string]bool{},
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
 	}
 	if projectVars == nil {
 		gimlet.WriteJSON(w, res)
 		return
 	}
-	res.Vars = projectVars.GetUnrestrictedVars()
-	res.RestrictedVars = projectVars.GetRestrictedVars()
+	res.Vars = projectVars.GetVars(t)
 	if projectVars.PrivateVars != nil {
 		res.PrivateVars = projectVars.PrivateVars
 	}
@@ -343,9 +341,6 @@ func (as *APIServer) FetchExpansionsForTask(w http.ResponseWriter, r *http.Reque
 	if v == nil {
 		as.LoggedError(w, r, http.StatusNotFound, errors.New("version not found"))
 		return
-	}
-	for key, val := range projectVars.GetAdminOnlyVars(t) {
-		res.Vars[key] = val
 	}
 	projParams, err := model.FindParametersForVersion(v)
 	if err != nil {

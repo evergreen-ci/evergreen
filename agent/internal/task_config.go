@@ -17,20 +17,19 @@ import (
 )
 
 type TaskConfig struct {
-	Distro               *apimodels.DistroView
-	ProjectRef           *model.ProjectRef
-	Project              *model.Project
-	Task                 *task.Task
-	BuildVariant         *model.BuildVariant
-	Expansions           *util.Expansions
-	RestrictedExpansions *util.Expansions
-	Redacted             map[string]bool
-	WorkDir              string
-	GithubPatchData      thirdparty.GithubPatch
-	Timeout              *Timeout
-	TaskSync             evergreen.S3Credentials
-	ModulePaths          map[string]string
-	CedarTestResultsID   string
+	Distro             *apimodels.DistroView
+	ProjectRef         *model.ProjectRef
+	Project            *model.Project
+	Task               *task.Task
+	BuildVariant       *model.BuildVariant
+	Expansions         *util.Expansions
+	Redacted           map[string]bool
+	WorkDir            string
+	GithubPatchData    thirdparty.GithubPatch
+	Timeout            *Timeout
+	TaskSync           evergreen.S3Credentials
+	ModulePaths        map[string]string
+	CedarTestResultsID string
 
 	mu sync.RWMutex
 }
@@ -116,16 +115,6 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	}
 
 	return dir, nil
-}
-
-// GetExpansionsWithRestricted should ONLY be used for operations that won't leak restricted expansions.
-// Otherwise, use taskConfig.Expansions directly.
-func (c *TaskConfig) GetExpansionsWithRestricted() *util.Expansions {
-	allExpansions := *c.Expansions
-	if c.RestrictedExpansions != nil {
-		allExpansions.Update(c.RestrictedExpansions.Map())
-	}
-	return &allExpansions
 }
 
 func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {

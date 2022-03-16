@@ -127,6 +127,8 @@ const (
 	DefaultAmboyQueueName = "evg.service"
 
 	defaultLogBufferingDuration                  = 20
+	defaultLogBufferingCount                     = 100
+	defaultLogBufferingIncomingFactor            = 10
 	defaultAmboyPoolSize                         = 2
 	defaultAmboyLocalStorageSize                 = 1024
 	defaultSingleAmboyQueueName                  = "evg.single"

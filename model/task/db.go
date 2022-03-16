@@ -319,12 +319,6 @@ func ByOldTaskID(id string) bson.M {
 	}
 }
 
-func ByOldTaskIDs(ids []string) bson.M {
-	return bson.M{
-		OldTaskIdKey: bson.M{"$in": ids},
-	}
-}
-
 // ByIds creates a query that finds all tasks with the given ids.
 func ByIds(ids []string) bson.M {
 	return bson.M{
@@ -360,7 +354,7 @@ func ByAborted(aborted bool) bson.M {
 	}
 }
 
-// ByAborted creates a query to return tasks with an aborted state
+// ByActivation creates a query to return tasks with an activated state
 func ByActivation(active bool) bson.M {
 	return bson.M{
 		ActivatedKey: active,
@@ -379,7 +373,10 @@ func DisplayTasksByVersion(version string) bson.M {
 	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
 	return bson.M{
 		"$and": []bson.M{
-			{VersionKey: version},
+			{
+				VersionKey:       version,
+				ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
+			},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
 				{DisplayOnlyKey: true},                       // ...
@@ -396,6 +393,14 @@ func FailedTasksByVersion(version string) bson.M {
 	return bson.M{
 		VersionKey: version,
 		StatusKey:  bson.M{"$in": evergreen.TaskFailureStatuses},
+	}
+}
+
+func FailedTasksByVersionAndBV(version string, variant string) bson.M {
+	return bson.M{
+		VersionKey:      version,
+		BuildVariantKey: variant,
+		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
 	}
 }
 
@@ -508,18 +513,6 @@ func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, req
 		},
 		ProjectKey: project,
 	}, []string{"-" + RevisionOrderNumberKey}
-}
-
-// ByBuildIdAfterTaskId provides a way to get an ordered list of tasks from a
-// build. Providing a taskId allows indexing into the list of tasks that
-// naturally exists when tasks are sorted by taskId.
-func ByBuildIdAfterTaskId(buildId, taskId string) (bson.M, []string) {
-	return bson.M{
-		BuildIdKey: buildId,
-		IdKey: bson.M{
-			"$gte": taskId,
-		},
-	}, []string{"+" + IdKey}
 }
 
 func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) (bson.M, []string) {
@@ -1674,4 +1667,17 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
 		}})
 	return errors.Wrapf(err, "error adding details of host creation failure to task")
+}
+
+func FindActivatedStepbackTasks(projectId string) ([]Task, error) {
+	tasks, err := Find(bson.M{
+		ProjectKey:     projectId,
+		ActivatedKey:   true,
+		ActivatedByKey: evergreen.StepbackTaskActivator,
+		StatusKey:      bson.M{"$in": evergreen.TaskUncompletedStatuses},
+	})
+	if err != nil {
+
+	}
+	return tasks, nil
 }

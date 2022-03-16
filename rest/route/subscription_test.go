@@ -469,6 +469,10 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": event.SelectorID,
+			"data": "abc123",
+		}},
 		"regex_selectors": []map[string]string{{
 			"type": event.SelectorObject,
 			"data": "",

@@ -1128,6 +1128,39 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	return info.Updated, nil
 }
 
+// DeactivateStepbackTasksForProjects deactivates and aborts any scheduled/running tasks
+// for this project that were activated by stepback.
+func DeactivateStepbackTasksForProject(projectId, caller string) error {
+	tasks, err := FindActivatedStepbackTasks(projectId)
+	if err != nil {
+		return errors.Wrap(err, "finding activated stepback tasks")
+	}
+
+	if err = DeactivateTasks(tasks, caller); err != nil {
+		return errors.Wrap(err, "deactivating active stepback tasks")
+	}
+
+	grip.InfoWhen(len(tasks) > 0, message.Fields{
+		"message":    "deactivated active stepback tasks",
+		"project_id": projectId,
+		"user":       caller,
+		"num_tasks":  len(tasks),
+	})
+
+	abortTaskIds := []string{}
+	for _, t := range tasks {
+		if t.IsAbortable() {
+			abortTaskIds = append(abortTaskIds, t.Id)
+			event.LogTaskAbortRequest(t.Id, t.Execution, caller)
+		}
+	}
+	if err = SetManyAborted(abortTaskIds, AbortInfo{User: caller}); err != nil {
+		return errors.Wrap(err, "aborting in progress tasks")
+	}
+
+	return nil
+}
+
 // MarkFailed changes the state of the task to failed.
 func (t *Task) MarkFailed() error {
 	t.Status = evergreen.TaskFailed
@@ -1164,6 +1197,18 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
+			},
+		},
+	)
+}
+
+func SetManyAborted(taskIds []string, reason AbortInfo) error {
+	return UpdateOne(
+		ByIds(taskIds),
+		bson.M{
+			"$set": bson.M{
+				AbortedKey:   true,
+				AbortInfoKey: reason,
 			},
 		},
 	)

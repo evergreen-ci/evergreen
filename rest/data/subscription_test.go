@@ -88,7 +88,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 	evergreen.SetEnvironment(env)
 	for name, test := range map[string]func(t *testing.T, subs []restModel.APISubscription){
 		"InvalidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
-			subs[0].RegexSelectors[0].Data = utility.ToStringPtr("")
+			subs[0].Selectors[0].Data = utility.ToStringPtr("")
 			assert.Error(t, SaveSubscriptions("me", []restModel.APISubscription{subs[0]}, false))
 		},
 		"ValidSubscription": func(t *testing.T, subs []restModel.APISubscription) {
@@ -119,7 +119,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
-							Type: "id",
+							Type: event.SelectorID,
 							Data: "1234",
 						},
 					},
@@ -136,7 +136,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
-							Type: "id",
+							Type: event.SelectorID,
 							Data: "1234",
 						},
 					},
@@ -151,9 +151,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				Trigger:      utility.ToStringPtr("outcome"),
 				Owner:        utility.ToStringPtr("me"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypePerson)),
-				RegexSelectors: []restModel.APISelector{
+				Selectors: []restModel.APISelector{
 					{
-						Type: utility.ToStringPtr("object"),
+						Type: utility.ToStringPtr(event.SelectorObject),
 						Data: utility.ToStringPtr("object_data"),
 					},
 				},
@@ -167,9 +167,9 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				Trigger:      utility.ToStringPtr("outcome"),
 				Owner:        utility.ToStringPtr("me"),
 				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
-				RegexSelectors: []restModel.APISelector{
+				Selectors: []restModel.APISelector{
 					{
-						Type: utility.ToStringPtr("object"),
+						Type: utility.ToStringPtr(event.SelectorObject),
 						Data: utility.ToStringPtr("object_data"),
 					},
 				},
