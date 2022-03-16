@@ -435,6 +435,9 @@ func (s *DistroPutSuite) SetupTest() {
 		{
 			Id: "distro3",
 		},
+		{
+			Id: "distro4",
+		},
 	}
 	settings := &evergreen.Settings{
 		SSHKeyPairs: []evergreen.SSHKeyPair{
@@ -487,7 +490,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
 	h := s.rm.(*distroIDPutHandler)
-	h.distroID = "distro4"
+	h.distroID = "distro5"
 	h.body = json
 
 	resp := s.rm.Run(ctx)

@@ -5,7 +5,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding version washington: 404 (Not Found): version with id washington not found",
+            "message": "Unable to find version with id: `washington`",
             "path": ["setPatchPriority"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

@@ -21,7 +21,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding task by id not-real: 404 (Not Found): task with id not-real not found",
+            "message": "cannot find task with id not-real",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
@@ -43,7 +43,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding build by id not-real: 404 (Not Found): build with id not-real not found",
+            "message": "cannot find build with id not-real",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
@@ -69,7 +69,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding version by id not-real: 404 (Not Found): version with id not-real not found",
+            "message": "cannot find version with id not-real",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	adb "github.com/mongodb/anser/db"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -157,12 +158,13 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	original, err := distro.FindOne(distro.ById(h.distroID))
-	if err != nil {
+	if err != nil && !adb.ResultsNotFound(err) {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
 		}, "Database error for find() by distro id '%s'", h.distroID))
 	}
+	distroExists := !adb.ResultsNotFound(err)
 
 	apiDistro := &model.APIDistro{
 		Name: utility.ToStringPtr(h.distroID),
@@ -193,7 +195,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
 	// Existing resource
-	if &original != nil {
+	if distroExists {
 		newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 		if respErr != nil {
 			return respErr
