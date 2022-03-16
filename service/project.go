@@ -679,17 +679,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				Data: projectRef.Id,
 			},
 		}
+		subscription.Filter.Project = projectRef.Id
+
 		if subscription.TriggerData != nil && subscription.TriggerData[event.SelectorRequester] != "" {
 			subscription.Selectors = append(subscription.Selectors, event.Selector{
 				Type: event.SelectorRequester,
 				Data: subscription.TriggerData[event.SelectorRequester],
 			})
+			subscription.Filter.Requester = subscription.TriggerData[event.SelectorRequester]
 		} else {
 			subscription.Selectors = append(subscription.Selectors, event.Selector{
 				Type: event.SelectorRequester,
 				Data: evergreen.RepotrackerVersionRequester,
 			})
+			subscription.Filter.Requester = evergreen.RepotrackerVersionRequester
 		}
+
 		subscription.OwnerType = event.OwnerTypeProject
 		if subscription.Owner != projectRef.Id {
 			subscription.Owner = projectRef.Id
