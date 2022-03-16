@@ -1096,7 +1096,6 @@ type Task {
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
   requester: String!
-  restarts: Int
   revision: String
   scheduledTime: Time
   containerAllocatedTime: Time
