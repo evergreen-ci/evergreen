@@ -12,10 +12,19 @@ import (
 )
 
 type APIProjectEvent struct {
-	Timestamp *time.Time         `json:"ts"`
-	User      *string            `json:"user"`
-	Before    APIProjectSettings `json:"before"`
-	After     APIProjectSettings `json:"after"`
+	Timestamp *time.Time               `json:"ts"`
+	User      *string                  `json:"user"`
+	Before    APIProjectEventsSettings `json:"before"`
+	After     APIProjectEventsSettings `json:"after"`
+}
+
+// take this from the original place instead of redefinning it here
+type APIProjectEventsSettings struct {
+	ProjectRef            APIProjectRef     `json:"proj_ref"`
+	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
+	Vars                  APIProjectVars    `json:"vars"`
+	Aliases               []APIProjectAlias `json:"aliases"`
+	Subscriptions         []APISubscription `json:"subscriptions"`
 }
 
 type APIProjectSettings struct {
@@ -69,8 +78,20 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 		}
 
 		e.User = user
-		e.Before = before
-		e.After = after
+		e.Before = APIProjectEventsSettings{
+			ProjectRef:            before.ProjectRef,
+			GithubWebhooksEnabled: before.GithubWebhooksEnabled,
+			Vars:                  before.Vars,
+			Aliases:               before.Aliases,
+			Subscriptions:         before.Subscriptions,
+		}
+		e.After = APIProjectEventsSettings{
+			ProjectRef:            after.ProjectRef,
+			GithubWebhooksEnabled: after.GithubWebhooksEnabled,
+			Vars:                  after.Vars,
+			Aliases:               after.Aliases,
+			Subscriptions:         after.Subscriptions,
+		}
 	default:
 		return fmt.Errorf("%T is not the correct event type", h)
 	}

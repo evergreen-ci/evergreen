@@ -35,7 +35,10 @@
           },
           "github_hooks_enabled" : false,
           "vars" : {
-            "_id" : "5678"
+            "_id" : "5678",
+            "vars" : {
+              "hello" : "world"
+            }
           }
         },
         "after" : {
@@ -48,7 +51,10 @@
           },
           "github_hooks_enabled" : true,
           "vars" : {
-            "_id" : "5678"
+            "_id" : "5678",
+            "vars" : {
+              "hello" : "universe"
+            }
           }
         }
       }

@@ -17,7 +17,7 @@
                     branch
                 }
                 # todo in EVG-16608: investigate why this field returns the wrong data
-                # githubWebhooksEnabled  
+                githubWebhooksEnabled  
                 vars{
                     vars
                 }

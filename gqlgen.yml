@@ -102,6 +102,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  ProjectEventsSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventsSettings
+  RepoEventsSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventsSettings
+  ProjectEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
+  RepoEventLogEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   ProjectSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
@@ -113,10 +121,6 @@ models:
         resolver: true
       subscriptions:
         resolver: true
-  ProjectEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
-  RepoEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   RepoSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
