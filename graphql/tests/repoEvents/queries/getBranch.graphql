@@ -8,12 +8,18 @@
                     branch
                 }
                 gitHubWebhooksEnabled
+                vars{
+                    vars
+                }
             }
             after {
                 projectRef {
                     branch
                 }
                 gitHubWebhooksEnabled
+                vars{
+                    vars
+                }
             }
         }
         count
