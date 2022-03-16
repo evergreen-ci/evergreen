@@ -39,6 +39,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -2579,11 +2580,8 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, configure PatchConfigure) (*restModel.APIPatch, error) {
 	patchUpdateReq := buildFromGqlInput(configure)
 	version, err := model.VersionFindOneId(patchID)
-	if err != nil {
+	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch `%s`: %s", patchID, err.Error()))
-	}
-	if version == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
 	}
 	statusCode, err := units.SchedulePatch(ctx, patchID, version, patchUpdateReq)
 	if err != nil {
