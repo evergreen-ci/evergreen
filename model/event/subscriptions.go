@@ -376,7 +376,7 @@ func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attribut
 
 	query := bson.M{subscriptionResourceTypeKey: resourceType}
 	// A subscription filter specifies the event attributes it should match.
-	// If a field is specified then it must match a corresponding attribute in the event.
+	// If the subscription's filter specifies a field then it must match one of the corresponding trigger attribute's values.
 	for field, filter := range eventAttributes.filterQuery() {
 		query[bsonutil.GetDottedKeyName(subscriptionFilterKey, field)] = filter
 	}
