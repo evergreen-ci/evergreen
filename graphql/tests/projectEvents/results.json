@@ -19,7 +19,13 @@
                   "projectRef": {
                     "branch": "main"
                   },
-                  "gitHubWebhooksEnabled": true
+                  "gitHubWebhooksEnabled": true,
+                  "vars": {
+                    "vars": {
+                      "foo": "bar",
+                      "hello": ""
+                    }
+                  }
                 }
               }
             ],

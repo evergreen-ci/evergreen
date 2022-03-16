@@ -13,13 +13,25 @@
                   "projectRef": {
                     "branch": "master"
                   },
-                  "gitHubWebhooksEnabled": false
+                  "gitHubWebhooksEnabled": false,
+                  "vars": {
+                    "vars": {
+                      "foo": "bar",
+                      "hello": ""
+                    }
+                  }
                 },
                 "after": {
                   "projectRef": {
                     "branch": "main"
                   },
-                  "gitHubWebhooksEnabled": true
+                  "gitHubWebhooksEnabled": true,
+                  "vars": {
+                    "vars": {
+                      "foo": "bar",
+                      "hello": ""
+                    }
+                  }     
                 }
               }
             ],
