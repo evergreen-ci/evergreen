@@ -44,7 +44,7 @@ func TestVolumeExpiration(t *testing.T) {
 
 	for name, test := range map[string]func(*testing.T){
 		"Email": func(*testing.T) {
-			email, err := testData.hostExpirationEmailPayload(expiringVolumeEmailSubject, expiringVolumeEmailBody, triggers.Selectors())
+			email, err := testData.hostExpirationEmailPayload(expiringVolumeEmailSubject, expiringVolumeEmailBody, triggers.Attributes())
 			assert.NoError(t, err)
 			assert.Contains(t, email.Body, "Your volume with id v0 is unattached and will be terminated at")
 		},

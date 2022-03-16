@@ -61,9 +61,9 @@ func (t *commitQueueTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *commitQueueTriggers) Selectors() map[string][]string {
-	return map[string][]string{
-		event.SelectorOwner: {t.patch.Author},
+func (t *commitQueueTriggers) Attributes() event.Attributes {
+	return event.Attributes{
+		Owner: []string{t.patch.Author},
 	}
 }
 
@@ -73,7 +73,7 @@ func (t *commitQueueTriggers) commitQueueOutcome(sub *event.Subscription) (*noti
 		return nil, errors.Wrap(err, "failed to collect patch data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	payload, err := makeCommonPayload(sub, t.Attributes(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

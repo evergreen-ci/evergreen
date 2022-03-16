@@ -4,9 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -176,24 +178,116 @@ func (s *subscriptionsSuite) TestRemove() {
 	}
 }
 
+func (s *subscriptionsSuite) TestAttributesFilterQuery() {
+	s.Run("EmptySlice", func() {
+		a := Attributes{Object: []string{}}
+		s.Equal(bson.M{
+			filterObjectKey:       nil,
+			filterIDKey:           nil,
+			filterProjectKey:      nil,
+			filterOwnerKey:        nil,
+			filterRequesterKey:    nil,
+			filterStatusKey:       nil,
+			filterDisplayNameKey:  nil,
+			filterBuildVariantKey: nil,
+			filterInVersionKey:    nil,
+			filterInBuildKey:      nil,
+		}, a.filterQuery())
+	})
+
+	s.Run("PopulatedFields", func() {
+		a := Attributes{
+			Object:    []string{"TASK"},
+			Requester: []string{evergreen.TriggerRequester, evergreen.RepotrackerVersionRequester},
+		}
+		s.Equal(bson.M{
+			filterObjectKey: bson.A{
+				nil,
+				"TASK",
+			},
+			filterIDKey:      nil,
+			filterProjectKey: nil,
+			filterOwnerKey:   nil,
+			filterRequesterKey: bson.A{
+				nil,
+				evergreen.TriggerRequester,
+				evergreen.RepotrackerVersionRequester,
+			},
+			filterStatusKey:       nil,
+			filterDisplayNameKey:  nil,
+			filterBuildVariantKey: nil,
+			filterInVersionKey:    nil,
+			filterInBuildKey:      nil,
+		}, a.filterQuery())
+	})
+}
+
+func (s *subscriptionsSuite) TestAttributesIsUnset() {
+	s.Run("EmptySlice", func() {
+		a := Attributes{Object: []string{}}
+		s.True(a.isUnset())
+	})
+
+	s.Run("PopulatedField", func() {
+		a := Attributes{Object: []string{"TASK"}}
+		s.False(a.isUnset())
+	})
+}
+
+func (s *subscriptionsSuite) TestAttributesToSelectorMap() {
+	s.Run("EmptySlice", func() {
+		a := Attributes{Object: []string{}}
+		s.Empty(a.ToSelectorMap())
+	})
+
+	s.Run("PopulatedField", func() {
+		a := Attributes{Object: []string{"TASK"}}
+		objectValues := a.ToSelectorMap()[SelectorObject]
+		s.Require().Len(objectValues, 1)
+		s.Equal("TASK", objectValues[0])
+	})
+}
+
+func (s *subscriptionsSuite) TestAttributesValuesForSelector() {
+	s.Run("UnsetField", func() {
+		a := Attributes{}
+		s.Nil(a.valuesForSelector)
+	})
+
+	s.Run("ExistingField", func() {
+		a := Attributes{Object: []string{"TASK"}}
+		fields, err := a.valuesForSelector(SelectorObject)
+		s.NoError(err)
+		s.Require().Len(fields, 1)
+		s.Equal("TASK", fields[0])
+	})
+
+	s.Run("NonexistentField", func() {
+		a := Attributes{}
+		fields, err := a.valuesForSelector("no-such-thing")
+		s.Error(err)
+		s.Nil(fields)
+	})
+}
+
 func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 	s.Run("EmptySelectors", func() {
-		subs, err := FindSubscriptionsByAttributes("type2", nil)
+		subs, err := FindSubscriptionsByAttributes("type2", Attributes{})
 		s.NoError(err)
 		s.Empty(subs)
 	})
 
 	s.Run("NothingMatches", func() {
-		subs, err := FindSubscriptionsByAttributes("type1", map[string][]string{
-			SelectorObject: {"nothing_matches"},
+		subs, err := FindSubscriptionsByAttributes("type1", Attributes{
+			Object: []string{"nothing_matches"},
 		})
 		s.NoError(err)
 		s.Empty(subs)
 	})
 
 	s.Run("MatchesMultipleSubscriptions", func() {
-		subs, err := FindSubscriptionsByAttributes("type2", map[string][]string{
-			SelectorObject: {"somethingspecial"},
+		subs, err := FindSubscriptionsByAttributes("type2", Attributes{
+			Object: []string{"somethingspecial"},
 		})
 		s.NoError(err)
 		s.Len(subs, 2)
@@ -204,9 +298,9 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 	})
 
 	s.Run("MatchesRegexSelector", func() {
-		subs, err := FindSubscriptionsByAttributes("type1", map[string][]string{
-			SelectorID:      {"something"},
-			SelectorProject: {"somethingelse"},
+		subs, err := FindSubscriptionsByAttributes("type1", Attributes{
+			ID:      []string{"something"},
+			Project: []string{"somethingelse"},
 		})
 		s.NoError(err)
 		s.Len(subs, 3)
@@ -218,9 +312,9 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 }
 
 func (s *subscriptionsSuite) TestFilterRegexSelectors() {
-	eventAttributes := map[string][]string{
-		"type":  {"apple"},
-		"taste": {"sweet"},
+	eventAttributes := Attributes{
+		Object: []string{"apple"},
+		Status: []string{"sweet"},
 	}
 
 	s.Run("MultipleMatches", func() {
@@ -228,7 +322,7 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			{
 				RegexSelectors: []Selector{
 					{
-						Type: "type",
+						Type: SelectorObject,
 						Data: "apple",
 					},
 				},
@@ -236,7 +330,7 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			{
 				RegexSelectors: []Selector{
 					{
-						Type: "taste",
+						Type: SelectorStatus,
 						Data: "sweet",
 					},
 				},
@@ -256,7 +350,7 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			{
 				RegexSelectors: []Selector{
 					{
-						Type: "type",
+						Type: SelectorObject,
 						Data: "apple",
 					},
 				},
@@ -264,7 +358,7 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			{
 				RegexSelectors: []Selector{
 					{
-						Type: "taste",
+						Type: SelectorStatus,
 						Data: "sour",
 					},
 				},
@@ -281,7 +375,7 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			{
 				RegexSelectors: []Selector{
 					{
-						Type: "type",
+						Type: SelectorObject,
 						Data: "orange",
 					},
 				},
@@ -289,7 +383,7 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 			{
 				RegexSelectors: []Selector{
 					{
-						Type: "taste",
+						Type: SelectorStatus,
 						Data: "tangy",
 					},
 				},
@@ -308,19 +402,19 @@ func (s *subscriptionsSuite) TestFilterRegexSelectors() {
 }
 
 func (s *subscriptionsSuite) TestRegexSelectorsMatchEvent() {
-	eventAttributes := map[string][]string{
-		"type":  {"apple"},
-		"taste": {"sweet"},
+	eventAttributes := Attributes{
+		Object: []string{"apple"},
+		Status: []string{"sweet"},
 	}
 
 	s.Run("AllMatch", func() {
 		regexSelectors := []Selector{
 			{
-				Type: "type",
+				Type: SelectorObject,
 				Data: "^apple",
 			},
 			{
-				Type: "taste",
+				Type: SelectorStatus,
 				Data: "sweet$",
 			},
 		}
@@ -330,11 +424,11 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatchEvent() {
 	s.Run("MixedMatch", func() {
 		regexSelectors := []Selector{
 			{
-				Type: "type",
+				Type: SelectorObject,
 				Data: "^apple",
 			},
 			{
-				Type: "taste",
+				Type: SelectorStatus,
 				Data: "sour",
 			},
 		}

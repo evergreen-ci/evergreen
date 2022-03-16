@@ -166,21 +166,21 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *buildTriggers) Selectors() map[string][]string {
-	selectors := map[string][]string{
-		event.SelectorID:           {t.build.Id},
-		event.SelectorObject:       {event.ObjectBuild},
-		event.SelectorProject:      {t.build.Project},
-		event.SelectorRequester:    {t.build.Requester},
-		event.SelectorInVersion:    {t.build.Version},
-		event.SelectorDisplayName:  {t.build.DisplayName},
-		event.SelectorBuildVariant: {t.build.BuildVariant},
+func (t *buildTriggers) Attributes() event.Attributes {
+	attributes := event.Attributes{
+		ID:           []string{t.build.Id},
+		Object:       []string{event.ObjectBuild},
+		Project:      []string{t.build.Project},
+		Requester:    []string{t.build.Requester},
+		InVersion:    []string{t.build.Version},
+		DisplayName:  []string{t.build.DisplayName},
+		BuildVariant: []string{t.build.BuildVariant},
 	}
 
 	if t.build.Requester == evergreen.TriggerRequester {
-		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.RepotrackerVersionRequester)
+		attributes.Requester = append(attributes.Requester, evergreen.RepotrackerVersionRequester)
 	}
-	return selectors
+	return attributes
 }
 
 func (t *buildTriggers) buildGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
@@ -376,7 +376,7 @@ func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride stri
 		return nil, errors.Wrap(err, "failed to collect build data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	payload, err := makeCommonPayload(sub, t.Attributes(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

@@ -72,7 +72,7 @@ func (s *hostSuite) SetupTest() {
 }
 
 func (s *hostSuite) TestEmailMessage() {
-	email, err := s.testData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, s.t.Selectors())
+	email, err := s.testData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, s.t.Attributes())
 	s.NoError(err)
 	s.Equal("myDistro host termination reminder", email.Subject)
 	s.Contains(email.Body, "Your myDistro host 'hostName' will be terminated at")

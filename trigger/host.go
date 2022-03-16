@@ -60,11 +60,11 @@ func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *hostBase) Selectors() map[string][]string {
-	return map[string][]string{
-		event.SelectorID:     {t.host.Id},
-		event.SelectorObject: {event.ObjectHost},
-		event.SelectorOwner:  {t.host.StartedBy},
+func (t *hostBase) Attributes() event.Attributes {
+	return event.Attributes{
+		ID:     []string{t.host.Id},
+		Object: []string{event.ObjectHost},
+		Owner:  []string{t.host.StartedBy},
 	}
 }
 
@@ -115,7 +115,7 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = t.templateData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, t.Selectors())
+		payload, err = t.templateData.hostExpirationEmailPayload(expiringHostEmailSubject, expiringHostEmailBody, t.Attributes())
 	case event.SlackSubscriberType:
 		payload, err = t.templateData.hostExpirationSlackPayload(expiringHostSlackBody, expiringHostSlackAttachmentTitle)
 	default:
@@ -128,7 +128,7 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString string, selectors map[string][]string) (*message.Email, error) {
+func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString string, attributes event.Attributes) (*message.Email, error) {
 	subjectBuf := &bytes.Buffer{}
 	subjectTemplate, err := template.New("subject").Parse(subjectString)
 	if err != nil {
@@ -151,7 +151,7 @@ func (t *hostTemplateData) hostExpirationEmailPayload(subjectString, bodyString 
 		Subject:           subjectBuf.String(),
 		Body:              bodyBuf.String(),
 		PlainTextContents: false,
-		Headers:           makeHeaders(selectors),
+		Headers:           makeHeaders(attributes.ToSelectorMap()),
 	}, nil
 }
 

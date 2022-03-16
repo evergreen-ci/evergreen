@@ -215,10 +215,10 @@ const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .DisplayName }}' in '
 
 const slackTemplate string = `The {{ .Object }} <{{ .URL }}|{{ .DisplayName }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
-func makeHeaders(selectors map[string][]string) http.Header {
+func makeHeaders(headerMap map[string][]string) http.Header {
 	headers := http.Header{}
-	for selectorType, selectorData := range selectors {
-		headers[evergreenHeaderPrefix+selectorType] = selectorData
+	for headerField, headerData := range headerMap {
+		headers[evergreenHeaderPrefix+headerField] = headerData
 	}
 
 	return headers
@@ -365,12 +365,13 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
-func makeCommonPayload(sub *event.Subscription, selectors map[string][]string,
+func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes,
 	data *commonTemplateData) (interface{}, error) {
 	var err error
-	selectors["trigger"] = append(selectors["trigger"], sub.Trigger)
-	selectors[event.SelectorStatus] = append(selectors[event.SelectorStatus], data.PastTenseStatus)
-	data.Headers = makeHeaders(selectors)
+	headerMap := eventAttributes.ToSelectorMap()
+	headerMap["trigger"] = append(headerMap["trigger"], sub.Trigger)
+	headerMap[event.SelectorStatus] = append(headerMap[event.SelectorStatus], data.PastTenseStatus)
+	data.Headers = makeHeaders(headerMap)
 	data.SubscriptionID = sub.ID
 	if data.Task != nil {
 		data.FailedTests, err = getFailedTestsFromTemplate(*data.Task)

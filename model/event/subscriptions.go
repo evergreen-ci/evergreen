@@ -144,6 +144,146 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
+// Attributes describes the properties of an event to be matched with subscription filters.
+type Attributes struct {
+	Object       []string
+	ID           []string
+	Project      []string
+	Owner        []string
+	Requester    []string
+	Status       []string
+	DisplayName  []string
+	BuildVariant []string
+	InVersion    []string
+	InBuild      []string
+}
+
+func (a *Attributes) filterQuery() bson.M {
+	filterForAttribute := func(values []string) interface{} {
+		if len(values) > 0 {
+			in := bson.A{nil}
+			for _, attribute := range values {
+				in = append(in, attribute)
+			}
+			return bson.M{"$in": in}
+		}
+
+		return nil
+	}
+
+	return bson.M{
+		filterObjectKey:       filterForAttribute(a.Object),
+		filterIDKey:           filterForAttribute(a.ID),
+		filterProjectKey:      filterForAttribute(a.Project),
+		filterOwnerKey:        filterForAttribute(a.Owner),
+		filterRequesterKey:    filterForAttribute(a.Requester),
+		filterStatusKey:       filterForAttribute(a.Status),
+		filterDisplayNameKey:  filterForAttribute(a.DisplayName),
+		filterBuildVariantKey: filterForAttribute(a.BuildVariant),
+		filterInVersionKey:    filterForAttribute(a.InVersion),
+		filterInBuildKey:      filterForAttribute(a.InBuild),
+	}
+}
+
+func (a *Attributes) isUnset() bool {
+	if len(a.Object) > 0 {
+		return false
+	}
+	if len(a.ID) > 0 {
+		return false
+	}
+	if len(a.Project) > 0 {
+		return false
+	}
+	if len(a.Owner) > 0 {
+		return false
+	}
+	if len(a.Requester) > 0 {
+		return false
+	}
+	if len(a.Status) > 0 {
+		return false
+	}
+	if len(a.DisplayName) > 0 {
+		return false
+	}
+	if len(a.BuildVariant) > 0 {
+		return false
+	}
+	if len(a.InVersion) > 0 {
+		return false
+	}
+	if len(a.InBuild) > 0 {
+		return false
+	}
+
+	return true
+}
+
+// ToSelectorMap returns a map of selector types to the values they correspond to in Attributes.
+func (a *Attributes) ToSelectorMap() map[string][]string {
+	selectorMap := make(map[string][]string)
+	if len(a.Object) > 0 {
+		selectorMap[SelectorObject] = a.Object
+	}
+	if len(a.ID) > 0 {
+		selectorMap[SelectorID] = a.ID
+	}
+	if len(a.Project) > 0 {
+		selectorMap[SelectorProject] = a.Project
+	}
+	if len(a.Owner) > 0 {
+		selectorMap[SelectorOwner] = a.Owner
+	}
+	if len(a.Requester) > 0 {
+		selectorMap[SelectorRequester] = a.Requester
+	}
+	if len(a.Status) > 0 {
+		selectorMap[SelectorStatus] = a.Status
+	}
+	if len(a.DisplayName) > 0 {
+		selectorMap[SelectorDisplayName] = a.DisplayName
+	}
+	if len(a.BuildVariant) > 0 {
+		selectorMap[SelectorBuildVariant] = a.BuildVariant
+	}
+	if len(a.InVersion) > 0 {
+		selectorMap[SelectorInVersion] = a.InVersion
+	}
+	if len(a.InBuild) > 0 {
+		selectorMap[SelectorInBuild] = a.InBuild
+	}
+
+	return selectorMap
+}
+
+func (a *Attributes) valuesForSelector(selector string) ([]string, error) {
+	switch selector {
+	case SelectorObject:
+		return a.Object, nil
+	case SelectorID:
+		return a.ID, nil
+	case SelectorProject:
+		return a.Project, nil
+	case SelectorOwner:
+		return a.Owner, nil
+	case SelectorRequester:
+		return a.Requester, nil
+	case SelectorStatus:
+		return a.Status, nil
+	case SelectorDisplayName:
+		return a.DisplayName, nil
+	case SelectorBuildVariant:
+		return a.BuildVariant, nil
+	case SelectorInVersion:
+		return a.InVersion, nil
+	case SelectorInBuild:
+		return a.InBuild, nil
+	default:
+		return nil, errors.Errorf("unknown selector '%s'", selector)
+	}
+}
+
 // Filter specifies the event properties that are of interest.
 type Filter struct {
 	Object       string `bson:"object,omitempty"`
@@ -227,41 +367,18 @@ const (
 	SelectorInBuild      = "in-build"
 )
 
-var filterKeyForSelectorType = map[string]string{
-	SelectorObject:       filterObjectKey,
-	SelectorID:           filterIDKey,
-	SelectorProject:      filterProjectKey,
-	SelectorOwner:        filterOwnerKey,
-	SelectorRequester:    filterRequesterKey,
-	SelectorStatus:       filterStatusKey,
-	SelectorDisplayName:  filterDisplayNameKey,
-	SelectorBuildVariant: filterBuildVariantKey,
-	SelectorInVersion:    filterInVersionKey,
-	SelectorInBuild:      filterInBuildKey,
-}
-
 // FindSubscriptionsByAttributes finds all subscriptions of matching resourceType, and whose
 // filter and regex selectors match the attributes of the event.
-func FindSubscriptionsByAttributes(resourceType string, eventAttributes map[string][]string) ([]Subscription, error) {
-	if len(eventAttributes) == 0 {
+func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attributes) ([]Subscription, error) {
+	if eventAttributes.isUnset() {
 		return nil, nil
 	}
 
 	// A subscription filter specifies the event attributes it should match.
 	// If a field is specified then it must match a corresponding attribute in the event.
 	query := bson.M{subscriptionResourceTypeKey: resourceType}
-	for selector, filterKey := range filterKeyForSelectorType {
-		if attributeValues, ok := eventAttributes[selector]; ok {
-			in := bson.A{nil}
-			for _, attribute := range attributeValues {
-				in = append(in, attribute)
-			}
-			// Every filter field must either equal one of the corresponding attributes of the event or be unset.
-			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = bson.M{"$in": in}
-		} else {
-			// If there is no corresponding attribute then the filter field must be unset.
-			query[bsonutil.GetDottedKeyName(subscriptionFilterKey, filterKey)] = nil
-		}
+	for field, filter := range eventAttributes.filterQuery() {
+		query[bsonutil.GetDottedKeyName(subscriptionFilterKey, field)] = filter
 	}
 
 	selectorFiltered := []Subscription{}
@@ -272,7 +389,7 @@ func FindSubscriptionsByAttributes(resourceType string, eventAttributes map[stri
 	return filterRegexSelectors(selectorFiltered, eventAttributes), nil
 }
 
-func filterRegexSelectors(subscriptions []Subscription, eventAttributes map[string][]string) []Subscription {
+func filterRegexSelectors(subscriptions []Subscription, eventAttributes Attributes) []Subscription {
 	var regexFiltered []Subscription
 	for _, sub := range subscriptions {
 		if regexSelectorsMatchEvent(sub.RegexSelectors, eventAttributes) {
@@ -283,10 +400,10 @@ func filterRegexSelectors(subscriptions []Subscription, eventAttributes map[stri
 	return regexFiltered
 }
 
-func regexSelectorsMatchEvent(regexSelectors []Selector, eventAttributes map[string][]string) bool {
+func regexSelectorsMatchEvent(regexSelectors []Selector, eventAttributes Attributes) bool {
 	for _, regexSelector := range regexSelectors {
-		attributeValues, ok := eventAttributes[regexSelector.Type]
-		if !ok {
+		attributeValues, err := eventAttributes.valuesForSelector(regexSelector.Type)
+		if err != nil || len(attributeValues) == 0 {
 			return false
 		}
 		if !regexMatchesValue(regexSelector.Data, attributeValues) {

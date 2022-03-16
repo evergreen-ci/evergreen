@@ -189,29 +189,29 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *taskTriggers) Selectors() map[string][]string {
-	selectors := map[string][]string{
-		event.SelectorID:           {t.task.Id},
-		event.SelectorObject:       {event.ObjectTask},
-		event.SelectorProject:      {t.task.Project},
-		event.SelectorInVersion:    {t.task.Version},
-		event.SelectorInBuild:      {t.task.BuildId},
-		event.SelectorDisplayName:  {t.task.DisplayName},
-		event.SelectorBuildVariant: {t.task.BuildVariant},
-		event.SelectorRequester:    {t.task.Requester},
+func (t *taskTriggers) Attributes() event.Attributes {
+	attributes := event.Attributes{
+		ID:           []string{t.task.Id},
+		Object:       []string{event.ObjectTask},
+		Project:      []string{t.task.Project},
+		InVersion:    []string{t.task.Version},
+		InBuild:      []string{t.task.BuildId},
+		DisplayName:  []string{t.task.DisplayName},
+		BuildVariant: []string{t.task.BuildVariant},
+		Requester:    []string{t.task.Requester},
 	}
 
 	if t.task.Requester == evergreen.TriggerRequester {
-		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.RepotrackerVersionRequester)
+		attributes.Requester = append(attributes.Requester, evergreen.RepotrackerVersionRequester)
 	}
 	if t.task.Requester == evergreen.GithubPRRequester {
-		selectors[event.SelectorRequester] = append(selectors[event.SelectorRequester], evergreen.PatchVersionRequester)
+		attributes.Requester = append(attributes.Requester, evergreen.PatchVersionRequester)
 	}
 	if t.version != nil && t.version.AuthorID != "" {
-		selectors[event.SelectorOwner] = append(selectors[event.SelectorOwner], t.version.AuthorID)
+		attributes.Owner = append(attributes.Owner, t.version.AuthorID)
 	}
 
-	return selectors
+	return attributes
 }
 
 func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
@@ -355,7 +355,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 		}
 		data.emailContent = emailTaskContentTemplate
 
-		payload, err = makeCommonPayload(sub, t.Selectors(), data)
+		payload, err = makeCommonPayload(sub, t.Attributes(), data)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to build notification")
 		}
