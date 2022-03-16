@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -32,7 +31,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	s.now = time.Now().Round(time.Second)
 	s.subscriptions = []Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub0",
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -51,7 +50,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub1",
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -70,7 +69,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub2",
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -96,7 +95,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:           "5949645c9acd9604fdd202d8",
+			ID:           "sub3",
 			ResourceType: "type2",
 			Trigger:      "trigger2",
 			Selectors: []Selector{
@@ -119,7 +118,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub4",
 			ResourceType: "type2",
 			Trigger:      "trigger2",
 			Selectors: []Selector{
@@ -201,18 +200,20 @@ func (s *subscriptionsSuite) TestAttributesFilterQuery() {
 			Requester: []string{evergreen.TriggerRequester, evergreen.RepotrackerVersionRequester},
 		}
 		s.Equal(bson.M{
-			filterObjectKey: bson.A{
-				nil,
-				"TASK",
-			},
+			filterObjectKey: bson.M{
+				"$in": bson.A{
+					nil,
+					"TASK",
+				}},
 			filterIDKey:      nil,
 			filterProjectKey: nil,
 			filterOwnerKey:   nil,
-			filterRequesterKey: bson.A{
-				nil,
-				evergreen.TriggerRequester,
-				evergreen.RepotrackerVersionRequester,
-			},
+			filterRequesterKey: bson.M{
+				"$in": bson.A{
+					nil,
+					evergreen.TriggerRequester,
+					evergreen.RepotrackerVersionRequester,
+				}},
 			filterStatusKey:       nil,
 			filterDisplayNameKey:  nil,
 			filterBuildVariantKey: nil,
@@ -251,7 +252,7 @@ func (s *subscriptionsSuite) TestAttributesToSelectorMap() {
 func (s *subscriptionsSuite) TestAttributesValuesForSelector() {
 	s.Run("UnsetField", func() {
 		a := Attributes{}
-		s.Nil(a.valuesForSelector)
+		s.Nil(a.valuesForSelector(SelectorObject))
 	})
 
 	s.Run("ExistingField", func() {
@@ -291,9 +292,9 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 		})
 		s.NoError(err)
 		s.Len(subs, 2)
-		expectedSubs := []Subscription{s.subscriptions[3], s.subscriptions[4]}
+		expectedSubs := []string{s.subscriptions[3].ID, s.subscriptions[4].ID}
 		for _, sub := range subs {
-			s.Contains(expectedSubs, sub)
+			s.Contains(expectedSubs, sub.ID)
 		}
 	})
 
@@ -304,9 +305,9 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 		})
 		s.NoError(err)
 		s.Len(subs, 3)
-		expectedSubs := []Subscription{s.subscriptions[2], s.subscriptions[3], s.subscriptions[4]}
+		expectedSubs := []string{s.subscriptions[0].ID, s.subscriptions[1].ID, s.subscriptions[2].ID}
 		for _, sub := range subs {
-			s.Contains(expectedSubs, sub)
+			s.Contains(expectedSubs, sub.ID)
 		}
 	})
 }
@@ -446,7 +447,7 @@ func (s *subscriptionsSuite) TestRegexMatchesValue() {
 	})
 
 	s.Run("MatchValue", func() {
-		s.False(regexMatchesValue("^hello", []string{"goodbye", "helloworld"}))
+		s.True(regexMatchesValue("^hello", []string{"goodbye", "helloworld"}))
 	})
 
 	s.Run("InvalidRegex", func() {
