@@ -23,7 +23,7 @@
           {
             "message": "cannot find task with id not-real",
             "path": ["saveSubscription"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
         "data": null
@@ -45,7 +45,7 @@
           {
             "message": "cannot find build with id not-real",
             "path": ["saveSubscription"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
         "data": null
@@ -71,7 +71,7 @@
           {
             "message": "cannot find version with id not-real",
             "path": ["saveSubscription"],
-            "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+            "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
         ],
         "data": null
