@@ -296,24 +296,23 @@ type ParameterInfo struct {
 }
 
 type Container struct {
-	Name        string                  `yaml:"name,omitempty" bson:"name"`
-	DisplayName string                  `yaml:"display_name,omitempty" bson:"display_name"`
-	WorkingDir  string                  `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image       string                  `yaml:"image,omitempty" bson:"image"`
-	Size        evergreen.ContainerSize `yaml:"size,omitempty" bson:"size"`
-	Resources   ContainerResources      `yaml:"resources,omitempty" bson:"resources"`
-	System      ContainerSystem         `yaml:"system,omitempty" bson:"system"`
+	Name       string             `yaml:"name" bson:"name"`
+	WorkingDir string             `yaml:"working_dir,omitempty" bson:"working_dir"`
+	Image      string             `yaml:"image" bson:"image"`
+	Size       string             `yaml:"size,omitempty" bson:"size"`
+	Resources  ContainerResources `yaml:"resources,omitempty" bson:"resources"`
+	System     ContainerSystem    `yaml:"system,omitempty" bson:"system"`
 }
 
 type ContainerSystem struct {
-	CPUArchitecture evergreen.CpuArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
+	CPUArchitecture evergreen.CPUArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
 	OperatingSystem evergreen.ContainerOS     `yaml:"operating_system,omitempty" bson:"operating_system"`
 	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 type ContainerResources struct {
-	MemoryMB int    `yaml:"memory_mb,omitempty" bson:"memory_mb"`
-	Cpu      string `yaml:"cpu,omitempty" bson:"cpu"`
+	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb"`
+	CPU      int `yaml:"cpu,omitempty" bson:"cpu"`
 }
 
 type Module struct {

@@ -1085,23 +1085,7 @@ const (
 	LogViewerLobster LogViewer = "lobster"
 )
 
-type ContainerSize string
-
-const (
-	SmallContainer  = "small"
-	MediumContainer = "medium"
-	LargeContainer  = "large"
-)
-
-func (c ContainerSize) Validate() error {
-	switch c {
-	case SmallContainer, MediumContainer, LargeContainer:
-		return nil
-	default:
-		return errors.Errorf("unrecognized container size '%s'", c)
-	}
-}
-
+// ContainerOS denotes the operating system of a running container. Only linux and windows are supported.
 type ContainerOS string
 
 const (
@@ -1118,14 +1102,15 @@ func (c ContainerOS) Validate() error {
 	}
 }
 
-type CpuArchitecture string
+// CPUArchitecture represents the architecture property of a container required to provide to Amazon ECS
+type CPUArchitecture string
 
 const (
 	ArchARM64 = "arm64"
 	ArchAMD64 = "x86_64"
 )
 
-func (c CpuArchitecture) Validate() error {
+func (c CPUArchitecture) Validate() error {
 	switch c {
 	case ArchARM64, ArchAMD64:
 		return nil
@@ -1134,6 +1119,7 @@ func (c CpuArchitecture) Validate() error {
 	}
 }
 
+// WindowsVersion specifies the Windows version of a container if running on Windows device (required if os is windows)
 type WindowsVersion string
 
 const (

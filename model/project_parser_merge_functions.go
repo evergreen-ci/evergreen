@@ -23,10 +23,10 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 	for _, task := range toMerge.Tasks {
 		if _, ok := taskNameExist[task.Name]; ok {
 			catcher.Errorf("task '%s' has been declared already", task.Name)
-		} else {
-			pp.Tasks = append(pp.Tasks, task)
-			taskNameExist[task.Name] = true
+			continue
 		}
+		pp.Tasks = append(pp.Tasks, task)
+		taskNameExist[task.Name] = true
 	}
 
 	taskGroupNameExist := map[string]bool{}
@@ -36,10 +36,10 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 	for _, taskGroup := range toMerge.TaskGroups {
 		if _, ok := taskGroupNameExist[taskGroup.Name]; ok {
 			catcher.Errorf("task group '%s' has been declared already", taskGroup.Name)
-		} else {
-			pp.TaskGroups = append(pp.TaskGroups, taskGroup)
-			taskGroupNameExist[taskGroup.Name] = true
+			continue
 		}
+		pp.TaskGroups = append(pp.TaskGroups, taskGroup)
+		taskGroupNameExist[taskGroup.Name] = true
 	}
 
 	parameterKeyExist := map[string]bool{}
@@ -49,10 +49,10 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 	for _, parameter := range toMerge.Parameters {
 		if _, ok := parameterKeyExist[parameter.Key]; ok {
 			catcher.Errorf("parameter key '%s' has been declared already", parameter.Key)
-		} else {
-			pp.Parameters = append(pp.Parameters, parameter)
-			parameterKeyExist[parameter.Key] = true
+			continue
 		}
+		pp.Parameters = append(pp.Parameters, parameter)
+		parameterKeyExist[parameter.Key] = true
 	}
 
 	moduleExist := map[string]bool{}
@@ -62,10 +62,10 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 	for _, module := range toMerge.Modules {
 		if _, ok := moduleExist[module.Name]; ok {
 			catcher.Errorf("module '%s' has been declared already", module.Name)
-		} else {
-			pp.Modules = append(pp.Modules, module)
-			moduleExist[module.Name] = true
+			continue
 		}
+		pp.Modules = append(pp.Modules, module)
+		moduleExist[module.Name] = true
 	}
 
 	containerExist := map[string]bool{}
@@ -75,18 +75,18 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 	for _, container := range toMerge.Containers {
 		if _, ok := containerExist[container.Name]; ok {
 			catcher.Errorf("container '%s' has been declared already", container.Name)
-		} else {
-			pp.Containers = append(pp.Containers, container)
-			containerExist[container.Name] = true
+			continue
 		}
+		pp.Containers = append(pp.Containers, container)
+		containerExist[container.Name] = true
 	}
 
 	for key, val := range toMerge.Functions {
 		if _, ok := pp.Functions[key]; ok {
 			catcher.Errorf("function '%s' has been declared already", key)
-		} else {
-			pp.Functions[key] = val
+			continue
 		}
+		pp.Functions[key] = val
 	}
 
 	return catcher.Resolve()
