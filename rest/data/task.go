@@ -43,6 +43,9 @@ func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) 
 	return res, nil
 }
 
+// FindTasksByProjectAndCommit is a method to find a set of tasks which ran as part of
+// certain version in a project. It takes the projectId, commit hash, and a taskId
+// for paginating through the results.
 func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
 	projectId, err := model.GetIdForProject(project)
 	if err != nil {

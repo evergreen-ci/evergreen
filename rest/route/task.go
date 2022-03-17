@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -193,7 +195,7 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	tasks, err := dbModel.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
+	tasks, err := findTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -211,6 +213,28 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+func findTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
+	project string, statuses []string) ([]task.Task, error) {
+	id, err := dbModel.GetIdForProject(project)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"func":    "FindTaskWithinTimePeriod",
+			"message": "error getting id for project",
+			"project": project,
+		}))
+		// don't return an error here to preserve existing behavior
+		return nil, nil
+	}
+
+	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
 }
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
@@ -297,9 +321,6 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 					StatusCode: http.StatusUnauthorized,
 				})
 			}
-		}
-		if tep.task == nil {
-			return gimlet.MakeJSONErrorResponder(errors.New("task cannot be nil"))
 		}
 		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))

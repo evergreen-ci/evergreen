@@ -60,10 +60,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 		}
 		if len(tasks) == 0 {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    "no tasks found",
-			}, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.New("no tasks found"))
 		}
 	}
 

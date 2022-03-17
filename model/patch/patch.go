@@ -891,7 +891,7 @@ func IsPatchEmpty(id string) (bool, error) {
 		return false, errors.WithStack(err)
 	}
 	if patchDoc == nil {
-		return false, errors.New("patch is empty")
+		return false, errors.New("patch does not exist")
 	}
 	return len(patchDoc.Patches) == 0, nil
 }

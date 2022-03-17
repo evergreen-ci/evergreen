@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -51,12 +50,12 @@ func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) er
 
 // Run returns the given distro's setup script.
 func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindOne(distro.ById(h.distroID))
+	d, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
 
 	apiDistro := &model.APIDistro{}
@@ -99,12 +98,12 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 
 // Run updates the setup script for the given distroId.
 func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindOne(distro.ById(h.distroID))
+	d, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
 
 	d.Setup = h.Setup
@@ -157,14 +156,13 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	original, err := distro.FindOne(distro.ById(h.distroID))
-	if err != nil && !adb.ResultsNotFound(err) {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+	original, err := distro.FindByID(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
-	distroExists := !adb.ResultsNotFound(err)
 
 	apiDistro := &model.APIDistro{
 		Name: utility.ToStringPtr(h.distroID),
@@ -195,13 +193,13 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
 	// Existing resource
-	if distroExists {
+	if original != nil {
 		newDistro, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 		if respErr != nil {
 			return respErr
 		}
 
-		if err = data.UpdateDistro(&original, newDistro); err != nil {
+		if err = data.UpdateDistro(original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
@@ -218,10 +216,10 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
 	if err = newDistro.Insert(); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("distro with id '%s' was not inserted", h.distroID),
-		}, "Database error for insert() distro with distro id '%s'", h.distroID))
+		})
 	}
 
 	return responder
@@ -252,17 +250,13 @@ func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	_, err := distro.FindOne(distro.ById(h.distroID))
+	_, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
-	}
-
 	err = data.DeleteDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for remove() by distro id '%s'", h.distroID))
@@ -305,12 +299,12 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	old, err := distro.FindOne(distro.ById(h.distroID))
+	old, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
 
 	apiDistro := &model.APIDistro{}
@@ -368,15 +362,12 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindOne(distro.ById(h.distroID))
+	d, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
-	}
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
 
 	apiDistro := &model.APIDistro{}
@@ -415,12 +406,12 @@ func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindOne(distro.ById(h.distroID))
+	d, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		}, "Database error for find() by distro id '%s'", h.distroID))
+		})
 	}
 	if !strings.HasPrefix(d.Provider, "ec2") {
 		return gimlet.NewJSONResponse("")
@@ -494,10 +485,10 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding distros"))
 	}
 	if allDistros == nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(gimlet.ErrorResponse{
+		return gimlet.NewJSONInternalErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no distros found"),
-		}, "error finding distros"))
+		})
 	}
 	modifiedDistros := []distro.Distro{}
 	settings, err := evergreen.GetConfig()
@@ -606,10 +597,10 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for find() all distros"))
 	}
 	if distros == nil {
-		gimlet.MakeJSONErrorResponder(errors.Wrap(gimlet.ErrorResponse{
+		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no distros found"),
-		}, "Database error for find() all distros"))
+		})
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -873,12 +864,12 @@ func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := distro.FindOne(distro.ById(rh.distroID))
+	d, err := distro.FindOneId(rh.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", rh.distroID),
-		}, "finding distro '%s'", rh.distroID))
+		})
 	}
 
 	flags, err := evergreen.GetServiceFlags()

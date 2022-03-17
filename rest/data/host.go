@@ -83,6 +83,8 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	return intentHost, nil
 }
 
+// GenerateHostProvisioningScript generates and returns the script to
+// provision the host given by host ID.
 func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
 	if hostID == "" {
 		return "", gimlet.ErrorResponse{
@@ -128,6 +130,10 @@ func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string,
 	return script, nil
 }
 
+// FindHostByIdWithOwner finds a host with given host ID that was
+// started by the given user. If the given user is a super-user,
+// the host will also be returned regardless of who the host was
+// started by
 func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
 	hostById, err := host.FindOneId(hostID)
 	if err != nil {

@@ -146,6 +146,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
+// FindPatchesByUser finds patches for the input user as ordered by creation time
 func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
@@ -164,6 +165,8 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 	return apiPatches, nil
 }
 
+// AbortPatchesFromPullRequest aborts patches with the same PR Number,
+// in the same repository, at the pull request's close time
 func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
@@ -182,6 +185,7 @@ func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	return nil
 }
 
+// GetPatchRawPatches fetches the raw patches for a patch
 func GetPatchRawPatches(patchID string) (map[string]string, error) {
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {

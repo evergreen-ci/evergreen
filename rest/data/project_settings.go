@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -24,6 +25,7 @@ type CopyProjectOpts struct {
 	NewProjectId         string
 }
 
+// CopyProject copies the passed in project with the given project identifier, and returns the new project.
 func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
@@ -61,13 +63,13 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	}
 
 	// copy variables, aliases, and subscriptions
-	if err := CopyProjectVars(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying project vars from project '%s'", oldIdentifier)
 	}
 	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying aliases from project '%s'", oldIdentifier)
 	}
-	if err := CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// set the same admin roles from the old project on the newly copied project.

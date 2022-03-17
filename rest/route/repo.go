@@ -203,10 +203,10 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// complete all updates
 	if err = h.newRepoRef.Upsert(); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("repo with id '%s' was not updated", h.newRepoRef.Id),
-		}, "Database error for update() for '%s'", h.repoName))
+		})
 	}
 	if err = data.UpdateProjectVars(h.newRepoRef.Id, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.repoName))

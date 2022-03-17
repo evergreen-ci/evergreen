@@ -2125,7 +2125,7 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 		return 0, 0, nil
 	}
 	// get parent distro from pool
-	parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
+	parentDistro, err := distro.FindOneId(pool.Distro)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "error find parent distro")
 	}
@@ -2356,6 +2356,7 @@ func (h *Host) SetInstanceType(instanceType string) error {
 	return nil
 }
 
+// AggregateSpawnhostData returns basic metrics on spawn host/volume usage.
 func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 	res := []SpawnHostUsage{}
 	hostPipeline := []bson.M{
@@ -2596,6 +2597,7 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
+// Find a host by ID or Tag and queries for full running task
 func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
@@ -2641,6 +2643,7 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	return &hosts[0], nil
 }
 
+// GetPaginatedRunningHosts gets paginated running hosts and applies any filters
 func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
 	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -422,7 +423,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			if err = dbModel.EnablePRTesting(h.newProjectRef); err != nil {
+			if err = canEnablePRTesting(h.newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.project))
 			}
 		}
@@ -462,7 +463,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "cannot enable commit queue without a commit queue patch definition",
 				})
 			}
-			if err = dbModel.EnableCommitQueue(h.newProjectRef); err != nil {
+			if err = canEnableCommitQueue(h.newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.project))
 			}
 		}
@@ -524,10 +525,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// complete all updates
 	if err = h.newProjectRef.Update(); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("project with id '%s' was not updated", h.newProjectRef.Id),
-		}, "Database error for update() by project id '%s'", h.project))
+		})
 	}
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.project))
@@ -592,6 +593,30 @@ func hasAliasDefined(aliases []model.APIProjectAlias, alias string) bool {
 		}
 	}
 	return false
+}
+
+// canEnableCommitQueue determines if commit queue can be enabled for the given project.
+func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
+	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
+		return errors.Wrap(err, "error enabling commit queue")
+	} else if !ok {
+		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
+	}
+
+	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
+}
+
+// canEnablePRTesting determines if PR testing can be enabled for the given project.
+func canEnablePRTesting(projectRef *dbModel.ProjectRef) error {
+	conflicts, err := projectRef.GetGithubProjectConflicts()
+	if err != nil {
+		return errors.Wrap(err, "error finding project refs")
+	}
+	if len(conflicts.PRTestingIdentifiers) > 0 {
+		return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
+
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////

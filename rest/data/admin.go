@@ -159,6 +159,7 @@ func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restMode
 	}, nil
 }
 
+// RestartFailedCommitQueueVersions takes in a time range
 func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	totalRestarted := []string{}
 	totalNotRestarted := []string{}

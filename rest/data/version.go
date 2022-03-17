@@ -37,7 +37,7 @@ func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOpt
 	return res, nil
 }
 
-// Fetch versions until 'numVersionElements' elements are created, including
+// GetVersionsAndVariants Fetch versions until 'numVersionElements' elements are created, including
 // elements consisting of multiple versions rolled-up into one.
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the

@@ -68,6 +68,7 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	return nil
 }
 
+// VerifyUniqueProject returns a bad request error if the project ID / identifier is already in use.
 func VerifyUniqueProject(name string) error {
 	_, err := FindProjectById(name, false, false)
 	if err == nil {
@@ -159,15 +160,6 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	varsModel.AdminOnlyVars = vars.AdminOnlyVars
 	varsModel.VarsToDelete = []string{}
 	return nil
-}
-
-func CopyProjectVars(oldProjectId, newProjectId string) error {
-	vars, err := model.FindOneProjectVars(oldProjectId)
-	if err != nil {
-		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
-	}
-	vars.Id = newProjectId
-	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
 }
 
 func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {

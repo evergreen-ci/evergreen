@@ -46,7 +46,7 @@ type SpawnOptions struct {
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
 func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
-	d, err := distro.FindOne(distro.ById(so.DistroId))
+	d, err := distro.FindOneId(so.DistroId)
 	if err != nil {
 		return errors.Errorf("error finding distro '%s'", so.DistroId)
 	}
@@ -108,7 +108,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	}
 
 	// load in the appropriate distro
-	d, err := distro.FindOne(distro.ById(so.DistroId))
+	d, err := distro.FindOneId(so.DistroId)
 	if err != nil {
 		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
 	}

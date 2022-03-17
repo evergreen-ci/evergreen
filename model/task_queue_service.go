@@ -85,7 +85,7 @@ func (s *taskDispatchService) Refresh(distroID string) error {
 }
 
 func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
-	d, err := distro.FindOne(distro.ById(distroID))
+	d, err := distro.FindOneId(distroID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "database error for find() by distro id '%s'", distroID)
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FindRecentTasks queries the database to find all distros.
+// FindRecentTasks finds tasks that have recently finished.
 func FindRecentTasks(minutes int) ([]task.Task, *task.ResultCounts, error) {
 	tasks, err := task.GetRecentTasks(time.Duration(minutes) * time.Minute)
 	if err != nil {

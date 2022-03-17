@@ -340,7 +340,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if len(distroIDs) == 0 {
 			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
 		}
-		d, err = distro.FindOne(distro.ById(distroIDs[0]))
+		d, err = distro.FindOneId(distroIDs[0])
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}

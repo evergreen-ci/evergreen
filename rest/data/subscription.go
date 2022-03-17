@@ -182,23 +182,3 @@ func DeleteSubscriptions(owner string, ids []string) error {
 	}
 	return catcher.Resolve()
 }
-
-func CopyProjectSubscriptions(oldProject, newProject string) error {
-	subs, err := event.FindSubscriptionsByOwner(oldProject, event.OwnerTypeProject)
-	if err != nil {
-		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, sub := range subs {
-		sub.Owner = newProject
-		sub.ID = ""
-		for i, selector := range sub.Selectors {
-			if selector.Type == event.SelectorProject && selector.Data == oldProject {
-				sub.Selectors[i].Data = newProject
-			}
-		}
-		catcher.Add(sub.Upsert())
-	}
-	return catcher.Resolve()
-}

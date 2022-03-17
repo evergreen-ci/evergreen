@@ -224,10 +224,10 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
 	if len(hosts) == 0 {
-		gimlet.NewJSONErrorResponse(errors.Wrap(gimlet.ErrorResponse{
+		gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no hosts found",
-		}, "Database error"))
+		})
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -272,10 +272,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 		}
 		if len(tasks) == 0 {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    "no tasks found",
-			}, "Database error"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.New("no tasks found"))
 		}
 	}
 

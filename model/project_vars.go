@@ -102,6 +102,65 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	return projectVars, nil
 }
 
+func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+	catcher := grip.NewBasicCatcher()
+	matchingProjects, err := GetVarsByValue(toReplace)
+	if err != nil {
+		catcher.Wrap(err, "failed to fetch projects with matching value")
+	}
+	if matchingProjects == nil {
+		catcher.New("no projects with matching value found")
+	}
+	changes := map[string][]string{}
+	for _, project := range matchingProjects {
+		for key, val := range project.Vars {
+			if val == toReplace {
+				if !dryRun {
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
+					}
+					before := ProjectSettings{
+						Vars: ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
+					}
+
+					project.Vars[key] = replacement
+					_, err = project.Upsert()
+					if err != nil {
+						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					after := ProjectSettings{
+						Vars: ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
+					}
+
+					if err = LogProjectModified(project.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
+					}
+				}
+				changes[project.Id] = append(changes[project.Id], key)
+			}
+		}
+	}
+	return changes, catcher.Resolve()
+}
+
+// CopyProjectVars copies the variables for the first project to the second
+func CopyProjectVars(oldProjectId, newProjectId string) error {
+	vars, err := FindOneProjectVars(oldProjectId)
+	if err != nil {
+		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
+	}
+	vars.Id = newProjectId
+	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
+}
+
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars, err := FindOneProjectVars(projectId)
 	if err != nil {

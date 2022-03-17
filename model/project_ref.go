@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -1023,28 +1022,6 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	}, nil
 }
 
-func FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
-	project string, statuses []string) ([]task.Task, error) {
-	id, err := GetIdForProject(project)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"func":    "FindTaskWithinTimePeriod",
-			"message": "error getting id for project",
-			"project": project,
-		}))
-		// don't return an error here to preserve existing behavior
-		return nil, nil
-	}
-
-	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tasks, nil
-}
-
 func GetIdForProject(identifier string) (string, error) {
 	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
@@ -1435,28 +1412,6 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	return true, nil
 }
 
-func EnablePRTesting(projectRef *ProjectRef) error {
-	conflicts, err := projectRef.GetGithubProjectConflicts()
-	if err != nil {
-		return errors.Wrap(err, "error finding project refs")
-	}
-	if len(conflicts.PRTestingIdentifiers) > 0 {
-		return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
-
-	}
-	return nil
-}
-
-func EnableCommitQueue(projectRef *ProjectRef) error {
-	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
-		return errors.Wrap(err, "error enabling commit queue")
-	} else if !ok {
-		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
-	}
-
-	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
-}
-
 func UpdateAdminRoles(project *ProjectRef, toAdd, toDelete []string) error {
 	if project == nil {
 		return errors.New("no project found")
@@ -1475,61 +1430,13 @@ func FindProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	return projects, nil
 }
 
+// UpdateProjectRevision updates the given project's revision
 func UpdateProjectRevision(projectID, revision string) error {
 	if err := UpdateLastRevision(projectID, revision); err != nil {
 		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
 	}
 
 	return nil
-}
-
-func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
-	catcher := grip.NewBasicCatcher()
-	matchingProjects, err := GetVarsByValue(toReplace)
-	if err != nil {
-		catcher.Wrap(err, "failed to fetch projects with matching value")
-	}
-	if matchingProjects == nil {
-		catcher.New("no projects with matching value found")
-	}
-	changes := map[string][]string{}
-	for _, project := range matchingProjects {
-		for key, val := range project.Vars {
-			if val == toReplace {
-				if !dryRun {
-					originalVars := make(map[string]string)
-					for k, v := range project.Vars {
-						originalVars[k] = v
-					}
-					before := ProjectSettings{
-						Vars: ProjectVars{
-							Id:   project.Id,
-							Vars: originalVars,
-						},
-					}
-
-					project.Vars[key] = replacement
-					_, err = project.Upsert()
-					if err != nil {
-						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
-					}
-
-					after := ProjectSettings{
-						Vars: ProjectVars{
-							Id:   project.Id,
-							Vars: project.Vars,
-						},
-					}
-
-					if err = LogProjectModified(project.Id, username, &before, &after); err != nil {
-						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
-					}
-				}
-				changes[project.Id] = append(changes[project.Id], key)
-			}
-		}
-	}
-	return changes, catcher.Resolve()
 }
 
 func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {

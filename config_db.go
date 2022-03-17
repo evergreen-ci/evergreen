@@ -130,7 +130,7 @@ func SetBanner(bannerText string) error {
 	return errors.WithStack(err)
 }
 
-// SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
+// SetBannerTheme sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
 func SetBannerTheme(theme BannerTheme) error {
 	env := GetEnvironment()
