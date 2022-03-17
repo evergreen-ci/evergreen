@@ -1686,6 +1686,11 @@ func TestMergeUnorderedUnique(t *testing.T) {
 				Name: "my_module",
 			},
 		},
+		Containers: []Container{
+			{
+				Name: "container1",
+			},
+		},
 		Functions: map[string]*YAMLCommandSet{
 			"func1": &YAMLCommandSet{
 				SingleCommand: &PluginCommandConf{
@@ -1727,6 +1732,11 @@ func TestMergeUnorderedUnique(t *testing.T) {
 				Name: "add_my_module",
 			},
 		},
+		Containers: []Container{
+			{
+				Name: "container2",
+			},
+		},
 		Functions: map[string]*YAMLCommandSet{
 			"add_func1": &YAMLCommandSet{
 				SingleCommand: &PluginCommandConf{
@@ -1752,6 +1762,7 @@ func TestMergeUnorderedUnique(t *testing.T) {
 	assert.Equal(t, len(main.Parameters), 2)
 	assert.Equal(t, len(main.Modules), 2)
 	assert.Equal(t, len(main.Functions), 4)
+	assert.Equal(t, len(main.Containers), 2)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
@@ -1776,6 +1787,11 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 		Modules: []Module{
 			{
 				Name: "my_module",
+			},
+		},
+		Containers: []Container{
+			{
+				Name: "my_container",
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
@@ -1819,6 +1835,11 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 				Name: "my_module",
 			},
 		},
+		Containers: []Container{
+			{
+				Name: "my_container",
+			},
+		},
 		Functions: map[string]*YAMLCommandSet{
 			"func1": &YAMLCommandSet{
 				SingleCommand: &PluginCommandConf{
@@ -1845,6 +1866,7 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "module 'my_module' has been declared already")
 	assert.Contains(t, err.Error(), "function 'func1' has been declared already")
 	assert.Contains(t, err.Error(), "function 'func2' has been declared already")
+	assert.Contains(t, err.Error(), "container 'my_container' has been declared already")
 }
 
 func TestMergeUnordered(t *testing.T) {

@@ -1084,3 +1084,69 @@ const (
 	LogViewerHTML    LogViewer = "html"
 	LogViewerLobster LogViewer = "lobster"
 )
+
+type ContainerSize string
+
+const (
+	SmallContainer  = "small"
+	MediumContainer = "medium"
+	LargeContainer  = "large"
+)
+
+func (c ContainerSize) Validate() error {
+	switch c {
+	case SmallContainer, MediumContainer, LargeContainer:
+		return nil
+	default:
+		return errors.Errorf("unrecognized container size '%s'", c)
+	}
+}
+
+type ContainerOS string
+
+const (
+	LinuxOS   = "linux"
+	WindowsOS = "windows"
+)
+
+func (c ContainerOS) Validate() error {
+	switch c {
+	case LinuxOS, WindowsOS:
+		return nil
+	default:
+		return errors.Errorf("unrecognized container OS '%s'", c)
+	}
+}
+
+type CpuArchitecture string
+
+const (
+	ArchARM64 = "arm64"
+	ArchAMD64 = "x86_64"
+)
+
+func (c CpuArchitecture) Validate() error {
+	switch c {
+	case ArchARM64, ArchAMD64:
+		return nil
+	default:
+		return errors.Errorf("unrecognized CPU architecture '%s'", c)
+	}
+}
+
+type WindowsVersion string
+
+const (
+	Windows2022 = "2022"
+	Windows2019 = "2019"
+	Windows2016 = "2016"
+)
+
+func (w WindowsVersion) Validate() error {
+	switch w {
+	case Windows2022, Windows2019, Windows2016:
+		return nil
+	default:
+		return errors.Errorf("unrecognized windows version '%s'", w)
+	}
+}

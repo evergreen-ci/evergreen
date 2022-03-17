@@ -12,7 +12,7 @@ const MergeProjectConfigError = "error merging project configs"
 
 // mergeUnorderedUnique merges fields that are lists where the order doesn't matter.
 // These fields can be defined throughout multiple yamls but cannot contain duplicate keys.
-// These fields are: [task, task group, parameter, module, function]
+// These fields are: [task, task group, parameter, module, function, container]
 func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -65,6 +65,19 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 		} else {
 			pp.Modules = append(pp.Modules, module)
 			moduleExist[module.Name] = true
+		}
+	}
+
+	containerExist := map[string]bool{}
+	for _, container := range pp.Containers {
+		containerExist[container.Name] = true
+	}
+	for _, container := range toMerge.Containers {
+		if _, ok := containerExist[container.Name]; ok {
+			catcher.Errorf("container '%s' has been declared already", container.Name)
+		} else {
+			pp.Containers = append(pp.Containers, container)
+			containerExist[container.Name] = true
 		}
 	}
 
