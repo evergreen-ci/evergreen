@@ -2158,7 +2158,6 @@ func (t *Task) Archive() error {
 		}))
 		return errors.Wrap(err, "task.Archive() failed to insert new old task")
 	}
-
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
@@ -2167,6 +2166,7 @@ func (t *Task) Archive() error {
 				AbortInfoKey:            "",
 				OverrideDependenciesKey: "",
 			},
+			"$inc": bson.M{ExecutionKey: 1},
 		})
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed to update task")
