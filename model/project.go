@@ -306,14 +306,14 @@ type Container struct {
 }
 
 type ContainerSystem struct {
-	CpuArchitecture evergreen.CpuArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
+	CPUArchitecture evergreen.CpuArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
 	OperatingSystem evergreen.ContainerOS     `yaml:"operating_system,omitempty" bson:"operating_system"`
 	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 type ContainerResources struct {
-	Memory string `yaml:"memory,omitempty" bson:"memory"`
-	Cpu    string `yaml:"cpu,omitempty" bson:"cpu"`
+	MemoryMB int    `yaml:"memory_mb,omitempty" bson:"memory_mb"`
+	Cpu      string `yaml:"cpu,omitempty" bson:"cpu"`
 }
 
 type Module struct {
