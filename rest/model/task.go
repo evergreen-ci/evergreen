@@ -46,7 +46,6 @@ type APITask struct {
 	DependsOn               []APIDependency     `json:"depends_on"`
 	DisplayName             *string             `json:"display_name"`
 	HostId                  *string             `json:"host_id"`
-	Restarts                int                 `json:"restarts"`
 	Execution               int                 `json:"execution"`
 	Order                   int                 `json:"order"`
 	Status                  *string             `json:"status"`
@@ -224,7 +223,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			BuildVariantDisplayName: utility.ToStringPtr(v.BuildVariantDisplayName),
 			DisplayName:             utility.ToStringPtr(v.DisplayName),
 			HostId:                  utility.ToStringPtr(v.HostId),
-			Restarts:                v.Restarts,
 			Execution:               v.Execution,
 			Order:                   v.RevisionOrderNumber,
 			Status:                  utility.ToStringPtr(v.Status),
@@ -344,7 +342,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 		BuildVariant:        utility.FromStringPtr(ad.BuildVariant),
 		DisplayName:         utility.FromStringPtr(ad.DisplayName),
 		HostId:              utility.FromStringPtr(ad.HostId),
-		Restarts:            ad.Restarts,
 		Execution:           ad.Execution,
 		RevisionOrderNumber: ad.Order,
 		Status:              utility.FromStringPtr(ad.Status),
