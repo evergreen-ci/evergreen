@@ -62,6 +62,7 @@ type APITask struct {
 	DisplayOnly             bool                `json:"display_only"`
 	ParentTaskId            string              `json:"parent_task_id"`
 	ExecutionTasks          []*string           `json:"execution_tasks,omitempty"`
+	Tags                    []*string           `json:"tags,omitempty"`
 	Mainline                bool                `json:"mainline"`
 	TaskGroup               string              `json:"task_group,omitempty"`
 	TaskGroupMaxHosts       int                 `json:"task_group_max_hosts,omitempty"`
@@ -223,6 +224,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			BuildVariantDisplayName: utility.ToStringPtr(v.BuildVariantDisplayName),
 			DisplayName:             utility.ToStringPtr(v.DisplayName),
 			HostId:                  utility.ToStringPtr(v.HostId),
+			Tags:                    utility.ToStringPtrSlice(v.Tags),
 			Execution:               v.Execution,
 			Order:                   v.RevisionOrderNumber,
 			Status:                  utility.ToStringPtr(v.Status),
