@@ -393,7 +393,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
-	s.NoError(CopyProjectVars(projectId, "project-copy"))
+	s.NoError(model.CopyProjectVars(projectId, "project-copy"))
 	origProj, err := FindProjectVarsById(projectId, "", false)
 	s.NoError(err)
 

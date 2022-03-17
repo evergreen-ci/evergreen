@@ -301,14 +301,14 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 
 	for name, test := range map[string]func(t *testing.T){
 		"FromNonExistentProject": func(t *testing.T) {
-			assert.NoError(t, CopyProjectSubscriptions("not-a-project", "my-new-project"))
+			assert.NoError(t, event.CopyProjectSubscriptions("not-a-project", "my-new-project"))
 			apiSubs, err := event.FindSubscriptionsByOwner("my-new-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 0)
 		},
 		"FromExistentProject": func(t *testing.T) {
 			newProjectId := "my-newest-project"
-			assert.NoError(t, CopyProjectSubscriptions(oldProjectId, newProjectId))
+			assert.NoError(t, event.CopyProjectSubscriptions(oldProjectId, newProjectId))
 			apiSubs, err := event.FindSubscriptionsByOwner(oldProjectId, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)
