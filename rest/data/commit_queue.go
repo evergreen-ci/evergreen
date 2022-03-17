@@ -27,6 +27,7 @@ import (
 
 type DBCommitQueueConnector struct{}
 
+// GetGitHubPR takes the owner, repo, and PR number.
 func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	conf, err := evergreen.GetConfig()
 	if err != nil {
@@ -165,6 +166,7 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, 
 	return nil
 }
 
+// if bool is true, move the commit queue item to be processed next.
 func EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	q, err := commitqueue.FindOneId(projectID)
 	if err != nil {

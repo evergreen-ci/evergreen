@@ -128,6 +128,7 @@ func getVersionChildren(versionId string) ([]string, error) {
 
 }
 
+// GetSubscriptions returns the subscriptions that belong to a user
 func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	if len(owner) == 0 {
 		return nil, gimlet.ErrorResponse{

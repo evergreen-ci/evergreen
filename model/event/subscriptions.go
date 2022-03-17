@@ -260,6 +260,7 @@ func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscriptio
 	return out, nil
 }
 
+// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
 func CopyProjectSubscriptions(oldProject, newProject string) error {
 	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
 	if err != nil {

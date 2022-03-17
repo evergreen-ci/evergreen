@@ -21,6 +21,8 @@ import (
 
 const branchRefPrefix = "refs/heads/"
 
+// TriggerRepotracker creates an amboy job to get the commits from a
+// Github Push Event
 func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) error {
 	branch, err := validatePushEvent(event)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
+// GetCLIUpdate fetches the current cli version and the urls to download
 func GetCLIUpdate() (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
 	env := evergreen.GetEnvironment()

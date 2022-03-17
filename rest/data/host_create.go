@@ -478,6 +478,7 @@ func GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
 	return logs, nil
 }
 
+// GetDockerStatus returns the status of the given docker container
 func GetDockerStatus(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings) (*cloud.ContainerStatus, error) {
 	c := cloud.GetDockerClient(settings)
 

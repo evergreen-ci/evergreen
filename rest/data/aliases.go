@@ -54,6 +54,7 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 	return aliasModels, nil
 }
 
+// UpdateProjectAliases upserts/deletes aliases for the given project
 func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
 	aliasesToUpsert := []model.ProjectAlias{}
 	aliasesToDelete := []string{}
@@ -89,6 +90,9 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 	return catcher.Resolve()
 }
 
+// UpdateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
+// upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
+// considers the aliases that are relevant for the section). Returns if any aliases have been modified.
 func UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
 	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}

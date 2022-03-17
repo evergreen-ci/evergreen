@@ -79,6 +79,8 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	return apiProjectRef, nil
 }
 
+// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
+// RepoRef related functions and collection instead of ProjectRef.
 func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
 	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end

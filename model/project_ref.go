@@ -1517,6 +1517,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 	return GetProjectSettings(pRef)
 }
 
+// GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	hook, err := FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
