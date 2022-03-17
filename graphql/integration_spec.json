@@ -270,7 +270,6 @@
         "depends_on": [],
         "display_name": "display name",
         "host_id": "host",
-        "restarts": 5,
         "execution": 0,
         "order": 5,
         "r": "something",
@@ -325,7 +324,6 @@
         "depends_on": [],
         "display_name": "display name",
         "host_id": "host",
-        "restarts": 5,
         "execution": 0,
         "order": 5,
         "r": "something",
@@ -380,7 +378,7 @@
         "depends_on": [],
         "display_name": "display name",
         "host_id": "host",
-        "restarts": 5,
+
         "execution": 0,
         "order": 5,
         "r": "something",
@@ -436,7 +434,7 @@
         "depends_on": [],
         "display_name": "exec 1 display!!",
         "host_id": "host",
-        "restarts": 5,
+
         "execution": 0,
         "order": 5,
         "r": "something",
@@ -491,7 +489,7 @@
         "depends_on": [],
         "display_name": "exec 2 display!!",
         "host_id": "host",
-        "restarts": 5,
+
         "execution": 0,
         "order": 5,
         "r": "merge_test",
@@ -546,7 +544,7 @@
         "depends_on": [],
         "display_name": "exec1 display name",
         "host_id": "host",
-        "restarts": 5,
+
         "execution": 0,
         "order": 5,
         "r": "patch_request",
@@ -1990,7 +1988,7 @@
             "buildVariant": "variant",
             "displayName": "exec1 display name",
             "hostId": "host",
-            "restarts": 5,
+
             "execution": 0,
             "patchNumber": 5,
             "requester": "patch_request",

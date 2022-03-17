@@ -91,31 +91,28 @@ func TestDisplayTasksByVersion(t *testing.T) {
 		Convey("only tasks that are display tasks should be returned", func() {
 			tasks := []Task{
 				{
-					Id:        "one",
-					Version:   "v1",
-					Activated: true,
+					Id:      "one",
+					Version: "v1",
 				},
 				{
 					Id:          "two",
 					Version:     "v1",
 					DisplayOnly: true,
-					Activated:   true,
 				},
 				{
 					Id:            "three",
 					Version:       "v1",
 					DisplayTaskId: utility.ToStringPtr(""),
-					Activated:     true,
 				},
 				{
 					Id:             "four",
 					Version:        "v1",
 					ExecutionTasks: []string{"execution_task_one, execution_task_two"},
-					Activated:      true,
 				},
 				{
-					Id:      "five",
-					Version: "v1",
+					Id:            "five",
+					Version:       "v1",
+					ActivatedTime: utility.ZeroTime,
 				},
 				{
 					Id:            "execution_task_one",

@@ -59,7 +59,6 @@ var (
 	HostIdKey                   = bsonutil.MustHaveTag(Task{}, "HostId")
 	AgentVersionKey             = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                = bsonutil.MustHaveTag(Task{}, "Execution")
-	RestartsKey                 = bsonutil.MustHaveTag(Task{}, "Restarts")
 	OldTaskIdKey                = bsonutil.MustHaveTag(Task{}, "OldTaskId")
 	ArchivedKey                 = bsonutil.MustHaveTag(Task{}, "Archived")
 	RevisionOrderNumberKey      = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
@@ -374,8 +373,8 @@ func DisplayTasksByVersion(version string) bson.M {
 	return bson.M{
 		"$and": []bson.M{
 			{
-				VersionKey:   version,
-				ActivatedKey: true,
+				VersionKey:       version,
+				ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
 			},
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
@@ -393,6 +392,14 @@ func FailedTasksByVersion(version string) bson.M {
 	return bson.M{
 		VersionKey: version,
 		StatusKey:  bson.M{"$in": evergreen.TaskFailureStatuses},
+	}
+}
+
+func FailedTasksByVersionAndBV(version string, variant string) bson.M {
+	return bson.M{
+		VersionKey:      version,
+		BuildVariantKey: variant,
+		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
 	}
 }
 

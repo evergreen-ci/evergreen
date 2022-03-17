@@ -829,10 +829,10 @@ type PatchTriggerAlias {
   alias: String!
   childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifier]
+  taskSpecifiers: [TaskSpecifier!]
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTask]!
+  variantsTasks: [VariantTask!]!
 }
 
 type UserPatches {
@@ -1096,7 +1096,6 @@ type Task {
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
   requester: String!
-  restarts: Int
   revision: String
   scheduledTime: Time
   containerAllocatedTime: Time

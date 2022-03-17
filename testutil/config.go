@@ -210,7 +210,14 @@ func MockConfig() *evergreen.Settings {
 			},
 			DefaultProject: "proj",
 		},
-		Keys:    map[string]string{"k3": "v3"},
+		Keys: map[string]string{"k3": "v3"},
+		LoggerConfig: evergreen.LoggerConfig{
+			Buffer: evergreen.LogBuffering{
+				UseAsync:             true,
+				Count:                101,
+				IncomingBufferFactor: 20,
+			},
+		},
 		LogPath: "logpath",
 		NewRelic: evergreen.NewRelicConfig{
 			AccountID:     "123123123",

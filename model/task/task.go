@@ -136,8 +136,6 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// the number of times this task has been restarted
-	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -2160,19 +2158,15 @@ func (t *Task) Archive() error {
 		}))
 		return errors.Wrap(err, "task.Archive() failed to insert new old task")
 	}
-
-	// only increment restarts if have a current restarts
-	// this way restarts will never be set for new tasks but will be
-	// maintained for old ones
-	inc := bson.M{ExecutionKey: 1}
-	if t.Restarts > 0 {
-		inc[RestartsKey] = 1
-	}
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$unset": bson.M{AbortedKey: "", AbortInfoKey: "", OverrideDependenciesKey: ""},
-			"$inc":   inc,
+			"$unset": bson.M{
+				AbortedKey:              "",
+				AbortInfoKey:            "",
+				OverrideDependenciesKey: "",
+			},
+			"$inc": bson.M{ExecutionKey: 1},
 		})
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed to update task")
@@ -2254,19 +2248,6 @@ func ArchiveMany(tasks []Task) error {
 		if err != nil {
 			return nil, err
 		}
-		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
-			},
-			RestartsKey: bson.M{
-				"$gt": 0,
-			},
-		},
-			bson.M{
-				"$inc": bson.M{
-					RestartsKey: 1,
-				},
-			})
 		return nil, err
 	}
 

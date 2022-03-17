@@ -539,7 +539,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		TriggerAliases    []string           `json:"trigger_aliases"`
 		Parameters        []patch.Parameter  `json:"parameters"`
 		GitMetadata       patch.GitMetadata  `json:"git_metadata"`
-		ReuseDefinition   bool               `json:"reuse_definition"`
+		RepeatDefinition  bool               `json:"reuse_definition"`
+		RepeatFailed      bool               `json:"repeat_failed"`
 		GithubAuthor      string             `json:"github_author"`
 	}{
 		Description:       incomingPatch.description,
@@ -559,7 +560,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		TriggerAliases:    incomingPatch.triggerAliases,
 		Parameters:        incomingPatch.parameters,
 		GitMetadata:       incomingPatch.gitMetadata,
-		ReuseDefinition:   incomingPatch.reuseDefinition,
+		RepeatDefinition:  incomingPatch.repeatDefinition,
+		RepeatFailed:      incomingPatch.repeatFailed,
 		GithubAuthor:      incomingPatch.githubAuthor,
 	}
 
