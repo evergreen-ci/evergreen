@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Testec2AssumeRoleExecute(t *testing.T) {
+func TestEc2AssumeRoleExecute(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
 		"FailsWithNoARN": func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			assert.Error(t, c.Execute(ctx, comm, logger, conf))
