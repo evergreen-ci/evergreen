@@ -1084,3 +1084,58 @@ const (
 	LogViewerHTML    LogViewer = "html"
 	LogViewerLobster LogViewer = "lobster"
 )
+
+// ContainerOS denotes the operating system of a running container.
+type ContainerOS string
+
+const (
+	LinuxOS   ContainerOS = "linux"
+	WindowsOS ContainerOS = "windows"
+)
+
+// Validate checks that the container OS is recognized.
+func (c ContainerOS) Validate() error {
+	switch c {
+	case LinuxOS, WindowsOS:
+		return nil
+	default:
+		return errors.Errorf("unrecognized container OS '%s'", c)
+	}
+}
+
+// CPUArchitecture represents the architecture necessary to run the container.
+type CPUArchitecture string
+
+const (
+	ArchARM64 CPUArchitecture = "arm64"
+	ArchAMD64 CPUArchitecture = "x86_64"
+)
+
+// Validate checks that the container CPU architecture is recognized.
+func (c CPUArchitecture) Validate() error {
+	switch c {
+	case ArchARM64, ArchAMD64:
+		return nil
+	default:
+		return errors.Errorf("unrecognized CPU architecture '%s'", c)
+	}
+}
+
+// WindowsVersion specifies the compatibility version of Windows that is required for the container to run.
+type WindowsVersion string
+
+const (
+	Windows2022 WindowsVersion = "2022"
+	Windows2019 WindowsVersion = "2019"
+	Windows2016 WindowsVersion = "2016"
+)
+
+// Validate checks that the container Windows version is recognized.
+func (w WindowsVersion) Validate() error {
+	switch w {
+	case Windows2022, Windows2019, Windows2016:
+		return nil
+	default:
+		return errors.Errorf("unrecognized windows version '%s'", w)
+	}
+}
