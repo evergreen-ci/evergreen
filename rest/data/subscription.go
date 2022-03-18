@@ -78,7 +78,7 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 			//find all children, iterate through them
 			var versionId string
 			for _, selector := range dbSubscription.Selectors {
-				if selector.Type == "id" {
+				if selector.Type == event.SelectorID {
 					versionId = selector.Data
 				}
 			}
@@ -93,9 +93,10 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 			for _, childPatchId := range children {
 				childDbSubscription := dbSubscription
 				childDbSubscription.LastUpdated = time.Now()
+				childDbSubscription.Filter.ID = childPatchId
 				var selectors []event.Selector
 				for _, selector := range dbSubscription.Selectors {
-					if selector.Type == "id" {
+					if selector.Type == event.SelectorID {
 						selector.Data = childPatchId
 					}
 					selectors = append(selectors, selector)

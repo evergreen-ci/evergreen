@@ -538,21 +538,27 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 		LastUpdated:  time.Now(),
 		Selectors: []event.Selector{
 			{
-				Type: "object",
-				Data: "task",
+				Type: event.SelectorObject,
+				Data: event.ObjectTask,
 			},
 			{
-				Type: "project",
+				Type: event.SelectorProject,
 				Data: projectRef.Id,
 			},
 			{
-				Type: "requester",
+				Type: event.SelectorRequester,
 				Data: evergreen.RepotrackerVersionRequester,
 			},
 			{
-				Type: "in-version",
+				Type: event.SelectorInVersion,
 				Data: v.Id,
 			},
+		},
+		Filter: event.Filter{
+			Object:    event.ObjectTask,
+			Project:   projectRef.Id,
+			Requester: evergreen.RepotrackerVersionRequester,
+			InVersion: v.Id,
 		},
 	}
 	subscribers := []event.Subscriber{}
