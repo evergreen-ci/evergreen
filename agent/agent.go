@@ -466,6 +466,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, "")
 	}
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
+	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
 	tc.setTaskConfig(taskConfig)
 
 	if err = a.startLogging(ctx, tc); err != nil {
