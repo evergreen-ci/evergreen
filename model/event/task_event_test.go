@@ -1,11 +1,13 @@
 package event
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +21,10 @@ func init() {
 }
 
 func TestLoggingTaskEvents(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	Convey("Test task event logging", t, func() {
 
 		require.NoError(t, db.Clear(AllLogCollection),
