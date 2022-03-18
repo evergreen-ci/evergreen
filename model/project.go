@@ -315,7 +315,8 @@ type ContainerSystem struct {
 
 // ContainerResources specifies the computing resources given to the container.
 // MemoryMB is the memory (in MB) that the container will be allocated, and
-// CPU is the number of CPUs that will be allocated. 1 CPU equates to 1024 CPU units.
+// CPU is the CPU units that will be allocated. 1024 CPU units is
+// equivalent to 1vCPU.
 type ContainerResources struct {
 	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb"`
 	CPU      int `yaml:"cpu,omitempty" bson:"cpu"`

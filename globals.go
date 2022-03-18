@@ -1121,7 +1121,7 @@ func (c CPUArchitecture) Validate() error {
 	}
 }
 
-// WindowsVersion specifies the compatability version of Windows that is required for the container to run.
+// WindowsVersion specifies the compatibility version of Windows that is required for the container to run.
 type WindowsVersion string
 
 const (
