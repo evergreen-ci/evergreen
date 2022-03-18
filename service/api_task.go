@@ -506,7 +506,7 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, params agentEx
 		// fully cleaned up. If this message logs, that means there is a
 		// mismatch between either:
 		// 1. What Evergreen believes is this host's state (terminated) and the
-		//    cloud instance's actual state(not terminated). This is a bug.
+		//    cloud instance's actual state (not terminated). This is a bug.
 		// 2. The cloud instance's status and the actual liveliness of the host.
 		//    There are some cases where the agent is still checking in for a
 		//    long time after the cloud provider says the instance is already
