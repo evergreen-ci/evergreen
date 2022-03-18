@@ -90,6 +90,32 @@ func InsertManyUnordered(c string, items ...interface{}) error {
 	return errors.WithStack(err)
 }
 
+// CreateCollections ensures that all the given collections are created,
+// returning an error immediately if creating any one of them fails.
+func CreateCollections(collections ...string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	const namespaceExistsErrCode = 48
+	for _, collection := range collections {
+		_, err := db.CreateCollection(collection)
+		if err == nil {
+			continue
+		}
+		// If the collection already exists, this does not count as an error.
+		if mongoErr, ok := errors.Cause(err).(mongo.CommandError); ok && mongoErr.HasErrorCode(namespaceExistsErrCode) {
+			continue
+		}
+		if err != nil {
+			return errors.Wrapf(err, "creating collection '%s'", collection)
+		}
+	}
+	return nil
+}
+
 // Clear removes all documents from a specified collection.
 func Clear(collection string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
