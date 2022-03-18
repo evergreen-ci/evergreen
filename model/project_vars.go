@@ -157,8 +157,8 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	if err != nil {
 		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
 	}
-	vars.Id = newProjectId
-	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
+	_, err = vars.Upsert()
+	return errors.Wrapf(err, "error inserting variables for project '%s", newProjectId)
 }
 
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
