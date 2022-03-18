@@ -16,13 +16,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -5017,4 +5020,257 @@ func TestUnsafeReplace(t *testing.T) {
 			tCase(ctx, t, env, old, replacement)
 		})
 	}
+}
+
+type FindHostsSuite struct {
+	setup func(*FindHostsSuite)
+	suite.Suite
+}
+
+const testUser = "user1"
+
+func (*FindHostsSuite) hosts() []Host {
+	return []Host{
+		{
+			Id:        "host1",
+			StartedBy: testUser,
+			Distro: distro.Distro{
+				Id:      "distro1",
+				Aliases: []string{"alias125"},
+				Arch:    evergreen.ArchLinuxAmd64,
+			},
+			Status:         evergreen.HostRunning,
+			ExpirationTime: time.Now().Add(time.Hour),
+			Secret:         "abcdef",
+			IP:             "ip1",
+		}, {
+			Id:        "host2",
+			StartedBy: "user2",
+			Distro: distro.Distro{
+				Id:      "distro2",
+				Aliases: []string{"alias125"},
+			},
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+			IP:             "ip2",
+		}, {
+			Id:             "host3",
+			StartedBy:      "user3",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+			IP:             "ip3",
+		}, {
+			Id:             "host4",
+			StartedBy:      "user4",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+			IP:             "ip4",
+		}, {
+			Id:        "host5",
+			StartedBy: evergreen.User,
+			Status:    evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:      "distro5",
+				Aliases: []string{"alias125"},
+			},
+			IP: "ip5",
+		},
+	}
+}
+
+func (*FindHostsSuite) users() []user.DBUser {
+	return []user.DBUser{
+		{
+			Id: testUser,
+		},
+		{
+			Id: "user2",
+		},
+		{
+			Id: "user3",
+		},
+		{
+			Id: "user4",
+		},
+		{
+			Id:          "root",
+			SystemRoles: []string{"root"},
+		},
+	}
+}
+
+func TestFindHostsSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	s := new(FindHostsSuite)
+
+	s.setup = func(s *FindHostsSuite) {
+		s.NoError(db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+		cmd := map[string]string{
+			"create": evergreen.ScopeCollection,
+		}
+		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+
+		hosts := s.hosts()
+		for _, h := range hosts {
+			s.Require().NoError(h.Insert())
+		}
+
+		users := []string{testUser, "user2", "user3", "user4"}
+
+		for _, id := range users {
+			user := &user.DBUser{
+				Id: id,
+			}
+			s.NoError(user.Insert())
+		}
+		root := user.DBUser{
+			Id:          "root",
+			SystemRoles: []string{"root"},
+		}
+		s.NoError(root.Insert())
+		rm := evergreen.GetEnvironment().RoleManager()
+		s.NoError(rm.AddScope(gimlet.Scope{
+			ID:        "root",
+			Resources: []string{"distro2", "distro5"},
+			Type:      evergreen.DistroResourceType,
+		}))
+		s.NoError(rm.UpdateRole(gimlet.Role{
+			ID:    "root",
+			Scope: "root",
+			Permissions: gimlet.Permissions{
+				evergreen.PermissionHosts: evergreen.HostsEdit.Value,
+			},
+		}))
+	}
+
+	suite.Run(t, s)
+}
+
+func (s *FindHostsSuite) SetupTest() {
+	s.NotNil(s.setup)
+	s.setup(s)
+}
+
+func (s *FindHostsSuite) TestFindById() {
+	h1, ok := FindOneId("host1")
+	s.NoError(ok)
+	s.NotNil(h1)
+	s.Equal("host1", h1.Id)
+
+	h2, ok := FindOneId("host2")
+	s.NoError(ok)
+	s.NotNil(h2)
+	s.Equal("host2", h2.Id)
+}
+
+func (s *FindHostsSuite) TestFindByIdFail() {
+	h, ok := FindOneId("nonexistent")
+	s.NoError(ok)
+	s.Nil(h)
+}
+
+func (s *FindHostsSuite) TestFindByIP() {
+	h1, ok := FindOne(ByIP("ip1"))
+	s.NoError(ok)
+	s.NotNil(h1)
+	s.Equal("host1", h1.Id)
+	s.Equal("ip1", h1.IP)
+
+	h2, ok := FindOne(ByIP("ip2"))
+	s.NoError(ok)
+	s.NotNil(h2)
+	s.Equal("host2", h2.Id)
+	s.Equal("ip2", h2.IP)
+}
+
+func (s *FindHostsSuite) TestFindByIPFail() {
+	h, ok := FindOne(ByIP("nonexistent"))
+	s.NoError(ok)
+	s.Nil(h)
+}
+
+func (s *FindHostsSuite) TestFindHostsByDistro() {
+	hosts, err := Find(db.Query(ByDistroIDsOrAliasesRunning("distro5")))
+	s.Require().NoError(err)
+	s.Require().Len(hosts, 1)
+	s.Equal("host5", hosts[0].Id)
+
+	hosts, err = Find(db.Query(ByDistroIDsOrAliasesRunning("alias125")))
+	s.Require().NoError(err)
+	s.Require().Len(hosts, 2)
+	var host1Found, host5Found bool
+	for _, h := range hosts {
+		if h.Id == "host1" {
+			host1Found = true
+		}
+		if h.Id == "host5" {
+			host5Found = true
+		}
+	}
+	s.True(host1Found)
+	s.True(host5Found)
+}
+
+func (s *FindHostsSuite) TestFindByUser() {
+	hosts, err := GetHostsByFromIDWithStatus("", "", testUser, 100)
+	s.NoError(err)
+	s.NotNil(hosts)
+	for _, h := range hosts {
+		s.Equal(testUser, h.StartedBy)
+	}
+}
+
+func (s *FindHostsSuite) TestStatusFiltering() {
+	hosts, err := GetHostsByFromIDWithStatus("", "", "", 100)
+	s.NoError(err)
+	s.NotNil(hosts)
+	for _, h := range hosts {
+		statusFound := false
+		for _, status := range evergreen.UpHostStatus {
+			if h.Status == status {
+				statusFound = true
+			}
+		}
+		s.True(statusFound)
+	}
+}
+
+func (s *FindHostsSuite) TestLimit() {
+	hosts, err := GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 2)
+	s.NoError(err)
+	s.NotNil(hosts)
+	s.Equal(2, len(hosts))
+	s.Equal("host2", hosts[0].Id)
+	s.Equal("host3", hosts[1].Id)
+
+	hosts, err = GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 3)
+	s.NoError(err)
+	s.NotNil(hosts)
+	s.Equal(3, len(hosts))
+}
+
+func (s *FindHostsSuite) TestSetHostStatus() {
+	h, err := FindOneId("host1")
+	s.NoError(err)
+	s.NoError(h.SetStatus(evergreen.HostTerminated, evergreen.User, fmt.Sprintf("changed by %s from API", evergreen.User)))
+
+	for i := 1; i < 5; i++ {
+		h, err := FindOneId(fmt.Sprintf("host%d", i))
+		s.NoError(err)
+		s.Equal(evergreen.HostTerminated, h.Status)
+	}
+}
+
+func (s *FindHostsSuite) TestExtendHostExpiration() {
+	h, err := FindOneId("host1")
+	s.NoError(err)
+	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
+	s.NoError(h.SetExpirationTime(expectedTime))
+
+	hCheck, err := FindOneId("host1")
+	s.Equal(expectedTime, hCheck.ExpirationTime)
+	s.NoError(err)
 }

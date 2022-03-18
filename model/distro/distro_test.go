@@ -1,7 +1,9 @@
 package distro
 
 import (
+	"context"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
 	"testing"
@@ -13,11 +15,63 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFindDistroById(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	assert.NoError(err)
+	require.NotNil(t, session)
+	defer session.Close()
+
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+
+	id := fmt.Sprintf("distro_%d", rand.Int())
+	d := &Distro{
+		Id: id,
+	}
+	assert.Nil(d.Insert())
+	found, err := FindOneId(id)
+	assert.NoError(err)
+	assert.Equal(found.Id, id, "The _ids should match")
+	assert.NotEqual(found.Id, -1, "The _ids should not match")
+}
+
+func TestFindAllDistros(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	assert.NoError(err)
+	require.NotNil(t, session)
+	defer session.Close()
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+
+	numDistros := 10
+	for i := 0; i < numDistros; i++ {
+		d := &Distro{
+			Id: fmt.Sprintf("distro_%d", rand.Int()),
+		}
+		assert.Nil(d.Insert())
+	}
+
+	found, err := Find(All)
+	assert.NoError(err)
+	assert.Len(found, numDistros)
+}
 
 func TestGenerateName(t *testing.T) {
 	assert := assert.New(t)
