@@ -1,5 +1,10 @@
 package manifest
 
+import (
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
+)
+
 const Collection = "manifest"
 
 // Manifest is a representation of the modules associated with the a version.
@@ -30,4 +35,23 @@ type Module struct {
 	Revision string `json:"revision" bson:"revision"`
 	Owner    string `json:"owner" bson:"owner"`
 	URL      string `json:"url" bson:"url"`
+}
+
+// GetManifestByTask finds the manifest corresponding to the given task.
+func GetManifestByTask(taskId string) (*Manifest, error) {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding task '%s'", t)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task '%s' not found", t.Id)
+	}
+	mfest, err := FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding manifest from version '%s'", t.Version)
+	}
+	if mfest == nil {
+		return nil, errors.Errorf("no manifest found for version '%s'", t.Version)
+	}
+	return mfest, nil
 }

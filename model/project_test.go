@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -1163,6 +1164,218 @@ func (s *projectSuite) TestFindAllTasksMap() {
 	s.Len(allTasks, 8)
 	task := allTasks["a_task_1"]
 	s.Len(task.Tags, 2)
+}
+
+type FindProjectsSuite struct {
+	setup    func() error
+	teardown func() error
+	suite.Suite
+}
+
+const (
+	repoProjectId  = "repo_mci"
+	projEventCount = 10
+)
+
+func TestFindProjectsSuite(t *testing.T) {
+	s := new(FindProjectsSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	s.setup = func() error {
+		s.Require().NoError(db.ClearCollections(ProjectRefCollection, ProjectVarsCollection))
+
+		projects := []*ProjectRef{
+			{
+				Id:          "projectA",
+				Private:     utility.FalsePtr(),
+				Enabled:     utility.TruePtr(),
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "gimlet",
+				Branch:      "main",
+			},
+			{
+				Id:          "projectB",
+				Private:     utility.TruePtr(),
+				Enabled:     utility.TruePtr(),
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
+				Branch:      "main",
+			},
+			{
+				Id:          "projectC",
+				Private:     utility.TruePtr(),
+				Enabled:     utility.TruePtr(),
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "mongo",
+				Branch:      "main",
+			},
+			{Id: "projectD", Private: utility.FalsePtr()},
+			{Id: "projectE", Private: utility.FalsePtr()},
+			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: projectId},
+		}
+
+		for _, p := range projects {
+			if err := p.Insert(); err != nil {
+				return err
+			}
+			if _, err := GetNewRevisionOrderNumber(p.Id); err != nil {
+				return err
+			}
+		}
+
+		vars := &ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{"a": "1", "b": "3"},
+			PrivateVars: map[string]bool{"b": true},
+		}
+		s.NoError(vars.Insert())
+		vars = &ProjectVars{
+			Id:          repoProjectId,
+			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
+			PrivateVars: map[string]bool{"a": true},
+		}
+		s.NoError(vars.Insert())
+		before := getMockProjectSettings()
+		after := getMockProjectSettings()
+		after.GitHubHooksEnabled = false
+
+		h :=
+			event.EventLogEntry{
+				Timestamp:    time.Now(),
+				ResourceType: EventResourceTypeProject,
+				EventType:    EventTypeProjectModified,
+				ResourceId:   projectId,
+				Data: &ProjectChangeEvent{
+					User:   username,
+					Before: before,
+					After:  after,
+				},
+			}
+
+		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
+		logger := event.NewDBEventLogger(event.AllLogCollection)
+		for i := 0; i < projEventCount; i++ {
+			eventShallowCpy := h
+			s.NoError(logger.LogEvent(&eventShallowCpy))
+		}
+
+		return nil
+	}
+
+	s.teardown = func() error {
+		return db.Clear(ProjectRefCollection)
+	}
+
+	suite.Run(t, s)
+}
+
+func (s *FindProjectsSuite) SetupSuite() { s.Require().NoError(s.setup()) }
+
+func (s *FindProjectsSuite) TearDownSuite() {
+	s.Require().NoError(s.teardown())
+}
+
+func (s *FindProjectsSuite) TestFetchTooManyAsc() {
+	projects, err := FindProjects("", 8, 1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 7)
+}
+
+func (s *FindProjectsSuite) TestFetchTooManyDesc() {
+	projects, err := FindProjects("zzz", 8, -1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 7)
+}
+
+func (s *FindProjectsSuite) TestFetchExactNumber() {
+	projects, err := FindProjects("", 3, 1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 3)
+}
+
+func (s *FindProjectsSuite) TestFetchTooFewAsc() {
+	projects, err := FindProjects("", 2, 1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 2)
+}
+
+func (s *FindProjectsSuite) TestFetchTooFewDesc() {
+	projects, err := FindProjects("zzz", 2, -1)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 2)
+}
+
+func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
+	projects, err := FindProjects("projectB", 1, 1)
+	s.NoError(err)
+	s.Len(projects, 1)
+}
+
+func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
+	projects, err := FindProjects("projectD", 1, -1)
+	s.NoError(err)
+	s.Len(projects, 1)
+}
+
+func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
+	projects, err := FindProjects("zzz", 1, 1)
+	s.NoError(err)
+	s.Len(projects, 0)
+}
+
+func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
+	projects, err := FindProjects("aaa", 1, -1)
+	s.NoError(err)
+	s.Len(projects, 0)
+}
+
+func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
+	projRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
+	s.NoError(err)
+	s.Nil(projRef)
+
+	projRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
+	s.NoError(err)
+	s.NotNil(projRef)
+}
+
+func (s *FindProjectsSuite) TestGetProjectSettings() {
+	projRef := &ProjectRef{
+		Owner:   "admin",
+		Enabled: utility.TruePtr(),
+		Private: utility.TruePtr(),
+		Id:      projectId,
+		Admins:  []string{},
+		Repo:    "SomeRepo",
+	}
+	projectSettingsEvent, err := GetProjectSettings(projRef)
+	s.NoError(err)
+	s.NotNil(projectSettingsEvent)
+}
+
+func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
+	projRef := &ProjectRef{
+		Owner:   "admin",
+		Enabled: utility.TruePtr(),
+		Private: utility.TruePtr(),
+		Id:      projectId,
+		Admins:  []string{},
+	}
+	projectSettingsEvent, err := GetProjectSettings(projRef)
+	s.Nil(err)
+	s.NotNil(projectSettingsEvent)
+	s.False(projectSettingsEvent.GitHubHooksEnabled)
 }
 
 func TestModuleList(t *testing.T) {

@@ -1,6 +1,11 @@
 package event
 
 import (
+	"context"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -373,4 +378,84 @@ func (s *subscriptionsSuite) TestCreateOrUpdateImplicitSubscription() {
 	s.NoError(err)
 	s.Require().Len(subscriptions, 1)
 	s.Equal(subscriptions[0].ID, subscription.ID)
+}
+
+func TestCopyProjectSubscriptions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(t, db.ClearCollections(SubscriptionsCollection))
+	oldProjectId := "my-project"
+	subs := []Subscription{
+		{
+			ID:           mgobson.NewObjectId().Hex(),
+			Owner:        oldProjectId,
+			OwnerType:    OwnerTypeProject,
+			ResourceType: "PATCH",
+			Trigger:      "outcome",
+			Selectors: []Selector{
+				{
+					Type: SelectorProject,
+					Data: oldProjectId,
+				},
+			},
+			Subscriber: Subscriber{
+				Type:   EmailSubscriberType,
+				Target: "a@domain.invalid",
+			},
+		},
+		{
+			ID:           mgobson.NewObjectId().Hex(),
+			Owner:        "not-my-project",
+			OwnerType:    OwnerTypeProject,
+			ResourceType: "PATCH",
+			Trigger:      "outcome",
+			Selectors: []Selector{
+				{
+					Type: SelectorProject,
+					Data: "not-my-project",
+				},
+			},
+			Subscriber: Subscriber{
+				Type:   EmailSubscriberType,
+				Target: "a@domain.invalid",
+			},
+		},
+	}
+	for _, sub := range subs {
+		assert.NoError(t, sub.Upsert())
+	}
+
+	for name, test := range map[string]func(t *testing.T){
+		"FromNonExistentProject": func(t *testing.T) {
+			assert.NoError(t, CopyProjectSubscriptions("not-a-project", "my-new-project"))
+			apiSubs, err := FindSubscriptionsByOwner("my-new-project", OwnerTypeProject)
+			assert.NoError(t, err)
+			require.Len(t, apiSubs, 0)
+		},
+		"FromExistentProject": func(t *testing.T) {
+			newProjectId := "my-newest-project"
+			assert.NoError(t, CopyProjectSubscriptions(oldProjectId, newProjectId))
+			apiSubs, err := FindSubscriptionsByOwner(oldProjectId, OwnerTypeProject)
+			assert.NoError(t, err)
+			require.Len(t, apiSubs, 1)
+			assert.Equal(t, subs[0].ID, apiSubs[0].ID)
+			require.Len(t, apiSubs[0].Selectors, 1)
+			assert.Equal(t, oldProjectId, apiSubs[0].Selectors[0].Data)
+
+			apiSubs, err = FindSubscriptionsByOwner(newProjectId, OwnerTypeProject)
+			assert.NoError(t, err)
+			require.Len(t, apiSubs, 1)
+			assert.NotEqual(t, subs[0].ID, apiSubs[0].ID)
+			require.Len(t, apiSubs[0].Selectors, 1)
+			assert.Equal(t, newProjectId, apiSubs[0].Selectors[0].Data)
+
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			test(t)
+		})
+	}
+
 }

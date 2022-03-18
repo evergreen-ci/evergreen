@@ -176,107 +176,10 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
 }
 
-func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
-	projects, err := model.FindProjects("", 8, 1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 7)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
-	projects, err := model.FindProjects("zzz", 8, -1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 7)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
-	projects, err := model.FindProjects("", 3, 1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 3)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
-	projects, err := model.FindProjects("", 2, 1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 2)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
-	projects, err := model.FindProjects("zzz", 2, -1)
-	s.NoError(err)
-	s.NotNil(projects)
-	s.Len(projects, 2)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := model.FindProjects("projectB", 1, 1)
-	s.NoError(err)
-	s.Len(projects, 1)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := model.FindProjects("projectD", 1, -1)
-	s.NoError(err)
-	s.Len(projects, 1)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := model.FindProjects("zzz", 1, 1)
-	s.NoError(err)
-	s.Len(projects, 0)
-}
-
-func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := model.FindProjects("aaa", 1, -1)
-	s.NoError(err)
-	s.Len(projects, 0)
-}
-
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
 	s.Equal(projEventCount, len(events))
-}
-
-func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
-	s.NoError(err)
-	s.Nil(projRef)
-
-	projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
-	s.NoError(err)
-	s.NotNil(projRef)
-}
-
-func (s *ProjectConnectorGetSuite) TestGetProjectSettings() {
-	projRef := &model.ProjectRef{
-		Owner:   "admin",
-		Enabled: utility.TruePtr(),
-		Private: utility.TruePtr(),
-		Id:      projectId,
-		Admins:  []string{},
-		Repo:    "SomeRepo",
-	}
-	projectSettingsEvent, err := model.GetProjectSettings(projRef)
-	s.NoError(err)
-	s.NotNil(projectSettingsEvent)
-}
-
-func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
-	projRef := &model.ProjectRef{
-		Owner:   "admin",
-		Enabled: utility.TruePtr(),
-		Private: utility.TruePtr(),
-		Id:      projectId,
-		Admins:  []string{},
-	}
-	projectSettingsEvent, err := model.GetProjectSettings(projRef)
-	s.Nil(err)
-	s.NotNil(projectSettingsEvent)
-	s.False(projectSettingsEvent.GitHubHooksEnabled)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {

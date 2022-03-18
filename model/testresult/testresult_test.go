@@ -1,7 +1,11 @@
 package testresult
 
 import (
+	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -220,6 +224,99 @@ func (s *TestResultSuite) TestFindByTaskIDAndExecution() {
 	tests, err = FindByTaskIDAndExecution("taskid-100", 100)
 	s.NoError(err)
 	s.Len(tests, 0)
+}
+
+func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(db.ClearCollections(task.Collection, Collection))
+
+	numTests := 10
+	numTasks := 2
+	testObjects := make([]string, numTests)
+
+	for ix := range testObjects {
+		testObjects[ix] = fmt.Sprintf("TestSuite/TestNum%d", ix)
+	}
+	sort.StringSlice(testObjects).Sort()
+	for i := 0; i < numTasks; i++ {
+		id := fmt.Sprintf("task_%d", i)
+		testTask := &task.Task{
+			Id: id,
+		}
+		tests := make([]TestResult, numTests)
+		for j := 0; j < numTests; j++ {
+			status := "pass"
+			if j%2 == 0 {
+				status = "fail"
+			}
+			tests[j] = TestResult{
+				TaskID:    id,
+				Execution: 0,
+				Status:    status,
+				TestFile:  testObjects[j],
+				EndTime:   float64(j),
+				StartTime: 0,
+			}
+		}
+		assert.NoError(testTask.Insert())
+		for _, test := range tests {
+			assert.NoError(test.Insert())
+		}
+	}
+
+	for i := 0; i < numTasks; i++ {
+		taskId := fmt.Sprintf("task_%d", i)
+		count, err := task.GetTestCountByTaskIdAndFilters(taskId, "", []string{}, 0)
+		assert.NoError(err)
+		assert.Equal(count, numTests)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, numTests/2)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"fail"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, numTests/2)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass", "fail"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, 10)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum1", []string{}, 0)
+		assert.NoError(err)
+		assert.Equal(count, 1)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum2", []string{}, 0)
+		assert.NoError(err)
+		assert.Equal(count, 1)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{}, 0)
+		assert.NoError(err)
+		assert.Equal(count, numTests)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass", "fail"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, numTests)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, numTests/2)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pa"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, 0)
+
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"not_a_real_status"}, 0)
+		assert.NoError(err)
+		assert.Equal(count, 0)
+	}
+	count, err := task.GetTestCountByTaskIdAndFilters("fake_task", "", []string{}, 0)
+	assert.Error(err)
+	assert.Equal(count, 0)
 }
 
 func TestDeleteWithLimit(t *testing.T) {

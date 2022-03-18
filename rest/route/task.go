@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -328,7 +327,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
-		if err := data.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
+		if err := dbModel.SetActiveStateById(tep.task.Id, tep.user.Username(), activated); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}

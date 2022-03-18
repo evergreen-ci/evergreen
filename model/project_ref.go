@@ -2396,6 +2396,25 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
+func GetMessageForPatch(patchID string) (string, error) {
+	requestedPatch, err := patch.FindOneId(patchID)
+	if err != nil {
+		return "", errors.Wrap(err, "error finding patch")
+	}
+	if requestedPatch == nil {
+		return "", errors.New("no patch found")
+	}
+	project, err := FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to find project for patch")
+	}
+	if project == nil {
+		return "", errors.New("patch has nonexistent project")
+	}
+
+	return project.CommitQueue.Message, nil
+}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
