@@ -76,7 +76,7 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 			//find all children, iterate through them
 			var versionId string
 			for _, selector := range dbSubscription.Selectors {
-				if selector.Type == "id" {
+				if selector.Type == event.SelectorID {
 					versionId = selector.Data
 				}
 			}
@@ -91,9 +91,10 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 			for _, childPatchId := range children {
 				childDbSubscription := dbSubscription
 				childDbSubscription.LastUpdated = time.Now()
+				childDbSubscription.Filter.ID = childPatchId
 				var selectors []event.Selector
 				for _, selector := range dbSubscription.Selectors {
-					if selector.Type == "id" {
+					if selector.Type == event.SelectorID {
 						selector.Data = childPatchId
 					}
 					selectors = append(selectors, selector)

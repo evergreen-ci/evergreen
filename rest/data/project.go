@@ -62,9 +62,28 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "project with id '%s' was not inserted", projectRef.Id).Error(),
+			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 		}
 	}
+
+	newProjectVars := model.ProjectVars{
+		Id: projectRef.Id,
+	}
+
+	err = newProjectVars.Insert()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "initializing project variables for '%s'", projectRef.Identifier).Error(),
+		}
+	}
+	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":            "problem logging project added",
+		"project_id":         projectRef.Id,
+		"project_identifier": projectRef.Identifier,
+		"user":               u.DisplayName(),
+	}))
 	return nil
 }
 

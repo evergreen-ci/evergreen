@@ -29,7 +29,6 @@
     buildVariant
     displayName
     hostId
-    restarts
     execution
     requester
     status

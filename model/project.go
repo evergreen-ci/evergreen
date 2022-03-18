@@ -58,6 +58,7 @@ type Project struct {
 	EarlyTermination    *YAMLCommandSet            `yaml:"early_termination,omitempty" bson:"early_termination,omitempty"`
 	CallbackTimeout     int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules             ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	Containers          []Container                `yaml:"containers,omitempty" bson:"containers"`
 	BuildVariants       BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions           map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups          []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
@@ -292,6 +293,33 @@ type BuildVariant struct {
 type ParameterInfo struct {
 	patch.Parameter `yaml:",inline" bson:",inline"`
 	Description     string `yaml:"description" bson:"description"`
+}
+
+// Container holds all properties that are configurable when defining a container
+// for tasks and build variants to run on in a project YAML file.
+type Container struct {
+	Name       string             `yaml:"name" bson:"name"`
+	WorkingDir string             `yaml:"working_dir,omitempty" bson:"working_dir"`
+	Image      string             `yaml:"image" bson:"image"`
+	Size       string             `yaml:"size,omitempty" bson:"size"`
+	Resources  ContainerResources `yaml:"resources,omitempty" bson:"resources"`
+	System     ContainerSystem    `yaml:"system,omitempty" bson:"system"`
+}
+
+// ContainerSystem specifies the architecture and OS for the running container to use.
+type ContainerSystem struct {
+	CPUArchitecture evergreen.CPUArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
+	OperatingSystem evergreen.ContainerOS     `yaml:"operating_system,omitempty" bson:"operating_system"`
+	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
+}
+
+// ContainerResources specifies the computing resources given to the container.
+// MemoryMB is the memory (in MB) that the container will be allocated, and
+// CPU is the CPU units that will be allocated. 1024 CPU units is
+// equivalent to 1vCPU.
+type ContainerResources struct {
+	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb"`
+	CPU      int `yaml:"cpu,omitempty" bson:"cpu"`
 }
 
 type Module struct {

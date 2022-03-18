@@ -16,20 +16,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
 )
-
-// TODO (EVG-16402): use helper method in db package for this.
-func createCollection(ctx context.Context, t *testing.T, env evergreen.Environment, coll string) {
-	const namespaceExistsErrCode = 48
-	err := env.DB().CreateCollection(ctx, coll)
-	if err == nil {
-		return
-	}
-	if mongoErr, ok := err.(mongo.CommandError); !ok || !mongoErr.HasErrorCode(48) {
-		assert.FailNow(t, err.Error())
-	}
-}
 
 func TestPodAllocatorJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -44,9 +31,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 	// Pod allocation uses a multi-document transaction, which requires the
 	// collections to exist first before any documents can be inserted.
-	createCollection(ctx, t, env, task.Collection)
-	createCollection(ctx, t, env, pod.Collection)
-	createCollection(ctx, t, env, dispatcher.Collection)
+	require.NoError(t, db.CreateCollections(task.Collection, pod.Collection, dispatcher.Collection))
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task) {

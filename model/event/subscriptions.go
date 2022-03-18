@@ -733,6 +733,7 @@ func NewExpiringBuildOutcomeSubscriptionByVersion(versionID string, sub Subscrib
 				Data: versionID,
 			},
 		},
+		Filter:      Filter{InVersion: versionID},
 		Subscriber:  sub,
 		LastUpdated: time.Now(),
 	}
@@ -748,6 +749,7 @@ func NewGithubCheckBuildOutcomeSubscriptionByVersion(versionID string, sub Subsc
 				Data: versionID,
 			},
 		},
+		Filter:      Filter{InVersion: versionID},
 		Subscriber:  sub,
 		LastUpdated: time.Now(),
 	}
@@ -766,6 +768,10 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 				Type: SelectorOwner,
 				Data: owner,
 			},
+		},
+		Filter: Filter{
+			Object: ObjectHost,
+			Owner:  owner,
 		},
 		Subscriber: sub,
 	}

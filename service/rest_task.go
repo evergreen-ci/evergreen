@@ -40,7 +40,6 @@ type RestTask struct {
 	DependsOn           []task.Dependency     `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`
 	HostId              string                `json:"host_id"`
-	Restarts            int                   `json:"restarts"`
 	Execution           int                   `json:"execution"`
 	Archived            bool                  `json:"archived"`
 	RevisionOrderNumber int                   `json:"order"`
@@ -114,7 +113,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.DependsOn = srcTask.DependsOn
 	destTask.DisplayName = srcTask.DisplayName
 	destTask.HostId = srcTask.HostId
-	destTask.Restarts = srcTask.Restarts
 	destTask.Execution = srcTask.Execution
 	destTask.Archived = srcTask.Archived
 	destTask.RevisionOrderNumber = srcTask.RevisionOrderNumber

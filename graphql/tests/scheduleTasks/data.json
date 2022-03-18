@@ -36,7 +36,6 @@
         "depends_on": [],
         "display_name": "exec1 display name",
         "host_id": "host",
-        "restarts": 5,
         "execution": 0,
         "order": 5,
         "r": "patch_request",

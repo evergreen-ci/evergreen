@@ -260,7 +260,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		if _, err := as.prepareHostForAgentExit(r.Context(), currentHost, r.RemoteAddr); err != nil {
+		if _, err := as.prepareHostForAgentExit(r.Context(), agentExitParams{
+			host:       currentHost,
+			remoteAddr: r.RemoteAddr,
+		}); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",
 				"host_id":       currentHost.Id,
@@ -470,41 +473,56 @@ func (as *APIServer) transitionIntentHostToDecommissioned(ctx context.Context, h
 	return nil
 }
 
+type agentExitParams struct {
+	host          *host.Host
+	remoteAddr    string
+	ec2InstanceID string
+}
+
 // prepareHostForAgentExit prepares a host to stop running tasks on the host.
 // For a quarantined host, it shuts down the agent and agent monitor to prevent
 // it from running further tasks. This is especially important for quarantining
 // hosts, as the host may continue running, but it must stop all agent-related
 // activity for now. For a terminated host, the host should already have been
 // terminated but is nonetheless alive, so terminate it again.
-func (as *APIServer) prepareHostForAgentExit(ctx context.Context, h *host.Host, remoteAddr string) (shouldExit bool, err error) {
-	switch h.Status {
+func (as *APIServer) prepareHostForAgentExit(ctx context.Context, params agentExitParams) (shouldExit bool, err error) {
+	switch params.host.Status {
 	case evergreen.HostQuarantined:
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		if err := h.StopAgentMonitor(ctx, as.env); err != nil {
+		if err := params.host.StopAgentMonitor(ctx, as.env); err != nil {
 			return true, errors.Wrap(err, "stopping agent monitor")
 		}
 
-		if err := h.SetNeedsAgentDeploy(true); err != nil {
+		if err := params.host.SetNeedsAgentDeploy(true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
 
 		return true, nil
 	case evergreen.HostTerminated:
-		// The host should already be terminated but somehow it's still alive in
-		// the cloud. If the host was terminated very recently, it may simply
-		// need time for the cloud instance to actually be terminated and fully
-		// cleaned up. Beyond this short grace period, there's likely a state
-		// mismatch where Evergreen has marked the host terminated but the host
-		// has clearly not been terminated in the cloud.
-		if time.Now().Sub(h.TerminationTime) > 10*time.Minute {
-			grip.Error(message.Fields{
+		// The host should already be terminated but somehow the agent is still
+		// alive in the cloud. If the host was terminated very recently, it may
+		// simply need time for the cloud instance to actually be terminated and
+		// fully cleaned up. If this message logs, that means there is a
+		// mismatch between either:
+		// 1. What Evergreen believes is this host's state (terminated) and the
+		//    cloud instance's actual state (not terminated). This is a bug.
+		// 2. The cloud instance's status and the actual liveliness of the host.
+		//    There are some cases where the agent is still checking in for a
+		//    long time after the cloud provider says the instance is already
+		//    terminated. There's no bug on our side, so this log is harmless.
+		if time.Now().Sub(params.host.TerminationTime) > 10*time.Minute {
+			msg := message.Fields{
 				"message":    "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
-				"host_id":    h.Id,
-				"distro":     h.Distro.Id,
-				"remote":     remoteAddr,
+				"host_id":    params.host.Id,
+				"distro":     params.host.Distro.Id,
+				"remote":     params.remoteAddr,
 				"request_id": gimlet.GetRequestID(ctx),
-			})
+			}
+			if cloud.IsEc2Provider(params.host.Distro.Provider) {
+				msg["ec2_instance_id"] = params.ec2InstanceID
+			}
+			grip.Warning(msg)
 		}
 		return true, nil
 	case evergreen.HostDecommissioned:
@@ -956,7 +974,11 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		shouldExit, err := as.prepareHostForAgentExit(ctx, h, r.RemoteAddr)
+		shouldExit, err := as.prepareHostForAgentExit(ctx, agentExitParams{
+			host:          h,
+			remoteAddr:    r.RemoteAddr,
+			ec2InstanceID: details.EC2InstanceID,
+		})
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",

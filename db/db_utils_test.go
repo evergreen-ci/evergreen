@@ -27,6 +27,11 @@ func TestDBUtils(t *testing.T) {
 
 		So(Clear(collection), ShouldBeNil)
 
+		Convey("creating a collection should be idempotent", func() {
+			So(CreateCollections(collection), ShouldBeNil)
+			So(CreateCollections(collection), ShouldBeNil)
+		})
+
 		Convey("inserting an item into the collection should update the"+
 			" database accordingly", func() {
 
