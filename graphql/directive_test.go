@@ -23,7 +23,9 @@ func setupPermissions(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, env.DB().Drop(ctx))
 
-	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
+	// TODO (EVG-15499): Create scope and role collection because the
+	// RoleManager will try inserting in a transaction, which is not allowed for
+	// FCV < 4.4.
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
 
 	roleManager := env.RoleManager()

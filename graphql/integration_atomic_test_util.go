@@ -92,7 +92,9 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
 		Keys: testresult.TestResultsIndex}))
 
-	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
+	// TODO (EVG-15499): Create scope and role collection because the
+	// RoleManager will try creating them in a transaction, which is not allowed
+	// for FCV < 4.4.
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
 
 	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
