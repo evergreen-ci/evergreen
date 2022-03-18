@@ -88,13 +88,12 @@ func setup(t *testing.T, state *AtomicGraphQLState) {
 	}
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
-	require.NoError(t, env.DB().CreateCollection(ctx, testresult.Collection))
+	require.NoError(t, db.CreateCollections(testresult.Collection))
 	require.NoError(t, db.EnsureIndex(testresult.Collection, mongo.IndexModel{
 		Keys: testresult.TestResultsIndex}))
 
 	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
-	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
-	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
 
 	require.NoError(t, setupData(*env.DB(), *env.Client().Database(state.TaskLogDB), state.TestData, *state))
 	roleManager := env.RoleManager()

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -23,8 +24,7 @@ func setupPermissions(t *testing.T) {
 	require.NoError(t, env.DB().Drop(ctx))
 
 	// Create scope and role collection to avoid RoleManager from trying to create them in a collection https://jira.mongodb.org/browse/EVG-15499
-	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.ScopeCollection))
-	require.NoError(t, env.DB().CreateCollection(ctx, evergreen.RoleCollection))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection, evergreen.RoleCollection))
 
 	roleManager := env.RoleManager()
 
