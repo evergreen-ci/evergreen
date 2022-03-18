@@ -1085,14 +1085,15 @@ const (
 	LogViewerLobster LogViewer = "lobster"
 )
 
-// ContainerOS denotes the operating system of a running container. Only linux and windows are supported.
+// ContainerOS denotes the operating system of a running container.
 type ContainerOS string
 
 const (
-	LinuxOS   = "linux"
-	WindowsOS = "windows"
+	LinuxOS   ContainerOS = "linux"
+	WindowsOS ContainerOS = "windows"
 )
 
+// Validate checks that the container OS is recognized.
 func (c ContainerOS) Validate() error {
 	switch c {
 	case LinuxOS, WindowsOS:
@@ -1102,14 +1103,15 @@ func (c ContainerOS) Validate() error {
 	}
 }
 
-// CPUArchitecture represents the architecture property of a container required to provide to Amazon ECS
+// CPUArchitecture represents the architecture necessary to run the container.
 type CPUArchitecture string
 
 const (
-	ArchARM64 = "arm64"
-	ArchAMD64 = "x86_64"
+	ArchARM64 CPUArchitecture = "arm64"
+	ArchAMD64 CPUArchitecture = "x86_64"
 )
 
+// Validate checks that the container CPU architecture is recognized.
 func (c CPUArchitecture) Validate() error {
 	switch c {
 	case ArchARM64, ArchAMD64:
@@ -1119,15 +1121,16 @@ func (c CPUArchitecture) Validate() error {
 	}
 }
 
-// WindowsVersion specifies the Windows version of a container if running on Windows device (required if os is windows)
+// WindowsVersion specifies the compatability version of Windows that is required for the container to run.
 type WindowsVersion string
 
 const (
-	Windows2022 = "2022"
-	Windows2019 = "2019"
-	Windows2016 = "2016"
+	Windows2022 WindowsVersion = "2022"
+	Windows2019 WindowsVersion = "2019"
+	Windows2016 WindowsVersion = "2016"
 )
 
+// Validate checks that the container Windows version is recognized.
 func (w WindowsVersion) Validate() error {
 	switch w {
 	case Windows2022, Windows2019, Windows2016:

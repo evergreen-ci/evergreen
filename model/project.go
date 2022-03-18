@@ -295,6 +295,8 @@ type ParameterInfo struct {
 	Description     string `yaml:"description" bson:"description"`
 }
 
+// Container holds all properties that are configurable when defining a container
+// for tasks and build variants to run on in a project YAML file.
 type Container struct {
 	Name       string             `yaml:"name" bson:"name"`
 	WorkingDir string             `yaml:"working_dir,omitempty" bson:"working_dir"`
@@ -304,12 +306,16 @@ type Container struct {
 	System     ContainerSystem    `yaml:"system,omitempty" bson:"system"`
 }
 
+// ContainerSystem specifies the architecture and OS for the running container to use.
 type ContainerSystem struct {
 	CPUArchitecture evergreen.CPUArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
 	OperatingSystem evergreen.ContainerOS     `yaml:"operating_system,omitempty" bson:"operating_system"`
 	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
+// ContainerResources specifies the computing resources given to the container.
+// MemoryMB is the memory (in MB) that the container will be allocated, and
+// CPU is the number of CPUs that will be allocated. 1 CPU equates to 1024 CPU units.
 type ContainerResources struct {
 	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb"`
 	CPU      int `yaml:"cpu,omitempty" bson:"cpu"`
