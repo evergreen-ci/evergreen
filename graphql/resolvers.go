@@ -1070,14 +1070,30 @@ func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, 
 
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
-	hosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
+	runningHosts, err := host.Find(host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
 	}
-	var apiHosts []*restModel.APIHost
 
-	for _, host := range hosts {
+	duration := time.Duration(5) * time.Minute
+	fromTimestamp := time.Now().Add(-duration) // within last 5 minutes
+	recentlyTerminatedHosts, err := host.Find(host.ByUserRecentlyTerminated(usr.Username(), fromTimestamp))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx,
+			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))
+	}
+
+	var apiHosts []*restModel.APIHost
+	for _, host := range runningHosts {
+		apiHost := restModel.APIHost{}
+		err = apiHost.BuildFromService(host)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIHost from service: %s", err.Error()))
+		}
+		apiHosts = append(apiHosts, &apiHost)
+	}
+	for _, host := range recentlyTerminatedHosts {
 		apiHost := restModel.APIHost{}
 		err = apiHost.BuildFromService(host)
 		if err != nil {

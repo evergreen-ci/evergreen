@@ -68,6 +68,73 @@
       }
     },
     {
+      "_id": "recently-terminated-host",
+      "host_id": "ec2-24-216-756-801.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "tag": "evg-ubuntu1804-small-20200720144805-8687799505734256781",
+      "distro": {
+        "_id": "ubuntu1804-small",
+        "aliases": ["ubuntu1804"],
+        "arch": "linux_amd64",
+        "work_dir": "/data/mci",
+        "provider": "ec2-ondemand",
+        "user": "ubuntu"
+      },
+      "host_type": "ec2-ondemand",
+      "ext_identifier": "",
+      "display_name": "",
+      "project": "",
+      "zone": "us-east-1a",
+      "provisioned": true,
+      "priv_attempts": 1,
+      "last_task": "",
+      "no_expiration": false,
+      "creation_time": {
+        "$date": "2020-07-20T14:48:05.256Z"
+      },
+      "start_time": {
+        "$date": "2020-07-20T14:48:27Z"
+      },
+      "agent_start_time": {
+        "$date": "2020-07-20T14:49:20.449Z"
+      },
+      "termination_time": {
+        "$date": "5000-01-01T00:00:00Z"
+      },
+      "task_count": 1,
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-07-20T18:58:51.025Z"
+      },
+      "status": "terminated",
+      "started_by": "testuser",
+      "user_host": false,
+      "agent_revision": "2020-07-18",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "instance_type": "",
+      "container_build_attempt": 0,
+      "spawn_options": {},
+      "docker_options": {},
+      "running_task": "mongo_tools_ubuntu1804_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
+      "running_task_bv": "ubuntu1804",
+      "running_task_group": "",
+      "running_task_group_order": 0,
+      "running_task_project": "mongo-tools",
+      "running_task_version": "5f15ad3c3627e07772ab2d01",
+      "total_idle_time": {
+        "$numberLong": "54073000000"
+      },
+      "prov_time": {
+        "$date": "2020-07-20T14:49:30.784Z"
+      },
+      "expiration_time": {
+        "$date": "5001-07-21T10:48:05-04:00"
+      }
+    },
+    {
       "_id": "i-0f81a2d39744003dd",
       "host_id": "ec2-54-161-252-150.compute-1.amazonaws.com",
       "user": "ubuntu",

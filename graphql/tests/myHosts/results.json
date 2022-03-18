@@ -28,6 +28,12 @@
                 "id": "ubuntu1604-large"
               },
               "volumes": []
+            },
+            {
+              "id": "recently-terminated-host",
+              "distroId": "ubuntu1804-small",
+              "distro": { "workDir": "/data/mci", "id": "ubuntu1804-small" },
+              "volumes": []
             }
           ]
         }
@@ -52,6 +58,11 @@
               "id": "i-host-thing",
               "expiration": null,
               "noExpiration": true
+            },
+            {
+              "id": "recently-terminated-host",
+              "expiration": "5001-07-21T10:48:05-04:00",
+              "noExpiration": false
             }
           ]
         }
