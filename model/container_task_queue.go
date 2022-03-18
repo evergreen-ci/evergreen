@@ -74,7 +74,7 @@ func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]ta
 			// GitHub PR tasks are still allowed to run for disabled hidden
 			// projects.
 			if t.Requester == evergreen.GithubPRRequester && ref.IsHidden() {
-				grip.Info(message.Fields{
+				grip.Debug(message.Fields{
 					"message": "queueing task because GitHub PRs are allowed to run tasks for projects that are both hidden and disabled",
 					"outcome": "not skipping",
 					"task":    t.Id,
@@ -82,9 +82,9 @@ func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]ta
 					"context": "container task queue",
 				})
 			} else {
-				grip.Info(message.Fields{
+				grip.Debug(message.Fields{
 					"message": "skipping task because project is disabled",
-					"outcome": "not skipping",
+					"outcome": "skipping",
 					"task":    t.Id,
 					"project": t.Project,
 					"context": "container task queue",
@@ -94,7 +94,7 @@ func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]ta
 		}
 
 		if ref.IsDispatchingDisabled() {
-			grip.Info(message.Fields{
+			grip.Debug(message.Fields{
 				"message": "skipping task because dispatching is disabled for its project",
 				"outcome": "skipping",
 				"task":    t.Id,
@@ -105,7 +105,7 @@ func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]ta
 		}
 
 		if t.IsPatchRequest() && ref.IsPatchingDisabled() {
-			grip.Info(message.Fields{
+			grip.Debug(message.Fields{
 				"message": "skipping task because patch testing is disabled for its project",
 				"outcome": "skipping",
 				"task":    t.Id,
