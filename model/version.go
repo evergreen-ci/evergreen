@@ -37,6 +37,7 @@ type Version struct {
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted             bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to to distinguish the unset value from the default value
@@ -150,6 +151,18 @@ func (self *Version) SetNotActivated() error {
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey: false,
+			},
+		},
+	)
+}
+
+func (self *Version) SetAborted(aborted bool) error {
+	self.Aborted = aborted
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
+		bson.M{
+			"$set": bson.M{
+				VersionAbortedKey: aborted,
 			},
 		},
 	)

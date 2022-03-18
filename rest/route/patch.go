@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/graphql"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -418,7 +418,7 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
 
 	if err := p.sc.RestartVersion(p.patchId, usr.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "RestartAction error"))
 	}
 
 	foundPatch, err := p.sc.FindPatchById(p.patchId)
@@ -556,7 +556,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find project from version"))
 		}
 	}
-	patchUpdateReq := graphql.PatchUpdate{
+	patchUpdateReq := dbModel.PatchUpdate{
 		Description: p.variantTasks.Description,
 	}
 	if patchUpdateReq.Description == "" && dbVersion != nil {
@@ -585,17 +585,16 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		patchUpdateReq.VariantsTasks = append(patchUpdateReq.VariantsTasks, variantToSchedule)
 	}
-	err, code, msg, versionId := graphql.SchedulePatch(ctx, p.patchId, dbVersion, patchUpdateReq)
+	code, err := units.SchedulePatch(ctx, p.patchId, dbVersion, patchUpdateReq)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unable to schedule patch"))
 	}
 	if code != http.StatusOK {
 		resp := gimlet.NewResponseBuilder()
 		_ = resp.SetStatus(code)
-		_ = resp.AddData(msg)
 		return resp
 	}
-	dbVersion, err = p.sc.FindVersionById(versionId)
+	dbVersion, err = p.sc.FindVersionById(p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unable to find patch version"))
 	}

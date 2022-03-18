@@ -88,9 +88,8 @@ type GetNextTaskDetails struct {
 
 // ExpansionVars is a map of expansion variables for a project.
 type ExpansionVars struct {
-	Vars           map[string]string `json:"vars"`
-	RestrictedVars map[string]string `json:"restricted_vars"`
-	PrivateVars    map[string]bool   `json:"private_vars"`
+	Vars        map[string]string `json:"vars"`
+	PrivateVars map[string]bool   `json:"private_vars"`
 }
 
 type AgentSetupData struct {

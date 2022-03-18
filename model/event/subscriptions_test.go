@@ -85,8 +85,7 @@ func (s *subscriptionsSuite) SetupTest() {
 				},
 			},
 			Filter: Filter{
-				ID:      "something",
-				Project: "else$",
+				ID: "something",
 			},
 			Subscriber: Subscriber{
 				Type:   EmailSubscriberType,
@@ -458,7 +457,7 @@ func (s *subscriptionsSuite) TestRegexMatchesValue() {
 func (s *subscriptionsSuite) TestFilterFromSelectors() {
 	for _, sub := range s.subscriptions {
 		filter := Filter{}
-		s.Require().NoError(filter.FromSelectors(append(sub.Selectors, sub.RegexSelectors...)))
+		s.Require().NoError(filter.FromSelectors(sub.Selectors))
 		s.Equal(sub.Filter, filter)
 	}
 
@@ -466,13 +465,13 @@ func (s *subscriptionsSuite) TestFilterFromSelectors() {
 	s.Error(filter.FromSelectors([]Selector{{Type: "non-existent-type"}}))
 }
 
-func (s *subscriptionsSuite) TestValidateFilter() {
+func (s *subscriptionsSuite) TestValidateSelectors() {
 	for _, sub := range s.subscriptions {
-		s.NoError(sub.ValidateFilter())
+		s.NoError(sub.ValidateSelectors())
 	}
 
 	noFilterParams := Subscription{}
-	s.Error(noFilterParams.ValidateFilter())
+	s.Error(noFilterParams.ValidateSelectors())
 }
 
 func (s *subscriptionsSuite) TestFromSelectors() {

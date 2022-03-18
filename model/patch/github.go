@@ -221,6 +221,10 @@ func (g *githubIntent) ReusePreviousPatchDefinition() bool {
 	return false
 }
 
+func (g *githubIntent) RepeatFailedTasksAndVariants() bool {
+	return false
+}
+
 func (g *githubIntent) RequesterIdentity() string {
 	return evergreen.GithubPRRequester
 }

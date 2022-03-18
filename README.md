@@ -49,3 +49,4 @@ Possible Targets:
   system.
 * run `make dist` to compile binaries for all supported systems
   and create a *dist* tarball with all artifacts.
+* run `make local-evergreen` to start a local Evergreen. You will need a mongod running, listening on 27017. Log in at http://localhost:9090/login with user `admin` and password `password`. Visiting http://localhost:9090/ should show you the waterfall. The new UI is available at https://github.com/evergreen-ci/spruce.

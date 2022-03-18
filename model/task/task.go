@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -63,7 +64,7 @@ type Task struct {
 	// time information for task
 	// Create - the creation time for the task, derived from the commit time or the patch creation time.
 	// Dispatch - the time the task runner starts up the agent on the host.
-	// Scheduled - the time the commit is scheduled.
+	// Scheduled - the time the task is scheduled.
 	// Start - the time the agent starts the task on the host after spinning it up.
 	// Finish - the time the task was completed on the remote host.
 	// Activated - the time the task was marked as available to be scheduled, automatically or by a developer.
@@ -135,8 +136,6 @@ type Task struct {
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
-	// the number of times this task has been restarted
-	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`
 	Execution           int    `bson:"execution" json:"execution"`
 	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
 	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
@@ -260,6 +259,8 @@ type Dependency struct {
 	TaskId       string `bson:"_id" json:"id"`
 	Status       string `bson:"status" json:"status"`
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
+	// Finished indicates if the task's dependency has finished running or not.
+	Finished bool `bson:"finished" json:"finished"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -775,6 +776,39 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	return true, nil
 }
 
+// MarkDependenciesFinished updates all direct dependencies on this task to
+// cache whether or not this task has finished running.
+func (t *Task) MarkDependenciesFinished(finished bool) error {
+	if t.DisplayOnly {
+		// This update can be skipped for display tasks since tasks are not
+		// allowed to have dependencies on display tasks.
+		return nil
+	}
+
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+
+	_, err := env.DB().Collection(Collection).UpdateMany(ctx,
+		bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey: t.Id,
+			}},
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+		},
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
+		}}),
+	)
+	if err != nil {
+		return errors.Wrap(err, "marking finished dependencies")
+	}
+
+	return nil
+}
+
 // HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() (bool, error) {
 	// Check cedar flags before populating test results to avoid
@@ -1092,6 +1126,39 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	return info.Updated, nil
 }
 
+// DeactivateStepbackTasksForProjects deactivates and aborts any scheduled/running tasks
+// for this project that were activated by stepback.
+func DeactivateStepbackTasksForProject(projectId, caller string) error {
+	tasks, err := FindActivatedStepbackTasks(projectId)
+	if err != nil {
+		return errors.Wrap(err, "finding activated stepback tasks")
+	}
+
+	if err = DeactivateTasks(tasks, caller); err != nil {
+		return errors.Wrap(err, "deactivating active stepback tasks")
+	}
+
+	grip.InfoWhen(len(tasks) > 0, message.Fields{
+		"message":    "deactivated active stepback tasks",
+		"project_id": projectId,
+		"user":       caller,
+		"num_tasks":  len(tasks),
+	})
+
+	abortTaskIds := []string{}
+	for _, t := range tasks {
+		if t.IsAbortable() {
+			abortTaskIds = append(abortTaskIds, t.Id)
+			event.LogTaskAbortRequest(t.Id, t.Execution, caller)
+		}
+	}
+	if err = SetManyAborted(abortTaskIds, AbortInfo{User: caller}); err != nil {
+		return errors.Wrap(err, "aborting in progress tasks")
+	}
+
+	return nil
+}
+
 // MarkFailed changes the state of the task to failed.
 func (t *Task) MarkFailed() error {
 	t.Status = evergreen.TaskFailed
@@ -1128,6 +1195,18 @@ func (t *Task) MarkSystemFailed(description string) error {
 				StatusKey:     evergreen.TaskFailed,
 				FinishTimeKey: t.FinishTime,
 				DetailsKey:    t.Details,
+			},
+		},
+	)
+}
+
+func SetManyAborted(taskIds []string, reason AbortInfo) error {
+	return UpdateOne(
+		ByIds(taskIds),
+		bson.M{
+			"$set": bson.M{
+				AbortedKey:   true,
+				AbortInfoKey: reason,
 			},
 		},
 	)
@@ -2079,19 +2158,15 @@ func (t *Task) Archive() error {
 		}))
 		return errors.Wrap(err, "task.Archive() failed to insert new old task")
 	}
-
-	// only increment restarts if have a current restarts
-	// this way restarts will never be set for new tasks but will be
-	// maintained for old ones
-	inc := bson.M{ExecutionKey: 1}
-	if t.Restarts > 0 {
-		inc[RestartsKey] = 1
-	}
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$unset": bson.M{AbortedKey: "", AbortInfoKey: "", OverrideDependenciesKey: ""},
-			"$inc":   inc,
+			"$unset": bson.M{
+				AbortedKey:              "",
+				AbortInfoKey:            "",
+				OverrideDependenciesKey: "",
+			},
+			"$inc": bson.M{ExecutionKey: 1},
 		})
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed to update task")
@@ -2173,19 +2248,6 @@ func ArchiveMany(tasks []Task) error {
 		if err != nil {
 			return nil, err
 		}
-		_, err = taskColl.UpdateMany(ctx, bson.M{
-			IdKey: bson.M{
-				"$in": taskIds,
-			},
-			RestartsKey: bson.M{
-				"$gt": 0,
-			},
-		},
-			bson.M{
-				"$inc": bson.M{
-					RestartsKey: 1,
-				},
-			})
 		return nil, err
 	}
 

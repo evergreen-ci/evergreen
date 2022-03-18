@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
+
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
@@ -109,9 +112,6 @@ type Host struct {
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
-
-	// stores information on expiration notifications for spawn hosts
-	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
@@ -426,6 +426,22 @@ func (h *Host) IsContainer() bool {
 
 func (h *Host) NeedsPortBindings() bool {
 	return h.DockerOptions.PublishPorts && h.PortBindings == nil
+}
+
+// CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
+func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
+	if usr.Username() != h.StartedBy {
+		if !usr.HasPermission(gimlet.PermissionOpts{
+			Resource:      h.Distro.Id,
+			ResourceType:  evergreen.DistroResourceType,
+			Permission:    evergreen.PermissionHosts,
+			RequiredLevel: evergreen.HostsEdit.Value,
+		}) {
+			return false
+		}
+		return true
+	}
+	return true
 }
 
 // IsIntentHostId returns whether or not the host ID is for an intent host
@@ -1377,7 +1393,6 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	// update the in-memory host, then the database
 	h.ExpirationTime = expirationTime
 	h.NoExpiration = false
-	h.Notifications = make(map[string]bool)
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -1386,28 +1401,6 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 			"$set": bson.M{
 				ExpirationTimeKey: expirationTime,
 				NoExpirationKey:   false,
-			},
-			"$unset": bson.M{
-				NotificationsKey: 1,
-			},
-		},
-	)
-}
-
-// SetExpirationNotification updates the notification time for a spawn host
-func (h *Host) SetExpirationNotification(thresholdKey string) error {
-	// update the in-memory host, then the database
-	if h.Notifications == nil {
-		h.Notifications = make(map[string]bool)
-	}
-	h.Notifications[thresholdKey] = true
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				NotificationsKey: h.Notifications,
 			},
 		},
 	)

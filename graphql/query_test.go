@@ -1,4 +1,4 @@
-package graphql_test
+package graphql
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -78,9 +77,9 @@ func populateMainlineCommits(t *testing.T) {
 }
 
 func TestMainlineCommits(t *testing.T) {
-	setupPermissions(t, &atomicGraphQLState{})
+	setupPermissions(t)
 	populateMainlineCommits(t)
-	config := graphql.New("/graphql")
+	config := New("/graphql")
 	assert.NotNil(t, config)
 	ctx := getContext(t)
 
@@ -91,13 +90,13 @@ func TestMainlineCommits(t *testing.T) {
 	require.NoError(t, ref.Insert())
 
 	// Should return all mainline commits while folding up inactive ones when there are no filters
-	mainlineCommitOptions := graphql.MainlineCommitsOptions{
+	mainlineCommitOptions := MainlineCommitsOptions{
 		ProjectID:       projectId,
 		SkipOrderNumber: nil,
 		Limit:           utility.ToIntPtr(2),
 		ShouldCollapse:  utility.FalsePtr(),
 	}
-	buildVariantOptions := graphql.BuildVariantOptions{}
+	buildVariantOptions := BuildVariantOptions{}
 	res, err := config.Resolvers.Query().MainlineCommits(ctx, mainlineCommitOptions, &buildVariantOptions)
 	require.NoError(t, err)
 	assert.NotNil(t, res)
@@ -106,7 +105,7 @@ func TestMainlineCommits(t *testing.T) {
 	assert.Nil(t, res.PrevPageOrderNumber)
 	require.Equal(t, 3, len(res.Versions))
 
-	buildVariantOptions = graphql.BuildVariantOptions{
+	buildVariantOptions = BuildVariantOptions{
 		Statuses: []string{evergreen.TaskFailed},
 	}
 

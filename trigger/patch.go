@@ -219,20 +219,11 @@ func finalizeChildPatch(sub *event.Subscription) error {
 	if childPatch == nil {
 		return errors.Wrap(err, "child patch not found")
 	}
-	conf, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "can't get evergreen configuration")
-	}
-
-	ghToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "can't get Github OAuth token from configuration")
-	}
 
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
 
-	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, ghToken); err != nil {
+	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester, ""); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "Failed to finalize patch document",
 			"source":        target.Requester,

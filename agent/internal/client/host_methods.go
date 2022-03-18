@@ -440,6 +440,8 @@ func (c *hostCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 		if opt.BufferSize > 0 {
 			bufferSize = opt.BufferSize
 		}
+		bufferedSenderOpts := send.BufferedSenderOptions{FlushInterval: bufferDuration, BufferSize: bufferSize}
+
 		// disallow sending system logs to S3 or logkeeper for security reasons
 		if prefix == apimodels.SystemLogPrefix && (opt.Sender == model.FileLogSender || opt.Sender == model.LogkeeperLogSender) {
 			opt.Sender = model.EvergreenLogSender
@@ -452,7 +454,10 @@ func (c *hostCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 			}
 
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating buffered file logger")
+			}
 		case model.SplunkLogSender:
 			info := send.SplunkConnectionInfo{
 				ServerURL: opt.SplunkServerURL,
@@ -463,7 +468,10 @@ func (c *hostCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "creating splunk logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender = send.NewBufferedSender(newAnnotatedWrapper(td.ID, prefix, sender), bufferDuration, bufferSize)
+			sender, err = send.NewBufferedSender(ctx, newAnnotatedWrapper(td.ID, prefix, sender), bufferedSenderOpts)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating buffered splunk logger")
+			}
 		case model.LogkeeperLogSender:
 			config := send.BuildloggerConfig{
 				URL:        opt.LogkeeperURL,
@@ -477,7 +485,11 @@ func (c *hostCommunicator) makeSender(ctx context.Context, td TaskData, opts []L
 				return nil, nil, errors.Wrap(err, "creating logkeeper logger")
 			}
 			underlyingBufferedSenders = append(underlyingBufferedSenders, sender)
-			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+			sender, err = send.NewBufferedSender(ctx, sender, bufferedSenderOpts)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "creating buffered logkeeper logger")
+			}
+
 			metadata := LogkeeperMetadata{
 				Build: config.GetBuildID(),
 				Test:  config.GetTestID(),

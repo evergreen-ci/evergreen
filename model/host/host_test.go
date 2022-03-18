@@ -660,20 +660,16 @@ func TestHostSetExpirationTime(t *testing.T) {
 			" clearing '%v' collection", Collection)
 
 		initialExpirationTime := time.Now()
-		notifications := make(map[string]bool)
-		notifications["2h"] = true
-
 		memHost := &Host{
 			Id:             "hostOne",
 			NoExpiration:   true,
 			ExpirationTime: initialExpirationTime,
-			Notifications:  notifications,
 		}
 		So(memHost.Insert(), ShouldBeNil)
 
 		Convey("setting the expiration time for the host should change the "+
 			" expiration time for both the in-memory and database"+
-			" copies of the host and unset the notifications", func() {
+			" copies of the host", func() {
 
 			dbHost, err := FindOne(ById(memHost.Id))
 
@@ -685,8 +681,6 @@ func TestHostSetExpirationTime(t *testing.T) {
 				initialExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
 				initialExpirationTime.Round(time.Second)), ShouldBeTrue)
-			So(memHost.Notifications, ShouldResemble, notifications)
-			So(dbHost.Notifications, ShouldResemble, notifications)
 
 			// now update the expiration time
 			newExpirationTime := time.Now()
@@ -702,47 +696,6 @@ func TestHostSetExpirationTime(t *testing.T) {
 				newExpirationTime.Round(time.Second)), ShouldBeTrue)
 			So(dbHost.ExpirationTime.Round(time.Second).Equal(
 				newExpirationTime.Round(time.Second)), ShouldBeTrue)
-			So(memHost.Notifications, ShouldResemble, make(map[string]bool))
-			So(dbHost.Notifications, ShouldEqual, nil)
-		})
-	})
-}
-
-func TestSetExpirationNotification(t *testing.T) {
-
-	Convey("With a host", t, func() {
-
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
-
-		notifications := make(map[string]bool)
-		notifications["2h"] = true
-
-		memHost := &Host{
-			Id:            "hostOne",
-			Notifications: notifications,
-		}
-		So(memHost.Insert(), ShouldBeNil)
-
-		Convey("setting the expiration notification for the host should change "+
-			" the expiration notification for both the in-memory and database"+
-			" copies of the host and unset the notifications", func() {
-
-			dbHost, err := FindOne(ById(memHost.Id))
-
-			// ensure the db entries are as expected
-			So(err, ShouldBeNil)
-			So(memHost.Notifications, ShouldResemble, notifications)
-			So(dbHost.Notifications, ShouldResemble, notifications)
-
-			// now update the expiration notification
-			notifications["4h"] = true
-			So(memHost.SetExpirationNotification("4h"), ShouldBeNil)
-			dbHost, err = FindOne(ById(memHost.Id))
-			// ensure the db entries are as expected
-			So(err, ShouldBeNil)
-			So(memHost.Notifications, ShouldResemble, notifications)
-			So(dbHost.Notifications, ShouldResemble, notifications)
 		})
 	})
 }

@@ -667,14 +667,15 @@ func TestAddNewPatch(t *testing.T) {
 			},
 		},
 	})
-
-	assert.NoError(AddNewBuildsForPatch(context.Background(), p, v, proj, tasks, &ref))
+	_, err := addNewBuilds(context.Background(), specificActivationInfo{}, v, proj, tasks, p.SyncAtEndOpts, &ref, "")
+	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
+	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, tasks, p.SyncAtEndOpts, ref.Identifier, "")
+	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
@@ -745,14 +746,15 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 			},
 		},
 	})
-
-	assert.NoError(AddNewBuildsForPatch(context.Background(), p, v, proj, tasks, &ref))
+	_, err := addNewBuilds(context.Background(), specificActivationInfo{}, v, proj, tasks, p.SyncAtEndOpts, &ref, "")
+	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	assert.NoError(AddNewTasksForPatch(context.Background(), p, v, proj, tasks, ref.Identifier))
+	_, err = addNewTasks(context.Background(), specificActivationInfo{}, v, proj, tasks, p.SyncAtEndOpts, ref.Identifier, "")
+	assert.NoError(err)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
@@ -952,4 +954,27 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			test(t)
 		})
 	}
+}
+
+func TestAddDisplayTasksToPatchReq(t *testing.T) {
+	testutil.Setup()
+	p := Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv",
+				DisplayTasks: []patch.DisplayTask{
+					{Name: "dt1", ExecTasks: []string{"1", "2"}},
+					{Name: "dt2", ExecTasks: []string{"3", "4"}},
+				}},
+		},
+	}
+	req := PatchUpdate{
+		VariantsTasks: []patch.VariantTasks{
+			{Variant: "bv", Tasks: []string{"t1", "dt1", "dt2"}},
+		},
+	}
+	addDisplayTasksToPatchReq(&req, p)
+	assert.Len(t, req.VariantsTasks[0].Tasks, 1)
+	assert.Equal(t, "t1", req.VariantsTasks[0].Tasks[0])
+	assert.Len(t, req.VariantsTasks[0].DisplayTasks, 2)
 }

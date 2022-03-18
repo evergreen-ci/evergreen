@@ -45,7 +45,8 @@ variables:
     commands:
       - func: get-project-and-modules
       - func: run-make
-        vars: { target: "${task_name}" }
+        vars:
+          target: "${task_name}"
       - command: s3.put
         type: system
         params:
@@ -205,6 +206,12 @@ functions:
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
         XC_BUILD: ${xc_build}
+        NOTARY_CLIENT_URL: ${notary_client_url}
+        NOTARY_SERVER_URL: ${notary_server_url}
+        MACOS_NOTARY_KEY: ${notary_server_key}
+        MACOS_NOTARY_SECRET: ${notary_server_secret}
+        EVERGREEN_BUNDLE_ID: ${evergreen_bundle_id}
+        SIGN_MACOS: ${sign_macos}
 
   setup-credentials:
     command: subprocess.exec
@@ -326,6 +333,8 @@ tasks:
     name: dist-staging
     patch_only: true
     run_on: archlinux-new-small
+  - <<: *run-build
+    name: dist
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
@@ -338,8 +347,6 @@ tasks:
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
     name: js-test
-  - <<: *run-build
-    name: dist
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-thirdparty-docker
@@ -400,6 +407,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
+  - <<: *run-go-test-suite-with-mongodb-useast
+    tags: ["db", "test"]
+    name: test-service-graphql
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
@@ -585,6 +595,8 @@ buildvariants:
       GOROOT: /opt/golang/go1.16
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.18.tgz
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+      sign_macos: true
     tasks:
       - name: "dist-and-upload-clis"
       - name: "dist-staging"

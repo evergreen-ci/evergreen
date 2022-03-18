@@ -701,6 +701,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		TriggerID:           args.Version.TriggerID,
 		TriggerType:         args.Version.TriggerType,
 		TriggerEvent:        args.Version.TriggerEvent,
+		Tags:                buildVariant.Tags,
 	}
 
 	// get a new build number for the build

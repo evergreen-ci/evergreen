@@ -26,7 +26,7 @@
             }
             patchTriggerAliases {
                 alias
-                childProject
+                childProjectIdentifier
                 taskSpecifiers {
                     taskRegex
                     variantRegex

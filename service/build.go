@@ -157,11 +157,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	putParams := struct {
-		Action   string   `json:"action"`
-		Active   bool     `json:"active"`
-		Abort    bool     `json:"abort"`
-		Priority string   `json:"priority"`
-		TaskIds  []string `json:"taskIds"`
+		Action   evergreen.ModificationAction `json:"action"`
+		Active   bool                         `json:"active"`
+		Abort    bool                         `json:"abort"`
+		Priority string                       `json:"priority"`
+		TaskIds  []string                     `json:"taskIds"`
 	}{}
 	err = json.Unmarshal(reqBody, &putParams)
 	if err != nil {
@@ -171,7 +171,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 
 	// determine what action needs to be taken
 	switch putParams.Action {
-	case "abort":
+	case evergreen.AbortAction:
 		if err = model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
@@ -202,7 +202,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-	case "set_priority":
+	case evergreen.SetPriorityAction:
 		var priority int64
 		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {
@@ -228,7 +228,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.StatusInternalServerError)
 			return
 		}
-	case "set_active":
+	case evergreen.SetActiveAction:
 		if projCtx.Build.Requester == evergreen.MergeTestRequester && putParams.Active {
 			http.Error(w, "commit queue merges cannot be manually scheduled", http.StatusBadRequest)
 		}
@@ -270,7 +270,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-	case "restart":
+	case evergreen.RestartAction:
 		if err = model.RestartBuild(projCtx.Build.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return

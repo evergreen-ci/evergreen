@@ -597,23 +597,21 @@ input WebhookInput {
 }
 
 input WorkstationConfigInput {
-  setupCommands: [WorkstationSetupCommandInput]
-  gitClone: Boolean!
+  setupCommands: [WorkstationSetupCommandInput!]
+  gitClone: Boolean
 }
 
 input WorkstationSetupCommandInput {
-  Command: String!
-  Directory: String
+  command: String!
+  directory: String
 }
 
 input PatchTriggerAliasInput {
   alias: String!
-  childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifierInput]
+  taskSpecifiers: [TaskSpecifierInput!]!
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTaskInput]!
 }
 
 input TaskSpecifierInput {
@@ -829,13 +827,12 @@ type ChildPatchAlias {
 
 type PatchTriggerAlias {
   alias: String!
-  childProject: String @deprecated
   childProjectId: String!
   childProjectIdentifier: String!
-  taskSpecifiers: [TaskSpecifier]
+  taskSpecifiers: [TaskSpecifier!]
   status: String
   parentAsModule: String
-  variantsTasks: [VariantTask]!
+  variantsTasks: [VariantTask!]!
 }
 
 type UserPatches {
@@ -1099,7 +1096,6 @@ type Task {
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
   requester: String!
-  restarts: Int
   revision: String
   scheduledTime: Time
   containerAllocatedTime: Time
@@ -1124,6 +1120,11 @@ type GroupedProjects {
   name: String! @deprecated(reason: "name is deprecated. Use groupDisplayName instead.")
   repo: RepoRef
   projects: [Project!]!
+}
+
+type Permissions {
+  userId: String!
+  canCreateProject: Boolean!
 }
 
 type GithubProjectConflicts {
@@ -1428,8 +1429,8 @@ type RepoWorkstationConfig {
 }
 
 type WorkstationSetupCommand {
-  Command: String!
-  Directory: String!
+  command: String!
+  directory: String!
 }
 
 type TaskSpecifier {
@@ -1449,6 +1450,7 @@ type User {
   userId: String!
   emailAddress: String!
   patches(patchesInput: PatchesInput!): Patches!
+  permissions: Permissions!
 }
 
 type TaskLogs {

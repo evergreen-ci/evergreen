@@ -7,7 +7,8 @@ packages += db util plugin units graphql thirdparty thirdparty-docker auth sched
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult
 packages += operations-metabuild-generator operations-metabuild-model model-commitqueue
 packages += rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-global model-notification model-stats model-reliability
-lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil db-mgo db-mgo-bson db-mgo-internal-json
+lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json
+testOnlyPackages := service-graphql # has only test files so can't undergo all operations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
@@ -66,11 +67,6 @@ endif
 $(shell mkdir -p $(buildDir))
 
 # start evergreen specific configuration
-
-unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,darwin_arm64 linux_s390x linux_arm64 linux_ppc64le)
-windowsPlatforms := windows_amd64
-
-
 goos := $(GOOS)
 goarch := $(GOARCH)
 ifeq ($(goos),)
@@ -81,10 +77,15 @@ goarch := $(shell $(gobin) env GOARCH 2> /dev/null)
 endif
 
 clientBuildDir := clients
-
-
-clientBinaries := $(foreach platform,$(unixPlatforms),$(clientBuildDir)/$(platform)/evergreen)
-clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
+macOSPlatforms := darwin_amd64 $(if $(STAGING_ONLY),,darwin_arm64)
+linuxPlatforms := linux_amd64 $(if $(STAGING_ONLY),,linux_s390x linux_arm64 linux_ppc64le)
+windowsPlatforms := windows_amd64
+unixBinaryBasename := evergreen
+windowsBinaryBasename := evergreen.exe
+macOSBinaries := $(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/$(unixBinaryBasename))
+linuxBinaries := $(foreach platform,$(linuxPlatforms),$(clientBuildDir)/$(platform)/$(unixBinaryBasename))
+windowsBinaries := $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/$(windowsBinaryBasename))
+clientBinaries := $(macOSBinaries) $(linuxBinaries) $(windowsBinaries)
 
 clientSource := cmd/evergreen/evergreen.go
 uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
@@ -177,7 +178,7 @@ local-evergreen:$(localClientBinary) load-local-data
 # specific to evergreen; though the dist targets are more specific than the rest.
 
 # start output files
-testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
+testOutput := $(foreach target,$(packages) $(testOnlyPackages),$(buildDir)/output.$(target).test)
 lintOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
@@ -185,12 +186,10 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 
 # lint setup targets
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
-	@mkdir -p $(buildDir)
 	@touch $@
 $(buildDir)/golangci-lint:
 	@curl --retry 10 --retry-max-time 120 -sSfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(buildDir) v1.40.0 >/dev/null 2>&1 && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
-	@mkdir -p $(buildDir)
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets
 
@@ -223,7 +222,6 @@ $(buildDir)/expansions.yml:$(buildDir)/parse-host-file
 
 # npm setup
 $(buildDir)/.npmSetup:
-	@mkdir -p $(buildDir)
 	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)npm install
 	touch $@
 # end npm setup
@@ -231,26 +229,30 @@ $(buildDir)/.npmSetup:
 
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	@mkdir -p $(buildDir)
-	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
-	@echo $(gobin) build -o $@ $<
+	GOOS="" GOARCH="" $(gobin) build -o $@ $<
 $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
-	@mkdir -p $(buildDir)
-	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
-	@echo $(gobin) build -o $@ $<
+	GOOS="" GOARCH="" $(gobin) build -o $@ $<
+
+$(buildDir)/sign-executable:cmd/sign-executable/sign-executable.go
+	$(gobin) build -o $@ $<
+$(buildDir)/macnotary:$(buildDir)/sign-executable
+	./$< get-client --download-url $(NOTARY_CLIENT_URL) --destination $@
+$(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(unixBinaryBasename) $(buildDir)/macnotary
+	./$< sign --client $(buildDir)/macnotary --executable $(@D)/$(unixBinaryBasename) --server-url $(NOTARY_SERVER_URL) --bundle-id $(EVERGREEN_BUNDLE_ID)
+	touch $@
 
 dist-staging: export STAGING_ONLY := 1
 dist-staging:
 	make dist
 dist:$(buildDir)/dist.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed))
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 # end main build
 
 # userfacing targets for basic build and development operations
 build:cli
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
-test:$(foreach target,$(packages),test-$(target))
+test:$(foreach target,$(packages) $(testOnlyPackages),test-$(target))
 js-test:$(buildDir)/.npmSetup
 	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
