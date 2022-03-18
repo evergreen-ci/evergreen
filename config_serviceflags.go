@@ -31,6 +31,8 @@ type ServiceFlags struct {
 	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled  bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 
+	// kim: TODO: add experimental generate scopes flag.
+
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
 	JIRANotificationsDisabled    bool `bson:"jira_notifications_disabled" json:"jira_notifications_disabled"`

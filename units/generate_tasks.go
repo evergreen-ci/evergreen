@@ -47,11 +47,15 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, ts string) amboy.Job {
+func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
 	j := makeGenerateTaskJob()
-	j.TaskID = id
+	j.TaskID = taskID
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, id, ts))
+	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
+	// kim: TODO: Feature flag scopes (will break correctness for tasks
+	// currently being generated, but avoids the need to revert).
+	j.SetScopes([]string{versionID, taskID})
+	j.SetEnqueueScopes(taskID)
 	return j
 }
 

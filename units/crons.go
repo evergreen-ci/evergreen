@@ -680,9 +680,9 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
-		var q amboy.Queue
-		var ok bool
-		var err error
+		// var q amboy.Queue
+		// var ok bool
+		// var err error
 
 		catcher := grip.NewBasicCatcher()
 		tasks, err := task.GenerateNotRun()
@@ -690,19 +690,26 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "problem getting tasks that need generators run")
 		}
 
-		versions := map[string]amboy.Queue{}
-
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		group := env.RemoteQueueGroup()
+		queue, err := env.RemoteQueueGroup().Get(ctx, "service.generate.tasks")
+		if err != nil {
+			return errors.Wrap(err, "getting generate tasks queue")
+		}
+
+		// versions := map[string]amboy.Queue{}
+		// group := env.RemoteQueueGroup()
+
 		for _, t := range tasks {
-			if q, ok = versions[t.Version]; !ok {
-				q, err = group.Get(ctx, t.Version)
-				if err != nil {
-					return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
-				}
-				versions[t.Version] = q
-			}
-			catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
+			// kim: TODO: put behind feature flag.
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts)), "task '%s'", t.Id)
+			// if q, ok = versions[t.Version]; !ok {
+			//     q, err = group.Get(ctx, t.Version)
+			//     if err != nil {
+			//         return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
+			//     }
+			//     versions[t.Version] = q
+			// }
+			// catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
 		}
 		return catcher.Resolve()
 	}
