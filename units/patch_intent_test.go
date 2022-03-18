@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -62,7 +63,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -268,12 +269,23 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 }
 
 func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
+	t1 := task.Task{
+		Id:           "t1",
+		DisplayName:  "t1",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Status:       evergreen.TaskFailed,
+	}
+	s.NoError(t1.Insert())
+	patchId := "aabbccddeeff001122334455"
 	s.NoError((&patch.Patch{
-		Id:         mgobson.NewObjectId(),
+		Id:         patch.NewId(patchId),
 		Activated:  true,
+		Status:     evergreen.PatchFailed,
 		Project:    s.project,
 		CreateTime: time.Now(),
 		Author:     "me",
+		Version:    "v1",
 		VariantsTasks: []patch.VariantTasks{
 			{
 				Variant: "bv1",
@@ -291,11 +303,11 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 	}).Insert())
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:            "me",
-		Project:         s.project,
-		BaseGitHash:     s.hash,
-		Description:     s.desc,
-		ReuseDefinition: true,
+		User:             "me",
+		Project:          s.project,
+		BaseGitHash:      s.hash,
+		Description:      s.desc,
+		RepeatDefinition: true,
 	})
 	s.NoError(err)
 	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
@@ -314,7 +326,7 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 			DisplayTasks: []patch.DisplayTask{{Name: "dt2"}},
 		},
 	}}
-	vt, err := j.getPreviousPatchDefinition(&project)
+	vt, err := j.getPreviousPatchDefinition(&project, false)
 	s.NoError(err)
 	s.Require().Len(vt, 2)
 	s.Equal("bv1", vt[0].Variant)
@@ -323,6 +335,13 @@ func (s *PatchIntentUnitsSuite) TestGetPreviousPatchDefinition() {
 	s.Equal("bv_different_dt", vt[1].Variant)
 	s.Require().Len(vt[1].DisplayTasks, 1)
 	s.Equal("dt2", vt[1].DisplayTasks[0].Name)
+
+	vt, err = j.getPreviousPatchDefinition(&project, true)
+	s.NoError(err)
+	s.Require().Len(vt, 1)
+	s.Equal("bv1", vt[0].Variant)
+	s.Require().Len(vt[0].Tasks, 1)
+	s.Equal("t1", vt[0].Tasks[0])
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {

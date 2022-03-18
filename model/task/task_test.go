@@ -2211,11 +2211,10 @@ func TestArchiveMany(t *testing.T) {
 	}
 	assert.NoError(t, t1.Insert())
 	t2 := Task{
-		Id:       "t2",
-		Status:   evergreen.TaskFailed,
-		Aborted:  true,
-		Restarts: 2,
-		Version:  "v",
+		Id:      "t2",
+		Status:  evergreen.TaskFailed,
+		Aborted: true,
+		Version: "v",
 	}
 	assert.NoError(t, t2.Insert())
 	dt := Task{
@@ -2240,9 +2239,6 @@ func TestArchiveMany(t *testing.T) {
 	for _, task := range currentTasks {
 		assert.False(t, task.Aborted)
 		assert.Equal(t, 1, task.Execution)
-		if task.Id == t2.Id {
-			assert.Equal(t, 3, task.Restarts)
-		}
 	}
 	oldTasks, err := FindAllOld(db.Query(ByVersion("v")))
 	assert.NoError(t, err)

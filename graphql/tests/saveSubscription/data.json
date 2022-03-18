@@ -82,7 +82,6 @@
       "depends_on": [],
       "display_name": "test",
       "host_id": "builder",
-      "restarts": 0,
       "execution": 1,
       "order": 10,
       "r": "gitter_request",

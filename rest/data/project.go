@@ -64,9 +64,28 @@ func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef, u *use
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "project with id '%s' was not inserted", projectRef.Id).Error(),
+			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
 		}
 	}
+
+	newProjectVars := model.ProjectVars{
+		Id: projectRef.Id,
+	}
+
+	err = newProjectVars.Insert()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "initializing project variables for '%s'", projectRef.Identifier).Error(),
+		}
+	}
+	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":            "problem logging project added",
+		"project_id":         projectRef.Id,
+		"project_identifier": projectRef.Identifier,
+		"user":               u.DisplayName(),
+	}))
 	return nil
 }
 
@@ -345,7 +364,8 @@ func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string)
 		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
 	}
 	vars.Id = newProjectId
-	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
+	_, err = vars.Upsert()
+	return errors.Wrapf(err, "error inserting variables for project '%s", newProjectId)
 }
 
 func (ac *DBProjectConnector) GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {

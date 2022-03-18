@@ -3442,7 +3442,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	task5 := task.Task{
 		Id:        "task5",
 		Activated: true,
-		Status:    evergreen.TaskUndispatched,
+		Status:    evergreen.TaskDispatched,
 	}
 	assert.NoError(task5.Insert())
 	task6 := task.Task{
@@ -3492,12 +3492,13 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	// test that you can't update a display task
 	assert.Error(UpdateDisplayTaskForTask(&dt))
 
-	// test that a display task with a finished + unstarted task is "started"
+	// test that a display task with a finished + unfinished task is "started"
 	assert.NoError(UpdateDisplayTaskForTask(&task5))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+	assert.Zero(dbTask.FinishTime)
 
 	// check that the updates above logged an event for the first one
 	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
