@@ -593,6 +593,73 @@
       "running_task_group_order": 0,
       "running_task_project": "mongodb-mongo-v3.6",
       "running_task_version": "mongodb_mongo_v3.6_bc405c72dce4714da604810cdc90c132bd5fbaa1"
+    },
+    {
+      "_id": "not-recently-terminated-host",
+      "host_id": "ec2-28-930-518-324.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "tag": "evg-ubuntu1804-small-20200504144805-8687396505734256771",
+      "distro": {
+        "_id": "ubuntu1804-small",
+        "aliases": ["ubuntu1804"],
+        "arch": "linux_amd64",
+        "work_dir": "/data/mci",
+        "provider": "ec2-ondemand",
+        "user": "ubuntu"
+      },
+      "host_type": "ec2-ondemand",
+      "ext_identifier": "",
+      "display_name": "",
+      "project": "",
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "priv_attempts": 1,
+      "last_task": "",
+      "no_expiration": false,
+      "creation_time": {
+        "$date": "2021-05-04T14:48:05.256Z"
+      },
+      "start_time": {
+        "$date": "2021-05-04T14:48:27Z"
+      },
+      "agent_start_time": {
+        "$date": "2021-05-04T14:49:20.449Z"
+      },
+      "termination_time": {
+        "$date": "2021-05-05T00:00:00Z"
+      },
+      "task_count": 1,
+      "last_task_completed_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
+      "last_communication": {
+        "$date": "2020-05-04T18:58:51.025Z"
+      },
+      "status": "terminated",
+      "started_by": "testuser",
+      "user_host": false,
+      "agent_revision": "2020-05-04",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "instance_type": "",
+      "container_build_attempt": 0,
+      "spawn_options": {},
+      "docker_options": {},
+      "running_task": "mms_package_rpm_ppc_foliage_7f9f33c48eba3790333bc4ed6ac72eba8dd9f459_20_07_20_14_37_05",
+      "running_task_bv": "ubuntu1804",
+      "running_task_group": "",
+      "running_task_group_order": 0,
+      "running_task_project": "mms",
+      "running_task_version": "5f15ad3c3627e07772ab2d01",
+      "total_idle_time": {
+        "$numberLong": "54073000000"
+      },
+      "prov_time": {
+        "$date": "2020-05-04T14:49:30.784Z"
+      },
+      "expiration_time": {
+        "$date": "2020-05-10T10:48:05-04:00"
+      }
     }
   ],
   "distro": [
