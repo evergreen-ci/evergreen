@@ -1077,8 +1077,8 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	}
 
 	duration := time.Duration(5) * time.Minute
-	fromTimestamp := time.Now().Add(-duration) // within last 5 minutes
-	recentlyTerminatedHosts, err := host.Find(host.ByUserRecentlyTerminated(usr.Username(), fromTimestamp))
+	timestamp := time.Now().Add(-duration) // within last 5 minutes
+	recentlyTerminatedHosts, err := host.Find(host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))
