@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/v34/github"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -411,6 +412,14 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
 }
 
+func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
+	err := dbModel.SetVersionPriority(s.obj_ids[0], 7, "")
+	s.NoError(err)
+	t, err := task.FindOneId("t1")
+	s.NoError(err)
+	s.Equal(int64(7), t.Priority)
+}
+
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	settings := testutil.MockConfig()
 	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
@@ -512,4 +521,55 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
+}
+
+type PatchConnectorFindByUserPatchNameStatusesCommitQueue struct {
+	time     time.Time
+	setup    func() error
+	teardown func() error
+	obj_ids  []string
+	suite.Suite
+}
+
+func TestPatchConnectorFindByUserPatchNameStatusesCommitQueue(t *testing.T) {
+	s := new(PatchConnectorFindByUserPatchNameStatusesCommitQueue)
+	s.setup = func() error {
+		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
+		s.obj_ids = []string{
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+			mgobson.NewObjectId().Hex(),
+		}
+		patches := []*patch.Patch{
+			{Id: mgobson.ObjectIdHex(s.obj_ids[0]), Author: "user1", CreateTime: s.time, Description: "user 1 patch 1", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchCreated},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[1]), Author: "user2", CreateTime: s.time.Add(time.Second * 2), Description: "user 2 patch 1", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchStarted},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[2]), Author: "user1", CreateTime: s.time.Add(time.Second * 4), Description: "user 1 patch 2 llama", Alias: evergreen.GithubPRAlias, Status: evergreen.PatchSucceeded},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[3]), Author: "user1", CreateTime: s.time.Add(time.Second * 6), Description: "user 1 patch 3", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchFailed},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[4]), Author: "user2", CreateTime: s.time.Add(time.Second * 8), Description: "user 2 patch 2", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchStarted},
+			{Id: mgobson.ObjectIdHex(s.obj_ids[5]), Author: "user1", CreateTime: s.time.Add(time.Second * 10), Description: "user 1 patch 4 llama", Alias: evergreen.CommitQueueAlias, Status: evergreen.PatchFailed},
+		}
+		assert.NoError(t, db.Clear(patch.Collection))
+		for _, p := range patches {
+			if err := p.Insert(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	s.teardown = func() error {
+		return db.Clear(patch.Collection)
+	}
+	suite.Run(t, s)
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection))
+	s.Require().NoError(s.setup())
+}
+
+func (s *PatchConnectorFindByUserPatchNameStatusesCommitQueue) TearDownSuite() {
+	s.Require().NoError(s.teardown())
 }

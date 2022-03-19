@@ -10,7 +10,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +25,175 @@ import (
 var (
 	testConfig = testutil.TestConfig()
 )
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for fetch task by id route
+
+type TaskConnectorFetchByIdSuite struct {
+	suite.Suite
+}
+
+func TestTaskConnectorFetchByIdSuite(t *testing.T) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	s := &TaskConnectorFetchByIdSuite{}
+
+	suite.Run(t, s)
+}
+
+func (s *TaskConnectorFetchByIdSuite) SetupTest() {
+	s.Require().NoError(db.Clear(task.Collection))
+	for i := 0; i < 10; i++ {
+		testTask := &task.Task{
+			Id:      fmt.Sprintf("task_%d", i),
+			BuildId: fmt.Sprintf("build_%d", i),
+		}
+		s.NoError(testTask.Insert())
+	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindById() {
+	for i := 0; i < 10; i++ {
+		found, err := task.FindOneId(fmt.Sprintf("task_%d", i))
+		s.Nil(err)
+		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
+	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection))
+	testTask1 := &task.Task{
+		Id:        "task_1",
+		Execution: 0,
+		BuildId:   "build_1",
+	}
+	s.NoError(testTask1.Insert())
+	for i := 0; i < 10; i++ {
+		s.NoError(testTask1.Archive())
+		testTask1.Execution += 1
+	}
+	for i := 0; i < 10; i++ {
+		task, err := task.FindOneIdAndExecution("task_1", i)
+		s.NoError(err)
+		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
+		s.Equal(task.Execution, i)
+	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection, annotations.Collection))
+	task_known_2 := &task.Task{
+		Id:        "task_known",
+		Execution: 2,
+		Version:   "version_known",
+		Status:    evergreen.TaskSucceeded,
+	}
+	task_not_known := &task.Task{
+		Id:        "task_not_known",
+		Execution: 0,
+		Version:   "version_not_known",
+		Status:    evergreen.TaskFailed,
+	}
+	task_no_annotation := &task.Task{
+		Id:        "task_no_annotation",
+		Execution: 0,
+		Version:   "version_no_annotation",
+		Status:    evergreen.TaskFailed,
+	}
+	task_with_empty_issues := &task.Task{
+		Id:        "task_with_empty_issues",
+		Execution: 0,
+		Version:   "version_with_empty_issues",
+		Status:    evergreen.TaskFailed,
+	}
+	s.NoError(task_known_2.Insert())
+	s.NoError(task_not_known.Insert())
+	s.NoError(task_no_annotation.Insert())
+	s.NoError(task_with_empty_issues.Insert())
+
+	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
+
+	a_execution_0 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_execution_1 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 1, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_execution_2 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 2, Issues: []annotations.IssueLink{issue}}
+
+	a_with__suspected_issue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	a_with_empty_issues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
+
+	s.NoError(a_execution_0.Upsert())
+	s.NoError(a_execution_1.Upsert())
+	s.NoError(a_execution_2.Upsert())
+	s.NoError(a_with__suspected_issue.Upsert())
+	s.NoError(a_with_empty_issues.Upsert())
+
+	opts := task.GetTasksByVersionOptions{}
+	t, _, err := task.GetTasksByVersion("version_known", opts)
+	s.NoError(err)
+	// ignore annotation for successful task
+	s.Equal(evergreen.TaskSucceeded, t[0].DisplayStatus)
+
+	// test with empty issues list
+	t, _, err = task.GetTasksByVersion("version_not_known", opts)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
+
+	// test with no annotation document
+	t, _, err = task.GetTasksByVersion("version_no_annotation", opts)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
+
+	// test with empty issues
+	t, _, err = task.GetTasksByVersion("version_with_empty_issues", opts)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
+
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection))
+	testTask1 := &task.Task{
+		Id:        "task_1",
+		Execution: 0,
+		BuildId:   "build_1",
+	}
+	s.NoError(testTask1.Insert())
+	testTask2 := &task.Task{
+		Id:          "task_2",
+		Execution:   0,
+		BuildId:     "build_1",
+		DisplayOnly: true,
+	}
+	s.NoError(testTask2.Insert())
+	for i := 0; i < 10; i++ {
+		s.NoError(testTask1.Archive())
+		testTask1.Execution += 1
+		s.NoError(testTask2.Archive())
+		testTask2.Execution += 1
+	}
+	tasks, err := task.FindOldWithDisplayTasks(task.ByOldTaskID("task_1"))
+	s.NoError(err)
+	s.Len(tasks, 10)
+	for i := range tasks {
+		s.Equal(i, tasks[i].Execution)
+	}
+
+	tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID("task_2"))
+	s.NoError(err)
+	s.Len(tasks, 10)
+	for i := range tasks {
+		s.Equal(i, tasks[i].Execution)
+	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
+	found, err := task.FindOneId("fake_task")
+	s.NoError(err)
+	s.Nil(found)
+}
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -341,6 +513,53 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindEmptyProjectAndCommi
 	s.Equal(1, len(foundTasks))
 	task1 := foundTasks[0]
 	s.Equal(s.taskIds[0][0][0], task1.Id)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for abort task route
+
+type TaskConnectorAbortTaskSuite struct {
+	suite.Suite
+}
+
+func TestDBTaskConnectorAbortTaskSuite(t *testing.T) {
+	s := new(TaskConnectorAbortTaskSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	suite.Run(t, s)
+}
+
+func (s *TaskConnectorAbortTaskSuite) TestAbort() {
+	s.NoError(db.ClearCollections(task.Collection, user.Collection, build.Collection, model.VersionCollection))
+	taskToAbort := task.Task{Id: "task1", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"}
+	s.NoError(taskToAbort.Insert())
+	s.NoError((&build.Build{Id: "b1"}).Insert())
+	s.NoError((&model.Version{Id: "v1"}).Insert())
+	u := user.DBUser{
+		Id: "user1",
+	}
+	s.NoError(u.Insert())
+	err := model.AbortTask("task1", "user1")
+	s.NoError(err)
+	foundTask, err := task.FindOneId("task1")
+	s.NoError(err)
+	s.Equal("user1", foundTask.AbortInfo.User)
+	s.Equal(true, foundTask.Aborted)
+}
+
+func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
+	s.NoError(db.ClearCollections(task.Collection, user.Collection))
+	taskToAbort := task.Task{Id: "task1", Status: evergreen.TaskStarted}
+	s.NoError(taskToAbort.Insert())
+	u := user.DBUser{
+		Id: "user1",
+	}
+	s.NoError(u.Insert())
+	err := model.AbortTask("task1", "user1")
+	s.Error(err)
 }
 
 func TestCheckTaskSecret(t *testing.T) {

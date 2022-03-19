@@ -73,52 +73,6 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 	}
 }
 
-func (s *ProjectAliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
-	newAlias := ProjectAlias{
-		ProjectID: "project_id",
-		Alias:     evergreen.GitTagAlias,
-		GitTag:    "release",
-		Variant:   "variant",
-		Task:      "task",
-	}
-	s.NoError(newAlias.Upsert())
-	newAlias2 := ProjectAlias{
-		ProjectID:  "project_id",
-		Alias:      evergreen.GitTagAlias,
-		GitTag:     "release",
-		RemotePath: "file.yml",
-	}
-	s.NoError(newAlias2.Upsert())
-	hasAliases, path, err := HasMatchingGitTagAliasAndRemotePath("project_id", "release")
-	s.Error(err)
-	s.False(hasAliases)
-	s.Empty(path)
-
-	newAlias2.RemotePath = ""
-	s.NoError(newAlias2.Upsert())
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id", "release")
-	s.NoError(err)
-	s.True(hasAliases)
-	s.Empty(path)
-
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
-	s.Error(err)
-	s.False(hasAliases)
-	s.Empty(path)
-
-	newAlias3 := ProjectAlias{
-		ProjectID:  "project_id2",
-		Alias:      evergreen.GitTagAlias,
-		GitTag:     "release",
-		RemotePath: "file.yml",
-	}
-	s.NoError(newAlias3.Upsert())
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
-	s.NoError(err)
-	s.True(hasAliases)
-	s.Equal("file.yml", path)
-}
-
 func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
 	tags := []string{"tag1", "tag2"}
 	for _, alias := range s.aliases {

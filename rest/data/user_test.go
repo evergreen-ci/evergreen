@@ -45,6 +45,28 @@ func (s *DBUserConnectorSuite) SetupTest() {
 	}
 }
 
+func (s *DBUserConnectorSuite) TestFindUserById() {
+	for i := 0; i < s.numUsers; i++ {
+		found, err := user.FindOneById(fmt.Sprintf("user_%d", i))
+		s.NoError(err)
+		s.Equal(found.GetAPIKey(), fmt.Sprintf("apikey_%d", i))
+	}
+
+	found, err := user.FindOneById("fake_user")
+	s.Nil(found)
+	s.NoError(err)
+}
+
+func (s *DBUserConnectorSuite) TestDeletePublicKey() {
+	for _, u := range s.users {
+		s.NoError(u.DeletePublicKey(u.Id + "_0"))
+
+		dbUser, err := user.FindOne(user.ById(u.Id))
+		s.NoError(err)
+		s.Len(dbUser.PubKeys, 0)
+	}
+}
+
 func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
 	found, err := user.FindOneById(s.users[index].Id)
 	s.NoError(err)

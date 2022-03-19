@@ -1,4 +1,4 @@
-package model
+package data
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -29,9 +30,9 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 }
 
 func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, ProjectRefCollection, VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, model.ProjectRefCollection, model.VersionCollection))
 	vId := "v"
-	version := &Version{Id: vId}
+	version := &model.Version{Id: vId}
 	builds := []build.Build{
 		{Id: "build1", Version: vId},
 		{Id: "build2", Version: vId},
@@ -40,7 +41,7 @@ func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	projRef := ProjectRef{Repo: "project", Id: "branch"}
+	projRef := model.ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert())
 }
 
@@ -80,10 +81,10 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 }
 
 func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
-	version := &Version{Id: vId}
+	version := &model.Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 	build2 := &build.Build{Id: "build2", Version: vId}
 
@@ -93,14 +94,14 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
-	err := SetBuildActivation("build1", true, "user1")
+	err := model.SetBuildActivation("build1", true, "user1")
 	s.NoError(err)
 	b, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
-	err = SetBuildActivation("build1", false, "user1")
+	err = model.SetBuildActivation("build1", false, "user1")
 	s.NoError(err)
 	b, err = build.FindOneId("build1")
 	s.NoError(err)
@@ -109,10 +110,10 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
-	err := SetBuildPriority("build1", int64(2), "")
+	err := model.SetBuildPriority("build1", int64(2), "")
 	s.NoError(err)
 
-	err = SetBuildPriority("build1", int64(3), "")
+	err = model.SetBuildPriority("build1", int64(3), "")
 	s.NoError(err)
 }
 
@@ -134,10 +135,10 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 }
 
 func (s *BuildConnectorAbortSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
-	version := &Version{Id: vId}
+	version := &model.Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 
 	s.NoError(build1.Insert())
@@ -145,7 +146,7 @@ func (s *BuildConnectorAbortSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
-	err := AbortBuild("build1", "user1")
+	err := model.AbortBuild("build1", "user1")
 	s.NoError(err)
 	b, err := build.FindOne(build.ById("build1"))
 	s.NoError(err)
@@ -170,10 +171,10 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 }
 
 func (s *BuildConnectorRestartSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
-	version := &Version{Id: vId}
+	version := &model.Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 
 	s.NoError(build1.Insert())
@@ -181,9 +182,9 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {
-	err := RestartAllBuildTasks("build1", "user1")
+	err := model.RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 
-	err = RestartAllBuildTasks("build1", "user1")
+	err = model.RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 }

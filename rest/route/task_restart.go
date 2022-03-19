@@ -3,11 +3,10 @@ package route
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -54,7 +53,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := resetTask(trh.taskId, trh.username)
+	err := data.ResetTask(trh.taskId, trh.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -77,18 +76,4 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(taskModel)
-}
-
-// resetTask sets the task to be in an unexecuted state and prepares it to be run again.
-// If given an execution task, marks the display task for reset.
-func resetTask(taskId, username string) error {
-	t, err := task.FindOneId(taskId)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding task '%s'", t)
-	}
-	if t == nil {
-		return errors.Errorf("task '%s' not found", t.Id)
-	}
-	return errors.Wrap(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil),
-		"Reset task error")
 }

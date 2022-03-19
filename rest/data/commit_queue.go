@@ -166,8 +166,7 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []thirdparty.Summary, 
 	return nil
 }
 
-// EnqueueItem will enqueue an item to a project's commit queue.
-// If enqueueNext is true, move the commit queue item to be processed next.
+// if bool is true, move the commit queue item to be processed next.
 func EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNext bool) (int, error) {
 	q, err := commitqueue.FindOneId(projectID)
 	if err != nil {
@@ -267,6 +266,10 @@ func IsItemOnCommitQueue(id, item string) (bool, error) {
 	return false, nil
 }
 
+func CommitQueueClearAll() (int, error) {
+	return commitqueue.ClearAllCommitQueues()
+}
+
 type UserRepoInfo struct {
 	Username string
 	Owner    string
@@ -328,6 +331,25 @@ func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage str
 		return nil, errors.Wrap(err, "problem building API patch")
 	}
 	return apiPatch, nil
+}
+
+func GetMessageForPatch(patchID string) (string, error) {
+	requestedPatch, err := patch.FindOneId(patchID)
+	if err != nil {
+		return "", errors.Wrap(err, "error finding patch")
+	}
+	if requestedPatch == nil {
+		return "", errors.New("no patch found")
+	}
+	project, err := model.FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to find project for patch")
+	}
+	if project == nil {
+		return "", errors.New("patch has nonexistent project")
+	}
+
+	return project.CommitQueue.Message, nil
 }
 
 func ConcludeMerge(patchID, status string) error {
