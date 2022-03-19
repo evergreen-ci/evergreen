@@ -116,11 +116,6 @@ func TestGenerateGceName(t *testing.T) {
 }
 
 func TestIsParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 	assert.NoError(db.Clear(evergreen.ConfigCollection))
