@@ -688,7 +688,7 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return nil
 	}
 
-	exists, err := data.IsItemOnCommitQueue(projRef.Id, strconv.Itoa(*pr.Number))
+	exists, err := isItemOnCommitQueue(projRef.Id, strconv.Itoa(*pr.Number))
 	if err != nil {
 		return errors.Wrapf(err, "can't determine if item is on commit queue %s", projRef.Id)
 	}
@@ -701,6 +701,22 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Id)
 	}
 	return nil
+}
+
+func isItemOnCommitQueue(id, item string) (bool, error) {
+	cq, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+	}
+	if cq == nil {
+		return false, errors.Errorf("no commit queue found for '%s'", id)
+	}
+
+	pos := cq.FindItem(item)
+	if pos >= 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 // The bool value returns whether the patch should be created or not.

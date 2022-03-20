@@ -128,54 +128,6 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Equal(utility.ToStringPtr("3"), cq.Queue[1].Issue)
 }
 
-func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
-	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-
-	exists, err := IsItemOnCommitQueue("mci", "1")
-	s.NoError(err)
-	s.True(exists)
-
-	exists, err = IsItemOnCommitQueue("mci", "2")
-	s.NoError(err)
-	s.False(exists)
-
-	exists, err = IsItemOnCommitQueue("not-a-project", "1")
-	s.Error(err)
-	s.False(exists)
-}
-
-func (s *CommitQueueSuite) TestCommitQueueClearAll() {
-	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("56")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(2, pos)
-
-	q := &commitqueue.CommitQueue{ProjectID: "logkeeper"}
-
-	// Only one queue is cleared since the second is empty
-	clearedCount, err := CommitQueueClearAll()
-	s.NoError(err)
-	s.Equal(1, clearedCount)
-
-	// both queues have items
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = q.Enqueue(commitqueue.CommitQueueItem{Issue: "78"})
-	s.NoError(err)
-	s.Equal(0, pos)
-	clearedCount, err = CommitQueueClearAll()
-	s.NoError(err)
-	s.Equal(2, clearedCount)
-}
-
 func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 	args1 := UserRepoInfo{
 		Username: "evrg-bot-webhook",
@@ -320,44 +272,6 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.NoError(err)
 	s.Equal(utility.ToStringPtr("2"), cq.Queue[0].Issue)
 	s.Equal(utility.ToStringPtr("3"), cq.Queue[1].Issue)
-}
-
-func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
-	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-
-	exists, err := IsItemOnCommitQueue("mci", "1")
-	s.NoError(err)
-	s.True(exists)
-
-	exists, err = IsItemOnCommitQueue("mci", "2")
-	s.NoError(err)
-	s.False(exists)
-
-	exists, err = IsItemOnCommitQueue("not-a-project", "1")
-	s.Error(err)
-	s.False(exists)
-}
-
-func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
-	pos, err := EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
-
-	pos, err = EnqueueItem("logkeeper", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("12")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-	pos, err = EnqueueItem("logkeeper", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("34")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(1, pos)
-
-	clearedCount, err := CommitQueueClearAll()
-	s.NoError(err)
-	s.Equal(2, clearedCount)
 }
 
 func (s *CommitQueueSuite) TestWritePatchInfo() {

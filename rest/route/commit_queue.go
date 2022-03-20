@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -140,7 +141,7 @@ func (cq *commitQueueClearAllHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder {
-	clearedCount, err := data.CommitQueueClearAll()
+	clearedCount, err := commitqueue.ClearAllCommitQueues()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't clear commit queues"))
 	}
@@ -219,7 +220,7 @@ func (p *cqMessageForPatch) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *cqMessageForPatch) Run(ctx context.Context) gimlet.Responder {
-	message, err := data.GetMessageForPatch(p.patchID)
+	message, err := dbModel.GetMessageForPatch(p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
