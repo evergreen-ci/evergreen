@@ -1075,8 +1075,16 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 		return nil, InternalServerError.Send(ctx,
 			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
 	}
-	var apiHosts []*restModel.APIHost
+	duration := time.Duration(5) * time.Minute
+	timestamp := time.Now().Add(-duration) // within last 5 minutes
+	recentlyTerminatedHosts, err := host.Find(host.ByUserRecentlyTerminated(usr.Username(), timestamp))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx,
+			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))
+	}
+	hosts = append(hosts, recentlyTerminatedHosts...)
 
+	var apiHosts []*restModel.APIHost
 	for _, host := range hosts {
 		apiHost := restModel.APIHost{}
 		err = apiHost.BuildFromService(host)
