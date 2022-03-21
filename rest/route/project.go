@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -570,6 +571,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
 		if err = queue.Put(ctx, j); err != nil {
+			if db.IsDuplicateKey(err) {
+				return gimlet.MakeJSONErrorResponder(errors.Errorf("Repotracker is already scheduled to run for project '%s'", h.project))
+			}
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
 		}
 	}
