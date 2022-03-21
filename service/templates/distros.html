@@ -425,8 +425,14 @@ Evergreen - Distros
                   key name is required</div>
               </div>
               <div class="distro-label">
+                <div ng-show="activeDistro.provider === 'ec2-fleet'">
+                  <label><input style="margin-right:10px;" ng-disabled="readOnly || activeDistro.settings.fleet_options.use_on_demand" type="checkbox"
+                    name="use_capacity_optimized" ng-model="activeDistro.settings.fleet_options.use_capacity_optimized">Use the capacity-optimized allocation strategy for spot (default: lowest-cost)</label> <br>
+                  <label><input style="margin-right:10px;" ng-disabled="readOnly || activeDistro.settings.fallback" type="checkbox"
+                    name="use_on_demand" ng-model="activeDistro.settings.fleet_options.use_on_demand">Use on-demand instances for all hosts</label> <br>
+                </div>
                 <div ng-show="activeDistro.provider == 'ec2-spot' || activeDistro.provider == 'ec2-fleet'">
-                  <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
+                  <label><input style="margin-right:10px;" ng-disabled="readOnly || activeDistro.settings.fleet_options.use_on_demand" type="checkbox"
                     name="fallback" ng-model="activeDistro.settings.fallback">Fallback to EC2 On-Demand in the case of insufficient capacity </label> <br>
                 </div>
                 <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"

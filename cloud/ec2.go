@@ -180,11 +180,12 @@ func (s *EC2ProviderSettings) getRegion() string {
 	return evergreen.DefaultEC2Region
 }
 
+// FleetConfig specifies how the EC2 Fleet manager should spawn hosts.
 type FleetConfig struct {
-	// UseOnDemand will use on-demand instances to instantiate hosts. Defaults to spot instances.
+	// UseOnDemand will cause Fleet to use on-demand instances to instantiate hosts. Defaults to spot instances.
 	UseOnDemand bool `mapstructure:"use_on_demand" json:"use_on_demand,omitempty" bson:"use_on_demand,omitempty"`
 
-	// UseCapacityOptimized will use the capacity-optimized allocation strategy for spawning the host. Defaults to the AWS default (lowest-cost).
+	// UseCapacityOptimized will cause Fleet to use the capacity-optimized allocation strategy for spawning hosts. Defaults to the AWS default (lowest-cost).
 	// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-allocation-strategy.html for more information about Fleet allocation strategies.
 	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized,omitempty" bson:"use_capacity_optimized,omitempty"`
 }
