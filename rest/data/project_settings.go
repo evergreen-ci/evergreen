@@ -174,8 +174,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPageVariablesSection:
 		for key, value := range before.Vars.Vars {
 			// Private variables are redacted in the UI, so re-set to the real value
-			// before updating (assuming the value isn't deleted).
-			if before.Vars.PrivateVars[key] && changes.Vars.PrivateVars[key] {
+			// before updating (assuming the value isn't deleted/re-configured).
+			if before.Vars.PrivateVars[key] && changes.Vars.IsPrivate(key) && changes.Vars.Vars[key] == "" {
 				changes.Vars.Vars[key] = value
 			}
 		}
@@ -219,7 +219,6 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
 	}
-	fmt.Println("GETTING TO SAVE FOR SECTION")
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)

@@ -362,30 +362,34 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.ProjectRef) {
-			// remove a variable, modify a variable, add a variable
-			updatedVars := &model.ProjectVars{
-				Id:          ref.Id,
-				Vars:        map[string]string{"it": "me", "banana": "phone"},
-				PrivateVars: map[string]bool{"banana": true},
+			// remove a variable, modify a variable, delete/add a private variable, add a variable, leave a private variable unchanged
+			apiProjectVars := restModel.APIProjectVars{
+				Vars:            map[string]string{"it": "me", "banana": "phone", "change": "is good", "private": ""},
+				PrivateVarsList: []string{"banana", "private", "change"},
 			}
-			apiProjectVars := restModel.APIProjectVars{}
-			assert.NoError(t, apiProjectVars.BuildFromService(updatedVars))
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
-			assert.Equal(t, settings.Vars.Vars["banana"], "") // confirm that this is redacted
-			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
+			// Confirm that private variables are redacted.
+			assert.Equal(t, settings.Vars.Vars["banana"], "")
+			assert.Equal(t, settings.Vars.Vars["change"], "")
+			assert.Equal(t, settings.Vars.Vars["private"], "")
+			varsFromDb, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Equal(t, varsFromDb.Vars["it"], "me")
 			assert.Equal(t, varsFromDb.Vars["banana"], "phone")
 			assert.Equal(t, varsFromDb.Vars["hello"], "")
+			assert.Equal(t, varsFromDb.Vars["private"], "forever") // ensure un-edited private variables are unchanged
+			assert.Equal(t, varsFromDb.Vars["change"], "is good")  // ensure edited private variables are changed
 			assert.False(t, varsFromDb.PrivateVars["it"])
 			assert.False(t, varsFromDb.PrivateVars["hello"])
 			assert.True(t, varsFromDb.PrivateVars["banana"])
+			assert.True(t, varsFromDb.PrivateVars["private"])
+			assert.True(t, varsFromDb.PrivateVars["change"])
 		},
 		model.ProjectPageNotificationsSection: func(t *testing.T, ref model.ProjectRef) {
 			newSubscription := event.Subscription{
@@ -437,8 +441,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 		pVars := model.ProjectVars{
 			Id:          pRef.Id,
-			Vars:        map[string]string{"hello": "world", "it": "adele"},
-			PrivateVars: map[string]bool{"hello": true},
+			Vars:        map[string]string{"hello": "world", "it": "adele", "private": "forever", "change": "inevitable"},
+			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
 		assert.NoError(t, pVars.Insert())
 		// add scopes
