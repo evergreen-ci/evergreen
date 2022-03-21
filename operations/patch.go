@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	patchDescriptionFlagName = "description"
-	patchVerboseFlagName     = "verbose"
-	patchTriggerAliasFlag    = "trigger-alias"
-	reuseDefinitionFlag      = "reuse"
+	patchDescriptionFlagName   = "description"
+	patchVerboseFlagName       = "verbose"
+	patchTriggerAliasFlag      = "trigger-alias"
+	repeatDefinitionFlag       = "repeat"
+	repeatFailedDefinitionFlag = "repeat-failed"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -57,8 +58,12 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Usage: "patch trigger alias (set by project admin) specifying tasks from other projects",
 			},
 			cli.BoolFlag{
-				Name:  reuseDefinitionFlag,
-				Usage: "use the same tasks/variants defined for the last patch you scheduled for this project",
+				Name:  joinFlagNames(repeatDefinitionFlag, "reuse"),
+				Usage: "use all of the same tasks/variants defined for the last patch you scheduled for this project",
+			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(repeatFailedDefinitionFlag, "rf"),
+				Usage: "use only the failed tasks/variants defined for the last patch you scheduled for this project",
 			},
 			cli.StringFlag{
 				Name:  pathFlagName,
@@ -74,6 +79,7 @@ func Patch() cli.Command {
 			autoUpdateCLI,
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
+			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatFailedDefinitionFlag),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -110,7 +116,8 @@ func Patch() cli.Command {
 				Uncommitted:       c.Bool(uncommittedChangesFlag),
 				PreserveCommits:   c.Bool(preserveCommitsFlag),
 				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
-				ReuseDefinition:   c.Bool(reuseDefinitionFlag),
+				RepeatDefinition:  c.Bool(repeatDefinitionFlag),
+				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
 			}
 
 			var err error
@@ -127,7 +134,7 @@ func Patch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if params.ReuseDefinition && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
+			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
 				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
 

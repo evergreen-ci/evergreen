@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -92,21 +91,18 @@ func (h *podAgentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 
 type podAgentNextTask struct {
 	env   evergreen.Environment
-	sc    data.Connector
 	podID string
 }
 
-func makePodAgentNextTask(env evergreen.Environment, sc data.Connector) gimlet.RouteHandler {
+func makePodAgentNextTask(env evergreen.Environment) gimlet.RouteHandler {
 	return &podAgentNextTask{
 		env: env,
-		sc:  sc,
 	}
 }
 
 func (h *podAgentNextTask) Factory() gimlet.RouteHandler {
 	return &podAgentNextTask{
 		env: h.env,
-		sc:  h.sc,
 	}
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -382,7 +381,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	if err != nil {
 		return nil, err
 	}
-	taskConfig.RestrictedExpansions = util.NewExpansions(tc.expVars.RestrictedVars)
 	taskConfig.Redacted = tc.expVars.PrivateVars
 	return taskConfig, nil
 }

@@ -43,7 +43,6 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 		DependsOn:           []task.Dependency{{TaskId: "some-other-task", Status: ""}},
 		DisplayName:         "My task",
 		HostId:              "some-host-id",
-		Restarts:            0,
 		Execution:           0,
 		Archived:            false,
 		RevisionOrderNumber: 42,
@@ -174,7 +173,6 @@ func TestGetTaskInfo(t *testing.T) {
 
 			So(jsonBody["display_name"], ShouldEqual, testTask.DisplayName)
 			So(jsonBody["host_id"], ShouldEqual, testTask.HostId)
-			So(jsonBody["restarts"], ShouldEqual, testTask.Restarts)
 			So(jsonBody["execution"], ShouldEqual, testTask.Execution)
 			So(jsonBody["archived"], ShouldEqual, testTask.Archived)
 			So(jsonBody["order"], ShouldEqual, testTask.RevisionOrderNumber)

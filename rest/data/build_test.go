@@ -17,7 +17,6 @@ import (
 // Tests for fetch build by id route
 
 type BuildConnectorFetchByIdSuite struct {
-	ctx Connector
 	suite.Suite
 }
 
@@ -27,12 +26,10 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
 	s.NoError(db.ClearCollections(build.Collection, model.ProjectRefCollection, model.VersionCollection))
 	vId := "v"
 	version := &model.Version{Id: vId}
@@ -49,20 +46,20 @@ func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindById() {
-	b, err := s.ctx.FindBuildById("build1")
+	b, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.NotNil(b)
 	s.Equal("build1", b.Id)
 
-	b, err = s.ctx.FindBuildById("build2")
+	b, err = build.FindOneId("build2")
 	s.NoError(err)
 	s.NotNil(b)
 	s.Equal("build2", b.Id)
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindByIdFail() {
-	b, err := s.ctx.FindBuildById("build3")
-	s.Error(err)
+	b, err := build.FindOneId("build3")
+	s.NoError(err)
 	s.Nil(b)
 }
 
@@ -71,7 +68,6 @@ func (s *BuildConnectorFetchByIdSuite) TestFindByIdFail() {
 // Tests for change build status route
 
 type BuildConnectorChangeStatusSuite struct {
-	ctx Connector
 	suite.Suite
 }
 
@@ -81,13 +77,10 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
-
 	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
@@ -101,26 +94,26 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
-	err := s.ctx.SetBuildActivated("build1", "user1", true)
+	err := model.SetBuildActivation("build1", true, "user1")
 	s.NoError(err)
-	b, err := s.ctx.FindBuildById("build1")
+	b, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
-	err = s.ctx.SetBuildActivated("build1", "user1", false)
+	err = model.SetBuildActivation("build1", false, "user1")
 	s.NoError(err)
-	b, err = s.ctx.FindBuildById("build1")
+	b, err = build.FindOneId("build1")
 	s.NoError(err)
 	s.False(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
-	err := s.ctx.SetBuildPriority("build1", int64(2), "")
+	err := model.SetBuildPriority("build1", int64(2), "")
 	s.NoError(err)
 
-	err = s.ctx.SetBuildPriority("build1", int64(3), "")
+	err = model.SetBuildPriority("build1", int64(3), "")
 	s.NoError(err)
 }
 
@@ -129,7 +122,6 @@ func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
 // Tests for abort build by id route
 
 type BuildConnectorAbortSuite struct {
-	ctx Connector
 	suite.Suite
 }
 
@@ -139,13 +131,10 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorAbortSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
-
 	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
@@ -157,7 +146,7 @@ func (s *BuildConnectorAbortSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
-	err := s.ctx.AbortBuild("build1", "user1")
+	err := model.AbortBuild("build1", "user1")
 	s.NoError(err)
 	b, err := build.FindOne(build.ById("build1"))
 	s.NoError(err)
@@ -169,7 +158,6 @@ func (s *BuildConnectorAbortSuite) TestAbort() {
 // Tests for restart build route
 
 type BuildConnectorRestartSuite struct {
-	ctx Connector
 	suite.Suite
 }
 
@@ -179,13 +167,10 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorRestartSuite) SetupSuite() {
-	s.ctx = &DBConnector{}
-
 	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
 
 	vId := "v"
@@ -197,9 +182,9 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {
-	err := s.ctx.RestartBuild("build1", "user1")
+	err := model.RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 
-	err = s.ctx.RestartBuild("build1", "user1")
+	err = model.RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 }

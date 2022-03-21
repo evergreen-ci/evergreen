@@ -18,11 +18,10 @@ import (
 )
 
 var (
-	projectVarIdKey      = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	privateVarsMapKey    = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	restrictedVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "RestrictedVars")
-	adminOnlyVarsMapKey  = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
+	projectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	adminOnlyVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
 )
 
 const (
@@ -46,9 +45,6 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
-
-	//RestrictedVars keeps track of variables that are restricted to commands that can't leak them
-	RestrictedVars map[string]bool `bson:"restricted_vars" json:"restricted_vars"`
 
 	// AdminOnlyVars keeps track of variables that are only accessible by project admins
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
@@ -106,6 +102,66 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	return projectVars, nil
 }
 
+func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+	catcher := grip.NewBasicCatcher()
+	matchingProjects, err := GetVarsByValue(toReplace)
+	if err != nil {
+		catcher.Wrap(err, "failed to fetch projects with matching value")
+	}
+	if matchingProjects == nil {
+		catcher.New("no projects with matching value found")
+	}
+	changes := map[string][]string{}
+	for _, project := range matchingProjects {
+		for key, val := range project.Vars {
+			if val == toReplace {
+				if !dryRun {
+					originalVars := make(map[string]string)
+					for k, v := range project.Vars {
+						originalVars[k] = v
+					}
+					before := ProjectSettings{
+						Vars: ProjectVars{
+							Id:   project.Id,
+							Vars: originalVars,
+						},
+					}
+
+					project.Vars[key] = replacement
+					_, err = project.Upsert()
+					if err != nil {
+						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+					}
+
+					after := ProjectSettings{
+						Vars: ProjectVars{
+							Id:   project.Id,
+							Vars: project.Vars,
+						},
+					}
+
+					if err = LogProjectModified(project.Id, username, &before, &after); err != nil {
+						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
+					}
+				}
+				changes[project.Id] = append(changes[project.Id], key)
+			}
+		}
+	}
+	return changes, catcher.Resolve()
+}
+
+// CopyProjectVars copies the variables for the first project to the second
+func CopyProjectVars(oldProjectId, newProjectId string) error {
+	vars, err := FindOneProjectVars(oldProjectId)
+	if err != nil {
+		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
+	}
+	vars.Id = newProjectId
+	_, err = vars.Upsert()
+	return errors.Wrapf(err, "error inserting variables for project '%s", newProjectId)
+}
+
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars, err := FindOneProjectVars(projectId)
 	if err != nil {
@@ -150,10 +206,9 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				projectVarsMapKey:    projectVars.Vars,
-				privateVarsMapKey:    projectVars.PrivateVars,
-				restrictedVarsMapKey: projectVars.RestrictedVars,
-				adminOnlyVarsMapKey:  projectVars.AdminOnlyVars,
+				projectVarsMapKey:   projectVars.Vars,
+				privateVarsMapKey:   projectVars.PrivateVars,
+				adminOnlyVarsMapKey: projectVars.AdminOnlyVars,
 			},
 		},
 	)
@@ -171,7 +226,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	unsetUpdate := bson.M{}
 	update := bson.M{}
 	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.RestrictedVars) == 0 && len(projectVars.AdminOnlyVars) == 0 && len(varsToDelete) == 0 {
+		len(projectVars.AdminOnlyVars) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
 	for key, val := range projectVars.Vars {
@@ -179,9 +234,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	}
 	for key, val := range projectVars.PrivateVars {
 		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
-	}
-	for key, val := range projectVars.RestrictedVars {
-		setUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, key)] = val
 	}
 	for key, val := range projectVars.AdminOnlyVars {
 		setUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, key)] = val
@@ -193,7 +245,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	for _, val := range varsToDelete {
 		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
-		unsetUpdate[bsonutil.GetDottedKeyName(restrictedVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
 	}
 	if len(unsetUpdate) > 0 {
@@ -212,74 +263,48 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-func (projectVars *ProjectVars) GetRestrictedVars() map[string]string {
-	restrictedVars := map[string]string{}
-
+func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
+	vars := map[string]string{}
+	isAdmin := projectVars.ShouldGetAdminOnlyVars(t)
 	for k, v := range projectVars.Vars {
-		if projectVars.RestrictedVars[k] {
-			restrictedVars[k] = v
+		if !projectVars.AdminOnlyVars[k] || isAdmin {
+			vars[k] = v
 		}
 	}
-	return restrictedVars
+	return vars
 }
 
-// GetAdminOnlyVars currently returns admin only variables for mainline commits and project admins.
-// Will change to GetVars on EVG-16045 after removing restricted vars.
-func (projectVars *ProjectVars) GetAdminOnlyVars(t *task.Task) map[string]string {
-	adminOnlyVars := map[string]string{}
+func (projectVars *ProjectVars) ShouldGetAdminOnlyVars(t *task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
-		for k, v := range projectVars.Vars {
-			if projectVars.AdminOnlyVars[k] {
-				adminOnlyVars[k] = v
-			}
-		}
-	} else if t.ActivatedBy != "" {
-		u, err := user.FindOneById(t.ActivatedBy)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
-				"task_id": t.Id,
-			}))
-			return adminOnlyVars
-		}
-		if u != nil {
-			isAdmin := u.HasPermission(gimlet.PermissionOpts{
-				Resource:      t.Project,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionProjectSettings,
-				RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-			})
-			if isAdmin {
-				for k, v := range projectVars.Vars {
-					if projectVars.AdminOnlyVars[k] {
-						adminOnlyVars[k] = v
-					}
-				}
-			}
-		}
+		return true
+	} else if t.ActivatedBy == "" {
+		return false
 	}
-
-	return adminOnlyVars
-}
-
-// GetUnrestrictedVars returns non-restricted and non-admin only vars until EVG-16045.
-func (projectVars *ProjectVars) GetUnrestrictedVars() map[string]string {
-	safeVars := map[string]string{}
-
-	for k, v := range projectVars.Vars {
-		if !projectVars.RestrictedVars[k] && !projectVars.AdminOnlyVars[k] {
-			safeVars[k] = v
-		}
+	u, err := user.FindOneById(t.ActivatedBy)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
+			"task_id": t.Id,
+		}))
+		return false
 	}
-	return safeVars
+	isAdmin := false
+	if u != nil {
+		isAdmin = u.HasPermission(gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+	}
+	return isAdmin
 }
 
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
-		Vars:           map[string]string{},
-		PrivateVars:    map[string]bool{},
-		AdminOnlyVars:  map[string]bool{},
-		RestrictedVars: projectVars.RestrictedVars,
+		Vars:          map[string]string{},
+		PrivateVars:   map[string]bool{},
+		AdminOnlyVars: map[string]bool{},
 	}
 	if projectVars == nil {
 		return res
@@ -333,9 +358,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.PrivateVars == nil {
 		projectVars.PrivateVars = map[string]bool{}
 	}
-	if projectVars.RestrictedVars == nil {
-		projectVars.RestrictedVars = map[string]bool{}
-	}
 	if projectVars.AdminOnlyVars == nil {
 		projectVars.AdminOnlyVars = map[string]bool{}
 	}
@@ -348,9 +370,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			projectVars.Vars[key] = val
 			if v, ok := repoVars.PrivateVars[key]; ok {
 				projectVars.PrivateVars[key] = v
-			}
-			if v, ok := repoVars.RestrictedVars[key]; ok {
-				projectVars.RestrictedVars[key] = v
 			}
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v

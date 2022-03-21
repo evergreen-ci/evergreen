@@ -979,7 +979,6 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	// add in project variables and aliases here
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
-	commonRestricted := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
@@ -996,22 +995,16 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 			if vars.PrivateVars != nil {
 				commonPrivate = vars.PrivateVars
 			}
-			if vars.RestrictedVars != nil {
-				commonRestricted = vars.RestrictedVars
-			}
 			if vars.AdminOnlyVars != nil {
 				commonAdminOnly = vars.AdminOnlyVars
 			}
 			continue
 		}
 		for key, val := range commonProjectVariables {
-			// if the key is private/restricted in any of the projects, make it private/restricted in the repo
+			// If the key is private/admin only in any of the projects, make it private/admin only in the repo.
 			if vars.Vars[key] == val {
 				if vars.PrivateVars[key] {
 					commonPrivate[key] = true
-				}
-				if vars.RestrictedVars[key] {
-					commonRestricted[key] = true
 				}
 				if vars.AdminOnlyVars[key] {
 					commonAdminOnly[key] = true
@@ -1023,10 +1016,9 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 		}
 	}
 	return &ProjectVars{
-		Vars:           commonProjectVariables,
-		PrivateVars:    commonPrivate,
-		RestrictedVars: commonRestricted,
-		AdminOnlyVars:  commonAdminOnly,
+		Vars:          commonProjectVariables,
+		PrivateVars:   commonPrivate,
+		AdminOnlyVars: commonAdminOnly,
 	}, nil
 }
 
@@ -1380,6 +1372,73 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 	return nil, nil
 }
 
+// EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
+func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
+	hook, err := FindGithubHook(projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
+	}
+	if hook != nil {
+		projectRef.TracksPushEvents = utility.TruePtr()
+		return true, nil
+	}
+
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return false, errors.Wrap(err, "error finding evergreen settings")
+	}
+
+	hook, err = SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		// don't return error:
+		// sometimes people change a project to track a personal
+		// branch we don't have access to
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":             "patch project",
+			"message":            "can't setup webhook",
+			"project":            projectRef.Id,
+			"project_identifier": projectRef.Identifier,
+			"owner":              projectRef.Owner,
+			"repo":               projectRef.Repo,
+		}))
+		projectRef.TracksPushEvents = utility.FalsePtr()
+		return false, nil
+	}
+
+	if err = hook.Insert(); err != nil {
+		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Id)
+	}
+	projectRef.TracksPushEvents = utility.TruePtr()
+	return true, nil
+}
+
+func UpdateAdminRoles(project *ProjectRef, toAdd, toDelete []string) error {
+	if project == nil {
+		return errors.New("no project found")
+	}
+	_, err := project.UpdateAdminRoles(toAdd, toDelete)
+	return err
+}
+
+// FindProjects queries the backing database for the specified projects
+func FindProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
+	projects, err := FindProjectRefs(key, limit, sortDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
+	}
+
+	return projects, nil
+}
+
+// UpdateProjectRevision updates the given project's revision
+func UpdateProjectRevision(projectID, revision string) error {
+	if err := UpdateLastRevision(projectID, revision); err != nil {
+		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
+	}
+
+	return nil
+}
+
 func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	// don't need to include undefined branches here since hidden projects explicitly define them
 	q := byOwnerRepoAndBranch(owner, repo, branch, false)
@@ -1458,6 +1517,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 	return GetProjectSettings(pRef)
 }
 
+// GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	hook, err := FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
@@ -1661,7 +1721,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
 					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
 					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
-					projectRefGithubTriggerAliasesKey:   p.PatchTriggerAliases,
 					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
 					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
@@ -1694,7 +1753,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPatchTriggerAliasesKey: p.PatchTriggerAliases,
+					projectRefPatchTriggerAliasesKey:  p.PatchTriggerAliases,
+					projectRefGithubTriggerAliasesKey: p.GithubTriggerAliases,
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
@@ -1740,10 +1800,9 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$unset": bson.M{
-					projectVarsMapKey:    1,
-					privateVarsMapKey:    1,
-					restrictedVarsMapKey: 1,
-					adminOnlyVarsMapKey:  1,
+					projectVarsMapKey:   1,
+					privateVarsMapKey:   1,
+					adminOnlyVarsMapKey: 1,
 				},
 			})
 		if err == nil {
@@ -2335,6 +2394,25 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 		t.DefinitionID = utility.RandomString()
 	}
 	return nil
+}
+
+func GetMessageForPatch(patchID string) (string, error) {
+	requestedPatch, err := patch.FindOneId(patchID)
+	if err != nil {
+		return "", errors.Wrap(err, "error finding patch")
+	}
+	if requestedPatch == nil {
+		return "", errors.New("no patch found")
+	}
+	project, err := FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to find project for patch")
+	}
+	if project == nil {
+		return "", errors.New("patch has nonexistent project")
+	}
+
+	return project.CommitQueue.Message, nil
 }
 
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {

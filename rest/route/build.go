@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest/data"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -21,19 +23,14 @@ import (
 
 type buildGetHandler struct {
 	buildId string
-	sc      data.Connector
 }
 
-func makeGetBuildByID(sc data.Connector) gimlet.RouteHandler {
-	return &buildGetHandler{
-		sc: sc,
-	}
+func makeGetBuildByID() gimlet.RouteHandler {
+	return &buildGetHandler{}
 }
 
 func (b *buildGetHandler) Factory() gimlet.RouteHandler {
-	return &buildGetHandler{
-		sc: b.sc,
-	}
+	return &buildGetHandler{}
 }
 
 func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -42,17 +39,29 @@ func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundBuild == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+		})
 	}
 	taskIDs := make([]string, 0, len(foundBuild.Tasks))
 	for _, t := range foundBuild.Tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	tasks, err := b.sc.FindTasksByIds(taskIDs)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+	var tasks []task.Task
+	if len(taskIDs) > 0 {
+		tasks, err = task.Find(task.ByIds(taskIDs))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		}
+		if len(tasks) == 0 {
+			return gimlet.MakeJSONInternalErrorResponder(errors.New("no tasks found"))
+		}
 	}
 
 	buildModel := &model.APIBuild{}
@@ -74,20 +83,15 @@ type buildChangeStatusHandler struct {
 	Priority  *int64 `json:"priority"`
 
 	buildId string
-	sc      data.Connector
 }
 
-func makeChangeStatusForBuild(sc data.Connector) gimlet.RouteHandler {
-	return &buildChangeStatusHandler{
-		sc: sc,
-	}
+func makeChangeStatusForBuild() gimlet.RouteHandler {
+	return &buildChangeStatusHandler{}
 
 }
 
 func (b *buildChangeStatusHandler) Factory() gimlet.RouteHandler {
-	return &buildChangeStatusHandler{
-		sc: b.sc,
-	}
+	return &buildChangeStatusHandler{}
 }
 
 func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -111,14 +115,20 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundBuild == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+		})
 	}
 
 	if b.Priority != nil {
 		priority := *b.Priority
-		if ok := validPriority(priority, foundBuild.Project, user, b.sc); !ok {
+		if ok := validPriority(priority, foundBuild.Project, user); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
@@ -126,13 +136,13 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err = b.sc.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
+		if err = serviceModel.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 
 	if b.Activated != nil {
-		if err = b.sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
+		if err = serviceModel.SetBuildActivation(b.buildId, *b.Activated, user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
@@ -154,19 +164,14 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 
 type buildAbortHandler struct {
 	buildId string
-	sc      data.Connector
 }
 
-func makeAbortBuild(sc data.Connector) gimlet.RouteHandler {
-	return &buildAbortHandler{
-		sc: sc,
-	}
+func makeAbortBuild() gimlet.RouteHandler {
+	return &buildAbortHandler{}
 }
 
 func (b *buildAbortHandler) Factory() gimlet.RouteHandler {
-	return &buildAbortHandler{
-		sc: b.sc,
-	}
+	return &buildAbortHandler{}
 }
 
 func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -176,14 +181,19 @@ func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-
-	if err := b.sc.AbortBuild(b.buildId, usr.Id); err != nil {
+	if err := serviceModel.AbortBuild(b.buildId, usr.Id); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundBuild == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+		})
 	}
 
 	buildModel := &model.APIBuild{}
@@ -203,19 +213,14 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 
 type buildRestartHandler struct {
 	buildId string
-	sc      data.Connector
 }
 
-func makeRestartBuild(sc data.Connector) gimlet.RouteHandler {
-	return &buildRestartHandler{
-		sc: sc,
-	}
+func makeRestartBuild() gimlet.RouteHandler {
+	return &buildRestartHandler{}
 }
 
 func (b *buildRestartHandler) Factory() gimlet.RouteHandler {
-	return &buildRestartHandler{
-		sc: b.sc,
-	}
+	return &buildRestartHandler{}
 }
 
 func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -225,14 +230,20 @@ func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	err := b.sc.RestartBuild(b.buildId, usr.Id)
+	err := serviceModel.RestartAllBuildTasks(b.buildId, usr.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 
-	foundBuild, err := b.sc.FindBuildById(b.buildId)
+	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+	}
+	if foundBuild == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("build with id %s not found", b.buildId),
+		})
 	}
 
 	buildModel := &model.APIBuild{}

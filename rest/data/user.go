@@ -13,37 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBUserConnector is a struct that implements the User related interface
-// of the Connector interface through interactions with the backing database.
-type DBUserConnector struct{}
-
-// FindUserById uses the service layer's user type to query the backing database for
-// the user with the given Id.
-func (tc *DBUserConnector) FindUserById(userId string) (gimlet.User, error) {
-	t, err := user.FindOne(user.ById(userId))
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
-}
-
-func (tc *DBUserConnector) FindUserByGithubName(name string) (gimlet.User, error) {
-	return user.FindByGithubName(name)
-}
-
-func (u *DBUserConnector) AddPublicKey(user *user.DBUser, keyName, keyValue string) error {
-	return user.AddPublicKey(keyName, keyValue)
-}
-
-func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) error {
-	return user.DeletePublicKey(keyName)
-}
-
-func (u *DBUserConnector) GetPublicKey(user *user.DBUser, keyName string) (string, error) {
-	return user.GetPublicKey(keyName)
-}
-
-func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
+func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -167,7 +137,7 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	return dbUser.UpdateSettings(settings)
 }
 
-func (u *DBUserConnector) SubmitFeedback(in restModel.APIFeedbackSubmission) error {
+func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
 	f, _ := in.ToService()
 	feedback, isValid := f.(model.FeedbackSubmission)
 	if !isValid {
@@ -177,7 +147,7 @@ func (u *DBUserConnector) SubmitFeedback(in restModel.APIFeedbackSubmission) err
 	return errors.Wrap(feedback.Insert(), "error saving feedback")
 }
 
-func (u *DBUserConnector) GetServiceUsers() ([]restModel.APIDBUser, error) {
+func GetServiceUsers() ([]restModel.APIDBUser, error) {
 	users, err := user.FindServiceUsers()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get service users")
@@ -189,7 +159,7 @@ func (u *DBUserConnector) GetServiceUsers() ([]restModel.APIDBUser, error) {
 	return apiUsers, nil
 }
 
-func (u *DBUserConnector) AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
+func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
 	existingUser, err := user.FindOneById(*toUpdate.UserID)
 	if err != nil {
 		return errors.Wrap(err, "unable to query for user")
@@ -200,8 +170,4 @@ func (u *DBUserConnector) AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) e
 	toUpdate.OnlyApi = true
 	dbUser := restModel.APIDBUserToService(toUpdate)
 	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "unable to update service user")
-}
-
-func (u *DBUserConnector) DeleteServiceUser(id string) error {
-	return user.DeleteServiceUser(id)
 }

@@ -59,13 +59,12 @@ func TestCleanupTask(t *testing.T) {
 
 			Convey("the task should be reset", func() {
 				newTask := &task.Task{
-					Id:       tID,
-					Status:   "started",
-					HostId:   hID,
-					BuildId:  bID,
-					Project:  "proj",
-					Restarts: 1,
-					Version:  vID,
+					Id:      tID,
+					Status:  "started",
+					HostId:  hID,
+					BuildId: bID,
+					Project: "proj",
+					Version: vID,
 				}
 				require.NoError(t, newTask.Insert(), "error inserting task")
 
@@ -98,7 +97,6 @@ func TestCleanupTask(t *testing.T) {
 				newTask, err := task.FindOne(db.Query(task.ById(tID)))
 				So(err, ShouldBeNil)
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(newTask.Restarts, ShouldEqual, 2)
 
 				Convey("an execution task should be cleaned up", func() {
 					dt := &task.Task{
@@ -107,7 +105,6 @@ func TestCleanupTask(t *testing.T) {
 						HostId:         hID,
 						BuildId:        "b2",
 						Project:        "proj",
-						Restarts:       0,
 						DisplayOnly:    true,
 						ExecutionTasks: []string{"et1", "et2"},
 					}
@@ -117,7 +114,6 @@ func TestCleanupTask(t *testing.T) {
 						HostId:    hID,
 						BuildId:   "b2",
 						Project:   "proj",
-						Restarts:  0,
 						Requester: evergreen.PatchVersionRequester,
 						Activated: true,
 						Version:   vID,
@@ -156,13 +152,12 @@ func TestCleanupTask(t *testing.T) {
 				require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
 
 				newTask := &task.Task{
-					Id:       tID,
-					Status:   "started",
-					HostId:   hID,
-					BuildId:  bID,
-					Project:  "proj",
-					Restarts: 1,
-					Version:  vID,
+					Id:      tID,
+					Status:  "started",
+					HostId:  hID,
+					BuildId: bID,
+					Project: "proj",
+					Version: vID,
 				}
 				require.NoError(t, newTask.Insert(), "error inserting task")
 
@@ -237,7 +232,6 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "proj",
-		Restarts:          1,
 	}
 	t2 := &task.Task{
 		Id:                "t2",
@@ -249,7 +243,6 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "proj",
-		Restarts:          1,
 	}
 	t3 := &task.Task{
 		Id:                "t3",
@@ -260,7 +253,6 @@ func TestCleanupTimedOutTaskWithTaskGroup(t *testing.T) {
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "proj",
-		Restarts:          1,
 	}
 	b := &build.Build{
 		Id:      "b1",

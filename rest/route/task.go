@@ -13,10 +13,11 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -26,19 +27,15 @@ type taskGetHandler struct {
 	taskID             string
 	fetchAllExecutions bool
 	execution          int
-	sc                 data.Connector
+	url                string
 }
 
-func makeGetTaskRoute(sc data.Connector) gimlet.RouteHandler {
-	return &taskGetHandler{
-		sc: sc,
-	}
+func makeGetTaskRoute(url string) gimlet.RouteHandler {
+	return &taskGetHandler{url: url}
 }
 
 func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
-	return &taskGetHandler{
-		sc: tgh.sc,
-	}
+	return &taskGetHandler{url: tgh.url}
 }
 
 // ParseAndValidate fetches the taskId from the http request.
@@ -72,18 +69,24 @@ func (tgh *taskGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Execute calls the data FindTaskById function and returns the task
+// Execute calls the data task.FindOneId function and returns the task
 // from the provider.
 func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	var foundTask *task.Task
 	var err error
 	if tgh.execution == -1 {
-		foundTask, err = tgh.sc.FindTaskById(tgh.taskID)
+		foundTask, err = task.FindOneId(tgh.taskID)
 	} else {
-		foundTask, err = tgh.sc.FindTaskByIdAndExecution(tgh.taskID, tgh.execution)
+		foundTask, err = task.FindOneIdAndExecution(tgh.taskID, tgh.execution)
 	}
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundTask == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", tgh.taskID),
+		})
 	}
 
 	taskModel := &model.APITask{}
@@ -92,19 +95,19 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	err = taskModel.BuildFromService(tgh.sc.GetURL())
+	err = taskModel.BuildFromService(tgh.url)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
-		tasks, err = tgh.sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tgh.taskID))
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(tasks, tgh.sc.GetURL()); err != nil {
+		if err = taskModel.BuildPreviousExecutions(tasks, tgh.url); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 	}
@@ -133,19 +136,14 @@ type projectTaskGetHandler struct {
 	finishedBefore time.Time
 	projectId      string
 	statuses       []string
-	sc             data.Connector
 }
 
-func makeFetchProjectTasks(sc data.Connector) gimlet.RouteHandler {
-	return &projectTaskGetHandler{
-		sc: sc,
-	}
+func makeFetchProjectTasks() gimlet.RouteHandler {
+	return &projectTaskGetHandler{}
 }
 
 func (h *projectTaskGetHandler) Factory() gimlet.RouteHandler {
-	return &projectTaskGetHandler{
-		sc: h.sc,
-	}
+	return &projectTaskGetHandler{}
 }
 
 func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -196,8 +194,7 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-
-	tasks, err := h.sc.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
+	tasks, err := findTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -217,6 +214,28 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
+func findTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
+	project string, statuses []string) ([]task.Task, error) {
+	id, err := dbModel.GetIdForProject(project)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"func":    "FindTaskWithinTimePeriod",
+			"message": "error getting id for project",
+			"project": project,
+		}))
+		// don't return an error here to preserve existing behavior
+		return nil, nil
+	}
+
+	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, id, statuses))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
 // fetches the changes from request, changes in activation and priority, and
 // calls out to functions in the data to change these values.
@@ -226,19 +245,14 @@ type taskExecutionPatchHandler struct {
 
 	user gimlet.User
 	task *task.Task
-	sc   data.Connector
 }
 
-func makeModifyTaskRoute(sc data.Connector) gimlet.RouteHandler {
-	return &taskExecutionPatchHandler{
-		sc: sc,
-	}
+func makeModifyTaskRoute() gimlet.RouteHandler {
+	return &taskExecutionPatchHandler{}
 }
 
 func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {
-	return &taskExecutionPatchHandler{
-		sc: tep.sc,
-	}
+	return &taskExecutionPatchHandler{}
 }
 
 // ParseAndValidate fetches the needed data from the request and errors otherwise.
@@ -307,19 +321,25 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				})
 			}
 		}
-		if err := tep.sc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
+		if err := dbModel.SetTaskPriority(*tep.task, priority, tep.user.Username()); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
-		if err := tep.sc.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
+		if err := dbModel.SetActiveStateById(tep.task.Id, tep.user.Username(), activated); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
-	refreshedTask, err := tep.sc.FindTaskById(tep.task.Id)
+	refreshedTask, err := task.FindOneId(tep.task.Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if refreshedTask == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", tep.task.Id),
+		})
 	}
 
 	taskModel := &model.APITask{}
@@ -335,19 +355,14 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 
 type displayTaskGetHandler struct {
 	taskID string
-	sc     data.Connector
 }
 
-func makeGetDisplayTaskHandler(sc data.Connector) gimlet.RouteHandler {
-	return &displayTaskGetHandler{
-		sc: sc,
-	}
+func makeGetDisplayTaskHandler() gimlet.RouteHandler {
+	return &displayTaskGetHandler{}
 }
 
 func (rh *displayTaskGetHandler) Factory() gimlet.RouteHandler {
-	return &displayTaskGetHandler{
-		sc: rh.sc,
-	}
+	return &displayTaskGetHandler{}
 }
 
 func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -358,12 +373,15 @@ func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := rh.sc.FindTaskById(rh.taskID)
+	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task with ID %s", rh.taskID))
 	}
 	if t == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("task with ID %s not found", rh.taskID))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", rh.taskID),
+		})
 	}
 
 	dt, err := t.GetDisplayTask()
@@ -383,19 +401,14 @@ func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 type taskSyncPathGetHandler struct {
 	taskID string
-	sc     data.Connector
 }
 
-func makeTaskSyncPathGetHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskSyncPathGetHandler{
-		sc: sc,
-	}
+func makeTaskSyncPathGetHandler() gimlet.RouteHandler {
+	return &taskSyncPathGetHandler{}
 }
 
 func (rh *taskSyncPathGetHandler) Factory() gimlet.RouteHandler {
-	return &taskSyncPathGetHandler{
-		sc: rh.sc,
-	}
+	return &taskSyncPathGetHandler{}
 }
 
 // ParseAndValidate fetches the needed data from the request and errors otherwise.
@@ -407,9 +420,15 @@ func (rh *taskSyncPathGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := rh.sc.FindTaskById(rh.taskID)
+	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", rh.taskID),
+		})
 	}
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
@@ -419,19 +438,14 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 type taskSetHasCedarResultsHandler struct {
 	taskID string
 	info   apimodels.CedarTestResultsTaskInfo
-	sc     data.Connector
 }
 
-func makeTaskSetHasCedarResultsHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskSetHasCedarResultsHandler{
-		sc: sc,
-	}
+func makeTaskSetHasCedarResultsHandler() gimlet.RouteHandler {
+	return &taskSetHasCedarResultsHandler{}
 }
 
 func (rh *taskSetHasCedarResultsHandler) Factory() gimlet.RouteHandler {
-	return &taskSetHasCedarResultsHandler{
-		sc: rh.sc,
-	}
+	return &taskSetHasCedarResultsHandler{}
 }
 
 func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -445,9 +459,15 @@ func (rh *taskSetHasCedarResultsHandler) Parse(ctx context.Context, r *http.Requ
 }
 
 func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := rh.sc.FindTaskById(rh.taskID)
+	t, err := task.FindOneId(rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find task with ID '%s'", rh.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", rh.taskID),
+		})
 	}
 
 	if err = t.SetHasCedarResults(true, rh.info.Failed); err != nil {
@@ -460,19 +480,14 @@ func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Respond
 
 type taskSyncReadCredentialsGetHandler struct {
 	taskID string
-	sc     data.Connector
 }
 
-func makeTaskSyncReadCredentialsGetHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskSyncReadCredentialsGetHandler{
-		sc: sc,
-	}
+func makeTaskSyncReadCredentialsGetHandler() gimlet.RouteHandler {
+	return &taskSyncReadCredentialsGetHandler{}
 }
 
 func (rh *taskSyncReadCredentialsGetHandler) Factory() gimlet.RouteHandler {
-	return &taskSyncReadCredentialsGetHandler{
-		sc: rh.sc,
-	}
+	return &taskSyncReadCredentialsGetHandler{}
 }
 
 func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -480,7 +495,7 @@ func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := rh.sc.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

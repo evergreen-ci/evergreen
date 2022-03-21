@@ -46,15 +46,14 @@ func TestFindTestById(t *testing.T) {
 		require.NoError(t, test.Insert())
 	}
 
-	sc := &DBConnector{}
 	t.Run("Success", func(t *testing.T) {
-		results, err := sc.FindTestById(tests[0].ID.Hex())
+		results, err := FindTestById(tests[0].ID.Hex())
 		assert.NoError(t, err)
 		require.NotEmpty(t, results)
 		assert.Equal(t, tests[0], results[0])
 	})
 	t.Run("InvalidID", func(t *testing.T) {
-		results, err := sc.FindTestById("invalid")
+		results, err := FindTestById("invalid")
 		assert.Error(t, err)
 		assert.Empty(t, results)
 	})
@@ -68,7 +67,6 @@ func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
-	serviceContext := &DBConnector{}
 	numTests := 10
 	numTasks := 2
 	testObjects := make([]string, numTests)
@@ -105,51 +103,51 @@ func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 
 	for i := 0; i < numTasks; i++ {
 		taskId := fmt.Sprintf("task_%d", i)
-		count, err := serviceContext.GetTestCountByTaskIdAndFilters(taskId, "", []string{}, 0)
+		count, err := task.GetTestCountByTaskIdAndFilters(taskId, "", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests/2)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "", []string{"fail"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"fail"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests/2)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass", "fail"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pass", "fail"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 10)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum1", []string{}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum1", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 1)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum2", []string{}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestNum2", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 1)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass", "fail"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass", "fail"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "TestSuite/TestN", []string{"pass"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, numTests/2)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pa"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"pa"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 0)
 
-		count, err = serviceContext.GetTestCountByTaskIdAndFilters(taskId, "", []string{"not_a_real_status"}, 0)
+		count, err = task.GetTestCountByTaskIdAndFilters(taskId, "", []string{"not_a_real_status"}, 0)
 		assert.NoError(err)
 		assert.Equal(count, 0)
 	}
-	count, err := serviceContext.GetTestCountByTaskIdAndFilters("fake_task", "", []string{}, 0)
+	count, err := task.GetTestCountByTaskIdAndFilters("fake_task", "", []string{}, 0)
 	assert.Error(err)
 	assert.Equal(count, 0)
 }
@@ -163,7 +161,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 	assert.NoError(db.EnsureIndex(testresult.Collection, mongo.IndexModel{
 		Keys: testresult.TestResultsIndex}))
-	serviceContext := &DBConnector{}
+	serviceContext := &DBTestConnector{}
 
 	emptyTask := &task.Task{
 		Id: "empty_task",
@@ -316,7 +314,7 @@ func TestFindTestsByTaskIdPaginationOrderDependsOnObjectId(t *testing.T) {
 	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
-	serviceContext := &DBConnector{}
+	serviceContext := &DBTestConnector{}
 
 	taskId := "TaskOne"
 	Task := &task.Task{
@@ -373,7 +371,7 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
-	serviceContext := &DBConnector{}
+	serviceContext := &DBTestConnector{}
 	numTests := 10
 	numTasks := 2
 	testObjects := make([]string, numTests)

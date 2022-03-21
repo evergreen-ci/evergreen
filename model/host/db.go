@@ -1081,6 +1081,7 @@ type HostsInRangeParams struct {
 	UserSpawned   bool
 }
 
+// FindHostsInRange is a method to find a filtered list of hosts
 func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	var statusMatch interface{}
 	if params.Status != "" {

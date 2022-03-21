@@ -30,7 +30,6 @@ import (
 // Tests for abort task route
 
 type TaskAbortSuite struct {
-	sc *data.DBConnector
 	suite.Suite
 }
 
@@ -44,9 +43,6 @@ func TestTaskAbortSuite(t *testing.T) {
 
 func (s *TaskAbortSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(task.Collection, user.Collection, build.Collection, serviceModel.VersionCollection))
-	s.sc = &data.DBConnector{
-		DBTaskConnector: data.DBTaskConnector{},
-	}
 	tasks := []task.Task{
 		{Id: "task1", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
 		{Id: "task2", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
@@ -64,14 +60,14 @@ func (s *TaskAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := makeTaskAbortHandler(s.sc)
+	rm := makeTaskAbortHandler()
 	rm.(*taskAbortHandler).taskId = "task1"
 	res := rm.Run(ctx)
 
 	s.Equal(http.StatusOK, res.Status())
 
 	s.NotNil(res)
-	tasks, err := s.sc.FindTasksByIds([]string{"task1", "task2"})
+	tasks, err := task.Find(task.ByIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Equal("user1", tasks[0].ActivatedBy)
 	s.Equal("", tasks[1].ActivatedBy)
@@ -82,7 +78,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	tasks, err = s.sc.FindTasksByIds([]string{"task1", "task2"})
+	tasks, err = task.Find(task.ByIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Equal("user1", tasks[0].AbortInfo.User)
 	s.Equal("", tasks[1].AbortInfo.User)
@@ -134,7 +130,7 @@ func TestFetchArtifacts(t *testing.T) {
 	assert.NoError(task2.Insert())
 	assert.NoError(task2.Archive())
 
-	taskGet := taskGetHandler{taskID: task1.Id, sc: &data.DBConnector{}}
+	taskGet := taskGetHandler{taskID: task1.Id}
 	resp := taskGet.Run(context.Background())
 	require.NotNil(resp)
 	assert.Equal(resp.Status(), http.StatusOK)
@@ -172,8 +168,7 @@ func TestFetchArtifacts(t *testing.T) {
 }
 
 type ProjectTaskWithinDatesSuite struct {
-	sc *data.DBConnector
-	h  *projectTaskGetHandler
+	h *projectTaskGetHandler
 
 	suite.Suite
 }
@@ -183,7 +178,7 @@ func TestProjectTaskWithinDatesSuite(t *testing.T) {
 }
 
 func (s *ProjectTaskWithinDatesSuite) SetupTest() {
-	s.h = &projectTaskGetHandler{sc: s.sc}
+	s.h = &projectTaskGetHandler{}
 }
 
 func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments() {
@@ -226,9 +221,7 @@ func TestGetDisplayTask(t *testing.T) {
 			}
 			require.NoError(t, displayTask.Insert())
 
-			h := makeGetDisplayTaskHandler(&data.DBConnector{
-				DBTaskConnector: data.DBTaskConnector{},
-			})
+			h := makeGetDisplayTaskHandler()
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = tsk.Id
@@ -243,7 +236,7 @@ func TestGetDisplayTask(t *testing.T) {
 			assert.Equal(t, displayTask.DisplayName, info.Name)
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T) {
-			h := makeGetDisplayTaskHandler(&data.DBConnector{})
+			h := makeGetDisplayTaskHandler()
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = "nonexistent"
@@ -254,9 +247,7 @@ func TestGetDisplayTask(t *testing.T) {
 		},
 		"ReturnsOkIfNotPartOfDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
-			h := makeGetDisplayTaskHandler(&data.DBConnector{
-				DBTaskConnector: data.DBTaskConnector{},
-			})
+			h := makeGetDisplayTaskHandler()
 			require.NoError(t, tsk.Insert())
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
@@ -295,7 +286,6 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 		Secret: utility.ToStringPtr("secret"),
 		Bucket: utility.ToStringPtr("bucket"),
 	}
-	connector := data.DBAdminConnector{}
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
 	}
@@ -345,11 +335,9 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 			},
 		},
 	}
-	_, err := connector.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
+	_, err := data.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
 	require.NoError(t, err)
-	rh := makeTaskSyncReadCredentialsGetHandler(&data.DBConnector{
-		DBAdminConnector: connector,
-	})
+	rh := makeTaskSyncReadCredentialsGetHandler()
 	defer cancel()
 	resp := rh.Run(ctx)
 	require.NotNil(t, resp)
@@ -372,9 +360,7 @@ func TestGetTaskSyncPath(t *testing.T) {
 		BuildVariant: "build_variant",
 		DisplayName:  "name",
 	}
-	h := makeTaskSyncPathGetHandler(&data.DBConnector{
-		DBTaskConnector: data.DBTaskConnector{},
-	})
+	h := makeTaskSyncPathGetHandler()
 	require.NoError(t, expected.Insert())
 	rh, ok := h.(*taskSyncPathGetHandler)
 	require.True(t, ok)

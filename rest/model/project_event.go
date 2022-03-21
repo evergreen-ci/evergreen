@@ -27,11 +27,10 @@ type APIProjectSettings struct {
 }
 
 type APIProjectVars struct {
-	Vars           map[string]string `json:"vars"`
-	PrivateVars    map[string]bool   `json:"private_vars"`
-	RestrictedVars map[string]bool   `json:"restricted_vars"`
-	AdminOnlyVars  map[string]bool   `json:"admin_only_vars"`
-	VarsToDelete   []string          `json:"vars_to_delete,omitempty"`
+	Vars          map[string]string `json:"vars"`
+	PrivateVars   map[string]bool   `json:"private_vars"`
+	AdminOnlyVars map[string]bool   `json:"admin_only_vars"`
+	VarsToDelete  []string          `json:"vars_to_delete,omitempty"`
 
 	// to use for the UI
 	PrivateVarsList   []string `json:"-"`
@@ -131,10 +130,9 @@ func (p *APIProjectVars) ToService() (interface{}, error) {
 		adminOnlyVars[each] = true
 	}
 	return &model.ProjectVars{
-		Vars:           p.Vars,
-		RestrictedVars: p.RestrictedVars,
-		AdminOnlyVars:  adminOnlyVars,
-		PrivateVars:    privateVars,
+		Vars:          p.Vars,
+		AdminOnlyVars: adminOnlyVars,
+		PrivateVars:   privateVars,
 	}, nil
 }
 
@@ -143,7 +141,6 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 	case *model.ProjectVars:
 		p.PrivateVars = v.PrivateVars
 		p.Vars = v.Vars
-		p.RestrictedVars = v.RestrictedVars
 		p.AdminOnlyVars = v.AdminOnlyVars
 	default:
 		return errors.New("Invalid type of the argument")

@@ -12,19 +12,14 @@ import (
 
 type aliasGetHandler struct {
 	name string
-	sc   data.Connector
 }
 
-func makeFetchAliases(sc data.Connector) gimlet.RouteHandler {
-	return &aliasGetHandler{
-		sc: sc,
-	}
+func makeFetchAliases() gimlet.RouteHandler {
+	return &aliasGetHandler{}
 }
 
 func (a *aliasGetHandler) Factory() gimlet.RouteHandler {
-	return &aliasGetHandler{
-		sc: a.sc,
-	}
+	return &aliasGetHandler{}
 }
 
 func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -40,7 +35,7 @@ func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if pRef == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", a.name))
 	}
-	aliasModels, err := a.sc.FindProjectAliases(pRef.Id, pRef.RepoRefId, nil)
+	aliasModels, err := data.FindProjectAliases(pRef.Id, pRef.RepoRefId, nil)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

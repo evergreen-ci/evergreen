@@ -268,6 +268,9 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 	return nil
 }
 
+// RestartTasksInVersion restarts completed tasks associated with a given versionId.
+// If abortInProgress is true, it also sets the abort flag on any in-progress tasks. In addition, it
+// updates all builds containing the tasks affected.
 func RestartTasksInVersion(versionId string, abortInProgress bool, caller string) error {
 	tasks, err := task.Find(task.ByVersion(versionId))
 	if err != nil {
@@ -701,6 +704,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 		TriggerID:           args.Version.TriggerID,
 		TriggerType:         args.Version.TriggerType,
 		TriggerEvent:        args.Version.TriggerEvent,
+		Tags:                buildVariant.Tags,
 	}
 
 	// get a new build number for the build

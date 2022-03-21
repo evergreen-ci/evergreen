@@ -14,9 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DBSubscriptionConnector struct{}
-
-func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
+func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
 	for _, subscription := range subscriptions {
 		subscriptionInterface, err := subscription.ToService()
@@ -78,7 +76,7 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 			//find all children, iterate through them
 			var versionId string
 			for _, selector := range dbSubscription.Selectors {
-				if selector.Type == "id" {
+				if selector.Type == event.SelectorID {
 					versionId = selector.Data
 				}
 			}
@@ -93,9 +91,10 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(owner string, subscriptions
 			for _, childPatchId := range children {
 				childDbSubscription := dbSubscription
 				childDbSubscription.LastUpdated = time.Now()
+				childDbSubscription.Filter.ID = childPatchId
 				var selectors []event.Selector
 				for _, selector := range dbSubscription.Selectors {
-					if selector.Type == "id" {
+					if selector.Type == event.SelectorID {
 						selector.Data = childPatchId
 					}
 					selectors = append(selectors, selector)
@@ -130,7 +129,8 @@ func getVersionChildren(versionId string) ([]string, error) {
 
 }
 
-func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
+// GetSubscriptions returns the subscriptions that belong to a user
+func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	if len(owner) == 0 {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -155,7 +155,7 @@ func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType even
 	return apiSubs, nil
 }
 
-func (dc *DBSubscriptionConnector) DeleteSubscriptions(owner string, ids []string) error {
+func DeleteSubscriptions(owner string, ids []string) error {
 	for _, id := range ids {
 		subscription, err := event.FindSubscriptionByID(id)
 		if err != nil {
@@ -181,26 +181,6 @@ func (dc *DBSubscriptionConnector) DeleteSubscriptions(owner string, ids []strin
 	catcher := grip.NewBasicCatcher()
 	for _, id := range ids {
 		catcher.Add(event.RemoveSubscription(id))
-	}
-	return catcher.Resolve()
-}
-
-func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
-	subs, err := event.FindSubscriptionsByOwner(oldProject, event.OwnerTypeProject)
-	if err != nil {
-		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, sub := range subs {
-		sub.Owner = newProject
-		sub.ID = ""
-		for i, selector := range sub.Selectors {
-			if selector.Type == event.SelectorProject && selector.Data == oldProject {
-				sub.Selectors[i].Data = newProject
-			}
-		}
-		catcher.Add(sub.Upsert())
 	}
 	return catcher.Resolve()
 }

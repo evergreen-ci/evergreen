@@ -168,8 +168,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"action":  *event.Action,
 				"message": "pull request closed; aborting patch",
 			})
-
-			err := gh.sc.AbortPatchesFromPullRequest(event)
+			err := data.AbortPatchesFromPullRequest(event)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "github hook",
@@ -211,7 +210,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 			return gimlet.NewJSONResponse(struct{}{})
 		}
-		if err := gh.sc.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
+		if err := data.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
@@ -293,7 +292,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 }
 
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
-	settings, err := gh.sc.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
 	}
@@ -315,8 +314,7 @@ func (gh *githubHookApi) AddIntentForPR(pr *github.PullRequest, owner, calledBy 
 	if err != nil {
 		return errors.Wrap(err, "failed to create intent")
 	}
-
-	if err := gh.sc.AddPatchIntent(ghi, gh.queue); err != nil {
+	if err := data.AddPatchIntent(ghi, gh.queue); err != nil {
 		return errors.Wrap(err, "error saving intent")
 	}
 
@@ -357,8 +355,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}))
 		return errors.Wrapf(err, "error getting commit for tag '%s'", tag.Tag)
 	}
-
-	projectRefs, err := gh.sc.FindEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
+	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "github hook",
@@ -406,7 +403,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
-				existingVersion, err = gh.sc.FindVersionByProjectAndRevision(pRef.Id, hash)
+				existingVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
 				if err != nil {
 					retryCatcher.Wrapf(err, "problem finding version for project '%s' with revision '%s'", pRef.Id, hash)
 					continue
@@ -429,7 +426,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					"tag":     tag,
 				})
 
-				if err = gh.sc.AddGitTagToVersion(existingVersion.Id, tag); err != nil {
+				if err = model.AddGitTag(existingVersion.Id, tag); err != nil {
 					catcher.Wrapf(err, "problem adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id)
 					continue
 				}
@@ -499,8 +496,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		})
 		return nil, nil
 	}
-
-	hasAliases, remotePath, err := gh.sc.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
+	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +523,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 	} else {
 		// use the standard project config with the git tag alias
-		projectInfo, err = gh.sc.LoadProjectForVersion(existingVersion, pRef.Id)
+		projectInfo, err = model.LoadProjectForVersion(existingVersion, pRef.Id, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem getting project for  '%s'", pRef.Identifier)
 		}
@@ -586,7 +582,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 
 	cqInfo := restModel.ParseGitHubComment(*event.Comment.Body)
 	baseBranch := *pr.Base.Ref
-	projectRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "can't get project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
@@ -627,7 +623,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		Source:          utility.ToStringPtr(commitqueue.SourcePullRequest),
 		PatchId:         &patchId,
 	}
-	_, err = gh.sc.EnqueueItem(projectRef.Id, item, false)
+	_, err = data.EnqueueItem(projectRef.Id, item, false)
 	if err != nil {
 		return errors.Wrap(err, "can't enqueue item on commit queue")
 	}
@@ -652,7 +648,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 }
 
 func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, baseBranch string, pr *github.PullRequest, prNum int) error {
-	settings, err := gh.sc.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "can't get Evergreen settings")
 	}
@@ -684,8 +680,7 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 	if err != nil {
 		return errors.Wrap(err, "GitHub sent an incomplete PR")
 	}
-
-	projRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+	projRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	if err != nil {
 		return errors.Wrapf(err, "can't find valid project for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	}
@@ -693,7 +688,7 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return nil
 	}
 
-	exists, err := gh.sc.IsItemOnCommitQueue(projRef.Id, strconv.Itoa(*pr.Number))
+	exists, err := isItemOnCommitQueue(projRef.Id, strconv.Itoa(*pr.Number))
 	if err != nil {
 		return errors.Wrapf(err, "can't determine if item is on commit queue %s", projRef.Id)
 	}
@@ -701,11 +696,27 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return nil
 	}
 
-	_, err = gh.sc.CommitQueueRemoveItem(projRef.Id, strconv.Itoa(*pr.Number), evergreen.GithubPatchUser)
+	_, err = data.CommitQueueRemoveItem(projRef.Id, strconv.Itoa(*pr.Number), evergreen.GithubPatchUser)
 	if err != nil {
 		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Id)
 	}
 	return nil
+}
+
+func isItemOnCommitQueue(id, item string) (bool, error) {
+	cq, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+	}
+	if cq == nil {
+		return false, errors.Errorf("no commit queue found for '%s'", id)
+	}
+
+	pos := cq.FindItem(item)
+	if pos >= 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 // The bool value returns whether the patch should be created or not.

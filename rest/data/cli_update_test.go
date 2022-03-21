@@ -12,7 +12,6 @@ import (
 
 type cliUpdateConnectorSuite struct {
 	suite.Suite
-	ctx     Connector
 	setup   func()
 	degrade func()
 }
@@ -22,9 +21,7 @@ func TestUpdateConnector(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s := &cliUpdateConnectorSuite{
-		ctx: &DBConnector{},
-	}
+	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	}
@@ -42,7 +39,7 @@ func (s *cliUpdateConnectorSuite) SetupSuite() {
 }
 
 func (s *cliUpdateConnectorSuite) Test() {
-	v, err := s.ctx.GetCLIUpdate()
+	v, err := GetCLIUpdate()
 	s.Require().NoError(err)
 	s.Require().NotNil(v)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
@@ -50,7 +47,7 @@ func (s *cliUpdateConnectorSuite) Test() {
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	s.degrade()
-	v, err := s.ctx.GetCLIUpdate()
+	v, err := GetCLIUpdate()
 	s.NoError(err)
 	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)

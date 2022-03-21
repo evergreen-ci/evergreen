@@ -41,7 +41,6 @@ type uiTaskData struct {
 	Status               string                  `json:"status"`
 	TaskWaiting          string                  `json:"task_waiting"`
 	Activated            bool                    `json:"activated"`
-	Restarts             int                     `json:"restarts"`
 	Execution            int                     `json:"execution"`
 	TotalExecutions      int                     `json:"total_executions"`
 	StartTime            int64                   `json:"start_time"`
@@ -245,7 +244,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		BuildVariant:         projCtx.Task.BuildVariant,
 		BuildId:              projCtx.Task.BuildId,
 		Activated:            projCtx.Task.Activated,
-		Restarts:             projCtx.Task.Restarts,
 		Execution:            projCtx.Task.Execution,
 		Requester:            projCtx.Task.Requester,
 		CreateTime:           projCtx.Task.CreateTime,

@@ -260,6 +260,27 @@ func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscriptio
 	return out, nil
 }
 
+// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
+func CopyProjectSubscriptions(oldProject, newProject string) error {
+	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
+	if err != nil {
+		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, sub := range subs {
+		sub.Owner = newProject
+		sub.ID = ""
+		for i, selector := range sub.Selectors {
+			if selector.Type == SelectorProject && selector.Data == oldProject {
+				sub.Selectors[i].Data = newProject
+			}
+		}
+		catcher.Add(sub.Upsert())
+	}
+	return catcher.Resolve()
+}
+
 func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
 	for i := range regexSelectors {
 		selector := findSelector(selectors, regexSelectors[i].Type)
@@ -374,12 +395,22 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	return true, ""
 }
 
-func (s *Subscription) ValidateFilter() error {
+func (s *Subscription) ValidateSelectors() error {
+	catcher := grip.NewBasicCatcher()
 	if s.Filter == (Filter{}) {
-		return errors.New("no filter parameters specified")
+		catcher.New("no filter parameters specified")
 	}
 
-	return nil
+	for _, selector := range s.RegexSelectors {
+		if selector.Type == "" {
+			catcher.New("selector has an empty type")
+		}
+		if selector.Data == "" {
+			catcher.Errorf("selector '%s' has no data", selector.Type)
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 func (s *Subscription) Validate() error {
@@ -399,7 +430,7 @@ func (s *Subscription) Validate() error {
 		s.Subscriber.Type == JIRACommentSubscriberType {
 		catcher.New("JIRA comment subscription not allowed for all tasks in the project")
 	}
-	catcher.Add(s.ValidateFilter())
+	catcher.Add(s.ValidateSelectors())
 	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
@@ -702,6 +733,7 @@ func NewExpiringBuildOutcomeSubscriptionByVersion(versionID string, sub Subscrib
 				Data: versionID,
 			},
 		},
+		Filter:      Filter{InVersion: versionID},
 		Subscriber:  sub,
 		LastUpdated: time.Now(),
 	}
@@ -717,6 +749,7 @@ func NewGithubCheckBuildOutcomeSubscriptionByVersion(versionID string, sub Subsc
 				Data: versionID,
 			},
 		},
+		Filter:      Filter{InVersion: versionID},
 		Subscriber:  sub,
 		LastUpdated: time.Now(),
 	}
@@ -735,6 +768,10 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 				Type: SelectorOwner,
 				Data: owner,
 			},
+		},
+		Filter: Filter{
+			Object: ObjectHost,
+			Owner:  owner,
 		},
 		Subscriber: sub,
 	}

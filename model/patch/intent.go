@@ -35,6 +35,10 @@ type Intent interface {
 	// as the previous patch submitted for this project by the user.
 	ReusePreviousPatchDefinition() bool
 
+	// RepeatFailedTasksAndVariants gives the patch the tasks/variants
+	// from the previous patch that had failed.
+	RepeatFailedTasksAndVariants() bool
+
 	// GetAlias defines the variants and tasks this intent should run on.
 	GetAlias() string
 

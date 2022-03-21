@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -19,7 +18,6 @@ import (
 
 type ProjectEventsTestSuite struct {
 	suite.Suite
-	sc        *data.DBConnector
 	route     projectEventsGet
 	projectId string
 	event     model.ProjectChangeEvent
@@ -80,11 +78,6 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 
 	s.NoError(db.ClearCollections(event.AllLogCollection, model.ProjectRefCollection))
 
-	s.sc = &data.DBConnector{
-		URL:                "https://evergreen.example.net",
-		DBProjectConnector: data.DBProjectConnector{},
-	}
-
 	projectRef := &model.ProjectRef{
 		Id:      "mci2",
 		Enabled: utility.TruePtr(),
@@ -98,7 +91,6 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.route.Id = s.projectId
 	s.route.Limit = 100
 	s.route.Timestamp = time.Now().Add(time.Second * 10)
-	s.route.sc = s.sc
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)

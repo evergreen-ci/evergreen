@@ -54,8 +54,7 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 			template = "admin_events.html"
 		}
 	}
-	dc := &data.DBAdminConnector{}
-	events, err := dc.GetAdminEventLog(time.Now(), 15)
+	events, err := data.GetAdminEventLog(time.Now(), 15)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "unable to retrieve admin events"))
 	}

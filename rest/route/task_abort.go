@@ -2,9 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -12,19 +14,14 @@ import (
 
 type taskAbortHandler struct {
 	taskId string
-	sc     data.Connector
 }
 
-func makeTaskAbortHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskAbortHandler{
-		sc: sc,
-	}
+func makeTaskAbortHandler() gimlet.RouteHandler {
+	return &taskAbortHandler{}
 }
 
 func (t *taskAbortHandler) Factory() gimlet.RouteHandler {
-	return &taskAbortHandler{
-		sc: t.sc,
-	}
+	return &taskAbortHandler{}
 }
 
 func (t *taskAbortHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -33,14 +30,20 @@ func (t *taskAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
-	err := t.sc.AbortTask(t.taskId, MustHaveUser(ctx).Id)
+	err := serviceModel.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
-	foundTask, err := t.sc.FindTaskById(t.taskId)
+	foundTask, err := task.FindOneId(t.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+	if foundTask == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", t.taskId),
+		})
 	}
 	taskModel := &model.APITask{}
 

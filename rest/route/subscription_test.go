@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -21,7 +20,6 @@ import (
 )
 
 type SubscriptionRouteSuite struct {
-	sc data.Connector
 	suite.Suite
 	postHandler gimlet.RouteHandler
 }
@@ -32,13 +30,12 @@ func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.sc = &data.DBConnector{}
 
 	suite.Run(t, s)
 }
 
 func (s *SubscriptionRouteSuite) SetupSuite() {
-	s.postHandler = makeSetSubscription(s.sc)
+	s.postHandler = makeSetSubscription()
 }
 
 func (s *SubscriptionRouteSuite) SetupTest() {
@@ -181,7 +178,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.Equal(http.StatusOK, resp.Status())
 
 	// get the updated subscription
-	h := &subscriptionGetHandler{sc: s.sc}
+	h := &subscriptionGetHandler{}
 	h.owner = "myproj"
 	h.ownerType = string(event.OwnerTypeProject)
 	resp = h.Run(ctx)
@@ -190,7 +187,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.Equal(event.ResourceTypePatch, utility.FromStringPtr(sub[0].ResourceType))
 
 	// delete the subscription
-	d := &subscriptionDeleteHandler{sc: s.sc, id: id}
+	d := &subscriptionDeleteHandler{id: id}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: h.owner})
 	resp = d.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
@@ -233,7 +230,7 @@ func (s *SubscriptionRouteSuite) TestGet() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 
-	h := &subscriptionGetHandler{sc: s.sc}
+	h := &subscriptionGetHandler{}
 	h.owner = "me"
 	h.ownerType = string(event.OwnerTypePerson)
 	resp := h.Run(ctx)
@@ -252,7 +249,7 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(db.Clear(event.SubscriptionsCollection))
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "thanos"})
-	d := &subscriptionDeleteHandler{sc: s.sc}
+	d := &subscriptionDeleteHandler{}
 	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
 	s.NoError(err)
 	s.EqualError(d.Parse(ctx, r), "400 (Bad Request): Must specify an ID to delete")
@@ -472,6 +469,10 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": event.SelectorID,
+			"data": "abc123",
+		}},
 		"regex_selectors": []map[string]string{{
 			"type": event.SelectorObject,
 			"data": "",

@@ -20,7 +20,6 @@ import (
 )
 
 type ProjectCopySuite struct {
-	sc    *data.DBConnector
 	route *projectCopyHandler
 
 	suite.Suite
@@ -61,15 +60,10 @@ func (s *ProjectCopySuite) SetupSuite() {
 		PrivateVars: map[string]bool{"b": true},
 	}
 	s.NoError(projectVar.Insert())
-
-	s.sc = &data.DBConnector{
-		URL:                "https://evergreen.example.net",
-		DBProjectConnector: data.DBProjectConnector{},
-	}
 }
 
 func (s *ProjectCopySuite) SetupTest() {
-	s.route = &projectCopyHandler{sc: s.sc}
+	s.route = &projectCopyHandler{}
 }
 
 func (s *ProjectCopySuite) TestParse() {
@@ -114,20 +108,19 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Len(newProject.Admins, 1)
 	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
 
-	res, err := s.route.sc.FindProjectById("projectC", false, false)
+	res, err := data.FindProjectById("projectC", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	res, err = s.route.sc.FindProjectById("projectA", false, false)
+	res, err = data.FindProjectById("projectA", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	vars, err := s.route.sc.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
+	vars, err := data.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)
 	s.NoError(err)
 	s.Require().NotNil(vars)
 	s.Len(vars.Vars, 2)
 }
 
 type copyVariablesSuite struct {
-	sc    *data.DBConnector
 	route *copyVariablesHandler
 
 	suite.Suite
@@ -172,15 +165,10 @@ func (s *copyVariablesSuite) SetupSuite() {
 	}
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
-
-	s.sc = &data.DBConnector{
-		URL:                "https://evergreen.example.net",
-		DBProjectConnector: data.DBProjectConnector{},
-	}
 }
 
 func (s *copyVariablesSuite) SetupTest() {
-	s.route = &copyVariablesHandler{sc: s.sc}
+	s.route = &copyVariablesHandler{}
 }
 
 func (s *copyVariablesSuite) TestParse() {

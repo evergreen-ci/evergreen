@@ -22,7 +22,6 @@ import (
 )
 
 type AdminDataSuite struct {
-	ctx Connector
 	env *mock.Environment
 	suite.Suite
 }
@@ -33,7 +32,6 @@ func TestDataConnectorSuite(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.ctx = &DBConnector{}
 	suite.Run(t, s)
 }
 
@@ -102,11 +100,11 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig()
 	s.NoError(err)
-	_, err = s.ctx.SetEvergreenSettings(restSettings, oldSettings, u, true)
+	_, err = SetEvergreenSettings(restSettings, oldSettings, u, true)
 	s.Require().NoError(err)
 
 	// read the settings and spot check values
-	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
+	settingsFromConnector, err := evergreen.GetConfig()
 	s.Require().NoError(err)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
@@ -145,6 +143,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
@@ -221,9 +221,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	}
 	oldSettings, err = evergreen.GetConfig()
 	s.NoError(err)
-	_, err = s.ctx.SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
+	_, err = SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
 	s.NoError(err)
-	settingsFromConnector, err = s.ctx.GetEvergreenSettings()
+	settingsFromConnector, err = evergreen.GetConfig()
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
@@ -262,6 +262,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
@@ -292,22 +294,22 @@ func (s *AdminDataSuite) TestRestart() {
 		EndTime:   endTime,
 		User:      userName,
 	}
-	dryRunResp, err := s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
+	dryRunResp, err := RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
 	s.NotZero(len(dryRunResp.ItemsRestarted))
 	s.Nil(dryRunResp.ItemsErrored)
 
 	// test that restarting tasks successfully puts a job on the queue
 	opts.DryRun = false
-	_, err = s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
+	_, err = RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
 }
 
 func (s *AdminDataSuite) TestGetBanner() {
 	u := &user.DBUser{Id: "me"}
-	s.NoError(s.ctx.SetAdminBanner("banner text", u))
-	s.NoError(s.ctx.SetBannerTheme(evergreen.Important, u))
-	text, theme, err := s.ctx.GetBanner()
+	s.NoError(evergreen.SetBanner("banner text"))
+	s.NoError(SetBannerTheme(evergreen.Important, u))
+	text, theme, err := GetBanner()
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(evergreen.Important, theme)

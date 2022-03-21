@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -288,7 +289,14 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.intent.ReusePreviousPatchDefinition() {
-		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project)
+		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	if j.intent.RepeatFailedTasksAndVariants() {
+		patchDoc.VariantsTasks, err = j.getPreviousPatchDefinition(project, true)
 		if err != nil {
 			return err
 		}
@@ -454,7 +462,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project) ([]patch.VariantTasks, error) {
+func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project, failedOnly bool) ([]patch.VariantTasks, error) {
 	previousPatch, err := patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying for most recent patch")
@@ -462,21 +470,23 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 	if previousPatch == nil {
 		return nil, errors.Errorf("no previous patch available")
 	}
-
 	var res []patch.VariantTasks
+	if failedOnly && !(previousPatch.Status == evergreen.PatchFailed) {
+		return res, nil
+	}
 	for _, vt := range previousPatch.VariantsTasks {
 		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 		displayTasksInProjectVariant := project.FindDisplayTasksForVariant(vt.Variant)
-
-		// I want the subset of vt.tasks that exists in tasksForVariant
-		tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
 		var displayTasks []patch.DisplayTask
-		for _, dt := range vt.DisplayTasks {
-			if utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
-				displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
+		var tasks []string
+		if failedOnly {
+			tasks, displayTasks, err = getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt, previousPatch.Version)
+			if err != nil {
+				return nil, err
 			}
+		} else {
+			tasks, displayTasks = getPreviousTasksAndDisplayTasks(tasksInProjectVariant, displayTasksInProjectVariant, vt)
 		}
-
 		if len(tasks)+len(displayTasks) > 0 {
 			res = append(res, patch.VariantTasks{
 				Variant:      vt.Variant,
@@ -486,6 +496,39 @@ func (j *patchIntentProcessor) getPreviousPatchDefinition(project *model.Project
 		}
 	}
 	return res, nil
+}
+
+func getPreviousFailedTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks, version string) ([]string, []patch.DisplayTask, error) {
+	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error querying for failed tasks from previous patch")
+	}
+	failedExecutionTasks := []string{}
+	failedDisplayTasks := []string{}
+	for _, failedTask := range failedTasks {
+		if failedTask.DisplayOnly {
+			failedDisplayTasks = append(failedDisplayTasks, failedTask.DisplayName)
+		} else {
+			failedExecutionTasks = append(failedExecutionTasks, failedTask.DisplayName)
+		}
+	}
+	failedExecutionTasks = utility.StringSliceIntersection(tasksInProjectVariant, failedExecutionTasks)
+	failedDisplayTasks = utility.StringSliceIntersection(displayTasksInProjectVariant, failedDisplayTasks)
+
+	tasks, displayTasks := getPreviousTasksAndDisplayTasks(failedExecutionTasks, failedDisplayTasks, vt)
+	return tasks, displayTasks, nil
+}
+
+func getPreviousTasksAndDisplayTasks(tasksInProjectVariant []string, displayTasksInProjectVariant []string, vt patch.VariantTasks) ([]string, []patch.DisplayTask) {
+	// We want the subset of vt.tasks that exist in tasksForVariant.
+	tasks := utility.StringSliceIntersection(tasksInProjectVariant, vt.Tasks)
+	var displayTasks []patch.DisplayTask
+	for _, dt := range vt.DisplayTasks {
+		if utility.StringSliceContains(displayTasksInProjectVariant, dt.Name) {
+			displayTasks = append(displayTasks, patch.DisplayTask{Name: dt.Name})
+		}
+	}
+	return tasks, displayTasks
 }
 
 func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) ([]string, error) {

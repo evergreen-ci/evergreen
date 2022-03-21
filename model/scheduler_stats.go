@@ -291,7 +291,7 @@ func CreateAllHostUtilizationBuckets(daysBack, granularity int) ([]HostUtilizati
 // One thing to note is that the average time is in milliseconds, not nanoseconds and must be converted.
 func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) {
 	// error out if the distro does not exist
-	_, err := distro.FindOne(distro.ById(distroId))
+	_, err := distro.FindOneId(distroId)
 	if err != nil {
 		return nil, err
 	}

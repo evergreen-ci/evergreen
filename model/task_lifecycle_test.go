@@ -780,6 +780,98 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.Equal(t, evergreen.VersionStarted, data.Status)
 }
 
+func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.AllLogCollection),
+		"Error clearing task and build collections")
+	displayName := "testName"
+	b1 := &build.Build{
+		Id:        "buildtest1",
+		Status:    evergreen.BuildStarted,
+		Version:   "abc",
+		Activated: true,
+	}
+	b2 := &build.Build{
+		Id:        "buildtest2",
+		Status:    evergreen.BuildSucceeded,
+		Version:   "abc",
+		Activated: true,
+	}
+	v := &Version{
+		Id:     b1.Version,
+		Status: evergreen.VersionStarted,
+	}
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b1.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		Version:     b1.Version,
+	}
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b2.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskSucceeded,
+		StartTime:   time.Now().Add(-time.Hour),
+		Version:     b2.Version,
+	}
+
+	assert.NoError(t, b1.Insert())
+	assert.NoError(t, b2.Insert())
+	assert.NoError(t, v.Insert())
+	assert.NoError(t, testTask.Insert())
+	assert.NoError(t, anotherTask.Insert())
+
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
+	dbBuild1, err := build.FindOneId(b1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbBuild1.Aborted)
+	dbBuild2, err := build.FindOneId(b2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbBuild2.Aborted)
+	dbVersion, err := VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbVersion.Aborted)
+
+	// abort started task
+	assert.NoError(t, testTask.SetAborted(task.AbortInfo{}))
+	assert.NoError(t, testTask.MarkFailed())
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
+	dbBuild1, err = build.FindOneId(b1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, true, dbBuild1.Aborted)
+	assert.Equal(t, evergreen.BuildFailed, dbBuild1.Status)
+	dbBuild2, err = build.FindOneId(b2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.BuildSucceeded, dbBuild2.Status)
+	assert.Equal(t, false, dbBuild2.Aborted)
+	dbVersion, err = VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.VersionFailed, dbVersion.Status)
+	assert.Equal(t, true, dbVersion.Aborted)
+
+	// restart aborted task
+	assert.NoError(t, testTask.Archive())
+	assert.NoError(t, testTask.MarkUnscheduled())
+	assert.NoError(t, UpdateBuildAndVersionStatusForTask(&testTask))
+	dbBuild1, err = build.FindOneId(b1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, false, dbBuild1.Aborted)
+	assert.Equal(t, evergreen.BuildCreated, dbBuild1.Status)
+	dbBuild2, err = build.FindOneId(b2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.BuildSucceeded, dbBuild2.Status)
+	assert.Equal(t, false, dbBuild2.Aborted)
+	dbVersion, err = VersionFindOneId(v.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
+	assert.Equal(t, false, dbVersion.Aborted)
+}
+
 func TestGetBuildStatus(t *testing.T) {
 	// the build isn't started until a task starts running
 	buildTasks := []task.Task{
@@ -3350,7 +3442,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	task5 := task.Task{
 		Id:        "task5",
 		Activated: true,
-		Status:    evergreen.TaskUndispatched,
+		Status:    evergreen.TaskDispatched,
 	}
 	assert.NoError(task5.Insert())
 	task6 := task.Task{
@@ -3400,12 +3492,13 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	// test that you can't update a display task
 	assert.Error(UpdateDisplayTaskForTask(&dt))
 
-	// test that a display task with a finished + unstarted task is "started"
+	// test that a display task with a finished + unfinished task is "started"
 	assert.NoError(UpdateDisplayTaskForTask(&task5))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt2.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+	assert.Zero(dbTask.FinishTime)
 
 	// check that the updates above logged an event for the first one
 	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))

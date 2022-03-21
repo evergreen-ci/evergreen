@@ -31,9 +31,9 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.2
 	github.com/mongodb/amboy v0.0.0-20220209145213-c1c572da4472
-	github.com/mongodb/anser v0.0.0-20211117165837-ac44bc8e3e4f
+	github.com/mongodb/anser v0.0.0-20220318141853-005b8ead5b8f
 	github.com/mongodb/ftdc v0.0.0-20211028165431-67f017692185
-	github.com/mongodb/grip v0.0.0-20211209154908-abdd8964fd40
+	github.com/mongodb/grip v0.0.0-20220210164115-898ba2888109
 	github.com/pkg/errors v0.9.1
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
@@ -43,13 +43,13 @@ require (
 	github.com/urfave/cli v1.22.5
 	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/vmware/govmomi v0.27.1
-	go.mongodb.org/mongo-driver v1.8.2
+	go.mongodb.org/mongo-driver v1.8.3
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/tools v0.1.7
 	gonum.org/v1/gonum v0.9.3
 	google.golang.org/api v0.60.0
-	google.golang.org/grpc v1.43.0
+	google.golang.org/grpc v1.44.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
@@ -63,8 +63,8 @@ require (
 	github.com/evergreen-ci/aviation v0.0.0-20211123195311-5ddfd75b3753 // indirect
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
-	github.com/mongodb/jasper v0.0.0-20220119202715-d976320a41e6
-	github.com/shirou/gopsutil/v3 v3.21.11
+	github.com/mongodb/jasper v0.0.0-20220214215554-82e5a72cff6b
+	github.com/shirou/gopsutil/v3 v3.21.12
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 )

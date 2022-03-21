@@ -27,12 +27,10 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
 type AdminRouteSuite struct {
-	sc          data.Connector
 	getHandler  gimlet.RouteHandler
 	postHandler gimlet.RouteHandler
 
@@ -41,7 +39,6 @@ type AdminRouteSuite struct {
 
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
-	s.sc = &data.DBConnector{}
 	// run the rest of the tests
 	suite.Run(t, s)
 }
@@ -97,8 +94,8 @@ func (s *AdminRouteSuite) SetupSuite() {
 	s.NoError(testTask2.Insert(), "error inserting documents")
 	s.NoError(testTask3.Insert(), "error inserting documents")
 	s.NoError(p.Insert(), "error inserting documents")
-	s.getHandler = makeFetchAdminSettings(s.sc)
-	s.postHandler = makeSetAdminSettings(s.sc)
+	s.getHandler = makeFetchAdminSettings()
+	s.postHandler = makeSetAdminSettings()
 	s.IsType(&adminGetHandler{}, s.getHandler)
 	s.IsType(&adminPostHandler{}, s.postHandler)
 }
@@ -170,13 +167,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settings.Jira.BasicAuthConfig.Username)
-	switch s.sc.(type) {
-	case *data.DBConnector:
-		s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
-	default:
-		s.Error(errors.New("data connector was not a DBConnector or DBConnector"))
-	}
+	s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settings.LoggerConfig.Buffer.UseAsync)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settings.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))
@@ -244,7 +238,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 }
 
 func (s *AdminRouteSuite) TestRevertRoute() {
-	routeManager := makeRevertRouteManager(s.sc)
+	routeManager := makeRevertRouteManager()
 	user := &user.DBUser{Id: "userName"}
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
@@ -252,7 +246,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 		ApiUrl: utility.ToStringPtr("foo"),
 	}
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
-	_, err := s.sc.SetEvergreenSettings(&changes, before, user, true)
+	_, err := data.SetEvergreenSettings(&changes, before, user, true)
 	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
 	s.NoError(err)
@@ -291,8 +285,7 @@ func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
 	queue := evergreen.GetEnvironment().LocalQueue()
-	sc := &data.DBConnector{}
-	handler := makeRestartRoute(sc, evergreen.RestartTasks, queue)
+	handler := makeRestartRoute(evergreen.RestartTasks, queue)
 
 	s.NotNil(handler)
 
@@ -336,7 +329,6 @@ func (s *AdminRouteSuite) TestRestartVersionsRoute() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
 
 	handler := &restartHandler{
-		sc:          &data.DBConnector{},
 		restartType: evergreen.RestartVersions,
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
@@ -449,7 +441,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	routeManager := makeSetAdminSettings(&data.DBConnector{})
+	routeManager := makeSetAdminSettings()
 
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
@@ -465,9 +457,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 
 	// get the changes with the /admin/events route
 	ctx = context.Background()
-	route := makeFetchAdminEvents(&data.DBConnector{
-		URL: "http://evergreen.example.net",
-	})
+	route := makeFetchAdminEvents("https://www.example.com")
 	request, err = http.NewRequest("GET", "/admin/events?limit=10&ts=2026-01-02T15%3A04%3A05Z", nil)
 	s.NoError(err)
 	s.NoError(route.Parse(ctx, request))
@@ -499,9 +489,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 }
 
 func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
-	route := &clearTaskQueueHandler{
-		sc: &data.DBConnector{},
-	}
+	route := &clearTaskQueueHandler{}
 	distro := "d1"
 	tasks := []model.TaskQueueItem{
 		{

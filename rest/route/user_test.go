@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -25,7 +24,6 @@ import (
 )
 
 type UserRouteSuite struct {
-	sc data.Connector
 	suite.Suite
 	postHandler gimlet.RouteHandler
 }
@@ -36,13 +34,11 @@ func TestUserRouteSuiteWithDB(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	s.sc = &data.DBConnector{}
-
 	suite.Run(t, s)
 }
 
 func (s *UserRouteSuite) SetupSuite() {
-	s.postHandler = makeSetUserConfig(s.sc)
+	s.postHandler = makeSetUserConfig()
 }
 
 func (s *UserRouteSuite) SetupTest() {
@@ -167,7 +163,7 @@ func (s *userPermissionPostSuite) SetupTest() {
 		Id: "user",
 	}
 	s.Require().NoError(s.u.Insert())
-	s.h = makeModifyUserPermissions(&data.DBConnector{}, env.RoleManager())
+	s.h = makeModifyUserPermissions(env.RoleManager())
 }
 
 func (s *userPermissionPostSuite) TestNoUser() {
@@ -280,7 +276,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role2", Scope: "scope2"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role3", Scope: "scope3"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: evergreen.BasicProjectAccessRole, Scope: evergreen.AllProjectsScope}))
-	handler := userPermissionsDeleteHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
+	handler := userPermissionsDeleteHandler{rm: rm, userID: u.Id}
 
 	body := `{ "resource_type": "project", "resource_id": "resource1" }`
 	request, err := http.NewRequest(http.MethodDelete, "", bytes.NewBuffer([]byte(body)))
@@ -322,7 +318,7 @@ func TestGetUserPermissions(t *testing.T) {
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
-	handler := userPermissionsGetHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
+	handler := userPermissionsGetHandler{rm: rm, userID: u.Id}
 
 	resp := handler.Run(context.Background())
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -345,7 +341,7 @@ func TestPostUserRoles(t *testing.T) {
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
-	handler := userRolesPostHandler{sc: &data.DBConnector{}, rm: rm, userID: u.Id}
+	handler := userRolesPostHandler{rm: rm, userID: u.Id}
 
 	body := `{ "foo": "bar" }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
@@ -399,13 +395,13 @@ func TestServiceUserOperations(t *testing.T) {
 	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"] }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
 	require.NoError(t, err)
-	handler := makeUpdateServiceUser(&data.DBConnector{})
+	handler := makeUpdateServiceUser()
 	assert.NoError(t, handler.Parse(ctx, request))
 	_ = handler.Run(ctx)
 
 	_, err = http.NewRequest(http.MethodGet, "", nil)
 	require.NoError(t, err)
-	handler = makeGetServiceUsers(&data.DBConnector{})
+	handler = makeGetServiceUsers()
 	resp := handler.Run(ctx)
 	users, valid := resp.Data().([]restModel.APIDBUser)
 	assert.True(t, valid)
@@ -418,13 +414,13 @@ func TestServiceUserOperations(t *testing.T) {
 	body = `{ "user_id": "foo", "display_name": "different" }`
 	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
 	require.NoError(t, err)
-	handler = makeUpdateServiceUser(&data.DBConnector{})
+	handler = makeUpdateServiceUser()
 	assert.NoError(t, handler.Parse(ctx, request))
 	_ = handler.Run(ctx)
 
 	_, err = http.NewRequest(http.MethodGet, "", nil)
 	require.NoError(t, err)
-	handler = makeGetServiceUsers(&data.DBConnector{})
+	handler = makeGetServiceUsers()
 	resp = handler.Run(ctx)
 	users, valid = resp.Data().([]restModel.APIDBUser)
 	assert.True(t, valid)
@@ -436,13 +432,13 @@ func TestServiceUserOperations(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoError(t, request.ParseForm())
 	request.Form.Add("id", "foo")
-	handler = makeDeleteServiceUser(&data.DBConnector{})
+	handler = makeDeleteServiceUser()
 	assert.NoError(t, handler.Parse(ctx, request))
 	_ = handler.Run(ctx)
 
 	request, err = http.NewRequest(http.MethodGet, "", nil)
 	require.NoError(t, err)
-	handler = makeGetServiceUsers(&data.DBConnector{})
+	handler = makeGetServiceUsers()
 	resp = handler.Run(ctx)
 	users, valid = resp.Data().([]restModel.APIDBUser)
 	assert.True(t, valid)
@@ -481,7 +477,7 @@ func TestGetUsersForRole(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/roles/basic_project_access/users", nil)
 	require.NoError(t, err)
 	req = gimlet.SetURLVars(req, map[string]string{"role_id": "basic_project_access"})
-	handler := makeGetUsersWithRole(&data.DBConnector{})
+	handler := makeGetUsersWithRole()
 	assert.NoError(t, handler.Parse(ctx, req))
 	assert.Equal(t, handler.(*usersWithRoleGetHandler).role, "basic_project_access")
 	resp := handler.Run(ctx)
@@ -593,7 +589,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p1"}`)
 			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
 			require.NoError(t, err)
-			handler := makeGetAllUsersPermissions(&data.DBConnector{}, rm)
+			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
 			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p1")
 			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
@@ -612,7 +608,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p2"}`)
 			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
 			require.NoError(t, err)
-			handler := makeGetAllUsersPermissions(&data.DBConnector{}, rm)
+			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
 			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p2")
 			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
@@ -638,7 +634,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p3"}`)
 			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
 			require.NoError(t, err)
-			handler := makeGetAllUsersPermissions(&data.DBConnector{}, rm)
+			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
 			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p3")
 			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
