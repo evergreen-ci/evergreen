@@ -378,7 +378,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 
 	if cloudStatus == cloud.StatusTerminated {
 		grip.Warning(message.Fields{
-			"message":  "attempted to terminated an already terminated host",
+			"message":  "attempted to terminate an already terminated host",
 			"theory":   "external termination",
 			"host_id":  j.host.Id,
 			"provider": j.host.Distro.Provider,
