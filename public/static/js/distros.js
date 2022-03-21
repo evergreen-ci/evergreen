@@ -108,7 +108,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     'id': 'spot',
     'display': 'Spot'
   }, {
-    'id': 'on-demand-fallback',
+    'id': 'fallback',
     'display': 'Spot with on-demand fallback'
   }, {
     'id': 'on-demand',
@@ -156,7 +156,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
         $scope.activeDistro.settings.fleet_options.use_on_demand = false;
         $scope.activeDistro.settings.fallback = false;
         break;
-      case "on-demand-fallback":
+      case "fallback":
         $scope.activeDistro.settings.fleet_options.use_on_demand = false;
         $scope.activeDistro.settings.fallback = true;
         break;
@@ -169,7 +169,7 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
 
   $scope.getFleetInstanceType = function(settings) {
     if (!settings?.fleet_options?.use_on_demand && settings?.fallback) {
-      return "on-demand-fallback";
+      return "fallback";
     }
 
     if (settings?.fleet_options?.use_on_demand && !settings?.fallback) {
