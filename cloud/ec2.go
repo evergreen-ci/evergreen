@@ -84,34 +84,46 @@ type EC2ProviderSettings struct {
 	// allowing multiple scripts of the same type as part of a multipart user
 	// data upload.
 	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
+
+	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
+	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
 	if s.AMI == "" {
-		return errors.New("AMI must not be empty")
+		catcher.New("AMI must not be empty")
 	}
+
 	if s.InstanceType == "" {
-		return errors.New("instance type must not be empty")
+		catcher.New("instance type must not be empty")
 	}
+
 	if len(s.SecurityGroupIDs) == 0 {
-		return errors.New("Security groups must not be empty")
+		catcher.New("Security groups must not be empty")
 	}
+
 	if s.BidPrice < 0 {
-		return errors.New("Bid price must not be negative")
+		catcher.New("Bid price must not be negative")
 	}
+
 	if s.IsVpc && s.SubnetId == "" {
-		return errors.New("must set a default subnet for a vpc")
+		catcher.New("must set a default subnet for a vpc")
 	}
-	if _, err := makeBlockDeviceMappings(s.MountPoints); err != nil {
-		return errors.Wrap(err, "block device mappings invalid")
-	}
+
+	_, err := makeBlockDeviceMappings(s.MountPoints)
+	catcher.Wrap(err, "block device mappings invalid")
+
 	if s.UserData != "" {
-		if _, err := parseUserData(s.UserData); err != nil {
-			return errors.Wrap(err, "user data is malformed")
-		}
+		_, err = parseUserData(s.UserData)
+		catcher.Wrap(err, "user data is malformed")
 	}
-	return nil
+
+	catcher.Wrap(s.FleetOptions.validate(), "invalid Fleet options")
+
+	return catcher.Resolve()
 }
 
 // region is only provided if we want to filter by region
@@ -166,6 +178,39 @@ func (s *EC2ProviderSettings) getRegion() string {
 		return s.Region
 	}
 	return evergreen.DefaultEC2Region
+}
+
+type FleetConfig struct {
+	// UseOnDemand will use on-demand instances to instantiate hosts. Defaults to spot instances.
+	UseOnDemand bool `mapstructure:"use_on_demand" json:"use_on_demand,omitempty" bson:"use_on_demand,omitempty"`
+
+	// UseCapacityOptimized will use the capacity-optimized allocation strategy for spawning the host. Defaults to the AWS default (lowest-cost).
+	// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-allocation-strategy.html for more information about Fleet allocation strategies.
+	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized,omitempty" bson:"use_capacity_optimized,omitempty"`
+}
+
+func (f *FleetConfig) awsTargetCapacityType() *string {
+	if f.UseOnDemand {
+		return aws.String(ec2.DefaultTargetCapacityTypeOnDemand)
+	}
+
+	return aws.String(ec2.DefaultTargetCapacityTypeSpot)
+}
+
+func (f *FleetConfig) awsAllocationStrategy() *string {
+	if !f.UseOnDemand && f.UseCapacityOptimized {
+		return aws.String(ec2.SpotAllocationStrategyCapacityOptimized)
+	}
+
+	return nil
+}
+
+func (f *FleetConfig) validate() error {
+	if f.UseOnDemand && f.UseCapacityOptimized {
+		return errors.New("on-demand instances can't use the capacity-optimized allocation strategy")
+	}
+
+	return nil
 }
 
 type ec2ProviderType int
