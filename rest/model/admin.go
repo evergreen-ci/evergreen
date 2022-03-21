@@ -1948,27 +1948,28 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled       bool `json:"task_dispatch_disabled"`
-	HostInitDisabled           bool `json:"host_init_disabled"`
-	PodInitDisabled            bool `json:"pod_init_disabled"`
-	S3BinaryDownloadsDisabled  bool `json:"s3_binary_downloads_disabled"`
-	MonitorDisabled            bool `json:"monitor_disabled"`
-	AlertsDisabled             bool `json:"alerts_disabled"`
-	AgentStartDisabled         bool `json:"agent_start_disabled"`
-	RepotrackerDisabled        bool `json:"repotracker_disabled"`
-	SchedulerDisabled          bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled  bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled    bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled         bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled    bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
-	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
-	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
-	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled  bool `json:"background_cleanup_disabled"`
+	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
+	HostInitDisabled                bool `json:"host_init_disabled"`
+	PodInitDisabled                 bool `json:"pod_init_disabled"`
+	S3BinaryDownloadsDisabled       bool `json:"s3_binary_downloads_disabled"`
+	MonitorDisabled                 bool `json:"monitor_disabled"`
+	AlertsDisabled                  bool `json:"alerts_disabled"`
+	AgentStartDisabled              bool `json:"agent_start_disabled"`
+	RepotrackerDisabled             bool `json:"repotracker_disabled"`
+	SchedulerDisabled               bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled       bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled         bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled              bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
+	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
+	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
+	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
+	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
+	GenerateTasksExperimentDisabled bool `json:"generate_tasks_experiment_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
