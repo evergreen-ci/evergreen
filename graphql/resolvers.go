@@ -2672,15 +2672,15 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 	}
 
-	taskIDs := make([]string, len(tasksToSchedule))
+	taskIDs := []string{}
 	for taskId := range tasksToSchedule {
 		taskIDs = append(taskIDs, taskId)
 	}
-	scheduled, err := setScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
 	scheduledTasks = append(scheduledTasks, scheduled...)
 	// sort scheduledTasks by display name to guarantee the order of the tasks
 	sort.Slice(scheduledTasks, func(i, j int) bool {
-		return *scheduledTasks[i].DisplayName < *scheduledTasks[j].DisplayName
+		return utility.FromStringPtr(scheduledTasks[i].DisplayName) < utility.FromStringPtr(scheduledTasks[j].DisplayName)
 	})
 
 	return scheduledTasks, nil
@@ -2785,7 +2785,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 
 func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) ([]*restModel.APITask, error) {
 	scheduledTasks := []*restModel.APITask{}
-	scheduled, err := setScheduled(ctx, r.sc.GetURL(), true, taskIds...)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
 	if err != nil {
 		return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule tasks : %s", err.Error()))
 	}
@@ -2793,7 +2793,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	return scheduledTasks, nil
 }
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	scheduled, err := setScheduled(ctx, r.sc.GetURL(), true, taskID)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -2804,7 +2804,7 @@ func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*re
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	scheduled, err := setScheduled(ctx, r.sc.GetURL(), false, taskID)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
 	if err != nil {
 		return nil, err
 	}

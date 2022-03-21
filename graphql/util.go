@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/db"
 	"net/http"
 	"os"
 	"regexp"
@@ -11,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/cloud"
-
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -59,14 +58,19 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func setScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
+func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if tasks == nil {
-		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task IDs %s not found", strings.Join(taskIDs, ",")).Error())
+	if len(tasks) != len(taskIDs) {
+		grip.Error(message.Fields{
+			"message":    "could not find all tasks",
+			"taskIds":    taskIDs,
+			"foundTasks": tasks,
+		})
+		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
 	taskPtrs := []*task.Task{}
 	for _, t := range tasks {
@@ -79,13 +83,18 @@ func setScheduled(ctx context.Context, url string, isActive bool, taskIDs ...str
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
-	// Get the modified task back out of the db
+	// Get the modified tasks back out of the db
 	tasks, err = task.FindAll(db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if tasks == nil {
-		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task IDs %s not found after active state was set", strings.Join(taskIDs, ",")).Error())
+	if len(tasks) != len(taskIDs) {
+		grip.Error(message.Fields{
+			"message":    "could not find all tasks",
+			"taskIds":    taskIDs,
+			"foundTasks": tasks,
+		})
+		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {

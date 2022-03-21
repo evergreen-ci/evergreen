@@ -315,15 +315,11 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func ActivateVersions(versions []Version) error {
-	versionIDs := make([]string, 0, len(versions))
-	for _, t := range versions {
-		versionIDs = append(versionIDs, t.Id)
-	}
+func ActivateVersions(versions []string) error {
 	_, err := db.UpdateAll(
 		VersionCollection,
 		bson.M{
-			VersionIdKey: bson.M{"$in": versionIDs},
+			VersionIdKey: bson.M{"$in": versions},
 		},
 		bson.M{
 			"$set": bson.M{

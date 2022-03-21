@@ -33,7 +33,7 @@ type StatusChanges struct {
 
 func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 	tasksToActivate := []task.Task{}
-	versionsToActivate := []Version{}
+	versionIdsToActivate := []string{}
 	for _, t := range tasks {
 		originalTasks := []task.Task{*t}
 		originalTasks = append(originalTasks, *t)
@@ -83,15 +83,7 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 					"task_id": t.Id,
 				})
 			}
-
-			version, err := VersionFindOneId(t.Version)
-			if err != nil {
-				return errors.Wrapf(err, "error find associated version")
-			}
-			if version == nil {
-				return errors.Errorf("could not find associated version : `%s`", t.Version)
-			}
-			versionsToActivate = append(versionsToActivate, *version)
+			versionIdsToActivate = append(versionIdsToActivate, t.Version)
 
 			// If the task was not activated by step back, and either the caller is not evergreen
 			// or the task was originally activated by evergreen, deactivate the task
@@ -123,16 +115,16 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 				return errors.Wrap(err, "problem updating display task")
 			}
 		}
-
 		if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
 			return errors.Wrap(err, "problem updating build and version status for task")
 		}
 	}
+
 	if active {
 		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
 			return errors.Wrapf(err, "can't activate tasks")
 		}
-		if err := ActivateVersions(versionsToActivate); err != nil {
+		if err := ActivateVersions(versionIdsToActivate); err != nil {
 			return errors.Wrapf(err, "Error marking version as activated")
 		}
 	} else {
