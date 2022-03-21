@@ -15,23 +15,44 @@ type ContainerTaskQueue struct {
 	position int
 }
 
+// NewContainerTaskQueue returns a populated iterator representing an ordered
+// queue of container tasks that are ready to be allocated a container.
+func NewContainerTaskQueue() (*ContainerTaskQueue, error) {
+	q := &ContainerTaskQueue{}
+	if err := q.populate(); err != nil {
+		return nil, errors.Wrap(err, "initial population of container task queue")
+	}
+	return q, nil
+}
+
 // Next returns the next task that's ready for container allocation. It will
 // return a nil task once there are no tasks remaining in the queue.
-func (q *ContainerTaskQueue) Next() (*task.Task, error) {
-	if q.queue == nil {
-		if err := q.populate(); err != nil {
-			return nil, errors.Wrap(err, "initial population of container task queue")
-		}
-	}
+func (q *ContainerTaskQueue) Next() *task.Task {
 	if q.position >= len(q.queue) {
-		return nil, nil
+		return nil
 	}
 
 	next := q.queue[q.position]
 
 	q.position++
 
-	return &next, nil
+	return &next
+}
+
+// HasNext returns whether or not there are more container tasks that have not
+// yet been returned.
+func (q *ContainerTaskQueue) HasNext() bool {
+	return q.position < len(q.queue)
+}
+
+// Len returns the total number of tasks in the queue.
+func (q *ContainerTaskQueue) Len() int {
+	return len(q.queue)
+}
+
+// Remaining returns the number of tasks that have not yet been returned.
+func (q *ContainerTaskQueue) Remaining() int {
+	return len(q.queue) - q.position
 }
 
 func (q *ContainerTaskQueue) populate() error {

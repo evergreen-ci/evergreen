@@ -1260,6 +1260,73 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.PodAllocatorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "pod allocation disabled",
+				"impact":  "container tasks will not be allocated any pods to run them",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		numInitializing, err := pod.CountByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "counting initializing pods")
+		}
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "loading admin settings")
+		}
+		remaining := settings.PodInit.MaxParallelPodRequests - numInitializing
+
+		ctq, err := model.NewContainerTaskQueue()
+		if err != nil {
+			return errors.Wrap(err, "getting container task queue")
+		}
+
+		catcher := grip.NewBasicCatcher()
+
+		for ctq.HasNext() && remaining > 0 {
+			t := ctq.Next()
+			if t == nil {
+				break
+			}
+
+			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
+			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "task '%s'", t.Id)
+				continue
+			}
+
+			// Because the container task queue is ordered solely by activation
+			// time, the next task returned either:
+			// 1. Already has a pod allocator job waiting to run.
+			// 2. Does not have a pod allocator job yet and is the next one in
+			//    line to get a chance to allocate.
+			// The remaining count is accurate as long as the following property
+			// of the container task queue holds: a container task can either
+			// stay in the same position or move closer to the front, but it
+			// cannot move towards the back. Should this property not be the
+			// case, then this simple method of bookkeeping the remaining pods
+			// available to allocate is invalid.
+			remaining--
+		}
+
+		grip.InfoWhen(remaining <= 0 && ctq.Remaining() > 0, message.Fields{
+			"message":   "reached max parallel pod request limit, not allocating any more",
+			"remaining": ctq.Remaining(),
+		})
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		pods, err := pod.FindByInitializing()

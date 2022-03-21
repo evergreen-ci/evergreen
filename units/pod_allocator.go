@@ -13,6 +13,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -62,6 +64,24 @@ func NewPodAllocatorJob(taskID, ts string) amboy.Job {
 func (j *podAllocatorJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	shouldAllocate, err := j.canAllocate()
+	if err != nil {
+		j.AddRetryableError(errors.Wrap(err, "checking allocation attempt against max parallel pod request limit"))
+		return
+	}
+	if !shouldAllocate {
+		grip.Info(message.Fields{
+			"message":            "reached max parallel pod request limit, will re-attempt to allocate container to task later",
+			"task":               j.TaskID,
+			"remaining_attempts": j.RetryInfo().GetRemainingAttempts(),
+			"job":                j.ID(),
+		})
+		j.UpdateRetryInfo(amboy.JobRetryOptions{
+			NeedsRetry: utility.TruePtr(),
+		})
+		return
+	}
+
 	if err := j.populate(); err != nil {
 		j.AddRetryableError(errors.Wrap(err, "populating job"))
 		return
@@ -91,6 +111,26 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		j.AddRetryableError(errors.Wrap(err, "allocating pod for task dispatch"))
 		return
 	}
+}
+
+func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return false, errors.Wrap(err, "getting admin settings")
+	}
+	numInitializing, err := pod.CountByInitializing()
+	if err != nil {
+		return false, errors.Wrap(err, "counting currently-initializing pods")
+	}
+	if numInitializing >= settings.PodInit.MaxParallelPodRequests {
+		return false, nil
+	}
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	return !flags.PodAllocatorDisabled, nil
 }
 
 func (j *podAllocatorJob) populate() error {

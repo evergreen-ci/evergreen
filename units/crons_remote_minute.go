@@ -79,14 +79,14 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	appCtx, _ := j.env.Context()
 	hcqueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.host.create")
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error getting host create queue"))
+		catcher.Wrap(err, "getting host create queue")
 	} else {
 		catcher.Add(PopulateHostCreationJobs(j.env, 0)(ctx, hcqueue))
 	}
 
 	commitQueueQueue, err := j.env.RemoteQueueGroup().Get(appCtx, "service.commitqueue")
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error getting commit queue queue"))
+		catcher.Wrap(err, "getting commit queue queue")
 	} else {
 		catcher.Add(PopulateCommitQueueJobs(j.env)(ctx, commitQueueQueue))
 	}
