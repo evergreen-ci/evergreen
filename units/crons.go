@@ -680,9 +680,6 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
-		// var q amboy.Queue
-		// var ok bool
-		// var err error
 
 		catcher := grip.NewBasicCatcher()
 		tasks, err := task.GenerateNotRun()
@@ -691,27 +688,42 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.GenerateTasksExperimentDisabled {
+			versions := map[string]amboy.Queue{}
+			group := env.RemoteQueueGroup()
+
+			for _, t := range tasks {
+				var q amboy.Queue
+				var ok bool
+				var err error
+				if q, ok = versions[t.Version]; !ok {
+					q, err = group.Get(ctx, t.Version)
+					if err != nil {
+						return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
+					}
+					versions[t.Version] = q
+				}
+				catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Version, t.Id, ts, false)))
+			}
+			return catcher.Resolve()
+		}
+
 		queue, err := env.RemoteQueueGroup().Get(ctx, "service.generate.tasks")
 		if err != nil {
 			return errors.Wrap(err, "getting generate tasks queue")
 		}
 
-		// versions := map[string]amboy.Queue{}
-		// group := env.RemoteQueueGroup()
-
 		for _, t := range tasks {
-			// kim: TODO: put behind feature flag.
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts)), "task '%s'", t.Id)
-			// if q, ok = versions[t.Version]; !ok {
-			//     q, err = group.Get(ctx, t.Version)
-			//     if err != nil {
-			//         return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
-			//     }
-			//     versions[t.Version] = q
-			// }
-			// catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts, true)), "task '%s'", t.Id)
 		}
+
 		return catcher.Resolve()
+
 	}
 }
 

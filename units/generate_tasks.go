@@ -47,15 +47,17 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(versionID, taskID string, ts string) amboy.Job {
+// NewGenerateTasksJob returns a job that dynamically generates new tasks to run
+// based on the given task.
+func NewGenerateTasksJob(versionID, taskID string, ts string, useScopes bool) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = taskID
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
-	// kim: TODO: Feature flag scopes (will break correctness for tasks
-	// currently being generated, but avoids the need to revert).
-	j.SetScopes([]string{versionID, taskID})
-	j.SetEnqueueScopes(taskID)
+	if useScopes {
+		j.SetScopes([]string{versionID, taskID})
+		j.SetEnqueueScopes(taskID)
+	}
 	return j
 }
 
