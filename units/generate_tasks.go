@@ -48,7 +48,7 @@ func makeGenerateTaskJob() *generateTasksJob {
 }
 
 // NewGenerateTasksJob returns a job that dynamically generates new tasks to run
-// based on the given task.
+// based on the given task's generate.tasks file.
 func NewGenerateTasksJob(versionID, taskID string, ts string, useScopes bool) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = taskID
