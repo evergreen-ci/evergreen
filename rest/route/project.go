@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -20,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -570,10 +570,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.newProjectRef.Id)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
-		if err = queue.Put(ctx, j); err != nil {
-			if db.IsDuplicateKey(err) {
-				return gimlet.MakeJSONErrorResponder(errors.Errorf("Repotracker is already scheduled to run for project '%s'", h.project))
-			}
+		if err = amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
 		}
 	}
