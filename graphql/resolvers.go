@@ -2676,7 +2676,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	for taskId := range tasksToSchedule {
 		taskIDs = append(taskIDs, taskId)
 	}
-	scheduled, err := setScheduled(ctx, r.sc, true, taskIDs...)
+	scheduled, err := setScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
 	scheduledTasks = append(scheduledTasks, scheduled...)
 	// sort scheduledTasks by display name to guarantee the order of the tasks
 	sort.Slice(scheduledTasks, func(i, j int) bool {
