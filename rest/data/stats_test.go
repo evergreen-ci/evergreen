@@ -25,7 +25,6 @@ func TestMockGetTestStats(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
-	mock := StatsConnector{}
 	filter := &stats.StatsFilter{}
 	proj := model.ProjectRef{
 		Id: "project",
@@ -35,7 +34,7 @@ func TestMockGetTestStats(t *testing.T) {
 	// Add stats
 	assert.NoError(insertTestStats(filter, 102, 100))
 
-	stats, err := mock.GetTestStats(*filter)
+	stats, err := GetTestStats(*filter)
 	assert.NoError(err)
 	assert.Len(stats, 100)
 
@@ -49,12 +48,11 @@ func TestMockGetTaskStats(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	assert.NoError(db.Clear(stats.DailyTaskStatsCollection))
-	mock := StatsConnector{}
 	filter := &stats.StatsFilter{}
 	// Add stats
 	assert.NoError(insertTaskStats(filter, 102, 100))
 
-	stats, err := mock.GetTaskStats(*filter)
+	stats, err := GetTaskStats(*filter)
 	assert.NoError(err)
 	assert.Len(stats, 100)
 
@@ -157,8 +155,7 @@ func TestGetTaskStats(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 
-	sc := StatsConnector{}
-	stats, err := sc.GetTaskStats(stats.StatsFilter{
+	stats, err := GetTaskStats(stats.StatsFilter{
 		Project:      "projectName",
 		GroupNumDays: 1,
 		Requesters:   []string{evergreen.RepotrackerVersionRequester},
@@ -199,8 +196,7 @@ func TestGetTestStats(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 
-	sc := StatsConnector{}
-	stats, err := sc.GetTestStats(stats.StatsFilter{
+	stats, err := GetTestStats(stats.StatsFilter{
 		Project:      "projectName",
 		GroupNumDays: 1,
 		Requesters:   []string{evergreen.RepotrackerVersionRequester},

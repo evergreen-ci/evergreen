@@ -87,8 +87,7 @@ func TestListHostsForTask(t *testing.T) {
 	require.NoError((&task.Task{Id: "task_1", BuildId: "build_1"}).Insert())
 	require.NoError((&build.Build{Id: "build_1"}).Insert())
 
-	c := DBCreateHostConnector{}
-	found, err := c.ListHostsForTask(context.Background(), "task_1")
+	found, err := ListHostsForTask(context.Background(), "task_1")
 	assert.NoError(err)
 	require.Len(found, 3)
 	assert.Equal("4.com", found[0].Host)
@@ -172,8 +171,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		dc := DBCreateHostConnector{}
-		assert.NoError(t, dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
@@ -241,8 +239,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		dc := DBCreateHostConnector{}
-		err := dc.CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
+		err := CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
@@ -305,8 +302,7 @@ buildvariants:
 		}
 		assert.NoError(t, evergreen.UpdateConfig(settings))
 
-		dc := DBCreateHostConnector{}
-		assert.NoError(t, dc.CreateHostsFromTask(&t3, user.DBUser{Id: "me"}, ""))
+		assert.NoError(t, CreateHostsFromTask(&t3, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(host.IsUninitialized)
 		assert.NoError(t, err)
 		assert.Len(t, createdHosts, 3)
@@ -422,8 +418,7 @@ buildvariants:
 	}
 	assert.NoError(pvars.Insert())
 
-	dc := DBCreateHostConnector{}
-	assert.NoError(dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+	assert.NoError(CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
 
 	createdHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)

@@ -4,22 +4,17 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 )
 
-func makePlaceHolderManger(sc data.Connector) gimlet.RouteHandler {
-	return &placeHolderHandler{
-		sc: sc,
-	}
+func makePlaceHolderManger() gimlet.RouteHandler {
+	return &placeHolderHandler{}
 }
 
-type placeHolderHandler struct {
-	sc data.Connector
-}
+type placeHolderHandler struct{}
 
 func (p *placeHolderHandler) Factory() gimlet.RouteHandler {
-	return &placeHolderHandler{sc: p.sc}
+	return &placeHolderHandler{}
 }
 
 func (p *placeHolderHandler) Parse(ctx context.Context, r *http.Request) error {

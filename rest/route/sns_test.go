@@ -95,7 +95,6 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 	rh.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"sns.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
 
 	// unknown host
-	rh.sc = &data.DBConnector{}
 	assert.NoError(t, rh.handleNotification(ctx))
 	assert.Equal(t, rh.queue.Stats(ctx).Total, 0)
 
@@ -127,7 +126,6 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	messageID := "m0"
 	rh := ec2SNS{}
 	rh.payload.MessageId = messageID
-	rh.sc = &data.DBConnector{DBHostConnector: data.DBHostConnector{}}
 	assert.NoError(t, agentHost.Insert())
 	assert.NoError(t, spawnHost.Insert())
 
@@ -163,8 +161,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector){
-		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS){
+		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
@@ -175,11 +173,11 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			require.NoError(t, rh.handleNotification(ctx, notification))
 
-			p, err := mpc.FindPodByID("id")
+			p, err := data.FindPodByID("id")
 			assert.NoError(t, err)
 			assert.Equal(t, model.PodStatusDecommissioned, p.Status)
 		},
-		"NoopsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
+		"NoopsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
@@ -190,11 +188,11 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			p, err := mpc.FindPodByID("id")
+			p, err := data.FindPodByID("id")
 			assert.NoError(t, err)
 			assert.Equal(t, model.PodStatusRunning, p.Status)
 		},
-		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
+		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
@@ -204,11 +202,11 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			p, err := mpc.FindPodByID("id")
+			p, err := data.FindPodByID("id")
 			assert.NoError(t, err)
 			assert.Equal(t, model.PodStatusRunning, p.Status)
 		},
-		"FailsWithUnknownNotificationType": func(ctx context.Context, t *testing.T, rh *ecsSNS, mpc *data.DBPodConnector) {
+		"FailsWithUnknownNotificationType": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: "unknown",
 				Detail: ecsEventDetail{
@@ -219,16 +217,13 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			p, err := mpc.FindPodByID("id")
+			p, err := data.FindPodByID("id")
 			assert.NoError(t, err)
 			assert.Equal(t, model.PodStatusRunning, p.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(t, db.Clear(pod.Collection))
-			mc := &data.DBConnector{
-				DBPodConnector: data.DBPodConnector{},
-			}
 			podToCreate := pod.Pod{
 				ID:     "id",
 				Type:   pod.TypeAgent,
@@ -242,10 +237,10 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 			q, err := queue.NewLocalLimitedSizeSerializable(1, 1)
 			require.NoError(t, err)
-			rh, ok := makeECSSNS(mc, env, q).(*ecsSNS)
+			rh, ok := makeECSSNS(env, q).(*ecsSNS)
 			require.True(t, ok)
 
-			tCase(ctx, t, rh, &mc.DBPodConnector)
+			tCase(ctx, t, rh)
 		})
 	}
 }

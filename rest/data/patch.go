@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func validatePatchID(patchId string) error {
+func ValidatePatchID(patchId string) error {
 	if !mgobson.IsObjectIdHex(patchId) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -32,13 +32,9 @@ func validatePatchID(patchId string) error {
 	return nil
 }
 
-// DBPatchConnector is a struct that implements the Patch related methods
-// from the Connector through interactions with the backing database.
-type DBPatchConnector struct{}
-
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
-func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	apiPatches := []restModel.APIPatch{}
 	id, err := model.GetIdForProject(projectId)
 	if err != nil {
@@ -61,8 +57,8 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 }
 
 // FindPatchById queries the backing database for the patch matching patchId.
-func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, error) {
-	if err := validatePatchID(patchId); err != nil {
+func FindPatchById(patchId string) (*restModel.APIPatch, error) {
+	if err := ValidatePatchID(patchId); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -86,59 +82,10 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*restModel.APIPatch, 
 	return &apiPatch, nil
 }
 
-// GetChildPatchIds queries the backing database for the child patch ids
-func (pc *DBPatchConnector) GetChildPatchIds(patchId string) ([]string, error) {
-	if err := validatePatchID(patchId); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	p, err := patch.FindOneId(patchId)
-	if err != nil {
-		return nil, err
-	}
-	if p == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch with id %s not found", patchId),
-		}
-	}
-
-	return p.Triggers.ChildPatches, nil
-}
-
-func (pc *DBPatchConnector) FindPatchesByIds(patchIds []string) ([]restModel.APIPatch, error) {
-	patchObjectIDs := []mgobson.ObjectId{}
-	for _, patchID := range patchIds {
-		if err := validatePatchID(patchID); err != nil {
-			return nil, errors.Wrap(err, "problem validating patchId")
-		}
-		patchObjectIDs = append(patchObjectIDs, mgobson.ObjectIdHex(patchID))
-	}
-
-	p, err := patch.Find(patch.ByIds(patchObjectIDs))
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding patches")
-	}
-	if p == nil {
-		return nil, errors.New("patches not found")
-	}
-
-	apiPatches := []restModel.APIPatch{}
-	for _, patch := range p {
-		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(patch)
-		if err != nil {
-			return nil, errors.Wrap(err, "problem converting patch")
-		}
-		apiPatches = append(apiPatches, apiPatch)
-	}
-	return apiPatches, nil
-
-}
-
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
-func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
-	if err := validatePatchID(patchId); err != nil {
+func AbortPatch(patchId string, user string) error {
+	if err := ValidatePatchID(patchId); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -155,14 +102,8 @@ func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
 	return model.CancelPatch(p, task.AbortInfo{User: user})
 }
 
-// SetPatchPriority attempts to set the priority on the corresponding version.
-// Will not error if no version exists.
-func (pc *DBPatchConnector) SetPatchPriority(patchId string, priority int64, caller string) error {
-	return model.SetVersionPriority(patchId, priority, caller)
-}
-
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
-func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId string, user string, activated bool, settings *evergreen.Settings) error {
+func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool, settings *evergreen.Settings) error {
 	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
@@ -205,7 +146,8 @@ func (pc *DBPatchConnector) SetPatchActivated(ctx context.Context, patchId strin
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
-func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+// FindPatchesByUser finds patches for the input user as ordered by creation time
+func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
@@ -223,7 +165,9 @@ func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit i
 	return apiPatches, nil
 }
 
-func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+// AbortPatchesFromPullRequest aborts patches with the same PR Number,
+// in the same repository, at the pull request's close time
+func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
 		return err
@@ -241,18 +185,8 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 	return nil
 }
 
-func (p *DBPatchConnector) IsPatchEmpty(id string) (bool, error) {
-	patchDoc, err := patch.FindOne(patch.ByStringId(id).WithFields(patch.PatchesKey))
-	if err != nil {
-		return false, errors.WithStack(err)
-	}
-	if patchDoc == nil {
-		return false, errors.New("patch is empty")
-	}
-	return len(patchDoc.Patches) == 0, nil
-}
-
-func (p *DBPatchConnector) GetPatchRawPatches(patchID string) (map[string]string, error) {
+// GetPatchRawPatches fetches the raw patches for a patch
+func GetPatchRawPatches(patchID string) (map[string]string, error) {
 	patchDoc, err := patch.FindOneId(patchID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{

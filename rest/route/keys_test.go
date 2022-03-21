@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -18,7 +17,6 @@ import (
 )
 
 type UserConnectorSuite struct {
-	sc   *data.DBConnector
 	get  gimlet.RouteHandler
 	post gimlet.RouteHandler
 	suite.Suite
@@ -31,7 +29,6 @@ func TestUserConnectorSuite(t *testing.T) {
 
 func (s *UserConnectorSuite) SetupTest() {
 	s.NoError(db.ClearCollections(user.Collection))
-	s.sc = &data.DBConnector{DBUserConnector: data.DBUserConnector{}}
 	user0 := user.DBUser{
 		Id:     "user0",
 		APIKey: "apikey0",
@@ -55,8 +52,8 @@ func (s *UserConnectorSuite) SetupTest() {
 	}
 	s.NoError(user0.Insert())
 	s.NoError(user1.Insert())
-	s.post = makeSetKey(s.sc)
-	s.get = makeFetchKeys(s.sc)
+	s.post = makeSetKey()
+	s.get = makeFetchKeys()
 }
 
 func (s *UserConnectorSuite) TestGetSSHKeysWithNoUserPanics() {
@@ -159,14 +156,12 @@ func TestKeyValidation(t *testing.T) {
 }
 
 type UserConnectorDeleteSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 	suite.Suite
 }
 
 func (s *UserConnectorDeleteSuite) SetupTest() {
 	s.NoError(db.ClearCollections(user.Collection))
-	s.sc = &data.DBConnector{DBUserConnector: data.DBUserConnector{}}
 	user0 := user.DBUser{
 		Id:     "user0",
 		APIKey: "apikey0",
@@ -191,7 +186,7 @@ func (s *UserConnectorDeleteSuite) SetupTest() {
 	s.NoError(user0.Insert())
 	s.NoError(user1.Insert())
 
-	s.rm = makeDeleteKeys(s.sc)
+	s.rm = makeDeleteKeys()
 }
 
 func (s *UserConnectorDeleteSuite) TestDeleteSSHKeys() {

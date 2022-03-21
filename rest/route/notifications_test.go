@@ -11,7 +11,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -112,8 +111,7 @@ func (s *notificationSuite) SetupTest() {
 }
 
 func (s *notificationSuite) TestStatsCollector() {
-	sc := &data.DBConnector{}
-	h := notificationsStatusHandler{sc: sc}
+	h := notificationsStatusHandler{}
 
 	resp := h.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())

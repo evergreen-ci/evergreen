@@ -532,7 +532,7 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()
 
 	for _, pool := range s.ContainerPools.Pools {
-		d, err := FindOne(ById(pool.Distro))
+		d, err := FindOneId(pool.Distro)
 		if err != nil {
 			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
 		}

@@ -72,10 +72,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.mockSc = &data.MockGitHubConnector{
 		MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{},
 	}
-	s.sc = &data.DBConnector{}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
+
+	s.Require().NoError(commitqueue.InsertQueue(&commitqueue.CommitQueue{ProjectID: "mci"}))
 
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
@@ -104,6 +105,24 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 func TestGithubWebhookRouteSuite(t *testing.T) {
 	s := new(GithubWebhookRouteSuite)
 	suite.Run(t, s)
+}
+
+func (s *GithubWebhookRouteSuite) TestIsItemOnCommitQueue() {
+	pos, err := data.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
+	s.Require().NoError(err)
+	s.Require().Equal(0, pos)
+
+	exists, err := isItemOnCommitQueue("mci", "1")
+	s.NoError(err)
+	s.True(exists)
+
+	exists, err = isItemOnCommitQueue("mci", "2")
+	s.NoError(err)
+	s.False(exists)
+
+	exists, err = isItemOnCommitQueue("not-a-project", "1")
+	s.Error(err)
+	s.False(exists)
 }
 
 func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
@@ -375,10 +394,10 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 
 	// try dequeue works when an item matches
-	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: utility.ToStringPtr("1")}, false)
+	_, err := data.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: utility.ToStringPtr("1")}, false)
 	s.NoError(err)
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
-	queue, err := s.sc.FindCommitQueueForProject("bth")
+	queue, err := data.FindCommitQueueForProject("bth")
 	s.NoError(err)
 	s.Empty(queue.Queue)
 

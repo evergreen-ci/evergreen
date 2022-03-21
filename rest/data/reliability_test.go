@@ -32,7 +32,6 @@ func TestMockGetTaskReliability(t *testing.T) {
 		Id: "project",
 	}
 	require.NoError(t, proj.Insert())
-	mock := TaskReliabilityConnector{}
 	filter := reliability.TaskReliabilityFilter{
 		StatsFilter: stats.StatsFilter{
 			Limit:        100,
@@ -46,7 +45,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 			AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 		},
 	}
-	scores, err := mock.GetTaskReliabilityScores(filter)
+	scores, err := GetTaskReliabilityScores(filter)
 	assert.NoError(err)
 	assert.Len(scores, 0)
 
@@ -82,7 +81,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 		},
 	}
 
-	scores, err = mock.GetTaskReliabilityScores(filter)
+	scores, err = GetTaskReliabilityScores(filter)
 	assert.NoError(err)
 	assert.Len(scores, 100)
 
@@ -128,7 +127,6 @@ func TestGetTaskReliability(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 
-	sc := TaskReliabilityConnector{}
 	filter := reliability.TaskReliabilityFilter{}
 	filter.Project = "projectName"
 	filter.GroupNumDays = 1
@@ -139,7 +137,7 @@ func TestGetTaskReliability(t *testing.T) {
 	filter.BeforeDate = time.Date(2022, 02, 16, 0, 0, 0, 0, time.UTC)
 	filter.Limit = 1
 	filter.Tasks = []string{"t0"}
-	scores, err := sc.GetTaskReliabilityScores(filter)
+	scores, err := GetTaskReliabilityScores(filter)
 
 	assert.NoError(t, err)
 	require.Len(t, scores, 1)

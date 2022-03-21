@@ -13,7 +13,6 @@ import (
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -57,9 +56,7 @@ func TestGetRepoIDHandler(t *testing.T) {
 	}
 	require.NoError(t, repoAlias.Upsert())
 
-	h := repoIDGetHandler{
-		sc: &data.DBConnector{},
-	}
+	h := repoIDGetHandler{}
 	r, err := http.NewRequest("GET", "/repos/repo_ref", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
@@ -160,7 +157,6 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{repoRef.Owner}
 	h := repoIDPatchHandler{
-		sc:       &data.DBConnector{},
 		settings: settings,
 	}
 	body := bytes.NewBuffer([]byte(`{"commit_queue": {"enabled": true}}`))
@@ -322,9 +318,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	settings, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{branchProject.Owner}
-	attachProjectHandler := attachProjectToRepoHandler{
-		sc: &data.DBConnector{},
-	}
+	attachProjectHandler := attachProjectToRepoHandler{}
 	// test that turning on repo settings doesn't impact existing restricted values
 	req, _ := http.NewRequest("POST", "rest/v2/projects/branch2/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch2"})
@@ -376,7 +370,6 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	req = gimlet.SetURLVars(req, map[string]string{"repo_id": repoId})
 
 	repoHandler := repoIDPatchHandler{
-		sc:       &data.DBConnector{},
 		settings: settings,
 	}
 	assert.NoError(t, repoHandler.Parse(ctx, req))
@@ -427,7 +420,6 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
 
 	projectHandler := projectIDPatchHandler{
-		sc:       &data.DBConnector{},
 		settings: settings,
 	}
 	assert.NoError(t, projectHandler.Parse(ctx, req))

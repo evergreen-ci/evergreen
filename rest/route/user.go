@@ -24,19 +24,14 @@ import (
 
 type userSettingsPostHandler struct {
 	settings model.APIUserSettings
-	sc       data.Connector
 }
 
-func makeSetUserConfig(sc data.Connector) gimlet.RouteHandler {
-	return &userSettingsPostHandler{
-		sc: sc,
-	}
+func makeSetUserConfig() gimlet.RouteHandler {
+	return &userSettingsPostHandler{}
 }
 
 func (h *userSettingsPostHandler) Factory() gimlet.RouteHandler {
-	return &userSettingsPostHandler{
-		sc: h.sc,
-	}
+	return &userSettingsPostHandler{}
 }
 
 func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -46,20 +41,19 @@ func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) er
 
 func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
 	userSettings, err := model.UpdateUserSettings(ctx, u, h.settings)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	if err = h.sc.UpdateSettings(u, *userSettings); err != nil {
+	if err = data.UpdateSettings(u, *userSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error saving user settings"))
 	}
 
 	if h.settings.SpruceFeedback != nil {
 		h.settings.SpruceFeedback.SubmittedAt = model.ToTimePtr(time.Now())
 		h.settings.SpruceFeedback.User = utility.ToStringPtr(u.Username())
-		if err = h.sc.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
+		if err = data.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
@@ -92,7 +86,6 @@ func (h *userSettingsGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type userPermissionsPostHandler struct {
-	sc          data.Connector
 	rm          gimlet.RoleManager
 	userID      string
 	permissions RequestedPermissions
@@ -104,16 +97,14 @@ type RequestedPermissions struct {
 	Permissions  gimlet.Permissions `json:"permissions"`
 }
 
-func makeModifyUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+func makeModifyUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
-		sc: sc,
 		rm: rm,
 	}
 }
 
 func (h *userPermissionsPostHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsPostHandler{
-		sc: h.sc,
 		rm: h.rm,
 	}
 }
@@ -140,7 +131,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := h.sc.FindUserById(h.userID)
+	u, err := user.FindOneById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -155,17 +146,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
-	dbuser, valid := u.(*user.DBUser)
-	if !valid {
-		return gimlet.NewTextInternalErrorResponse("unexpected type of user found")
-	}
-	if dbuser == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("no matching DB user for '%s'", h.userID),
-			StatusCode: http.StatusNotFound,
-		})
-	}
-	if err = dbuser.AddRole(newRole.ID); err != nil {
+	if err = u.AddRole(newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
@@ -180,23 +161,20 @@ type deletePermissionsRequest struct {
 const allResourceType = "all"
 
 type userPermissionsDeleteHandler struct {
-	sc           data.Connector
 	rm           gimlet.RoleManager
 	userID       string
 	resourceType string
 	resourceId   string
 }
 
-func makeDeleteUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
-		sc: sc,
 		rm: rm,
 	}
 }
 
 func (h *userPermissionsDeleteHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsDeleteHandler{
-		sc: h.sc,
 		rm: h.rm,
 	}
 }
@@ -224,7 +202,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := h.sc.FindUserById(h.userID)
+	u, err := user.FindOneById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
@@ -234,19 +212,9 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 			StatusCode: http.StatusNotFound,
 		})
 	}
-	dbUser, valid := u.(*user.DBUser)
-	if !valid {
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("user exists, but is of invalid type"))
-	}
-	if dbUser == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("no matching DB user for '%s'", h.userID),
-			StatusCode: http.StatusNotFound,
-		})
-	}
 
 	if h.resourceType == allResourceType {
-		err = dbUser.DeleteAllRoles()
+		err = u.DeleteAllRoles()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error deleting roles",
@@ -286,11 +254,11 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 
 	grip.Info(message.Fields{
 		"removed_roles": rolesToRemove,
-		"user":          dbUser.Id,
+		"user":          u.Id,
 		"resource_type": h.resourceType,
 		"resource_id":   h.resourceId,
 	})
-	err = dbUser.DeleteRoles(rolesToRemove)
+	err = u.DeleteRoles(rolesToRemove)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error deleting roles for user",
@@ -313,21 +281,18 @@ type UsersPermissionsInput struct {
 type UsersPermissionsResult map[string]gimlet.Permissions
 
 type allUsersPermissionsGetHandler struct {
-	sc    data.Connector
 	rm    gimlet.RoleManager
 	input UsersPermissionsInput
 }
 
-func makeGetAllUsersPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
-		sc: sc,
 		rm: rm,
 	}
 }
 
 func (h *allUsersPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &allUsersPermissionsGetHandler{
-		sc: h.sc,
 		rm: h.rm,
 	}
 }
@@ -412,21 +377,18 @@ func getMaxPermissions(p1, p2 gimlet.Permissions) gimlet.Permissions {
 // GET /users/{user_id}/permissions
 
 type userPermissionsGetHandler struct {
-	sc     data.Connector
 	rm     gimlet.RoleManager
 	userID string
 }
 
-func makeGetUserPermissions(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+func makeGetUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userPermissionsGetHandler{
-		sc: sc,
 		rm: rm,
 	}
 }
 
 func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionsGetHandler{
-		sc: h.sc,
 		rm: h.rm,
 	}
 }
@@ -471,23 +433,20 @@ type rolesPostRequest struct {
 }
 
 type userRolesPostHandler struct {
-	sc         data.Connector
 	rm         gimlet.RoleManager
 	userID     string
 	roles      []string
 	createUser bool
 }
 
-func makeModifyUserRoles(sc data.Connector, rm gimlet.RoleManager) gimlet.RouteHandler {
+func makeModifyUserRoles(rm gimlet.RoleManager) gimlet.RouteHandler {
 	return &userRolesPostHandler{
-		sc: sc,
 		rm: rm,
 	}
 }
 
 func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
 	return &userRolesPostHandler{
-		sc: h.sc,
 		rm: h.rm,
 	}
 }
@@ -509,18 +468,11 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := h.sc.FindUserById(h.userID)
+	u, err := user.FindOneById(h.userID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("can't get user for id '%s'", h.userID)})
 	}
-	dbUser, valid := u.(*user.DBUser)
-	if !valid {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "unexpected structure for user",
-			StatusCode: http.StatusInternalServerError,
-		})
-	}
-	if dbUser == nil {
+	if u == nil {
 		if h.createUser {
 			um := evergreen.GetEnvironment().UserManager()
 			newUser := user.DBUser{
@@ -561,7 +513,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	for _, toAdd := range h.roles {
-		if err = dbUser.AddRole(toAdd); err != nil {
+		if err = u.AddRole(toAdd); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to add role",
 				"role":    toAdd,
@@ -581,20 +533,15 @@ type UsersWithRoleResponse struct {
 }
 
 type usersWithRoleGetHandler struct {
-	sc   data.Connector
 	role string
 }
 
-func makeGetUsersWithRole(sc data.Connector) gimlet.RouteHandler {
-	return &usersWithRoleGetHandler{
-		sc: sc,
-	}
+func makeGetUsersWithRole() gimlet.RouteHandler {
+	return &usersWithRoleGetHandler{}
 }
 
 func (h *usersWithRoleGetHandler) Factory() gimlet.RouteHandler {
-	return &usersWithRoleGetHandler{
-		sc: h.sc,
-	}
+	return &usersWithRoleGetHandler{}
 }
 
 func (h *usersWithRoleGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -616,21 +563,18 @@ func (h *usersWithRoleGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type serviceUserPostHandler struct {
-	sc data.Connector
-	u  *model.APIDBUser
+	u *model.APIDBUser
 }
 
-func makeUpdateServiceUser(sc data.Connector) gimlet.RouteHandler {
+func makeUpdateServiceUser() gimlet.RouteHandler {
 	return &serviceUserPostHandler{
-		sc: sc,
-		u:  &model.APIDBUser{},
+		u: &model.APIDBUser{},
 	}
 }
 
 func (h *serviceUserPostHandler) Factory() gimlet.RouteHandler {
 	return &serviceUserPostHandler{
-		sc: h.sc,
-		u:  &model.APIDBUser{},
+		u: &model.APIDBUser{},
 	}
 }
 
@@ -649,7 +593,7 @@ func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.u == nil {
 		return gimlet.NewJSONInternalErrorResponse("error reading request body")
 	}
-	err := h.sc.AddOrUpdateServiceUser(*h.u)
+	err := data.AddOrUpdateServiceUser(*h.u)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -657,20 +601,15 @@ func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type serviceUserDeleteHandler struct {
-	sc       data.Connector
 	username string
 }
 
-func makeDeleteServiceUser(sc data.Connector) gimlet.RouteHandler {
-	return &serviceUserDeleteHandler{
-		sc: sc,
-	}
+func makeDeleteServiceUser() gimlet.RouteHandler {
+	return &serviceUserDeleteHandler{}
 }
 
 func (h *serviceUserDeleteHandler) Factory() gimlet.RouteHandler {
-	return &serviceUserDeleteHandler{
-		sc: h.sc,
-	}
+	return &serviceUserDeleteHandler{}
 }
 
 func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -683,7 +622,7 @@ func (h *serviceUserDeleteHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	err := h.sc.DeleteServiceUser(h.username)
+	err := user.DeleteServiceUser(h.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -692,19 +631,14 @@ func (h *serviceUserDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 type serviceUsersGetHandler struct {
-	sc data.Connector
 }
 
-func makeGetServiceUsers(sc data.Connector) gimlet.RouteHandler {
-	return &serviceUsersGetHandler{
-		sc: sc,
-	}
+func makeGetServiceUsers() gimlet.RouteHandler {
+	return &serviceUsersGetHandler{}
 }
 
 func (h *serviceUsersGetHandler) Factory() gimlet.RouteHandler {
-	return &serviceUsersGetHandler{
-		sc: h.sc,
-	}
+	return &serviceUsersGetHandler{}
 }
 
 func (h *serviceUsersGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -712,7 +646,7 @@ func (h *serviceUsersGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *serviceUsersGetHandler) Run(ctx context.Context) gimlet.Responder {
-	users, err := h.sc.GetServiceUsers()
+	users, err := data.GetServiceUsers()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

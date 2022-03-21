@@ -28,7 +28,6 @@ import (
 // Tests for PATCH /rest/v2/projects/{project_id}
 
 type ProjectPatchByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -50,7 +49,6 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		SystemRoles: []string{"admin"},
 	}
 	s.NoError(user.Insert())
-	s.sc = getProjectsConnector()
 	s.NoError(getTestProjectRef().Add(&user))
 	s.NoError(getTestVar().Insert())
 	aliases := getTestAliases()
@@ -63,7 +61,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	}))
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
-	s.rm = makePatchProjectByID(s.sc, settings).(*projectIDPatchHandler)
+	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
 		ID:    "dimoxinil",
 		Scope: "project_scope",
@@ -134,7 +132,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	vars, err := s.sc.FindProjectVarsById("dimoxinil", "", false)
+	vars, err := data.FindProjectVarsById("dimoxinil", "", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)
@@ -174,7 +172,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status())
-	pRef, err := s.sc.FindProjectById("dimoxinil", false, false)
+	pRef, err := data.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().Equal("EVG", pRef.BuildBaronSettings.TicketCreateProject)
 }
@@ -229,7 +227,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	// verify that the repo fields weren't saved with the branch
-	p, err := s.sc.FindProjectById("dimoxinil", false, false)
+	p, err := data.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.Empty(p.GitTagAuthorizedUsers)
@@ -254,7 +252,7 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err := s.sc.FindProjectById("dimoxinil", true, false)
+	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.False(p.FilesIgnoredFromCache == nil)
 	s.Len(p.FilesIgnoredFromCache, 0)
@@ -287,7 +285,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err := s.sc.FindProjectById("dimoxinil", true, false)
+	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.False(p.PatchTriggerAliases == nil)
 	s.Len(p.PatchTriggerAliases, 1)
@@ -304,7 +302,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err = s.sc.FindProjectById("dimoxinil", true, false)
+	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.NotNil(p.PatchTriggerAliases)
 	s.Len(p.PatchTriggerAliases, 0)
@@ -319,7 +317,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	p, err = s.sc.FindProjectById("dimoxinil", true, false)
+	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.Nil(p.PatchTriggerAliases)
 }
@@ -329,7 +327,6 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 // Tests for PUT /rest/v2/projects/{project_id}
 
 type ProjectPutSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -345,9 +342,8 @@ func TestProjectPutSuite(t *testing.T) {
 
 func (s *ProjectPutSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
-	s.sc = getProjectsConnector()
 	s.NoError(getTestProjectRef().Insert())
-	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
+	s.rm = makePutProjectByID().(*projectIDPutHandler)
 }
 
 func (s *ProjectPutSuite) TestParse() {
@@ -414,7 +410,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusCreated)
 
-	p, err := h.sc.FindProjectById("nutsandgum", false, false)
+	p, err := data.FindProjectById("nutsandgum", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.NotEqual("nutsandgum", p.Id)
@@ -444,7 +440,6 @@ func (s *ProjectPutSuite) TestRunExistingFails() {
 // Tests for GET /rest/v2/projects/{project_id}
 
 type ProjectGetByIDSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -460,10 +455,9 @@ func TestProjectGetByIDSuite(t *testing.T) {
 
 func (s *ProjectGetByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
-	s.sc = getProjectsConnector()
 	s.NoError(getTestProjectRef().Insert())
 	s.NoError(getTestVar().Insert())
-	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
+	s.rm = makeGetProjectByID().(*projectIDGetHandler)
 }
 
 func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
@@ -487,7 +481,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
-	cachedProject, err := s.sc.DBProjectConnector.FindProjectById(h.projectName, false, false)
+	cachedProject, err := data.FindProjectById(h.projectName, false, false)
 	s.NoError(err)
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
@@ -515,7 +509,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
-	sc    *data.DBConnector
 	route *projectGetHandler
 
 	suite.Suite
@@ -530,11 +523,6 @@ func TestProjectGetSuite(t *testing.T) {
 }
 
 func (s *ProjectGetSuite) SetupSuite() {
-
-	s.sc = &data.DBConnector{
-		URL:                "https://evergreen.example.net",
-		DBProjectConnector: data.DBProjectConnector{},
-	}
 	pRefs := []serviceModel.ProjectRef{
 		serviceModel.ProjectRef{
 			Id: "projectA",
@@ -561,7 +549,9 @@ func (s *ProjectGetSuite) SetupSuite() {
 }
 
 func (s *ProjectGetSuite) SetupTest() {
-	s.route = &projectGetHandler{sc: s.sc}
+	s.route = &projectGetHandler{
+		url: "http://evergreen.example.net/",
+	}
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldErrorIfNoResults() {
@@ -607,7 +597,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 }
 
 func (s *ProjectGetSuite) TestGetRecentVersions() {
-	getVersions := makeFetchProjectVersionsLegacy(s.sc)
+	getVersions := makeFetchProjectVersionsLegacy()
 	ctx := context.Background()
 
 	// valid request with defaults
@@ -624,13 +614,6 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
 	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
-}
-
-func getProjectsConnector() *data.DBConnector {
-	connector := data.DBConnector{
-		DBProjectConnector: data.DBProjectConnector{},
-	}
-	return &connector
 }
 
 func getTestVar() *serviceModel.ProjectVars {
@@ -728,7 +711,6 @@ func TestGetProjectVersions(t *testing.T) {
 
 	h := getProjectVersionsHandler{
 		projectName: "something-else",
-		sc:          &data.DBConnector{},
 		opts: serviceModel.GetVersionsOptions{
 			Requester: evergreen.AdHocRequester,
 			Limit:     20,
@@ -813,9 +795,7 @@ func TestDeleteProject(t *testing.T) {
 	_, err := projVars.Upsert()
 	require.NoError(t, err)
 
-	pdh := projectDeleteHandler{
-		sc: &data.DBConnector{},
-	}
+	pdh := projectDeleteHandler{}
 
 	// Test cases:
 	// 0) Project with 2 ProjectAliases and a ProjectVars
@@ -903,9 +883,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/projects/project1/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
 
-	h := attachProjectToRepoHandler{
-		sc: &data.DBConnector{},
-	}
+	h := attachProjectToRepoHandler{}
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
 
 	pRef.RepoRefId = ""
@@ -981,9 +959,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/projects/project1/detach_from_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
 
-	h := detachProjectFromRepoHandler{
-		sc: &data.DBConnector{},
-	}
+	h := detachProjectFromRepoHandler{}
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
 
 	pRef.RepoRefId = repoRef.Id
@@ -1017,7 +993,6 @@ func TestDetachProjectFromRepo(t *testing.T) {
 // Tests for PUT /rest/v2/projects/variables/rotate
 
 type ProjectPutRotateSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -1033,10 +1008,9 @@ func TestProjectPutRotateSuite(t *testing.T) {
 
 func (s *ProjectPutRotateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
-	s.sc = getProjectsConnector()
 	s.NoError(getTestVar().Insert())
 	s.NoError(getTestProjectRef().Insert())
-	s.rm = makeProjectVarsPut(s.sc).(*projectVarsPutHandler)
+	s.rm = makeProjectVarsPut().(*projectVarsPutHandler)
 }
 
 func (s *ProjectPutRotateSuite) TestRotateProjectVars() {

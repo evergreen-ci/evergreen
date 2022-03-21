@@ -4,41 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
-// DBHostConnector is a struct that implements the Host related methods
-// from the Connector through interactions with the backing database.
-type DBHostConnector struct{}
-
-// FindHostsById uses the service layer's host type to query the backing database for
-// the hosts.
-func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
-	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
-	if err != nil {
-		return nil, err
-	}
-	if len(hostRes) == 0 {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "no hosts found",
-		}
-	}
-	return hostRes, nil
-}
-
-func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
+func FindHostsInRange(apiParams restmodel.APIHostParams, username string) ([]host.Host, error) {
 	params := host.HostsInRangeParams{
 		CreatedBefore: apiParams.CreatedBefore,
 		CreatedAfter:  apiParams.CreatedAfter,
@@ -57,53 +33,9 @@ func (hc *DBHostConnector) FindHostsInRange(apiParams restmodel.APIHostParams, u
 	return hostRes, nil
 }
 
-// FindHostById queries the database for the host with id matching the hostId
-func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
-	h, err := host.FindOne(host.ById(id))
-	if err != nil {
-		return nil, err
-	}
-
-	return h, nil
-}
-
-// FindHostByIP queries the database for the host with ip matching the ip address
-func (hc *DBHostConnector) FindHostByIpAddress(ip string) (*host.Host, error) {
-	h, err := host.FindOne(host.ByIP(ip))
-	if err != nil {
-		return nil, err
-	}
-
-	return h, nil
-}
-
-func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
-	return findHostByIdWithOwner(dbc, hostID, user)
-}
-
-func (hc *DBHostConnector) FindHostsByDistro(distro string) ([]host.Host, error) {
-	return host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(distro)))
-}
-
-func (hc *DBConnector) GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]host.Host, *int, int, error) {
-	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(hostID, distroID, currentTaskID, statuses, startedBy, sortBy, sortDir, page, limit)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	return hosts, filteredHostsCount, totalHostsCount, nil
-}
-
-func (hc *DBConnector) GetHostByIdOrTagWithTask(hostID string) (*host.Host, error) {
-	host, err := host.GetHostByIdOrTagWithTask(hostID)
-	if err != nil {
-		return nil, err
-	}
-	return host, nil
-}
-
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
+func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, user *user.DBUser,
 	settings *evergreen.Settings) (*host.Host, error) {
 
 	// Get key value if PublicKey is a name
@@ -151,58 +83,9 @@ func (hc *DBHostConnector) NewIntentHost(ctx context.Context, options *restmodel
 	return intentHost, nil
 }
 
-func (hc *DBHostConnector) SetHostStatus(host *host.Host, status, user string) error {
-	return host.SetStatus(status, user, fmt.Sprintf("changed by %s from API", user))
-}
-
-func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
-	if err := host.SetExpirationTime(newExp); err != nil {
-		return errors.Wrap(err, "Error extending host expiration time")
-	}
-
-	return nil
-}
-
-func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
-	return errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), host, user, "terminated via REST API"))
-}
-
-// DisableHost disables the host, notifies it's been disabled,
-// and clears and resets its running task.
-func (hc *DBHostConnector) DisableHost(ctx context.Context, env evergreen.Environment, host *host.Host, reason string) error {
-	return units.HandlePoisonedHost(ctx, env, host, reason)
-}
-
-func (hc *DBHostConnector) CheckHostSecret(hostID string, r *http.Request) (int, error) {
-	_, code, err := model.ValidateHost(hostID, r)
-	return code, errors.WithStack(err)
-}
-
-func (hc *DBHostConnector) FindVolumeById(volumeID string) (*host.Volume, error) {
-	return host.FindVolumeByID(volumeID)
-}
-
-func (hc *DBHostConnector) FindVolumesByUser(user string) ([]host.Volume, error) {
-	return host.FindVolumesByUser(user)
-}
-
-func (hc *DBHostConnector) SetVolumeName(v *host.Volume, name string) error {
-	return v.SetDisplayName(name)
-}
-
-func (hc *DBHostConnector) FindHostWithVolume(volumeID string) (*host.Host, error) {
-	return host.FindHostWithVolume(volumeID)
-}
-
-func (hc *DBHostConnector) AggregateSpawnhostData() (*host.SpawnHostUsage, error) {
-	data, err := host.AggregateSpawnhostData()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting spawn host data")
-	}
-	return data, nil
-}
-
-func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
+// GenerateHostProvisioningScript generates and returns the script to
+// provision the host given by host ID.
+func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
 	if hostID == "" {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -247,24 +130,28 @@ func (hc *DBHostConnector) GenerateHostProvisioningScript(ctx context.Context, h
 	return script, nil
 }
 
-func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
-	host, err := c.FindHostById(hostID)
+// FindHostByIdWithOwner finds a host with given host ID that was
+// started by the given user. If the given user is a super-user,
+// the host will also be returned regardless of who the host was
+// started by
+func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
+	hostById, err := host.FindOneId(hostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
 		}
 	}
-	if host == nil {
+	if hostById == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
 		}
 	}
 
-	if user.Username() != host.StartedBy {
+	if user.Username() != hostById.StartedBy {
 		if !user.HasPermission(gimlet.PermissionOpts{
-			Resource:      host.Distro.Id,
+			Resource:      hostById.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
 			RequiredLevel: evergreen.HostsEdit.Value,
@@ -276,5 +163,5 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 		}
 	}
 
-	return host, nil
+	return hostById, nil
 }

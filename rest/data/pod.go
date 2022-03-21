@@ -13,12 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBPodConnector implements the pod-related methods from the connector via
-// interactions with the database.
-type DBPodConnector struct{}
-
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func (c *DBPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
+func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 	dbPod, err := apiPod.ToService()
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -40,7 +36,7 @@ func (c *DBPodConnector) CreatePod(apiPod model.APICreatePod) (*model.APICreateP
 // CheckPodSecret checks for a pod with a matching ID and secret in the
 // database. It returns an error if the secret does not match the one assigned
 // to the pod.
-func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
+func CheckPodSecret(id, secret string) error {
 	p, err := pod.FindOneByID(id)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -72,7 +68,7 @@ func (c *DBPodConnector) CheckPodSecret(id, secret string) error {
 
 // FindPodByID finds a pod by the given ID. It returns a nil result if no such
 // pod is found.
-func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
+func FindPodByID(id string) (*model.APIPod, error) {
 	p, err := pod.FindOneByID(id)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -95,7 +91,7 @@ func (c *DBPodConnector) FindPodByID(id string) (*model.APIPod, error) {
 
 // FindPodByExternalID finds a pod by its external identifier. It returns a nil
 // result if no such pod is found.
-func (c *DBPodConnector) FindPodByExternalID(id string) (*model.APIPod, error) {
+func FindPodByExternalID(id string) (*model.APIPod, error) {
 	p, err := pod.FindOneByExternalID(id)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -119,7 +115,7 @@ func (c *DBPodConnector) FindPodByExternalID(id string) (*model.APIPod, error) {
 
 // UpdatePodStatus updates the pod status from the current status to the updated
 // one.
-func (c *DBPodConnector) UpdatePodStatus(id string, apiCurrent, apiUpdated restModel.APIPodStatus) error {
+func UpdatePodStatus(id string, apiCurrent, apiUpdated restModel.APIPodStatus) error {
 	current, err := apiCurrent.ToService()
 	if err != nil {
 		return gimlet.ErrorResponse{

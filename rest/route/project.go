@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -27,19 +28,15 @@ type projectGetHandler struct {
 	key   string
 	limit int
 	user  *user.DBUser
-	sc    data.Connector
+	url   string
 }
 
-func makeFetchProjectsRoute(sc data.Connector) gimlet.RouteHandler {
-	return &projectGetHandler{
-		sc: sc,
-	}
+func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
+	return &projectGetHandler{url: url}
 }
 
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
-	return &projectGetHandler{
-		sc: p.sc,
-	}
+	return &projectGetHandler{url: p.url}
 }
 
 func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -58,7 +55,7 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projects, err := p.sc.FindProjects(p.key, p.limit+1, 1)
+	projects, err := dbModel.FindProjects(p.key, p.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -84,7 +81,7 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         p.sc.GetURL(),
+				BaseURL:         p.url,
 				Key:             projects[p.limit].Id,
 				Limit:           p.limit,
 			},
@@ -117,19 +114,14 @@ type legacyVersionsGetHandler struct {
 	project string
 	limit   int
 	offset  int
-	sc      data.Connector
 }
 
-func makeFetchProjectVersionsLegacy(sc data.Connector) gimlet.RouteHandler {
-	return &legacyVersionsGetHandler{
-		sc: sc,
-	}
+func makeFetchProjectVersionsLegacy() gimlet.RouteHandler {
+	return &legacyVersionsGetHandler{}
 }
 
 func (h *legacyVersionsGetHandler) Factory() gimlet.RouteHandler {
-	return &legacyVersionsGetHandler{
-		sc: h.sc,
-	}
+	return &legacyVersionsGetHandler{}
 }
 
 func (h *legacyVersionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -183,7 +175,7 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	versions, err := h.sc.GetVersionsAndVariants(h.offset, h.limit, proj)
+	versions, err := data.GetVersionsAndVariants(h.offset, h.limit, proj)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving versions"))
 	}
@@ -198,20 +190,14 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 type attachProjectToRepoHandler struct {
 	project *dbModel.ProjectRef
 	user    *user.DBUser
-
-	sc data.Connector
 }
 
-func makeAttachProjectToRepoHandler(sc data.Connector) gimlet.RouteHandler {
-	return &attachProjectToRepoHandler{
-		sc: sc,
-	}
+func makeAttachProjectToRepoHandler() gimlet.RouteHandler {
+	return &attachProjectToRepoHandler{}
 }
 
 func (h *attachProjectToRepoHandler) Factory() gimlet.RouteHandler {
-	return &attachProjectToRepoHandler{
-		sc: h.sc,
-	}
+	return &attachProjectToRepoHandler{}
 }
 
 // Parse fetches the project's identifier from the http request.
@@ -220,7 +206,7 @@ func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request)
 	h.user = MustHaveUser(ctx)
 
 	var err error
-	h.project, err = h.sc.FindProjectById(projectIdentifier, false, false)
+	h.project, err = data.FindProjectById(projectIdentifier, false, false)
 	if err != nil {
 		return errors.Wrap(err, "error finding project")
 	}
@@ -248,20 +234,14 @@ func (h *attachProjectToRepoHandler) Run(ctx context.Context) gimlet.Responder {
 type detachProjectFromRepoHandler struct {
 	project *dbModel.ProjectRef
 	user    *user.DBUser
-
-	sc data.Connector
 }
 
-func makeDetachProjectFromRepoHandler(sc data.Connector) gimlet.RouteHandler {
-	return &detachProjectFromRepoHandler{
-		sc: sc,
-	}
+func makeDetachProjectFromRepoHandler() gimlet.RouteHandler {
+	return &detachProjectFromRepoHandler{}
 }
 
 func (h *detachProjectFromRepoHandler) Factory() gimlet.RouteHandler {
-	return &detachProjectFromRepoHandler{
-		sc: h.sc,
-	}
+	return &detachProjectFromRepoHandler{}
 }
 
 // Parse fetches the project's identifier from the http request.
@@ -270,7 +250,7 @@ func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Reques
 	h.user = MustHaveUser(ctx)
 
 	var err error
-	h.project, err = h.sc.FindProjectById(projectIdentifier, false, false)
+	h.project, err = data.FindProjectById(projectIdentifier, false, false)
 	if err != nil {
 		return errors.Wrap(err, "error finding project")
 	}
@@ -302,20 +282,17 @@ type projectIDPatchHandler struct {
 	originalProject  *dbModel.ProjectRef
 	apiNewProjectRef *model.APIProjectRef
 
-	sc       data.Connector
 	settings *evergreen.Settings
 }
 
-func makePatchProjectByID(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
+func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
 	return &projectIDPatchHandler{
-		sc:       sc,
 		settings: settings,
 	}
 }
 
 func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &projectIDPatchHandler{
-		sc:       h.sc,
 		settings: h.settings,
 	}
 }
@@ -331,7 +308,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrap(err, "Argument read error")
 	}
 
-	oldProject, err := h.sc.FindProjectById(h.project, false, false)
+	oldProject, err := data.FindProjectById(h.project, false, false)
 	if err != nil {
 		return errors.Wrap(err, "error finding original project")
 	}
@@ -390,7 +367,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	before, err := h.sc.GetProjectSettings(h.newProjectRef)
+	before, err := dbModel.GetProjectSettings(h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings before update for project'%s'", h.project))
 	}
@@ -417,14 +394,14 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.newProjectRef.IsEnabled() {
 		var hasHook bool
-		hasHook, err = h.sc.EnableWebhooks(ctx, h.newProjectRef)
+		hasHook, err = dbModel.EnableWebhooks(ctx, h.newProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.project))
 		}
 
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
-			allAliases, err = h.sc.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases)
+			allAliases, err = data.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases)
 			if err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error checking existing patch definitions"))
 			}
@@ -446,7 +423,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 
-			if err = h.sc.EnablePRTesting(h.newProjectRef); err != nil {
+			if err = canEnablePRTesting(h.newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.project))
 			}
 		}
@@ -486,7 +463,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    "cannot enable commit queue without a commit queue patch definition",
 				})
 			}
-			if err = h.sc.EnableCommitQueue(h.newProjectRef); err != nil {
+			if err = canEnableCommitQueue(h.newProjectRef); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.project))
 			}
 		}
@@ -515,7 +492,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
-		if err = h.sc.UpdateProjectRevision(h.project, newRevision); err != nil {
+		if err = dbModel.UpdateProjectRevision(h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		h.newProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
@@ -547,23 +524,26 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = h.sc.UpdateProject(h.newProjectRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.project))
+	if err = h.newProjectRef.Update(); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("project with id '%s' was not updated", h.newProjectRef.Id),
+		})
 	}
-	if err = h.sc.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
+	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.project))
 	}
-	if err = h.sc.UpdateProjectAliases(h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
+	if err = data.UpdateProjectAliases(h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.project))
 	}
 
-	if err = h.sc.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
+	if err = dbModel.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error updating admins for project '%s'", h.project))
 	}
 
 	// Don't use Save to delete subscriptions, since we aren't checking the
 	// delete subscriptions list against the inputted list of subscriptions.
-	if err = h.sc.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
+	if err = data.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.project))
 	}
 
@@ -571,11 +551,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, deleteSub := range h.apiNewProjectRef.DeleteSubscriptions {
 		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
-	if err = h.sc.DeleteSubscriptions(h.newProjectRef.Id, toDelete); err != nil {
+	if err = data.DeleteSubscriptions(h.newProjectRef.Id, toDelete); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.project))
 	}
 
-	after, err := h.sc.GetProjectSettings(h.newProjectRef)
+	after, err := dbModel.GetProjectSettings(h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting ProjectSettings after update for project '%s'", h.project))
 	}
@@ -615,6 +595,30 @@ func hasAliasDefined(aliases []model.APIProjectAlias, alias string) bool {
 	return false
 }
 
+// canEnableCommitQueue determines if commit queue can be enabled for the given project.
+func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
+	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
+		return errors.Wrap(err, "error enabling commit queue")
+	} else if !ok {
+		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
+	}
+
+	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
+}
+
+// canEnablePRTesting determines if PR testing can be enabled for the given project.
+func canEnablePRTesting(projectRef *dbModel.ProjectRef) error {
+	conflicts, err := projectRef.GetGithubProjectConflicts()
+	if err != nil {
+		return errors.Wrap(err, "error finding project refs")
+	}
+	if len(conflicts.PRTestingIdentifiers) > 0 {
+		return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
+
+	}
+	return nil
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // PUT /rest/v2/projects/{project_id}
@@ -622,19 +626,14 @@ func hasAliasDefined(aliases []model.APIProjectAlias, alias string) bool {
 type projectIDPutHandler struct {
 	projectName string
 	body        []byte
-	sc          data.Connector
 }
 
-func makePutProjectByID(sc data.Connector) gimlet.RouteHandler {
-	return &projectIDPutHandler{
-		sc: sc,
-	}
+func makePutProjectByID() gimlet.RouteHandler {
+	return &projectIDPutHandler{}
 }
 
 func (h *projectIDPutHandler) Factory() gimlet.RouteHandler {
-	return &projectIDPutHandler{
-		sc: h.sc,
-	}
+	return &projectIDPutHandler{}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
@@ -654,7 +653,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := h.sc.FindProjectById(h.projectName, false, false)
+	p, err := data.FindProjectById(h.projectName, false, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project '%s'", h.projectName))
 	}
@@ -688,7 +687,7 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err = h.sc.CreateProject(dbProjectRef, u); err != nil {
+	if err = data.CreateProject(dbProjectRef, u); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for insert() project with project name '%s'", h.projectName))
 	}
 
@@ -701,19 +700,14 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectRepotrackerHandler struct {
 	projectName string
-	sc          data.Connector
 }
 
-func makeRunRepotrackerForProject(sc data.Connector) gimlet.RouteHandler {
-	return &projectRepotrackerHandler{
-		sc: sc,
-	}
+func makeRunRepotrackerForProject() gimlet.RouteHandler {
+	return &projectRepotrackerHandler{}
 }
 
 func (h *projectRepotrackerHandler) Factory() gimlet.RouteHandler {
-	return &projectRepotrackerHandler{
-		sc: h.sc,
-	}
+	return &projectRepotrackerHandler{}
 }
 
 func (h *projectRepotrackerHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -743,19 +737,14 @@ func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectDeleteHandler struct {
 	projectName string
-	sc          data.Connector
 }
 
-func makeDeleteProject(sc data.Connector) gimlet.RouteHandler {
-	return &projectDeleteHandler{
-		sc: sc,
-	}
+func makeDeleteProject() gimlet.RouteHandler {
+	return &projectDeleteHandler{}
 }
 
 func (h *projectDeleteHandler) Factory() gimlet.RouteHandler {
-	return &projectDeleteHandler{
-		sc: h.sc,
-	}
+	return &projectDeleteHandler{}
 }
 
 func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -793,7 +782,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = skeletonProj.Update(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "project '%s' could not be updated", project.Id))
 	}
-	if err = h.sc.UpdateAdminRoles(project, nil, project.Admins); err != nil {
+	if err = dbModel.UpdateAdminRoles(project, nil, project.Admins); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error removing project auth for admins"))
 	}
 
@@ -827,19 +816,14 @@ type projectIDGetHandler struct {
 	projectName          string
 	includeRepo          bool
 	includeParserProject bool
-	sc                   data.Connector
 }
 
-func makeGetProjectByID(sc data.Connector) gimlet.RouteHandler {
-	return &projectIDGetHandler{
-		sc: sc,
-	}
+func makeGetProjectByID() gimlet.RouteHandler {
+	return &projectIDGetHandler{}
 }
 
 func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
-	return &projectIDGetHandler{
-		sc: h.sc,
-	}
+	return &projectIDGetHandler{}
 }
 
 func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -850,7 +834,7 @@ func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := h.sc.FindProjectById(h.projectName, h.includeRepo, h.includeParserProject)
+	project, err := data.FindProjectById(h.projectName, h.includeRepo, h.includeParserProject)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -871,15 +855,15 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.includeRepo {
 		repoId = project.RepoRefId
 	}
-	variables, err := h.sc.FindProjectVarsById(project.Id, repoId, true)
+	variables, err := data.FindProjectVarsById(project.Id, repoId, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = h.sc.FindProjectAliases(project.Id, repoId, nil); err != nil {
+	if projectModel.Aliases, err = data.FindProjectAliases(project.Id, repoId, nil); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	if projectModel.Subscriptions, err = h.sc.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
+	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(projectModel)
@@ -894,20 +878,15 @@ const defaultVersionLimit = 20
 type getProjectVersionsHandler struct {
 	projectName string
 	opts        dbModel.GetVersionsOptions
-
-	sc data.Connector
+	url         string
 }
 
-func makeGetProjectVersionsHandler(sc data.Connector) gimlet.RouteHandler {
-	return &getProjectVersionsHandler{
-		sc: sc,
-	}
+func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
+	return &getProjectVersionsHandler{url: url}
 }
 
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
-	return &getProjectVersionsHandler{
-		sc: h.sc,
-	}
+	return &getProjectVersionsHandler{url: h.url}
 }
 
 func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -968,7 +947,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := h.sc.GetProjectVersionsWithOptions(h.projectName, h.opts)
+	versions, err := data.GetProjectVersionsWithOptions(h.projectName, h.opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting versions"))
 	}
@@ -984,7 +963,7 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
-				BaseURL:         h.sc.GetURL(),
+				BaseURL:         h.url,
 				Key:             strconv.Itoa(versions[len(versions)-1].Order),
 				Limit:           h.opts.Limit,
 			},
@@ -1002,20 +981,14 @@ type GetProjectAliasResultsHandler struct {
 	version             string
 	alias               string
 	includeDependencies bool
-
-	sc data.Connector
 }
 
-func makeGetProjectAliasResultsHandler(sc data.Connector) gimlet.RouteHandler {
-	return &GetProjectAliasResultsHandler{
-		sc: sc,
-	}
+func makeGetProjectAliasResultsHandler() gimlet.RouteHandler {
+	return &GetProjectAliasResultsHandler{}
 }
 
 func (p *GetProjectAliasResultsHandler) Factory() gimlet.RouteHandler {
-	return &GetProjectAliasResultsHandler{
-		sc: p.sc,
-	}
+	return &GetProjectAliasResultsHandler{}
 }
 
 func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1042,8 +1015,7 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.New("unable to get project from version"))
 	}
-
-	variantTasks, err := p.sc.GetProjectAliasResults(proj, p.alias, p.includeDependencies)
+	variantTasks, err := data.GetProjectAliasResults(proj, p.alias, p.includeDependencies)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -1058,19 +1030,14 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 //    /projects/{project_id}/patch_trigger_aliases
 type GetPatchTriggerAliasHandler struct {
 	projectID string
-	sc        data.Connector
 }
 
-func makeFetchPatchTriggerAliases(sc data.Connector) gimlet.RouteHandler {
-	return &GetPatchTriggerAliasHandler{
-		sc: sc,
-	}
+func makeFetchPatchTriggerAliases() gimlet.RouteHandler {
+	return &GetPatchTriggerAliasHandler{}
 }
 
 func (p *GetPatchTriggerAliasHandler) Factory() gimlet.RouteHandler {
-	return &GetPatchTriggerAliasHandler{
-		sc: p.sc,
-	}
+	return &GetPatchTriggerAliasHandler{}
 }
 
 func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1106,19 +1073,14 @@ func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder 
 
 type projectParametersGetHandler struct {
 	projectName string
-	sc          data.Connector
 }
 
-func makeFetchParameters(sc data.Connector) gimlet.RouteHandler {
-	return &projectParametersGetHandler{
-		sc: sc,
-	}
+func makeFetchParameters() gimlet.RouteHandler {
+	return &projectParametersGetHandler{}
 }
 
 func (h *projectParametersGetHandler) Factory() gimlet.RouteHandler {
-	return &projectParametersGetHandler{
-		sc: h.sc,
-	}
+	return &projectParametersGetHandler{}
 }
 
 func (h *projectParametersGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1168,20 +1130,14 @@ type projectVarsPutInput struct {
 type projectVarsPutHandler struct {
 	replaceVars *projectVarsPutInput
 	user        *user.DBUser
-
-	sc data.Connector
 }
 
-func makeProjectVarsPut(sc data.Connector) gimlet.RouteHandler {
-	return &projectVarsPutHandler{
-		sc: sc,
-	}
+func makeProjectVarsPut() gimlet.RouteHandler {
+	return &projectVarsPutHandler{}
 }
 
 func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
-	return &projectVarsPutHandler{
-		sc: h.sc,
-	}
+	return &projectVarsPutHandler{}
 }
 
 // Parse fetches the project's identifier from the http request.
@@ -1208,7 +1164,7 @@ func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := h.sc.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
+	res, err := dbModel.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err,
 			"error updating projects with matching keys"))

@@ -15,7 +15,6 @@ import (
 )
 
 type AliasSuite struct {
-	sc *DBConnector
 	suite.Suite
 }
 
@@ -28,7 +27,6 @@ func TestAliasSuite(t *testing.T) {
 }
 
 func (a *AliasSuite) SetupTest() {
-	a.sc = &DBConnector{}
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
 	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
@@ -76,23 +74,23 @@ func (a *AliasSuite) SetupTest() {
 }
 
 func (a *AliasSuite) TestFindProjectAliases() {
-	found, err := a.sc.FindProjectAliases("project_id", "", nil)
+	found, err := FindProjectAliases("project_id", "", nil)
 	a.NoError(err)
 	a.Len(found, 3)
 
-	found, err = a.sc.FindProjectAliases("project_id", "repo_id", nil)
+	found, err = FindProjectAliases("project_id", "repo_id", nil)
 	a.NoError(err)
 	a.Len(found, 3) // ignore repo
 
-	found, err = a.sc.FindProjectAliases("non-existent", "", nil)
+	found, err = FindProjectAliases("non-existent", "", nil)
 	a.NoError(err)
 	a.Len(found, 0)
 
-	found, err = a.sc.FindProjectAliases("non-existent", "repo_id", nil)
+	found, err = FindProjectAliases("non-existent", "repo_id", nil)
 	a.NoError(err)
 	a.Len(found, 1) // from repo
 
-	found, err = a.sc.FindProjectAliases("", "repo_id", nil)
+	found, err = FindProjectAliases("", "repo_id", nil)
 	a.NoError(err)
 	a.Len(found, 1)
 
@@ -100,24 +98,24 @@ func (a *AliasSuite) TestFindProjectAliases() {
 }
 
 func (a *AliasSuite) TestCopyProjectAliases() {
-	res, err := a.sc.FindProjectAliases("new_project_id", "", nil)
+	res, err := FindProjectAliases("new_project_id", "", nil)
 	a.NoError(err)
 	a.Len(res, 0)
 
-	a.NoError(a.sc.CopyProjectAliases("project_id", "new_project_id"))
+	a.NoError(model.CopyProjectAliases("project_id", "new_project_id"))
 
-	res, err = a.sc.FindProjectAliases("project_id", "", nil)
+	res, err = FindProjectAliases("project_id", "", nil)
 	a.NoError(err)
 	a.Len(res, 3)
 
-	res, err = a.sc.FindProjectAliases("new_project_id", "", nil)
+	res, err = FindProjectAliases("new_project_id", "", nil)
 	a.NoError(err)
 	a.Len(res, 3)
 
 }
 
 func (a *AliasSuite) TestUpdateProjectAliases() {
-	found, err := a.sc.FindProjectAliases("other_project_id", "", nil)
+	found, err := FindProjectAliases("other_project_id", "", nil)
 	a.NoError(err)
 	a.Require().Len(found, 2)
 	toUpdate := found[0]
@@ -133,8 +131,8 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 			Variant: utility.ToStringPtr("new_variant"),
 		},
 	}
-	a.NoError(a.sc.UpdateProjectAliases("other_project_id", aliasUpdates))
-	found, err = a.sc.FindProjectAliases("other_project_id", "", nil)
+	a.NoError(UpdateProjectAliases("other_project_id", aliasUpdates))
+	found, err = FindProjectAliases("other_project_id", "", nil)
 	a.NoError(err)
 	a.Require().Len(found, 2) // added one alias, deleted another
 
@@ -165,19 +163,19 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		RemotePath: "file.yml",
 	}
 	a.NoError(newAlias2.Upsert())
-	hasAliases, path, err := a.sc.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	hasAliases, path, err := model.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
 	a.Error(err)
 	a.False(hasAliases)
 	a.Empty(path)
 
 	newAlias2.RemotePath = ""
 	a.NoError(newAlias2.Upsert())
-	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	hasAliases, path, err = model.HasMatchingGitTagAliasAndRemotePath("project_id", "release")
 	a.NoError(err)
 	a.True(hasAliases)
 	a.Empty(path)
 
-	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	hasAliases, path, err = model.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
 	a.Error(err)
 	a.False(hasAliases)
 	a.Empty(path)
@@ -189,7 +187,7 @@ func (a *AliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		RemotePath: "file.yml",
 	}
 	a.NoError(newAlias3.Upsert())
-	hasAliases, path, err = a.sc.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	hasAliases, path, err = model.HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
 	a.NoError(err)
 	a.True(hasAliases)
 	a.Equal("file.yml", path)
@@ -221,7 +219,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
 	a.NoError(err)
 	a.True(modified)
 
@@ -236,7 +234,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = a.sc.UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
+	modified, err = UpdateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProjectFromDb("project_id")

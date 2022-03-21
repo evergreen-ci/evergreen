@@ -7,9 +7,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type SchedulerConnector struct{}
-
-func (s *SchedulerConnector) CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
+// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
+func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
 	if len(taskIds) == 0 {
 		return nil, nil, nil
 	}

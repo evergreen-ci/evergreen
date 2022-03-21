@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +63,7 @@ func TestGenerateExecute(t *testing.T) {
 		Id: "task1",
 	}
 	require.NoError(t, task1.Insert())
-	h := &generateHandler{sc: &data.DBConnector{}}
+	h := &generateHandler{}
 	h.taskID = "task1"
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})
@@ -77,9 +76,6 @@ func TestGeneratePollParse(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
-
-	sc := &data.DBConnector{}
-
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
@@ -93,7 +89,7 @@ func TestGeneratePollParse(t *testing.T) {
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
 
-	h := makeGenerateTasksPollHandler(sc, q)
+	h := makeGenerateTasksPollHandler(q)
 	require.NoError(t, h.Parse(ctx, r))
 }
 
@@ -102,7 +98,6 @@ func TestGeneratePollRun(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
-	sc := &data.DBConnector{}
 	require.NoError(t, db.ClearCollections(task.Collection))
 	tasks := []task.Task{
 		{
@@ -121,7 +116,7 @@ func TestGeneratePollRun(t *testing.T) {
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
 
-	h := makeGenerateTasksPollHandler(sc, q)
+	h := makeGenerateTasksPollHandler(q)
 
 	impl, ok := h.(*generatePollHandler)
 	require.True(t, ok)

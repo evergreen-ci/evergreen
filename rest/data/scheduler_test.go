@@ -69,19 +69,18 @@ func TestCompareTasks(t *testing.T) {
 	}
 	assert.NoError(t, cqVersion.Insert())
 
-	s := &SchedulerConnector{}
-	order, logic, err := s.CompareTasks([]string{"t1", "t2"}, true)
+	order, logic, err := CompareTasks([]string{"t1", "t2"}, true)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"t2", "t1"}, order)
 	assert.Equal(t, "task priority: higher is first", logic[t1.Id][t2.Id])
 
-	order, logic, err = s.CompareTasks([]string{"t1", "t2", "t3"}, true)
+	order, logic, err = CompareTasks([]string{"t1", "t2", "t3"}, true)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"t3", "t2", "t1"}, order)
 	assert.Equal(t, "task generator: higher task is a generator", logic[t2.Id][t3.Id])
 	assert.Equal(t, "task priority: higher is first", logic[t1.Id][t2.Id])
 
-	order, logic, err = s.CompareTasks([]string{"t1", "t2", "t3", "cqt1"}, true)
+	order, logic, err = CompareTasks([]string{"t1", "t2", "t3", "cqt1"}, true)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"cqt1", "t3", "t2", "t1"}, order)
 	//TODO: change the assertion below once tracing for the zippering logic is implemented

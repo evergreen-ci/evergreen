@@ -5,27 +5,21 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
-func makeSetServiceFlagsRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &flagsPostHandler{
-		sc: sc,
-	}
+func makeSetServiceFlagsRouteManager() gimlet.RouteHandler {
+	return &flagsPostHandler{}
 }
 
 type flagsPostHandler struct {
 	Flags model.APIServiceFlags `json:"service_flags"`
-	sc    data.Connector
 }
 
 func (h *flagsPostHandler) Factory() gimlet.RouteHandler {
-	return &flagsPostHandler{
-		sc: h.sc,
-	}
+	return &flagsPostHandler{}
 }
 
 func (h *flagsPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -33,13 +27,12 @@ func (h *flagsPostHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *flagsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u := MustHaveUser(ctx)
 	flags, err := h.Flags.ToService()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	err = h.sc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
+	err = evergreen.SetServiceFlags(flags.(evergreen.ServiceFlags))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -91,11 +90,10 @@ func TestPostPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			p := makePostPod(env, sc)
+			p := makePostPod(env)
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podPostHandler))
@@ -109,8 +107,8 @@ func TestGetPod(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(pod.Collection))
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler){
-		"RunSucceeds": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podGetHandler){
+		"RunSucceeds": func(ctx context.Context, t *testing.T, ph *podGetHandler) {
 			podID := "id"
 
 			podToInsert := pod.Pod{
@@ -132,7 +130,7 @@ func TestGetPod(t *testing.T) {
 			assert.Equal(t, model.PodTypeAgent, apiPod.Type)
 			assert.Equal(t, model.PodStatusRunning, apiPod.Status)
 		},
-		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, sc *data.DBConnector, ph *podGetHandler) {
+		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, ph *podGetHandler) {
 			ph.podID = "nonexistent"
 			resp := ph.Run(ctx)
 			require.NotZero(t, resp)
@@ -144,14 +142,13 @@ func TestGetPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sc := &data.DBConnector{}
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			p := makeGetPod(env, sc)
+			p := makeGetPod(env)
 			require.NotZero(t, p)
 
-			tCase(ctx, t, sc, p.(*podGetHandler))
+			tCase(ctx, t, p.(*podGetHandler))
 		})
 	}
 }

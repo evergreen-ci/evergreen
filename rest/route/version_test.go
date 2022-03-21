@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -21,7 +20,6 @@ import (
 
 // VersionSuite enables testing for version related routes.
 type VersionSuite struct {
-	sc     *data.DBConnector
 	bv, bi []string // build variants and build indices for testing
 
 	suite.Suite
@@ -90,11 +88,6 @@ func (s *VersionSuite) SetupSuite() {
 		Version:      versionId,
 		BuildVariant: s.bv[1],
 	}
-
-	s.sc = &data.DBConnector{
-		DBVersionConnector: data.DBVersionConnector{},
-		DBBuildConnector:   data.DBBuildConnector{},
-	}
 	versions := []serviceModel.Version{testVersion1}
 
 	tasks := []task.Task{
@@ -117,7 +110,7 @@ func (s *VersionSuite) SetupSuite() {
 
 // TestFindByVersionId tests the route for finding version by its ID.
 func (s *VersionSuite) TestFindByVersionId() {
-	handler := &versionHandler{versionId: "versionId", sc: s.sc}
+	handler := &versionHandler{versionId: "versionId"}
 	res := handler.Run(context.TODO())
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
@@ -137,7 +130,7 @@ func (s *VersionSuite) TestFindByVersionId() {
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
 func (s *VersionSuite) TestFindAllBuildsForVersion() {
-	handler := &buildsForVersionHandler{versionId: "versionId", sc: s.sc}
+	handler := &buildsForVersionHandler{versionId: "versionId"}
 	res := handler.Run(context.TODO())
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
@@ -158,7 +151,7 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 }
 
 func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
-	handler := &buildsForVersionHandler{versionId: "versionId", sc: s.sc}
+	handler := &buildsForVersionHandler{versionId: "versionId"}
 
 	for i, variant := range s.bv {
 		handler.variant = variant
@@ -181,7 +174,7 @@ func (s *VersionSuite) TestFindBuildsForVersionByVariant() {
 
 // TestAbortVersion tests the route for aborting a version.
 func (s *VersionSuite) TestAbortVersion() {
-	handler := &versionAbortHandler{versionId: "versionId", sc: s.sc}
+	handler := &versionAbortHandler{versionId: "versionId"}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
@@ -208,7 +201,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
 
-	handler := &versionRestartHandler{versionId: "versionId", sc: s.sc}
+	handler := &versionRestartHandler{versionId: "versionId"}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
@@ -220,7 +213,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	v, err := s.sc.FindVersionById("versionId")
+	v, err := serviceModel.VersionFindOneId("versionId")
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
 }

@@ -53,7 +53,6 @@ func TestHostPostHandler(t *testing.T) {
 			KeyName:  "ssh-rsa YWJjZDEyMzQK",
 		},
 	}
-	h.sc = &data.DBConnector{}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
 	resp := h.Run(ctx)
@@ -123,7 +122,6 @@ func TestHostStopHandler(t *testing.T) {
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStopHandler{
-		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
@@ -162,7 +160,7 @@ func TestHostStopHandler(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	subscriptions, err := h.sc.(*data.DBConnector).DBSubscriptionConnector.GetSubscriptions("user", event.OwnerTypePerson)
+	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
 	assert.Len(t, subscriptions, 1)
 }
@@ -172,7 +170,6 @@ func TestHostStartHandler(t *testing.T) {
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStartHandler{
-		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
@@ -204,8 +201,7 @@ func TestHostStartHandler(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	subscriptionConnector := h.sc.(*data.DBConnector).DBSubscriptionConnector
-	subscriptions, err := subscriptionConnector.GetSubscriptions("user", event.OwnerTypePerson)
+	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
 	assert.Len(t, subscriptions, 2)
 }
@@ -213,7 +209,6 @@ func TestHostStartHandler(t *testing.T) {
 func TestCreateVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
 	h := &createVolumeHandler{
-		sc:       &data.DBConnector{},
 		env:      evergreen.GetEnvironment(),
 		provider: evergreen.ProviderNameMock,
 	}
@@ -245,13 +240,11 @@ func TestCreateVolumeHandler(t *testing.T) {
 func TestDeleteVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &deleteVolumeHandler{
-		sc:       &data.DBConnector{},
 		env:      evergreen.GetEnvironment(),
 		provider: evergreen.ProviderNameMock,
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
-	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
 	volumes := []host.Volume{
 		host.Volume{
 			ID:               "my-volume",
@@ -288,7 +281,6 @@ func TestDeleteVolumeHandler(t *testing.T) {
 func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &attachVolumeHandler{
-		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
@@ -348,7 +340,6 @@ func TestAttachVolumeHandler(t *testing.T) {
 func TestDetachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &detachVolumeHandler{
-		sc:  &data.DBConnector{},
 		env: evergreen.GetEnvironment(),
 	}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
@@ -386,13 +377,11 @@ func TestDetachVolumeHandler(t *testing.T) {
 
 func TestModifyVolumeHandler(t *testing.T) {
 	h := &modifyVolumeHandler{
-		sc:   &data.DBConnector{},
 		env:  evergreen.GetEnvironment(),
 		opts: &model.VolumeModifyOptions{},
 	}
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
 	h.env.Settings().Spawnhost.UnexpirableVolumesPerUser = 1
-	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
 	volume := host.Volume{
 		ID:               "volume1",
 		CreatedBy:        "user",
@@ -461,9 +450,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 
 func TestGetVolumesHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
-	h := &getVolumesHandler{
-		sc: &data.DBConnector{},
-	}
+	h := &getVolumesHandler{}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
 	h1 := host.Host{
@@ -474,7 +461,6 @@ func TestGetVolumesHandler(t *testing.T) {
 		},
 	}
 
-	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
 	volumesToAdd := []host.Volume{
 		{
 			ID:               "volume1",
@@ -526,9 +512,7 @@ func TestGetVolumesHandler(t *testing.T) {
 
 func TestGetVolumeByIDHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
-	h := &getVolumeByIDHandler{
-		sc: &data.DBConnector{},
-	}
+	h := &getVolumeByIDHandler{}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
 
 	h1 := host.Host{
@@ -539,7 +523,6 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 		},
 	}
 
-	h.sc.(*data.DBConnector).DBHostConnector = data.DBHostConnector{}
 	volume := host.Volume{
 		ID:               "volume1",
 		Host:             "has-a-volume",

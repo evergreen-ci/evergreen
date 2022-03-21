@@ -83,6 +83,11 @@ func FindOne(query db.Q) (Distro, error) {
 	return d, db.FindOneQ(Collection, query, &d)
 }
 
+// FindOneId returns one Distro by Id.
+func FindOneId(id string) (Distro, error) {
+	return FindOne(ById(id))
+}
+
 // Find gets every Distro matching the given query.
 func Find(query db.Q) ([]Distro, error) {
 	distros := []Distro{}
@@ -91,7 +96,7 @@ func Find(query db.Q) ([]Distro, error) {
 }
 
 func FindByID(id string) (*Distro, error) {
-	d, err := FindOne(ById(id))
+	d, err := FindOneId(id)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
