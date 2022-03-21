@@ -912,6 +912,7 @@ type ComplexityRoot struct {
 		LatestExecution         func(childComplexity int) int
 		Logs                    func(childComplexity int) int
 		MinQueuePosition        func(childComplexity int) int
+		Order                   func(childComplexity int) int
 		Patch                   func(childComplexity int) int
 		PatchMetadata           func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
@@ -5911,6 +5912,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.MinQueuePosition(childComplexity), true
 
+	case "Task.order":
+		if e.complexity.Task.Order == nil {
+			break
+		}
+
+		return e.complexity.Task.Order(childComplexity), true
+
 	case "Task.patch":
 		if e.complexity.Task.Patch == nil {
 			break
@@ -8568,6 +8576,7 @@ type Task {
   totalTestCount: Int!
   version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
+  order: Int!
 }
 
 type BaseTaskInfo {
@@ -32019,6 +32028,41 @@ func (ec *executionContext) _Task_versionMetadata(ctx context.Context, field gra
 	return ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_order(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Order, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskAnnotationSettings_jiraCustomFields(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotationSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -47625,6 +47669,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				}
 				return res
 			})
+		case "order":
+			out.Values[i] = ec._Task_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
