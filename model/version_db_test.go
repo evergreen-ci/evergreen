@@ -39,7 +39,9 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 }
 
 func TestGetVersionAuthorID(t *testing.T) {
-	defer db.ClearCollections(VersionCollection)
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+	}()
 
 	for name, test := range map[string]func(*testing.T){
 		"HasAuthorID": func(t *testing.T) {
