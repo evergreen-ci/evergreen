@@ -181,7 +181,9 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 		}
 		projTasks := []string{}
 		for _, taskUnit := range buildVariant.Tasks {
-			projTasks = append(projTasks, taskUnit.Name)
+			if utility.FromBoolPtr(taskUnit.Patchable) {
+				projTasks = append(projTasks, taskUnit.Name)
+			}
 		}
 		for _, displayTask := range buildVariant.DisplayTasks {
 			projTasks = append(projTasks, displayTask.Name)
