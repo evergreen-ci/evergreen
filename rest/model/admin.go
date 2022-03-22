@@ -2233,6 +2233,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
+		as.GenerateTasksExperimentDisabled = v.GenerateTasksExperimentDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -2242,33 +2243,34 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:         as.TaskDispatchDisabled,
-		HostInitDisabled:             as.HostInitDisabled,
-		PodInitDisabled:              as.PodInitDisabled,
-		S3BinaryDownloadsDisabled:    as.S3BinaryDownloadsDisabled,
-		MonitorDisabled:              as.MonitorDisabled,
-		AlertsDisabled:               as.AlertsDisabled,
-		AgentStartDisabled:           as.AgentStartDisabled,
-		RepotrackerDisabled:          as.RepotrackerDisabled,
-		SchedulerDisabled:            as.SchedulerDisabled,
-		CheckBlockedTasksDisabled:    as.CheckBlockedTasksDisabled,
-		GithubPRTestingDisabled:      as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
-		EventProcessingDisabled:      as.EventProcessingDisabled,
-		JIRANotificationsDisabled:    as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:   as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:   as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled: as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
-		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:          as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
-		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
-		CommitQueueDisabled:          as.CommitQueueDisabled,
-		HostAllocatorDisabled:        as.HostAllocatorDisabled,
-		BackgroundCleanupDisabled:    as.BackgroundCleanupDisabled,
-		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
+		TaskDispatchDisabled:            as.TaskDispatchDisabled,
+		HostInitDisabled:                as.HostInitDisabled,
+		PodInitDisabled:                 as.PodInitDisabled,
+		S3BinaryDownloadsDisabled:       as.S3BinaryDownloadsDisabled,
+		MonitorDisabled:                 as.MonitorDisabled,
+		AlertsDisabled:                  as.AlertsDisabled,
+		AgentStartDisabled:              as.AgentStartDisabled,
+		RepotrackerDisabled:             as.RepotrackerDisabled,
+		SchedulerDisabled:               as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:       as.CheckBlockedTasksDisabled,
+		GithubPRTestingDisabled:         as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:              as.CLIUpdatesDisabled,
+		EventProcessingDisabled:         as.EventProcessingDisabled,
+		JIRANotificationsDisabled:       as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:      as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:      as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:    as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:         as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:             as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
+		CommitQueueDisabled:             as.CommitQueueDisabled,
+		HostAllocatorDisabled:           as.HostAllocatorDisabled,
+		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
+		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
+		GenerateTasksExperimentDisabled: as.GenerateTasksExperimentDisabled,
 	}, nil
 }
 
