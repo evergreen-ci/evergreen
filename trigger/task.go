@@ -136,7 +136,7 @@ type taskTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.TaskEventData
 	task     *task.Task
-	version  *model.Version
+	owner    string
 	uiConfig evergreen.UIConfig
 
 	oldTestResults map[string]*task.TestResult
@@ -176,13 +176,11 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "error getting display task")
 	}
 
-	t.version, err = model.VersionFindOne(model.VersionById(t.task.Version))
+	author, err := model.GetVersionAuthorID(t.task.Version)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch version")
+		return errors.Wrap(err, "failed to get task owner")
 	}
-	if t.version == nil {
-		return errors.New("couldn't find version")
-	}
+	t.owner = author
 
 	t.event = e
 
@@ -236,10 +234,10 @@ func (t *taskTriggers) Selectors() []event.Selector {
 			Data: evergreen.PatchVersionRequester,
 		})
 	}
-	if t.version != nil && t.version.AuthorID != "" {
+	if t.owner != "" {
 		selectors = append(selectors, event.Selector{
 			Type: event.SelectorOwner,
-			Data: t.version.AuthorID,
+			Data: t.owner,
 		})
 	}
 
