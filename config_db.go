@@ -87,6 +87,7 @@ var (
 	taskReliabilityDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "TaskReliabilityDisabled")
 	commitQueueDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "CommitQueueDisabled")
 	hostAllocatorDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
+	podAllocatorDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "PodAllocatorDisabled")
 	backgroundReauthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	generateTasksExperimentDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "GenerateTasksExperimentDisabled")

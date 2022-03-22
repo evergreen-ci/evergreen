@@ -28,6 +28,7 @@ type ServiceFlags struct {
 	TaskReliabilityDisabled         bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	CommitQueueDisabled             bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
+	PodAllocatorDisabled            bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
 	BackgroundReauthDisabled        bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	GenerateTasksExperimentDisabled bool `bson:"generate_tasks_experiment_disabled" json:"generate_tasks_experiment_disabled"`
@@ -96,6 +97,7 @@ func (c *ServiceFlags) Set() error {
 			taskReliabilityDisabledKey:         c.TaskReliabilityDisabled,
 			commitQueueDisabledKey:             c.CommitQueueDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,
+			podAllocatorDisabledKey:            c.PodAllocatorDisabled,
 			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			generateTasksExperimentDisabledKey: c.GenerateTasksExperimentDisabled,
