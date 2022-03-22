@@ -315,11 +315,11 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func ActivateVersions(versions []string) error {
+func ActivateVersions(versionIds []string) error {
 	_, err := db.UpdateAll(
 		VersionCollection,
 		bson.M{
-			VersionIdKey: bson.M{"$in": versions},
+			VersionIdKey: bson.M{"$in": versionIds},
 		},
 		bson.M{
 			"$set": bson.M{
@@ -327,7 +327,7 @@ func ActivateVersions(versions []string) error {
 			},
 		})
 	if err != nil {
-		return errors.Wrap(err, "can't activate versions")
+		return errors.Wrap(err, "can't activate versionIds")
 	}
 	return nil
 }

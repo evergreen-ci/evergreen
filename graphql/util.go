@@ -72,14 +72,10 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		})
 		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
-	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		if t.Requester == evergreen.MergeTestRequester && isActive {
-			catcher.Add(InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled"))
+			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
-	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
 	}
 	if err = model.SetActiveState(usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())

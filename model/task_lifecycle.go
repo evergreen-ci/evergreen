@@ -46,6 +46,9 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			}
 			originalTasks = append(originalTasks, execTasks...)
 		}
+		versionIdsSet[t.Version] = true
+		buildIdsSet[t.BuildId] = true
+		buildToTaskMap[t.BuildId] = t
 		if active {
 			// if the task is being activated, and it doesn't override its dependencies
 			// activate the task's dependencies as well
@@ -85,9 +88,6 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 					"task_id": t.Id,
 				})
 			}
-			versionIdsSet[t.Version] = true
-			buildIdsSet[t.BuildId] = true
-			buildToTaskMap[t.BuildId] = t
 
 			// If the task was not activated by step back, and either the caller is not evergreen
 			// or the task was originally activated by evergreen, deactivate the task
