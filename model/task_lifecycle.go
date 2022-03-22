@@ -36,13 +36,13 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 	versionIdsSet := map[string]bool{}
 	buildIdsSet := map[string]bool{}
 	buildToTaskMap := map[string]task.Task{}
+	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		originalTasks := []task.Task{t}
-		originalTasks = append(originalTasks, t)
 		if t.DisplayOnly {
 			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 			if err != nil {
-				return errors.Wrapf(err, "error getting execution tasks")
+				catcher.Add(errors.Wrapf(err, "error getting execution tasks"))
 			}
 			originalTasks = append(originalTasks, execTasks...)
 		}
@@ -52,14 +52,14 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			if !t.OverrideDependencies {
 				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
 				if err != nil {
-					return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
+					catcher.Add(errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id))
 				}
 				if t.IsPartOfSingleHostTaskGroup() {
 					for _, dep := range deps {
 						// reset any already finished tasks in the same task group
 						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
 							if err = resetTask(dep.Id, caller, false); err != nil {
-								return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+								catcher.Add(errors.Wrapf(err, "error resetting dependency '%s'", dep.Id))
 							}
 						} else {
 							tasksToActivate = append(tasksToActivate, dep)
@@ -73,7 +73,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// Investigating strange dispatch state as part of EVG-13144
 			if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 				if err := resetTask(t.Id, caller, false); err != nil {
-					return errors.Wrap(err, "error resetting task")
+					catcher.Add(errors.Wrap(err, "error resetting task"))
 				}
 			} else {
 				tasksToActivate = append(tasksToActivate, originalTasks...)
@@ -97,7 +97,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			if t.IsPartOfSingleHostTaskGroup() {
 				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 				if err != nil {
-					return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+					catcher.Add(errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup))
 				}
 				for _, taskInGroup := range tasksInGroup {
 					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
@@ -107,7 +107,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			}
 			if t.Requester == evergreen.MergeTestRequester {
 				if err = DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
-					return err
+					catcher.Add(err)
 				}
 			}
 			tasksToActivate = append(tasksToActivate, originalTasks...)
@@ -116,9 +116,12 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 		if t.IsPartOfDisplay() {
 			if err := UpdateDisplayTaskForTask(&t); err != nil {
-				return errors.Wrap(err, "problem updating display task")
+				catcher.Add(errors.Wrap(err, "problem updating display task"))
 			}
 		}
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	if active {
