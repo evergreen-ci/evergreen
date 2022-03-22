@@ -2097,7 +2097,8 @@ func TestMergeBuildVariant(t *testing.T) {
 	main := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: bvExisting,
+				Name:        bvExisting,
+				DisplayName: "Defined here",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name:      "say-bye",
@@ -2169,6 +2170,48 @@ func TestMergeBuildVariant(t *testing.T) {
 	assert.Contains(t, bvNames, bvExisting)
 	assert.Contains(t, bvNames, bvNew1)
 	assert.Contains(t, bvNames, bvNew2)
+}
+
+// Allow build variants to specify tasks before being defined.
+func TestMergeExistingBuildVariant(t *testing.T) {
+	bvExisting := "a_variant"
+	main := &ParserProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: bvExisting,
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name:      "say-bye",
+						BatchTime: &taskBatchTime,
+					},
+				},
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task_old_variant",
+						ExecutionTasks: []string{"say-bye"},
+					},
+				},
+			},
+		},
+	}
+	add := &ParserProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name:        bvExisting,
+				DisplayName: "Defined here",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "add this task",
+					},
+				},
+			},
+		},
+	}
+
+	err := main.mergeBuildVariant(add)
+	assert.NoError(t, err)
+	require.Equal(t, len(main.BuildVariants), 1)
+	require.Equal(t, len(main.BuildVariants[0].Tasks), 2)
 }
 
 func TestMergeBuildVariantFail(t *testing.T) {

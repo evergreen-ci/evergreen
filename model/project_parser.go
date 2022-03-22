@@ -393,7 +393,6 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
 		pbv.RunOn == nil &&
-		pbv.DisplayTasks == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
 		pbv.MatrixId == "" &&
