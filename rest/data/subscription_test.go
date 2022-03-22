@@ -272,6 +272,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 					Data: oldProjectId,
 				},
 			},
+			Filter: event.Filter{Project: oldProjectId},
 			Subscriber: event.Subscriber{
 				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
@@ -289,6 +290,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 					Data: "not-my-project",
 				},
 			},
+			Filter: event.Filter{Project: "not-my-project"},
 			Subscriber: event.Subscriber{
 				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
