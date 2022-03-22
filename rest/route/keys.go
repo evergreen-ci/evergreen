@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -18,21 +17,17 @@ import (
 // update the BASE64REGEX in directives.spawn.js
 const keyRegex = "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$"
 
-type keysGetHandler struct {
-	sc data.Connector
-}
+type keysGetHandler struct{}
 
 ////////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/keys
 
-func makeFetchKeys(sc data.Connector) gimlet.RouteHandler {
-	return &keysGetHandler{
-		sc: sc,
-	}
+func makeFetchKeys() gimlet.RouteHandler {
+	return &keysGetHandler{}
 }
 
-func (h *keysGetHandler) Factory() gimlet.RouteHandler                     { return &keysGetHandler{sc: h.sc} }
+func (h *keysGetHandler) Factory() gimlet.RouteHandler                     { return &keysGetHandler{} }
 func (h *keysGetHandler) Parse(ctx context.Context, r *http.Request) error { return nil }
 
 func (h *keysGetHandler) Run(ctx context.Context) gimlet.Responder {
@@ -68,17 +63,14 @@ func (h *keysGetHandler) Run(ctx context.Context) gimlet.Responder {
 type keysPostHandler struct {
 	keyName  string
 	keyValue string
-	sc       data.Connector
 }
 
-func makeSetKey(sc data.Connector) gimlet.RouteHandler {
-	return &keysPostHandler{
-		sc: sc,
-	}
+func makeSetKey() gimlet.RouteHandler {
+	return &keysPostHandler{}
 }
 
 func (h *keysPostHandler) Factory() gimlet.RouteHandler {
-	return &keysPostHandler{sc: h.sc}
+	return &keysPostHandler{}
 }
 
 func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -143,7 +135,6 @@ func validateKeyValue(keyValue string) error {
 
 func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -151,7 +142,7 @@ func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := h.sc.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
+	if err := u.AddPublicKey(h.keyName, h.keyValue); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to add key"))
 	}
 
@@ -164,17 +155,14 @@ func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 type keysDeleteHandler struct {
 	keyName string
-	sc      data.Connector
 }
 
-func makeDeleteKeys(sc data.Connector) gimlet.RouteHandler {
-	return &keysDeleteHandler{
-		sc: sc,
-	}
+func makeDeleteKeys() gimlet.RouteHandler {
+	return &keysDeleteHandler{}
 }
 
 func (h *keysDeleteHandler) Factory() gimlet.RouteHandler {
-	return &keysDeleteHandler{sc: h.sc}
+	return &keysDeleteHandler{}
 }
 
 func (h *keysDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -191,7 +179,6 @@ func (h *keysDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-
 	if _, err := user.GetPublicKey(h.keyName); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -199,7 +186,7 @@ func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := h.sc.DeletePublicKey(user, h.keyName); err != nil {
+	if err := user.DeletePublicKey(h.keyName); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.New("couldn't delete key"))
 	}
 

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -196,7 +195,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			rh, ok := makePodAgentNextTask(env, &data.DBConnector{}).(*podAgentNextTask)
+			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
 			require.True(t, ok)
 
 			tCase(ctx, t, rh, env)

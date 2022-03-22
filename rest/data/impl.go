@@ -3,36 +3,16 @@ package data
 // DBConnector is a struct that implements all of the methods which
 // connect to the service layer of evergreen. These methods abstract the link
 // between the service and the API layers, allowing for changes in the
-// service architecture without forcing changes to the API.
+// service architecture without forcing changes to the API. This is only
+// required for the methods that must be mocked in unit tests, since they
+// need a mocked implementation and a real DB implementation of the interface.
 type DBConnector struct {
 	URL    string
 	Prefix string
-
-	DBUserConnector
-	DBTaskConnector
-	DBContextConnector
-	DBDistroConnector
-	DBHostConnector
-	DBPodConnector
 	DBTestConnector
-	DBBuildConnector
-	DBVersionConnector
-	DBPatchConnector
-	DBPatchIntentConnector
-	DBProjectConnector
-	DBAdminConnector
-	DBStatusConnector
-	DBAliasConnector
-	RepoTrackerConnector
-	CLIUpdateConnector
-	GenerateConnector
-	DBSubscriptionConnector
-	NotificationConnector
-	DBCreateHostConnector
-	StatsConnector
-	TaskReliabilityConnector
 	DBCommitQueueConnector
-	SchedulerConnector
+	DBProjectConnector
+	DBVersionConnector
 }
 
 func (ctx *DBConnector) GetURL() string          { return ctx.URL }

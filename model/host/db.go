@@ -138,6 +138,18 @@ func ByUserWithRunningStatus(user string) db.Q {
 		})
 }
 
+// ByUserRecentlyTerminated produces a query that returns all
+// terminated hosts whose TerminationTimeKey is after the given
+// timestamp.
+func ByUserRecentlyTerminated(user string, timestamp time.Time) db.Q {
+	return db.Query(
+		bson.M{
+			StartedByKey:       user,
+			StatusKey:          evergreen.HostTerminated,
+			TerminationTimeKey: bson.M{"$gt": timestamp},
+		})
+}
+
 // IsLive is a query that returns all working hosts started by Evergreen
 func IsLive() bson.M {
 	return bson.M{
@@ -1081,6 +1093,7 @@ type HostsInRangeParams struct {
 	UserSpawned   bool
 }
 
+// FindHostsInRange is a method to find a filtered list of hosts
 func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	var statusMatch interface{}
 	if params.Status != "" {

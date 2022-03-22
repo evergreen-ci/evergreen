@@ -18,9 +18,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeGenerateTasksHandler(sc data.Connector, q amboy.QueueGroup) gimlet.RouteHandler {
+func makeGenerateTasksHandler(q amboy.QueueGroup) gimlet.RouteHandler {
 	return &generateHandler{
-		sc:    sc,
 		queue: q,
 	}
 }
@@ -28,13 +27,11 @@ func makeGenerateTasksHandler(sc data.Connector, q amboy.QueueGroup) gimlet.Rout
 type generateHandler struct {
 	files  []json.RawMessage
 	taskID string
-	sc     data.Connector
 	queue  amboy.QueueGroup
 }
 
 func (h *generateHandler) Factory() gimlet.RouteHandler {
 	return &generateHandler{
-		sc:    h.sc,
 		queue: h.queue,
 	}
 }
@@ -60,7 +57,7 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.sc.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
+	if err := data.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
 			"task_id": h.taskID,
@@ -71,22 +68,19 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func makeGenerateTasksPollHandler(sc data.Connector, q amboy.QueueGroup) gimlet.RouteHandler {
+func makeGenerateTasksPollHandler(q amboy.QueueGroup) gimlet.RouteHandler {
 	return &generatePollHandler{
-		sc:    sc,
 		queue: q,
 	}
 }
 
 type generatePollHandler struct {
 	taskID string
-	sc     data.Connector
 	queue  amboy.QueueGroup
 }
 
 func (h *generatePollHandler) Factory() gimlet.RouteHandler {
 	return &generatePollHandler{
-		sc:    h.sc,
 		queue: h.queue,
 	}
 }
@@ -98,7 +92,7 @@ func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
-	finished, jobErrs, err := h.sc.GeneratePoll(ctx, h.taskID, h.queue)
+	finished, jobErrs, err := data.GeneratePoll(ctx, h.taskID, h.queue)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error polling for generated tasks",

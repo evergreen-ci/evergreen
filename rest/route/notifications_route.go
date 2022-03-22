@@ -8,20 +8,20 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-func makeFetchNotifcationStatusRoute(sc data.Connector) gimlet.RouteHandler {
-	return &notificationsStatusHandler{sc: sc}
+func makeFetchNotifcationStatusRoute() gimlet.RouteHandler {
+	return &notificationsStatusHandler{}
 }
 
-type notificationsStatusHandler struct{ sc data.Connector }
+type notificationsStatusHandler struct{}
 
 func (gh *notificationsStatusHandler) Factory() gimlet.RouteHandler {
-	return &notificationsStatusHandler{sc: gh.sc}
+	return &notificationsStatusHandler{}
 }
 
 func (gh *notificationsStatusHandler) Parse(_ context.Context, _ *http.Request) error { return nil }
 
 func (gh *notificationsStatusHandler) Run(ctx context.Context) gimlet.Responder {
-	stats, err := gh.sc.GetNotificationsStats()
+	stats, err := data.GetNotificationsStats()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

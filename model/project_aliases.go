@@ -270,6 +270,33 @@ func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) (
 	return aliases, shouldExit, nil
 }
 
+// HasMatchingGitTagAliasAndRemotePath returns matching git tag aliases that match the given git tag
+func HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
+	aliases, err := FindMatchingGitTagAliasesInProject(projectId, tag)
+	if err != nil {
+		return false, "", err
+	}
+
+	if len(aliases) == 1 && aliases[0].RemotePath != "" {
+		return true, aliases[0].RemotePath, nil
+	}
+	return len(aliases) > 0, "", nil
+}
+
+// CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
+func CopyProjectAliases(oldProjectId, newProjectId string) error {
+	aliases, err := FindAliasesForProjectFromDb(oldProjectId)
+	if err != nil {
+		return errors.Wrapf(err, "error finding aliases for project '%s'", oldProjectId)
+	}
+	if aliases != nil {
+		if err = UpsertAliasesForProject(aliases, newProjectId); err != nil {
+			return errors.Wrapf(err, "error inserting aliases for project '%s'", newProjectId)
+		}
+	}
+	return nil
+}
+
 func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
 	aliases, err := FindAliasInProjectRepoOrConfig(projectID, evergreen.GitTagAlias)
 	if err != nil {

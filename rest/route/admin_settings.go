@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -12,20 +13,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeFetchAdminSettings(sc data.Connector) gimlet.RouteHandler {
-	return &adminGetHandler{
-		sc: sc,
-	}
+func makeFetchAdminSettings() gimlet.RouteHandler {
+	return &adminGetHandler{}
 }
 
-type adminGetHandler struct {
-	sc data.Connector
-}
+type adminGetHandler struct{}
 
 func (h *adminGetHandler) Factory() gimlet.RouteHandler {
-	return &adminGetHandler{
-		sc: h.sc,
-	}
+	return &adminGetHandler{}
 }
 
 func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -33,7 +28,7 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := h.sc.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -47,20 +42,14 @@ func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(settingsModel)
 }
 
-func makeFetchAdminUIV2Url(sc data.Connector) gimlet.RouteHandler {
-	return &uiV2URLGetHandler{
-		sc: sc,
-	}
+func makeFetchAdminUIV2Url() gimlet.RouteHandler {
+	return &uiV2URLGetHandler{}
 }
 
-type uiV2URLGetHandler struct {
-	sc data.Connector
-}
+type uiV2URLGetHandler struct{}
 
 func (h *uiV2URLGetHandler) Factory() gimlet.RouteHandler {
-	return &uiV2URLGetHandler{
-		sc: h.sc,
-	}
+	return &uiV2URLGetHandler{}
 }
 
 func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -68,7 +57,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := h.sc.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -78,19 +67,16 @@ func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 	})
 }
 
-func makeSetAdminSettings(sc data.Connector) gimlet.RouteHandler {
-	return &adminPostHandler{
-		sc: sc,
-	}
+func makeSetAdminSettings() gimlet.RouteHandler {
+	return &adminPostHandler{}
 }
 
 type adminPostHandler struct {
 	model *model.APIAdminSettings
-	sc    data.Connector
 }
 
 func (h *adminPostHandler) Factory() gimlet.RouteHandler {
-	return &adminPostHandler{sc: h.sc}
+	return &adminPostHandler{}
 }
 
 func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -99,13 +85,13 @@ func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	oldSettings, err := h.sc.GetEvergreenSettings()
+	oldSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving existing settings"))
 	}
 
 	// validate the changes
-	newSettings, err := h.sc.SetEvergreenSettings(h.model, oldSettings, u, false)
+	newSettings, err := data.SetEvergreenSettings(h.model, oldSettings, u, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error applying new settings"))
 	}
@@ -118,7 +104,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Validation error"))
 	}
 
-	_, err = h.sc.SetEvergreenSettings(h.model, oldSettings, u, true)
+	_, err = data.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

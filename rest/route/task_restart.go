@@ -2,9 +2,12 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -16,19 +19,14 @@ import (
 type taskRestartHandler struct {
 	taskId   string
 	username string
-	sc       data.Connector
 }
 
-func makeTaskRestartHandler(sc data.Connector) gimlet.RouteHandler {
-	return &taskRestartHandler{
-		sc: sc,
-	}
+func makeTaskRestartHandler() gimlet.RouteHandler {
+	return &taskRestartHandler{}
 }
 
 func (trh *taskRestartHandler) Factory() gimlet.RouteHandler {
-	return &taskRestartHandler{
-		sc: trh.sc,
-	}
+	return &taskRestartHandler{}
 }
 
 // ParseAndValidate fetches the taskId and Project from the request context and
@@ -56,14 +54,20 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
-	err := trh.sc.ResetTask(trh.taskId, trh.username)
+	err := resetTask(trh.taskId, trh.username)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	refreshedTask, err := trh.sc.FindTaskById(trh.taskId)
+	refreshedTask, err := task.FindOneId(trh.taskId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
+	}
+	if refreshedTask == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", trh.taskId),
+		})
 	}
 
 	taskModel := &model.APITask{}
@@ -73,4 +77,18 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(taskModel)
+}
+
+// resetTask sets the task to be in an unexecuted state and prepares it to be run again.
+// If given an execution task, marks the display task for reset.
+func resetTask(taskId, username string) error {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding task '%s'", t)
+	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", t.Id)
+	}
+	return errors.Wrap(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil),
+		"Reset task error")
 }

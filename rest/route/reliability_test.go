@@ -507,13 +507,6 @@ func TestRun(t *testing.T) {
 				"NoSuchTask": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
-						"tasks":         "no_such_task",
-						"after_date":    "2019-01-02",
-						"group_by_days": "10",
-					})
-
-					handler.sc.(*data.DBConnector).URL = url
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
 							Limit:        100,
@@ -539,13 +532,6 @@ func TestRun(t *testing.T) {
 				"Limit 1": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
-						"tasks":         "aggregation_expression_multiversion_fuzzer",
-						"after_date":    "2019-01-02",
-						"group_by_days": "10",
-					})
-					sc := handler.sc.(*data.DBConnector)
-					sc.URL = url
 
 					// 100 documents are available but only 1 will be returned
 					day := time.Now()
@@ -590,13 +576,6 @@ func TestRun(t *testing.T) {
 				"Limit 1000": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
-						"tasks":         "aggregation_expression_multiversion_fuzzer",
-						"after_date":    "2019-01-02",
-						"group_by_days": "10",
-					})
-					sc := handler.sc.(*data.DBConnector)
-					sc.URL = url
 
 					// limit + 1 documents are available but only limit will be returned
 					day := time.Now()
@@ -641,13 +620,6 @@ func TestRun(t *testing.T) {
 				"StartAt Not Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
-						"tasks":         "aggregation_expression_multiversion_fuzzer",
-						"after_date":    "2019-01-02",
-						"group_by_days": "10",
-					})
-					sc := handler.sc.(*data.DBConnector)
-					sc.URL = url
 
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
@@ -697,13 +669,6 @@ func TestRun(t *testing.T) {
 				"StartAt Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
-						"tasks":         "aggregation_expression_multiversion_fuzzer",
-						"after_date":    "2019-01-02",
-						"group_by_days": "10",
-					})
-					sc := handler.sc.(*data.DBConnector)
-					sc.URL = url
 
 					handler.filter = reliability.TaskReliabilityFilter{
 						StatsFilter: stats.StatsFilter{
@@ -746,21 +711,16 @@ func TestRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
-					require.Equal(t, handler.filter.StatsFilter.Limit, len(data))
+					respData := resp.Data().([]interface{})
+					require.Equal(t, handler.filter.StatsFilter.Limit, len(respData))
 					require.NotNil(t, resp.Pages())
-					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[handler.filter.StatsFilter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					sc := &data.DBConnector{
-						StatsConnector: data.StatsConnector{},
-						URL:            "https://example.net/test",
-					}
-
-					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability("https://example.net/test").(*taskReliabilityHandler)
 					withSetupAndTeardown(t, env, func() {
 						testCase(paginationContext, t, handler)
 					})
@@ -825,12 +785,7 @@ func TestReliability(t *testing.T) {
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
 					})
-
-					sc := &data.DBConnector{
-						TaskReliabilityConnector: data.TaskReliabilityConnector{},
-						URL:                      url,
-					}
-					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 1 page size of documents are available but 2 page sizes requested.
@@ -880,11 +835,7 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					sc := &data.DBConnector{
-						TaskReliabilityConnector: data.TaskReliabilityConnector{},
-						URL:                      url,
-					}
-					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 1 page size of documents will be returned
@@ -924,7 +875,7 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
@@ -937,11 +888,7 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					sc := &data.DBConnector{
-						TaskReliabilityConnector: data.TaskReliabilityConnector{},
-						URL:                      url,
-					}
-					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
 					require.NoError(t, err)
 
 					// 2 pages of documents are available.
@@ -981,7 +928,7 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},

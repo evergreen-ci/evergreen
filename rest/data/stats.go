@@ -7,10 +7,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type StatsConnector struct{}
-
 // GetTestStats queries the service backend to retrieve the test stats that match the given filter.
-func (sc *StatsConnector) GetTestStats(filter stats.StatsFilter) ([]restModel.APITestStats, error) {
+func GetTestStats(filter stats.StatsFilter) ([]restModel.APITestStats, error) {
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {
@@ -37,7 +35,7 @@ func (sc *StatsConnector) GetTestStats(filter stats.StatsFilter) ([]restModel.AP
 }
 
 // GetTaskStats queries the service backend to retrieve the task stats that match the given filter.
-func (sc *StatsConnector) GetTaskStats(filter stats.StatsFilter) ([]restModel.APITaskStats, error) {
+func GetTaskStats(filter stats.StatsFilter) ([]restModel.APITaskStats, error) {
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {

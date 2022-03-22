@@ -2571,7 +2571,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding task WRONG-TASK-ID: 404 (Not Found): task with id WRONG-TASK-ID not found",
+            "message": "cannot find task with id WRONG-TASK-ID",
             "path": [
               "setTaskPriority"
             ],
@@ -2672,7 +2672,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding task by id not-for-real-task-id: 404 (Not Found): task with id not-for-real-task-id not found",
+            "message": "cannot find task with id not-for-real-task-id",
             "path": [
               "abortTask"
             ],

@@ -24,7 +24,6 @@ import (
 // Tests for fetch patch by project route
 
 type PatchConnectorFetchByProjectSuite struct {
-	ctx      Connector
 	time     time.Time
 	setup    func() error
 	teardown func() error
@@ -59,7 +58,6 @@ func (s *PatchConnectorFetchByProjectSuite) SetupSuite() {
 		nowPlus8 := s.time.Add(time.Second * 8)
 		nowPlus10 := s.time.Add(time.Second * 10)
 		nowPlus12 := s.time.Add(time.Second * 12)
-		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
 		projects := []dbModel.ProjectRef{
 			{
 				Id:         proj1,
@@ -106,7 +104,7 @@ func (s *PatchConnectorFetchByProjectSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
-	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
@@ -117,7 +115,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
-	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
@@ -128,7 +126,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
-	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 
@@ -137,7 +135,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByProject("project1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -145,18 +143,18 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
-	_, err := s.ctx.FindPatchesByProject("zzz", s.time, 1)
+	_, err := FindPatchesByProject("zzz", s.time, 1)
 	s.Error(err)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestEmptyPatchesOkay() {
-	patches, err := s.ctx.FindPatchesByProject("project4", s.time, 1)
+	patches, err := FindPatchesByProject("project4", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*6), 1)
+	patches, err := FindPatchesByProject("project1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -164,13 +162,13 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
+	patches, err := FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {
-	patches, err := s.ctx.FindPatchesByProject("project_three", s.time.Add(time.Second*14), 1)
+	patches, err := FindPatchesByProject("project_three", s.time.Add(time.Second*14), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -182,7 +180,6 @@ func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {
 // Tests for fetch patch by id route
 
 type PatchConnectorFetchByIdSuite struct {
-	ctx      Connector
 	obj_ids  []string
 	setup    func() error
 	teardown func() error
@@ -201,8 +198,6 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection))
 	s.setup = func() error {
-		s.ctx = &DBConnector{}
-
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 		patches := []patch.Patch{
@@ -231,7 +226,7 @@ func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
-	p, err := s.ctx.FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
@@ -242,7 +237,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
-	p, err := s.ctx.FindPatchById(new_id.Hex())
+	p, err := FindPatchById(new_id.Hex())
 	s.Error(err)
 	s.Nil(p)
 }
@@ -252,7 +247,6 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 // Tests for abort patch by id route
 
 type PatchConnectorAbortByIdSuite struct {
-	ctx      Connector
 	obj_ids  []string
 	setup    func() error
 	teardown func() error
@@ -275,8 +269,6 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 	s.setup = func() error {
 
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
-
-		s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
 		patches := []patch.Patch{
 			{Id: patch.NewId(s.obj_ids[0]), Version: "version1"},
 			{Id: patch.NewId(s.obj_ids[1])},
@@ -302,20 +294,20 @@ func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbort() {
-	err := s.ctx.AbortPatch(s.obj_ids[0], "user1")
+	err := AbortPatch(s.obj_ids[0], "user1")
 	s.NoError(err)
-	p, err := s.ctx.FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
-	abortedPatch, err := s.ctx.(*DBConnector).DBPatchConnector.FindPatchById(s.obj_ids[0])
+	abortedPatch, err := FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
 
-	err = s.ctx.AbortPatch(s.obj_ids[1], "user1")
+	err = AbortPatch(s.obj_ids[1], "user1")
 	s.NoError(err)
 
-	p, err = s.ctx.FindPatchById(s.obj_ids[1])
+	p, err = FindPatchById(s.obj_ids[1])
 
 	s.Error(err)
 	s.Nil(p)
@@ -326,7 +318,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
-	err := s.ctx.AbortPatch(new_id.Hex(), "user")
+	err := AbortPatch(new_id.Hex(), "user")
 	s.Error(err)
 }
 
@@ -335,11 +327,11 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {
 	s.NoError(err)
 	event, ok := eventInterface.(*github.PullRequestEvent)
 	s.True(ok)
-	s.Contains(s.ctx.AbortPatchesFromPullRequest(event).Error(), "pull request data is malformed")
+	s.Contains(AbortPatchesFromPullRequest(event).Error(), "pull request data is malformed")
 
 	now := time.Now().Round(time.Millisecond)
 	event.PullRequest.ClosedAt = &now
-	s.NoError(s.ctx.AbortPatchesFromPullRequest(event))
+	s.NoError(AbortPatchesFromPullRequest(event))
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
@@ -372,7 +364,6 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 // Tests for change patch status route
 
 type PatchConnectorChangeStatusSuite struct {
-	ctx      Connector
 	obj_ids  []string
 	DB       bool
 	setup    func() error
@@ -392,8 +383,6 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection))
 	s.setup = func() error {
-		s.ctx = &DBConnector{}
-
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 		patches := []*patch.Patch{
@@ -424,25 +413,25 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
-	err := s.ctx.SetPatchPriority(s.obj_ids[0], 7, "")
+	err := dbModel.SetVersionPriority(s.obj_ids[0], 7, "")
 	s.NoError(err)
-	t, err := s.ctx.(*DBConnector).DBTaskConnector.FindTaskById("t1")
+	t, err := task.FindOneId("t1")
 	s.NoError(err)
 	s.Equal(int64(7), t.Priority)
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	settings := testutil.MockConfig()
-	err := s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
+	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
-	p, err := s.ctx.FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
-	err = s.ctx.SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
+	err = SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
 	s.NoError(err)
-	p, err = s.ctx.FindPatchById(s.obj_ids[0])
+	p, err = FindPatchById(s.obj_ids[0])
 	s.NoError(err)
 	s.False(p.Activated)
 }
@@ -452,7 +441,6 @@ func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 // Tests for fetch patches for current user route
 
 type PatchConnectorFetchByUserSuite struct {
-	ctx  Connector
 	time time.Time
 
 	suite.Suite
@@ -477,7 +465,6 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 	nowPlus6 := s.time.Add(time.Second * 6)
 	nowPlus8 := s.time.Add(time.Second * 8)
 	nowPlus10 := s.time.Add(time.Second * 10)
-	s.ctx = &DBConnector{DBPatchConnector: DBPatchConnector{}}
 	patches := []patch.Patch{
 		{Author: user1, CreateTime: s.time},
 		{Author: user2, CreateTime: nowPlus2},
@@ -492,7 +479,7 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
-	patches, err := s.ctx.FindPatchesByUser("user2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByUser("user2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 2)
@@ -502,7 +489,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
-	patches, err := s.ctx.FindPatchesByUser("user2", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByUser("user2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	if s.NotNil(patches) && s.Len(patches, 1) {
 		s.Equal("user2", *patches[0].Author)
@@ -510,7 +497,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByUser("user1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -518,26 +505,25 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchNonexistentFail() {
-	patches, err := s.ctx.FindPatchesByUser("zzz", s.time, 1)
+	patches, err := FindPatchesByUser("zzz", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*6), 1)
+	patches, err := FindPatchesByUser("user1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
 	s.Equal(s.time.Add(time.Second*6), *patches[0].CreateTime)
 }
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
+	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
 
 type PatchConnectorFindByUserPatchNameStatusesCommitQueue struct {
-	ctx      Connector
 	time     time.Time
 	setup    func() error
 	teardown func() error
@@ -548,7 +534,6 @@ type PatchConnectorFindByUserPatchNameStatusesCommitQueue struct {
 func TestPatchConnectorFindByUserPatchNameStatusesCommitQueue(t *testing.T) {
 	s := new(PatchConnectorFindByUserPatchNameStatusesCommitQueue)
 	s.setup = func() error {
-		s.ctx = &DBConnector{}
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 		s.obj_ids = []string{
 			mgobson.NewObjectId().Hex(),

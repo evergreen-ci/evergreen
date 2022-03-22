@@ -19,19 +19,14 @@ import (
 
 type subscriptionPostHandler struct {
 	Subscriptions *[]model.APISubscription `json:"subscriptions"`
-	sc            data.Connector
 }
 
-func makeSetSubscription(sc data.Connector) gimlet.RouteHandler {
-	return &subscriptionPostHandler{
-		sc: sc,
-	}
+func makeSetSubscription() gimlet.RouteHandler {
+	return &subscriptionPostHandler{}
 }
 
 func (s *subscriptionPostHandler) Factory() gimlet.RouteHandler {
-	return &subscriptionPostHandler{
-		sc: s.sc,
-	}
+	return &subscriptionPostHandler{}
 }
 
 func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -44,7 +39,7 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
-	err := s.sc.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
+	err := data.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -59,19 +54,14 @@ func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
 type subscriptionGetHandler struct {
 	owner     string
 	ownerType string
-	sc        data.Connector
 }
 
-func makeFetchSubscription(sc data.Connector) gimlet.RouteHandler {
-	return &subscriptionGetHandler{
-		sc: sc,
-	}
+func makeFetchSubscription() gimlet.RouteHandler {
+	return &subscriptionGetHandler{}
 }
 
 func (s *subscriptionGetHandler) Factory() gimlet.RouteHandler {
-	return &subscriptionGetHandler{
-		sc: s.sc,
-	}
+	return &subscriptionGetHandler{}
 }
 
 func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -112,7 +102,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
-	subs, err := s.sc.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
+	subs, err := data.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -126,17 +116,14 @@ func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 type subscriptionDeleteHandler struct {
 	id string
-	sc data.Connector
 }
 
-func makeDeleteSubscription(sc data.Connector) gimlet.RouteHandler {
-	return &subscriptionDeleteHandler{
-		sc: sc,
-	}
+func makeDeleteSubscription() gimlet.RouteHandler {
+	return &subscriptionDeleteHandler{}
 }
 
 func (s *subscriptionDeleteHandler) Factory() gimlet.RouteHandler {
-	return &subscriptionDeleteHandler{sc: s.sc}
+	return &subscriptionDeleteHandler{}
 }
 
 func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -153,7 +140,7 @@ func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (s *subscriptionDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := s.sc.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
+	if err := data.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

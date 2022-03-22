@@ -14,11 +14,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeRestartRoute(sc data.Connector, restartType string, queue amboy.Queue) gimlet.RouteHandler {
+func makeRestartRoute(restartType string, queue amboy.Queue) gimlet.RouteHandler {
 	return &restartHandler{
 		queue:       queue,
 		restartType: restartType,
-		sc:          sc,
 	}
 }
 
@@ -31,7 +30,6 @@ type restartHandler struct {
 	IncludeSetupFailed bool      `json:"include_setup_failed"`
 
 	restartType string
-	sc          data.Connector
 	queue       amboy.Queue
 }
 
@@ -39,7 +37,6 @@ func (h *restartHandler) Factory() gimlet.RouteHandler {
 	return &restartHandler{
 		queue:       h.queue,
 		restartType: h.restartType,
-		sc:          h.sc,
 	}
 }
 
@@ -76,14 +73,14 @@ func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 		User:               u.Username(),
 	}
 	if h.restartType == evergreen.RestartVersions {
-		resp, err := h.sc.RestartFailedCommitQueueVersions(opts)
+		resp, err := data.RestartFailedCommitQueueVersions(opts)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error restarting versions"))
 		}
 		return gimlet.NewJSONResponse(resp)
 	}
 
-	resp, err := h.sc.RestartFailedTasks(h.queue, opts)
+	resp, err := data.RestartFailedTasks(h.queue, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error restarting tasks"))
 	}

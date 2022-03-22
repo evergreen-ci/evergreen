@@ -2404,12 +2404,12 @@ func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
 	assert.NoError(t, inactiveTask.Insert())
 
 	// inactive tasks should be included
-	opts := GetTasksByVersionOptions{IncludeEmptyActivaton: true}
+	opts := GetTasksByVersionOptions{IncludeEmptyActivation: true}
 	_, count, err := GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
 	// inactive tasks should be excluded
-	opts = GetTasksByVersionOptions{IncludeEmptyActivaton: false}
+	opts = GetTasksByVersionOptions{IncludeEmptyActivation: false}
 	_, count, err = GetTasksByVersion("v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 0)

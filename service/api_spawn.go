@@ -61,7 +61,6 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hc := &data.DBHostConnector{}
 	options := &model.HostRequestOptions{
 		DistroID:     hostRequest.Distro,
 		KeyName:      hostRequest.PublicKey,
@@ -73,7 +72,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := as.env.Context()
 	defer cancel()
-	spawnHost, err := hc.NewIntentHost(ctx, options, user, &as.Settings)
+	spawnHost, err := data.NewIntentHost(ctx, options, user, &as.Settings)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

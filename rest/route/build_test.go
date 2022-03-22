@@ -10,7 +10,6 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -22,7 +21,6 @@ import (
 // Tests for fetch build by id
 
 type BuildByIdSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 	suite.Suite
 }
@@ -42,13 +40,10 @@ func (s *BuildByIdSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	s.sc = &data.DBConnector{
-		DBBuildConnector: data.DBBuildConnector{},
-	}
 }
 
 func (s *BuildByIdSuite) SetupTest() {
-	s.rm = makeGetBuildByID(s.sc)
+	s.rm = makeGetBuildByID()
 }
 
 func (s *BuildByIdSuite) TestFindByIdProjFound() {
@@ -74,7 +69,6 @@ func (s *BuildByIdSuite) TestFindByIdFail() {
 // Tests for change build status by id
 
 type BuildChangeStatusSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 	suite.Suite
 }
@@ -85,9 +79,6 @@ func TestBuildChangeStatusSuite(t *testing.T) {
 
 func (s *BuildChangeStatusSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(build.Collection, serviceModel.VersionCollection))
-	s.sc = &data.DBConnector{
-		DBBuildConnector: data.DBBuildConnector{},
-	}
 	builds := []build.Build{
 		{Id: "build1", Version: "v1"},
 		{Id: "build2", Version: "v1"},
@@ -96,7 +87,7 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	s.rm = makeChangeStatusForBuild(s.sc)
+	s.rm = makeChangeStatusForBuild()
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivation() {
@@ -161,7 +152,6 @@ func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 // Tests for abort build route
 
 type BuildAbortSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -182,13 +172,10 @@ func (s *BuildAbortSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	s.sc = &data.DBConnector{
-		DBBuildConnector: data.DBBuildConnector{},
-	}
 }
 
 func (s *BuildAbortSuite) SetupTest() {
-	s.rm = makeAbortBuild(s.sc)
+	s.rm = makeAbortBuild()
 }
 
 func (s *BuildAbortSuite) TestAbort() {
@@ -200,10 +187,10 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 
-	build1, err := s.sc.FindBuildById("build1")
+	build1, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.Equal("user1", build1.ActivatedBy)
-	build2, err := s.sc.FindBuildById("build2")
+	build2, err := build.FindOneId("build2")
 	s.NoError(err)
 	s.Equal("", build2.ActivatedBy)
 	b, ok := res.Data().(*model.APIBuild)
@@ -212,10 +199,10 @@ func (s *BuildAbortSuite) TestAbort() {
 
 	res = s.rm.Run(ctx)
 	s.NotNil(res)
-	build1, err = s.sc.FindBuildById("build1")
+	build1, err = build.FindOneId("build1")
 	s.NoError(err)
 	s.Equal("user1", build1.ActivatedBy)
-	build2, err = s.sc.FindBuildById("build2")
+	build2, err = build.FindOneId("build2")
 	s.NoError(err)
 	s.Equal("", build2.ActivatedBy)
 	b, ok = res.Data().(*model.APIBuild)
@@ -228,7 +215,6 @@ func (s *BuildAbortSuite) TestAbort() {
 // Tests for restart build route
 
 type BuildRestartSuite struct {
-	sc *data.DBConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -247,13 +233,10 @@ func (s *BuildRestartSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	s.sc = &data.DBConnector{
-		DBBuildConnector: data.DBBuildConnector{},
-	}
 }
 
 func (s *BuildRestartSuite) SetupTest() {
-	s.rm = makeRestartBuild(s.sc)
+	s.rm = makeRestartBuild()
 }
 
 func (s *BuildRestartSuite) TestRestart() {

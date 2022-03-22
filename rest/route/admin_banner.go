@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -11,24 +12,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeSetAdminBanner(sc data.Connector) gimlet.RouteHandler {
-	return &bannerPostHandler{
-		sc: sc,
-	}
+func makeSetAdminBanner() gimlet.RouteHandler {
+	return &bannerPostHandler{}
 }
 
 type bannerPostHandler struct {
 	Banner *string `json:"banner"`
 	Theme  *string `json:"theme"`
 	model  model.APIBanner
-
-	sc data.Connector
 }
 
 func (h *bannerPostHandler) Factory() gimlet.RouteHandler {
-	return &bannerPostHandler{
-		sc: h.sc,
-	}
+	return &bannerPostHandler{}
 }
 
 func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -47,30 +42,25 @@ func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	if err := h.sc.SetAdminBanner(utility.FromStringPtr(h.Banner), u); err != nil {
+	if err := evergreen.SetBanner(utility.FromStringPtr(h.Banner)); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner text"))
 	}
-	if err := h.sc.SetBannerTheme(utility.FromStringPtr(h.Theme), u); err != nil {
+	if err := data.SetBannerTheme(utility.FromStringPtr(h.Theme), u); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner theme"))
 	}
 
 	return gimlet.NewJSONResponse(h.model)
 }
 
-func makeFetchAdminBanner(sc data.Connector) gimlet.RouteHandler {
-	return &bannerGetHandler{
-		sc: sc,
-	}
+func makeFetchAdminBanner() gimlet.RouteHandler {
+	return &bannerGetHandler{}
 }
 
 type bannerGetHandler struct {
-	sc data.Connector
 }
 
 func (h *bannerGetHandler) Factory() gimlet.RouteHandler {
-	return &bannerGetHandler{
-		sc: h.sc,
-	}
+	return &bannerGetHandler{}
 }
 
 func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -78,7 +68,7 @@ func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
-	banner, theme, err := h.sc.GetBanner()
+	banner, theme, err := data.GetBanner()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}

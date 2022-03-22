@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -12,22 +13,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeFetchAdminEvents(sc data.Connector) gimlet.RouteHandler {
-	return &adminEventsGet{sc: sc}
+func makeFetchAdminEvents(url string) gimlet.RouteHandler {
+	return &adminEventsGet{url: url}
 }
 
 type adminEventsGet struct {
 	Timestamp time.Time
 	Limit     int
-
-	sc data.Connector
+	url       string
 }
 
 func (h *adminEventsGet) Factory() gimlet.RouteHandler {
 	return &adminEventsGet{
 		Timestamp: time.Now(),
 		Limit:     10,
-		sc:        h.sc,
+		url:       h.url,
 	}
 }
 
@@ -54,7 +54,7 @@ func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 
-	events, err := h.sc.GetAdminEventLog(h.Timestamp, h.Limit+1)
+	events, err := data.GetAdminEventLog(h.Timestamp, h.Limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
 	}
@@ -64,7 +64,7 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 		lastIndex = h.Limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
-				BaseURL:         h.sc.GetURL(),
+				BaseURL:         h.url,
 				KeyQueryParam:   "ts",
 				LimitQueryParam: "limit",
 				Relation:        "next",
@@ -95,19 +95,15 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-func makeRevertRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &revertHandler{
-		sc: sc,
-	}
+func makeRevertRouteManager() gimlet.RouteHandler {
+	return &revertHandler{}
 }
 
 type revertHandler struct {
 	GUID string `json:"guid"`
-
-	sc data.Connector
 }
 
-func (h *revertHandler) Factory() gimlet.RouteHandler { return &revertHandler{sc: h.sc} }
+func (h *revertHandler) Factory() gimlet.RouteHandler { return &revertHandler{} }
 
 func (h *revertHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
@@ -125,7 +121,7 @@ func (h *revertHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *revertHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	err := h.sc.RevertConfigTo(h.GUID, u.Username())
+	err := event.RevertConfig(h.GUID, u.Username())
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

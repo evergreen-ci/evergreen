@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -24,8 +25,9 @@ type CopyProjectOpts struct {
 	NewProjectId         string
 }
 
-func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
-	projectToCopy, err := sc.FindProjectById(opts.ProjectIdToCopy, false, false)
+// CopyProject copies the passed in project with the given project identifier, and returns the new project.
+func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error finding project '%s'", opts.ProjectIdToCopy)
 	}
@@ -52,7 +54,7 @@ func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*
 	projectToCopy.ManualPRTestingEnabled = utility.FalsePtr()
 	projectToCopy.CommitQueue.Enabled = nil
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	if err := sc.CreateProject(projectToCopy, u); err != nil {
+	if err := CreateProject(projectToCopy, u); err != nil {
 		return nil, err
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
@@ -61,23 +63,25 @@ func (sc *DBConnector) CopyProject(ctx context.Context, opts CopyProjectOpts) (*
 	}
 
 	// copy variables, aliases, and subscriptions
-	if err := sc.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying project vars from project '%s'", oldIdentifier)
 	}
-	if err := sc.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying aliases from project '%s'", oldIdentifier)
 	}
-	if err := sc.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
 		return nil, errors.Wrapf(err, "error copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// set the same admin roles from the old project on the newly copied project.
-	if err := sc.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
+	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
 		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 	return apiProjectRef, nil
 }
 
-func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
+// SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
+// RepoRef related functions and collection instead of ProjectRef.
+func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
 	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
 	before, err := model.GetProjectSettingsById(projectId, isRepo)
@@ -112,7 +116,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 				return nil, err
 			}
 			// check if webhook is enabled if the owner/repo has changed
-			_, err = sc.EnableWebhooks(ctx, mergedProjectRef)
+			_, err = model.EnableWebhooks(ctx, mergedProjectRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error enabling webhooks for project '%s'", projectId)
 			}
@@ -175,7 +179,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 				changes.Vars.Vars[key] = value
 			}
 		}
-		if err = sc.UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
+		if err = UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
 			return nil, errors.Wrapf(err, "Database error updating variables for project '%s'", projectId)
 		}
 		modified = true
@@ -184,7 +188,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 			return nil, err
 		}
 
-		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
 		for i := range mergedProjectRef.PatchTriggerAliases {
@@ -194,10 +198,10 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "error validating patch trigger aliases")
 		}
-		modified, err = sc.UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
-		if err = sc.SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
+		if err = SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
 			return nil, errors.Wrapf(err, "Database error saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
@@ -213,7 +217,7 @@ func (sc *DBConnector) SaveProjectSettingsForSection(ctx context.Context, projec
 				toDelete = append(toDelete, originalSub.ID)
 			}
 		}
-		catcher.Wrapf(sc.DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
+		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
 	}
 	fmt.Println("GETTING TO SAVE FOR SECTION")
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)

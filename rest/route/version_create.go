@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeVersionCreateHandler(sc data.Connector) gimlet.RouteHandler {
-	return &versionCreateHandler{sc: sc}
+func makeVersionCreateHandler() gimlet.RouteHandler {
+	return &versionCreateHandler{}
 }
 
 type versionCreateHandler struct {
@@ -52,7 +52,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectInfo := &model.ProjectInfo{}
 	var err error
-	projectInfo.Ref, err = h.sc.FindProjectById(h.ProjectID, true, true)
+	projectInfo.Ref, err = data.FindProjectById(h.ProjectID, true, true)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}

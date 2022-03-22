@@ -19,10 +19,9 @@ import (
 
 func TestSetBanner(t *testing.T) {
 	assert := assert.New(t)
-	sc := &data.DBConnector{}
 
 	// test getting the route handler
-	routeManager := makeSetAdminBanner(sc)
+	routeManager := makeSetAdminBanner()
 	assert.NotNil(routeManager)
 	assert.IsType(&bannerPostHandler{}, routeManager)
 
@@ -48,7 +47,7 @@ func TestSetBanner(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	settings, err := sc.GetEvergreenSettings()
+	settings, err := evergreen.GetConfig()
 	assert.NoError(err)
 	assert.Equal(utility.FromStringPtr(body.Text), settings.Banner)
 
@@ -69,7 +68,7 @@ func TestSetBanner(t *testing.T) {
 	resp = routeManager.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
-	settings, err = sc.GetEvergreenSettings()
+	settings, err = evergreen.GetConfig()
 	assert.NoError(err)
 	assert.Equal(utility.FromStringPtr(body.Theme), string(settings.BannerTheme))
 
@@ -96,7 +95,6 @@ func TestFetchBanner(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
-	connector := data.DBAdminConnector{}
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
 	}
@@ -147,11 +145,9 @@ func TestFetchBanner(t *testing.T) {
 			},
 		},
 	}
-	_, err := connector.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
+	_, err := data.SetEvergreenSettings(newSettings, &evergreen.Settings{}, u, true)
 	require.NoError(t, err)
-	routeManager := makeFetchAdminBanner(&data.DBConnector{
-		DBAdminConnector: connector,
-	})
+	routeManager := makeFetchAdminBanner()
 	assert.NotNil(routeManager)
 
 	// test getting what we just sets

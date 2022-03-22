@@ -37,9 +37,7 @@ const (
 	RequestContext requestContextKey = 0
 )
 
-type projCtxMiddleware struct {
-	sc data.Connector
-}
+type projCtxMiddleware struct{}
 
 func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
@@ -50,7 +48,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
 
-	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
+	opCtx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -80,10 +78,8 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	next(rw, r)
 }
 
-func NewProjectContextMiddleware(sc data.Connector) gimlet.Middleware {
-	return &projCtxMiddleware{
-		sc: sc,
-	}
+func NewProjectContextMiddleware() gimlet.Middleware {
+	return &projCtxMiddleware{}
 }
 
 // GetProjectContext returns the project context associated with a
@@ -118,7 +114,7 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	return usr
 }
 
-func validPriority(priority int64, project string, user gimlet.User, sc data.Connector) bool {
+func validPriority(priority int64, project string, user gimlet.User) bool {
 	if priority > evergreen.MaxTaskPriority {
 		return user.HasPermission(gimlet.PermissionOpts{
 			Resource:      project,
@@ -130,14 +126,11 @@ func validPriority(priority int64, project string, user gimlet.User, sc data.Con
 	return true
 }
 
-func NewProjectAdminMiddleware(sc data.Connector) gimlet.Middleware {
-	return &projectAdminMiddleware{
-		sc: sc,
-	}
+func NewProjectAdminMiddleware() gimlet.Middleware {
+	return &projectAdminMiddleware{}
 }
 
 type projectAdminMiddleware struct {
-	sc data.Connector
 }
 
 func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -171,14 +164,11 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 }
 
 // This middleware is more restrictive than checkProjectAdmin, as branch admins do not have access
-func NewRepoAdminMiddleware(sc data.Connector) gimlet.Middleware {
-	return &projectRepoMiddleware{
-		sc: sc,
-	}
+func NewRepoAdminMiddleware() gimlet.Middleware {
+	return &projectRepoMiddleware{}
 }
 
 type projectRepoMiddleware struct {
-	sc data.Connector
 }
 
 func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -225,14 +215,11 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 
 // NewTaskHostAuthMiddleware returns route middleware that authenticates a host
 // created by a task and verifies the secret of the host that created this host.
-func NewTaskHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
-	return &TaskHostAuthMiddleware{
-		sc: sc,
-	}
+func NewTaskHostAuthMiddleware() gimlet.Middleware {
+	return &TaskHostAuthMiddleware{}
 }
 
 type TaskHostAuthMiddleware struct {
-	sc data.Connector
 }
 
 func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -248,7 +235,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
-	h, err := m.sc.FindHostById(hostID)
+	h, err := host.FindOneId(hostID)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
@@ -268,12 +255,18 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-	t, err := m.sc.FindTaskById(h.StartedBy)
+	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
-	if code, err := m.sc.CheckHostSecret(t.HostId, r); err != nil {
+	if t == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task with id %s not found", h.StartedBy),
+		}))
+	}
+	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
@@ -284,14 +277,12 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
-type hostAuthMiddleware struct {
-	sc data.Connector
-}
+type hostAuthMiddleware struct{}
 
 // NewHostAuthMiddleware returns a route middleware that verifies the request's
 // host ID and secret.
-func NewHostAuthMiddleware(sc data.Connector) gimlet.Middleware {
-	return &hostAuthMiddleware{sc: sc}
+func NewHostAuthMiddleware() gimlet.Middleware {
+	return &hostAuthMiddleware{}
 }
 
 func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -306,7 +297,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	if statusCode, err := m.sc.CheckHostSecret(hostID, r); err != nil {
+	if _, statusCode, err := model.ValidateHost(hostID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
 			Message:    err.Error(),
@@ -316,14 +307,12 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
-type podAuthMiddleware struct {
-	sc data.Connector
-}
+type podAuthMiddleware struct{}
 
 // NewPodAuthMiddleware returns a middleware that verifies the request's pod ID
 // and secret.
-func NewPodAuthMiddleware(sc data.Connector) gimlet.Middleware {
-	return &podAuthMiddleware{sc: sc}
+func NewPodAuthMiddleware() gimlet.Middleware {
+	return &podAuthMiddleware{}
 }
 
 func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -340,8 +329,7 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("missing pod secret")))
 		return
 	}
-
-	if err := m.sc.CheckPodSecret(id, secret); err != nil {
+	if err := data.CheckPodSecret(id, secret); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
@@ -349,15 +337,11 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	next(rw, r)
 }
 
-func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
-	return &TaskAuthMiddleware{
-		sc: sc,
-	}
+func NewTaskAuthMiddleware() gimlet.Middleware {
+	return &TaskAuthMiddleware{}
 }
 
-type TaskAuthMiddleware struct {
-	sc data.Connector
-}
+type TaskAuthMiddleware struct{}
 
 func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	vars := gimlet.GetVars(r)
@@ -372,15 +356,14 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-
-	if code, err := m.sc.CheckTaskSecret(taskID, r); err != nil {
+	if code, err := data.CheckTaskSecret(taskID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
 		}))
 		return
 	}
-	if code, err := m.sc.CheckHostSecret("", r); err != nil {
+	if _, code, err := model.ValidateHost("", r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    err.Error(),
@@ -391,21 +374,15 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
-func NewCommitQueueItemOwnerMiddleware(sc data.Connector) gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{
-		sc: sc,
-	}
+func NewCommitQueueItemOwnerMiddleware() gimlet.Middleware {
+	return &CommitQueueItemOwnerMiddleware{}
 }
 
-func NewMockCommitQueueItemOwnerMiddleware(sc data.Connector) gimlet.Middleware {
-	return &MockCommitQueueItemOwnerMiddleware{
-		sc: sc,
-	}
+func NewMockCommitQueueItemOwnerMiddleware() gimlet.Middleware {
+	return &MockCommitQueueItemOwnerMiddleware{}
 }
 
-type MockCommitQueueItemOwnerMiddleware struct {
-	sc data.Connector
-}
+type MockCommitQueueItemOwnerMiddleware struct{}
 
 func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
@@ -455,7 +432,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 	}
 
 	if bson.IsObjectIdHex(itemId) {
-		patch, err := m.sc.FindPatchById(itemId)
+		patch, err := data.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
 			return
@@ -546,7 +523,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	}
 
 	if bson.IsObjectIdHex(itemId) {
-		patch, err := m.sc.FindPatchById(itemId)
+		patch, err := data.FindPatchById(itemId)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
 			return

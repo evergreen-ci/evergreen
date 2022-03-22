@@ -23,7 +23,7 @@ import (
 // Tests for fetch patch by project route
 
 type ProjectConnectorGetSuite struct {
-	ctx      Connector
+	ctx      DBProjectConnector
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -79,8 +79,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	s.setup = func() error {
-		s.ctx = &DBConnector{}
-
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 
 		projects := []*model.ProjectRef{
@@ -179,76 +177,76 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyAsc() {
-	projects, err := s.ctx.FindProjects("", 8, 1)
+	projects, err := model.FindProjects("", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooManyDesc() {
-	projects, err := s.ctx.FindProjects("zzz", 8, -1)
+	projects, err := model.FindProjects("zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchExactNumber() {
-	projects, err := s.ctx.FindProjects("", 3, 1)
+	projects, err := model.FindProjects("", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewAsc() {
-	projects, err := s.ctx.FindProjects("", 2, 1)
+	projects, err := model.FindProjects("", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchTooFewDesc() {
-	projects, err := s.ctx.FindProjects("zzz", 2, -1)
+	projects, err := model.FindProjects("zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := s.ctx.FindProjects("projectB", 1, 1)
+	projects, err := model.FindProjects("projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := s.ctx.FindProjects("projectD", 1, -1)
+	projects, err := model.FindProjects("projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := s.ctx.FindProjects("zzz", 1, 1)
+	projects, err := model.FindProjects("zzz", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
 
 func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := s.ctx.FindProjects("aaa", 1, -1)
+	projects, err := model.FindProjects("aaa", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
-	events, err := s.ctx.GetProjectEventLog(projectId, time.Now(), 0)
+	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
 	s.Equal(projEventCount, len(events))
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
+	projRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
 	s.NoError(err)
 	s.Nil(projRef)
 
-	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
+	projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotNil(projRef)
 }
@@ -262,7 +260,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettings() {
 		Admins:  []string{},
 		Repo:    "SomeRepo",
 	}
-	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
+	projectSettingsEvent, err := model.GetProjectSettings(projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 }
@@ -275,7 +273,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 		Id:      projectId,
 		Admins:  []string{},
 	}
-	projectSettingsEvent, err := s.ctx.GetProjectSettings(projRef)
+	projectSettingsEvent, err := model.GetProjectSettings(projRef)
 	s.Nil(err)
 	s.NotNil(projectSettingsEvent)
 	s.False(projectSettingsEvent.GitHubHooksEnabled)
@@ -283,7 +281,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	// redact private variables
-	res, err := s.ctx.FindProjectVarsById(projectId, "", true)
+	res, err := FindProjectVarsById(projectId, "", true)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -291,7 +289,7 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.True(res.PrivateVars["b"])
 
 	// not redacted
-	res, err = s.ctx.FindProjectVarsById(projectId, "", false)
+	res, err = FindProjectVarsById(projectId, "", false)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -299,7 +297,7 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.Equal("", res.Vars["c"])
 
 	// test with repo
-	res, err = s.ctx.FindProjectVarsById(projectId, repoProjectId, true)
+	res, err = FindProjectVarsById(projectId, repoProjectId, true)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -308,20 +306,20 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.False(res.PrivateVars["a"])
 	s.Equal("new", res.Vars["c"])
 
-	res, err = s.ctx.FindProjectVarsById("", repoProjectId, true)
+	res, err = FindProjectVarsById("", repoProjectId, true)
 	s.NoError(err)
 	s.Equal("", res.Vars["a"])
 	s.Equal("new", res.Vars["c"])
 	s.True(res.PrivateVars["a"])
 
-	res, err = s.ctx.FindProjectVarsById("", repoProjectId, false)
+	res, err = FindProjectVarsById("", repoProjectId, false)
 	s.NoError(err)
 	s.Equal("a_from_repo", res.Vars["a"])
 	s.Equal("", res.Vars["b"])
 	s.Equal("new", res.Vars["c"])
 	s.True(res.PrivateVars["a"])
 
-	_, err = s.ctx.FindProjectVarsById("non-existent", "also-non-existent", false)
+	_, err = FindProjectVarsById("non-existent", "also-non-existent", false)
 	s.Error(err)
 }
 
@@ -333,7 +331,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	s.NoError(s.ctx.UpdateProjectVars(projectId, &newVars, false))
+	s.NoError(UpdateProjectVars(projectId, &newVars, false))
 	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
 	s.Equal(newVars.Vars["c"], "")
 	_, ok := newVars.Vars["a"]
@@ -345,7 +343,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.False(ok)
 
 	// successful upsert
-	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars, false))
+	s.NoError(UpdateProjectVars("not-an-id", &newVars, false))
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
@@ -354,7 +352,6 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
-	dc := &DBProjectConnector{}
 
 	vars := &model.ProjectVars{
 		Id:          projectId,
@@ -363,22 +360,22 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-	resp, err := dc.UpdateProjectVarsByValue("1", "11", "user", true)
+	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"a"}, resp[projectId])
 
-	res, err := dc.FindProjectVarsById(projectId, "", false)
+	res, err := FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.Equal(t, "1", res.Vars["a"])
 
-	resp, err = dc.UpdateProjectVarsByValue("1", "11", username, false)
+	resp, err = model.UpdateProjectVarsByValue("1", "11", username, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"a"}, resp[projectId])
 
-	res, err = dc.FindProjectVarsById(projectId, "", false)
+	res, err = FindProjectVarsById(projectId, "", false)
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.Equal(t, "11", res.Vars["a"])
@@ -396,11 +393,11 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
-	s.NoError(s.ctx.CopyProjectVars(projectId, "project-copy"))
-	origProj, err := s.ctx.FindProjectVarsById(projectId, "", false)
+	s.NoError(model.CopyProjectVars(projectId, "project-copy"))
+	origProj, err := FindProjectVarsById(projectId, "", false)
 	s.NoError(err)
 
-	newProj, err := s.ctx.FindProjectVarsById("project-copy", "", false)
+	newProj, err := FindProjectVarsById("project-copy", "", false)
 	s.NoError(err)
 
 	s.Equal(origProj.PrivateVars, newProj.PrivateVars)
@@ -440,13 +437,12 @@ func TestGetProjectAliasResults(t *testing.T) {
 	}
 	require.NoError(t, alias2.Upsert())
 
-	dc := &DBProjectConnector{}
-	variantTasks, err := dc.GetProjectAliasResults(&p, alias1.Alias, false)
+	variantTasks, err := GetProjectAliasResults(&p, alias1.Alias, false)
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 1)
 	assert.Equal(t, "task1", variantTasks[0].Tasks[0])
-	variantTasks, err = dc.GetProjectAliasResults(&p, alias2.Alias, false)
+	variantTasks, err = GetProjectAliasResults(&p, alias2.Alias, false)
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 2)

@@ -429,6 +429,28 @@ func regexMatchesValue(regexString string, values []string) bool {
 	return false
 }
 
+// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
+func CopyProjectSubscriptions(oldProject, newProject string) error {
+	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
+	if err != nil {
+		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, sub := range subs {
+		sub.Owner = newProject
+		sub.ID = ""
+		for i, selector := range sub.Selectors {
+			if selector.Type == SelectorProject && selector.Data == oldProject {
+				sub.Selectors[i].Data = newProject
+				sub.Filter.Project = newProject
+			}
+		}
+		catcher.Add(sub.Upsert())
+	}
+	return catcher.Resolve()
+}
+
 func (s *Subscription) Upsert() error {
 	if s.ID == "" {
 		s.ID = mgobson.NewObjectId().Hex()

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -26,19 +25,14 @@ import (
 type annotationsByBuildHandler struct {
 	buildId            string
 	fetchAllExecutions bool
-	sc                 data.Connector
 }
 
-func makeFetchAnnotationsByBuild(sc data.Connector) gimlet.RouteHandler {
-	return &annotationsByBuildHandler{
-		sc: sc,
-	}
+func makeFetchAnnotationsByBuild() gimlet.RouteHandler {
+	return &annotationsByBuildHandler{}
 }
 
 func (h *annotationsByBuildHandler) Factory() gimlet.RouteHandler {
-	return &annotationsByBuildHandler{
-		sc: h.sc,
-	}
+	return &annotationsByBuildHandler{}
 }
 
 func (h *annotationsByBuildHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -70,19 +64,14 @@ func (h *annotationsByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 type annotationsByVersionHandler struct {
 	versionId          string
 	fetchAllExecutions bool
-	sc                 data.Connector
 }
 
-func makeFetchAnnotationsByVersion(sc data.Connector) gimlet.RouteHandler {
-	return &annotationsByVersionHandler{
-		sc: sc,
-	}
+func makeFetchAnnotationsByVersion() gimlet.RouteHandler {
+	return &annotationsByVersionHandler{}
 }
 
 func (h *annotationsByVersionHandler) Factory() gimlet.RouteHandler {
-	return &annotationsByVersionHandler{
-		sc: h.sc,
-	}
+	return &annotationsByVersionHandler{}
 }
 
 func (h *annotationsByVersionHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -132,19 +121,14 @@ type annotationByTaskGetHandler struct {
 	taskId             string
 	fetchAllExecutions bool
 	execution          int
-	sc                 data.Connector
 }
 
-func makeFetchAnnotationsByTask(sc data.Connector) gimlet.RouteHandler {
-	return &annotationByTaskGetHandler{
-		sc: sc,
-	}
+func makeFetchAnnotationsByTask() gimlet.RouteHandler {
+	return &annotationByTaskGetHandler{}
 }
 
 func (h *annotationByTaskGetHandler) Factory() gimlet.RouteHandler {
-	return &annotationByTaskGetHandler{
-		sc: h.sc,
-	}
+	return &annotationByTaskGetHandler{}
 }
 
 func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -228,19 +212,14 @@ type annotationByTaskPutHandler struct {
 
 	user       gimlet.User
 	annotation *restModel.APITaskAnnotation
-	sc         data.Connector
 }
 
-func makePutAnnotationsByTask(sc data.Connector) gimlet.RouteHandler {
-	return &annotationByTaskPutHandler{
-		sc: sc,
-	}
+func makePutAnnotationsByTask() gimlet.RouteHandler {
+	return &annotationByTaskPutHandler{}
 }
 
 func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
-	return &annotationByTaskPutHandler{
-		sc: h.sc,
-	}
+	return &annotationByTaskPutHandler{}
 }
 
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -356,19 +335,14 @@ type createdTicketByTaskPutHandler struct {
 	execution int
 	user      gimlet.User
 	ticket    *restModel.APIIssueLink
-	sc        data.Connector
 }
 
-func makeCreatedTicketByTask(sc data.Connector) gimlet.RouteHandler {
-	return &createdTicketByTaskPutHandler{
-		sc: sc,
-	}
+func makeCreatedTicketByTask() gimlet.RouteHandler {
+	return &createdTicketByTaskPutHandler{}
 }
 
 func (h *createdTicketByTaskPutHandler) Factory() gimlet.RouteHandler {
-	return &createdTicketByTaskPutHandler{
-		sc: h.sc,
-	}
+	return &createdTicketByTaskPutHandler{}
 }
 
 func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {

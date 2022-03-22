@@ -75,11 +75,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 func (s *StatsSuite) TestRunTestHandler() {
 	s.NoError(db.ClearCollections(stats.DailyTestStatsCollection, stats.DailyTaskStatsCollection))
 	var err error
-	sc := &data.DBConnector{
-		StatsConnector: data.StatsConnector{},
-		URL:            "https://example.net/test",
-	}
-	handler := makeGetProjectTestStats(sc).(*testStatsHandler)
+	handler := makeGetProjectTestStats("https://example.net/test").(*testStatsHandler)
 	s.Require().NoError(err)
 
 	// 100 documents will be returned
@@ -101,7 +97,7 @@ func (s *StatsSuite) TestRunTestHandler() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
-	docs, err := sc.StatsConnector.GetTestStats(handler.filter)
+	docs, err := data.GetTestStats(handler.filter)
 	s.NoError(err)
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }
@@ -125,11 +121,7 @@ func (s *StatsSuite) TestReadTestStartAt() {
 func (s *StatsSuite) TestRunTaskHandler() {
 	s.NoError(db.ClearCollections(stats.DailyTestStatsCollection, stats.DailyTaskStatsCollection))
 	var err error
-	sc := &data.DBConnector{
-		StatsConnector: data.StatsConnector{},
-		URL:            "https://example.net/task",
-	}
-	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
+	handler := makeGetProjectTaskStats("https://example.net/task").(*taskStatsHandler)
 	s.Require().NoError(err)
 
 	// 100 documents will be returned
@@ -151,7 +143,7 @@ func (s *StatsSuite) TestRunTaskHandler() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
-	docs, err := sc.TaskReliabilityConnector.GetTaskReliabilityScores(reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
+	docs, err := data.GetTaskReliabilityScores(reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
 	s.NoError(err)
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }

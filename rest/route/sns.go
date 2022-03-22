@@ -38,7 +38,6 @@ const (
 )
 
 type baseSNS struct {
-	sc    data.Connector
 	queue amboy.Queue
 	env   evergreen.Environment
 
@@ -46,9 +45,8 @@ type baseSNS struct {
 	payload     sns.Payload
 }
 
-func makeBaseSNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) baseSNS {
+func makeBaseSNS(env evergreen.Environment, queue amboy.Queue) baseSNS {
 	return baseSNS{
-		sc:    sc,
 		env:   env,
 		queue: queue,
 	}
@@ -104,15 +102,15 @@ type ec2SNS struct {
 	baseSNS
 }
 
-func makeEC2SNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
+func makeEC2SNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
 	return &ec2SNS{
-		baseSNS: makeBaseSNS(sc, env, queue),
+		baseSNS: makeBaseSNS(env, queue),
 	}
 }
 
 func (sns *ec2SNS) Factory() gimlet.RouteHandler {
 	return &ec2SNS{
-		baseSNS: makeBaseSNS(sns.sc, sns.env, sns.queue),
+		baseSNS: makeBaseSNS(sns.env, sns.queue),
 	}
 }
 
@@ -198,7 +196,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 }
 
 func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	h, err := sns.sc.FindHostById(instanceID)
+	h, err := host.FindOneId(instanceID)
 	if err != nil {
 		return err
 	}
@@ -270,7 +268,7 @@ func (sns *ec2SNS) skipEarlyTermination(h *host.Host) bool {
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
-	h, err := sns.sc.FindHostById(instanceID)
+	h, err := host.FindOneId(instanceID)
 	if err != nil {
 		return err
 	}
@@ -294,7 +292,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 // stopped. Agent hosts that are stopped externally are treated the same as an
 // externally-terminated host.
 func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string) error {
-	h, err := sns.sc.FindHostById(instanceID)
+	h, err := host.FindOneId(instanceID)
 	if err != nil {
 		return err
 	}
@@ -338,15 +336,15 @@ type ecsEventDetail struct {
 	StoppedReason string `json:"stoppedReason"`
 }
 
-func makeECSSNS(sc data.Connector, env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
+func makeECSSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS: makeBaseSNS(sc, env, queue),
+		baseSNS: makeBaseSNS(env, queue),
 	}
 }
 
 func (sns *ecsSNS) Factory() gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS: makeBaseSNS(sns.sc, sns.env, sns.queue),
+		baseSNS: makeBaseSNS(sns.env, sns.queue),
 	}
 }
 
@@ -388,7 +386,7 @@ func (sns *ecsSNS) Run(ctx context.Context) gimlet.Responder {
 func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEventBridgeNotification) error {
 	switch notification.DetailType {
 	case ecsTaskStateChangeType:
-		p, err := sns.sc.FindPodByExternalID(notification.Detail.TaskARN)
+		p, err := data.FindPodByExternalID(notification.Detail.TaskARN)
 		if err != nil {
 			return err
 		}
@@ -447,7 +445,7 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 	}
 	id := utility.FromStringPtr(p.ID)
 
-	if err := sns.sc.UpdatePodStatus(id, p.Status, model.PodStatusDecommissioned); err != nil {
+	if err := data.UpdatePodStatus(id, p.Status, model.PodStatusDecommissioned); err != nil {
 		return err
 	}
 

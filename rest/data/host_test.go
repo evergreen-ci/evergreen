@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -26,7 +27,6 @@ func init() {
 }
 
 type HostConnectorSuite struct {
-	conn  Connector
 	setup func(*HostConnectorSuite)
 	suite.Suite
 }
@@ -109,7 +109,6 @@ func TestHostConnectorSuite(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
 	s := new(HostConnectorSuite)
-	s.conn = &DBConnector{}
 
 	s.setup = func(s *HostConnectorSuite) {
 		s.NoError(db.ClearCollections(user.Collection, host.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -166,10 +165,6 @@ func TestDBHostConnectorSuite(t *testing.T) {
 			"create": evergreen.ScopeCollection,
 		}
 		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
-		s.conn = &DBConnector{
-			DBHostConnector: DBHostConnector{},
-			DBUserConnector: DBUserConnector{},
-		}
 		hosts := s.hosts()
 		users := s.users()
 		for _, h := range hosts {
@@ -211,31 +206,31 @@ func (s *HostConnectorSuite) TearDownSuite() {
 }
 
 func (s *HostConnectorSuite) TestFindById() {
-	h1, ok := s.conn.FindHostById("host1")
+	h1, ok := host.FindOneId("host1")
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 
-	h2, ok := s.conn.FindHostById("host2")
+	h2, ok := host.FindOneId("host2")
 	s.NoError(ok)
 	s.NotNil(h2)
 	s.Equal("host2", h2.Id)
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
-	h, ok := s.conn.FindHostById("nonexistent")
+	h, ok := host.FindOneId("nonexistent")
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindByIP() {
-	h1, ok := s.conn.FindHostByIpAddress("ip1")
+	h1, ok := host.FindOne(host.ByIP("ip1"))
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 	s.Equal("ip1", h1.IP)
 
-	h2, ok := s.conn.FindHostByIpAddress("ip2")
+	h2, ok := host.FindOne(host.ByIP("ip2"))
 	s.NoError(ok)
 	s.NotNil(h2)
 	s.Equal("host2", h2.Id)
@@ -243,18 +238,18 @@ func (s *HostConnectorSuite) TestFindByIP() {
 }
 
 func (s *HostConnectorSuite) TestFindByIPFail() {
-	h, ok := s.conn.FindHostByIpAddress("nonexistent")
+	h, ok := host.FindOne(host.ByIP("nonexistent"))
 	s.NoError(ok)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostsByDistro() {
-	hosts, err := s.conn.FindHostsByDistro("distro5")
+	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning("distro5")))
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 1)
 	s.Equal("host5", hosts[0].Id)
 
-	hosts, err = s.conn.FindHostsByDistro("alias125")
+	hosts, err = host.Find(db.Query(host.ByDistroIDsOrAliasesRunning("alias125")))
 	s.Require().NoError(err)
 	s.Require().Len(hosts, 2)
 	var host1Found, host5Found bool
@@ -271,7 +266,7 @@ func (s *HostConnectorSuite) TestFindHostsByDistro() {
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
-	hosts, err := s.conn.FindHostsById("", "", testUser, 100)
+	hosts, err := host.GetHostsByFromIDWithStatus("", "", testUser, 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -280,7 +275,7 @@ func (s *HostConnectorSuite) TestFindByUser() {
 }
 
 func (s *HostConnectorSuite) TestStatusFiltering() {
-	hosts, err := s.conn.FindHostsById("", "", "", 100)
+	hosts, err := host.GetHostsByFromIDWithStatus("", "", "", 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -295,14 +290,14 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 }
 
 func (s *HostConnectorSuite) TestLimit() {
-	hosts, err := s.conn.FindHostsById("", evergreen.HostTerminated, "", 2)
+	hosts, err := host.GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(2, len(hosts))
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
-	hosts, err = s.conn.FindHostsById("", evergreen.HostTerminated, "", 3)
+	hosts, err = host.GetHostsByFromIDWithStatus("", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(3, len(hosts))
@@ -347,7 +342,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		InstanceTags: nil,
 	}
 
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
+	intentHost, err := NewIntentHost(ctx, options, testUser, config)
 	s.NoError(err)
 	s.Require().NotNil(intentHost)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
@@ -363,7 +358,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 
 	// with instance type
 	options.InstanceType = testInstanceType
-	_, err = (&DBHostConnector{}).NewIntentHost(ctx, options, testUser, config)
+	_, err = NewIntentHost(ctx, options, testUser, config)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "not been allowed by admins")
 	config.Providers.AWS.AllowedInstanceTypes = []string{testInstanceType}
@@ -371,52 +366,52 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 }
 
 func (s *HostConnectorSuite) TestSetHostStatus() {
-	h, err := s.conn.FindHostById("host1")
+	h, err := host.FindOneId("host1")
 	s.NoError(err)
-	s.NoError(s.conn.SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
+	s.NoError(h.SetStatus(evergreen.HostTerminated, evergreen.User, fmt.Sprintf("changed by %s from API", evergreen.User)))
 
 	for i := 1; i < 5; i++ {
-		h, err := s.conn.FindHostById(fmt.Sprintf("host%d", i))
+		h, err := host.FindOneId(fmt.Sprintf("host%d", i))
 		s.NoError(err)
 		s.Equal(evergreen.HostTerminated, h.Status)
 	}
 }
 
 func (s *HostConnectorSuite) TestExtendHostExpiration() {
-	h, err := s.conn.FindHostById("host1")
+	h, err := host.FindOneId("host1")
 	s.NoError(err)
 	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
-	s.NoError(s.conn.SetHostExpirationTime(h, expectedTime))
+	s.NoError(h.SetExpirationTime(expectedTime))
 
-	hCheck, err := s.conn.FindHostById("host1")
+	hCheck, err := host.FindOneId("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
 	s.NoError(err)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
-	u, err := s.conn.FindUserById(testUser)
+	u, err := user.FindOneById(testUser)
 	s.NoError(err)
 
-	h, err := s.conn.FindHostByIdWithOwner("host1", u)
+	h, err := FindHostByIdWithOwner("host1", u)
 	s.NoError(err)
 	s.NotNil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
-	u, err := s.conn.FindUserById(testUser)
+	u, err := user.FindOneById(testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
-	h, err := s.conn.FindHostByIdWithOwner("host2", u)
+	h, err := FindHostByIdWithOwner("host2", u)
 	s.Error(err)
 	s.Nil(h)
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
-	u, err := s.conn.FindUserById("root")
+	u, err := user.FindOneById("root")
 	s.NoError(err)
 
-	h, err := s.conn.FindHostByIdWithOwner("host2", u)
+	h, err := FindHostByIdWithOwner("host2", u)
 	s.NoError(err)
 	s.NotNil(h)
 }
@@ -427,17 +422,16 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 			evergreen.HostHeader: []string{"host1"},
 		},
 	}
-
-	code, err := s.conn.CheckHostSecret("", r)
+	_, code, err := model.ValidateHost("", r)
 	s.Error(err)
 	s.Equal(http.StatusBadRequest, code)
 
 	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
-	code, err = s.conn.CheckHostSecret("host1", r)
+	_, code, err = model.ValidateHost("host1", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 
-	code, err = s.conn.CheckHostSecret("", r)
+	_, code, err = model.ValidateHost("", r)
 	s.NoError(err)
 	s.Equal(http.StatusOK, code)
 }
@@ -446,7 +440,7 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.withNewEnvironment(ctx, func() {
-		script, err := s.conn.GenerateHostProvisioningScript(ctx, "host1")
+		script, err := GenerateHostProvisioningScript(ctx, "host1")
 		s.Require().NoError(err)
 		s.NotZero(script)
 	})
@@ -457,7 +451,7 @@ func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidH
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.withNewEnvironment(ctx, func() {
-		script, err := s.conn.GenerateHostProvisioningScript(ctx, "foo")
+		script, err := GenerateHostProvisioningScript(ctx, "foo")
 		s.Error(err)
 		s.Zero(script)
 	})
