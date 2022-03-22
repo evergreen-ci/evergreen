@@ -55,8 +55,10 @@ func NewGenerateTasksJob(versionID, taskID string, ts string, useScopes bool) am
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
 	if useScopes {
-		j.SetScopes([]string{versionID, taskID})
-		j.SetEnqueueScopes(taskID)
+		versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
+		taskScope := fmt.Sprintf("%s.%s", generateTasksJobName, taskID)
+		j.SetScopes([]string{versionScope, taskScope})
+		j.SetEnqueueScopes(taskScope)
 	}
 	return j
 }
