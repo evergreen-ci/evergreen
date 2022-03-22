@@ -87,7 +87,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 
 	// Error if key or secret are blank
 	if key == "" || secret == "" {
-		return errors.New("AWS ID and Secret must not be blank")
+		return errors.New("AWS ID and Secret could not be retrieved")
 	}
 
 	defaultCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
