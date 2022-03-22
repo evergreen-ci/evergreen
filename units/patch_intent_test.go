@@ -697,8 +697,10 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)
-	childPatchIds, err := ProcessTriggerAliases(ctx, p, projectRef, s.env, []string{"patch-alias"})
-	s.NoError(err)
-	s.Len(childPatchIds, 1)
+	s.NoError(ProcessTriggerAliases(ctx, p, projectRef, s.env, []string{"patch-alias"}))
 	s.Len(p.Triggers.ChildPatches, 1)
+
+	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	s.NoError(err)
+	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 }
