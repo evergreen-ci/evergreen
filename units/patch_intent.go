@@ -356,12 +356,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.Id = j.PatchID
 
-	if _, err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
-		return errors.Wrap(err, "problem processing trigger aliases")
-	}
-
 	if err = patchDoc.Insert(); err != nil {
 		return err
+	}
+
+	if _, err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
+		return errors.Wrap(err, "problem processing trigger aliases")
 	}
 
 	if patchDoc.IsGithubPRPatch() {
