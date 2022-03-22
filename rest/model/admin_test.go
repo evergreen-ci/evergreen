@@ -179,6 +179,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, utility.FromStringPtr(apiSettings.Scheduler.TaskFinder))
 	assert.EqualValues(testSettings.ServiceFlags.HostInitDisabled, apiSettings.ServiceFlags.HostInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodInitDisabled, apiSettings.ServiceFlags.PodInitDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, apiSettings.ServiceFlags.PodAllocatorDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
@@ -259,6 +260,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, dbSettings.Scheduler.TaskFinder)
 	assert.EqualValues(testSettings.ServiceFlags.HostInitDisabled, dbSettings.ServiceFlags.HostInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodInitDisabled, dbSettings.ServiceFlags.PodInitDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, dbSettings.ServiceFlags.PodAllocatorDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, dbSettings.ServiceFlags.S3BinaryDownloadsDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {

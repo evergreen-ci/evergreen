@@ -1967,6 +1967,7 @@ type APIServiceFlags struct {
 	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
+	PodAllocatorDisabled       bool `json:"pod_allocator_disabled"`
 	BackgroundReauthDisabled   bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled  bool `json:"background_cleanup_disabled"`
 
@@ -2230,6 +2231,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
+		as.PodAllocatorDisabled = v.PodAllocatorDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 	default:
@@ -2266,6 +2268,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
+		PodAllocatorDisabled:         as.PodAllocatorDisabled,
 		BackgroundCleanupDisabled:    as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:     as.BackgroundReauthDisabled,
 	}, nil
