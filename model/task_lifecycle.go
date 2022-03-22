@@ -31,12 +31,14 @@ type StatusChanges struct {
 	BuildComplete    bool
 }
 
-func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
+func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 	tasksToActivate := []task.Task{}
-	versionIdsToActivate := []string{}
+	versionIdsSet := map[string]bool{}
+	buildIdsSet := map[string]bool{}
+	buildToTaskMap := map[string]task.Task{}
 	for _, t := range tasks {
-		originalTasks := []task.Task{*t}
-		originalTasks = append(originalTasks, *t)
+		originalTasks := []task.Task{t}
+		originalTasks = append(originalTasks, t)
 		if t.DisplayOnly {
 			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 			if err != nil {
@@ -45,7 +47,7 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 			originalTasks = append(originalTasks, execTasks...)
 		}
 		if active {
-			// if the task is being activated and it doesn't override its dependencies
+			// if the task is being activated, and it doesn't override its dependencies
 			// activate the task's dependencies as well
 			if !t.OverrideDependencies {
 				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
@@ -83,7 +85,9 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 					"task_id": t.Id,
 				})
 			}
-			versionIdsToActivate = append(versionIdsToActivate, t.Version)
+			versionIdsSet[t.Version] = true
+			buildIdsSet[t.BuildId] = true
+			buildToTaskMap[t.BuildId] = t
 
 			// If the task was not activated by step back, and either the caller is not evergreen
 			// or the task was originally activated by evergreen, deactivate the task
@@ -102,7 +106,7 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 				}
 			}
 			if t.Requester == evergreen.MergeTestRequester {
-				if err = DequeueAndRestartForTask(nil, t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
+				if err = DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
 					return err
 				}
 			}
@@ -111,12 +115,9 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 			return nil
 		}
 		if t.IsPartOfDisplay() {
-			if err := UpdateDisplayTaskForTask(t); err != nil {
+			if err := UpdateDisplayTaskForTask(&t); err != nil {
 				return errors.Wrap(err, "problem updating display task")
 			}
-		}
-		if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
-			return errors.Wrap(err, "problem updating build and version status for task")
 		}
 	}
 
@@ -124,12 +125,23 @@ func SetActiveState(caller string, active bool, tasks ...*task.Task) error {
 		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
 			return errors.Wrapf(err, "can't activate tasks")
 		}
+		versionIdsToActivate := []string{}
+		for v := range versionIdsSet {
+			versionIdsToActivate = append(versionIdsToActivate, v)
+		}
 		if err := ActivateVersions(versionIdsToActivate); err != nil {
 			return errors.Wrapf(err, "Error marking version as activated")
 		}
 	} else {
 		if err := task.DeactivateTasks(tasksToActivate, caller); err != nil {
 			return errors.Wrap(err, "error deactivating task")
+		}
+	}
+
+	for b := range buildIdsSet {
+		t := buildToTaskMap[b]
+		if err := UpdateBuildAndVersionStatusForTask(&t); err != nil {
+			return errors.Wrapf(err, "problem updating build and version status for task '%s'", t.Id)
 		}
 	}
 
@@ -144,7 +156,7 @@ func SetActiveStateById(id, user string, active bool) error {
 	if t == nil {
 		return errors.Errorf("task '%s' not found", id)
 	}
-	return SetActiveState(user, active, t)
+	return SetActiveState(user, active, *t)
 }
 
 // activatePreviousTask will set the Active state for the first task with a
@@ -179,7 +191,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// activate the task
-	if err = SetActiveState(caller, true, prevTask); err != nil {
+	if err = SetActiveState(caller, true, *prevTask); err != nil {
 		return errors.Wrapf(err, "error setting task '%s' active", prevTask.Id)
 	}
 	// add the task that we're actually stepping back so that we know to activate it
@@ -338,7 +350,7 @@ func AbortTask(taskId, caller string) error {
 	}
 
 	// set the active state and then set the abort
-	if err = SetActiveState(caller, false, t); err != nil {
+	if err = SetActiveState(caller, false, *t); err != nil {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
@@ -397,7 +409,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 			continue
 		}
 
-		if err = SetActiveState(caller, false, &t); err != nil {
+		if err = SetActiveState(caller, false, t); err != nil {
 			return err
 		}
 	}

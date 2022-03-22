@@ -2797,7 +2797,7 @@ func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*re
 	if err != nil {
 		return nil, err
 	}
-	if len(scheduled) != 1 {
+	if len(scheduled) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task: %s", taskID))
 	}
 	return scheduled[0], nil
@@ -2808,7 +2808,7 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 	if err != nil {
 		return nil, err
 	}
-	if len(scheduled) != 1 {
+	if len(scheduled) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task: %s", taskID))
 	}
 	return scheduled[0], nil

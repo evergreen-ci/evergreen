@@ -72,14 +72,12 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		})
 		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
-	taskPtrs := []*task.Task{}
 	for _, t := range tasks {
-		taskPtrs = append(taskPtrs, &t)
 		if t.Requester == evergreen.MergeTestRequester && isActive {
 			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
 	}
-	if err = model.SetActiveState(usr.Username(), isActive, taskPtrs...); err != nil {
+	if err = model.SetActiveState(usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
@@ -99,7 +97,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromService(t)
+		err = apiTask.BuildFromService(&t)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}

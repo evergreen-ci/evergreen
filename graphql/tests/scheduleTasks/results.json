@@ -18,7 +18,7 @@
         "data": null,
         "errors": [
           {
-            "message": "Failed to schedule 1 task : input: task non-existent not found",
+            "message": "Failed to schedule tasks : input: tasks not found",
             "path": [
               "scheduleTasks"
             ],
