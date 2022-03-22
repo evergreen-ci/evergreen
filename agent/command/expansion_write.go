@@ -7,9 +7,19 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v3"
+)
+
+var (
+	expansionsToRedact = []string{
+		evergreen.GlobalGitHubTokenExpansion,
+		AwsAccessKeyId,
+		AwsSecretAccessKey,
+		AwsSessionToken,
+	}
 )
 
 type expansionsWriter struct {
@@ -37,9 +47,10 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	expansions := map[string]string{}
 	for k, v := range conf.Expansions.Map() {
 		_, ok := conf.Redacted[k]
-		if (ok && !c.Redacted) || k == evergreen.GlobalGitHubTokenExpansion {
-			//users should not be able to use the global github token expansion
-			//as it can result in the breaching of Evergreen's GitHub API limit
+		// Users should not be able to use the global github token expansion
+		// as it can result in the breaching of Evergreen's GitHub API limit.
+		// Likewise with AWS expansions.
+		if (ok && !c.Redacted) || utility.StringSliceContains(expansionsToRedact, k) {
 			continue
 		}
 		expansions[k] = v

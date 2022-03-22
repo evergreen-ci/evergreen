@@ -382,6 +382,11 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		return nil, err
 	}
 	taskConfig.Redacted = tc.expVars.PrivateVars
+
+	grip.Info("Populating AWS credentials.")
+	taskConfig.TaskSync = a.opts.SetupData.TaskSync
+	taskConfig.EC2Keys = a.opts.SetupData.EC2Keys
+
 	return taskConfig, nil
 }
 

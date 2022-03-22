@@ -18,13 +18,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	AwsAccessKeyId     = "AWS_ACCESS_KEY_ID"
+	AwsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
+	AwsSessionToken    = "AWS_SESSION_TOKEN"
+	AwsRoleExpiration  = "AWS_ROLE_EXPIRATION"
+)
+
 type ec2AssumeRole struct {
 	// The Amazon Resource Name (ARN) of the role to assume.
 	// Required.
 	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
 
 	// A unique identifier that might be required when you assume a role in another account.
-	// This variable will only be accessible by admins and mainline.
 	ExternalId string `mapstructure:"external_id" plugin:"expand"`
 
 	// An IAM policy in JSON format that you want to use as an inline session policy.
@@ -53,6 +59,10 @@ func (r *ec2AssumeRole) validate() error {
 
 	if r.RoleARN == "" {
 		catcher.New("must specify role ARN")
+	}
+
+	if r.DurationSeconds < 0 {
+		catcher.New("cannot specify a non-positive duration")
 	}
 
 	return catcher.Resolve()
@@ -85,11 +95,11 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		SecretAccessKey: secret,
 	})
 
-	session := session.Must(session.NewSession(&aws.Config{
+	session1 := session.Must(session.NewSession(&aws.Config{
 		Credentials: defaultCreds,
 	}))
 
-	creds := stscreds.NewCredentials(session, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
+	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
 		arp.RoleSessionName = fmt.Sprintf("evergreen_%s_%d", conf.Task.DisplayName, conf.Task.Execution)
 		if r.ExternalId != "" {
 			arp.ExternalID = utility.ToStringPtr(r.ExternalId)
@@ -112,9 +122,9 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	conf.Expansions.Put("AWS_ACCESS_KEY_ID", credValues.AccessKeyID)
-	conf.Expansions.Put("AWS_SECRET_ACCESS_KEY", credValues.SecretAccessKey)
-	conf.Expansions.Put("AWS_SESSION_TOKEN", credValues.SessionToken)
-	conf.Expansions.Put("AWS_ROLE_EXPIRATION", expTime.String())
+	conf.Expansions.Put(AwsAccessKeyId, credValues.AccessKeyID)
+	conf.Expansions.Put(AwsSecretAccessKey, credValues.SecretAccessKey)
+	conf.Expansions.Put(AwsSessionToken, credValues.SessionToken)
+	conf.Expansions.Put(AwsRoleExpiration, expTime.String())
 	return nil
 }
