@@ -168,11 +168,11 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
   }
 
   $scope.getFleetInstanceType = function(settings) {
-    if (!settings?.fleet_options?.use_on_demand && settings?.fallback) {
+    if (!(settings && settings.fleet_options && settings.fleet_options.use_on_demand) && (settings && settings.fallback)) {
       return "fallback";
     }
 
-    if (settings?.fleet_options?.use_on_demand && !settings?.fallback) {
+    if ((settings && settings.fleet_options && settings.fleet_options.use_on_demand) && !(settings && settings.fallback)) {
       return "on-demand";
     }
 
