@@ -698,13 +698,15 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			group := env.RemoteQueueGroup()
 
 			for _, t := range tasks {
-				var q amboy.Queue
-				var ok bool
-				var err error
+				var (
+					q   amboy.Queue
+					ok  bool
+					err error
+				)
 				if q, ok = versions[t.Version]; !ok {
 					q, err = group.Get(ctx, t.Version)
 					if err != nil {
-						return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
+						return errors.Wrapf(err, "getting queue for version '%s'", t.Version)
 					}
 					versions[t.Version] = q
 				}
