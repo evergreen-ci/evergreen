@@ -21,7 +21,7 @@ const (
 	lintVariant       = "lint"
 	lintGroup         = "lint-group"
 	commitMaxHosts    = 4
-	patchMaxHosts     = 1
+	patchMaxHosts     = 2
 	evergreenLintTask = "evergreen"
 	jsonFilename      = "bin/generate-lint.json"
 	scriptsDir        = "scripts"
@@ -135,10 +135,14 @@ func generateTasks() (*shrub.Configuration, error) {
 			return nil, err
 		}
 	} else {
-		maxHosts = patchMaxHosts
 		targets, err = targetsFromChangedFiles(changes)
 		if err != nil {
 			return nil, err
+		}
+		if len(targets) == 1 {
+			maxHosts = 1
+		} else {
+			maxHosts = patchMaxHosts
 		}
 	}
 
