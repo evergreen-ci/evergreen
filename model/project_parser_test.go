@@ -2218,7 +2218,8 @@ func TestMergeBuildVariantFail(t *testing.T) {
 	main := &ParserProject{
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: "a_variant",
+				Name:        "a_variant",
+				DisplayName: "duplicate",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name:      "say-bye",
@@ -2251,7 +2252,7 @@ func TestMergeBuildVariantFail(t *testing.T) {
 
 	err := main.mergeBuildVariant(add)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "build variant 'a_variant' has been declared already")
+	assert.Contains(t, err.Error(), "build variant 'a_variant' has non-task fields declared already")
 }
 
 func TestMergeMatrix(t *testing.T) {
