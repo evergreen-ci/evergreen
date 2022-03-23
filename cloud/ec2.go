@@ -1640,6 +1640,11 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
+// Cleanup is a noop for the EC2 provider.
+func (m *ec2Manager) Cleanup(context.Context) error {
+	return nil
+}
+
 func cloudStatusFromSpotStatus(state string) CloudStatus {
 	switch state {
 	case SpotStatusOpen:

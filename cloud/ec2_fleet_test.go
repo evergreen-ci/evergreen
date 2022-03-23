@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -70,31 +71,21 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
 		"SpawnFleetSpotHost": func(*testing.T) {
-			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}))
+			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{Tag: "ht_1"}, &EC2ProviderSettings{}))
 
 			mockClient := m.client.(*awsClientMock)
-			assert.Equal(t, "templateID", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateId)
-		},
-		"UploadLaunchTemplate": func(*testing.T) {
-			ec2Settings := &EC2ProviderSettings{AMI: "ami"}
-			templateID, templateVersion, err := m.uploadLaunchTemplate(context.Background(), &host.Host{}, ec2Settings)
-			assert.NoError(t, err)
-			assert.Equal(t, "templateID", *templateID)
-			assert.Equal(t, int64(1), *templateVersion)
-
-			mockClient := m.client.(*awsClientMock)
-			assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
+			assert.Equal(t, "ht_1", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateName)
 		},
 		"RequestFleet": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{VpcName: "my_vpc", InstanceType: "instanceType0"}
 
-			instanceID, err := m.requestFleet(context.Background(), ec2Settings, aws.String("templateID"), aws.Int64(1))
+			instanceID, err := m.requestFleet(context.Background(), h, ec2Settings)
 			assert.NoError(t, err)
 			assert.Equal(t, "i-12345", *instanceID)
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.CreateFleetInput.LaunchTemplateConfigs, 1)
-			assert.Equal(t, "templateID", *mockClient.CreateFleetInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateId)
+			assert.Equal(t, "ht_1", *mockClient.CreateFleetInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateName)
 		},
 		"MakeOverrides": func(*testing.T) {
 			ec2Settings := &EC2ProviderSettings{
@@ -141,7 +132,8 @@ func TestFleet(t *testing.T) {
 		},
 	} {
 		h = &host.Host{
-			Id: "h1",
+			Id:  "h1",
+			Tag: "ht_1",
 			Distro: distro.Distro{
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(
 					birch.EC.String("ami", "ami"),
@@ -179,6 +171,102 @@ func TestFleet(t *testing.T) {
 		require.NoError(t, h.Insert())
 		t.Run(name, test)
 	}
+}
+
+func TestUploadLaunchTemplate(t *testing.T) {
+	t.Run("UploadNew", func(t *testing.T) {
+		m := &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+			},
+			settings: &evergreen.Settings{},
+		}
+		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{AMI: "ami"}))
+
+		mockClient := m.client.(*awsClientMock)
+		assert.Equal(t, "ami", *mockClient.CreateLaunchTemplateInput.LaunchTemplateData.ImageId)
+		assert.Equal(t, "ht_0", *mockClient.CreateLaunchTemplateInput.LaunchTemplateName)
+	})
+
+	t.Run("DuplicateTemplate", func(t *testing.T) {
+		m := &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+			},
+			settings: &evergreen.Settings{},
+		}
+		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
+		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht_0"}, &EC2ProviderSettings{}))
+	})
+
+	t.Run("InvalidName", func(t *testing.T) {
+		m := &ec2FleetManager{
+			EC2FleetManagerOptions: &EC2FleetManagerOptions{
+				client: &awsClientMock{},
+			},
+			settings: &evergreen.Settings{},
+		}
+		assert.NoError(t, m.uploadLaunchTemplate(context.Background(), &host.Host{Tag: "ht*1"}, &EC2ProviderSettings{}))
+		mockClient := m.client.(*awsClientMock)
+		assert.Equal(t, "ht1", *mockClient.CreateLaunchTemplateInput.LaunchTemplateName)
+	})
+}
+
+func TestCleanup(t *testing.T) {
+	client := &awsClientMock{}
+	m := &ec2FleetManager{
+		EC2FleetManagerOptions: &EC2FleetManagerOptions{client: client},
+	}
+
+	t.Run("NotYetExpired", func(t *testing.T) {
+		client.launchTemplates = []*ec2.LaunchTemplate{
+			{
+				LaunchTemplateId: aws.String("lt0"),
+				CreateTime:       aws.Time(time.Now()),
+			},
+			{
+				LaunchTemplateId: aws.String("lt1"),
+				CreateTime:       aws.Time(time.Now()),
+			},
+		}
+
+		assert.NoError(t, m.Cleanup(context.Background()))
+		require.Len(t, client.launchTemplates, 1)
+		assert.Equal(t, "lt0", *client.launchTemplates[0].LaunchTemplateId)
+	})
+
+	t.Run("AllExpired", func(t *testing.T) {
+		client.launchTemplates = []*ec2.LaunchTemplate{
+			{
+				LaunchTemplateId: aws.String("lt0"),
+				CreateTime:       aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+			},
+			{
+				LaunchTemplateId: aws.String("lt1"),
+				CreateTime:       aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+			},
+		}
+
+		assert.NoError(t, m.Cleanup(context.Background()))
+		assert.Empty(t, client.launchTemplates)
+	})
+
+	t.Run("SomeExpired", func(t *testing.T) {
+		client.launchTemplates = []*ec2.LaunchTemplate{
+			{
+				LaunchTemplateId: aws.String("lt0"),
+				CreateTime:       aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+			},
+			{
+				LaunchTemplateId: aws.String("lt1"),
+				CreateTime:       aws.Time(time.Now()),
+			},
+		}
+
+		assert.NoError(t, m.Cleanup(context.Background()))
+		require.Len(t, client.launchTemplates, 1)
+		assert.Equal(t, "lt1", *client.launchTemplates[0].LaunchTemplateId)
+	})
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {

@@ -28,13 +28,17 @@ import (
 const (
 	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
 	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
+	EC2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
 	EC2InvalidParam         = "InvalidParameterValue"
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 )
 
-var EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
+var (
+	EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
+	EC2TemplateNameExistsError   = errors.New(EC2TemplateNameExists)
+)
 
 type MountPoint struct {
 	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
@@ -496,23 +500,6 @@ func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.Vol
 		}
 	}
 	return attachments
-}
-
-func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {
-	if createTemplateResponse == nil || createTemplateResponse.LaunchTemplate == nil {
-		return errors.New("create template response launch template is nil")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	if createTemplateResponse.LaunchTemplate.LaunchTemplateId == nil || len(*createTemplateResponse.LaunchTemplate.LaunchTemplateId) == 0 {
-		catcher.Add(errors.New("create template response has no template identifier"))
-	}
-
-	if createTemplateResponse.LaunchTemplate.LatestVersionNumber == nil {
-		catcher.Add(errors.New("create template response has no latest version"))
-	}
-
-	return catcher.Resolve()
 }
 
 func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2aws.CreateFleetOutput) bool {

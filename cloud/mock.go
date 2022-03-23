@@ -467,6 +467,11 @@ func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string
 	return nil
 }
 
+// Cleanup is a noop for the mock provider.
+func (m *mockManager) Cleanup(context.Context) error {
+	return nil
+}
+
 // Get mock region from ProviderSettingsList
 func getMockManagerOptions(provider string, providerSettingsList []*birch.Document) (ManagerOpts, error) {
 	opts := ManagerOpts{Provider: provider}

@@ -3,7 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
-	"strconv"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,6 +20,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const launchTemplateExpiration = 24 * time.Hour
+
 type instanceTypeSubnetCache map[instanceRegionPair][]evergreen.Subnet
 
 type instanceRegionPair struct {
@@ -27,7 +29,12 @@ type instanceRegionPair struct {
 	region       string
 }
 
-var typeCache instanceTypeSubnetCache
+var (
+	typeCache instanceTypeSubnetCache
+	// templateNameInvalidRegex matches any character that may not be included a launch template name.
+	// Names may only contain word characters ([a-zA-Z0-9_]) and the following special characters: ( ) . / -
+	templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+")
+)
 
 func init() {
 	typeCache = make(map[instanceRegionPair][]evergreen.Subnet)
@@ -373,6 +380,44 @@ func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
+func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
+	if err := m.client.Create(m.credentials, m.region); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	launchTemplates, err := m.client.GetLaunchTemplates(ctx, &ec2.DescribeLaunchTemplatesInput{
+		Filters: []*ec2.Filter{
+			{Name: aws.String("tag-key"), Values: []*string{aws.String(evergreen.TagDistro)}},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "getting launch templates")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	deleted := []string{}
+	for _, template := range launchTemplates {
+		if template.CreateTime != nil && template.CreateTime.Before(time.Now().Add(-launchTemplateExpiration)) {
+			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: template.LaunchTemplateId})
+			catcher.Add(err)
+			if err == nil {
+				deleted = append(deleted, aws.StringValue(template.LaunchTemplateId))
+			}
+		}
+	}
+
+	grip.InfoWhen(len(deleted) > 0, message.Fields{
+		"message":       "removed launch templates",
+		"deleted_count": len(deleted),
+		"deleted":       deleted,
+		"provider":      evergreen.ProviderNameEc2Fleet,
+		"region":        m.region,
+	})
+
+	return catcher.Resolve()
+}
+
 func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with ec2 fleet provider")
 }
@@ -412,27 +457,20 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	// Cleanup
-	var templateID *string
 	defer func() {
-		if templateID != nil {
-			// Delete launch template
-			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: templateID})
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "can't delete launch template",
-				"host_id":  h.Id,
-				"template": *templateID,
-			}))
-		}
+		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(h.Tag)})
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "can't delete launch template",
+			"host_id":  h.Id,
+			"host_tag": h.Tag,
+		}))
 	}()
 
-	var err error
-	var templateVersion *int64
-	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings)
-	if err != nil {
+	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
 		return errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
 	}
 
-	instanceID, err := m.requestFleet(ctx, ec2Settings, templateID, templateVersion)
+	instanceID, err := m.requestFleet(ctx, h, ec2Settings)
 	if err != nil {
 		return errors.Wrapf(err, "can't request fleet")
 	}
@@ -441,10 +479,10 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	return nil
 }
 
-func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (*string, *int64, error) {
+func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	blockDevices, err := makeBlockDeviceMappingsTemplate(ec2Settings.MountPoints)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error making block device mappings")
+		return errors.Wrap(err, "error making block device mappings")
 	}
 
 	launchTemplate := &ec2.RequestLaunchTemplateData{
@@ -475,12 +513,12 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	// Use the latest service flags instead of those cached in the environment.
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting service flags")
+		return errors.Wrap(err, "getting service flags")
 	}
 	settings.ServiceFlags = *flags
-	userData, err := makeUserData(ctx, m.settings, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	userData, err := makeUserData(ctx, &settings, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "could not make user data")
+		return errors.Wrap(err, "could not make user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -488,32 +526,39 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		var expanded string
 		expanded, err = expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "problem expanding user data")
+			return errors.Wrap(err, "problem expanding user data")
 		}
 		if err = validateUserDataSize(expanded, h.Distro.Id); err != nil {
-			return nil, nil, errors.WithStack(err)
+			return errors.WithStack(err)
 		}
 		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		launchTemplate.UserData = &userData
 	}
 
-	createTemplateResponse, err := m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
+	_, err = m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
-		// mandatory field may only contain letters, numbers, and the following characters: - ( ) . / _
-		LaunchTemplateName: aws.String(utility.RandomString()),
+		LaunchTemplateName: aws.String(templateNameInvalidRegex.ReplaceAllString(h.Tag, "")),
+		TagSpecifications: []*ec2.TagSpecification{{
+			ResourceType: aws.String(ec2.ResourceTypeLaunchTemplate),
+			Tags:         []*ec2.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
+		},
 	})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't upload config template to AWS")
-	}
-	err = validateEc2CreateTemplateResponse(createTemplateResponse)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "invalid create template response")
+		if errors.Cause(err) == EC2TemplateNameExistsError {
+			grip.Info(message.Fields{
+				"message":  "template already exists for host",
+				"host_id":  h.Id,
+				"host_tag": h.Tag,
+			})
+		} else {
+			return errors.Wrap(err, "can't upload config template to AWS")
+		}
 	}
 
-	return createTemplateResponse.LaunchTemplate.LaunchTemplateId, createTemplateResponse.LaunchTemplate.LatestVersionNumber, nil
+	return nil
 }
 
-func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2ProviderSettings, templateID *string, templateVersion *int64) (*string, error) {
+func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (*string, error) {
 	var overrides []*ec2.FleetLaunchTemplateOverridesRequest
 	var err error
 	if ec2Settings.VpcName != "" {
@@ -528,8 +573,8 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 		LaunchTemplateConfigs: []*ec2.FleetLaunchTemplateConfigRequest{
 			{
 				LaunchTemplateSpecification: &ec2.FleetLaunchTemplateSpecificationRequest{
-					LaunchTemplateId: templateID,
-					Version:          aws.String(strconv.Itoa(int(*templateVersion))),
+					LaunchTemplateName: aws.String(h.Tag),
+					Version:            aws.String("$Latest"),
 				},
 				Overrides: overrides,
 			},
