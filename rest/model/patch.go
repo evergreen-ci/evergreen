@@ -44,6 +44,7 @@ type APIPatch struct {
 	ChildPatches            []APIPatch           `json:"child_patches"`
 	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester               *string              `json:"requester"`
+	MergedFrom              *string              `json:"merged_from"`
 }
 
 type DownstreamTasks struct {
@@ -114,6 +115,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.CreateTime = ToTimePtr(v.CreateTime)
 	apiPatch.StartTime = ToTimePtr(v.StartTime)
 	apiPatch.FinishTime = ToTimePtr(v.FinishTime)
+	apiPatch.MergedFrom = utility.ToStringPtr(v.MergedFrom)
 	builds := make([]*string, 0)
 	for _, b := range v.BuildVariants {
 		builds = append(builds, utility.ToStringPtr(b))
