@@ -45,14 +45,10 @@ func SchedulePatch(ctx context.Context, patchId string, version *model.Version, 
 	newCxt := context.Background()
 	// Process additional patch trigger aliases added via UI.
 	// Child patches created with the CLI --trigger-alias flag go through a separate flow, so ensure that new child patches are also created before the parent is finalized.
-	childPatchIds, err := ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchUpdateReq.PatchTriggerAliases)
-	if err != nil {
+	if err := ProcessTriggerAliases(ctx, p, projectRef, evergreen.GetEnvironment(), patchUpdateReq.PatchTriggerAliases); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "Error processing patch trigger aliases")
 	}
-	if len(childPatchIds) > 0 {
-		if err = p.SetChildPatches(); err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "error attaching child patches '%s'", p.Id.Hex())
-		}
+	if len(patchUpdateReq.PatchTriggerAliases) > 0 {
 		p.Triggers.Aliases = patchUpdateReq.PatchTriggerAliases
 		if err = p.SetTriggerAliases(); err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "error attaching trigger aliases '%s'", p.Id.Hex())
