@@ -19,7 +19,6 @@
                   "projectRef": {
                     "branch": "main"
                   },
-                  "githubWebhooksEnabled": true,
                   "vars": {
                     "vars": {
                       "foo": "bar",

@@ -16,7 +16,8 @@
                 projectRef {
                     branch
                 }
-                githubWebhooksEnabled
+                # todo in EVG-16608: investigate why this field returns the wrong data
+                # githubWebhooksEnabled  
                 vars{
                     vars
                 }
