@@ -95,6 +95,12 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	}
 	newProjectRef := v.(*model.ProjectRef)
 
+	// Changes sent to the resolver will not include the RepoRefId for some pages.
+	// Fall back on the existing value if none is provided in order to properly merge refs.
+	if newProjectRef.RepoRefId == "" {
+		newProjectRef.RepoRefId = before.ProjectRef.RepoRefId
+	}
+
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
 	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
