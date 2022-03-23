@@ -33,7 +33,7 @@ func TestContainerTaskQueue(t *testing.T) {
 		}
 	}
 	checkEmpty := func(t *testing.T, ctq *ContainerTaskQueue) {
-		require.Zero(t, ctq.Remaining())
+		require.Zero(t, ctq.Len())
 		require.False(t, ctq.HasNext())
 		require.Zero(t, ctq.Next())
 	}
@@ -59,22 +59,19 @@ func TestContainerTaskQueue(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, 2, ctq.Len())
-			assert.Equal(t, 2, ctq.Remaining())
 			assert.True(t, ctq.HasNext())
 
 			first := ctq.Next()
 			require.NotZero(t, first)
 			assert.Equal(t, needsAllocation1.Id, first.Id, "should return task in need of allocation with earlier activation time")
 
-			assert.Equal(t, 2, ctq.Len())
-			assert.Equal(t, 1, ctq.Remaining())
+			assert.Equal(t, 1, ctq.Len())
 			assert.True(t, ctq.HasNext())
 
 			second := ctq.Next()
 			require.NotZero(t, second)
 			assert.Equal(t, needsAllocation0.Id, second.Id, "should return task in need of alloation with later activation time")
 
-			assert.Equal(t, 2, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"ReturnsNoTask": func(t *testing.T) {
@@ -82,7 +79,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, ctq)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"DoesNotReturnTaskMissingProject": func(t *testing.T) {
@@ -92,7 +88,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"DoesNotReturnTaskWithInvalidProject": func(t *testing.T) {
@@ -103,7 +98,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"DoesNotReturnTaskWithProjectThatDisabledTaskDispatching": func(t *testing.T) {
@@ -118,7 +112,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"ReturnsPatchTaskWithProjectThatEnabledPatching": func(t *testing.T) {
@@ -135,7 +128,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, 1, ctq.Len())
-			assert.Equal(t, 1, ctq.Remaining())
 			assert.True(t, ctq.HasNext())
 
 			tsk := ctq.Next()
@@ -157,7 +149,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"DoesNotReturnTaskWithDisabledProject": func(t *testing.T) {
@@ -172,7 +163,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 		"ReturnsGitHubTaskInDisabledAndHiddenProject": func(t *testing.T) {
@@ -190,7 +180,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, 1, ctq.Len())
-			assert.Equal(t, 1, ctq.Remaining())
 			assert.True(t, ctq.HasNext())
 
 			tsk := ctq.Next()
@@ -213,7 +202,6 @@ func TestContainerTaskQueue(t *testing.T) {
 			ctq, err := NewContainerTaskQueue()
 			require.NoError(t, err)
 
-			assert.Zero(t, ctq.Len())
 			checkEmpty(t, ctq)
 		},
 	} {

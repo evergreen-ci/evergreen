@@ -45,13 +45,8 @@ func (q *ContainerTaskQueue) HasNext() bool {
 	return q.position < len(q.queue)
 }
 
-// Len returns the total number of tasks in the queue.
+// Len returns the number of tasks remaining.
 func (q *ContainerTaskQueue) Len() int {
-	return len(q.queue)
-}
-
-// Remaining returns the number of tasks that have not yet been returned.
-func (q *ContainerTaskQueue) Remaining() int {
 	return len(q.queue) - q.position
 }
 

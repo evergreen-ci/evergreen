@@ -1260,6 +1260,8 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+// PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
+// allocate pods to tasks.
 func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -1307,9 +1309,9 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 			remaining--
 		}
 
-		grip.InfoWhen(remaining <= 0 && ctq.Remaining() > 0, message.Fields{
-			"message":   "reached max parallel pod request limit, not allocating any more",
-			"remaining": ctq.Remaining(),
+		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
+			"message":             "reached max parallel pod request limit, not allocating any more",
+			"num_remaining_tasks": ctq.Len(),
 		})
 
 		return catcher.Resolve()
