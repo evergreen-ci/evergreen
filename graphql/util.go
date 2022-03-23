@@ -181,7 +181,7 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 		}
 		projTasks := []string{}
 		for _, taskUnit := range buildVariant.Tasks {
-			if utility.FromBoolPtr(taskUnit.Patchable) {
+			if !taskUnit.IsDisabled() && utility.FromBoolTPtr(taskUnit.Patchable) && !utility.FromBoolPtr(taskUnit.GitTagOnly) {
 				projTasks = append(projTasks, taskUnit.Name)
 			}
 		}
