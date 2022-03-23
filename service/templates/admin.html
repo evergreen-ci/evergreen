@@ -364,6 +364,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Generate tasks experiment</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.generate_tasks_experiment_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>&nbsp;</td>
 											</tr>
 											<tr>
@@ -1487,7 +1498,7 @@ Admin Settings
 											</md-input-container>
 											<md-input-container class="control" style="width:45%;margin-left:50px;">
 												<label>Lock Timeout (Seconds)</label>
-												<input type="number" ng-model="new_amboy_named_queue.lock_timeout_secs">
+												<input type="number" ng-model="new_amboy_named_queue.lock_timeout_seconds">
 											</md-input-container>
 											<div style="margin-top:1%;">
 												<button class="plus-button btn btn-primary"
