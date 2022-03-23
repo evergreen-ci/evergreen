@@ -7,13 +7,13 @@
                 projectRef {
                     branch
                 }
-                gitHubWebhooksEnabled
+                githubWebhooksEnabled
             }
             after {
                 projectRef {
                     branch
                 }
-                gitHubWebhooksEnabled
+                githubWebhooksEnabled
                 vars{
                     vars
                 }

@@ -1135,7 +1135,7 @@ type GithubProjectConflicts {
 }
 
 type ProjectSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -1143,7 +1143,7 @@ type ProjectSettings {
 }
 
 type RepoSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
   aliases: [ProjectAlias!]

@@ -1540,7 +1540,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	}
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GitHubHooksEnabled: hook != nil,
+		GithubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,

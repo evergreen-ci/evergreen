@@ -7,7 +7,7 @@
                 projectRef {
                     branch
                 }
-                gitHubWebhooksEnabled
+                githubWebhooksEnabled
                 vars{
                     vars
                 }
@@ -16,7 +16,7 @@
                 projectRef {
                     branch
                 }
-                gitHubWebhooksEnabled
+                githubWebhooksEnabled
                 vars{
                     vars
                 }

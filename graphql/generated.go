@@ -659,7 +659,7 @@ type ComplexityRoot struct {
 
 	ProjectSettings struct {
 		Aliases               func(childComplexity int) int
-		GitHubWebhooksEnabled func(childComplexity int) int
+		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
@@ -799,7 +799,7 @@ type ComplexityRoot struct {
 
 	RepoSettings struct {
 		Aliases               func(childComplexity int) int
-		GitHubWebhooksEnabled func(childComplexity int) int
+		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
@@ -1321,6 +1321,8 @@ type ProjectResolver interface {
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
 type ProjectSettingsResolver interface {
+	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
+
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -1380,6 +1382,8 @@ type RepoRefResolver interface {
 	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type RepoSettingsResolver interface {
+	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
+
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -4416,12 +4420,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSettings.Aliases(childComplexity), true
 
-	case "ProjectSettings.gitHubWebhooksEnabled":
-		if e.complexity.ProjectSettings.GitHubWebhooksEnabled == nil {
+	case "ProjectSettings.githubWebhooksEnabled":
+		if e.complexity.ProjectSettings.GithubWebhooksEnabled == nil {
 			break
 		}
 
-		return e.complexity.ProjectSettings.GitHubWebhooksEnabled(childComplexity), true
+		return e.complexity.ProjectSettings.GithubWebhooksEnabled(childComplexity), true
 
 	case "ProjectSettings.projectRef":
 		if e.complexity.ProjectSettings.ProjectRef == nil {
@@ -5331,12 +5335,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoSettings.Aliases(childComplexity), true
 
-	case "RepoSettings.gitHubWebhooksEnabled":
-		if e.complexity.RepoSettings.GitHubWebhooksEnabled == nil {
+	case "RepoSettings.githubWebhooksEnabled":
+		if e.complexity.RepoSettings.GithubWebhooksEnabled == nil {
 			break
 		}
 
-		return e.complexity.RepoSettings.GitHubWebhooksEnabled(childComplexity), true
+		return e.complexity.RepoSettings.GithubWebhooksEnabled(childComplexity), true
 
 	case "RepoSettings.projectRef":
 		if e.complexity.RepoSettings.ProjectRef == nil {
@@ -8603,7 +8607,7 @@ type GithubProjectConflicts {
 }
 
 type ProjectSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -8611,7 +8615,7 @@ type ProjectSettings {
 }
 
 type RepoSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -24513,7 +24517,7 @@ func (ec *executionContext) _ProjectEvents_count(ctx context.Context, field grap
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ProjectSettings_gitHubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _ProjectSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -24524,14 +24528,14 @@ func (ec *executionContext) _ProjectSettings_gitHubWebhooksEnabled(ctx context.C
 		Object:     "ProjectSettings",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GitHubWebhooksEnabled, nil
+		return ec.resolvers.ProjectSettings().GithubWebhooksEnabled(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -28553,7 +28557,7 @@ func (ec *executionContext) _RepoRef_validDefaultLoggers(ctx context.Context, fi
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RepoSettings_gitHubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -28564,14 +28568,14 @@ func (ec *executionContext) _RepoSettings_gitHubWebhooksEnabled(ctx context.Cont
 		Object:     "RepoSettings",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GitHubWebhooksEnabled, nil
+		return ec.resolvers.RepoSettings().GithubWebhooksEnabled(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -40982,7 +40986,7 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
-			it.GitHubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.GithubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41438,7 +41442,7 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
-			it.GitHubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.GithubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45653,11 +45657,20 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectSettings")
-		case "gitHubWebhooksEnabled":
-			out.Values[i] = ec._ProjectSettings_gitHubWebhooksEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "githubWebhooksEnabled":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectSettings_githubWebhooksEnabled(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "projectRef":
 			out.Values[i] = ec._ProjectSettings_projectRef(ctx, field, obj)
 		case "vars":
@@ -46788,11 +46801,20 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RepoSettings")
-		case "gitHubWebhooksEnabled":
-			out.Values[i] = ec._RepoSettings_gitHubWebhooksEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "githubWebhooksEnabled":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoSettings_githubWebhooksEnabled(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "projectRef":
 			out.Values[i] = ec._RepoSettings_projectRef(ctx, field, obj)
 		case "vars":
