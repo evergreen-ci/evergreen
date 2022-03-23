@@ -1304,17 +1304,6 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 				continue
 			}
 
-			// Because the container task queue is ordered solely by activation
-			// time, the next task returned either:
-			// 1. Already has a pod allocator job waiting to run.
-			// 2. Does not have a pod allocator job yet and is the next one in
-			//    line to get a chance to allocate.
-			// The remaining count is accurate as long as the following property
-			// of the container task queue holds: a container task can either
-			// stay in the same position or move closer to the front, but it
-			// cannot move towards the back. Should this property not be the
-			// case, then this simple method of bookkeeping the remaining pods
-			// available to allocate is invalid.
 			remaining--
 		}
 
