@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,10 +18,10 @@ import (
 )
 
 const (
-	AwsAccessKeyId     = "AWS_ACCESS_KEY_ID"
-	AwsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	AwsSessionToken    = "AWS_SESSION_TOKEN"
-	AwsRoleExpiration  = "AWS_ROLE_EXPIRATION"
+	AWSAccessKeyId     = "AWS_ACCESS_KEY_ID"
+	AWSSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
+	AWSSessionToken    = "AWS_SESSION_TOKEN"
+	AWSRoleExpiration  = "AWS_ROLE_EXPIRATION"
 )
 
 type ec2AssumeRole struct {
@@ -61,6 +60,7 @@ func (r *ec2AssumeRole) validate() error {
 		catcher.New("must specify role ARN")
 	}
 
+	// 0 will default duration time to 15 minutes
 	if r.DurationSeconds < 0 {
 		catcher.New("cannot specify a non-positive duration")
 	}
@@ -100,7 +100,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	}))
 
 	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
-		arp.RoleSessionName = fmt.Sprintf("evergreen_%s_%d", conf.Task.DisplayName, conf.Task.Execution)
+		arp.RoleSessionName = time.Now().String()
 		if r.ExternalId != "" {
 			arp.ExternalID = utility.ToStringPtr(r.ExternalId)
 		}
@@ -122,9 +122,9 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	conf.Expansions.Put(AwsAccessKeyId, credValues.AccessKeyID)
-	conf.Expansions.Put(AwsSecretAccessKey, credValues.SecretAccessKey)
-	conf.Expansions.Put(AwsSessionToken, credValues.SessionToken)
-	conf.Expansions.Put(AwsRoleExpiration, expTime.String())
+	conf.Expansions.Put(AWSAccessKeyId, credValues.AccessKeyID)
+	conf.Expansions.Put(AWSSecretAccessKey, credValues.SecretAccessKey)
+	conf.Expansions.Put(AWSSessionToken, credValues.SessionToken)
+	conf.Expansions.Put(AWSRoleExpiration, expTime.String())
 	return nil
 }
