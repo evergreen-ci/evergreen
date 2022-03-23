@@ -529,6 +529,8 @@ mciModule.controller(
             github_trigger_aliases: data.ProjectRef.github_trigger_aliases || [],
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
+            container_sizes: data.ProjectRef.container_sizes || {},
+            container_size_names: [],
             use_repo_settings: $scope.projectRef.use_repo_settings,
             build_baron_settings: data.ProjectRef.build_baron_settings || {},
             task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
@@ -668,6 +670,10 @@ mciModule.controller(
 
       if ($scope.patch_alias) {
         $scope.addPatchAlias();
+      }
+
+      if ($scope.container_size) {
+        $scope.addContainerSize();
       }
 
       $scope.settingsFormData.subscriptions = _.filter(
@@ -812,6 +818,22 @@ mciModule.controller(
       $scope.invalidPatchAliasMessage = "";
     };
 
+    $scope.addContainerSize = function () {
+      if (!$scope.validContainerSize($scope.container_size)) {
+        $scope.invalidContainerSizeMessage =
+          "A valid container size must have a name, memory and cpu properties.";
+          return;
+      }
+      var item = Object.assign({}, $scope.container_size);
+      $scope.settingsFormData.container_sizes[item.name] = {
+          "memory_mb": item.memory_mb,
+          "cpu": item.cpu,
+      }
+      $scope.settingsFormData.container_size_names = Object.keys($scope.settingsFormData.container_sizes)
+      delete $scope.container_size;
+      $scope.invalidContainerSizeMessage = "";
+    };
+
     $scope.addWorkstationCommand = function () {
       if (!$scope.settingsFormData.workstation_config) {
         $scope.settingsFormData.workstation_config = {};
@@ -880,6 +902,14 @@ mciModule.controller(
       $scope.settingsFormData.patch_aliases.splice(i, 1);
       $scope.isDirty = true;
     };
+
+      $scope.removeContainerSize = function (name) {
+          if ($scope.settingsFormData.container_sizes[name]) {
+              delete $scope.settingsFormData.container_sizes[name]
+              $scope.settingsFormData.container_size_names = Object.keys($scope.settingsFormData.container_sizes)
+          }
+          $scope.isDirty = true;
+      };
 
     $scope.removeProjectTrigger = function (i) {
       if ($scope.project_triggers[i]) {
@@ -1108,6 +1138,11 @@ mciModule.controller(
     $scope.validPatchAlias = function (alias) {
       // Same as GitHub alias, but with alias required
       return $scope.validPatchDefinition(alias) && alias.alias;
+    };
+
+    $scope.validContainerSize = function (container_size) {
+      // Same as GitHub alias, but with alias required
+      return container_size && container_size.cpu && container_size.memory_mb;
     };
 
     $scope.validWorkstationCommand = function (obj) {

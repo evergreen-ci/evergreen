@@ -312,6 +312,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		PerfEnabled             bool                                `json:"perf_enabled"`
 		BuildBaronSettings      restModel.APIBuildBaronSettings     `json:"build_baron_settings"`
 		TaskAnnotationSettings  restModel.APITaskAnnotationSettings `json:"task_annotation_settings"`
+		ContainerSizes          map[string]model.ContainerResources `json:"container_sizes"`
 	}{}
 
 	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
@@ -630,6 +631,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.DisabledStatsCache = &responseRef.DisabledStatsCache
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.PerfEnabled = &responseRef.PerfEnabled
+	projectRef.ContainerSizes = responseRef.ContainerSizes
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
 	}

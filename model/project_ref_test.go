@@ -1876,6 +1876,16 @@ func TestMergeWithProjectConfig(t *testing.T) {
 					{Command: "overridden"},
 				},
 			},
+			ContainerSizes: map[string]ContainerResources{
+				"small": ContainerResources{
+					MemoryMB: 200,
+					CPU:      1,
+				},
+				"large": ContainerResources{
+					MemoryMB: 400,
+					CPU:      2,
+				},
+			},
 			BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
@@ -1903,5 +1913,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
+	assert.Equal(t, 1, projectRef.ContainerSizes["small"].CPU)
+	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
 
 }
