@@ -209,7 +209,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		PRConflictingRefs           []string                    `json:"pr_testing_conflicting_refs,omitempty"`
 		CQConflictingRefs           []string                    `json:"commit_queue_conflicting_refs,omitempty"`
 		GithubChecksConflictingRefs []string                    `json:"github_checks_conflicting_refs,omitempty"`
-		GitHubWebhooksEnabled       bool                        `json:"github_webhooks_enabled"`
+		GithubWebhooksEnabled       bool                        `json:"github_webhooks_enabled"`
 		GithubValidOrgs             []string                    `json:"github_valid_orgs"`
 		Subscriptions               []restModel.APISubscription `json:"subscriptions"`
 		Permissions                 gimlet.Permissions          `json:"permissions"`
@@ -788,7 +788,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	before := &model.ProjectSettings{
 		ProjectRef:         origProjectRef,
-		GitHubHooksEnabled: origGithubWebhookEnabled,
+		GithubHooksEnabled: origGithubWebhookEnabled,
 		Vars:               origProjectVars,
 		Aliases:            origProjectAliases,
 		Subscriptions:      origSubscriptions,
@@ -798,7 +798,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Id, event.OwnerTypeProject)
 	after := &model.ProjectSettings{
 		ProjectRef:         *projectRef,
-		GitHubHooksEnabled: hook != nil,
+		GithubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
 		Aliases:            currentAliases,
 		Subscriptions:      currentSubscriptions,

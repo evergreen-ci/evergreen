@@ -27,6 +27,8 @@
         "user" : "Annie Black",
         "before" : {
           "proj_ref" : {
+            "_id" : "5678",
+            "identifier" : "5678",
             "owner_name" : "evergreen-ci",
             "repo_name" : "evergreen",
             "branch_name": "master"
@@ -38,6 +40,8 @@
         },
         "after" : {
           "proj_ref" : {
+             "_id" : "5678",
+            "identifier" : "5678",
             "owner_name" : "evergreen-ci",
             "repo_name" : "evergreen",
             "branch_name": "main"

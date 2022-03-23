@@ -7,13 +7,17 @@
                 projectRef {
                     branch
                 }
-                gitHubWebhooksEnabled
+                githubWebhooksEnabled
             }
             after {
                 projectRef {
                     branch
                 }
-                gitHubWebhooksEnabled
+                # todo in EVG-16608: investigate why this field returns the wrong data
+                # githubWebhooksEnabled  
+                vars{
+                    vars
+                }
             }
         }
         count
