@@ -104,6 +104,17 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
     'display': 'OAuth Token'
   }]
 
+  $scope.fleetInstanceTypes = [{
+    'id': 'spot',
+    'display': 'Spot'
+  }, {
+    'id': 'fallback',
+    'display': 'Spot with on-demand fallback'
+  }, {
+    'id': 'on-demand',
+    'display': 'On-demand'
+  }]
+
   $scope.ids = [];
   $scope.keys = [];
   $scope.architectures = [];
@@ -135,6 +146,38 @@ mciModule.controller('DistrosCtrl', function ($scope, $window, $http, $location,
       $scope.setActiveDistroId(distroIds[0]);
     }
   };
+
+  $scope.setFleetInstanceType = function(instanceType) {
+    if ($scope.activeDistro.settings.fleet_options === undefined) {
+      $scope.activeDistro.settings.fleet_options = {};
+    }
+    switch(instanceType) {
+      case "spot":
+        $scope.activeDistro.settings.fleet_options.use_on_demand = false;
+        $scope.activeDistro.settings.fallback = false;
+        break;
+      case "fallback":
+        $scope.activeDistro.settings.fleet_options.use_on_demand = false;
+        $scope.activeDistro.settings.fallback = true;
+        break;
+      case "on-demand":
+        $scope.activeDistro.settings.fleet_options.use_on_demand = true;
+        $scope.activeDistro.settings.fallback = false;
+        break;
+    }
+  }
+
+  $scope.getFleetInstanceType = function(settings) {
+    if (!(settings && settings.fleet_options && settings.fleet_options.use_on_demand) && (settings && settings.fallback)) {
+      return "fallback";
+    }
+
+    if ((settings && settings.fleet_options && settings.fleet_options.use_on_demand) && !(settings && settings.fallback)) {
+      return "on-demand";
+    }
+
+    return "spot";
+  }
 
   $scope.setActiveDistroId = function (id) {
     $location.hash(id);
@@ -740,6 +783,12 @@ mciModule.directive('removeDistro', function () {
 mciModule.filter("providerDisplay", function () {
   return function (provider, scope) {
     return scope.getKeyDisplay('providers', provider);
+  }
+});
+
+mciModule.filter("fleetInstanceTypeDisplay", function () {
+  return function (instanceType, scope) {
+    return scope.getKeyDisplay('fleetInstanceTypes', instanceType);
   }
 });
 
