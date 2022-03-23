@@ -184,7 +184,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		modified = true
 	case model.ProjectPageGithubAndCQSection:
-		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
+		conflictProjectRef := mergedProjectRef
+		conflictProjectRef.Owner = mergedBeforeRef.Owner
+		conflictProjectRef.Repo = mergedBeforeRef.Repo
+		conflictProjectRef.Branch = mergedBeforeRef.Branch
+		if err = handleGithubConflicts(conflictProjectRef, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
 
