@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/pkg/errors"
@@ -15,7 +16,7 @@ func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", n
 type manifestLoad struct{ base }
 
 func manifestLoadFactory() Command   { return &manifestLoad{} }
-func (c *manifestLoad) Name() string { return "manifest.load" }
+func (c *manifestLoad) Name() string { return evergreen.ManifestLoadCommandName }
 
 // manifestLoad-specific implementation of ParseParams.
 func (c *manifestLoad) ParseParams(params map[string]interface{}) error {

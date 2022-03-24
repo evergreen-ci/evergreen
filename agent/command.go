@@ -115,7 +115,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.setCurrentIdleTimeout(nil)
 		}
 
-		if cmd.Name() == "manifest.load" {
+		if cmd.Name() == evergreen.ManifestLoadCommandName {
 			manifestLoadCalled = true
 		}
 
@@ -128,7 +128,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 					Type:        commandInfo.Type,
 					DisplayName: commandInfo.DisplayName,
 					Vars:        commandInfo.Vars,
-					Command:     "manifest.load",
+					Command:     evergreen.ManifestLoadCommandName,
 					Params:      commandInfo.Params,
 					ParamsYAML:  commandInfo.ParamsYAML,
 					Loggers:     commandInfo.Loggers,
