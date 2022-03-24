@@ -172,6 +172,9 @@ type Patch struct {
 	// MergeStatus is only used in gitServePatch to send the status of this
 	// patch on the commit queue to the agent
 	MergeStatus string `json:"merge_status"`
+	// MergedFrom is populated with the patch id of the existing patch
+	// the merged patch is based off of, if applicable.
+	MergedFrom string `bson:"merged_from,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }

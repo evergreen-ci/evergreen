@@ -851,6 +851,7 @@ func MakeMergePatchFromExisting(ctx context.Context, existingPatch *patch.Patch,
 		Alias:                evergreen.CommitQueueAlias,
 		PatchedParserProject: existingPatch.PatchedParserProject,
 		CreateTime:           time.Now(),
+		MergedFrom:           existingPatch.Id.Hex(),
 	}
 
 	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
