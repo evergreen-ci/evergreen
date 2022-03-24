@@ -448,6 +448,24 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Len(t, subsFromDb, 1)
 			assert.Equal(t, subsFromDb[0].Trigger, event.TriggerSuccess)
 		},
+		model.ProjectPageWorkstationsSection: func(t *testing.T, ref model.ProjectRef) {
+			assert.Nil(t, ref.WorkstationConfig.SetupCommands)
+			apiProjectRef := restModel.APIProjectRef{
+				WorkstationConfig: restModel.APIWorkstationConfig{
+					GitClone:      utility.TruePtr(),
+					SetupCommands: []restModel.APIWorkstationSetupCommand{}, // empty list should still save
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageWorkstationsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+			assert.NotNil(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
+			assert.Empty(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
+			assert.True(t, utility.FromBoolPtr(settings.ProjectRef.WorkstationConfig.GitClone))
+		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))

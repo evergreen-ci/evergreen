@@ -381,6 +381,9 @@ type APIWorkstationSetupCommand struct {
 func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 	res := model.WorkstationConfig{}
 	res.GitClone = utility.BoolPtrCopy(c.GitClone)
+	if c.SetupCommands != nil {
+		res.SetupCommands = []model.WorkstationSetupCommand{}
+	}
 	for _, apiCmd := range c.SetupCommands {
 		cmd := model.WorkstationSetupCommand{}
 		cmd.Command = utility.FromStringPtr(apiCmd.Command)
@@ -400,12 +403,16 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 	}
 
 	c.GitClone = utility.BoolPtrCopy(config.GitClone)
+	if config.SetupCommands != nil {
+		c.SetupCommands = []APIWorkstationSetupCommand{}
+	}
 	for _, cmd := range config.SetupCommands {
 		apiCmd := APIWorkstationSetupCommand{}
 		apiCmd.Command = utility.ToStringPtr(cmd.Command)
 		apiCmd.Directory = utility.ToStringPtr(cmd.Directory)
 		c.SetupCommands = append(c.SetupCommands, apiCmd)
 	}
+
 	return nil
 }
 
