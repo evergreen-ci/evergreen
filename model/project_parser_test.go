@@ -1698,6 +1698,7 @@ func checkProjectPersists(t *testing.T, yml []byte) {
 	for i, f := range pp.Functions {
 		list := f.List()
 		for j := range list {
+			assert.NotEmpty(t, list[j].Params)
 			assert.EqualValues(t, list[j].Params, newPP.Functions[i].List()[j].Params)
 		}
 	}
