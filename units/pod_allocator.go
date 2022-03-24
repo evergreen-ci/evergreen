@@ -114,23 +114,27 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 }
 
 func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	if flags.PodAllocatorDisabled {
+		return false, nil
+	}
+
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return false, errors.Wrap(err, "getting admin settings")
 	}
 	numInitializing, err := pod.CountByInitializing()
 	if err != nil {
-		return false, errors.Wrap(err, "counting currently-initializing pods")
+		return false, errors.Wrap(err, "counting initializing pods")
 	}
 	if numInitializing >= settings.PodInit.MaxParallelPodRequests {
 		return false, nil
 	}
 
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return false, errors.Wrap(err, "getting service flags")
-	}
-	return !flags.PodAllocatorDisabled, nil
+	return true, nil
 }
 
 func (j *podAllocatorJob) populate() error {
