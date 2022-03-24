@@ -769,7 +769,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		if !taskAdmin {
+		if !projCtx.Task.IsPatchRequest() && !taskAdmin {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
