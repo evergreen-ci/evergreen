@@ -25,6 +25,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
         $scope.canSchedule = !$scope.task.activated && !$scope.canRestart && !$scope.isAborted;
         $scope.canUnschedule = $scope.task.activated && ($scope.task.status == "undispatched") ;
         $scope.canSetPriority = ($scope.task.status == "undispatched");
+        $scope.canOverrideDependencies = ($scope.task.r == "patch_request" || $scope.task.r == "github_pull_request" || $window.permissions.project_tasks>=30);
 	};
 
     function doModalSuccess(message, data, reload){

@@ -435,8 +435,12 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restMode
 		RequiredLevel: evergreen.TasksAdmin.Value,
 		Resource:      *at.ProjectId,
 	}
-	if len(at.DependsOn) > 0 && (currentUser.HasPermission(requiredPermission) ||
-		utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(at.Requester))) {
+	overrideRequesters := []string{
+		evergreen.PatchVersionRequester,
+		evergreen.GithubPRRequester,
+	}
+	if len(at.DependsOn) > 0 && (utility.StringSliceContains(overrideRequesters, utility.FromStringPtr(at.Requester)) ||
+		currentUser.HasPermission(requiredPermission)) {
 		return true, nil
 	}
 	return false, nil

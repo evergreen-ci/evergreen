@@ -769,7 +769,11 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		if !projCtx.Task.IsPatchRequest() && !taskAdmin {
+		overrideRequesters := []string{
+			evergreen.PatchVersionRequester,
+			evergreen.GithubPRRequester,
+		}
+		if !utility.StringSliceContains(overrideRequesters, projCtx.Task.Requester) && !taskAdmin {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
