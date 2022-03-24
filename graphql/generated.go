@@ -625,6 +625,7 @@ type ComplexityRoot struct {
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
 		ValidDefaultLoggers     func(childComplexity int) int
+		VersionControlEnabled   func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
 
@@ -794,6 +795,7 @@ type ComplexityRoot struct {
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
 		ValidDefaultLoggers     func(childComplexity int) int
+		VersionControlEnabled   func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
 
@@ -4287,6 +4289,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.ValidDefaultLoggers(childComplexity), true
 
+	case "Project.versionControlEnabled":
+		if e.complexity.Project.VersionControlEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.VersionControlEnabled(childComplexity), true
+
 	case "Project.workstationConfig":
 		if e.complexity.Project.WorkstationConfig == nil {
 			break
@@ -5320,6 +5329,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.ValidDefaultLoggers(childComplexity), true
+
+	case "RepoRef.versionControlEnabled":
+		if e.complexity.RepoRef.VersionControlEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.VersionControlEnabled(childComplexity), true
 
 	case "RepoRef.workstationConfig":
 		if e.complexity.RepoRef.WorkstationConfig == nil {
@@ -7930,6 +7946,7 @@ input ProjectInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
@@ -7980,6 +7997,7 @@ input RepoRefInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
@@ -8737,6 +8755,7 @@ type Project {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
@@ -8788,6 +8807,7 @@ type RepoRef {
   patchingDisabled: Boolean!
   repotrackerDisabled: Boolean!
   dispatchingDisabled: Boolean!
+  versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
@@ -22925,6 +22945,38 @@ func (ec *executionContext) _Project_dispatchingDisabled(ctx context.Context, fi
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VersionControlEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -27649,6 +27701,41 @@ func (ec *executionContext) _RepoRef_dispatchingDisabled(ctx context.Context, fi
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.DispatchingDisabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VersionControlEnabled, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -40767,6 +40854,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "versionControlEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionControlEnabled"))
+			it.VersionControlEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "prTestingEnabled":
 			var err error
 
@@ -41220,6 +41315,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dispatchingDisabled"))
 			it.DispatchingDisabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "versionControlEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionControlEnabled"))
+			it.VersionControlEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45345,6 +45448,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_repotrackerDisabled(ctx, field, obj)
 		case "dispatchingDisabled":
 			out.Values[i] = ec._Project_dispatchingDisabled(ctx, field, obj)
+		case "versionControlEnabled":
+			out.Values[i] = ec._Project_versionControlEnabled(ctx, field, obj)
 		case "prTestingEnabled":
 			out.Values[i] = ec._Project_prTestingEnabled(ctx, field, obj)
 		case "githubChecksEnabled":
@@ -46655,6 +46760,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "dispatchingDisabled":
 			out.Values[i] = ec._RepoRef_dispatchingDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "versionControlEnabled":
+			out.Values[i] = ec._RepoRef_versionControlEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
