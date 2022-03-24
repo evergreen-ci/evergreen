@@ -172,7 +172,8 @@ type Patch struct {
 	// MergeStatus is only used in gitServePatch to send the status of this
 	// patch on the commit queue to the agent
 	MergeStatus string `json:"merge_status"`
-	// MergedFrom is only used when a merge patch is created from an existing patch.
+	// MergedFrom is populated with patch id of the existing patch
+	// the merged patch is based off of.
 	MergedFrom string `bson:"merged_from,omitempty"`
 }
 
