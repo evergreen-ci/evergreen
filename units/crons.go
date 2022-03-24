@@ -1281,6 +1281,64 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+// PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
+// allocate pods to tasks.
+func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.PodAllocatorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "pod allocation disabled",
+				"impact":  "container tasks will not be allocated any pods to run them",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		numInitializing, err := pod.CountByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "counting initializing pods")
+		}
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "loading admin settings")
+		}
+		remaining := settings.PodInit.MaxParallelPodRequests - numInitializing
+
+		ctq, err := model.NewContainerTaskQueue()
+		if err != nil {
+			return errors.Wrap(err, "getting container task queue")
+		}
+
+		catcher := grip.NewBasicCatcher()
+
+		for ctq.HasNext() && remaining > 0 {
+			t := ctq.Next()
+			if t == nil {
+				break
+			}
+
+			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
+			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "task '%s'", t.Id)
+				continue
+			}
+
+			remaining--
+		}
+
+		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
+			"message":             "reached max parallel pod request limit, not allocating any more",
+			"num_remaining_tasks": ctq.Len(),
+		})
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulatePodCreationJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		pods, err := pod.FindByInitializing()
