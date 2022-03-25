@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -489,15 +490,22 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
-// IsDispatchable return true if the task should be dispatched
-func (t *Task) IsDispatchable() bool {
-	return t.Status == evergreen.TaskUndispatched && t.Activated
+// IsHostDispatchable return true if the task should run on a host and can be
+// dispatched.
+func (t *Task) IsHostDispatchable() bool {
+	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
+// IsContainerDispatchable returns true if the task should run in a container
+// and can be dispatched.
+func (t *Task) IsContainerDispatchable() bool {
+	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerAllocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
 // container or not.
 func (t *Task) ShouldAllocateContainer() bool {
-	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -957,6 +965,34 @@ func (t *Task) MarkAsHostUndispatched() error {
 			},
 		},
 	)
+}
+
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod. If the task is part of a display task, the display task is also
+// marked as dispatched to a pod.
+// kim: TODO: test
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment) error {
+	query := shouldContainerTaskDispatchQuery()
+	query[StatusKey] = evergreen.TaskContainerAllocated
+	dispatchTime := time.Now()
+	update := bson.M{
+		StatusKey:        evergreen.TaskDispatched,
+		DispatchTimeKey:  dispatchTime,
+		LastHeartbeatKey: dispatchTime,
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return err
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
+		dt.MarkAsContainerDispatched(ctx, env)
+	}
+
+	return nil
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.

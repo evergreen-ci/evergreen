@@ -1541,7 +1541,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 			// Need to consider tasks that have been dispatched since the last exec task finished.
-		} else if (execTask.IsDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
+		} else if (execTask.IsHostDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
 			hasTasksToRun = true
 		}
 

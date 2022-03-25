@@ -681,10 +681,10 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		// validate that the task can be run, if not fetch the next one in the queue.
-		if !nextTask.IsDispatchable() {
+		if !nextTask.IsHostDispatchable() {
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":   "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"message":   "nextTask.IsHostDispatchable() is false, but there was an issue dequeuing the task",
 				"distro_id": d.Id,
 				"task_id":   nextTask.Id,
 				"host_id":   currentHost.Id,
@@ -816,7 +816,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 						if tgTask.TaskGroupOrder == nextTask.TaskGroupOrder {
 							break
 						}
-						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsDispatchable() && !tgTask.Blocked() {
+						if tgTask.TaskGroupOrder < nextTask.TaskGroupOrder && tgTask.IsHostDispatchable() && !tgTask.Blocked() {
 							dispatchRace = fmt.Sprintf("an earlier task ('%s') in the task group is still dispatchable", tgTask.DisplayName)
 						}
 					}
@@ -1265,7 +1265,7 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 	}
 
 	// if the task can be dispatched and activated dispatch it
-	if t.IsDispatchable() {
+	if t.IsHostDispatchable() {
 		err = errors.WithStack(model.MarkHostTaskDispatched(t, h))
 		if err != nil {
 			grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))

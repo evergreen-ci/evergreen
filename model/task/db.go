@@ -768,7 +768,13 @@ func schedulableHostTasksQuery() bson.M {
 // FindNeedsContainerAllocation returns all container tasks that are waiting for
 // a container to be allocated to them sorted by activation time.
 func FindNeedsContainerAllocation() ([]Task, error) {
-	q := bson.M{
+	q := shouldContainerTaskDispatchQuery()
+	q[StatusKey] = evergreen.TaskContainerUnallocated
+	return FindAll(db.Query(q).Sort([]string{ActivatedTimeKey}))
+}
+
+func shouldContainerTaskDispatchQuery() bson.M {
+	return bson.M{
 		ActivatedKey:         true,
 		StatusKey:            evergreen.TaskContainerUnallocated,
 		ExecutionPlatformKey: ExecutionPlatformContainer,
@@ -788,7 +794,6 @@ func FindNeedsContainerAllocation() ([]Task, error) {
 			{OverrideDependenciesKey: true},
 		},
 	}
-	return FindAll(db.Query(q).Sort([]string{ActivatedTimeKey}))
 }
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
