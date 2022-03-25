@@ -839,7 +839,7 @@ func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
 }
 
 func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
-	return FindOne(db.Query(ByPreviousCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)))
+	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)))
 }
 
 // FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
@@ -3532,7 +3532,9 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		// If we are request a mainline commits base task we want to use the previous commit instead.
 		if opts.IsMainlineCommit {
 			baseCommitMatch = append(baseCommitMatch, bson.M{
-				"$lt": []string{"$" + RevisionOrderNumberKey, "$$" + RevisionOrderNumberKey},
+				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
+					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},
+				}},
 			})
 		} else {
 			baseCommitMatch = append(baseCommitMatch, bson.M{
