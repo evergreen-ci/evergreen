@@ -89,8 +89,6 @@ func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
 // AssignNextTask assigns the given pod the next available task to run.
 // kim: TODO: test
 func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
-	// kim: NOTE: all DB ops should be atomic and double-check state. Maybe need
-	// to use transaction.
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -101,6 +99,7 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 		"dispatcher": pd.ID,
 		"tasks":      pd.TaskIDs,
 	})
+
 	for len(pd.TaskIDs) > 0 {
 		taskID := pd.TaskIDs[0]
 		t, err := task.FindOneId(taskID)
@@ -108,74 +107,26 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 			return nil, errors.Wrapf(err, "finding task '%s'", taskID)
 		}
 		if t == nil {
-			// Task does not exist, so just dequeue it.
+			grip.Notice(message.Fields{
+				"message":    "nonexistent task in the dispatch queue",
+				"outcome":    "dequeueing",
+				"context":    "pod group task dispatcher",
+				"task":       taskID,
+				"dispatcher": pd.ID,
+			})
 			if err := pd.pop(ctx, env); err != nil {
 				return nil, errors.Wrapf(err, "popping nonexistent task '%s' from dispatch queue", taskID)
 			}
-			grip.Notice(message.Fields{
-				"message":    "task does not exist - removing it from the dispatch queue",
-				"outcome":    "dequeueing",
-				"context":    "pod group task dispatcher",
-				"pod":        p.ID,
-				"task":       taskID,
-				"dispatcher": pd.ID,
-			})
 			continue
 		}
 
-		if !t.IsContainerDispatchable() {
-			grip.Notice(message.Fields{
-				"message":    "task in dispatch queue is not dispatchable",
-				"outcome":    "dequeueing",
-				"context":    "pod group task dispatcher",
-				"pod":        p.ID,
-				"task":       taskID,
-				"dispatcher": pd.ID,
-			})
-			if err := pd.pop(ctx, env); err != nil {
-				return nil, errors.Wrapf(err, "popping undispatchable task '%s' from dispatch queue", taskID)
-			}
-			continue
-		}
-
-		// kim: TODO: Check if task is runnable (status is container allocated,
-		// activated, not disabled, dependencies are met) and not disabled by
-		// project - if not, dequeue task. If task is not in runnable state
-		// (i.e. container-allocated, activated, not disabled, dependencies
-		// met), it should be safe to dequeue the task since any
-		// container-unallocated task would later allocate until it's finally
-		// container-allocated.
-		refs, err := model.FindProjectRefsByIds(t.Project)
+		shouldDispatch, err := pd.checkTaskShouldDispatch(ctx, env, t)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding project ref '%s' for task '%s'", t.Project, t.Id)
+			return nil, errors.Wrap(err, "checking task runnability based on project ref")
 		}
-		if len(refs) == 0 {
-			grip.Notice(message.Fields{
-				"message":    "project ref does not exist for task in dispatch queue",
-				"outcome":    "dequeueing",
-				"context":    "pod group task dispatcher",
-				"pod":        p.ID,
-				"task":       t.Id,
-				"project":    t.Project,
-				"dispatcher": pd.ID,
-			})
-			// Project does not exist, so dequeue the task.
+		if !shouldDispatch {
 			if err := pd.pop(ctx, env); err != nil {
-				return nil, errors.Wrapf(err, "popping task '%s' with nonexistent project ref '%s'", t.Id, t.Project)
-			}
-			continue
-		}
-		ref := refs[0]
-
-		// Disabled projects generally are not allowed to run tasks. The one
-		// exception is that GitHub PR tasks are still allowed to run for
-		// disabled hidden projects.
-		if !ref.IsEnabled() && (t.Requester != evergreen.GithubPRRequester || !ref.IsHidden()) {
-			return nil, errors.Wrapf(err, "popping task '%s' when its project ref '%s' is disabled", t.Id, ref.Id)
-		}
-		if ref.IsDispatchingDisabled() {
-			if err := pd.pop(ctx, env); err != nil {
-				return nil, errors.Wrapf(err, "popping task '%s' when its project ref '%s' has disabled dispatching", t.Id, ref.Id)
+				return nil, errors.Wrapf(err, "popping undispatchable task '%s'", taskID)
 			}
 			continue
 		}
@@ -186,23 +137,7 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 		}
 		defer session.EndSession(ctx)
 
-		dispatchTaskToPod := func(sesCtx mongo.SessionContext) (interface{}, error) {
-			if err := p.SetRunningTask(ctx, env, t.Id); err != nil {
-				return nil, errors.Wrap(err, "setting pod's running task")
-			}
-
-			if err := t.MarkAsContainerDispatched(ctx, env); err != nil {
-				return nil, errors.Wrap(err, "marking task as dispatched")
-			}
-
-			if err := pd.pop(ctx, env); err != nil {
-				return nil, errors.Wrap(err, "popping task from dispatch queue")
-			}
-
-			return nil, nil
-		}
-
-		if _, err := session.WithTransaction(ctx, dispatchTaskToPod); err != nil {
+		if _, err := session.WithTransaction(ctx, pd.dispatchTask(env, p, t)); err != nil {
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
@@ -214,6 +149,26 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 	return nil, nil
 }
 
+// dispatchTask performs the DB updates to assign a task to run on a pod.
+func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
+	return func(sessCtx mongo.SessionContext) (interface{}, error) {
+		if err := p.SetRunningTask(sessCtx, env, t.Id); err != nil {
+			return nil, errors.Wrapf(err, "setting pod's running task")
+		}
+
+		if err := t.MarkAsContainerDispatched(sessCtx, env); err != nil {
+			return nil, errors.Wrapf(err, "marking task as dispatched")
+		}
+
+		if err := pd.pop(sessCtx, env); err != nil {
+			return nil, errors.Wrapf(err, "popping task from dispatch queue")
+		}
+
+		return nil, nil
+	}
+}
+
+// pop removes the head of the task dispatch queue.
 // kim: TODO: test
 func (pd *PodDispatcher) pop(ctx context.Context, env evergreen.Environment) (err error) {
 	oldTaskIDs := pd.TaskIDs
@@ -231,6 +186,66 @@ func (pd *PodDispatcher) pop(ctx context.Context, env evergreen.Environment) (er
 		return errors.New("dispatcher was not updated")
 	}
 	return nil
+}
+
+// checkTaskShouldDispatch checks if a task is allowed to dispatch based on its
+// current state and its project ref's settings.
+func (pd *PodDispatcher) checkTaskShouldDispatch(ctx context.Context, env evergreen.Environment, t *task.Task) (shouldRun bool, err error) {
+	if !t.IsContainerDispatchable() {
+		grip.Notice(message.Fields{
+			"message":    "task in dispatch queue is not dispatchable",
+			"outcome":    "task is not dispatchable",
+			"context":    "pod group task dispatcher",
+			"task":       t.Id,
+			"dispatcher": pd.ID,
+		})
+		return false, nil
+	}
+
+	refs, err := model.FindProjectRefsByIds(t.Project)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding project ref '%s' for task '%s'", t.Project, t.Id)
+	}
+	if len(refs) == 0 {
+		grip.Notice(message.Fields{
+			"message":    "project ref does not exist for task in dispatch queue",
+			"outcome":    "task is not dispatchable",
+			"context":    "pod group task dispatcher",
+			"task":       t.Id,
+			"project":    t.Project,
+			"dispatcher": pd.ID,
+		})
+		return false, nil
+	}
+	ref := refs[0]
+
+	// Disabled projects generally are not allowed to run tasks. The one
+	// exception is that GitHub PR tasks are still allowed to run for
+	// disabled hidden projects.
+	if !ref.IsEnabled() && (t.Requester != evergreen.GithubPRRequester || !ref.IsHidden()) {
+		grip.Notice(message.Fields{
+			"message":    "project ref is disabled",
+			"outcome":    "task is not dispatchable",
+			"context":    "pod group task dispatcher",
+			"task":       t.Id,
+			"project":    t.Project,
+			"dispatcher": pd.ID,
+		})
+		return false, nil
+	}
+	if ref.IsDispatchingDisabled() {
+		grip.Notice(message.Fields{
+			"message":    "project ref has disabled dispatching tasks",
+			"outcome":    "task is not dispatchable",
+			"context":    "pod group task dispatcher",
+			"task":       t.Id,
+			"project":    t.Project,
+			"dispatcher": pd.ID,
+		})
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // GetGroupID returns the pod dispatcher group ID for the task.
