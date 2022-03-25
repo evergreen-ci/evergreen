@@ -253,34 +253,6 @@ func (s *AgentSuite) TestCancelRunCommands() {
 	s.Equal("runCommands canceled", err.Error())
 }
 
-func (s *AgentSuite) TestCallsManifestLoad() {
-	p := &model.Project{}
-	s.tc.taskConfig = &internal.TaskConfig{
-		BuildVariant: &model.BuildVariant{
-			Name: "buildvariant_id",
-		},
-		Task: &task.Task{
-			Id:      "task_id",
-			Version: versionId,
-		},
-		Project: p,
-		WorkDir: s.tc.taskDirectory,
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	cmds := []model.PluginCommandConf{{
-		Command: "git.get_project",
-		Params: map[string]interface{}{
-			"directory": "directory",
-		},
-	}}
-	s.NoError(s.a.runCommands(ctx, s.tc, cmds, runCommandsOptions{}))
-	_ = s.tc.logger.Close()
-	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running command 'git.get_project' (step 1 of 1)", msgs[1].Message)
-	s.Equal("Running command 'manifest.load' (step 1 of 1)", msgs[4].Message)
-}
-
 func (s *AgentSuite) TestPre() {
 	projYml := `
 pre:
