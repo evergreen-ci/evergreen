@@ -3881,6 +3881,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		opts := task.GetTasksByVersionOptions{
 			Sorts:                          defaultSort,
 			IncludeBaseTasks:               true,
+			IsMainlineCommit:               evergreen.IsPatchRequester(*v.Requester),
 			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
 		tasks, _, err := task.GetTasksByVersion(*v.Id, opts)
