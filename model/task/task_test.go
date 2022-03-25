@@ -2459,6 +2459,70 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 	assert.Equal(t, evergreen.TaskFailed, tasks[2].DisplayStatus)
 }
 
+func TestGetTasksByVersionBaseTasks(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:                  "t1",
+		Version:             "v1",
+		BuildVariant:        "bv",
+		DisplayName:         "displayName",
+		Execution:           0,
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v2",
+		BuildVariant: "bv",
+		DisplayName:  "displayName",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		Requester:    evergreen.GithubPRRequester,
+	}
+
+	t3 := Task{
+		Id:                  "t3",
+		Version:             "v3",
+		BuildVariant:        "bv",
+		DisplayName:         "displayName",
+		Execution:           0,
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+
+	// Normal Patch builds
+	opts := GetTasksByVersionOptions{
+		IncludeBaseTasks: true,
+		IsMainlineCommit: false,
+	}
+	tasks, count, err := GetTasksByVersion("v2", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, evergreen.TaskFailed, tasks[0].DisplayStatus)
+	assert.NotNil(t, tasks[0].BaseTask)
+	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
+	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+
+	// Mainline builds
+	opts = GetTasksByVersionOptions{
+		IncludeBaseTasks: true,
+		IsMainlineCommit: true,
+	}
+	tasks, count, err = GetTasksByVersion("v3", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, "t3", tasks[0].Id)
+	assert.Equal(t, evergreen.TaskFailed, tasks[0].DisplayStatus)
+	assert.NotNil(t, tasks[0].BaseTask)
+	assert.Equal(t, "t1", tasks[0].BaseTask.Id)
+	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
+}
+
 func TestAbortVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{
