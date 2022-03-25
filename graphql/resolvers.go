@@ -1730,6 +1730,13 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+	v, err := model.VersionFindOneId(patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", patchID, err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
+	}
 
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(statuses),
@@ -1742,6 +1749,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		IncludeBaseTasks:               true,
 		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
 		IncludeBuildVariantDisplayName: true,
+		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
 	tasks, count, err := task.GetTasksByVersion(patchID, opts)
 	if err != nil {
@@ -3451,6 +3459,8 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
+	fmt.Println("Base task")
+	fmt.Println(t.BaseTask)
 	var baseTask *task.Task
 	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
 	if t.BaseTask.Id != "" {
@@ -3465,9 +3475,16 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 			}
 		}
 	} else {
-		baseTask, err = t.FindTaskOnBaseCommit()
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+		if evergreen.IsPatchRequester(t.Requester) {
+			baseTask, err = t.FindTaskOnBaseCommit()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+			}
+		} else {
+			baseTask, err = t.FindTaskOnPreviousCommit()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on previous commit: %s", *obj.Id, err.Error()))
+			}
 		}
 	}
 
