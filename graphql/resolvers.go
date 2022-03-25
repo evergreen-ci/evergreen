@@ -4056,7 +4056,7 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 
 func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
-		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1).Sort([]string{"-" + model.VersionRevisionOrderNumberKey}))
+		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding previous version for `%s`: %s", *obj.Id, err.Error()))
 		}
