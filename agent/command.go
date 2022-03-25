@@ -62,7 +62,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			grip.Error(logger.Close())
 		}()
 	}
-	var manifestLoadCalled bool
+
 	for idx, cmd := range cmds {
 		if ctx.Err() != nil {
 			grip.Error("runCommands canceled")
@@ -113,33 +113,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			a.comm.UpdateLastMessageTime()
 		} else {
 			tc.setCurrentIdleTimeout(nil)
-		}
-
-		if cmd.Name() == evergreen.ManifestLoadCommandName {
-			manifestLoadCalled = true
-		}
-
-		if cmd.Name() == "git.get_project" && !manifestLoadCalled {
-			tc.logger.Task().Infof("calling manifest.load on variant %s ",
-				tc.taskConfig.BuildVariant.Name)
-			a.runCommands(ctx, tc, []model.PluginCommandConf{
-				{
-					Function:    commandInfo.Function,
-					Type:        commandInfo.Type,
-					DisplayName: commandInfo.DisplayName,
-					Vars:        commandInfo.Vars,
-					Command:     evergreen.ManifestLoadCommandName,
-					Params:      commandInfo.Params,
-					ParamsYAML:  commandInfo.ParamsYAML,
-					Loggers:     commandInfo.Loggers,
-					Variants:    commandInfo.Variants,
-					TimeoutSecs: commandInfo.TimeoutSecs,
-				},
-			}, runCommandsOptions{
-				isTaskCommands: options.failPreAndPost,
-				failPreAndPost: options.failPreAndPost,
-			})
-			continue
 		}
 
 		start := time.Now()
