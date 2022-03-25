@@ -4054,6 +4054,24 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 	return &apiVersion, nil
 }
 
+func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
+	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
+		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding previous version for `%s`: %s", *obj.Id, err.Error()))
+		}
+		if previousVersion == nil {
+			return nil, nil
+		}
+		apiVersion := restModel.APIVersion{}
+		if err = apiVersion.BuildFromService(previousVersion); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", previousVersion.Id, err.Error()))
+		}
+		return &apiVersion, nil
+	} else {
+		return nil, nil
+	}
+}
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := task.GetTasksByVersionOptions{
