@@ -3459,8 +3459,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
-	fmt.Println("Base task")
-	fmt.Println(t.BaseTask)
+
 	var baseTask *task.Task
 	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
 	if t.BaseTask.Id != "" {
