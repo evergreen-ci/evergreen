@@ -939,6 +939,46 @@ func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
 	return nil
 }
 
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod. If the task is part of a display task, the display task is also
+// marked as dispatched to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string, dispatchedAt time.Time) error {
+	query := shouldContainerTaskDispatchQuery()
+	query[StatusKey] = evergreen.TaskContainerAllocated
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return err
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
+
+	if t.IsPartOfDisplay() {
+		dt, err := t.GetDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "updating display task")
+		}
+		if dt != nil && utility.IsZeroTime(dt.DispatchTime) {
+			return errors.Wrap(dt.MarkAsContainerDispatched(ctx, env, agentVersion, dispatchedAt), "marking parent display task as dispatched")
+		}
+	}
+
+	return nil
+}
+
 // MarkAsHostUndispatched marks that the host task is undispatched. If the task
 // is already dispatched to a host, it unsets the host ID field on the task. It
 // returns an error if any of the database updates fail.
@@ -967,20 +1007,17 @@ func (t *Task) MarkAsHostUndispatched() error {
 	)
 }
 
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod. If the task is part of a display task, the display task is also
-// marked as dispatched to a pod.
-// kim: TODO: test
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment) error {
-	query := shouldContainerTaskDispatchQuery()
-	query[StatusKey] = evergreen.TaskContainerAllocated
-	dispatchTime := time.Now()
-	update := bson.M{
-		StatusKey:        evergreen.TaskDispatched,
-		DispatchTimeKey:  dispatchTime,
-		LastHeartbeatKey: dispatchTime,
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+// MarkAsContainerUnallocated marks a container task that was allocated as no
+// longer allocated.
+func (t *Task) MarkAsContainerUnallocated(ctx context.Context, env evergreen.Environment) error {
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:     t.Id,
+		StatusKey: t.Status,
+	}, bson.M{
+		"$set": bson.M{
+			StatusKey: evergreen.TaskContainerUnallocated,
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -988,9 +1025,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 		return errors.New("task was not updated")
 	}
 
-	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		dt.MarkAsContainerDispatched(ctx, env)
-	}
+	t.Status = evergreen.TaskContainerUnallocated
 
 	return nil
 }

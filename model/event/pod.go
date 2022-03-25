@@ -19,8 +19,7 @@ const (
 	ResourceTypePod = "POD"
 
 	EventPodStatusChange PodEventType = "STATUS_CHANGE"
-	// EventPodAssignedTask represents an event where a pod is assigned a task
-	// to run.
+	// EventPodAssignedTask represents an event where a pod is assigned a task to run.
 	EventPodAssignedTask PodEventType = "ASSIGNED_TASK"
 )
 

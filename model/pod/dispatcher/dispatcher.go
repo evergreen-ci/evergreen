@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -86,10 +87,9 @@ func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
 	return change, nil
 }
 
-// AssignNextTask assigns the given pod the next available task to run.
-// kim: TODO: test
-func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
-	env := evergreen.GetEnvironment()
+// AssignNextTask assigns the pod the next available task to run. Returns nil if
+// there's no task available to run.
+func (pd *PodDispatcher) AssignNextTask(env evergreen.Environment, p *pod.Pod) (*task.Task, error) {
 	ctx, cancel := env.Context()
 	defer cancel()
 
@@ -114,19 +114,19 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 				"task":       taskID,
 				"dispatcher": pd.ID,
 			})
-			if err := pd.pop(ctx, env); err != nil {
-				return nil, errors.Wrapf(err, "popping nonexistent task '%s' from dispatch queue", taskID)
+			if err := pd.dequeue(ctx, env); err != nil {
+				return nil, errors.Wrapf(err, "dequeueing nonexistent task '%s' from dispatch queue", taskID)
 			}
 			continue
 		}
 
-		shouldDispatch, err := pd.checkTaskShouldDispatch(ctx, env, t)
+		isDispatchable, err := pd.checkTaskIsDispatchable(ctx, env, t)
 		if err != nil {
-			return nil, errors.Wrap(err, "checking task runnability based on project ref")
+			return nil, errors.Wrap(err, "checking task dispatchability")
 		}
-		if !shouldDispatch {
-			if err := pd.pop(ctx, env); err != nil {
-				return nil, errors.Wrapf(err, "popping undispatchable task '%s'", taskID)
+		if !isDispatchable {
+			if err := pd.dequeueUndispatchableTask(ctx, env, t); err != nil {
+				return nil, errors.Wrapf(err, "dequeueing undispatchable task '%s'", t.Id)
 			}
 			continue
 		}
@@ -141,7 +141,8 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
-		event.LogPodAssignedTask(p.ID, taskID)
+		event.LogPodAssignedTask(p.ID, t.Id)
+		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
 
 		return t, nil
 	}
@@ -149,28 +150,28 @@ func (pd *PodDispatcher) AssignNextTask(p *pod.Pod) (*task.Task, error) {
 	return nil, nil
 }
 
-// dispatchTask performs the DB updates to assign a task to run on a pod.
+// dispatchTask performs the DB updates to atomically assign a task to run on a
+// pod.
 func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
 	return func(sessCtx mongo.SessionContext) (interface{}, error) {
 		if err := p.SetRunningTask(sessCtx, env, t.Id); err != nil {
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}
 
-		if err := t.MarkAsContainerDispatched(sessCtx, env); err != nil {
+		if err := t.MarkAsContainerDispatched(sessCtx, env, p.AgentVersion, time.Now()); err != nil {
 			return nil, errors.Wrapf(err, "marking task as dispatched")
 		}
 
-		if err := pd.pop(sessCtx, env); err != nil {
-			return nil, errors.Wrapf(err, "popping task from dispatch queue")
+		if err := pd.dequeue(sessCtx, env); err != nil {
+			return nil, errors.Wrapf(err, "dequeueing task")
 		}
 
 		return nil, nil
 	}
 }
 
-// pop removes the head of the task dispatch queue.
-// kim: TODO: test
-func (pd *PodDispatcher) pop(ctx context.Context, env evergreen.Environment) (err error) {
+// dequeue removes the head of the task queue from the dispatcher.
+func (pd *PodDispatcher) dequeue(ctx context.Context, env evergreen.Environment) (err error) {
 	oldTaskIDs := pd.TaskIDs
 	pd.TaskIDs = pd.TaskIDs[1:]
 	defer func() {
@@ -185,12 +186,34 @@ func (pd *PodDispatcher) pop(ctx context.Context, env evergreen.Environment) (er
 	if res.ModifiedCount == 0 {
 		return errors.New("dispatcher was not updated")
 	}
+
+	pd.ModificationCount++
+
 	return nil
 }
 
-// checkTaskShouldDispatch checks if a task is allowed to dispatch based on its
+// dequeueUndispatchableTask removes the task from the dispatcher and, if the
+// task status indicates a container has been allocated for it, marks it as
+// unallocated.
+func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
+	if t.Status != evergreen.TaskContainerAllocated {
+		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task")
+	}
+
+	if err := t.MarkAsContainerUnallocated(ctx, env); err != nil {
+		return errors.Wrap(err, "marking task unallocated")
+	}
+
+	if err := pd.dequeue(ctx, env); err != nil {
+		return errors.Wrap(err, "dequeueing task")
+	}
+
+	return nil
+}
+
+// checkTaskIsDispatchable checks if a task is able to dispatch based on its
 // current state and its project ref's settings.
-func (pd *PodDispatcher) checkTaskShouldDispatch(ctx context.Context, env evergreen.Environment, t *task.Task) (shouldRun bool, err error) {
+func (pd *PodDispatcher) checkTaskIsDispatchable(ctx context.Context, env evergreen.Environment, t *task.Task) (shouldRun bool, err error) {
 	if !t.IsContainerDispatchable() {
 		grip.Notice(message.Fields{
 			"message":    "task in dispatch queue is not dispatchable",
@@ -220,8 +243,8 @@ func (pd *PodDispatcher) checkTaskShouldDispatch(ctx context.Context, env evergr
 	ref := refs[0]
 
 	// Disabled projects generally are not allowed to run tasks. The one
-	// exception is that GitHub PR tasks are still allowed to run for
-	// disabled hidden projects.
+	// exception is that GitHub PR tasks are still allowed to run for disabled
+	// hidden projects.
 	if !ref.IsEnabled() && (t.Requester != evergreen.GithubPRRequester || !ref.IsHidden()) {
 		grip.Notice(message.Fields{
 			"message":    "project ref is disabled",

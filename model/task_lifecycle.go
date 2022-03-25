@@ -1221,12 +1221,11 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 // MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
 // it's part of a display task, update the display task as necessary.
 func MarkHostTaskUndispatched(t *task.Task) error {
-	// record that the task as undispatched on the host
 	if err := t.MarkAsHostUndispatched(); err != nil {
 		return errors.WithStack(err)
 	}
-	// the task was successfully dispatched, log the event
-	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
+
+	event.LogHostTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)
@@ -1238,13 +1237,12 @@ func MarkHostTaskUndispatched(t *task.Task) error {
 // MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
 // part of a display task, update the display task as necessary.
 func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
-	// record that the task was dispatched on the host
 	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched "+
 			"on host %s", t.Id, h.Id)
 	}
-	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
+
+	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)
