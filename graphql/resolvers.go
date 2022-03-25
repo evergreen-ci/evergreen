@@ -1730,7 +1730,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
-	v, err := model.VersionFindOneId(patchID)
+	v, err := model.VersionFindOne(model.VersionById(patchID).WithFields(model.VersionRequesterKey))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", patchID, err.Error()))
 	}
@@ -3880,7 +3880,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		opts := task.GetTasksByVersionOptions{
 			Sorts:                          defaultSort,
 			IncludeBaseTasks:               true,
-			IsMainlineCommit:               evergreen.IsPatchRequester(*v.Requester),
+			IsMainlineCommit:               evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)),
 			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
 		tasks, _, err := task.GetTasksByVersion(*v.Id, opts)
