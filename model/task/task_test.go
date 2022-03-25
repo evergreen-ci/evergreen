@@ -2471,6 +2471,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Status:              evergreen.TaskSucceeded,
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc123",
 	}
 	t2 := Task{
 		Id:           "t2",
@@ -2480,6 +2481,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Execution:    0,
 		Status:       evergreen.TaskFailed,
 		Requester:    evergreen.GithubPRRequester,
+		Revision:     "abc123",
 	}
 
 	t3 := Task{
@@ -2491,6 +2493,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Status:              evergreen.TaskFailed,
 		RevisionOrderNumber: 2,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            "abc125",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
 

@@ -3529,7 +3529,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
 		}
 
-		// If we are request a mainline commits base task we want to use the previous commit instead.
+		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
 		if opts.IsMainlineCommit {
 			baseCommitMatch = append(baseCommitMatch, bson.M{
 				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
