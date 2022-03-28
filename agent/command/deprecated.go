@@ -66,6 +66,6 @@ func (c *manifestLoad) ParseParams(params map[string]interface{}) error { return
 func (c *manifestLoad) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	logger.Execution().Warning("manifest.load is deprecated. Manifest load is now called automatically in git.get_project.")
+	logger.Execution().Warningf("%s is deprecated. Manifest load is now called automatically in git.get_project.", evergreen.ManifestLoadCommandName)
 	return nil
 }
