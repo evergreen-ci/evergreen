@@ -208,8 +208,8 @@ func (pp *ParserProject) mergeBuildVariant(toMerge *ParserProject) error {
 	}
 	for _, bv := range toMerge.BuildVariants {
 		if currentBV, ok := bvs[bv.Name]; ok {
-			if !bv.canMerge() {
-				catcher.Errorf("build variant '%s' has been declared already", bv.Name)
+			if !currentBV.canMerge() && !bv.canMerge() {
+				catcher.Errorf("build variant '%s' has non-task fields declared already", bv.Name)
 			} else {
 				currentBV.Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
 				currentBV.DisplayTasks = append(bvs[bv.Name].DisplayTasks, bv.DisplayTasks...)

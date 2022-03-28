@@ -382,7 +382,7 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // otherwise, the variant is being defined more than once.
 func (pbv *parserBV) canMerge() bool {
 	return pbv.Name != "" &&
-		len(pbv.Tasks) != 0 &&
+		len(pbv.Tasks)+len(pbv.DisplayTasks) != 0 &&
 		pbv.DisplayName == "" &&
 		pbv.Expansions == nil &&
 		pbv.Tags == nil &&
@@ -393,7 +393,6 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
 		pbv.RunOn == nil &&
-		pbv.DisplayTasks == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
 		pbv.MatrixId == "" &&
