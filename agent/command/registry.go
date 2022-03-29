@@ -44,7 +44,7 @@ func init() {
 		"json.send":                             taskDataSendFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"mac.sign":                              macSignFactory,
-		"manifest.load":                         manifestLoadFactory,
+		evergreen.ManifestLoadCommandName:       manifestLoadFactory,
 		"perf.send":                             perfSendFactory,
 		"downstream_expansions.set":             setExpansionsFactory,
 		"s3.get":                                s3GetFactory,
