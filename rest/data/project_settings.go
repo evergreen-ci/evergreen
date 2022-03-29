@@ -227,6 +227,14 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
+	case model.ProjectPagePeriodicBuildsSection:
+		for i := range mergedProjectRef.PeriodicBuilds {
+			err = mergedProjectRef.PeriodicBuilds[i].Validate()
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "invalid periodic build definition")
+		}
 	}
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
