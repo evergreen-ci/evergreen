@@ -131,13 +131,7 @@ func (pd *PodDispatcher) AssignNextTask(env evergreen.Environment, p *pod.Pod) (
 			continue
 		}
 
-		session, err := env.Client().StartSession()
-		if err != nil {
-			return nil, errors.Wrap(err, "starting transaction session")
-		}
-		defer session.EndSession(ctx)
-
-		if _, err := session.WithTransaction(ctx, pd.dispatchTask(env, p, t)); err != nil {
+		if err := pd.dispatchTaskAtomically(ctx, env, p, t); err != nil {
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
@@ -150,8 +144,21 @@ func (pd *PodDispatcher) AssignNextTask(env evergreen.Environment, p *pod.Pod) (
 	return nil, nil
 }
 
-// dispatchTask performs the DB updates to atomically assign a task to run on a
+// dispatchTaskAtomically performs the DB updates to assign a task to run on a
 // pod.
+func (pd *PodDispatcher) dispatchTaskAtomically(ctx context.Context, env evergreen.Environment, p *pod.Pod, t *task.Task) error {
+	session, err := env.Client().StartSession()
+	if err != nil {
+		return errors.Wrap(err, "starting transaction session")
+	}
+	defer session.EndSession(ctx)
+
+	if _, err := session.WithTransaction(ctx, pd.dispatchTask(env, p, t)); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
 	return func(sessCtx mongo.SessionContext) (interface{}, error) {
 		if err := p.SetRunningTask(sessCtx, env, t.Id); err != nil {

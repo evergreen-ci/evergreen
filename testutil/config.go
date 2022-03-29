@@ -42,8 +42,8 @@ func Setup() {
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
 		env, err := evergreen.NewEnvironment(ctx, path, nil)
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
-			"note": "could not initialize test environment",
-			"path": filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
+			"message": "could not initialize test environment",
+			"path":    filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
 		}))
 
 		evergreen.SetEnvironment(env)

@@ -125,6 +125,9 @@ func TestAssignNextTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
 	}()
@@ -288,6 +291,7 @@ func TestAssignNextTask(t *testing.T) {
 			require.NotZero(t, nextTask)
 			assert.Equal(t, dispatchableTask0.Id, nextTask.Id)
 
+			checkTaskUnallocated(t, params.task)
 			checkTaskDispatchedToPod(t, dispatchableTask0, params.pod)
 			checkDispatcherTasks(t, params.dispatcher, []string{dispatchableTask1.Id})
 		},
@@ -362,13 +366,7 @@ func TestAssignNextTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
-			defer tcancel()
-
 			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, event.AllLogCollection))
-
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(tctx))
 
 			p := pod.Pod{
 				ID:           utility.RandomString(),

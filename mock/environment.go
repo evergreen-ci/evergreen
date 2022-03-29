@@ -76,7 +76,10 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.JasperProcessManager = jpm
 
-	e.MongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(e.EvergreenSettings.Database.Url))
+	e.MongoClient, err = mongo.Connect(ctx, options.Client().
+		ApplyURI(e.EvergreenSettings.Database.Url).
+		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
+		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()))
 	if err != nil {
 		return errors.WithStack(err)
 	}

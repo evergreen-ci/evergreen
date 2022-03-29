@@ -1021,6 +1021,8 @@ func (t *Task) MarkAsContainerUnallocated(ctx context.Context, env evergreen.Env
 	}
 
 	t.Status = evergreen.TaskContainerUnallocated
+	t.DispatchTime = utility.ZeroTime
+	t.LastHeartbeat = utility.ZeroTime
 
 	return nil
 }
