@@ -100,6 +100,7 @@ type AgentSetupData struct {
 	S3Secret          string                  `json:"s3_secret"`
 	S3Bucket          string                  `json:"s3_bucket"`
 	TaskSync          evergreen.S3Credentials `json:"task_sync"`
+	EC2Keys           []evergreen.EC2Key      `json:"ec2_keys"`
 	LogkeeperURL      string                  `json:"logkeeper_url"`
 }
 

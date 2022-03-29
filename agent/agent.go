@@ -465,7 +465,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleTaskResponse(tskCtx, tc, evergreen.TaskFailed, "")
 	}
-	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	tc.setTaskConfig(taskConfig)
 
 	if err = a.startLogging(ctx, tc); err != nil {

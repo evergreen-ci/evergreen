@@ -50,6 +50,7 @@ var (
 	VersionPeriodicBuildIDKey     = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
 	VersionActivatedKey           = bsonutil.MustHaveTag(Version{}, "Activated")
 	VersionAbortedKey             = bsonutil.MustHaveTag(Version{}, "Aborted")
+	VersionAuthorIDKey            = bsonutil.MustHaveTag(Version{}, "AuthorID")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -127,7 +128,7 @@ func VersionByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q 
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-		})
+		}).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
 // ByLastVariantActivation finds the most recent non-patch, non-ignored
@@ -344,6 +345,18 @@ func AddSatisfiedTrigger(versionID, definitionID string) error {
 				VersionSatisfiedTriggersKey: definitionID,
 			},
 		})
+}
+
+func GetVersionAuthorID(versionID string) (string, error) {
+	v, err := VersionFindOne(VersionById(versionID).WithFields(VersionAuthorIDKey))
+	if err != nil {
+		return "", errors.Wrapf(err, "getting version '%s'", versionID)
+	}
+	if v == nil {
+		return "", errors.Errorf("no version found for ID '%s'", versionID)
+	}
+
+	return v.AuthorID, nil
 }
 
 func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {

@@ -193,10 +193,12 @@ buildvariants:
 	newPatch, err := CreatePatchForMerge(context.Background(), existingPatch.Id.Hex(), "")
 	s.NoError(err)
 	s.NotNil(newPatch)
+	s.Equal(utility.FromStringPtr(newPatch.MergedFrom), existingPatch.Id.Hex())
 
 	newPatchDB, err := patch.FindOneId(utility.FromStringPtr(newPatch.Id))
 	s.NoError(err)
 	s.Equal(evergreen.CommitQueueAlias, newPatchDB.Alias)
+	s.Equal(newPatchDB.MergedFrom, existingPatch.Id.Hex())
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {

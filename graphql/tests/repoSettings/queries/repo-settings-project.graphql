@@ -1,6 +1,6 @@
 {
     repoSettings(id: "repo_id") {
-        gitHubWebhooksEnabled
+        githubWebhooksEnabled
         projectRef {
             id
             commitQueue {

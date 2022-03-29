@@ -45,7 +45,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			Id:      projectId,
 			Admins:  []string{},
 		},
-		GitHubHooksEnabled: true,
+		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
 			Vars:        map[string]string{},
@@ -138,7 +138,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NoError(vars.Insert())
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
-		after.GitHubHooksEnabled = false
+		after.GithubHooksEnabled = false
 
 		h :=
 			event.EventLogEntry{
@@ -276,7 +276,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectSettingsNoRepo() {
 	projectSettingsEvent, err := model.GetProjectSettings(projRef)
 	s.Nil(err)
 	s.NotNil(projectSettingsEvent)
-	s.False(projectSettingsEvent.GitHubHooksEnabled)
+	s.False(projectSettingsEvent.GithubHooksEnabled)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {

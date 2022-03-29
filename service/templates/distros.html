@@ -424,11 +424,25 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2
                   key name is required</div>
               </div>
-              <div class="distro-label">
-                <div ng-show="activeDistro.provider == 'ec2-spot' || activeDistro.provider == 'ec2-fleet'">
-                  <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
-                    name="fallback" ng-model="activeDistro.settings.fallback">Fallback to EC2 On-Demand in the case of insufficient capacity </label> <br>
+              <div ng-show="activeDistro.provider === 'ec2-spot'">
+                <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
+                  name="fallback" ng-model="activeDistro.settings.fallback">Fallback to EC2 On-Demand in the case of insufficient capacity </label> <br>
+              </div>
+              <div ng-show="activeDistro.provider === 'ec2-fleet'">
+                <br>
+                <div class="dropdown">
+                  <span class="distro-menu-title">Instance Type:</span>
+                  <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
+                    <strong class="distro-menu-item">[[getFleetInstanceType(activeDistro.settings) | fleetInstanceTypeDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+                  </button>
+                  <ul class="dropdown-menu" role="menu" style="margin-left: 60px">
+                    <li ng-click="form.$setDirty();setFleetInstanceType(instance_type.id)" required
+                      ng-repeat="instance_type in fleetInstanceTypes" role="presentation"><a role="menuitem" tabindex="-1">[[instance_type.display]]</a></li>
+                  </ul>
                 </div>
+                <label><input style="margin-right:10px;" ng-disabled="readOnly || activeDistro.settings.fleet_options.use_on_demand" type="checkbox"
+                  name="use_capacity_optimized" ng-model="activeDistro.settings.fleet_options.use_capacity_optimized">Use the capacity-optimized allocation strategy for spot (default: lowest-cost)</label> <br>
+              </div>
                 <label><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox"
                   name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
               </div>

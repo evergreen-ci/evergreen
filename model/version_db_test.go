@@ -37,3 +37,37 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, v.Id, "v1")
 }
+
+func TestGetVersionAuthorID(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+	}()
+
+	for name, test := range map[string]func(*testing.T){
+		"HasAuthorID": func(t *testing.T) {
+			assert.NoError(t, (&Version{
+				Id:       "v0",
+				AuthorID: "me",
+			}).Insert())
+			author, err := GetVersionAuthorID("v0")
+			assert.NoError(t, err)
+			assert.Equal(t, "me", author)
+		},
+		"NoVersion": func(t *testing.T) {
+			author, err := GetVersionAuthorID("v0")
+			assert.Error(t, err)
+			assert.Empty(t, author)
+		},
+		"EmptyAuthorID": func(t *testing.T) {
+			assert.NoError(t, (&Version{
+				Id: "v0",
+			}).Insert())
+			author, err := GetVersionAuthorID("v0")
+			assert.NoError(t, err)
+			assert.Empty(t, author)
+		},
+	} {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+		t.Run(name, test)
+	}
+}

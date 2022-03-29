@@ -289,6 +289,36 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "PR testing and commit checks")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
+		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
+			conflictingRef := model.ProjectRef{
+				Owner:               ref.Owner,
+				Repo:                ref.Repo,
+				Branch:              ref.Branch,
+				Enabled:             utility.TruePtr(),
+				PRTestingEnabled:    utility.TruePtr(),
+				GithubChecksEnabled: utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{
+					Enabled: utility.TruePtr(),
+				},
+			}
+			assert.NoError(t, conflictingRef.Insert())
+
+			changes := model.ProjectRef{
+				Id:                  ref.Id,
+				PRTestingEnabled:    nil,
+				GithubChecksEnabled: utility.FalsePtr(),
+			}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(changes))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "PR testing")
+			assert.NotContains(t, err.Error(), "the commit queue")
+			assert.NotContains(t, err.Error(), "commit checks")
+		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",
@@ -362,30 +392,34 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 		},
 		model.ProjectPageVariablesSection: func(t *testing.T, ref model.ProjectRef) {
-			// remove a variable, modify a variable, add a variable
-			updatedVars := &model.ProjectVars{
-				Id:          ref.Id,
-				Vars:        map[string]string{"it": "me", "banana": "phone"},
-				PrivateVars: map[string]bool{"banana": true},
+			// remove a variable, modify a variable, delete/add a private variable, add a variable, leave a private variable unchanged
+			apiProjectVars := restModel.APIProjectVars{
+				Vars:            map[string]string{"it": "me", "banana": "phone", "change": "is good", "private": ""},
+				PrivateVarsList: []string{"banana", "private", "change"},
 			}
-			apiProjectVars := restModel.APIProjectVars{}
-			assert.NoError(t, apiProjectVars.BuildFromService(updatedVars))
 			apiChanges := &restModel.APIProjectSettings{
 				Vars: apiProjectVars,
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
-			assert.Equal(t, settings.Vars.Vars["banana"], "") // confirm that this is redacted
-			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
+			// Confirm that private variables are redacted.
+			assert.Equal(t, settings.Vars.Vars["banana"], "")
+			assert.Equal(t, settings.Vars.Vars["change"], "")
+			assert.Equal(t, settings.Vars.Vars["private"], "")
+			varsFromDb, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Equal(t, varsFromDb.Vars["it"], "me")
 			assert.Equal(t, varsFromDb.Vars["banana"], "phone")
 			assert.Equal(t, varsFromDb.Vars["hello"], "")
+			assert.Equal(t, varsFromDb.Vars["private"], "forever") // ensure un-edited private variables are unchanged
+			assert.Equal(t, varsFromDb.Vars["change"], "is good")  // ensure edited private variables are changed
 			assert.False(t, varsFromDb.PrivateVars["it"])
 			assert.False(t, varsFromDb.PrivateVars["hello"])
 			assert.True(t, varsFromDb.PrivateVars["banana"])
+			assert.True(t, varsFromDb.PrivateVars["private"])
+			assert.True(t, varsFromDb.PrivateVars["change"])
 		},
 		model.ProjectPageNotificationsSection: func(t *testing.T, ref model.ProjectRef) {
 			newSubscription := event.Subscription{
@@ -414,6 +448,24 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Len(t, subsFromDb, 1)
 			assert.Equal(t, subsFromDb[0].Trigger, event.TriggerSuccess)
 		},
+		model.ProjectPageWorkstationsSection: func(t *testing.T, ref model.ProjectRef) {
+			assert.Nil(t, ref.WorkstationConfig.SetupCommands)
+			apiProjectRef := restModel.APIProjectRef{
+				WorkstationConfig: restModel.APIWorkstationConfig{
+					GitClone:      utility.TruePtr(),
+					SetupCommands: []restModel.APIWorkstationSetupCommand{}, // empty list should still save
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageWorkstationsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+			assert.NotNil(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
+			assert.Empty(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
+			assert.True(t, utility.FromBoolPtr(settings.ProjectRef.WorkstationConfig.GitClone))
+		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
@@ -430,15 +482,16 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		}
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:         pRef.RepoRefId,
-			Restricted: utility.TruePtr(),
+			Id:               pRef.RepoRefId,
+			Restricted:       utility.TruePtr(),
+			PRTestingEnabled: utility.TruePtr(),
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
 		pVars := model.ProjectVars{
 			Id:          pRef.Id,
-			Vars:        map[string]string{"hello": "world", "it": "adele"},
-			PrivateVars: map[string]bool{"hello": true},
+			Vars:        map[string]string{"hello": "world", "it": "adele", "private": "forever", "change": "inevitable"},
+			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
 		assert.NoError(t, pVars.Insert())
 		// add scopes

@@ -536,10 +536,15 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 		},
 		TargetCapacitySpecification: &ec2.TargetCapacitySpecificationRequest{
 			TotalTargetCapacity:       aws.Int64(1),
-			DefaultTargetCapacityType: aws.String(ec2.DefaultTargetCapacityTypeSpot),
+			DefaultTargetCapacityType: ec2Settings.FleetOptions.awsTargetCapacityType(),
 		},
 		Type: aws.String(ec2.FleetTypeInstant),
 	}
+
+	if allocationStrategy := ec2Settings.FleetOptions.awsAllocationStrategy(); allocationStrategy != nil {
+		createFleetInput.SpotOptions = &ec2.SpotOptionsRequest{AllocationStrategy: allocationStrategy}
+	}
+
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating fleet")

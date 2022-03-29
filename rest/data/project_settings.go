@@ -95,6 +95,12 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	}
 	newProjectRef := v.(*model.ProjectRef)
 
+	// Changes sent to the resolver will not include the RepoRefId for some pages.
+	// Fall back on the existing value if none is provided in order to properly merge refs.
+	if newProjectRef.RepoRefId == "" {
+		newProjectRef.RepoRefId = before.ProjectRef.RepoRefId
+	}
+
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
 	mergedProjectRef, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
@@ -174,8 +180,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPageVariablesSection:
 		for key, value := range before.Vars.Vars {
 			// Private variables are redacted in the UI, so re-set to the real value
-			// before updating (assuming the value isn't deleted).
-			if before.Vars.PrivateVars[key] && changes.Vars.PrivateVars[key] {
+			// before updating (assuming the value isn't deleted/re-configured).
+			if before.Vars.PrivateVars[key] && changes.Vars.IsPrivate(key) && changes.Vars.Vars[key] == "" {
 				changes.Vars.Vars[key] = value
 			}
 		}
@@ -184,6 +190,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		modified = true
 	case model.ProjectPageGithubAndCQSection:
+		mergedProjectRef.Owner = mergedBeforeRef.Owner
+		mergedProjectRef.Repo = mergedBeforeRef.Repo
+		mergedProjectRef.Branch = mergedBeforeRef.Branch
 		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
@@ -219,7 +228,6 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "Database error deleting subscriptions")
 	}
-	fmt.Println("GETTING TO SAVE FOR SECTION")
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)

@@ -20,7 +20,7 @@ type APIProjectEvent struct {
 
 type APIProjectSettings struct {
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
-	GitHubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
+	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
 	Aliases               []APIProjectAlias `json:"aliases"`
 	Subscriptions         []APISubscription `json:"subscriptions"`
@@ -100,7 +100,7 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 
 	return APIProjectSettings{
 		ProjectRef:            apiProjectRef,
-		GitHubWebhooksEnabled: settings.GitHubHooksEnabled,
+		GithubWebhooksEnabled: settings.GithubHooksEnabled,
 		Vars:                  apiProjectVars,
 		Aliases:               DbProjectAliasesToRestModel(settings.Aliases),
 		Subscriptions:         apiSubscriptions,
@@ -227,4 +227,12 @@ func DbProjectSubscriptionsToRestModel(subscriptions []event.Subscription) ([]AP
 	}
 
 	return apiSubscriptions, catcher.Resolve()
+}
+
+// IsPrivate returns true if the given key is a private variable.
+func (vars *APIProjectVars) IsPrivate(key string) bool {
+	if vars.PrivateVars[key] {
+		return true
+	}
+	return utility.StringSliceContains(vars.PrivateVarsList, key)
 }

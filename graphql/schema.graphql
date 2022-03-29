@@ -228,6 +228,7 @@ type Version {
   taskCount: Int
   baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
   baseVersion: Version
+  previousVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!
@@ -458,6 +459,7 @@ input ProjectInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
@@ -508,6 +510,7 @@ input RepoRefInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
@@ -1135,7 +1138,7 @@ type GithubProjectConflicts {
 }
 
 type ProjectSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -1143,7 +1146,7 @@ type ProjectSettings {
 }
 
 type RepoSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -1265,6 +1268,7 @@ type Project {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
@@ -1316,6 +1320,7 @@ type RepoRef {
   patchingDisabled: Boolean!
   repotrackerDisabled: Boolean!
   dispatchingDisabled: Boolean!
+  versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!

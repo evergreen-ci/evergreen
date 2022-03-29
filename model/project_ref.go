@@ -235,6 +235,7 @@ var (
 	projectRefTaskSyncKey                = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefVersionControlEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey         = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey     = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
 	projectRefTriggersKey                = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -1540,7 +1541,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	}
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
-		GitHubHooksEnabled: hook != nil,
+		GithubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
@@ -1675,6 +1676,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
 			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
 			projectRefDefaultLoggerKey:           p.DefaultLogger,

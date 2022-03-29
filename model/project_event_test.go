@@ -37,7 +37,7 @@ func getMockProjectSettings() ProjectSettings {
 			Id:      projectId,
 			Admins:  []string{},
 		},
-		GitHubHooksEnabled: true,
+		GithubHooksEnabled: true,
 		Vars: ProjectVars{
 			Id:            projectId,
 			Vars:          map[string]string{},
@@ -89,7 +89,7 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Empty(before.ProjectRef.Triggers, eventData.Before.ProjectRef.Triggers)
 	s.Equal(before.ProjectRef.Id, eventData.Before.ProjectRef.Id)
 	s.Equal(before.ProjectRef.Admins, eventData.Before.ProjectRef.Admins)
-	s.Equal(before.GitHubHooksEnabled, eventData.Before.GitHubHooksEnabled)
+	s.Equal(before.GithubHooksEnabled, eventData.Before.GithubHooksEnabled)
 	s.Equal(before.Vars, eventData.Before.Vars)
 	s.Equal(before.Aliases, eventData.Before.Aliases)
 	s.Equal(before.Subscriptions, eventData.Before.Subscriptions)
@@ -102,7 +102,7 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Empty(after.ProjectRef.Triggers, eventData.After.ProjectRef.Triggers)
 	s.Equal(after.ProjectRef.Id, eventData.After.ProjectRef.Id)
 	s.Equal(after.ProjectRef.Admins, eventData.After.ProjectRef.Admins)
-	s.Equal(after.GitHubHooksEnabled, eventData.After.GitHubHooksEnabled)
+	s.Equal(after.GithubHooksEnabled, eventData.After.GithubHooksEnabled)
 	s.Equal(after.Vars, eventData.After.Vars)
 	s.Equal(after.Aliases, eventData.After.Aliases)
 	s.Equal(after.Subscriptions, eventData.After.Subscriptions)
