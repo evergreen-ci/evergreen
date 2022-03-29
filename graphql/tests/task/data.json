@@ -494,6 +494,28 @@
     {
       "_id": "generator_task",
       "display_name": "i am a generator"
+    },
+    {
+      "_id": "mainline_commit_2",
+      "display_name": "mainline_commit_task",
+      "branch": "spruce",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "version": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
+      "r": "gitter_request",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "order":2
+    },
+    {
+      "_id": "mainline_commit_1",
+      "display_name": "mainline_commit_task",
+      "branch": "spruce",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ad",
+      "version": "5e823e1f28baeaa22ae00823d83e03082cd148ad",
+      "r": "gitter_request",
+      "build_variant": "ubuntu1604",
+      "status": "failed",
+      "order": 1
     }
   ],
   "hosts": [

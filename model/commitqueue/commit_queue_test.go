@@ -303,7 +303,7 @@ func (s *CommitQueueSuite) TestPreventMergeForItem() {
 
 	// With a corresponding version
 	s.NoError(preventMergeForItem(item, "user"))
-	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	subscriptions, err := event.FindSubscriptionsByAttributes(event.ResourceTypePatch, event.Attributes{ID: []string{patchID}})
 	s.NoError(err)
 	s.Empty(subscriptions)
 

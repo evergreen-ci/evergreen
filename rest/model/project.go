@@ -737,7 +737,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 			if err := periodicBuild.BuildFromService(pb); err != nil {
 				return err
 			}
-			periodicBuilds = append(periodicBuilds)
+			periodicBuilds = append(periodicBuilds, periodicBuild)
 		}
 		p.PeriodicBuilds = periodicBuilds
 	}

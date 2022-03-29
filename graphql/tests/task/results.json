@@ -559,6 +559,21 @@
           }
         }
       }
+    },
+    {
+      "query_file": "mainlineCommits-baseTask.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "mainline_commit_2",
+            "status": "success",
+            "baseTask": {
+              "id": "mainline_commit_1",
+              "status": "failed"
+            }
+          } 
+        }
+      }
     }
   ]
 }

@@ -128,7 +128,7 @@ func VersionByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q 
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-		})
+		}).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
 // ByLastVariantActivation finds the most recent non-patch, non-ignored

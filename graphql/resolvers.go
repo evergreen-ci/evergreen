@@ -435,7 +435,12 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, at *restMode
 		RequiredLevel: evergreen.TasksAdmin.Value,
 		Resource:      *at.ProjectId,
 	}
-	if len(at.DependsOn) > 0 && currentUser.HasPermission(requiredPermission) {
+	overrideRequesters := []string{
+		evergreen.PatchVersionRequester,
+		evergreen.GithubPRRequester,
+	}
+	if len(at.DependsOn) > 0 && (utility.StringSliceContains(overrideRequesters, utility.FromStringPtr(at.Requester)) ||
+		currentUser.HasPermission(requiredPermission)) {
 		return true, nil
 	}
 	return false, nil
@@ -1730,6 +1735,13 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+	v, err := model.VersionFindOne(model.VersionById(patchID).WithFields(model.VersionRequesterKey))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", patchID, err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", patchID))
+	}
 
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(statuses),
@@ -1742,6 +1754,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 		IncludeBaseTasks:               true,
 		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
 		IncludeBuildVariantDisplayName: true,
+		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
 	}
 	tasks, count, err := task.GetTasksByVersion(patchID, opts)
 	if err != nil {
@@ -3451,6 +3464,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if !ok {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *obj.Id))
 	}
+
 	var baseTask *task.Task
 	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
 	if t.BaseTask.Id != "" {
@@ -3465,9 +3479,16 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 			}
 		}
 	} else {
-		baseTask, err = t.FindTaskOnBaseCommit()
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+		if evergreen.IsPatchRequester(t.Requester) {
+			baseTask, err = t.FindTaskOnBaseCommit()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+			}
+		} else {
+			baseTask, err = t.FindTaskOnPreviousCommit()
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on previous commit: %s", *obj.Id, err.Error()))
+			}
 		}
 	}
 
@@ -3864,6 +3885,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		opts := task.GetTasksByVersionOptions{
 			Sorts:                          defaultSort,
 			IncludeBaseTasks:               true,
+			IsMainlineCommit:               evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)),
 			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
 		tasks, _, err := task.GetTasksByVersion(*v.Id, opts)
@@ -4037,6 +4059,24 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 	return &apiVersion, nil
 }
 
+func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
+	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
+		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding previous version for `%s`: %s", *obj.Id, err.Error()))
+		}
+		if previousVersion == nil {
+			return nil, nil
+		}
+		apiVersion := restModel.APIVersion{}
+		if err = apiVersion.BuildFromService(previousVersion); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIVersion from service for `%s`: %s", previousVersion.Id, err.Error()))
+		}
+		return &apiVersion, nil
+	} else {
+		return nil, nil
+	}
+}
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
 	opts := task.GetTasksByVersionOptions{

@@ -838,6 +838,10 @@ func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
 	return FindOne(db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
 }
 
+func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
+	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)))
+}
+
 // FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
 func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
 	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
@@ -3097,6 +3101,7 @@ type GetTasksByVersionOptions struct {
 	IncludeBaseTasks               bool
 	IncludeEmptyActivation         bool
 	IncludeBuildVariantDisplayName bool
+	IsMainlineCommit               bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3519,25 +3524,39 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		addDisplayStatus,
 	)
 	if opts.IncludeBaseTasks {
+		baseCommitMatch := []bson.M{
+			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+			{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+		}
+
+		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
+		if opts.IsMainlineCommit {
+			baseCommitMatch = append(baseCommitMatch, bson.M{
+				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
+					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},
+				}},
+			})
+		} else {
+			baseCommitMatch = append(baseCommitMatch, bson.M{
+				"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey},
+			})
+		}
 		pipeline = append(pipeline, []bson.M{
 			// Add data about the base task
 			{"$lookup": bson.M{
 				"from": Collection,
 				"let": bson.M{
-					RevisionKey:     "$" + RevisionKey,
-					BuildVariantKey: "$" + BuildVariantKey,
-					DisplayNameKey:  "$" + DisplayNameKey,
+					RevisionKey:            "$" + RevisionKey,
+					BuildVariantKey:        "$" + BuildVariantKey,
+					DisplayNameKey:         "$" + DisplayNameKey,
+					RevisionOrderNumberKey: "$" + RevisionOrderNumberKey,
 				},
 				"as": BaseTaskKey,
 				"pipeline": []bson.M{
 					{"$match": bson.M{
 						RequesterKey: evergreen.RepotrackerVersionRequester,
 						"$expr": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-							},
+							"$and": baseCommitMatch,
 						},
 					}},
 					{"$project": bson.M{

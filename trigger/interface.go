@@ -14,10 +14,10 @@ type eventHandler interface {
 	// EventLogEntry
 	Fetch(*event.EventLogEntry) error
 
-	// Selectors creates a slice of selectors suitable for fetching
-	// subscriptions for the event. Selectors should not perform
-	// any fetch operations.
-	Selectors() []event.Selector
+	// Attributes returns Attributes for this event
+	// suitable for matching with subscription filters.
+	// Attributes should not perform any fetch operations.
+	Attributes() event.Attributes
 
 	// Process creates a notification for an event from a single
 	// Subscription
