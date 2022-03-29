@@ -181,6 +181,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.PodInitDisabled, apiSettings.ServiceFlags.PodInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, apiSettings.ServiceFlags.PodAllocatorDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, apiSettings.ServiceFlags.S3BinaryDownloadsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, apiSettings.ServiceFlags.CloudCleanupDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.EqualValues(testSettings.Splunk.Channel, utility.FromStringPtr(apiSettings.Splunk.Channel))
@@ -262,6 +263,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.PodInitDisabled, dbSettings.ServiceFlags.PodInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, dbSettings.ServiceFlags.PodAllocatorDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, dbSettings.ServiceFlags.S3BinaryDownloadsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, dbSettings.ServiceFlags.CloudCleanupDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)

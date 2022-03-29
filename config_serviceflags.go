@@ -31,6 +31,7 @@ type ServiceFlags struct {
 	PodAllocatorDisabled       bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
 	BackgroundReauthDisabled   bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled  bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
+	CloudCleanupDisabled       bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -99,6 +100,7 @@ func (c *ServiceFlags) Set() error {
 			podAllocatorDisabledKey:         c.PodAllocatorDisabled,
 			backgroundCleanupDisabledKey:    c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:     c.BackgroundReauthDisabled,
+			cloudCleanupDisabledKey:         c.CloudCleanupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 
