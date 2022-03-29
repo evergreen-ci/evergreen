@@ -28,16 +28,16 @@ import (
 const (
 	EC2ErrorNotFound        = "InvalidInstanceID.NotFound"
 	EC2DuplicateKeyPair     = "InvalidKeyPair.Duplicate"
-	EC2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 	EC2InsufficientCapacity = "InsufficientInstanceCapacity"
 	EC2InvalidParam         = "InvalidParameterValue"
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
+	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 )
 
 var (
 	EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
-	EC2TemplateNameExistsError   = errors.New(EC2TemplateNameExists)
+	ec2TemplateNameExistsError   = errors.New(ec2TemplateNameExists)
 )
 
 type MountPoint struct {
@@ -350,8 +350,13 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	return nil
 }
 
-// ebsRegex extracts EBS Price JSON data from Amazon's UI.
-var ebsRegex = regexp.MustCompile(`(?s)callback\((.*)\)`)
+// templateNameInvalidRegex matches any character that may not be included a launch template name.
+// Names may only contain word characters ([a-zA-Z0-9_]) and the following special characters: ( ) . / -
+var templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+")
+
+func cleanLaunchTemplateName(name string) string {
+	return templateNameInvalidRegex.ReplaceAllString(name, "")
+}
 
 // odInfo is an internal type for keying hosts by the attributes that affect billing.
 type odInfo struct {

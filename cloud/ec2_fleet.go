@@ -3,7 +3,6 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
-	"regexp"
 	"strings"
 	"time"
 
@@ -29,12 +28,7 @@ type instanceRegionPair struct {
 	region       string
 }
 
-var (
-	typeCache instanceTypeSubnetCache
-	// templateNameInvalidRegex matches any character that may not be included a launch template name.
-	// Names may only contain word characters ([a-zA-Z0-9_]) and the following special characters: ( ) . / -
-	templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+")
-)
+var typeCache instanceTypeSubnetCache
 
 func init() {
 	typeCache = make(map[instanceRegionPair][]evergreen.Subnet)
@@ -458,7 +452,7 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	// Cleanup
 	defer func() {
-		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(h.Tag)})
+		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag))})
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "can't delete launch template",
 			"host_id":  h.Id,
@@ -537,14 +531,14 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 
 	_, err = m.client.CreateLaunchTemplate(ctx, &ec2.CreateLaunchTemplateInput{
 		LaunchTemplateData: launchTemplate,
-		LaunchTemplateName: aws.String(templateNameInvalidRegex.ReplaceAllString(h.Tag, "")),
+		LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag)),
 		TagSpecifications: []*ec2.TagSpecification{{
 			ResourceType: aws.String(ec2.ResourceTypeLaunchTemplate),
 			Tags:         []*ec2.Tag{{Key: aws.String(evergreen.TagDistro), Value: aws.String(h.Distro.Id)}}},
 		},
 	})
 	if err != nil {
-		if errors.Cause(err) == EC2TemplateNameExistsError {
+		if errors.Cause(err) == ec2TemplateNameExistsError {
 			grip.Info(message.Fields{
 				"message":  "template already exists for host",
 				"host_id":  h.Id,

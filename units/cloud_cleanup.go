@@ -26,8 +26,10 @@ func init() {
 type cloudCleanupJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 
+	// Provider is the cloud provider to perform cleanup for.
 	Provider string
-	Region   string
+	// Region is the cloud region to clean up.
+	Region string
 
 	env evergreen.Environment
 }
@@ -48,6 +50,7 @@ func makeCloudCleanupNameJob() *cloudCleanupJob {
 func NewCloudCleanupJob(env evergreen.Environment, ts, provider, region string) amboy.Job {
 	j := makeCloudCleanupNameJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s.%s", cloudCleanupName, provider, region, ts))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s.%s", cloudCleanupName, provider, region)})
 	j.Provider = provider
 	j.Region = region
 

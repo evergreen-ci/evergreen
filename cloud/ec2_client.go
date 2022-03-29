@@ -928,9 +928,9 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					// Don't retry if the template was already created.
-					if strings.Contains(ec2err.Code(), EC2TemplateNameExists) {
+					if strings.Contains(ec2err.Code(), ec2TemplateNameExists) {
 						grip.Info(msg)
-						return false, EC2TemplateNameExistsError
+						return false, ec2TemplateNameExistsError
 					}
 					grip.Debug(message.WrapError(ec2err, msg))
 				}
@@ -1582,7 +1582,7 @@ func (c *awsClientMock) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 
 	for _, lt := range c.launchTemplates {
 		if aws.StringValue(input.LaunchTemplateName) == aws.StringValue(lt.LaunchTemplateName) {
-			return nil, EC2TemplateNameExistsError
+			return nil, ec2TemplateNameExistsError
 		}
 	}
 	c.launchTemplates = append(c.launchTemplates, &ec2.LaunchTemplate{
