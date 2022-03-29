@@ -680,9 +680,6 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(_ context.Context, _ amboy.Queue) error {
 		ctx := context.Background()
-		var q amboy.Queue
-		var ok bool
-		var err error
 
 		catcher := grip.NewBasicCatcher()
 		tasks, err := task.GenerateNotRun()
@@ -690,21 +687,45 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "problem getting tasks that need generators run")
 		}
 
-		versions := map[string]amboy.Queue{}
-
 		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		group := env.RemoteQueueGroup()
-		for _, t := range tasks {
-			if q, ok = versions[t.Version]; !ok {
-				q, err = group.Get(ctx, t.Version)
-				if err != nil {
-					return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
-				}
-				versions[t.Version] = q
-			}
-			catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Id, ts)))
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
 		}
+
+		if flags.GenerateTasksExperimentDisabled {
+			versions := map[string]amboy.Queue{}
+			group := env.RemoteQueueGroup()
+
+			for _, t := range tasks {
+				var (
+					q   amboy.Queue
+					ok  bool
+					err error
+				)
+				if q, ok = versions[t.Version]; !ok {
+					q, err = group.Get(ctx, t.Version)
+					if err != nil {
+						return errors.Wrapf(err, "getting queue for version '%s'", t.Version)
+					}
+					versions[t.Version] = q
+				}
+				catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Version, t.Id, ts, false)))
+			}
+			return catcher.Resolve()
+		}
+
+		queue, err := env.RemoteQueueGroup().Get(ctx, "service.generate.tasks")
+		if err != nil {
+			return errors.Wrap(err, "getting generate tasks queue")
+		}
+
+		for _, t := range tasks {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts, true)), "task '%s'", t.Id)
+		}
+
 		return catcher.Resolve()
+
 	}
 }
 
@@ -1268,6 +1289,64 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(queue.Put(ctx, NewTestResultsCleanupJob(utility.RoundPartOfMinute(2))))
 		catcher.Add(queue.Put(ctx, NewTestLogsCleanupJob(utility.RoundPartOfMinute(2))))
+
+		return catcher.Resolve()
+	}
+}
+
+// PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
+// allocate pods to tasks.
+func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.PodAllocatorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "pod allocation disabled",
+				"impact":  "container tasks will not be allocated any pods to run them",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		numInitializing, err := pod.CountByInitializing()
+		if err != nil {
+			return errors.Wrap(err, "counting initializing pods")
+		}
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "loading admin settings")
+		}
+		remaining := settings.PodInit.MaxParallelPodRequests - numInitializing
+
+		ctq, err := model.NewContainerTaskQueue()
+		if err != nil {
+			return errors.Wrap(err, "getting container task queue")
+		}
+
+		catcher := grip.NewBasicCatcher()
+
+		for ctq.HasNext() && remaining > 0 {
+			t := ctq.Next()
+			if t == nil {
+				break
+			}
+
+			j := NewPodAllocatorJob(t.Id, utility.RoundPartOfMinute(0).Format(TSFormat))
+			if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
+				catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "task '%s'", t.Id)
+				continue
+			}
+
+			remaining--
+		}
+
+		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
+			"message":             "reached max parallel pod request limit, not allocating any more",
+			"num_remaining_tasks": ctq.Len(),
+		})
 
 		return catcher.Resolve()
 	}

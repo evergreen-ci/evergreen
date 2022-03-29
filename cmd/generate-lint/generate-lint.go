@@ -20,8 +20,6 @@ const (
 	lintPrefix        = "lint"
 	lintVariant       = "lint"
 	lintGroup         = "lint-group"
-	commitMaxHosts    = 4
-	patchMaxHosts     = 1
 	evergreenLintTask = "evergreen"
 	jsonFilename      = "bin/generate-lint.json"
 	scriptsDir        = "scripts"
@@ -127,15 +125,12 @@ func generateTasks() (*shrub.Configuration, error) {
 		return nil, err
 	}
 	var targets []string
-	var maxHosts int
 	if len(changes) == 0 {
-		maxHosts = commitMaxHosts
 		targets, err = getAllTargets()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		maxHosts = patchMaxHosts
 		targets, err = targetsFromChangedFiles(changes)
 		if err != nil {
 			return nil, err
@@ -154,7 +149,7 @@ func generateTasks() (*shrub.Configuration, error) {
 		lintTargets = append(lintTargets, name)
 	}
 
-	group := conf.TaskGroup(lintGroup).SetMaxHosts(maxHosts)
+	group := conf.TaskGroup(lintGroup).SetMaxHosts(len(lintTargets))
 	group.SetupGroup.Command().Type("setup").Command("git.get_project").Param("directory", "evergreen")
 	group.SetupGroup.Command().Type("setup").Command("subprocess.exec").ExtendParams(map[string]interface{}{
 		"working_dir":               "evergreen",

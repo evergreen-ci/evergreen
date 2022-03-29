@@ -134,7 +134,48 @@ func TestFindByInitializing(t *testing.T) {
 			tCase(t)
 		})
 	}
+}
 
+func TestCountByInitializing(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ReturnsZeroForNoMatches": func(t *testing.T) {
+			count, err := CountByInitializing()
+			assert.NoError(t, err)
+			assert.Empty(t, count)
+		},
+		"CountsInitializingPods": func(t *testing.T) {
+			p1 := &Pod{
+				ID:     utility.RandomString(),
+				Status: StatusInitializing,
+			}
+			require.NoError(t, p1.Insert())
+
+			p2 := &Pod{
+				ID:     utility.RandomString(),
+				Status: StatusStarting,
+			}
+			require.NoError(t, p2.Insert())
+
+			p3 := &Pod{
+				ID:     utility.RandomString(),
+				Status: StatusInitializing,
+			}
+			require.NoError(t, p3.Insert())
+
+			count, err := CountByInitializing()
+			require.NoError(t, err)
+			assert.Equal(t, 2, count)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+
+			tCase(t)
+		})
+	}
 }
 
 func TestFindOneByID(t *testing.T) {

@@ -35,6 +35,17 @@ var (
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
 	subscriptionTriggerDataKey    = bsonutil.MustHaveTag(Subscription{}, "TriggerData")
 	subscriptionLastUpdatedKey    = bsonutil.MustHaveTag(Subscription{}, "LastUpdated")
+
+	filterObjectKey       = bsonutil.MustHaveTag(Filter{}, "Object")
+	filterIDKey           = bsonutil.MustHaveTag(Filter{}, "ID")
+	filterProjectKey      = bsonutil.MustHaveTag(Filter{}, "Project")
+	filterOwnerKey        = bsonutil.MustHaveTag(Filter{}, "Owner")
+	filterRequesterKey    = bsonutil.MustHaveTag(Filter{}, "Requester")
+	filterStatusKey       = bsonutil.MustHaveTag(Filter{}, "Status")
+	filterDisplayNameKey  = bsonutil.MustHaveTag(Filter{}, "DisplayName")
+	filterBuildVariantKey = bsonutil.MustHaveTag(Filter{}, "BuildVariant")
+	filterInVersionKey    = bsonutil.MustHaveTag(Filter{}, "InVersion")
+	filterInBuildKey      = bsonutil.MustHaveTag(Filter{}, "InBuild")
 )
 
 type OwnerType string
@@ -133,6 +144,146 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
+// Attributes describes the properties of an event to be matched with subscription filters.
+type Attributes struct {
+	Object       []string
+	ID           []string
+	Project      []string
+	Owner        []string
+	Requester    []string
+	Status       []string
+	DisplayName  []string
+	BuildVariant []string
+	InVersion    []string
+	InBuild      []string
+}
+
+func (a *Attributes) filterQuery() bson.M {
+	filterForAttribute := func(values []string) interface{} {
+		if len(values) > 0 {
+			in := bson.A{nil}
+			for _, attribute := range values {
+				in = append(in, attribute)
+			}
+			return bson.M{"$in": in}
+		}
+
+		return nil
+	}
+
+	return bson.M{
+		filterObjectKey:       filterForAttribute(a.Object),
+		filterIDKey:           filterForAttribute(a.ID),
+		filterProjectKey:      filterForAttribute(a.Project),
+		filterOwnerKey:        filterForAttribute(a.Owner),
+		filterRequesterKey:    filterForAttribute(a.Requester),
+		filterStatusKey:       filterForAttribute(a.Status),
+		filterDisplayNameKey:  filterForAttribute(a.DisplayName),
+		filterBuildVariantKey: filterForAttribute(a.BuildVariant),
+		filterInVersionKey:    filterForAttribute(a.InVersion),
+		filterInBuildKey:      filterForAttribute(a.InBuild),
+	}
+}
+
+func (a *Attributes) isUnset() bool {
+	if len(a.Object) > 0 {
+		return false
+	}
+	if len(a.ID) > 0 {
+		return false
+	}
+	if len(a.Project) > 0 {
+		return false
+	}
+	if len(a.Owner) > 0 {
+		return false
+	}
+	if len(a.Requester) > 0 {
+		return false
+	}
+	if len(a.Status) > 0 {
+		return false
+	}
+	if len(a.DisplayName) > 0 {
+		return false
+	}
+	if len(a.BuildVariant) > 0 {
+		return false
+	}
+	if len(a.InVersion) > 0 {
+		return false
+	}
+	if len(a.InBuild) > 0 {
+		return false
+	}
+
+	return true
+}
+
+// ToSelectorMap returns a map of selector types to the values they correspond to in Attributes.
+func (a *Attributes) ToSelectorMap() map[string][]string {
+	selectorMap := make(map[string][]string)
+	if len(a.Object) > 0 {
+		selectorMap[SelectorObject] = a.Object
+	}
+	if len(a.ID) > 0 {
+		selectorMap[SelectorID] = a.ID
+	}
+	if len(a.Project) > 0 {
+		selectorMap[SelectorProject] = a.Project
+	}
+	if len(a.Owner) > 0 {
+		selectorMap[SelectorOwner] = a.Owner
+	}
+	if len(a.Requester) > 0 {
+		selectorMap[SelectorRequester] = a.Requester
+	}
+	if len(a.Status) > 0 {
+		selectorMap[SelectorStatus] = a.Status
+	}
+	if len(a.DisplayName) > 0 {
+		selectorMap[SelectorDisplayName] = a.DisplayName
+	}
+	if len(a.BuildVariant) > 0 {
+		selectorMap[SelectorBuildVariant] = a.BuildVariant
+	}
+	if len(a.InVersion) > 0 {
+		selectorMap[SelectorInVersion] = a.InVersion
+	}
+	if len(a.InBuild) > 0 {
+		selectorMap[SelectorInBuild] = a.InBuild
+	}
+
+	return selectorMap
+}
+
+func (a *Attributes) valuesForSelector(selector string) ([]string, error) {
+	switch selector {
+	case SelectorObject:
+		return a.Object, nil
+	case SelectorID:
+		return a.ID, nil
+	case SelectorProject:
+		return a.Project, nil
+	case SelectorOwner:
+		return a.Owner, nil
+	case SelectorRequester:
+		return a.Requester, nil
+	case SelectorStatus:
+		return a.Status, nil
+	case SelectorDisplayName:
+		return a.DisplayName, nil
+	case SelectorBuildVariant:
+		return a.BuildVariant, nil
+	case SelectorInVersion:
+		return a.InVersion, nil
+	case SelectorInBuild:
+		return a.InBuild, nil
+	default:
+		return nil, errors.Errorf("unknown selector '%s'", selector)
+	}
+}
+
 // Filter specifies the event properties that are of interest.
 type Filter struct {
 	Object       string `bson:"object,omitempty"`
@@ -216,48 +367,66 @@ const (
 	SelectorInBuild      = "in-build"
 )
 
-// FindSubscriptions finds all subscriptions of matching resourceType, and whose
-// selectors match the selectors slice
-func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
-	if len(selectors) == 0 {
+// FindSubscriptionsByAttributes finds all subscriptions of matching resourceType, and whose
+// filter and regex selectors match the attributes of the event.
+func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attributes) ([]Subscription, error) {
+	if eventAttributes.isUnset() {
 		return nil, nil
 	}
 
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				subscriptionResourceTypeKey: resourceType,
-			},
-		},
-		{
-			"$addFields": bson.M{
-				"keep": bson.M{
-					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
-				},
-			},
-		},
-		{
-			"$match": bson.M{
-				"keep": true,
-			},
-		},
+	query := bson.M{subscriptionResourceTypeKey: resourceType}
+	// A subscription filter specifies the event attributes it should match.
+	// If the subscription's filter specifies a field then it must match one of the corresponding trigger attribute's values.
+	for field, filter := range eventAttributes.filterQuery() {
+		query[bsonutil.GetDottedKeyName(subscriptionFilterKey, field)] = filter
 	}
 
-	rawSubs := []Subscription{}
-	if err := db.Aggregate(SubscriptionsCollection, pipeline, &rawSubs); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch subscriptions")
+	selectorFiltered := []Subscription{}
+	if err := db.FindAllQ(SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
+		return nil, errors.Wrap(err, "finding subscriptions for selectors")
 	}
 
-	out := []Subscription{}
-	for i := range rawSubs {
-		if len(rawSubs[i].RegexSelectors) > 0 && !regexSelectorsMatch(selectors, rawSubs[i].RegexSelectors) {
-			continue
+	return filterRegexSelectors(selectorFiltered, eventAttributes), nil
+}
+
+func filterRegexSelectors(subscriptions []Subscription, eventAttributes Attributes) []Subscription {
+	var regexFiltered []Subscription
+	for _, sub := range subscriptions {
+		if regexSelectorsMatchEvent(sub.RegexSelectors, eventAttributes) {
+			regexFiltered = append(regexFiltered, sub)
 		}
-
-		out = append(out, rawSubs[i])
 	}
 
-	return out, nil
+	return regexFiltered
+}
+
+func regexSelectorsMatchEvent(regexSelectors []Selector, eventAttributes Attributes) bool {
+	for _, regexSelector := range regexSelectors {
+		attributeValues, err := eventAttributes.valuesForSelector(regexSelector.Type)
+		if err != nil || len(attributeValues) == 0 {
+			return false
+		}
+		if !regexMatchesValue(regexSelector.Data, attributeValues) {
+			return false
+		}
+	}
+	return true
+}
+
+func regexMatchesValue(regexString string, values []string) bool {
+	regex, err := regexp.Compile(regexString)
+	if err != nil {
+		return false
+	}
+
+	for _, val := range values {
+		matched := regex.MatchString(val)
+		if matched {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CopyProjectSubscriptions copies subscriptions from the first project for the second project.
@@ -274,37 +443,12 @@ func CopyProjectSubscriptions(oldProject, newProject string) error {
 		for i, selector := range sub.Selectors {
 			if selector.Type == SelectorProject && selector.Data == oldProject {
 				sub.Selectors[i].Data = newProject
+				sub.Filter.Project = newProject
 			}
 		}
 		catcher.Add(sub.Upsert())
 	}
 	return catcher.Resolve()
-}
-
-func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
-	for i := range regexSelectors {
-		selector := findSelector(selectors, regexSelectors[i].Type)
-		if selector == nil {
-			return false
-		}
-
-		matched, err := regexp.MatchString(regexSelectors[i].Data, selector.Data)
-		if err != nil || !matched {
-			return false
-		}
-	}
-
-	return true
-}
-
-func findSelector(selectors []Selector, selectorResourceType string) *Selector {
-	for i := range selectors {
-		if selectors[i].Type == selectorResourceType {
-			return &selectors[i]
-		}
-	}
-
-	return nil
 }
 
 func (s *Subscription) Upsert() error {

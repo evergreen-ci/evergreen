@@ -592,17 +592,29 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets each
 // parent dependency as unattainable in depending tasks.
 func UpdateBlockedDependencies(t *task.Task) error {
+	const maxStackTraceSize = 5
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
 	}
 
 	if t.IsPartOfSingleHostTaskGroup() && len(dependentTasks) > 0 {
+		depTaskIds := []string{}
+		for _, depTask := range dependentTasks {
+			depTaskIds = append(depTaskIds, depTask.Id)
+		}
+		stack := message.NewStack(2, "").Raw().(message.StackTrace).Frames
+		if len(stack) > maxStackTraceSize {
+			stack = stack[:maxStackTraceSize-1]
+		}
 		grip.Info(message.Fields{
-			"message": "blocked task group dependent tasks",
-			"ticket":  "EVG-12923",
-			"task":    t.Id,
-			"stack":   message.NewStack(2, "").Raw().(message.StackTrace).Frames,
+			"message":                       "blocked task group dependent tasks",
+			"ticket":                        "EVG-12923",
+			"task":                          t.Id,
+			"execution":                     t.Execution,
+			"num_dependent_tasks_to_update": len(dependentTasks),
+			"dependent_task_ids_to_update":  depTaskIds,
+			"stack":                         stack,
 		})
 	}
 
@@ -624,11 +636,16 @@ func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error
 	}
 
 	if logIDs && t.IsPartOfSingleHostTaskGroup() && len(blockedTasks) > 0 {
-		grip.Info(message.Fields{
-			"message": "unblocked task group dependent tasks",
-			"ticket":  "EVG-12923",
-			"task":    t.Id,
-			"caller":  caller,
+		blockedTaskIds := []string{}
+		for _, blockedTask := range blockedTasks {
+			blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
+		}
+		grip.Debug(message.Fields{
+			"message":          "unblocked task group dependent tasks",
+			"ticket":           "EVG-12923",
+			"blocked_task_ids": blockedTaskIds,
+			"task":             t.Id,
+			"caller":           caller,
 		})
 	}
 

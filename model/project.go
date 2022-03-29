@@ -396,10 +396,11 @@ type PluginCommandConf struct {
 	// TimeoutSecs indicates the maximum duration the command is allowed to run for.
 	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
 
-	// Params are used to supply configuration specific information.
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
+	// Params is used to define params in the yaml and parser project,
+	// but is not stored in the DB (instead see ParamsYAML).
+	Params map[string]interface{} `yaml:"params,omitempty" bson:"-"`
 
-	// YAML string of Params to store in database
+	// ParamsYAML is the marshalled Params to store in the database, to preserve nested interfaces.
 	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
 
 	// Vars defines variables that can be used within commands.
@@ -459,8 +460,8 @@ func (c *PluginCommandConf) UnmarshalBSON(in []byte) error {
 	return c.unmarshalParams()
 }
 
-// we maintain Params for backwards compatibility, but we read from YAML when available, as the
-// given params could be corrupted from the roundtrip
+// We read from YAML when available, as the given params could be corrupted from the roundtrip.
+// If params is passed, then it means that we haven't yet stored this in the DB.
 func (c *PluginCommandConf) unmarshalParams() error {
 	if c.ParamsYAML != "" {
 		out := map[string]interface{}{}

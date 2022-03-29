@@ -381,6 +381,9 @@ type APIWorkstationSetupCommand struct {
 func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 	res := model.WorkstationConfig{}
 	res.GitClone = utility.BoolPtrCopy(c.GitClone)
+	if c.SetupCommands != nil {
+		res.SetupCommands = []model.WorkstationSetupCommand{}
+	}
 	for _, apiCmd := range c.SetupCommands {
 		cmd := model.WorkstationSetupCommand{}
 		cmd.Command = utility.FromStringPtr(apiCmd.Command)
@@ -400,12 +403,16 @@ func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 	}
 
 	c.GitClone = utility.BoolPtrCopy(config.GitClone)
+	if config.SetupCommands != nil {
+		c.SetupCommands = []APIWorkstationSetupCommand{}
+	}
 	for _, cmd := range config.SetupCommands {
 		apiCmd := APIWorkstationSetupCommand{}
 		apiCmd.Command = utility.ToStringPtr(cmd.Command)
 		apiCmd.Directory = utility.ToStringPtr(cmd.Directory)
 		c.SetupCommands = append(c.SetupCommands, apiCmd)
 	}
+
 	return nil
 }
 
@@ -568,6 +575,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 		PatchingDisabled:        utility.BoolPtrCopy(p.PatchingDisabled),
 		RepotrackerDisabled:     utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:     utility.BoolPtrCopy(p.DispatchingDisabled),
+		VersionControlEnabled:   utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:      utility.BoolPtrCopy(p.DisabledStatsCache),
 		FilesIgnoredFromCache:   utility.FromStringPtrSlice(p.FilesIgnoredFromCache),
 		NotifyOnBuildFailure:    utility.BoolPtrCopy(p.NotifyOnBuildFailure),
@@ -668,6 +676,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
+	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
 	p.FilesIgnoredFromCache = utility.ToStringPtrSlice(projectRef.FilesIgnoredFromCache)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)

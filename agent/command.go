@@ -62,6 +62,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			grip.Error(logger.Close())
 		}()
 	}
+
 	for idx, cmd := range cmds {
 		if ctx.Err() != nil {
 			grip.Error("runCommands canceled")

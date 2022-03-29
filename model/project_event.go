@@ -22,7 +22,7 @@ const (
 
 type ProjectSettings struct {
 	ProjectRef         ProjectRef           `bson:"proj_ref" json:"proj_ref"`
-	GitHubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
+	GithubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
 	Vars               ProjectVars          `bson:"vars" json:"vars"`
 	Aliases            []ProjectAlias       `bson:"aliases" json:"aliases"`
 	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`

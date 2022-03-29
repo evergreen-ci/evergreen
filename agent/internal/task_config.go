@@ -28,6 +28,7 @@ type TaskConfig struct {
 	GithubPatchData    thirdparty.GithubPatch
 	Timeout            *Timeout
 	TaskSync           evergreen.S3Credentials
+	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 

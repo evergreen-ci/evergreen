@@ -289,6 +289,36 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Contains(t, err.Error(), "PR testing and commit checks")
 			assert.NotContains(t, err.Error(), "the commit queue")
 		},
+		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
+			conflictingRef := model.ProjectRef{
+				Owner:               ref.Owner,
+				Repo:                ref.Repo,
+				Branch:              ref.Branch,
+				Enabled:             utility.TruePtr(),
+				PRTestingEnabled:    utility.TruePtr(),
+				GithubChecksEnabled: utility.TruePtr(),
+				CommitQueue: model.CommitQueueParams{
+					Enabled: utility.TruePtr(),
+				},
+			}
+			assert.NoError(t, conflictingRef.Insert())
+
+			changes := model.ProjectRef{
+				Id:                  ref.Id,
+				PRTestingEnabled:    nil,
+				GithubChecksEnabled: utility.FalsePtr(),
+			}
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(changes))
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "PR testing")
+			assert.NotContains(t, err.Error(), "the commit queue")
+			assert.NotContains(t, err.Error(), "commit checks")
+		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",
@@ -418,6 +448,24 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Len(t, subsFromDb, 1)
 			assert.Equal(t, subsFromDb[0].Trigger, event.TriggerSuccess)
 		},
+		model.ProjectPageWorkstationsSection: func(t *testing.T, ref model.ProjectRef) {
+			assert.Nil(t, ref.WorkstationConfig.SetupCommands)
+			apiProjectRef := restModel.APIProjectRef{
+				WorkstationConfig: restModel.APIWorkstationConfig{
+					GitClone:      utility.TruePtr(),
+					SetupCommands: []restModel.APIWorkstationSetupCommand{}, // empty list should still save
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageWorkstationsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+			assert.NotNil(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
+			assert.Empty(t, settings.ProjectRef.WorkstationConfig.SetupCommands)
+			assert.True(t, utility.FromBoolPtr(settings.ProjectRef.WorkstationConfig.GitClone))
+		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
@@ -434,8 +482,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		}
 		assert.NoError(t, pRef.Insert())
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:         pRef.RepoRefId,
-			Restricted: utility.TruePtr(),
+			Id:               pRef.RepoRefId,
+			Restricted:       utility.TruePtr(),
+			PRTestingEnabled: utility.TruePtr(),
 		}}
 		assert.NoError(t, repoRef.Upsert())
 

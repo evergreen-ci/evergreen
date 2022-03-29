@@ -625,6 +625,7 @@ type ComplexityRoot struct {
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
 		ValidDefaultLoggers     func(childComplexity int) int
+		VersionControlEnabled   func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
 
@@ -659,7 +660,7 @@ type ComplexityRoot struct {
 
 	ProjectSettings struct {
 		Aliases               func(childComplexity int) int
-		GitHubWebhooksEnabled func(childComplexity int) int
+		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
@@ -794,12 +795,13 @@ type ComplexityRoot struct {
 		TracksPushEvents        func(childComplexity int) int
 		Triggers                func(childComplexity int) int
 		ValidDefaultLoggers     func(childComplexity int) int
+		VersionControlEnabled   func(childComplexity int) int
 		WorkstationConfig       func(childComplexity int) int
 	}
 
 	RepoSettings struct {
 		Aliases               func(childComplexity int) int
-		GitHubWebhooksEnabled func(childComplexity int) int
+		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
@@ -1166,6 +1168,7 @@ type ComplexityRoot struct {
 		Order             func(childComplexity int) int
 		Parameters        func(childComplexity int) int
 		Patch             func(childComplexity int) int
+		PreviousVersion   func(childComplexity int) int
 		Project           func(childComplexity int) int
 		ProjectIdentifier func(childComplexity int) int
 		Repo              func(childComplexity int) int
@@ -1321,6 +1324,8 @@ type ProjectResolver interface {
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
 }
 type ProjectSettingsResolver interface {
+	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
+
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -1380,6 +1385,8 @@ type RepoRefResolver interface {
 	ValidDefaultLoggers(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type RepoSettingsResolver interface {
+	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
+
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -1465,6 +1472,7 @@ type VersionResolver interface {
 	TaskCount(ctx context.Context, obj *model.APIVersion) (*int, error)
 	BaseVersionID(ctx context.Context, obj *model.APIVersion) (*string, error)
 	BaseVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
+	PreviousVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -4283,6 +4291,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.ValidDefaultLoggers(childComplexity), true
 
+	case "Project.versionControlEnabled":
+		if e.complexity.Project.VersionControlEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.VersionControlEnabled(childComplexity), true
+
 	case "Project.workstationConfig":
 		if e.complexity.Project.WorkstationConfig == nil {
 			break
@@ -4416,12 +4431,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSettings.Aliases(childComplexity), true
 
-	case "ProjectSettings.gitHubWebhooksEnabled":
-		if e.complexity.ProjectSettings.GitHubWebhooksEnabled == nil {
+	case "ProjectSettings.githubWebhooksEnabled":
+		if e.complexity.ProjectSettings.GithubWebhooksEnabled == nil {
 			break
 		}
 
-		return e.complexity.ProjectSettings.GitHubWebhooksEnabled(childComplexity), true
+		return e.complexity.ProjectSettings.GithubWebhooksEnabled(childComplexity), true
 
 	case "ProjectSettings.projectRef":
 		if e.complexity.ProjectSettings.ProjectRef == nil {
@@ -5317,6 +5332,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.ValidDefaultLoggers(childComplexity), true
 
+	case "RepoRef.versionControlEnabled":
+		if e.complexity.RepoRef.VersionControlEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.VersionControlEnabled(childComplexity), true
+
 	case "RepoRef.workstationConfig":
 		if e.complexity.RepoRef.WorkstationConfig == nil {
 			break
@@ -5331,12 +5353,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoSettings.Aliases(childComplexity), true
 
-	case "RepoSettings.gitHubWebhooksEnabled":
-		if e.complexity.RepoSettings.GitHubWebhooksEnabled == nil {
+	case "RepoSettings.githubWebhooksEnabled":
+		if e.complexity.RepoSettings.GithubWebhooksEnabled == nil {
 			break
 		}
 
-		return e.complexity.RepoSettings.GitHubWebhooksEnabled(childComplexity), true
+		return e.complexity.RepoSettings.GithubWebhooksEnabled(childComplexity), true
 
 	case "RepoSettings.projectRef":
 		if e.complexity.RepoSettings.ProjectRef == nil {
@@ -7138,6 +7160,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.Patch(childComplexity), true
 
+	case "Version.previousVersion":
+		if e.complexity.Version.PreviousVersion == nil {
+			break
+		}
+
+		return e.complexity.Version.PreviousVersion(childComplexity), true
+
 	case "Version.project":
 		if e.complexity.Version.Project == nil {
 			break
@@ -7696,6 +7725,7 @@ type Version {
   taskCount: Int
   baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
   baseVersion: Version
+  previousVersion: Version
   versionTiming: VersionTiming
   parameters: [Parameter!]!
   taskStatuses: [String!]!
@@ -7926,6 +7956,7 @@ input ProjectInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
@@ -7976,6 +8007,7 @@ input RepoRefInput {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
@@ -8603,7 +8635,7 @@ type GithubProjectConflicts {
 }
 
 type ProjectSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -8611,7 +8643,7 @@ type ProjectSettings {
 }
 
 type RepoSettings {
-  gitHubWebhooksEnabled: Boolean!
+  githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
   vars: ProjectVars
   aliases: [ProjectAlias!]
@@ -8733,6 +8765,7 @@ type Project {
   patchingDisabled: Boolean
   repotrackerDisabled: Boolean
   dispatchingDisabled: Boolean
+  versionControlEnabled: Boolean
   prTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
@@ -8784,6 +8817,7 @@ type RepoRef {
   patchingDisabled: Boolean!
   repotrackerDisabled: Boolean!
   dispatchingDisabled: Boolean!
+  versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
@@ -22921,6 +22955,38 @@ func (ec *executionContext) _Project_dispatchingDisabled(ctx context.Context, fi
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VersionControlEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24513,7 +24579,7 @@ func (ec *executionContext) _ProjectEvents_count(ctx context.Context, field grap
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ProjectSettings_gitHubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _ProjectSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -24524,14 +24590,14 @@ func (ec *executionContext) _ProjectSettings_gitHubWebhooksEnabled(ctx context.C
 		Object:     "ProjectSettings",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GitHubWebhooksEnabled, nil
+		return ec.resolvers.ProjectSettings().GithubWebhooksEnabled(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27661,6 +27727,41 @@ func (ec *executionContext) _RepoRef_dispatchingDisabled(ctx context.Context, fi
 	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _RepoRef_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VersionControlEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -28553,7 +28654,7 @@ func (ec *executionContext) _RepoRef_validDefaultLoggers(ctx context.Context, fi
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _RepoSettings_gitHubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+func (ec *executionContext) _RepoSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -28564,14 +28665,14 @@ func (ec *executionContext) _RepoSettings_gitHubWebhooksEnabled(ctx context.Cont
 		Object:     "RepoSettings",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GitHubWebhooksEnabled, nil
+		return ec.resolvers.RepoSettings().GithubWebhooksEnabled(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -37435,6 +37536,38 @@ func (ec *executionContext) _Version_baseVersion(ctx context.Context, field grap
 	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_previousVersion(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().PreviousVersion(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_versionTiming(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -40763,6 +40896,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "versionControlEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionControlEnabled"))
+			it.VersionControlEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "prTestingEnabled":
 			var err error
 
@@ -40982,7 +41123,7 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
-			it.GitHubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.GithubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41219,6 +41360,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "versionControlEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionControlEnabled"))
+			it.VersionControlEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "prTestingEnabled":
 			var err error
 
@@ -41438,7 +41587,7 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
-			it.GitHubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.GithubWebhooksEnabled, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45341,6 +45490,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_repotrackerDisabled(ctx, field, obj)
 		case "dispatchingDisabled":
 			out.Values[i] = ec._Project_dispatchingDisabled(ctx, field, obj)
+		case "versionControlEnabled":
+			out.Values[i] = ec._Project_versionControlEnabled(ctx, field, obj)
 		case "prTestingEnabled":
 			out.Values[i] = ec._Project_prTestingEnabled(ctx, field, obj)
 		case "githubChecksEnabled":
@@ -45653,11 +45804,20 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectSettings")
-		case "gitHubWebhooksEnabled":
-			out.Values[i] = ec._ProjectSettings_gitHubWebhooksEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "githubWebhooksEnabled":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectSettings_githubWebhooksEnabled(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "projectRef":
 			out.Values[i] = ec._ProjectSettings_projectRef(ctx, field, obj)
 		case "vars":
@@ -46645,6 +46805,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "versionControlEnabled":
+			out.Values[i] = ec._RepoRef_versionControlEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "prTestingEnabled":
 			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -46788,11 +46953,20 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RepoSettings")
-		case "gitHubWebhooksEnabled":
-			out.Values[i] = ec._RepoSettings_gitHubWebhooksEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "githubWebhooksEnabled":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoSettings_githubWebhooksEnabled(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "projectRef":
 			out.Values[i] = ec._RepoSettings_projectRef(ctx, field, obj)
 		case "vars":
@@ -49059,6 +49233,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_baseVersion(ctx, field, obj)
+				return res
+			})
+		case "previousVersion":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_previousVersion(ctx, field, obj)
 				return res
 			})
 		case "versionTiming":

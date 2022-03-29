@@ -166,44 +166,21 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *buildTriggers) Selectors() []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.build.Id,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectBuild,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.build.Project,
-		},
-		{
-			Type: event.SelectorRequester,
-			Data: t.build.Requester,
-		},
-		{
-			Type: event.SelectorInVersion,
-			Data: t.build.Version,
-		},
-		{
-			Type: event.SelectorDisplayName,
-			Data: t.build.DisplayName,
-		},
-		{
-			Type: event.SelectorBuildVariant,
-			Data: t.build.BuildVariant,
-		},
+func (t *buildTriggers) Attributes() event.Attributes {
+	attributes := event.Attributes{
+		ID:           []string{t.build.Id},
+		Object:       []string{event.ObjectBuild},
+		Project:      []string{t.build.Project},
+		Requester:    []string{t.build.Requester},
+		InVersion:    []string{t.build.Version},
+		DisplayName:  []string{t.build.DisplayName},
+		BuildVariant: []string{t.build.BuildVariant},
 	}
+
 	if t.build.Requester == evergreen.TriggerRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.RepotrackerVersionRequester,
-		})
+		attributes.Requester = append(attributes.Requester, evergreen.RepotrackerVersionRequester)
 	}
-	return selectors
+	return attributes
 }
 
 func (t *buildTriggers) buildGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
@@ -399,7 +376,7 @@ func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride stri
 		return nil, errors.Wrap(err, "failed to collect build data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	payload, err := makeCommonPayload(sub, t.Attributes(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

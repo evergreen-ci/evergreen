@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
-	anserMock "github.com/mongodb/anser/mock"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -37,7 +36,7 @@ type Environment struct {
 	RemoteGroup             amboy.QueueGroup
 	Depot                   certdepot.Depot
 	Closers                 map[string]func(context.Context) error
-	DBSession               *anserMock.Session
+	DBSession               db.Session
 	EvergreenSettings       *evergreen.Settings
 	MongoClient             *mongo.Client
 	mu                      sync.RWMutex
@@ -58,7 +57,6 @@ func (e *Environment) Configure(ctx context.Context) error {
 	e.EnvContext = ctx
 
 	e.EvergreenSettings = testutil.TestConfig()
-	e.DBSession = anserMock.NewSession()
 
 	e.Remote = queue.NewLocalLimitedSize(2, 1048)
 	if err := e.Remote.Start(ctx); err != nil {
@@ -82,6 +80,9 @@ func (e *Environment) Configure(ctx context.Context) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	e.DBSession = db.WrapClient(ctx, e.MongoClient).Clone()
+
 	e.DatabaseName = e.EvergreenSettings.Database.DB
 	e.roleManager = rolemanager.NewMongoBackedRoleManager(rolemanager.MongoBackedRoleManagerOpts{
 		Client:          e.MongoClient,

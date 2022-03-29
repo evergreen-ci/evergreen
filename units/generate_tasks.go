@@ -47,11 +47,19 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, ts string) amboy.Job {
+// NewGenerateTasksJob returns a job that dynamically updates the project
+// configuration based on the given task's generate.tasks configuration.
+func NewGenerateTasksJob(versionID, taskID string, ts string, useScopes bool) amboy.Job {
 	j := makeGenerateTaskJob()
-	j.TaskID = id
+	j.TaskID = taskID
 
-	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, id, ts))
+	j.SetID(fmt.Sprintf("%s-%s-%s", generateTasksJobName, taskID, ts))
+	if useScopes {
+		versionScope := fmt.Sprintf("%s.%s", generateTasksJobName, versionID)
+		taskScope := fmt.Sprintf("%s.%s", generateTasksJobName, taskID)
+		j.SetScopes([]string{versionScope, taskScope})
+		j.SetEnqueueScopes(taskScope)
+	}
 	return j
 }
 

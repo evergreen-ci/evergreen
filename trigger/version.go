@@ -70,35 +70,21 @@ func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *versionTriggers) Selectors() []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.version.Id,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.version.Identifier,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectVersion,
-		},
-		{
-			Type: event.SelectorRequester,
-			Data: t.version.Requester,
-		},
+func (t *versionTriggers) Attributes() event.Attributes {
+	attributes := event.Attributes{
+		ID:        []string{t.version.Id},
+		Project:   []string{t.version.Identifier},
+		Object:    []string{event.ObjectVersion},
+		Requester: []string{t.version.Requester},
 	}
+
 	if t.version.Requester == evergreen.TriggerRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.RepotrackerVersionRequester,
-		})
+		attributes.Requester = append(attributes.Requester, evergreen.RepotrackerVersionRequester)
 	}
 	if t.version.AuthorID != "" {
-		selectors = append(selectors, event.Selector{Type: event.SelectorOwner, Data: t.version.AuthorID})
+		attributes.Owner = append(attributes.Owner, t.version.AuthorID)
 	}
-	return selectors
+	return attributes
 }
 
 func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
@@ -167,7 +153,7 @@ func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride st
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to collect version data")
 	}
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	payload, err := makeCommonPayload(sub, t.Attributes(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

@@ -200,7 +200,7 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
-	// GeneratedJSONKey is no longer used but must be kept for old tasks.
+	// GeneratedJSON is no longer used but must be kept for old tasks.
 	GeneratedJSON []json.RawMessage `bson:"generate_json,omitempty" json:"generate_json,omitempty"`
 	// GeneratedJSONAsString is the configuration information to create new tasks from.
 	GeneratedJSONAsString []string `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
@@ -838,6 +838,10 @@ func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
 	return FindOne(db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
 }
 
+func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
+	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)))
+}
+
 // FindIntermediateTasks returns the tasks from most recent to least recent between two tasks.
 func (current *Task) FindIntermediateTasks(previous *Task) ([]Task, error) {
 	intermediateTasks, err := Find(ByIntermediateRevisions(previous.RevisionOrderNumber, current.RevisionOrderNumber, current.BuildVariant,
@@ -1004,13 +1008,11 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 func GenerateNotRun() ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
 	return FindAll(db.Query(bson.M{
-		StatusKey:         evergreen.TaskStarted,                              // task is running
-		StartTimeKey:      bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
-		GenerateTaskKey:   true,                                               // task contains generate.tasks command
-		GeneratedTasksKey: bson.M{"$exists": false},                           // generate.tasks has not yet run
-		"$or": []bson.M{
-			bson.M{GeneratedJSONAsStringKey: bson.M{"$exists": true}}, // config has been posted by generate.tasks command
-		},
+		StatusKey:                evergreen.TaskStarted,                              // task is running
+		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
+		GenerateTaskKey:          true,                                               // task contains generate.tasks command
+		GeneratedTasksKey:        bson.M{"$exists": false},                           // generate.tasks has not yet run
+		GeneratedJSONAsStringKey: bson.M{"$exists": true},                            // config has been posted by generate.tasks command
 	}))
 }
 
@@ -1026,12 +1028,8 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 	t.GeneratedJSONAsString = s
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
-			"$or": []bson.M{
-				{
-					GeneratedJSONAsStringKey: bson.M{"$exists": false},
-				},
-			},
+			IdKey:                    t.Id,
+			GeneratedJSONAsStringKey: bson.M{"$exists": false},
 		},
 		bson.M{
 			"$set": bson.M{
@@ -3103,6 +3101,7 @@ type GetTasksByVersionOptions struct {
 	IncludeBaseTasks               bool
 	IncludeEmptyActivation         bool
 	IncludeBuildVariantDisplayName bool
+	IsMainlineCommit               bool
 }
 
 // GetTasksByVersion gets all tasks for a specific version
@@ -3525,25 +3524,39 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		addDisplayStatus,
 	)
 	if opts.IncludeBaseTasks {
+		baseCommitMatch := []bson.M{
+			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+			{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+		}
+
+		// If we are requesting a mainline commit's base task we want to use the previous commit instead.
+		if opts.IsMainlineCommit {
+			baseCommitMatch = append(baseCommitMatch, bson.M{
+				"$eq": []interface{}{"$" + RevisionOrderNumberKey, bson.M{
+					"$subtract": []interface{}{"$$" + RevisionOrderNumberKey, 1},
+				}},
+			})
+		} else {
+			baseCommitMatch = append(baseCommitMatch, bson.M{
+				"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey},
+			})
+		}
 		pipeline = append(pipeline, []bson.M{
 			// Add data about the base task
 			{"$lookup": bson.M{
 				"from": Collection,
 				"let": bson.M{
-					RevisionKey:     "$" + RevisionKey,
-					BuildVariantKey: "$" + BuildVariantKey,
-					DisplayNameKey:  "$" + DisplayNameKey,
+					RevisionKey:            "$" + RevisionKey,
+					BuildVariantKey:        "$" + BuildVariantKey,
+					DisplayNameKey:         "$" + DisplayNameKey,
+					RevisionOrderNumberKey: "$" + RevisionOrderNumberKey,
 				},
 				"as": BaseTaskKey,
 				"pipeline": []bson.M{
 					{"$match": bson.M{
 						RequesterKey: evergreen.RepotrackerVersionRequester,
 						"$expr": bson.M{
-							"$and": []bson.M{
-								{"$eq": []string{"$" + RevisionKey, "$$" + RevisionKey}},
-								{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
-								{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
-							},
+							"$and": baseCommitMatch,
 						},
 					}},
 					{"$project": bson.M{

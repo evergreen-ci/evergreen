@@ -25,7 +25,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			Id:      projectId,
 			Admins:  []string{},
 		},
-		GitHubHooksEnabled: true,
+		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
 			Vars:        map[string]string{},
@@ -67,7 +67,7 @@ func TestProjectEventSuite(t *testing.T) {
 func (s *ProjectEventSuite) SetupTest() {
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()
-	after.GitHubHooksEnabled = false
+	after.GithubHooksEnabled = false
 
 	h := model.ProjectChangeEventEntry{
 		EventLogEntry: event.EventLogEntry{
@@ -105,8 +105,8 @@ func (s *ProjectEventSuite) TestProjectRef() {
 }
 
 func (s *ProjectEventSuite) TestGithubHooksEnabled() {
-	s.Equal(s.projChanges.Before.GitHubHooksEnabled, s.APIEvent.Before.GitHubWebhooksEnabled)
-	s.Equal(s.projChanges.After.GitHubHooksEnabled, s.APIEvent.After.GitHubWebhooksEnabled)
+	s.Equal(s.projChanges.Before.GithubHooksEnabled, s.APIEvent.Before.GithubWebhooksEnabled)
+	s.Equal(s.projChanges.After.GithubHooksEnabled, s.APIEvent.After.GithubWebhooksEnabled)
 }
 
 func (s *ProjectEventSuite) TestProjectVars() {
