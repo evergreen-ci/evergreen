@@ -272,6 +272,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 					Data: oldProjectId,
 				},
 			},
+			Filter: event.Filter{Project: oldProjectId},
 			Subscriber: event.Subscriber{
 				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
@@ -289,6 +290,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 					Data: "not-my-project",
 				},
 			},
+			Filter: event.Filter{Project: "not-my-project"},
 			Subscriber: event.Subscriber{
 				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
@@ -315,6 +317,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			assert.Equal(t, subs[0].ID, apiSubs[0].ID)
 			require.Len(t, apiSubs[0].Selectors, 1)
 			assert.Equal(t, oldProjectId, apiSubs[0].Selectors[0].Data)
+			assert.Equal(t, oldProjectId, apiSubs[0].Filter.Project)
 
 			apiSubs, err = event.FindSubscriptionsByOwner(newProjectId, event.OwnerTypeProject)
 			assert.NoError(t, err)
@@ -322,7 +325,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			assert.NotEqual(t, subs[0].ID, apiSubs[0].ID)
 			require.Len(t, apiSubs[0].Selectors, 1)
 			assert.Equal(t, newProjectId, apiSubs[0].Selectors[0].Data)
-
+			assert.Equal(t, newProjectId, apiSubs[0].Filter.Project)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

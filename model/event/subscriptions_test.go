@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -30,7 +31,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	s.now = time.Now().Round(time.Second)
 	s.subscriptions = []Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub0",
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -49,7 +50,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub1",
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -68,7 +69,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub2",
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -93,7 +94,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:           "5949645c9acd9604fdd202d8",
+			ID:           "sub3",
 			ResourceType: "type2",
 			Trigger:      "trigger2",
 			Selectors: []Selector{
@@ -116,7 +117,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           "sub4",
 			ResourceType: "type2",
 			Trigger:      "trigger2",
 			Selectors: []Selector{
@@ -175,101 +176,282 @@ func (s *subscriptionsSuite) TestRemove() {
 	}
 }
 
-func (s *subscriptionsSuite) TestFind() {
-	// Empty selectors should select nothing (because technically, they match everything)
-	subs, err := FindSubscriptions("type2", nil)
-	s.NoError(err)
-	s.Empty(subs)
-
-	subs, err = FindSubscriptions("type1", []Selector{
-		{
-			Type: "data",
-			Data: "nothing_matches",
-		},
+func (s *subscriptionsSuite) TestAttributesFilterQuery() {
+	s.Run("EmptySlice", func() {
+		a := Attributes{Object: []string{}}
+		s.Equal(bson.M{
+			filterObjectKey:       nil,
+			filterIDKey:           nil,
+			filterProjectKey:      nil,
+			filterOwnerKey:        nil,
+			filterRequesterKey:    nil,
+			filterStatusKey:       nil,
+			filterDisplayNameKey:  nil,
+			filterBuildVariantKey: nil,
+			filterInVersionKey:    nil,
+			filterInBuildKey:      nil,
+		}, a.filterQuery())
 	})
-	s.NoError(err)
-	s.Empty(subs)
 
-	subs, err = FindSubscriptions("type2", []Selector{
-		{
-			Type: SelectorObject,
-			Data: "somethingspecial",
-		},
-	})
-	s.NoError(err)
-	s.Require().Len(subs, 2)
-	for i := range subs {
-		if subs[i].Subscriber.Type == EmailSubscriberType {
-			s.Equal("someone4@example.com", *subs[i].Subscriber.Target.(*string))
-
-		} else if subs[i].Subscriber.Type == SlackSubscriberType {
-			s.Equal("slack_user", *subs[i].Subscriber.Target.(*string))
-
-		} else {
-			s.T().Errorf("unknown subscriber type: %s", subs[i].Subscriber.Type)
+	s.Run("PopulatedFields", func() {
+		a := Attributes{
+			Object:    []string{"TASK"},
+			Requester: []string{evergreen.TriggerRequester, evergreen.RepotrackerVersionRequester},
 		}
-	}
-
-	// this query hits a subscriber with a regex selector
-	subs, err = FindSubscriptions("type1", []Selector{
-		{
-			Type: SelectorID,
-			Data: "something",
-		},
-		{
-			Type: SelectorProject,
-			Data: "somethingelse",
-		},
+		s.Equal(bson.M{
+			filterObjectKey: bson.M{
+				"$in": bson.A{
+					nil,
+					"TASK",
+				}},
+			filterIDKey:      nil,
+			filterProjectKey: nil,
+			filterOwnerKey:   nil,
+			filterRequesterKey: bson.M{
+				"$in": bson.A{
+					nil,
+					evergreen.TriggerRequester,
+					evergreen.RepotrackerVersionRequester,
+				}},
+			filterStatusKey:       nil,
+			filterDisplayNameKey:  nil,
+			filterBuildVariantKey: nil,
+			filterInVersionKey:    nil,
+			filterInBuildKey:      nil,
+		}, a.filterQuery())
 	})
-	s.NoError(err)
-	s.Len(subs, 3)
 }
 
-func (s *subscriptionsSuite) TestFindSelectors() {
-	selectors := []Selector{
-		{
-			Type: "type",
-			Data: "something",
-		},
-		{
-			Type: "type2",
-			Data: "something",
-		},
-	}
+func (s *subscriptionsSuite) TestAttributesIsUnset() {
+	s.Run("EmptySlice", func() {
+		a := Attributes{Object: []string{}}
+		s.True(a.isUnset())
+	})
 
-	s.Equal(&selectors[0], findSelector(selectors, "type"))
-	s.Nil(findSelector(selectors, "nope"))
+	s.Run("PopulatedField", func() {
+		a := Attributes{Object: []string{"TASK"}}
+		s.False(a.isUnset())
+	})
 }
 
-func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
-	selectors := []Selector{
-		{
-			Type: "type",
-			Data: "something",
-		},
-		{
-			Type: "type2",
-			Data: "somethingelse",
-		},
+func (s *subscriptionsSuite) TestAttributesToSelectorMap() {
+	s.Run("EmptySlice", func() {
+		a := Attributes{Object: []string{}}
+		s.Empty(a.ToSelectorMap())
+	})
+
+	s.Run("PopulatedField", func() {
+		a := Attributes{Object: []string{"TASK"}}
+		objectValues := a.ToSelectorMap()[SelectorObject]
+		s.Require().Len(objectValues, 1)
+		s.Equal("TASK", objectValues[0])
+	})
+}
+
+func (s *subscriptionsSuite) TestAttributesValuesForSelector() {
+	s.Run("UnsetField", func() {
+		a := Attributes{}
+		s.Nil(a.valuesForSelector(SelectorObject))
+	})
+
+	s.Run("ExistingField", func() {
+		a := Attributes{Object: []string{"TASK"}}
+		fields, err := a.valuesForSelector(SelectorObject)
+		s.NoError(err)
+		s.Require().Len(fields, 1)
+		s.Equal("TASK", fields[0])
+	})
+
+	s.Run("NonexistentField", func() {
+		a := Attributes{}
+		fields, err := a.valuesForSelector("no-such-thing")
+		s.Error(err)
+		s.Nil(fields)
+	})
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
+	s.Run("EmptySelectors", func() {
+		subs, err := FindSubscriptionsByAttributes("type2", Attributes{})
+		s.NoError(err)
+		s.Empty(subs)
+	})
+
+	s.Run("NothingMatches", func() {
+		subs, err := FindSubscriptionsByAttributes("type1", Attributes{
+			Object: []string{"nothing_matches"},
+		})
+		s.NoError(err)
+		s.Empty(subs)
+	})
+
+	s.Run("MatchesMultipleSubscriptions", func() {
+		subs, err := FindSubscriptionsByAttributes("type2", Attributes{
+			Object: []string{"somethingspecial"},
+		})
+		s.NoError(err)
+		s.Len(subs, 2)
+		expectedSubs := []string{s.subscriptions[3].ID, s.subscriptions[4].ID}
+		for _, sub := range subs {
+			s.Contains(expectedSubs, sub.ID)
+		}
+	})
+
+	s.Run("MatchesRegexSelector", func() {
+		subs, err := FindSubscriptionsByAttributes("type1", Attributes{
+			ID:      []string{"something"},
+			Project: []string{"somethingelse"},
+		})
+		s.NoError(err)
+		s.Len(subs, 3)
+		expectedSubs := []string{s.subscriptions[0].ID, s.subscriptions[1].ID, s.subscriptions[2].ID}
+		for _, sub := range subs {
+			s.Contains(expectedSubs, sub.ID)
+		}
+	})
+}
+
+func (s *subscriptionsSuite) TestFilterRegexSelectors() {
+	eventAttributes := Attributes{
+		Object: []string{"apple"},
+		Status: []string{"sweet"},
 	}
 
-	a := Subscription{
-		RegexSelectors: []Selector{
+	s.Run("MultipleMatches", func() {
+		subs := []Subscription{
 			{
-				Type: "type",
-				Data: "^some",
+				RegexSelectors: []Selector{
+					{
+						Type: SelectorObject,
+						Data: "apple",
+					},
+				},
 			},
 			{
-				Type: "type2",
-				Data: "else$",
+				RegexSelectors: []Selector{
+					{
+						Type: SelectorStatus,
+						Data: "sweet",
+					},
+				},
 			},
-		},
+		}
+
+		filtered := filterRegexSelectors(subs, eventAttributes)
+		s.Len(filtered, 2)
+		expectedSubs := []Subscription{subs[0], subs[1]}
+		for _, sub := range filtered {
+			s.Contains(expectedSubs, sub)
+		}
+	})
+
+	s.Run("SingleMatch", func() {
+		subs := []Subscription{
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: SelectorObject,
+						Data: "apple",
+					},
+				},
+			},
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: SelectorStatus,
+						Data: "sour",
+					},
+				},
+			},
+		}
+
+		filtered := filterRegexSelectors(subs, eventAttributes)
+		s.Require().Len(filtered, 1)
+		s.Equal(subs[0], filtered[0])
+	})
+
+	s.Run("NoMatches", func() {
+		subs := []Subscription{
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: SelectorObject,
+						Data: "orange",
+					},
+				},
+			},
+			{
+				RegexSelectors: []Selector{
+					{
+						Type: SelectorStatus,
+						Data: "tangy",
+					},
+				},
+			},
+		}
+
+		s.Empty(filterRegexSelectors(subs, eventAttributes))
+	})
+
+	s.Run("NoRegexSelectors", func() {
+		subs := []Subscription{{ID: "sub0"}}
+		filtered := filterRegexSelectors(subs, eventAttributes)
+		s.Require().Len(filtered, 1)
+		s.Equal(subs[0], filtered[0])
+	})
+}
+
+func (s *subscriptionsSuite) TestRegexSelectorsMatchEvent() {
+	eventAttributes := Attributes{
+		Object: []string{"apple"},
+		Status: []string{"sweet"},
 	}
 
-	s.True(regexSelectorsMatch(selectors, a.RegexSelectors))
+	s.Run("AllMatch", func() {
+		regexSelectors := []Selector{
+			{
+				Type: SelectorObject,
+				Data: "^apple",
+			},
+			{
+				Type: SelectorStatus,
+				Data: "sweet$",
+			},
+		}
+		s.True(regexSelectorsMatchEvent(regexSelectors, eventAttributes))
+	})
 
-	a.RegexSelectors[0].Data = "^S"
-	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
+	s.Run("MixedMatch", func() {
+		regexSelectors := []Selector{
+			{
+				Type: SelectorObject,
+				Data: "^apple",
+			},
+			{
+				Type: SelectorStatus,
+				Data: "sour",
+			},
+		}
+		s.False(regexSelectorsMatchEvent(regexSelectors, eventAttributes))
+	})
+}
+
+func (s *subscriptionsSuite) TestRegexMatchesValue() {
+	s.Run("NoValues", func() {
+		s.False(regexMatchesValue("regex", nil))
+	})
+
+	s.Run("NoMatch", func() {
+		s.False(regexMatchesValue("^hello", []string{"goodbye"}))
+	})
+
+	s.Run("MatchValue", func() {
+		s.True(regexMatchesValue("^hello", []string{"goodbye", "helloworld"}))
+	})
+
+	s.Run("InvalidRegex", func() {
+		s.False(regexMatchesValue("[", []string{"["}))
+	})
 }
 
 func (s *subscriptionsSuite) TestFilterFromSelectors() {

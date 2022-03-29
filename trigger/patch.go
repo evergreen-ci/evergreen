@@ -63,28 +63,13 @@ func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *patchTriggers) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.patch.Id.Hex(),
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectPatch,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.patch.Project,
-		},
-		{
-			Type: event.SelectorOwner,
-			Data: t.patch.Author,
-		},
-		{
-			Type: event.SelectorStatus,
-			Data: t.patch.Status,
-		},
+func (t *patchTriggers) Attributes() event.Attributes {
+	return event.Attributes{
+		ID:      []string{t.patch.Id.Hex()},
+		Object:  []string{event.ObjectPatch},
+		Project: []string{t.patch.Project},
+		Owner:   []string{t.patch.Author},
+		Status:  []string{t.patch.Status},
 	}
 }
 
@@ -370,7 +355,7 @@ func (t *patchTriggers) generate(sub *event.Subscription) (*notification.Notific
 		return nil, errors.Wrap(err, "failed to collect patch data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	payload, err := makeCommonPayload(sub, t.Attributes(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

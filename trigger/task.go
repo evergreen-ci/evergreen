@@ -187,61 +187,29 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *taskTriggers) Selectors() []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: event.SelectorID,
-			Data: t.task.Id,
-		},
-		{
-			Type: event.SelectorObject,
-			Data: event.ObjectTask,
-		},
-		{
-			Type: event.SelectorProject,
-			Data: t.task.Project,
-		},
-		{
-			Type: event.SelectorInVersion,
-			Data: t.task.Version,
-		},
-		{
-			Type: event.SelectorInBuild,
-			Data: t.task.BuildId,
-		},
-		{
-			Type: event.SelectorDisplayName,
-			Data: t.task.DisplayName,
-		},
-		{
-			Type: event.SelectorBuildVariant,
-			Data: t.task.BuildVariant,
-		},
-		{
-			Type: event.SelectorRequester,
-			Data: t.task.Requester,
-		},
-	}
-	if t.task.Requester == evergreen.TriggerRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.RepotrackerVersionRequester,
-		})
-	}
-	if t.task.Requester == evergreen.GithubPRRequester {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorRequester,
-			Data: evergreen.PatchVersionRequester,
-		})
-	}
-	if t.owner != "" {
-		selectors = append(selectors, event.Selector{
-			Type: event.SelectorOwner,
-			Data: t.owner,
-		})
+func (t *taskTriggers) Attributes() event.Attributes {
+	attributes := event.Attributes{
+		ID:           []string{t.task.Id},
+		Object:       []string{event.ObjectTask},
+		Project:      []string{t.task.Project},
+		InVersion:    []string{t.task.Version},
+		InBuild:      []string{t.task.BuildId},
+		DisplayName:  []string{t.task.DisplayName},
+		BuildVariant: []string{t.task.BuildVariant},
+		Requester:    []string{t.task.Requester},
 	}
 
-	return selectors
+	if t.task.Requester == evergreen.TriggerRequester {
+		attributes.Requester = append(attributes.Requester, evergreen.RepotrackerVersionRequester)
+	}
+	if t.task.Requester == evergreen.GithubPRRequester {
+		attributes.Requester = append(attributes.Requester, evergreen.PatchVersionRequester)
+	}
+	if t.owner != "" {
+		attributes.Owner = append(attributes.Owner, t.owner)
+	}
+
+	return attributes
 }
 
 func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
@@ -385,7 +353,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, test
 		}
 		data.emailContent = emailTaskContentTemplate
 
-		payload, err = makeCommonPayload(sub, t.Selectors(), data)
+		payload, err = makeCommonPayload(sub, t.Attributes(), data)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to build notification")
 		}
