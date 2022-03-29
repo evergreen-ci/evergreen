@@ -776,7 +776,6 @@ func FindNeedsContainerAllocation() ([]Task, error) {
 func shouldContainerTaskDispatchQuery() bson.M {
 	return bson.M{
 		ActivatedKey:         true,
-		StatusKey:            evergreen.TaskContainerUnallocated,
 		ExecutionPlatformKey: ExecutionPlatformContainer,
 		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
 		"$or": []bson.M{

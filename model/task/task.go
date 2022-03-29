@@ -966,16 +966,6 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.LastHeartbeat = dispatchedAt
 	t.AgentVersion = agentVersion
 
-	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "updating display task")
-		}
-		if dt != nil && utility.IsZeroTime(dt.DispatchTime) {
-			return errors.Wrap(dt.MarkAsContainerDispatched(ctx, env, agentVersion, dispatchedAt), "marking parent display task as dispatched")
-		}
-	}
-
 	return nil
 }
 
@@ -1015,7 +1005,12 @@ func (t *Task) MarkAsContainerUnallocated(ctx context.Context, env evergreen.Env
 		StatusKey: t.Status,
 	}, bson.M{
 		"$set": bson.M{
-			StatusKey: evergreen.TaskContainerUnallocated,
+			StatusKey:        evergreen.TaskContainerUnallocated,
+			DispatchTimeKey:  utility.ZeroTime,
+			LastHeartbeatKey: utility.ZeroTime,
+		},
+		"$unset": bson.M{
+			AgentVersionKey: 1,
 		},
 	})
 	if err != nil {

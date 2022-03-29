@@ -2113,16 +2113,6 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 }
 
-func getDispatchableContainerTask() Task {
-	return Task{
-		Id:                utility.RandomString(),
-		Activated:         true,
-		ActivatedTime:     time.Now(),
-		Status:            evergreen.TaskContainerAllocated,
-		ExecutionPlatform: ExecutionPlatformContainer,
-	}
-}
-
 func TestMarkAsContainerDispatched(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -2130,6 +2120,16 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
+
+	getDispatchableContainerTask := func() Task {
+		return Task{
+			Id:                utility.RandomString(),
+			Activated:         true,
+			ActivatedTime:     time.Now(),
+			Status:            evergreen.TaskContainerAllocated,
+			ExecutionPlatform: ExecutionPlatformContainer,
+		}
+	}
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -2150,16 +2150,6 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 
 			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
 			checkTaskDispatched(t, tsk.Id)
-		},
-		"MarksBothTaskAndItsParentDisplayTaskAsDispatched": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			dt := getDispatchableContainerTask()
-			require.NoError(t, dt.Insert())
-			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
-			require.NoError(t, tsk.Insert())
-
-			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
-			checkTaskDispatched(t, tsk.Id)
-			checkTaskDispatched(t, dt.Id)
 		},
 		"FailsWithTaskWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Status = evergreen.TaskContainerUnallocated
@@ -2221,10 +2211,10 @@ func TestMarkAsContainerUnallocated(t *testing.T) {
 		dbTask, err := FindOneId(taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+		assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
 		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
-		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
+		assert.Zero(t, dbTask.AgentVersion)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
@@ -2253,7 +2243,15 @@ func TestMarkAsContainerUnallocated(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
-			tsk := getDispatchableContainerTask()
+			tsk := Task{
+				Id:                utility.RandomString(),
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				Status:            evergreen.TaskDispatched,
+				DispatchTime:      time.Now(),
+				LastHeartbeat:     time.Now(),
+				ExecutionPlatform: ExecutionPlatformContainer,
+			}
 			require.NoError(t, db.Clear(Collection))
 
 			tCase(tctx, t, env, tsk)
