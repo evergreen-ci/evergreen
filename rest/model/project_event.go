@@ -12,14 +12,14 @@ import (
 )
 
 type APIProjectEvent struct {
-	Timestamp *time.Time               `json:"ts"`
-	User      *string                  `json:"user"`
-	Before    APIProjectEventsSettings `json:"before"`
-	After     APIProjectEventsSettings `json:"after"`
+	Timestamp *time.Time              `json:"ts"`
+	User      *string                 `json:"user"`
+	Before    APIProjectEventSettings `json:"before"`
+	After     APIProjectEventSettings `json:"after"`
 }
 
 // take this from the original place instead of redefinning it here
-type APIProjectEventsSettings struct {
+type APIProjectEventSettings struct {
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
@@ -78,14 +78,14 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 		}
 
 		e.User = user
-		e.Before = APIProjectEventsSettings{
+		e.Before = APIProjectEventSettings{
 			ProjectRef:            before.ProjectRef,
 			GithubWebhooksEnabled: before.GithubWebhooksEnabled,
 			Vars:                  before.Vars,
 			Aliases:               before.Aliases,
 			Subscriptions:         before.Subscriptions,
 		}
-		e.After = APIProjectEventsSettings{
+		e.After = APIProjectEventSettings{
 			ProjectRef:            after.ProjectRef,
 			GithubWebhooksEnabled: after.GithubWebhooksEnabled,
 			Vars:                  after.Vars,

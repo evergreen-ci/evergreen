@@ -102,10 +102,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
-  ProjectEventsSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventsSettings
-  RepoEventsSettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventsSettings
+  ProjectEventSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
+  RepoEventSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEventSettings
   ProjectEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   RepoEventLogEntry:

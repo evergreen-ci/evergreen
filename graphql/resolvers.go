@@ -1286,7 +1286,6 @@ func (r *patchResolver) CommitQueuePosition(ctx context.Context, apiPatch *restM
 	return commitQueuePosition, nil
 }
 
-//here
 func (r *patchResolver) ProjectIdentifier(ctx context.Context, apiPatch *restModel.APIPatch) (*string, error) {
 	identifier, err := model.GetIdentifierForProject(*apiPatch.ProjectId)
 	if err != nil {

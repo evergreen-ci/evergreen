@@ -1144,7 +1144,7 @@ type ProjectSettings {
   subscriptions: [ProjectSubscription!]
 }
 
-type ProjectEventsSettings{
+type ProjectEventSettings{
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
@@ -1152,7 +1152,7 @@ type ProjectEventsSettings{
   subscriptions: [ProjectSubscription!]
 }
 
-type RepoEventsSettings{
+type RepoEventSettings{
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   vars: ProjectVars
@@ -1176,8 +1176,8 @@ type ProjectEvents {
 type ProjectEventLogEntry {
   timestamp: Time!
   user: String!
-  before: ProjectEventsSettings
-  after: ProjectEventsSettings
+  before: ProjectEventSettings
+  after: ProjectEventSettings
 }
 
 type RepoEvents {
@@ -1187,8 +1187,8 @@ type RepoEvents {
 type RepoEventLogEntry {
   timestamp: Time!
   user: String!
-  before: RepoEventsSettings
-  after: RepoEventsSettings
+  before: RepoEventSettings
+  after: RepoEventSettings
 }
 
 type ProjectVars {
