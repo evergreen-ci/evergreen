@@ -231,8 +231,9 @@ func TestCleanup(t *testing.T) {
 		}
 
 		assert.NoError(t, m.Cleanup(context.Background()))
-		require.Len(t, client.launchTemplates, 1)
+		require.Len(t, client.launchTemplates, 2)
 		assert.Equal(t, "lt0", *client.launchTemplates[0].LaunchTemplateId)
+		assert.Equal(t, "lt1", *client.launchTemplates[1].LaunchTemplateId)
 	})
 
 	t.Run("AllExpired", func(t *testing.T) {
