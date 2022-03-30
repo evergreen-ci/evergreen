@@ -89,10 +89,7 @@ func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
 
 // AssignNextTask assigns the pod the next available task to run. Returns nil if
 // there's no task available to run.
-func (pd *PodDispatcher) AssignNextTask(env evergreen.Environment, p *pod.Pod) (*task.Task, error) {
-	ctx, cancel := env.Context()
-	defer cancel()
-
+func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Environment, p *pod.Pod) (*task.Task, error) {
 	grip.WarningWhen(len(pd.TaskIDs) > 1, message.Fields{
 		"message":    "programmatic error: task groups are not supported yet, so dispatcher should have at most 1 container task to dispatch",
 		"pod":        p.ID,
@@ -207,7 +204,7 @@ func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env ever
 		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task")
 	}
 
-	if err := t.MarkAsContainerUnallocated(ctx, env); err != nil {
+	if err := t.MarkAsContainerDeallocated(ctx, env); err != nil {
 		return errors.Wrap(err, "marking task unallocated")
 	}
 
@@ -223,7 +220,7 @@ func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env ever
 func (pd *PodDispatcher) checkTaskIsDispatchable(ctx context.Context, env evergreen.Environment, t *task.Task) (shouldRun bool, err error) {
 	if !t.IsContainerDispatchable() {
 		grip.Notice(message.Fields{
-			"message":    "task in dispatch queue is not dispatchable",
+			"message":    "container task in dispatch queue is not dispatchable",
 			"outcome":    "task is not dispatchable",
 			"context":    "pod group task dispatcher",
 			"task":       t.Id,

@@ -490,7 +490,7 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
-// IsHostDispatchable return true if the task should run on a host and can be
+// IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
 	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && t.Status == evergreen.TaskUndispatched && t.Activated
@@ -955,7 +955,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	}
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "updating task")
 	}
 	if res.ModifiedCount == 0 {
 		return errors.New("task was not updated")
@@ -997,12 +997,15 @@ func (t *Task) MarkAsHostUndispatched() error {
 	)
 }
 
-// MarkAsContainerUnallocated marks a container task that was allocated as no
+// MarkAsContainerDeallocated marks a container task that was allocated as no
 // longer allocated.
-func (t *Task) MarkAsContainerUnallocated(ctx context.Context, env evergreen.Environment) error {
+func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
+	if t.Status != evergreen.TaskContainerAllocated {
+		return errors.Errorf("cannot deallocate a container task if it's not currently allocated - current status is '%s'", t.Status)
+	}
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
 		IdKey:     t.Id,
-		StatusKey: t.Status,
+		StatusKey: evergreen.TaskContainerAllocated,
 	}, bson.M{
 		"$set": bson.M{
 			StatusKey:        evergreen.TaskContainerUnallocated,
@@ -1014,7 +1017,7 @@ func (t *Task) MarkAsContainerUnallocated(ctx context.Context, env evergreen.Env
 		},
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "updating task")
 	}
 	if res.ModifiedCount == 0 {
 		return errors.New("task was not updated")

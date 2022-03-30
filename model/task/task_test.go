@@ -2196,7 +2196,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 	}
 }
 
-func TestMarkAsContainerUnallocated(t *testing.T) {
+func TestMarkAsContainerDeallocated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2221,18 +2221,23 @@ func TestMarkAsContainerUnallocated(t *testing.T) {
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, tsk.MarkAsContainerUnallocated(ctx, env))
+			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
 			checkTaskUnallocated(t, tsk.Id)
+		},
+		"FailsWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Status = evergreen.TaskSucceeded
+			require.NoError(t, tsk.Insert())
+			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
 		"FailsWithDifferentDBTaskStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Status = evergreen.TaskContainerUnallocated
 			require.NoError(t, tsk.Insert())
 			tsk.Status = evergreen.TaskContainerAllocated
 
-			assert.Error(t, tsk.MarkAsContainerUnallocated(ctx, env))
+			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.Error(t, tsk.MarkAsContainerUnallocated(ctx, env))
+			require.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 
 			dbTask, err := FindOneId(tsk.Id)
 			assert.NoError(t, err)
@@ -2247,7 +2252,7 @@ func TestMarkAsContainerUnallocated(t *testing.T) {
 				Id:                utility.RandomString(),
 				Activated:         true,
 				ActivatedTime:     time.Now(),
-				Status:            evergreen.TaskDispatched,
+				Status:            evergreen.TaskContainerAllocated,
 				DispatchTime:      time.Now(),
 				LastHeartbeat:     time.Now(),
 				ExecutionPlatform: ExecutionPlatformContainer,
