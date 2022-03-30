@@ -1406,7 +1406,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskForOutdatedHostAMI() {
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
 		TaskGroup:           "",
-		CreateTime:          amiUpdateTime.Add(time.Minute), // created after the AMI was updated so we should skip
+		IngestTime:          amiUpdateTime.Add(time.Minute), // created after the AMI was updated so we should skip
 		StartTime:           utility.ZeroTime,
 		BuildVariant:        "init_test_run",
 		Version:             "5d88953e2a60ed61eefe9561",
@@ -1437,7 +1437,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskForOutdatedHostAMI() {
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      2,
 		StartTime:           utility.ZeroTime,
-		CreateTime:          amiUpdateTime.Add(-time.Minute), // created before the AMI was updated so we should not skip
+		IngestTime:          amiUpdateTime.Add(-time.Minute), // created before the AMI was updated so we should not skip
 		BuildVariant:        "e2e_openshift_cloud_qa",
 		Version:             "5d88953e2a60ed61eefe9561",
 		Project:             "ops-manager-kubernetes",
