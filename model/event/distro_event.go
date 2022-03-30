@@ -58,6 +58,7 @@ func LogDistroRemoved(distroId, userId string, data interface{}) {
 	LogDistroEvent(distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
 }
 
+// LogDistroAMIModified logs when the default region's AMI is modified.
 func LogDistroAMIModified(distroId, userId string) {
 	LogDistroEvent(distroId, EventDistroAMIModfied, DistroEventData{UserId: userId})
 }

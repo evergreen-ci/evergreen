@@ -39,6 +39,15 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
+func FindOne(query db.Q) (*EventLogEntry, error) {
+	event := &EventLogEntry{}
+	err := db.FindOneQ(AllLogCollection, query, event)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return event, err
+}
+
 func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, int, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
@@ -159,11 +168,12 @@ func DistroEventsForId(id string) db.Q {
 	return db.Query(filter)
 }
 
+// DistroAMIModifiedForId returns the query for AMI modified distro events.
 func DistroAMIModifiedForId(id string) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeDistro)
 	filter[ResourceIdKey] = id
 	filter[TypeKey] = EventDistroAMIModfied
-	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(1)
+	return db.Query(filter).Sort([]string{"-" + TimestampKey})
 }
 
 func MostRecentDistroEvents(id string, n int) db.Q {

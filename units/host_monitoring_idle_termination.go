@@ -25,7 +25,9 @@ const (
 	idleHostJobName = "idle-host-termination"
 
 	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	idleTimeCutoff            = 4 * time.Minute
+	idleTimeCutoff = 4 * time.Minute
+	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
+	outdatedIdleTimeCutoff    = 2 * time.Minute
 	idleWaitingForAgentCutoff = 10 * time.Minute
 	idleTaskGroupHostCutoff   = 10 * time.Minute
 
@@ -139,7 +141,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
 		for i := 0; i < nHostsToEvaluateForTermination; i++ {
 			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[i])
-			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i]))
+			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i], distrosMap[info.IdleHosts[i].Distro.Id]))
 		}
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -157,7 +159,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) error {
+func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d distro.Distro) error {
 
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly {
@@ -170,6 +172,8 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host) e
 	idleThreshold := idleTimeCutoff
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleTaskGroupHostCutoff
+	} else if h.GetAMI() != d.GetDefaultAMI() {
+		idleThreshold = outdatedIdleTimeCutoff
 	}
 
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate

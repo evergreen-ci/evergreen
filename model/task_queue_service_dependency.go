@@ -359,6 +359,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec, amiUpdatedTim
 					"task_id":          nextTaskFromDB.Id,
 					"distro_id":        d.distroID,
 					"ami_updated_time": amiUpdatedTime,
+					"ingest_time":      nextTaskFromDB.IngestTime,
 				})
 				continue
 			}

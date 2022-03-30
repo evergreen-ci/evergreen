@@ -118,7 +118,6 @@ type TaskQueueItem struct {
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
 	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
-	CreateTime          time.Time     `bson:"create_time" json:"create_time"`
 }
 
 // must not no-lint these values
@@ -144,7 +143,6 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
-	taskQueueItemCreateTimeKey    = bsonutil.MustHaveTag(TaskQueueItem{}, "CreateTime")
 
 	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
 )
@@ -510,7 +508,6 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
-						taskQueueItemCreateTimeKey:    "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemCreateTimeKey),
 					},
 				},
 			},
