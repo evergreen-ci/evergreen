@@ -734,7 +734,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 	// validate the project
 	verrs := validator.CheckProjectErrors(projectInfo.Project, true)
-	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref)...)
+	verrs = append(verrs, validator.CheckProjectSettings(projectInfo.Project, projectInfo.Ref, projectInfo.Config)...)
 	verrs = append(verrs, validator.CheckProjectConfigErrors(projectInfo.Config)...)
 	verrs = append(verrs, validator.CheckProjectWarnings(projectInfo.Project)...)
 	if len(verrs) > 0 || versionErrs != nil {

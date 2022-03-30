@@ -666,7 +666,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 			}
 			errs = append(errs, validationErr)
 		} else {
-			errs = append(errs, validator.CheckProjectSettings(project, projectRef)...)
+			errs = append(errs, validator.CheckProjectSettings(project, projectRef, projectConfig)...)
 		}
 	} else {
 		validationErr = validator.ValidationError{
