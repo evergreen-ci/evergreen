@@ -18,13 +18,19 @@ const (
 	// ResourceTypePod represents a pod as a resource associated with events.
 	ResourceTypePod = "POD"
 
+	// EventPodStatusChange represents an event where a pod's status is
+	// modified.
 	EventPodStatusChange PodEventType = "STATUS_CHANGE"
+	// EventPodAssignedTask represents an event where a pod is assigned a task
+	// to run.
+	EventPodAssignedTask PodEventType = "ASSIGNED_TASK"
 )
 
 // podData contains information relevant to a pod event.
 type podData struct {
 	OldStatus string `bson:"old_status,omitempty" json:"old_status,omitempty"`
 	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty"`
+	TaskID    string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 }
 
 // LogPodEvent logs an event for a pod to the event log.
@@ -56,4 +62,10 @@ func LogPodStatusChanged(id, oldStatus, newStatus string) {
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 	})
+}
+
+// LogPodAssignedTask logs an event indicating that the pod has been assigned a
+// task to run.
+func LogPodAssignedTask(id, taskID string) {
+	LogPodEvent(id, EventPodAssignedTask, podData{TaskID: taskID})
 }

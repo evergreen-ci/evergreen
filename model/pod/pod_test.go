@@ -1,10 +1,12 @@
 package pod
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -419,4 +421,59 @@ func TestGetSecret(t *testing.T) {
 		assert.Error(t, err)
 		assert.Zero(t, s)
 	})
+}
+
+func TestSetRunningTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			require.NoError(t, p.Insert())
+			taskID := "task"
+			require.NoError(t, p.SetRunningTask(ctx, env, taskID))
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.Equal(t, taskID, dbPod.RunningTask)
+		},
+		"FailsWithNonRunningPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			p.Status = StatusDecommissioned
+			require.NoError(t, p.Insert())
+			assert.Error(t, p.SetRunningTask(ctx, env, "task"))
+		},
+		"FailsWithPodAlreadyRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			p.RunningTask = "some-other-task"
+			require.NoError(t, p.Insert())
+			assert.Error(t, p.SetRunningTask(ctx, env, "task"))
+		},
+		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			assert.Error(t, p.SetRunningTask(ctx, env, "task"))
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+
+			p := Pod{
+				ID:     "id",
+				Status: StatusRunning,
+			}
+			tCase(tctx, t, env, p)
+		})
+	}
 }

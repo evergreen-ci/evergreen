@@ -30,9 +30,9 @@ func TestLoggingTaskEvents(t *testing.T) {
 
 			LogTaskCreated(taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskDispatched(taskId, 1, hostId)
+			LogHostTaskDispatched(taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskUndispatched(taskId, 1, hostId)
+			LogHostTaskUndispatched(taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
 			LogTaskStarted(taskId, 1)
 			time.Sleep(1 * time.Millisecond)

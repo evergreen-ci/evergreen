@@ -17,10 +17,12 @@ const (
 
 var (
 	IDKey                        = bsonutil.MustHaveTag(Pod{}, "ID")
+	TypeKey                      = bsonutil.MustHaveTag(Pod{}, "Type")
 	StatusKey                    = bsonutil.MustHaveTag(Pod{}, "Status")
 	TaskContainerCreationOptsKey = bsonutil.MustHaveTag(Pod{}, "TaskContainerCreationOpts")
 	TimeInfoKey                  = bsonutil.MustHaveTag(Pod{}, "TimeInfo")
 	ResourcesKey                 = bsonutil.MustHaveTag(Pod{}, "Resources")
+	RunningTaskKey               = bsonutil.MustHaveTag(Pod{}, "RunningTask")
 
 	TaskContainerCreationOptsImageKey    = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "Image")
 	TaskContainerCreationOptsMemoryMBKey = bsonutil.MustHaveTag(TaskContainerCreationOptions{}, "MemoryMB")

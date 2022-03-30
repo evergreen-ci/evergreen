@@ -1114,7 +1114,10 @@ func FindAllMergedProjectRefs() ([]ProjectRef, error) {
 	return FindProjectRefsQ(bson.M{})
 }
 
-func FindProjectRefsByIds(ids []string) ([]ProjectRef, error) {
+func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	return FindProjectRefsQ(bson.M{
 		ProjectRefIdKey: bson.M{
 			"$in": ids,

@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -489,15 +490,22 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
-// IsDispatchable return true if the task should be dispatched
-func (t *Task) IsDispatchable() bool {
-	return t.Status == evergreen.TaskUndispatched && t.Activated
+// IsHostDispatchable returns true if the task should run on a host and can be
+// dispatched.
+func (t *Task) IsHostDispatchable() bool {
+	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
+// IsContainerDispatchable returns true if the task should run in a container
+// and can be dispatched.
+func (t *Task) IsContainerDispatchable() bool {
+	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerAllocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
 // container or not.
 func (t *Task) ShouldAllocateContainer() bool {
-	return t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -935,6 +943,36 @@ func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
 	return nil
 }
 
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod. If the task is part of a display task, the display task is also
+// marked as dispatched to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string, dispatchedAt time.Time) error {
+	query := shouldContainerTaskDispatchQuery()
+	query[StatusKey] = evergreen.TaskContainerAllocated
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
+
+	return nil
+}
+
 // MarkAsHostUndispatched marks that the host task is undispatched. If the task
 // is already dispatched to a host, it unsets the host ID field on the task. It
 // returns an error if any of the database updates fail.
@@ -961,6 +999,39 @@ func (t *Task) MarkAsHostUndispatched() error {
 			},
 		},
 	)
+}
+
+// MarkAsContainerDeallocated marks a container task that was allocated as no
+// longer allocated.
+func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
+	if t.Status != evergreen.TaskContainerAllocated {
+		return errors.Errorf("cannot deallocate a container task if it's not currently allocated - current status is '%s'", t.Status)
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:     t.Id,
+		StatusKey: evergreen.TaskContainerAllocated,
+	}, bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskContainerUnallocated,
+			DispatchTimeKey:  utility.ZeroTime,
+			LastHeartbeatKey: utility.ZeroTime,
+		},
+		"$unset": bson.M{
+			AgentVersionKey: 1,
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskContainerUnallocated
+	t.DispatchTime = utility.ZeroTime
+	t.LastHeartbeat = utility.ZeroTime
+
+	return nil
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
