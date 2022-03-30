@@ -453,6 +453,19 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}
+	if len(taskStatsResult) == 0 {
+		// Lookup last sync date for project
+		statsStatus, err := stats.GetStatsStatus(tsh.filter.Project)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve stats status"))
+		}
+		if time.Since(statsStatus.LastJobRun).Hours() > time.Duration.Hours(24) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				Message:    "stats for this project have not been generated in the last 24 hours",
+				StatusCode: http.StatusServiceUnavailable,
+			})
+		}
+	}
 
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
