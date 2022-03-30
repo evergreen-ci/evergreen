@@ -246,7 +246,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 }
 
 // FindNextTask returns the next dispatchable task in the queue, and returns the tasks that need to be checked for dependencies.
-func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec, amiUpdatedTime time.Time) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	// If the host just ran a task group, give it one back.
@@ -346,6 +346,20 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 			}
 
 			if !dependenciesMet {
+				continue
+			}
+
+			// AMI Updated time is only provided if the host is running with an outdated AMI.
+			// If the task was created after the time that the AMI was updated, then we should wait for an updated host.
+			if !utility.IsZeroTime(amiUpdatedTime) && nextTaskFromDB.IngestTime.After(amiUpdatedTime) {
+				grip.Debug(message.Fields{
+					"dispatcher":       DAGDispatcher,
+					"function":         "FindNextTask",
+					"message":          "skipping because AMI is outdated",
+					"task_id":          nextTaskFromDB.Id,
+					"distro_id":        d.distroID,
+					"ami_updated_time": amiUpdatedTime,
+				})
 				continue
 			}
 			return item

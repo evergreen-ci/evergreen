@@ -233,7 +233,9 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 			PushFlash(uis.CookieStore, r, w, NewWarningFlash(err.Error()))
 		}
 	}
-
+	if newDistro.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
+		event.LogDistroAMIModified(id, u.Username())
+	}
 	event.LogDistroModified(id, u.Username(), newDistro.NewDistroData())
 
 	message := fmt.Sprintf("Distro %v successfully updated.", id)

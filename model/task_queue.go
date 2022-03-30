@@ -118,6 +118,7 @@ type TaskQueueItem struct {
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
 	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
+	CreateTime          time.Time     `bson:"create_time" json:"create_time"`
 }
 
 // must not no-lint these values
@@ -143,22 +144,9 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
+	taskQueueItemCreateTimeKey    = bsonutil.MustHaveTag(TaskQueueItem{}, "CreateTime")
 
-	// taskQueueInfoLengthKey             = bsonutil.MustHaveTag(DistroQueueInfo{}, "Length")
-	// taskQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
-	// taskQueueInfoMaxDurationKey        = bsonutil.MustHaveTag(DistroQueueInfo{}, "MaxDurationThreshold")
 	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
-	// taskQueueInfoCountDurationOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountDurationOverThreshold")
-	// taskQueueInfoCountWaitOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountWaitOverThreshold")
-	// taskQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
-	// taskQueueInfoAliasQueueKey         = bsonutil.MustHaveTag(DistroQueueInfo{}, "AliasQueue")
-
-	// taskQueueInfoGroupNameKey                  = bsonutil.MustHaveTag(TaskGroupInfo{}, "Name")
-	// taskQueueInfoGroupCountKey                 = bsonutil.MustHaveTag(TaskGroupInfo{}, "Count")
-	// taskQueueInfoGroupMaxHostsKey              = bsonutil.MustHaveTag(TaskGroupInfo{}, "MaxHosts")
-	// taskQueueInfoGroupExpectedDuratioKey       = bsonutil.MustHaveTag(TaskGroupInfo{}, "ExpectedDuration")
-	// taskQueueInfoGroupCountOverThresholdKey    = bsonutil.MustHaveTag(TaskGroupInfo{}, "CountOverThreshold")
-	// taskQueueInfoGroupDurationOverThresholdKey = bsonutil.MustHaveTag(TaskGroupInfo{}, "DurationOverThreshold")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -522,6 +510,7 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
+						taskQueueItemCreateTimeKey:    "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemCreateTimeKey),
 					},
 				},
 			},

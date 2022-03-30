@@ -229,13 +229,13 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	spec := TaskSpec{}
 
 	// 3 successive calls (regardless of the TaskSpec passed) will dispatch 3 task group tasks, per TaskGroupOrder.
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("taskgroup_task2", next.Id) // TaskGroupOrder: 1
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("taskgroup_task4", next.Id) // TaskGroupOrder: 2
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("taskgroup_task3", next.Id) // TaskGroupOrder: 3
 
@@ -252,21 +252,21 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	s.Require().NoError(err)
 
 	// "external_task5" can now be dispatched as its dependency "taskgroup_task3" has completed successfully.
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("external_task5", next.Id)
 
 	// The final task group task "taskgroup_task1" is dispatched
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("taskgroup_task1", next.Id)
 
 	// There are no more tasks to dispatch.
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 }
 
@@ -490,14 +490,14 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	spec := TaskSpec{}
 
 	// Only "task2" can be dispatched - the other 3 tasks cannot be dispatched as they all have unmet dependencies.
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("task2", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 
 	// "task2" completes with "status": evergreen.TaskSucceeded.
@@ -513,12 +513,12 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.Require().NoError(err)
 
 	// Only "task4" can be dispatched - the other 2 tasks cannot be dispatched as they have unmet dependencies.
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("task4", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 
 	// "task4" completes with "status": evergreen.TaskSucceeded
@@ -534,10 +534,10 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.Require().NoError(err)
 
 	// Only "task3" can be dispatched - the remaining task cannot be dispatched as it has an unmet dependency.
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("task3", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 
 	// "task4" completes with "status": evergreen.TaskSucceeded
@@ -553,10 +553,10 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.Require().NoError(err)
 
 	// Finally, "task1" can be dispatched - all 3 of its dependencies have been satisfied.
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("task1", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 }
 
@@ -644,6 +644,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 			TaskGroupMaxHosts: maxHosts,
 			Project:           project,
 			DependsOn:         dependsOn,
+			CreateTime:        time.Now(),
 		}
 		s.Require().NoError(t.Insert())
 	}
@@ -957,10 +958,10 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 
 	spec := TaskSpec{}
 
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("1", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 
 	t1.Status = evergreen.TaskSucceeded
@@ -985,15 +986,15 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	err = service.rebuild(s.taskQueue.Queue)
 	s.Require().NoError(err)
 
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("3", next.Id)
 
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("2", next.Id)
 
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 
 	t2.DependsOn = []task.Dependency{
@@ -1057,11 +1058,11 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
 
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("1", next.Id)
 
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("3", next.Id)
 }
@@ -1070,79 +1071,79 @@ func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	spec := TaskSpec{}
 	s.NoError(err)
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	// First, a standalone task
 	s.Equal("0", next.Id)
 	// Then all 20 tasks from "group_1_variant_1_project_1_version_1"
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("1", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("6", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("11", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("16", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("21", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("26", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("31", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("36", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("41", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("46", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("51", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("56", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("61", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("66", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("71", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("76", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("81", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("86", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("91", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("96", next.Id)
 	// The all the tasks from "group_2_variant_1_project_1_version_1"
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("2", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("7", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.NotNil(next)
 	s.Equal("12", next.Id)
 	// .....
@@ -1199,7 +1200,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		Version:      "version_1",
 		Project:      "project_1",
 	}
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().Nil(next)
 }
 
@@ -1232,7 +1233,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(fmt.Sprintf("%d", 5*i+1), next.Id)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
@@ -1247,7 +1248,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
@@ -1261,7 +1262,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
@@ -1275,7 +1276,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_2",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
@@ -1289,7 +1290,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+26), next.Id)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
@@ -1306,7 +1307,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 
 	// Make a request for another task, passing an "empty" TaskSpec{} - the returned task should should be TaskQueueItem.Id 0 and be a standalone task.
 	spec = TaskSpec{}
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
 	s.Equal("", next.Group)
 
@@ -1318,7 +1319,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// task ids: ["51", "56", "61", "66", "71", "76", "81", "86", "91", "96"]
 	// All 20 tasks for taskGroupTasks "group_1_variant_1_project_1_version_1" have been dispatched.
 	for i := 0; i < 10; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -1336,7 +1337,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// All 20 tasks for taskGroupTasks "group_2_variant_1_project_1_version_1" have been dispatched.
 	currentID = 0
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -1354,7 +1355,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// All 20 tasks for taskGroupTasks group_1_variant_2_project_1_version_1" have been dispatched.
 	currentID = 0
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -1372,7 +1373,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// All 20 tasks for taskGroupTasks "group_1_variant_1_project_1_version_2" have been dispatched.
 	currentID = 0
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -1389,11 +1390,90 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// The dispatch order of the 19 standalone tasks is dependent on the Node order of basicCachedDAGDispatcherImpl.sorted (for our particular set of test tasks and dependencies)
 	expectedStandaloneTaskOrder := []string{"5", "10", "15", "20", "25", "30", "50", "45", "40", "35", "55", "60", "80", "75", "70", "65", "85", "90", "95"}
 	for i := 0; i < 19; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(expectedStandaloneTaskOrder[i], next.Id)
 		s.Equal("", next.Group)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestFindNextTaskForOutdatedHostAMI() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+
+	amiUpdateTime := time.Now()
+	t1 := task.Task{
+		Id:                  "1",
+		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:           "",
+		CreateTime:          amiUpdateTime.Add(time.Minute), // created after the AMI was updated so we should skip
+		StartTime:           utility.ZeroTime,
+		BuildVariant:        "init_test_run",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+	}
+	item1 := TaskQueueItem{
+		Id:            "1",
+		Group:         "",
+		BuildVariant:  "init_test_run",
+		Version:       "5d88953e2a60ed61eefe9561",
+		Project:       "ops-manager-kubernetes",
+		Requester:     "patch_request",
+		GroupMaxHosts: 0,
+		IsDispatched:  false,
+	}
+
+	t2 := task.Task{
+		Id:                  "2",
+		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
+		TaskGroup:           "e2e_core_task_group",
+		TaskGroupMaxHosts:   5,
+		TaskGroupOrder:      2,
+		StartTime:           utility.ZeroTime,
+		CreateTime:          amiUpdateTime.Add(-time.Minute), // created before the AMI was updated so we should not skip
+		BuildVariant:        "e2e_openshift_cloud_qa",
+		Version:             "5d88953e2a60ed61eefe9561",
+		Project:             "ops-manager-kubernetes",
+		Activated:           true,
+		ActivatedBy:         "",
+		DistroId:            "archlinux-test",
+		Requester:           "patch_request",
+		Status:              evergreen.TaskUndispatched,
+		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
+		RevisionOrderNumber: 1846,
+	}
+	item2 := TaskQueueItem{
+		Id:           "2",
+		BuildVariant: "e2e_openshift_cloud_qa",
+		Version:      "5d88953e2a60ed61eefe9561",
+		Project:      "ops-manager-kubernetes",
+		Requester:    "patch_request",
+		IsDispatched: false,
+	}
+
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+
+	items = append(items, item1)
+	items = append(items, item2)
+
+	s.taskQueue = TaskQueue{
+		Distro: "archlinux-test",
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	item := service.FindNextTask(TaskSpec{}, amiUpdateTime)
+	s.Equal(item.Id, t2.Id)
+
 }
 
 func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHosts() {
@@ -1417,9 +1497,9 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	s.NoError(e)
 
 	spec := TaskSpec{}
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	// The next task, according to the order of basicCachedDAGDispatcherImpl.sorted is from task group "group_1_variant_1_version_1".
 	// However, runningHosts < maxHosts is false for this task group, so we cannot dispatch this task.
 	s.NotEqual("1", next.Id)
@@ -1429,7 +1509,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	s.Equal("variant_1", next.BuildVariant)
 	s.Equal("version_1", next.Version)
 	s.Equal("project_1", next.Project)
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	// Same situation again - so we dispatch the next task from "group_2_variant_1_project_1_version_1".
 	s.Equal("7", next.Id)
 	s.Equal("group_2", next.Group)
@@ -1477,7 +1557,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	taskGroup := service.taskGroups[taskGroupID]
 
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal(expectedOrder[0], next.Id)
 	s.Equal("1", taskGroup.tasks[0].Id)
@@ -1488,7 +1568,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Equal(false, taskGroup.tasks[2].IsDispatched)
 
 	for i := 1; i < 5; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
 		s.Equal(expectedOrder[i], taskGroup.tasks[i+1].Id)
@@ -1531,13 +1611,13 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 		"96",
 	}
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
 	}
 
 	// All the tasks within taskGroup "group_1_variant_1_project_1_version_1" has now been dispatched.
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("0", next.Id)
 	s.Equal("", next.Group)
@@ -1589,7 +1669,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 	expectedOrder := []string{"1", "3", "0", "4", "2"}
 
 	for i := 0; i < 5; i++ {
-		next := service.FindNextTask(spec)
+		next := service.FindNextTask(spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
 	}
@@ -1787,10 +1867,10 @@ func (s *taskDispatchServiceSuite) TestEmptyService() {
 		},
 	}
 	service := newDistroTaskDispatchService(s.taskQueue, "", time.Minute)
-	next := service.FindNextTask(TaskSpec{})
+	next := service.FindNextTask(TaskSpec{}, utility.ZeroTime)
 	s.Require().NotNil(next)
 	s.Equal("a-standalone-task", next.Id)
-	next = service.FindNextTask(TaskSpec{})
+	next = service.FindNextTask(TaskSpec{}, utility.ZeroTime)
 	s.Nil(next)
 	s.Empty(service.order) // slice is emptied when map is emptied
 }
@@ -1846,7 +1926,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		Project:      "project_1",
 		Version:      "version_1",
 	}
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Nil(next)
 	s.Empty(service.units)
 }
@@ -1915,7 +1995,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(fmt.Sprintf("%d", 5*i+1), next.Id)
 	}
@@ -1928,7 +2008,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
 	}
 
@@ -1940,7 +2020,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
 	}
 
@@ -1952,7 +2032,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_2",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
 	}
 
@@ -1964,7 +2044,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Version:      "version_1",
 			Project:      "project_1",
 		}
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+26), next.Id)
 	}
 
@@ -1984,7 +2064,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		Version:      "version_1",
 		Project:      "project_2",
 	}
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
 	currentID := 0
 	var nextInt int
@@ -1992,7 +2072,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 
 	// Dispatch the remaining 10 tasks from the task group schedulableUnit "group_1_variant_1_project_1_version_1".
 	for i := 0; i < 10; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -2008,7 +2088,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	// The corresponding schedulableUnit represents another task group; dispatch its remaining 15 tasks.
 	currentID = 0
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -2024,7 +2104,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	// The corresponding schedulableUnit represents another task group; dispatch its remaining 15 tasks.
 	currentID = 0
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -2040,7 +2120,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	// The corresponding schedulableUnit represents another task group; dispatch its remaining 15 tasks.
 	currentID = 0
 	for i := 0; i < 15; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -2054,7 +2134,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	// The remaining 19 schedulableUnits represent individual, standalone tasks. Dispatch the rest of these non-task group tasks.
 	currentID = 0
 	for i := 0; i < 19; i++ {
-		next = service.FindNextTask(spec)
+		next = service.FindNextTask(spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
 		s.True(nextInt > currentID)
@@ -2101,14 +2181,14 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].maxHosts = 2
 	//////////////////////////////////////////////////////////////////////////////
 	spec := TaskSpec{}
-	next := service.FindNextTask(spec)
+	next := service.FindNextTask(spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
 	s.Equal("", next.Group)
 
 	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1_variant_1_project_1_version_1".
 	// However, runningHosts < maxHosts is false for its corresponding schedulableUnit, so we cannot dispatch one of its tasks
 	// On to basicCachedDispatcherImpl.order's next value: "group_2_variant_1_project_1_version_1" - we can dispatch a task from its corresponding schedulableUnit
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Equal("2", next.Id)
 	s.Equal("group_2", next.Group)
 	s.Equal("variant_1", next.BuildVariant)
@@ -2117,7 +2197,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	s.Equal(2, next.GroupMaxHosts)
 
 	// Same situation again - so we dispatch the next task for the schedulableUnit "group_2_variant_1_project_1_version_1"
-	next = service.FindNextTask(spec)
+	next = service.FindNextTask(spec, utility.ZeroTime)
 	s.Equal("7", next.Id)
 	s.Equal("group_2", next.Group)
 	s.Equal("variant_1", next.BuildVariant)

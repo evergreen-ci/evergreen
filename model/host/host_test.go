@@ -4944,6 +4944,30 @@ func TestCountVirtualWorkstationsByDistro(t *testing.T) {
 	}
 }
 
+func TestGetAMI(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	h := &Host{
+		Id: "myEC2Host",
+		Distro: distro.Distro{
+			ProviderSettingsList: []*birch.Document{birch.NewDocument(
+				birch.EC.String("ami", "ami"),
+				birch.EC.String("key_name", "key"),
+				birch.EC.String("instance_type", "instance"),
+				birch.EC.String("aws_access_key_id", "key_id"),
+				birch.EC.Double("bid_price", 0.001),
+				birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
+			)},
+			Provider: evergreen.ProviderNameEc2OnDemand,
+		},
+	}
+	h2 := &Host{
+		Id:       "myOtherHost",
+		Provider: evergreen.ProviderNameMock,
+	}
+	assert.Equal(t, h.GetAMI(), "ami")
+	assert.Equal(t, h2.GetAMI(), "")
+}
+
 func TestUnsafeReplace(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

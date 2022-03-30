@@ -407,6 +407,14 @@ func (h *Host) IdleTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
+func (h *Host) GetAMI() string {
+	if len(h.Distro.ProviderSettingsList) == 0 {
+		return ""
+	}
+	ami, _ := h.Distro.ProviderSettingsList[0].Lookup("ami").StringValueOK()
+	return ami
+}
+
 func (h *Host) IsEphemeral() bool {
 	return utility.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }

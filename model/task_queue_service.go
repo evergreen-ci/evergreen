@@ -16,14 +16,14 @@ import (
 )
 
 type TaskQueueItemDispatcher interface {
-	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+	FindNextTask(string, TaskSpec, time.Time) (*TaskQueueItem, error)
 	Refresh(string) error
-	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+	RefreshFindNextTask(string, TaskSpec, time.Time) (*TaskQueueItem, error)
 }
 
 type CachedDispatcher interface {
 	Refresh() error
-	FindNextTask(TaskSpec) *TaskQueueItem
+	FindNextTask(TaskSpec, time.Time) *TaskQueueItem
 	Type() string
 	CreatedAt() time.Time
 }
@@ -50,15 +50,15 @@ func NewTaskDispatchAliasService(ttl time.Duration) TaskQueueItemDispatcher {
 	}
 }
 
-func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
+func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return distroDispatchService.FindNextTask(spec), nil
+	return distroDispatchService.FindNextTask(spec, amiUpdatedTime), nil
 }
 
-func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
+func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
 	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -68,7 +68,7 @@ func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec
 		return nil, errors.WithStack(err)
 	}
 
-	return distroDispatchService.FindNextTask(spec), nil
+	return distroDispatchService.FindNextTask(spec, amiUpdatedTime), nil
 }
 
 func (s *taskDispatchService) Refresh(distroID string) error {
@@ -272,7 +272,7 @@ func (d *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (d *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec, _ time.Time) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

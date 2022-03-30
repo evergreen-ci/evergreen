@@ -92,16 +92,6 @@ func FindByID(eventID string) (*EventLogEntry, error) {
 	return &e, nil
 }
 
-// FindEventsByIDs finds all events that match the given event IDs.
-func FindEventsByIDs(events []string) ([]EventLogEntry, error) {
-	query := bson.M{
-		idKey: bson.M{
-			"$in": events,
-		},
-	}
-	return Find(AllLogCollection, db.Query(query))
-}
-
 func FindLastProcessedEvent() (*EventLogEntry, error) {
 	q := db.Query(bson.M{
 		processedAtKey: bson.M{
@@ -167,6 +157,13 @@ func DistroEventsForId(id string) db.Q {
 	filter[ResourceIdKey] = id
 
 	return db.Query(filter)
+}
+
+func DistroAMIModifiedForId(id string) db.Q {
+	filter := ResourceTypeKeyIs(ResourceTypeDistro)
+	filter[ResourceIdKey] = id
+	filter[TypeKey] = EventDistroAMIModfied
+	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(1)
 }
 
 func MostRecentDistroEvents(id string, n int) db.Q {

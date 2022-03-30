@@ -99,6 +99,25 @@ func TestIsParent(t *testing.T) {
 	assert.False(d3.IsParent(settings))
 }
 
+func TestGetDefaultAMI(t *testing.T) {
+	d := Distro{
+		Id: "d1",
+		ProviderSettingsList: []*birch.Document{
+			birch.NewDocument(
+				birch.EC.String("ami", "ami-1234"),
+				birch.EC.String("region", "us-west-1"),
+			),
+		},
+	}
+	assert.Empty(t, d.GetDefaultAMI(), "")
+
+	d.ProviderSettingsList = append(d.ProviderSettingsList, birch.NewDocument(
+		birch.EC.String("ami", "ami-5678"),
+		birch.EC.String("region", evergreen.DefaultEC2Region),
+	))
+	assert.Equal(t, d.GetDefaultAMI(), "ami-5678")
+}
+
 func TestValidateContainerPoolDistros(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))

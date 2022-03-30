@@ -203,6 +203,9 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
+		if newDistro.GetDefaultAMI() != original.GetDefaultAMI() {
+			event.LogDistroAMIModified(h.distroID, user.Username())
+		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource
@@ -333,7 +336,9 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())
-
+	if d.GetDefaultAMI() != old.GetDefaultAMI() {
+		event.LogDistroAMIModified(h.distroID, user.Username())
+	}
 	return gimlet.NewJSONResponse(apiDistro)
 }
 
@@ -491,6 +496,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 		})
 	}
 	modifiedDistros := []distro.Distro{}
+	modifiedAMIDistroIds := []string{}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding settings"))
@@ -500,6 +506,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 		if !strings.HasPrefix(d.Provider, "ec2") || len(d.ProviderSettingsList) <= 1 {
 			continue
 		}
+		originalAMI := d.GetDefaultAMI()
 		for i, doc := range d.ProviderSettingsList {
 			// validate distro with old settings
 			originalErrors, err := validator.CheckDistro(ctx, &d, settings, false)
@@ -540,8 +547,10 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 				catcher.Add(errors.Errorf("distro '%s' is not valid: %s", d.Id, vErrors.String()))
 				continue
 			}
-
 			modifiedDistros = append(modifiedDistros, d)
+		}
+		if h.region == evergreen.DefaultEC2Region && originalAMI != d.GetDefaultAMI() {
+			modifiedAMIDistroIds = append(modifiedAMIDistroIds, d.Id)
 		}
 	}
 	if catcher.HasErrors() {
@@ -560,15 +569,22 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 
 		modifiedIDs = append(modifiedIDs, d.Id)
 	}
+	if !h.dryRun {
+		for _, distroId := range modifiedAMIDistroIds {
+			event.LogDistroAMIModified(distroId, u.Username())
+		}
+	}
+
 	if catcher.HasErrors() {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(catcher.Resolve(), "not all distros updated"))
 	}
 	grip.Info(message.Fields{
-		"message":    "updated distro provider settings",
-		"route":      "/distros/settings",
-		"update_doc": h.settings,
-		"dry_run":    h.dryRun,
-		"distros":    modifiedIDs,
+		"message":              "updated distro provider settings",
+		"route":                "/distros/settings",
+		"update_doc":           h.settings,
+		"dry_run":              h.dryRun,
+		"distros":              modifiedIDs,
+		"modified_ami_distros": modifiedAMIDistroIds,
 	})
 	return gimlet.NewJSONResponse(modifiedIDs)
 }

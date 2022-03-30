@@ -380,6 +380,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 	h.settings = birch.NewDocument(
 		birch.EC.String("region", "us-west-1"),
 		birch.EC.SliceString("security_group_ids", []string{"c1", "d1"}),
+		birch.EC.String("ami", "ami-456"),
 	)
 	h.region = "us-west-1"
 
@@ -397,13 +398,14 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 		if settings.Region == "us-east-1" {
 			assert.Equal(t, "ami-123", settings.AMI)
 		} else if settings.Region == "us-west-1" {
-			assert.Equal(t, "ami-234", settings.AMI)
+			assert.Equal(t, "ami-456", settings.AMI)
 			assert.Equal(t, []string{"c1", "d1"}, settings.SecurityGroupIDs)
 		}
 	}
 
 	events, err := event.FindAllByResourceID("d1")
 	assert.NoError(t, err)
+	// Doesn't include the AMI update because it's not a default region that was updated.
 	assert.Len(t, events, 1)
 
 }
