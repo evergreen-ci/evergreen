@@ -65,10 +65,14 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if len(tasks) != len(taskIDs) {
+		foundTaskIds := []string{}
+		for _, ft := range tasks {
+			foundTaskIds = append(foundTaskIds, ft.Id)
+		}
+		missingTaskIds := sliceDifference(taskIDs, foundTaskIds)
 		grip.Error(message.Fields{
-			"message":    "could not find all tasks",
-			"taskIds":    taskIDs,
-			"foundTasks": tasks,
+			"message":      "could not find all tasks",
+			"missingTasks": missingTaskIds,
 		})
 		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
@@ -87,10 +91,14 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if len(tasks) != len(taskIDs) {
+		foundTaskIds := []string{}
+		for _, ft := range tasks {
+			foundTaskIds = append(foundTaskIds, ft.Id)
+		}
+		missingTaskIds := sliceDifference(taskIDs, foundTaskIds)
 		grip.Error(message.Fields{
-			"message":    "could not find all tasks",
-			"taskIds":    taskIDs,
-			"foundTasks": tasks,
+			"message":        "could not find all tasks",
+			"missingTaskIds": missingTaskIds,
 		})
 		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
@@ -108,6 +116,19 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		apiTasks = append(apiTasks, &apiTask)
 	}
 	return apiTasks, nil
+}
+
+func sliceDifference(a, b []string) (diff []string) {
+	m := make(map[string]bool)
+	for _, item := range b {
+		m[item] = true
+	}
+	for _, item := range a {
+		if _, ok := m[item]; !ok {
+			diff = append(diff, item)
+		}
+	}
+	return
 }
 
 // getFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"

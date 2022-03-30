@@ -34,7 +34,6 @@ type StatusChanges struct {
 func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 	tasksToActivate := []task.Task{}
 	versionIdsSet := map[string]bool{}
-	buildIdsSet := map[string]bool{}
 	buildToTaskMap := map[string]task.Task{}
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
@@ -42,12 +41,11 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		if t.DisplayOnly {
 			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 			if err != nil {
-				catcher.Add(errors.Wrapf(err, "error getting execution tasks"))
+				catcher.Wrapf(err, "error getting execution tasks")
 			}
 			originalTasks = append(originalTasks, execTasks...)
 		}
 		versionIdsSet[t.Version] = true
-		buildIdsSet[t.BuildId] = true
 		buildToTaskMap[t.BuildId] = t
 		if active {
 			// if the task is being activated, and it doesn't override its dependencies
@@ -55,14 +53,14 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			if !t.OverrideDependencies {
 				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
 				if err != nil {
-					catcher.Add(errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id))
+					catcher.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
 				}
 				if t.IsPartOfSingleHostTaskGroup() {
 					for _, dep := range deps {
 						// reset any already finished tasks in the same task group
 						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
 							if err = resetTask(dep.Id, caller, false); err != nil {
-								catcher.Add(errors.Wrapf(err, "error resetting dependency '%s'", dep.Id))
+								catcher.Wrapf(err, "error resetting dependency '%s'", dep.Id)
 							}
 						} else {
 							tasksToActivate = append(tasksToActivate, dep)
@@ -76,17 +74,10 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// Investigating strange dispatch state as part of EVG-13144
 			if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 				if err := resetTask(t.Id, caller, false); err != nil {
-					catcher.Add(errors.Wrap(err, "error resetting task"))
+					catcher.Wrap(err, "error resetting task")
 				}
 			} else {
 				tasksToActivate = append(tasksToActivate, originalTasks...)
-			}
-
-			if t.DistroId == "" && !t.DisplayOnly {
-				grip.Critical(message.Fields{
-					"message": "task is missing distro id",
-					"task_id": t.Id,
-				})
 			}
 
 			// If the task was not activated by step back, and either the caller is not evergreen
@@ -97,7 +88,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			if t.IsPartOfSingleHostTaskGroup() {
 				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 				if err != nil {
-					catcher.Add(errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup))
+					catcher.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
 				}
 				for _, taskInGroup := range tasksInGroup {
 					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
@@ -116,7 +107,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 		if t.IsPartOfDisplay() {
 			if err := UpdateDisplayTaskForTask(&t); err != nil {
-				catcher.Add(errors.Wrap(err, "problem updating display task"))
+				catcher.Wrap(err, "problem updating display task")
 			}
 		}
 	}
@@ -141,9 +132,9 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 	}
 
-	for b := range buildIdsSet {
+	for b, item := range buildToTaskMap {
 		t := buildToTaskMap[b]
-		if err := UpdateBuildAndVersionStatusForTask(&t); err != nil {
+		if err := UpdateBuildAndVersionStatusForTask(&item); err != nil {
 			return errors.Wrapf(err, "problem updating build and version status for task '%s'", t.Id)
 		}
 	}
