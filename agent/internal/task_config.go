@@ -144,9 +144,9 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 		}
 	} else {
 		tg = tc.Project.FindTaskGroup(taskGroup)
-	}
-	if tg == nil {
-		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
+		if tg == nil {
+			return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
+		}
 	}
 	if tg.Timeout == nil {
 		tg.Timeout = tc.Project.Timeout
