@@ -530,12 +530,12 @@ mciModule.controller(
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
             container_sizes: data.ProjectRef.container_sizes || {},
-            container_size_names: [],
             use_repo_settings: $scope.projectRef.use_repo_settings,
             build_baron_settings: data.ProjectRef.build_baron_settings || {},
             task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
             perf_enabled: data.ProjectRef.perf_enabled || false,
           };
+          $scope.settingsFormData.container_size_names = Object.keys($scope.settingsFormData.container_sizes)
           // Divide aliases into categories
           $scope.settingsFormData.github_pr_aliases = $scope.aliases.filter(
             function (d) {
@@ -634,6 +634,10 @@ mciModule.controller(
     };
 
     $scope.saveProject = function () {
+        _.each($scope.settingsFormData.container_sizes, function (size) {
+            size.cpu = parseInt(size.cpu)
+            size.memory_mb = parseInt(size.memory_mb)
+        });
       $scope.settingsFormData.batch_time = parseInt(
         $scope.settingsFormData.batch_time
       );

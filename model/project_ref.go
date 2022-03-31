@@ -147,6 +147,15 @@ type AlertConfig struct {
 	Settings bson.M `bson:"settings" json:"settings"`
 }
 
+// ContainerResources specifies the computing resources given to the container.
+// MemoryMB is the memory (in MB) that the container will be allocated, and
+// CPU is the CPU units that will be allocated. 1024 CPU units is
+// equivalent to 1vCPU.
+type ContainerResources struct {
+	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb" json:"memory_mb"`
+	CPU      int `yaml:"cpu,omitempty" bson:"cpu" json:"cpu"`
+}
+
 type TriggerDefinition struct {
 	// completion of specified task(s) in the project listed here will cause a build in the current project
 	Project string `bson:"project" json:"project"`

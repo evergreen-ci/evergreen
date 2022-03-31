@@ -313,15 +313,6 @@ type ContainerSystem struct {
 	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
-// ContainerResources specifies the computing resources given to the container.
-// MemoryMB is the memory (in MB) that the container will be allocated, and
-// CPU is the CPU units that will be allocated. 1024 CPU units is
-// equivalent to 1vCPU.
-type ContainerResources struct {
-	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb"`
-	CPU      int `yaml:"cpu,omitempty" bson:"cpu"`
-}
-
 type Module struct {
 	Name   string `yaml:"name,omitempty" bson:"name"`
 	Branch string `yaml:"branch,omitempty" bson:"branch"`
