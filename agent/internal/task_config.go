@@ -132,19 +132,24 @@ func (tc *TaskConfig) GetTaskGroup(taskGroup string) (*model.TaskGroup, error) {
 		return nil, errors.New("project is nil")
 	}
 
+	var tg *model.TaskGroup
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
-		return &model.TaskGroup{
+		tg = &model.TaskGroup{
 			SetupTask:               tc.Project.Pre,
 			TeardownTask:            tc.Project.Post,
 			Timeout:                 tc.Project.Timeout,
 			SetupGroupFailTask:      tc.Project.Pre == nil || tc.Project.PreErrorFailsTask,
 			TeardownTaskCanFailTask: tc.Project.Post == nil || tc.Project.PostErrorFailsTask,
-		}, nil
+		}
+	} else {
+		tg = tc.Project.FindTaskGroup(taskGroup)
 	}
-	tg := tc.Project.FindTaskGroup(taskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
+	}
+	if tg.Timeout == nil {
+		tg.Timeout = tc.Project.Timeout
 	}
 	return tg, nil
 }
