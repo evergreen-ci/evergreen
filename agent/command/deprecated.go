@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 )
@@ -55,17 +54,5 @@ func (cc *shellTrack) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
 	logger.Execution().Warning("shell.track is deprecated. Process tracking is now enabled by default.")
-	return nil
-}
-
-type manifestLoad struct{ base }
-
-func manifestLoadFactory() Command                                      { return &manifestLoad{} }
-func (c *manifestLoad) Name() string                                    { return evergreen.ManifestLoadCommandName }
-func (c *manifestLoad) ParseParams(params map[string]interface{}) error { return nil }
-func (c *manifestLoad) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
-	logger.Execution().Warningf("%s is deprecated. Manifest load is now called automatically in git.get_project.", evergreen.ManifestLoadCommandName)
 	return nil
 }
