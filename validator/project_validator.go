@@ -1585,7 +1585,7 @@ func validateVersionControl(_ *model.Project, ref *model.ProjectRef, isConfigDef
 	} else if !ref.IsVersionControlEnabled() && isConfigDefined {
 		errs = append(errs, ValidationError{
 			Level: Warning,
-			Message: fmt.Sprintf("version control is disabled for project '%s', the currently defined project config fields will not be picked up.",
+			Message: fmt.Sprintf("version control is disabled for project '%s'; the currently defined project config fields will not be picked up",
 				ref.Identifier),
 		})
 	}
