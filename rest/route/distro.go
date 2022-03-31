@@ -250,8 +250,8 @@ func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) erro
 
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	_, err := distro.FindOneId(h.distroID)
-	if err != nil {
+	d, err := distro.FindOneId(h.distroID)
+	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
