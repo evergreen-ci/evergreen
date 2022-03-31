@@ -161,9 +161,11 @@ func TaskEventsInOrder(id string) db.Q {
 }
 
 // Distro Events
-func DistroEventsForId(id string) db.Q {
+// DistroPrimaryEventsForId returns the non-AMI specific events for the distro.
+func DistroPrimaryEventsForId(id string) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeDistro)
 	filter[ResourceIdKey] = id
+	filter[TypeKey] = bson.M{"$ne": EventDistroAMIModfied}
 
 	return db.Query(filter)
 }
@@ -177,11 +179,11 @@ func DistroAMIModifiedForId(id string) db.Q {
 }
 
 func MostRecentDistroEvents(id string, n int) db.Q {
-	return DistroEventsForId(id).Sort([]string{"-" + TimestampKey}).Limit(n)
+	return DistroPrimaryEventsForId(id).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
 func DistroEventsInOrder(id string) db.Q {
-	return DistroEventsForId(id).Sort([]string{TimestampKey})
+	return DistroPrimaryEventsForId(id).Sort([]string{TimestampKey})
 }
 
 // Scheduler Events
