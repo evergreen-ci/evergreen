@@ -1243,7 +1243,7 @@ func TestFindProjectsSuite(t *testing.T) {
 		s.NoError(vars.Insert())
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
-		after.GitHubHooksEnabled = false
+		after.GithubHooksEnabled = false
 
 		h :=
 			event.EventLogEntry{
@@ -1375,7 +1375,7 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	projectSettingsEvent, err := GetProjectSettings(projRef)
 	s.Nil(err)
 	s.NotNil(projectSettingsEvent)
-	s.False(projectSettingsEvent.GitHubHooksEnabled)
+	s.False(projectSettingsEvent.GithubHooksEnabled)
 }
 
 func TestModuleList(t *testing.T) {
