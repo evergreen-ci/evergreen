@@ -267,8 +267,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
-	// Don't create patch if the only changes are in ignore files.
-	if project.IgnoresAllFiles(patchDoc.FilesChanged()) {
+	// Don't create patches for github PRs if the only changes are in ignore files.
+	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
 		return nil
 	}
 
