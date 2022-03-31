@@ -253,7 +253,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 		}
 	}
-	if errs := validator.CheckProjectSettings(project, pref, nil); len(errs) != 0 {
+	if errs := validator.CheckProjectSettings(project, pref, false); len(errs) != 0 {
 		if errs = errs.AtLevel(validator.Error); len(errs) != 0 {
 			validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 		}

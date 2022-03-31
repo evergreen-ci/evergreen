@@ -2997,7 +2997,8 @@ func TestValidateVersionControl(t *testing.T) {
 			},
 		},
 	}
-	verrs := validateVersionControl(&model.Project{}, ref, &projectConfig != nil)
+	isConfigDefined := &projectConfig != nil
+	verrs := validateVersionControl(&model.Project{}, ref, isConfigDefined)
 	assert.Equal(t, "version control is disabled for project 'proj', the currently defined project config fields will not be picked up.", verrs[0].Message)
 
 	ref.VersionControlEnabled = utility.TruePtr()

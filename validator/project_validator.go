@@ -277,9 +277,8 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 
 // CheckProjectSettings checks the project configuration against the project
 // settings.
-func CheckProjectSettings(p *model.Project, ref *model.ProjectRef, config *model.ProjectConfig) ValidationErrors {
+func CheckProjectSettings(p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
-	isConfigDefined := config != nil
 	for _, validateSettings := range projectSettingsValidators {
 		errs = append(errs, validateSettings(p, ref, isConfigDefined)...)
 	}
@@ -296,7 +295,7 @@ func CheckProjectConfigurationIsValid(project *model.Project, pref *model.Projec
 		}
 	}
 
-	if settingsErrs := CheckProjectSettings(project, pref, nil); len(settingsErrs) != 0 {
+	if settingsErrs := CheckProjectSettings(project, pref, false); len(settingsErrs) != 0 {
 		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
 		}
