@@ -58,8 +58,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
-	usr := mustHaveUser(ctx)
+func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
@@ -69,12 +68,21 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		for _, ft := range tasks {
 			foundTaskIds = append(foundTaskIds, ft.Id)
 		}
-		missingTaskIds := sliceDifference(taskIDs, foundTaskIds)
+		missingTaskIds, _ := utility.StringSliceSymmetricDifference(taskIDs, foundTaskIds)
 		grip.Error(message.Fields{
-			"message":      "could not find all tasks",
-			"missingTasks": missingTaskIds,
+			"message":       "could not find all tasks",
+			"function":      "findAllTasksByIds",
+			"missing_tasks": missingTaskIds,
 		})
-		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
+	}
+	return tasks, nil
+}
+
+func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
+	usr := mustHaveUser(ctx)
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
+	if err != nil {
+		return nil, err
 	}
 	for _, t := range tasks {
 		if t.Requester == evergreen.MergeTestRequester && isActive {
@@ -86,21 +94,9 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	}
 
 	// Get the modified tasks back out of the db
-	tasks, err = task.FindAll(db.Query(task.ByIds(taskIDs)))
+	tasks, err = findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if len(tasks) != len(taskIDs) {
-		foundTaskIds := []string{}
-		for _, ft := range tasks {
-			foundTaskIds = append(foundTaskIds, ft.Id)
-		}
-		missingTaskIds := sliceDifference(taskIDs, foundTaskIds)
-		grip.Error(message.Fields{
-			"message":        "could not find all tasks",
-			"missingTaskIds": missingTaskIds,
-		})
-		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
+		return nil, err
 	}
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
@@ -116,19 +112,6 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		apiTasks = append(apiTasks, &apiTask)
 	}
 	return apiTasks, nil
-}
-
-func sliceDifference(a, b []string) (diff []string) {
-	m := make(map[string]bool)
-	for _, item := range b {
-		m[item] = true
-	}
-	for _, item := range a {
-		if _, ok := m[item]; !ok {
-			diff = append(diff, item)
-		}
-	}
-	return
 }
 
 // getFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"

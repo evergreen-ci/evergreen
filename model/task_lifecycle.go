@@ -103,16 +103,13 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			}
 			tasksToActivate = append(tasksToActivate, originalTasks...)
 		} else {
-			return nil
+			continue
 		}
 		if t.IsPartOfDisplay() {
 			if err := UpdateDisplayTaskForTask(&t); err != nil {
 				catcher.Wrap(err, "problem updating display task")
 			}
 		}
-	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
 	}
 
 	if active {
@@ -139,7 +136,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		}
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 func SetActiveStateById(id, user string, active bool) error {
