@@ -2958,22 +2958,17 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	subs, err := data.GetSubscriptions(username, event.OwnerTypePerson)
+	subs, err := event.FindSubscriptionsByOwner(username, event.OwnerTypePerson)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error retreiving subscriptions %s", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving subscriptions %s", err.Error()))
 	}
-	subIds := []string{}
-	for _, sub := range subs {
-		if sub.ID != nil {
-			subIds = append(subIds, *sub.ID)
-		}
-	}
-	err = data.DeleteSubscriptions(username, subIds)
+	subIDs := removeImplicitSubscriptions(usr, subs)
+	err = data.DeleteSubscriptions(username, subIDs)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))
 	}
 
-	return len(subIds), nil
+	return len(subIDs), nil
 }
 
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
