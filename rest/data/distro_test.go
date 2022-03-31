@@ -91,8 +91,8 @@ func TestDeleteDistroById(t *testing.T) {
 	require.NoError(t, DeleteDistroById(d.Id))
 
 	dbDistro, err := distro.FindOneId(d.Id)
-	assert.Error(t, err)
-	assert.Zero(t, dbDistro)
+	assert.NoError(t, err)
+	assert.Nil(t, dbDistro)
 
 	dbQueue, err := model.LoadTaskQueue(queue.Distro)
 	require.NoError(t, err)

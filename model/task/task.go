@@ -2521,12 +2521,15 @@ func FindHostSchedulableForAlias(id string) ([]Task, error) {
 // removeDeps is true, tasks with unmet dependencies are excluded.
 func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	match := schedulableHostTasksQuery()
-	var d *distro.Distro
+	var d distro.Distro
 	var err error
 	if distroID != "" {
-		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		foundDistro, err := distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+		}
+		if foundDistro != nil {
+			d = *foundDistro
 		}
 	}
 

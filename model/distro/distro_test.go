@@ -1,7 +1,9 @@
 package distro
 
 import (
+	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"regexp"
 	"strings"
 	"testing"
@@ -100,6 +102,10 @@ func TestIsParent(t *testing.T) {
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 
@@ -137,7 +143,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 
 	err := ValidateContainerPoolDistros(testSettings)
 	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
-	assert.Contains(err.Error(), "error finding distro for container pool 'test-pool-3'")
+	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }
 
 func TestGetDistroIds(t *testing.T) {
