@@ -25,7 +25,7 @@ type projectValidator func(*model.Project) ValidationErrors
 
 type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
 
-type projectSettingsValidator func(*model.Project, *model.ProjectRef, *model.ProjectConfig) ValidationErrors
+type projectSettingsValidator func(*model.Project, *model.ProjectRef, bool) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
 type longValidator func(*model.Project, bool) ValidationErrors
@@ -279,8 +279,9 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 // settings.
 func CheckProjectSettings(p *model.Project, ref *model.ProjectRef, config *model.ProjectConfig) ValidationErrors {
 	var errs ValidationErrors
+	isConfigDefined := config != nil
 	for _, validateSettings := range projectSettingsValidators {
-		errs = append(errs, validateSettings(p, ref, config)...)
+		errs = append(errs, validateSettings(p, ref, isConfigDefined)...)
 	}
 	return errs
 }
@@ -1551,7 +1552,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
-func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef, config *model.ProjectConfig) ValidationErrors {
+func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
@@ -1574,15 +1575,15 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef, config *m
 }
 
 // validateVersionControl checks if a project with defined project config fields has version control enabled on the project ref.
-func validateVersionControl(p *model.Project, ref *model.ProjectRef, config *model.ProjectConfig) ValidationErrors {
+func validateVersionControl(_ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
-	if ref.IsVersionControlEnabled() && config == nil {
+	if ref.IsVersionControlEnabled() && !isConfigDefined {
 		errs = append(errs, ValidationError{
 			Level: Warning,
 			Message: fmt.Sprintf("version control is enabled for project '%s' but no project config fields have been set.",
 				ref.Identifier),
 		})
-	} else if !ref.IsVersionControlEnabled() && config != nil {
+	} else if !ref.IsVersionControlEnabled() && isConfigDefined {
 		errs = append(errs, ValidationError{
 			Level: Warning,
 			Message: fmt.Sprintf("version control is disabled for project '%s', the currently defined project config fields will not be picked up.",
