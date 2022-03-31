@@ -578,7 +578,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 	}
 
 	d, err := distro.FindOneId(currentHost.Distro.Id)
-	if err != nil {
+	if err != nil || d == nil {
 		// Should we bailout if there is a database error leaving us unsure if the distro document actually exists?
 		m := "database error while retrieving distro document;"
 		if adb.ResultsNotFound(err) {

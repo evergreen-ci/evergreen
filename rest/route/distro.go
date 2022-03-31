@@ -51,7 +51,7 @@ func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) er
 // Run returns the given distro's setup script.
 func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil {
+	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
@@ -59,7 +59,7 @@ func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(&d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -99,7 +99,7 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 // Run updates the setup script for the given distroId.
 func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil {
+	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
@@ -112,7 +112,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(&d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -300,7 +300,7 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	old, err := distro.FindOneId(h.distroID)
-	if err != nil {
+	if err != nil || old == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
@@ -308,7 +308,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(&old); err != nil {
+	if err = apiDistro.BuildFromService(old); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 	oldSettingsList := apiDistro.ProviderSettingsList
@@ -363,7 +363,7 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil {
+	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
@@ -371,7 +371,7 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(&d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -865,7 +865,7 @@ func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request
 
 func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(rh.distroID)
-	if err != nil {
+	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", rh.distroID),

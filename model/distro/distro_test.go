@@ -1,9 +1,7 @@
 package distro
 
 import (
-	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"regexp"
 	"strings"
 	"testing"
@@ -102,10 +100,6 @@ func TestIsParent(t *testing.T) {
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert := assert.New(t)
 	assert.NoError(db.Clear(Collection))
 
