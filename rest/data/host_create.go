@@ -248,7 +248,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	var d *distro.Distro
 	var err error
 
-	d, err = distro.FindByID(createHost.Distro)
+	d, err = distro.FindOneId(createHost.Distro)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding distro '%s'", createHost.Distro)
 	}
@@ -327,7 +327,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		createHost.Region = evergreen.DefaultEC2Region
 	}
 	// get distro if it is set
-	d := distro.Distro{}
+	d := &distro.Distro{}
 	ec2Settings := cloud.EC2ProviderSettings{}
 	var err error
 	if distroID := createHost.Distro; distroID != "" {
@@ -344,7 +344,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
 		}
-		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+		if err = ec2Settings.FromDistroSettings(*d, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
 		}
 	}
@@ -411,7 +411,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getAgentOptions(d, taskID, userID, createHost)
+	options, err := getAgentOptions(*d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}

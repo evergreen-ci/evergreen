@@ -322,7 +322,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			// ensure that the ability to spawn is updated from the existing distro
 			taskHost.Distro.SpawnAllowed = false
 			var d *distro.Distro
-			d, err = distro.FindByID(taskHost.Distro.Id)
+			d, err = distro.FindOneId(taskHost.Distro.Id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

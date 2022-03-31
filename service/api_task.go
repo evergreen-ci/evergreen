@@ -589,7 +589,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			"distro_id": currentHost.Distro.Id,
 			"host_id":   currentHost.Id,
 		})
-		d = currentHost.Distro
+		d = &currentHost.Distro
 	}
 	grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "assignNextAvailableTask performance",

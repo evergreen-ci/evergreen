@@ -154,7 +154,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// check that the resulting distro is valid
-	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, settings, false)
+	vErrs, err := validator.CheckDistro(r.Context(), newDistro, settings, false)
 	if err != nil {
 		message := fmt.Sprintf("error retrieving distroIds: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -249,7 +249,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	d, err := distro.FindByID(id)
+	d, err := distro.FindOneId(id)
 	if err != nil {
 		message := fmt.Sprintf("error finding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
@@ -312,7 +312,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		Distro      distro.Distro      `json:"distro"`
 		Regions     []string           `json:"regions"`
 		Permissions gimlet.Permissions `json:"permissions"`
-	}{d, regions, permissions}
+	}{*d, regions, permissions}
 
 	gimlet.WriteJSON(w, data)
 }

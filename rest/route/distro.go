@@ -107,7 +107,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	d.Setup = h.Setup
-	if err = data.UpdateDistro(&d, &d); err != nil {
+	if err = data.UpdateDistro(d, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
@@ -156,7 +156,7 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	original, err := distro.FindByID(h.distroID)
+	original, err := distro.FindOneId(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -329,7 +329,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return respErr
 	}
 
-	if err = data.UpdateDistro(&old, d); err != nil {
+	if err = data.UpdateDistro(old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())

@@ -56,7 +56,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	parentDistro, err := distro.FindByID(j.DistroId)
+	parentDistro, err := distro.FindOneId(j.DistroId)
 	if err != nil {
 		j.AddError(err)
 		return

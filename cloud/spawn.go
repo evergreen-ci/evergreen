@@ -154,13 +154,13 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 
-	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(d, settings, so.Region, so.HomeVolumeID)
+	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(*d, settings, so.Region, so.HomeVolumeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get new provider settings")
 	}
 
 	if so.InstanceType != "" {
-		if err := CheckInstanceTypeValid(ctx, d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
+		if err := CheckInstanceTypeValid(ctx, *d, so.InstanceType, settings.Providers.AWS.AllowedInstanceTypes); err != nil {
 			return nil, errors.Wrap(err, "error validating instance type")
 		}
 	}
@@ -182,7 +182,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		expiration = evergreen.SpawnHostNoExpirationDuration
 	}
 	hostOptions := host.CreateOptions{
-		Distro:               d,
+		Distro:               *d,
 		ProvisionOptions:     so.ProvisionOptions,
 		UserName:             so.UserName,
 		ExpirationTime:       time.Now().Add(expiration),

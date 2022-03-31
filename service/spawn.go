@@ -43,7 +43,7 @@ var (
 )
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
-	var spawnDistro distro.Distro
+	var spawnDistro *distro.Distro
 	var spawnTask *task.Task
 	var err error
 
@@ -137,7 +137,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		SetupScriptPath              string
 		NewUILink                    string
 		ViewData
-	}{spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, settings.Providers.AWS.MaxVolumeSizePerUser,
+	}{*spawnDistro, spawnTask, maxHosts, settings.Spawnhost.UnexpirableHostsPerUser, settings.Spawnhost.UnexpirableVolumesPerUser, settings.Providers.AWS.MaxVolumeSizePerUser,
 		setupScriptPath, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
