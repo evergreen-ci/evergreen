@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -91,7 +93,18 @@ func ByStringId(id string) db.Q {
 	return db.Query(bson.M{IdKey: NewId(id)})
 }
 
-func ByIds(ids []mgobson.ObjectId) db.Q {
+func ByStringIds(ids []string) db.Q {
+	objectIds := []mgobson.ObjectId{}
+	for _, id := range ids {
+		if IsValidId(id) {
+			objectIds = append(objectIds, NewId(id))
+		} else {
+			grip.Debug(message.Fields{
+				"message": "patch id is not valid",
+				"id":      id,
+			})
+		}
+	}
 	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
 }
 
