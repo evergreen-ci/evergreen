@@ -373,7 +373,7 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 				for _, childPatch := range childPatches {
 					// only modify the child patch if it is finalized
 					if childPatch.Version != "" {
-						err = modifyVersionHandler(ctx, childPatch.Id, modification)
+						err = modifyVersionHandler(ctx, childPatch.Id.Hex(), modification)
 						if err != nil {
 							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
 						}

@@ -267,7 +267,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 		apiPatch := APIPatch{}
 		err = apiPatch.BuildFromService(childPatch)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error building child patch from service '%s'", childPatch)
+			return nil, nil, errors.Wrap(err, "error building child patch from service")
 		}
 		downstreamTasks = append(downstreamTasks, dt)
 		apiChildPatches = append(apiChildPatches, apiPatch)
