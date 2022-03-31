@@ -245,7 +245,6 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	downstreamTasks := []DownstreamTasks{}
 	apiChildPatches := []APIPatch{}
 	for _, childPatch := range childPatches {
-
 		tasks := utility.ToStringPtrSlice(childPatch.Tasks)
 		variantTasks := []VariantTask{}
 		for _, vt := range childPatch.VariantsTasks {

@@ -105,7 +105,7 @@ func ByStringIds(ids []string) db.Q {
 			})
 		}
 	}
-	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
+	return db.Query(bson.M{IdKey: bson.M{"$in": objectIds}})
 }
 
 var commitQueueFilter = bson.M{"$ne": evergreen.CommitQueueAlias}
