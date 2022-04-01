@@ -982,9 +982,9 @@ Evergreen Projects
           <div class="col-lg-2"> <label class="control-label"> CPU </label> </div>
           <div class="col-lg-2"></div>
         </div>
-        <div id="container-sizes-list" class="form-group" ng-repeat="obj in settingsFormData.container_sizes track by $index">
+        <div id="container-sizes-list" class="form-group" ng-repeat="(name, obj) in settingsFormData.container_sizes track by $index">
           <div class="col-lg-2">
-            <input class="form-control" ng-model="settingsFormData.container_size_names[$index]" type="text" placeholder="name">
+            <input class="form-control" ng-model="name" type="text" placeholder="name">
           </div>
           <div class="col-lg-2">
             <input class="form-control" ng-model="obj.memory_mb" type="number" placeholder="memory mb">
@@ -993,7 +993,7 @@ Evergreen Projects
             <input class="form-control" ng-model="obj.cpu" type="number" placeholder="cpu">
           </div>
           <div class="col-lg-2">
-            <button class="btn btn-default btn-danger" type="button" ng-click="removeContainerSize(settingsFormData.container_size_names[$index])">
+            <button class="btn btn-default btn-danger" type="button" ng-click="removeContainerSize(name)">
               <i class="fa fa-trash"></i>
             </button>
           </div>

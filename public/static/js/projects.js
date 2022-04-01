@@ -532,7 +532,6 @@ mciModule.controller(
             task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
             perf_enabled: data.ProjectRef.perf_enabled || false,
           };
-          $scope.settingsFormData.container_size_names = Object.keys($scope.settingsFormData.container_sizes)
           // Divide aliases into categories
           $scope.settingsFormData.github_pr_aliases = $scope.aliases.filter(
             function (d) {
@@ -823,7 +822,6 @@ mciModule.controller(
           "memory_mb": item.memory_mb,
           "cpu": item.cpu,
       }
-      $scope.settingsFormData.container_size_names = Object.keys($scope.settingsFormData.container_sizes)
       delete $scope.container_size;
       $scope.invalidContainerSizeMessage = "";
     };
@@ -900,7 +898,6 @@ mciModule.controller(
       $scope.removeContainerSize = function (name) {
           if ($scope.settingsFormData.container_sizes[name]) {
               delete $scope.settingsFormData.container_sizes[name]
-              $scope.settingsFormData.container_size_names = Object.keys($scope.settingsFormData.container_sizes)
           }
           $scope.isDirty = true;
       };
@@ -1135,7 +1132,8 @@ mciModule.controller(
     };
 
     $scope.validContainerSize = function (container_size) {
-      return container_size && container_size.cpu && container_size.memory_mb;
+      return container_size && container_size.cpu && container_size.memory_mb
+          && container_size.cpu > 0 && container_size.memory_mb > 0;
     };
 
     $scope.validWorkstationCommand = function (obj) {
