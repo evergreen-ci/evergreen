@@ -51,6 +51,7 @@ func NewCloudCleanupJob(env evergreen.Environment, ts, provider, region string) 
 	j := makeCloudCleanupNameJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s.%s", cloudCleanupName, provider, region, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s.%s", cloudCleanupName, provider, region)})
+	j.SetEnqueueAllScopes(true)
 	j.Provider = provider
 	j.Region = region
 
