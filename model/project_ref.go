@@ -152,8 +152,8 @@ type AlertConfig struct {
 // CPU is the CPU units that will be allocated. 1024 CPU units is
 // equivalent to 1vCPU.
 type ContainerResources struct {
-	MemoryMB int `yaml:"memory_mb,omitempty" bson:"memory_mb" json:"memory_mb"`
-	CPU      int `yaml:"cpu,omitempty" bson:"cpu" json:"cpu"`
+	MemoryMB int `bson:"memory_mb,omitempty" json:"memory_mb" yaml:"memory_mb"`
+	CPU      int `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
 }
 
 type TriggerDefinition struct {

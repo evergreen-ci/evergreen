@@ -1916,4 +1916,15 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, 1, projectRef.ContainerSizes["small"].CPU)
 	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
 
+	projectRef.ContainerSizes = map[string]ContainerResources{
+		"xlarge": ContainerResources{
+			MemoryMB: 800,
+			CPU:      4,
+		},
+	}
+	err = projectRef.MergeWithProjectConfig("version1")
+	assert.NoError(t, err)
+	require.NotNil(t, projectRef)
+	assert.Equal(t, 4, projectRef.ContainerSizes["xlarge"].CPU)
+
 }

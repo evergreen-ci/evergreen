@@ -381,9 +381,6 @@ mciModule.controller(
 
       // if copyProject is set, copy the current project
       if ($scope.newProject.copyProject) {
-        $scope.settingsFormData.batch_time = parseInt(
-          $scope.settingsFormData.batch_time
-        );
         $http
           .put("/project/" + $scope.newProject.identifier, $scope.newProject)
           .then(
@@ -494,7 +491,7 @@ mciModule.controller(
             cedar_test_results_enabled: $scope.projectRef.cedar_test_results_enabled,
             remote_path: $scope.projectRef.remote_path,
             spawn_host_script_path: $scope.projectRef.spawn_host_script_path,
-            batch_time: parseInt($scope.projectRef.batch_time),
+            batch_time: $scope.projectRef.batch_time,
             deactivate_previous: $scope.projectRef.deactivate_previous,
             relative_url: $scope.projectRef.relative_url,
             branch_name: $scope.projectRef.branch_name || "main",
@@ -634,13 +631,6 @@ mciModule.controller(
     };
 
     $scope.saveProject = function () {
-        _.each($scope.settingsFormData.container_sizes, function (size) {
-            size.cpu = parseInt(size.cpu)
-            size.memory_mb = parseInt(size.memory_mb)
-        });
-      $scope.settingsFormData.batch_time = parseInt(
-        $scope.settingsFormData.batch_time
-      );
       $scope.settingsFormData.triggers = $scope.project_triggers;
       $scope.settingsFormData.patch_trigger_aliases =
         $scope.patch_trigger_aliases;
@@ -825,7 +815,7 @@ mciModule.controller(
     $scope.addContainerSize = function () {
       if (!$scope.validContainerSize($scope.container_size)) {
         $scope.invalidContainerSizeMessage =
-          "A valid container size must have a name, memory and cpu properties.";
+          "A valid container size must have a name, memory and CPU properties.";
           return;
       }
       var item = Object.assign({}, $scope.container_size);
@@ -1145,7 +1135,6 @@ mciModule.controller(
     };
 
     $scope.validContainerSize = function (container_size) {
-      // Same as GitHub alias, but with alias required
       return container_size && container_size.cpu && container_size.memory_mb;
     };
 

@@ -178,8 +178,8 @@ func (t *APITaskSpecifier) ToService() (interface{}, error) {
 type APIPeriodicBuildDefinition struct {
 	ID            *string    `json:"id"`
 	ConfigFile    *string    `json:"config_file"`
-	IntervalHours *int       `son:"interval_hours"`
-	Alias         *string    `son:"alias,omitempty"`
+	IntervalHours *int       `json:"interval_hours"`
+	Alias         *string    `json:"alias,omitempty"`
 	Message       *string    `json:"message,omitempty"`
 	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
 }
@@ -371,6 +371,33 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 type APIWorkstationConfig struct {
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
 	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
+}
+
+type APIContainerResources struct {
+	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
+	CPU      *int `bson:"cpu" json:"cpu"`
+}
+
+func (cr *APIContainerResources) BuildFromService(h interface{}) error {
+	var def model.ContainerResources
+	switch h.(type) {
+	case model.ContainerResources:
+		def = h.(model.ContainerResources)
+	case *model.ContainerResources:
+		def = *h.(*model.ContainerResources)
+	default:
+		return errors.Errorf("Invalid container resources of type '%T'", h)
+	}
+	cr.MemoryMB = utility.ToIntPtr(def.MemoryMB)
+	cr.CPU = utility.ToIntPtr(def.CPU)
+	return nil
+}
+
+func (cr *APIContainerResources) ToService() (interface{}, error) {
+	containerResources := model.ContainerResources{}
+	containerResources.MemoryMB = utility.FromIntPtr(cr.MemoryMB)
+	containerResources.CPU = utility.FromIntPtr(cr.CPU)
+	return containerResources, nil
 }
 
 type APIWorkstationSetupCommand struct {
