@@ -2962,7 +2962,7 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving subscriptions %s", err.Error()))
 	}
-	subIDs := removeImplicitSubscriptions(usr, subs)
+	subIDs := removeGeneralSubscriptions(usr, subs)
 	err = data.DeleteSubscriptions(username, subIDs)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions %s", err.Error()))

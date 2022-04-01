@@ -648,7 +648,7 @@ func setDefaultNotification(username string) error {
 	if u.Settings.Notifications.CommitQueue == "" {
 		u.Settings.Notifications.CommitQueue = user.PreferenceEmail
 		commitQueueSubscriber := event.NewEmailSubscriber(u.Email())
-		commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+		commitQueueSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionCommitQueue,
 			"", commitQueueSubscriber, u.Id)
 		if err != nil {
 			return errors.Wrap(err, "can't create default email subscription")

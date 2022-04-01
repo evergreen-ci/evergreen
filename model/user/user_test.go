@@ -713,7 +713,7 @@ func TestGetOrCreateUser(t *testing.T) {
 	}
 }
 
-func TestImplicitSubscriptionIDs(t *testing.T) {
+func TestGeneralSubscriptionIDs(t *testing.T) {
 	u := DBUser{}
 	u.Settings.Notifications = NotificationPreferences{
 		BuildBreakID:          "BuildBreakID",
@@ -731,7 +731,7 @@ func TestImplicitSubscriptionIDs(t *testing.T) {
 		"SpawnHostExpirationID",
 		"SpawnHostOutcomeID",
 		"CommitQueueID",
-	}, u.ImplicitSubscriptionIDs())
+	}, u.GeneralSubscriptionIDs())
 }
 
 func TestViewableProjectSettings(t *testing.T) {

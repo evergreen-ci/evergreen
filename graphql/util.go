@@ -470,10 +470,10 @@ func formatDuration(duration string) string {
 	}))
 }
 
-func removeImplicitSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
+func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
 	filteredSubscriptions := make([]string, 0, len(subscriptions))
 	for _, subscription := range subscriptions {
-		if !utility.StringSliceContains(usr.ImplicitSubscriptionIDs(), subscription.ID) {
+		if !utility.StringSliceContains(usr.GeneralSubscriptionIDs(), subscription.ID) {
 			filteredSubscriptions = append(filteredSubscriptions, subscription.ID)
 		}
 	}

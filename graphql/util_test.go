@@ -13,37 +13,37 @@ func init() {
 	testutil.Setup()
 }
 
-func TestFilterImplicitSubscriptions(t *testing.T) {
+func TestFilterGeneralSubscriptions(t *testing.T) {
 	usr := &user.DBUser{}
 	usr.Settings.Notifications = user.NotificationPreferences{
 		PatchFinishID: "patch_finish_id",
 		CommitQueueID: "commit_queue_id",
 	}
 
-	t.Run("NoImplicitSubscriptions", func(t *testing.T) {
+	t.Run("NoGeneralSubscriptions", func(t *testing.T) {
 		subs := []event.Subscription{
 			{ID: "123455"},
 			{ID: "abcdef"},
 		}
-		filteredSubIDs := removeImplicitSubscriptions(usr, subs)
+		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.ElementsMatch(t, []string{"123455", "abcdef"}, filteredSubIDs)
 	})
 
-	t.Run("OnlyImplicitSubscriptions", func(t *testing.T) {
+	t.Run("OnlyGeneralSubscriptions", func(t *testing.T) {
 		subs := []event.Subscription{
 			{ID: "patch_finish_id"},
 			{ID: "commit_queue_id"},
 		}
-		filteredSubIDs := removeImplicitSubscriptions(usr, subs)
+		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.Empty(t, filteredSubIDs)
 	})
 
-	t.Run("MixImplicitSubscriptions", func(t *testing.T) {
+	t.Run("MixGeneralSubscriptions", func(t *testing.T) {
 		subs := []event.Subscription{
 			{ID: "patch_finish_id"},
 			{ID: "123456"},
 		}
-		filteredSubIDs := removeImplicitSubscriptions(usr, subs)
+		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.ElementsMatch(t, []string{"123456"}, filteredSubIDs)
 	})
 }

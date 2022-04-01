@@ -419,7 +419,8 @@ func (u *DBUser) DeleteRoles(roles []string) error {
 	return nil
 }
 
-func (u *DBUser) ImplicitSubscriptionIDs() []string {
+// GeneralSubscriptionIDs returns a slice of the ids of the user's general subscriptions.
+func (u *DBUser) GeneralSubscriptionIDs() []string {
 	var ids []string
 	if id := u.Settings.Notifications.BuildBreakID; id != "" {
 		ids = append(ids, id)
