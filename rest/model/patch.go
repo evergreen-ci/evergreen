@@ -238,20 +238,16 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
 		return nil, nil, nil
 	}
+	childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting child patches")
+	}
 	downstreamTasks := []DownstreamTasks{}
-	childPatches := []APIPatch{}
-	for _, childPatch := range p.Triggers.ChildPatches {
-		childPatchDoc, err := patch.FindOneId(childPatch)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error getting child patch '%s'", childPatch)
-		}
-		if childPatchDoc == nil {
-			continue
-		}
-
-		tasks := utility.ToStringPtrSlice(childPatchDoc.Tasks)
+	apiChildPatches := []APIPatch{}
+	for _, childPatch := range childPatches {
+		tasks := utility.ToStringPtrSlice(childPatch.Tasks)
 		variantTasks := []VariantTask{}
-		for _, vt := range childPatchDoc.VariantsTasks {
+		for _, vt := range childPatch.VariantsTasks {
 			vtasks := make([]*string, 0)
 			for _, task := range vt.Tasks {
 				vtasks = append(vtasks, utility.ToStringPtr(task))
@@ -263,19 +259,19 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 		}
 
 		dt := DownstreamTasks{
-			Project:      utility.ToStringPtr(childPatchDoc.Project),
+			Project:      utility.ToStringPtr(childPatch.Project),
 			Tasks:        tasks,
 			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(*childPatchDoc)
+		err = apiPatch.BuildFromService(childPatch)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error building child patch from service '%s'", childPatch)
+			return nil, nil, errors.Wrap(err, "error building child patch from service")
 		}
 		downstreamTasks = append(downstreamTasks, dt)
-		childPatches = append(childPatches, apiPatch)
+		apiChildPatches = append(apiChildPatches, apiPatch)
 	}
-	return downstreamTasks, childPatches, nil
+	return downstreamTasks, apiChildPatches, nil
 }
 
 // ToService converts a service layer patch using the data from APIPatch

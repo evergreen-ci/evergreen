@@ -389,17 +389,14 @@ func modifyVersionHandler(ctx context.Context, patchID string, modification mode
 				return ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found ", patchID))
 			}
 			if p.IsParent() {
-				for _, childPatchId := range p.Triggers.ChildPatches {
-					p, err := patch.FindOneId(childPatchId)
-					if err != nil {
-						return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding child patch %s: %s", childPatchId, err.Error()))
-					}
-					if p == nil {
-						return ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found ", childPatchId))
-					}
+				childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
+				if err != nil {
+					return InternalServerError.Send(ctx, fmt.Sprintf("error getting child patches: %s", err.Error()))
+				}
+				for _, childPatch := range childPatches {
 					// only modify the child patch if it is finalized
-					if p.Version != "" {
-						err = modifyVersionHandler(ctx, childPatchId, modification)
+					if childPatch.Version != "" {
+						err = modifyVersionHandler(ctx, childPatch.Id.Hex(), modification)
 						if err != nil {
 							return errors.Wrap(mapHTTPStatusToGqlError(ctx, httpStatus, err), fmt.Sprintf("error modifying child patch '%s'", patchID))
 						}
