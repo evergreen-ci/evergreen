@@ -1,13 +1,10 @@
 package model
 
 import (
-	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,10 +18,6 @@ type BuildConnectorFetchByIdSuite struct {
 
 func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	s := new(BuildConnectorFetchByIdSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -72,10 +65,6 @@ type BuildConnectorChangeStatusSuite struct {
 
 func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	s := new(BuildConnectorChangeStatusSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -126,10 +115,6 @@ type BuildConnectorAbortSuite struct {
 
 func TestBuildConnectorAbortSuite(t *testing.T) {
 	s := new(BuildConnectorAbortSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -162,10 +147,6 @@ type BuildConnectorRestartSuite struct {
 
 func TestBuildConnectorRestartSuite(t *testing.T) {
 	s := new(BuildConnectorRestartSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
