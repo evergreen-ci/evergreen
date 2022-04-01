@@ -1572,7 +1572,11 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		}
 	}
 
-	t.TimeTaken = finishTime.Sub(t.ActivatedTime)
+	if t.ActivatedTime.After(t.StartTime) {
+		t.TimeTaken = finishTime.Sub(t.ActivatedTime)
+	} else {
+		t.TimeTaken = finishTime.Sub(t.StartTime)
+	}
 	t.Details = *detail
 
 	grip.Debug(message.Fields{
