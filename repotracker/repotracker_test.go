@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -330,7 +329,6 @@ tasks:
 	assert.NoError(t, d.Insert())
 
 	p := &model.Project{}
-	ctx = context.Background()
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
