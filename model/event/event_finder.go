@@ -39,24 +39,6 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindOne(query db.Q) (*EventLogEntry, error) {
-	event := &EventLogEntry{}
-	err := db.FindOneQ(AllLogCollection, query, event)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	return event, err
-}
-
-func Aggregate(pipeline []bson.M) ([]EventLogEntry, error) {
-	events := []EventLogEntry{}
-	err := db.Aggregate(AllLogCollection, pipeline, &events)
-	if err != nil {
-		return nil, err
-	}
-	return events, nil
-}
-
 func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, int, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
@@ -173,20 +155,26 @@ func TaskEventsInOrder(id string) db.Q {
 
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
 func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
-	return Aggregate(latestDistroEventsPipeline(id, n, false))
+	events := []EventLogEntry{}
+	err := db.Aggregate(AllLogCollection, latestDistroEventsPipeline(id, n, false), &events)
+	if err != nil {
+		return nil, err
+	}
+	return events, err
 }
 
 // FindLatestAMIModifiedDistroEvent returns the most recent AMI event. Returns an empty struct if nothing exists.
 func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
-	event := EventLogEntry{}
-	events, err := Aggregate(latestDistroEventsPipeline(id, 1, true))
+	events := []EventLogEntry{}
+	res := EventLogEntry{}
+	err := db.Aggregate(AllLogCollection, latestDistroEventsPipeline(id, 1, true), &events)
 	if err != nil {
-		return event, err
+		return res, err
 	}
 	if len(events) > 0 {
-		event = events[0]
+		res = events[0]
 	}
-	return event, nil
+	return res, nil
 }
 
 func latestDistroEventsPipeline(id string, n int, amiOnly bool) []bson.M {

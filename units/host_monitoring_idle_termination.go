@@ -27,7 +27,7 @@ const (
 	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
 	idleTimeCutoff = 4 * time.Minute
 	// outdatedIdleTimeCutoff is the amount of time we wait for an outdated idle host to be marked idle.
-	outdatedIdleTimeCutoff    = 2 * time.Minute
+	outdatedIdleTimeCutoff    = time.Minute
 	idleWaitingForAgentCutoff = 10 * time.Minute
 	idleTaskGroupHostCutoff   = 10 * time.Minute
 
