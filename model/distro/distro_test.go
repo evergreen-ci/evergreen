@@ -558,7 +558,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 		},
 	}
 	event.LogDistroModified(d.Id, "user1", d.NewDistroData())
-	eventsForDistro, err := event.Find(event.AllLogCollection, event.DistroEventsInOrder(d.Id))
+	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10)
 	assert.NoError(t, err)
 	require.Len(t, eventsForDistro, 1)
 	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)

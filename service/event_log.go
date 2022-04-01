@@ -51,8 +51,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery := event.MostRecentDistroEvents(resourceID, 200)
-		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
+		loggedEvents, err = event.FindLatestPrimaryDistroEvents(resourceID, 200)
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

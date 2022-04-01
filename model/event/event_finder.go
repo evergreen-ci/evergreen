@@ -48,6 +48,15 @@ func FindOne(query db.Q) (*EventLogEntry, error) {
 	return event, err
 }
 
+func Aggregate(pipeline []bson.M) ([]EventLogEntry, error) {
+	events := []EventLogEntry{}
+	err := db.Aggregate(AllLogCollection, pipeline, &events)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
 func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, int, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
@@ -161,29 +170,41 @@ func TaskEventsInOrder(id string) db.Q {
 }
 
 // Distro Events
-// DistroPrimaryEventsForId returns the non-AMI specific events for the distro.
-func DistroPrimaryEventsForId(id string) db.Q {
-	filter := ResourceTypeKeyIs(ResourceTypeDistro)
-	filter[ResourceIdKey] = id
-	filter[TypeKey] = bson.M{"$ne": EventDistroAMIModfied}
 
-	return db.Query(filter)
+// FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
+func FindLatestPrimaryDistroEvents(id string, n int) ([]EventLogEntry, error) {
+	return Aggregate(latestDistroEventsPipeline(id, n, false))
 }
 
-// DistroAMIModifiedForId returns the query for AMI modified distro events.
-func DistroAMIModifiedForId(id string) db.Q {
-	filter := ResourceTypeKeyIs(ResourceTypeDistro)
-	filter[ResourceIdKey] = id
-	filter[TypeKey] = EventDistroAMIModfied
-	return db.Query(filter).Sort([]string{"-" + TimestampKey})
+// FindLatestAMIModifiedDistroEvent returns the most recent AMI event. Returns an empty struct if nothing exists.
+func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
+	event := EventLogEntry{}
+	events, err := Aggregate(latestDistroEventsPipeline(id, 1, true))
+	if err != nil {
+		return event, err
+	}
+	if len(events) > 0 {
+		event = events[0]
+	}
+	return event, nil
 }
 
-func MostRecentDistroEvents(id string, n int) db.Q {
-	return DistroPrimaryEventsForId(id).Sort([]string{"-" + TimestampKey}).Limit(n)
-}
-
-func DistroEventsInOrder(id string) db.Q {
-	return DistroPrimaryEventsForId(id).Sort([]string{TimestampKey})
+func latestDistroEventsPipeline(id string, n int, amiOnly bool) []bson.M {
+	// We use two different match stages to use the most efficient index.
+	resourceFilter := ResourceTypeKeyIs(ResourceTypeDistro)
+	resourceFilter[ResourceIdKey] = id
+	var eventFilter = bson.M{}
+	if amiOnly {
+		eventFilter[TypeKey] = EventDistroAMIModfied
+	} else {
+		eventFilter[TypeKey] = bson.M{"$ne": EventDistroAMIModfied}
+	}
+	return []bson.M{
+		{"$match": resourceFilter},
+		{"$sort": bson.M{TimestampKey: -1}},
+		{"$match": eventFilter},
+		{"$limit": n},
+	}
 }
 
 // Scheduler Events

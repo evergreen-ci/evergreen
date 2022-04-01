@@ -601,15 +601,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 
 	var amiUpdatedTime time.Time
 	if d.GetDefaultAMI() != currentHost.GetAMI() {
-		event, err := event.FindOne(event.DistroAMIModifiedForId(d.Id))
+		amiEvent, err := event.FindLatestAMIModifiedDistroEvent(d.Id)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "problem getting AMI event log",
 			"host_id":   currentHost.Id,
 			"distro_id": d.Id,
 		}))
-		if event != nil {
-			amiUpdatedTime = event.Timestamp
-		}
+		amiUpdatedTime = amiEvent.Timestamp
 	}
 
 	// This loop does the following:
