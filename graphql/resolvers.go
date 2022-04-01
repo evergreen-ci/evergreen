@@ -114,21 +114,21 @@ func (r *Resolver) ProjectVars() ProjectVarsResolver {
 	return &projectVarsResolver{r}
 }
 
-type hostResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
-type taskQueueItemResolver struct{ *Resolver }
-type volumeResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }
-type projectResolver struct{ *Resolver }
-type repoRefResolver struct{ *Resolver }
 type annotationResolver struct{ *Resolver }
+type hostResolver struct{ *Resolver }
 type issueLinkResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
+type permissionsResolver struct{ *Resolver }
+type projectResolver struct{ *Resolver }
 type projectSettingsResolver struct{ *Resolver }
-type repoSettingsResolver struct{ *Resolver }
 type projectSubscriberResolver struct{ *Resolver }
 type projectVarsResolver struct{ *Resolver }
+type repoRefResolver struct{ *Resolver }
+type repoSettingsResolver struct{ *Resolver }
 type taskLogsResolver struct{ *Resolver }
-type permissionsResolver struct{ *Resolver }
+type taskQueueItemResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }
+type volumeResolver struct{ *Resolver }
 
 func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	return obj.Distro.Id, nil
