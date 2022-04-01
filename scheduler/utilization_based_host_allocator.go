@@ -161,6 +161,9 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		if err != nil {
 			return 0, 0, errors.Wrap(err, "error finding parent distros")
 		}
+		if parentDistro == nil {
+			return 0, 0, errors.Errorf("distro '%s' not found", containerPool.Distro)
+		}
 		maxHosts = parentDistro.HostAllocatorSettings.MaximumHosts * containerPool.MaxContainers
 	}
 

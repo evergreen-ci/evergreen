@@ -89,6 +89,9 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 	if err != nil {
 		return nil, errors.Wrapf(err, "database error for find() by distro id '%s'", distroID)
 	}
+	if d == nil {
+		return nil, errors.Errorf("distro '%s' not found", distroID)
+	}
 	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
 	s.mu.Lock()

@@ -407,7 +407,7 @@ func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil {
+	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),

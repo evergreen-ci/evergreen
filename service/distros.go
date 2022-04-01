@@ -121,6 +121,12 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
+	if oldDistro == nil {
+		message := fmt.Sprintf("distro '%s' doesn't exist", id)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusBadRequest)
+		return
+	}
 
 	newDistro := oldDistro
 	newDistro.ProviderSettingsList = []*birch.Document{} // remove old list to prevent collisions within birch documents
@@ -297,6 +303,12 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("error fetching distro '%v': %v", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+	if d == nil {
+		message := fmt.Sprintf("distro '%s' doesn't exist", id)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
 

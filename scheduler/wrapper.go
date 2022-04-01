@@ -33,6 +33,9 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
+	if distro == nil {
+		return errors.Errorf("distro '%s' not found", conf.DistroID)
+	}
 
 	if err = underwaterUnschedule(distro.Id); err != nil {
 		return errors.Wrap(err, "problem unscheduling underwater tasks")

@@ -61,7 +61,10 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	minHosts := parentDistro.HostAllocatorSettings.MinimumHosts
+	minHosts := 0
+	if parentDistro != nil {
+		minHosts = parentDistro.HostAllocatorSettings.MinimumHosts
+	}
 	parentCount := len(parents)
 
 	for _, h := range parents {

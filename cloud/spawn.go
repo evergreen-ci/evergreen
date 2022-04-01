@@ -50,6 +50,9 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	if err != nil {
 		return errors.Errorf("error finding distro '%s'", so.DistroId)
 	}
+	if d == nil {
+		return errors.Errorf("distro '%s' not found", so.DistroId)
+	}
 
 	if !d.SpawnAllowed {
 		return errors.Errorf("Invalid spawn options: spawning not allowed for distro %s", so.DistroId)
@@ -111,6 +114,9 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	d, err := distro.FindOneId(so.DistroId)
 	if err != nil {
 		return nil, errors.WithStack(errors.Wrap(err, "error finding distro"))
+	}
+	if d == nil {
+		return nil, errors.Errorf("distro '%s' not found", so.DistroId)
 	}
 	if so.Region == "" && IsEc2Provider(d.Provider) {
 		u := gimlet.GetUser(ctx)

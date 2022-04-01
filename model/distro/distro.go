@@ -537,7 +537,7 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
 		}
 		if d == nil {
-			catcher.Add(fmt.Errorf("distro not found for container pool '%s'", pool.Id))
+			catcher.Errorf("distro not found for container pool '%s'", pool.Id)
 		}
 		if d != nil && d.ContainerPool != "" {
 			catcher.Add(fmt.Errorf("container pool '%s' has invalid distro '%s'", pool.Id, d.Id))
