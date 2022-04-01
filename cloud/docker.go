@@ -240,6 +240,11 @@ func (m *dockerManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
+// Cleanup is a noop for the docker provider.
+func (m *dockerManager) Cleanup(context.Context) error {
+	return nil
+}
+
 func (m *dockerManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
 	return errors.New("can't attach volume with docker provider")
 }

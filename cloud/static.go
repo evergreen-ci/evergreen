@@ -148,6 +148,11 @@ func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error
 	return errors.New("can't specify instance type with static provider")
 }
 
+// Cleanup is a noop for the static provider.
+func (staticMgr *staticManager) Cleanup(context.Context) error {
+	return nil
+}
+
 // determine how long until a payment is due for the host. static hosts always
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {

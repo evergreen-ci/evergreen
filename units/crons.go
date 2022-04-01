@@ -1083,6 +1083,19 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	}
 }
 
+// PopulateCloudCleanupJob returns a QueueOperation to enqueue a CloudCleanup job for Fleet in the default EC2 region.
+func PopulateCloudCleanupJob(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return errors.Wrap(
+			amboy.EnqueueUniqueJob(
+				ctx,
+				queue,
+				NewCloudCleanupJob(env, utility.RoundPartOfHour(0).Format(TSFormat), evergreen.ProviderNameEc2Fleet, evergreen.DefaultEC2Region)),
+			"enqueueing cloud cleanup job")
+	}
+
+}
+
 func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		volumes, err := host.FindVolumesWithNoExpirationToExtend()

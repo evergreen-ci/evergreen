@@ -32,9 +32,13 @@ const (
 	EC2InvalidParam         = "InvalidParameterValue"
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
+	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 )
 
-var EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
+var (
+	EC2InsufficientCapacityError = errors.New(EC2InsufficientCapacity)
+	ec2TemplateNameExistsError   = errors.New(ec2TemplateNameExists)
+)
 
 type MountPoint struct {
 	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
@@ -346,8 +350,13 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 	return nil
 }
 
-// ebsRegex extracts EBS Price JSON data from Amazon's UI.
-var ebsRegex = regexp.MustCompile(`(?s)callback\((.*)\)`)
+// templateNameInvalidRegex matches any character that may not be included a launch template name.
+// Names may only contain word characters ([a-zA-Z0-9_]) and the following special characters: ( ) . / -
+var templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+")
+
+func cleanLaunchTemplateName(name string) string {
+	return templateNameInvalidRegex.ReplaceAllString(name, "")
+}
 
 // odInfo is an internal type for keying hosts by the attributes that affect billing.
 type odInfo struct {
@@ -496,23 +505,6 @@ func makeVolumeAttachments(devices []*ec2.InstanceBlockDeviceMapping) []host.Vol
 		}
 	}
 	return attachments
-}
-
-func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {
-	if createTemplateResponse == nil || createTemplateResponse.LaunchTemplate == nil {
-		return errors.New("create template response launch template is nil")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	if createTemplateResponse.LaunchTemplate.LaunchTemplateId == nil || len(*createTemplateResponse.LaunchTemplate.LaunchTemplateId) == 0 {
-		catcher.Add(errors.New("create template response has no template identifier"))
-	}
-
-	if createTemplateResponse.LaunchTemplate.LatestVersionNumber == nil {
-		catcher.Add(errors.New("create template response has no latest version"))
-	}
-
-	return catcher.Resolve()
 }
 
 func ec2CreateFleetResponseContainsInstance(createFleetResponse *ec2aws.CreateFleetOutput) bool {

@@ -90,6 +90,9 @@ type Manager interface {
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
 
+	// Cleanup triggers the manager to clean up resources left behind by day-to-day operations.
+	Cleanup(context.Context) error
+
 	// AddSSHKey adds an SSH key for this manager's hosts. Adding an existing
 	// key is a no-op.
 	AddSSHKey(context.Context, evergreen.SSHKeyPair) error

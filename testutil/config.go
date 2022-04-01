@@ -345,6 +345,7 @@ func MockConfig() *evergreen.Settings {
 			GithubStatusAPIDisabled:         true,
 			BackgroundReauthDisabled:        true,
 			PodAllocatorDisabled:            true,
+			CloudCleanupDisabled:            true,
 			GenerateTasksExperimentDisabled: true,
 		},
 		SSHKeyDirectory: "/ssh_key_directory",

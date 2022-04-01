@@ -50,6 +50,7 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 		PopulateHostProvisioningConversionJobs(j.env),
 		PopulateHostRestartJasperJobs(j.env),
 		PopulateSpawnhostExpirationCheckJob(),
+		PopulateCloudCleanupJob(j.env),
 		PopulateVolumeExpirationCheckJob(),
 		PopulateVolumeExpirationJob(),
 		PopulateSSHKeyUpdates(j.env),

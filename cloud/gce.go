@@ -252,6 +252,11 @@ func (m *gceManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with gce provider")
 }
 
+// Cleanup is a noop for the gce provider.
+func (m *gceManager) Cleanup(context.Context) error {
+	return nil
+}
+
 // GetDNSName returns the external IPv4 address of the host.
 func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	instance, err := m.client.GetInstance(host)
