@@ -267,6 +267,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		j.gitHubError = ProjectFailsValidation
 		return errors.Wrapf(validationCatcher.Resolve(), "patched project config has errors")
 	}
+	// Don't create patches for github PRs if the only changes are in ignored files.
+	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
+		return nil
+	}
 
 	patchDoc.PatchedParserProject = patchConfig.PatchedParserProject
 	patchDoc.PatchedProjectConfig = patchConfig.PatchedProjectConfig
@@ -373,11 +377,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		})
 		patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
 		if err = patchSub.Upsert(); err != nil {
-			catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
+			catcher.Wrap(err, "failed to insert patch subscription for Github PR")
 		}
 		buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 		if err = buildSub.Upsert(); err != nil {
-			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
+			catcher.Wrap(err, "failed to insert build subscription for Github PR")
 		}
 		waitOnChilSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 			Owner:    patchDoc.GithubPatchData.BaseOwner,
@@ -399,12 +403,12 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				})
 				patchSub := event.NewExpiringPatchOutcomeSubscription(childPatch, childGhStatusSub)
 				if err = patchSub.Upsert(); err != nil {
-					catcher.Add(errors.Wrap(err, "failed to insert child patch subscription for Github PR"))
+					catcher.Wrap(err, "failed to insert child patch subscription for Github PR")
 				}
 				// add subscription so that the parent can wait on the children
 				patchSub = event.NewExpiringPatchOutcomeSubscription(childPatch, waitOnChilSub)
 				if err = patchSub.Upsert(); err != nil {
-					catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
+					catcher.Wrap(err, "failed to insert patch subscription for Github PR")
 				}
 
 			}
@@ -413,7 +417,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if patchDoc.IsBackport() {
 		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
 		if err = backportSubscription.Upsert(); err != nil {
-			catcher.Add(errors.Wrap(err, "failed to insert backport subscription"))
+			catcher.Wrap(err, "failed to insert backport subscription")
 		}
 	}
 

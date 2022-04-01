@@ -572,6 +572,16 @@ func (p *Patch) ConfigChanged(remotePath string) bool {
 	return false
 }
 
+func (p *Patch) FilesChanged() []string {
+	var filenames []string
+	for _, patchPart := range p.Patches {
+		for _, summary := range patchPart.PatchSet.Summary {
+			filenames = append(filenames, summary.Name)
+		}
+	}
+	return filenames
+}
+
 // SetActivated sets the patch to activated in the db
 func (p *Patch) SetActivated(ctx context.Context, versionId string) error {
 	p.Version = versionId
