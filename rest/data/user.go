@@ -33,7 +33,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	patchSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchOutcome,
+	patchSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionPatchOutcome,
 		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		patchFailureSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	patchFailureSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchFirstFailure,
+	patchFailureSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionPatchFirstFailure,
 		dbUser.Settings.Notifications.PatchFirstFailureID, patchFailureSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	buildBreakSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionBuildBreak,
+	buildBreakSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionBuildBreak,
 		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	spawnhostSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnhostExpiration,
+	spawnhostSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnhostExpiration,
 		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		spawnHostOutcomeSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	spawnHostOutcomeSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnHostOutcome,
+	spawnHostOutcomeSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnHostOutcome,
 		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
 	if err != nil {
 		return errors.Wrap(err, "failed to create spawn host outcome subscription")
@@ -123,7 +123,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		commitQueueSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+	commitQueueSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionCommitQueue,
 		dbUser.Settings.Notifications.CommitQueueID, commitQueueSubscriber, dbUser.Id)
 	if err != nil {
 		return errors.Wrap(err, "failed to create commit queue subscription")

@@ -490,6 +490,17 @@ func formatDuration(duration string) string {
 	}))
 }
 
+func removeGeneralSubscriptions(usr *user.DBUser, subscriptions []event.Subscription) []string {
+	filteredSubscriptions := make([]string, 0, len(subscriptions))
+	for _, subscription := range subscriptions {
+		if !utility.StringSliceContains(usr.GeneralSubscriptionIDs(), subscription.ID) {
+			filteredSubscriptions = append(filteredSubscriptions, subscription.ID)
+		}
+	}
+
+	return filteredSubscriptions
+}
+
 func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selectors []restModel.APISelector) (string, string, error) {
 	var id string
 	var idType string

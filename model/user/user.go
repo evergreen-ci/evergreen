@@ -419,6 +419,31 @@ func (u *DBUser) DeleteRoles(roles []string) error {
 	return nil
 }
 
+// GeneralSubscriptionIDs returns a slice of the ids of the user's general subscriptions.
+func (u *DBUser) GeneralSubscriptionIDs() []string {
+	var ids []string
+	if id := u.Settings.Notifications.BuildBreakID; id != "" {
+		ids = append(ids, id)
+	}
+	if id := u.Settings.Notifications.PatchFinishID; id != "" {
+		ids = append(ids, id)
+	}
+	if id := u.Settings.Notifications.PatchFirstFailureID; id != "" {
+		ids = append(ids, id)
+	}
+	if id := u.Settings.Notifications.SpawnHostExpirationID; id != "" {
+		ids = append(ids, id)
+	}
+	if id := u.Settings.Notifications.SpawnHostOutcomeID; id != "" {
+		ids = append(ids, id)
+	}
+	if id := u.Settings.Notifications.CommitQueueID; id != "" {
+		ids = append(ids, id)
+	}
+
+	return ids
+}
+
 func IsValidSubscriptionPreference(in string) bool {
 	switch in {
 	case event.EmailSubscriberType, event.SlackSubscriberType, "", event.SubscriberTypeNone:

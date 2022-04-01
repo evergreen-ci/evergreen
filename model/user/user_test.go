@@ -713,6 +713,27 @@ func TestGetOrCreateUser(t *testing.T) {
 	}
 }
 
+func TestGeneralSubscriptionIDs(t *testing.T) {
+	u := DBUser{}
+	u.Settings.Notifications = NotificationPreferences{
+		BuildBreakID:          "BuildBreakID",
+		PatchFinishID:         "PatchFinishID",
+		PatchFirstFailureID:   "PatchFirstFailureID",
+		SpawnHostExpirationID: "SpawnHostExpirationID",
+		SpawnHostOutcomeID:    "SpawnHostOutcomeID",
+		CommitQueueID:         "CommitQueueID",
+	}
+
+	assert.ElementsMatch(t, []string{
+		"BuildBreakID",
+		"PatchFinishID",
+		"PatchFirstFailureID",
+		"SpawnHostExpirationID",
+		"SpawnHostOutcomeID",
+		"CommitQueueID",
+	}, u.GeneralSubscriptionIDs())
+}
+
 func TestViewableProjectSettings(t *testing.T) {
 	rm := evergreen.GetEnvironment().RoleManager()
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, Collection))
