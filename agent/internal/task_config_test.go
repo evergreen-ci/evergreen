@@ -45,6 +45,10 @@ func TestTaskConfigGetTaskGroup(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.VersionCollection), "failed to clear collections")
 	tgName := "example_task_group"
 	projYml := `
+timeout:
+  - command: shell.exec
+    params:
+      script: "echo timeout"
 tasks:
 - name: example_task_1
 - name: example_task_2
@@ -91,4 +95,5 @@ task_groups:
 	assert.Equal(t, tgName, tg.Name)
 	assert.Len(t, tg.Tasks, 2)
 	assert.Equal(t, 2, tg.MaxHosts)
+	assert.NotEmpty(t, tg.Timeout) // Defaults to project-level timeout if not defined.
 }
