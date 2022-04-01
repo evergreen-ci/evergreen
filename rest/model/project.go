@@ -378,26 +378,16 @@ type APIContainerResources struct {
 	CPU      *int `bson:"cpu" json:"cpu"`
 }
 
-func (cr *APIContainerResources) BuildFromService(h interface{}) error {
-	var def model.ContainerResources
-	switch h.(type) {
-	case model.ContainerResources:
-		def = h.(model.ContainerResources)
-	case *model.ContainerResources:
-		def = *h.(*model.ContainerResources)
-	default:
-		return errors.Errorf("Invalid container resources of type '%T'", h)
-	}
-	cr.MemoryMB = utility.ToIntPtr(def.MemoryMB)
-	cr.CPU = utility.ToIntPtr(def.CPU)
-	return nil
+func (cr *APIContainerResources) BuildFromService(h model.ContainerResources) {
+	cr.MemoryMB = utility.ToIntPtr(h.MemoryMB)
+	cr.CPU = utility.ToIntPtr(h.CPU)
 }
 
-func (cr *APIContainerResources) ToService() (interface{}, error) {
-	containerResources := model.ContainerResources{}
-	containerResources.MemoryMB = utility.FromIntPtr(cr.MemoryMB)
-	containerResources.CPU = utility.FromIntPtr(cr.CPU)
-	return containerResources, nil
+func (cr *APIContainerResources) ToService() model.ContainerResources {
+	return model.ContainerResources{
+		MemoryMB: utility.FromIntPtr(cr.MemoryMB),
+		CPU:      utility.FromIntPtr(cr.CPU),
+	}
 }
 
 type APIWorkstationSetupCommand struct {

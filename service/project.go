@@ -577,16 +577,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	containerSizes := map[string]model.ContainerResources{}
 	for key, apiContainerResource := range responseRef.ContainerSizes {
-		i, err = apiContainerResource.ToService()
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error validating container resource input"))
-			return
-		}
-		containerResource, ok := i.(model.ContainerResources)
-		if !ok {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("expected container resources but was actually '%T'", i))
-			return
-		}
+		containerResource := apiContainerResource.ToService()
 		containerSizes[key] = containerResource
 	}
 
@@ -602,12 +593,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
 	}
 	for _, containerResource := range responseRef.ContainerSizes {
-		if *containerResource.CPU <= 0 {
-			catcher.New("container resource CPU must be a positive integer")
-		}
-		if *containerResource.MemoryMB <= 0 {
-			catcher.New("container resource Memory MB must be a positive integer")
-		}
+		catcher.NewWhen(utility.FromIntPtr(containerResource.CPU) <= 0, "container resource CPU must be a positive integer")
+		catcher.NewWhen(utility.FromIntPtr(containerResource.MemoryMB) <= 0, "container resource Memory MB must be a positive integer")
 	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())

@@ -268,8 +268,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 func TestBatchTimeForTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
 		build.Collection, task.Collection, model.ProjectConfigCollection), ShouldBeNil)
 
