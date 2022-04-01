@@ -1629,10 +1629,6 @@ func DeactivateDependencies(tasks []string, caller string) error {
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
 // at this time, it will set it to the finish time minus the timeout time.
 func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) error {
-	// record that the task has finished, in memory and in the db
-	t.Status = detail.Status
-	t.FinishTime = finishTime
-
 	// if there is no start time set, either set it to the create time
 	// or set 2 hours previous to the finish time.
 	if utility.IsZeroTime(t.StartTime) {
@@ -1644,7 +1640,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	}
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
-	t.Details = *detail
 
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",
@@ -1654,13 +1649,12 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"details":   t.Details,
 	})
 	if detail.Status == "" {
-		grip.Error(message.WrapError(errors.WithStack(errors.New("task status is empty, marking as failed")), message.Fields{
-			"message": "empty task details",
-			"details": detail,
-			"task_id": t.Id,
-		}))
 		detail.Status = evergreen.TaskFailed
 	}
+	// record that the task has finished, in memory and in the db
+	t.Status = detail.Status
+	t.FinishTime = finishTime
+	t.Details = *detail
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -1670,7 +1664,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				FinishTimeKey:       finishTime,
 				StatusKey:           detail.Status,
 				TimeTakenKey:        t.TimeTaken,
-				DetailsKey:          t.Details,
+				DetailsKey:          detail,
 				StartTimeKey:        t.StartTime,
 				LogsKey:             detail.Logs,
 				HasLegacyResultsKey: t.HasLegacyResults,
