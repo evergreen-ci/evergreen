@@ -25,7 +25,7 @@ type projectValidator func(*model.Project) ValidationErrors
 
 type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
 
-type projectSettingsValidator func(*model.Project, *model.ProjectRef) ValidationErrors
+type projectSettingsValidator func(*model.Project, *model.ProjectRef, bool) ValidationErrors
 
 // bool indicates if we should still run the validator if the project is complex
 type longValidator func(*model.Project, bool) ValidationErrors
@@ -156,6 +156,7 @@ var projectWarningValidators = []projectValidator{
 
 var projectSettingsValidators = []projectSettingsValidator{
 	validateTaskSyncSettings,
+	validateVersionControl,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
@@ -276,10 +277,10 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 
 // CheckProjectSettings checks the project configuration against the project
 // settings.
-func CheckProjectSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+func CheckProjectSettings(p *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
 	var errs ValidationErrors
 	for _, validateSettings := range projectSettingsValidators {
-		errs = append(errs, validateSettings(p, ref)...)
+		errs = append(errs, validateSettings(p, ref, isConfigDefined)...)
 	}
 	return errs
 }
@@ -294,7 +295,7 @@ func CheckProjectConfigurationIsValid(project *model.Project, pref *model.Projec
 		}
 	}
 
-	if settingsErrs := CheckProjectSettings(project, pref); len(settingsErrs) != 0 {
+	if settingsErrs := CheckProjectSettings(project, pref, false); len(settingsErrs) != 0 {
 		if errs := settingsErrs.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors related to project settings: %s", ValidationErrorsToString(errs))
 		}
@@ -1550,7 +1551,7 @@ func validateGenerateTasks(p *model.Project) ValidationErrors {
 
 // validateTaskSyncSettings checks that task sync in the project settings have
 // enabled task sync for the config.
-func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) ValidationErrors {
+func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	if ref.TaskSync.IsConfigEnabled() {
 		return nil
 	}
@@ -1567,6 +1568,25 @@ func validateTaskSyncSettings(p *model.Project, ref *model.ProjectRef) Validatio
 			Level: Error,
 			Message: fmt.Sprintf("cannot use %s command in project config when it is disabled by project '%s' settings",
 				ref.Identifier, evergreen.S3PullCommandName),
+		})
+	}
+	return errs
+}
+
+// validateVersionControl checks if a project with defined project config fields has version control enabled on the project ref.
+func validateVersionControl(_ *model.Project, ref *model.ProjectRef, isConfigDefined bool) ValidationErrors {
+	var errs ValidationErrors
+	if ref.IsVersionControlEnabled() && !isConfigDefined {
+		errs = append(errs, ValidationError{
+			Level: Warning,
+			Message: fmt.Sprintf("version control is enabled for project '%s' but no project config fields have been set.",
+				ref.Identifier),
+		})
+	} else if !ref.IsVersionControlEnabled() && isConfigDefined {
+		errs = append(errs, ValidationError{
+			Level: Warning,
+			Message: fmt.Sprintf("version control is disabled for project '%s'; the currently defined project config fields will not be picked up",
+				ref.Identifier),
 		})
 	}
 	return errs

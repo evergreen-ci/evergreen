@@ -2983,6 +2983,30 @@ func TestValidateTaskSyncCommands(t *testing.T) {
 	})
 }
 
+func TestValidateVersionControl(t *testing.T) {
+	ref := &model.ProjectRef{
+		Identifier:            "proj",
+		VersionControlEnabled: utility.FalsePtr(),
+	}
+	projectConfig := model.ProjectConfig{
+		Id: "proj",
+		ProjectConfigFields: model.ProjectConfigFields{
+			BuildBaronSettings: &evergreen.BuildBaronSettings{
+				TicketCreateProject:  "ABC",
+				TicketSearchProjects: []string{"EVG"},
+			},
+		},
+	}
+	isConfigDefined := &projectConfig != nil
+	verrs := validateVersionControl(&model.Project{}, ref, isConfigDefined)
+	assert.Equal(t, "version control is disabled for project 'proj'; the currently defined project config fields will not be picked up", verrs[0].Message)
+
+	ref.VersionControlEnabled = utility.TruePtr()
+	verrs = validateVersionControl(&model.Project{}, ref, false)
+	assert.Equal(t, "version control is enabled for project 'proj' but no project config fields have been set.", verrs[0].Message)
+
+}
+
 func TestValidateTaskSyncSettings(t *testing.T) {
 	for testName, testParams := range map[string]struct {
 		tasks                    []model.ProjectTask
@@ -3041,7 +3065,7 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 				},
 			}
 			p := &model.Project{Tasks: testParams.tasks}
-			errs := validateTaskSyncSettings(p, ref)
+			errs := validateTaskSyncSettings(p, ref, false)
 			if testParams.expectError {
 				assert.NotEmpty(t, errs)
 			} else {
@@ -3061,13 +3085,13 @@ func TestValidateTaskSyncSettings(t *testing.T) {
 			},
 		},
 	}
-	assert.NotEmpty(t, validateTaskSyncSettings(p, ref))
+	assert.NotEmpty(t, validateTaskSyncSettings(p, ref, false))
 
 	ref.TaskSync.ConfigEnabled = utility.TruePtr()
-	assert.Empty(t, validateTaskSyncSettings(p, ref))
+	assert.Empty(t, validateTaskSyncSettings(p, ref, false))
 
 	p.Tasks = []model.ProjectTask{}
-	assert.Empty(t, validateTaskSyncSettings(p, ref))
+	assert.Empty(t, validateTaskSyncSettings(p, ref, false))
 }
 
 func TestTVToTaskUnit(t *testing.T) {
