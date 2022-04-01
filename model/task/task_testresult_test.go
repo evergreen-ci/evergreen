@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -11,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -201,10 +199,6 @@ func (s *TaskTestResultSuite) TestArchivedTask() {
 
 func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
 
 	numTests := 10

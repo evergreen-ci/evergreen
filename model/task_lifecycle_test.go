@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -22,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
@@ -4338,10 +4336,6 @@ type TaskConnectorAbortTaskSuite struct {
 
 func TestDBTaskConnectorAbortTaskSuite(t *testing.T) {
 	s := new(TaskConnectorAbortTaskSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
