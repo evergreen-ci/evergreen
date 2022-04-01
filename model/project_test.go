@@ -1179,10 +1179,6 @@ const (
 
 func TestFindProjectsSuite(t *testing.T) {
 	s := new(FindProjectsSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	s.setup = func() error {
 		s.Require().NoError(db.ClearCollections(ProjectRefCollection, ProjectVarsCollection))
 

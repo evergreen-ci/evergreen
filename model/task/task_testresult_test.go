@@ -220,13 +220,13 @@ func TestGetTestCountByTaskIdAndFilter(t *testing.T) {
 		testTask := &Task{
 			Id: id,
 		}
-		tests := make([]TestResult, numTests)
+		tests := make([]testresult.TestResult, numTests)
 		for j := 0; j < numTests; j++ {
 			status := "pass"
 			if j%2 == 0 {
 				status = "fail"
 			}
-			tests[j] = TestResult{
+			tests[j] = testresult.TestResult{
 				TaskID:    id,
 				Execution: 0,
 				Status:    status,

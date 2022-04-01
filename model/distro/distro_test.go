@@ -1,7 +1,6 @@
 package distro
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -25,10 +24,6 @@ import (
 func TestFindDistroById(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
@@ -50,10 +45,6 @@ func TestFindDistroById(t *testing.T) {
 func TestFindAllDistros(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)

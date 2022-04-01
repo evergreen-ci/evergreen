@@ -5100,10 +5100,6 @@ func (*FindHostsSuite) users() []user.DBUser {
 }
 
 func TestFindHostsSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	s := new(FindHostsSuite)
 
 	s.setup = func(s *FindHostsSuite) {
