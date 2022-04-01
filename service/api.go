@@ -666,7 +666,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 			}
 			errs = append(errs, validationErr)
 		} else {
-			errs = append(errs, validator.CheckProjectSettings(project, projectRef)...)
+			isConfigDefined := projectConfig != nil
+			errs = append(errs, validator.CheckProjectSettings(project, projectRef, isConfigDefined)...)
 		}
 	} else {
 		validationErr = validator.ValidationError{

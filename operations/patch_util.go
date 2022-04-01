@@ -589,7 +589,7 @@ func gitIsAncestor(commit1, commit2 string) (string, error) {
 
 // gitDiff runs "git diff <base> <ref> <commits> <diffargs ...>" and returns the output of the command as a string,
 // where ref and commits are mutually exclusive (and not required)
-func gitDiff(base string, ref, commits string, diffArgs ...string) (string, error) {
+func gitDiff(base, ref, commits string, diffArgs ...string) (string, error) {
 	args := []string{base}
 	if commits != "" {
 		args = []string{formatCommitRange(commits)}
