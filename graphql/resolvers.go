@@ -2693,16 +2693,18 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 		}
 	}
 
+	taskIDs := []string{}
 	for taskId := range tasksToSchedule {
-		task, err := setScheduled(ctx, r.sc.GetURL(), taskId, true)
-		if err != nil {
-			return nil, err
-		}
-		scheduledTasks = append(scheduledTasks, task)
+		taskIDs = append(taskIDs, taskId)
 	}
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+	scheduledTasks = append(scheduledTasks, scheduled...)
 	// sort scheduledTasks by display name to guarantee the order of the tasks
 	sort.Slice(scheduledTasks, func(i, j int) bool {
-		return *scheduledTasks[i].DisplayName < *scheduledTasks[j].DisplayName
+		return utility.FromStringPtr(scheduledTasks[i].DisplayName) < utility.FromStringPtr(scheduledTasks[j].DisplayName)
 	})
 
 	return scheduledTasks, nil
@@ -2807,31 +2809,33 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 
 func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) ([]*restModel.APITask, error) {
 	scheduledTasks := []*restModel.APITask{}
-	count := 0
-	for _, taskId := range taskIds {
-		task, err := setScheduled(ctx, r.sc.GetURL(), taskId, true)
-		if err != nil {
-			return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule %d task : %s", len(taskIds)-count, err.Error()))
-		}
-		count++
-		scheduledTasks = append(scheduledTasks, task)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskIds...)
+	if err != nil {
+		return scheduledTasks, InternalServerError.Send(ctx, fmt.Sprintf("Failed to schedule tasks : %s", err.Error()))
 	}
+	scheduledTasks = append(scheduledTasks, scheduled...)
 	return scheduledTasks, nil
 }
 func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := setScheduled(ctx, r.sc.GetURL(), taskID, true)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskID)
 	if err != nil {
 		return nil, err
 	}
-	return task, nil
+	if len(scheduled) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task: %s", taskID))
+	}
+	return scheduled[0], nil
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	task, err := setScheduled(ctx, r.sc.GetURL(), taskID, false)
+	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
 	if err != nil {
 		return nil, err
 	}
-	return task, nil
+	if len(scheduled) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task: %s", taskID))
+	}
+	return scheduled[0], nil
 }
 
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {

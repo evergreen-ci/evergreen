@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/cloud"
-
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -58,40 +58,63 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 	return &GroupedFiles{TaskName: &name, Files: apiFileList}, nil
 }
 
-func setScheduled(ctx context.Context, url, taskID string, isActive bool) (*restModel.APITask, error) {
-	usr := mustHaveUser(ctx)
-	t, err := task.FindOneId(taskID)
+func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
+	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, errors.Errorf("task %s not found", taskID).Error())
+	if len(tasks) == 0 {
+		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
 	}
-	if t.Requester == evergreen.MergeTestRequester && isActive {
-		return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+	if len(tasks) != len(taskIDs) {
+		foundTaskIds := []string{}
+		for _, ft := range tasks {
+			foundTaskIds = append(foundTaskIds, ft.Id)
+		}
+		missingTaskIds, _ := utility.StringSliceSymmetricDifference(taskIDs, foundTaskIds)
+		grip.Error(message.Fields{
+			"message":       "could not find all tasks",
+			"function":      "findAllTasksByIds",
+			"missing_tasks": missingTaskIds,
+		})
 	}
-	if err = model.SetActiveState(t, usr.Username(), isActive); err != nil {
+	return tasks, nil
+}
+
+func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskIDs ...string) ([]*restModel.APITask, error) {
+	usr := mustHaveUser(ctx)
+	tasks, err := findAllTasksByIds(ctx, taskIDs...)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tasks {
+		if t.Requester == evergreen.MergeTestRequester && isActive {
+			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+		}
+	}
+	if err = model.SetActiveState(usr.Username(), isActive, tasks...); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 
-	// Get the modified task back out of the db
-	t, err = task.FindOneId(taskID)
+	// Get the modified tasks back out of the db
+	tasks, err = findAllTasksByIds(ctx, taskIDs...)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, err
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+	apiTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		err = apiTask.BuildFromService(&t)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		err = apiTask.BuildFromService(url)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		apiTasks = append(apiTasks, &apiTask)
 	}
-	apiTask := restModel.APITask{}
-	err = apiTask.BuildFromService(t)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	err = apiTask.BuildFromService(url)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	return &apiTask, nil
+	return apiTasks, nil
 }
 
 // getFormattedDate returns a time.Time type in the format "Dec 13, 2020, 11:58:04 pm"
