@@ -1005,7 +1005,7 @@ func validateCommands(section string, project *model.Project,
 
 	for _, cmd := range commands {
 		commandName := fmt.Sprintf("'%s' command", cmd.Command)
-		_, err := command.Render(cmd, project.Functions)
+		_, err := command.Render(cmd, project)
 		if err != nil {
 			if cmd.Function != "" {
 				commandName = fmt.Sprintf("'%s' function", cmd.Function)
