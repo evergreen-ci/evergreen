@@ -1,5 +1,5 @@
 mutation {
-    scheduleTasks(taskIds: ["wuzzup", "non-existent"]) {
+    scheduleTasks(taskIds: ["non-existent"]) {
       status
     }
 }

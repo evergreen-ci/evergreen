@@ -610,7 +610,7 @@ func AddMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project, proje
 	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectErrors(project, true)
-	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef)...)
+	validationErrors = append(validationErrors, validator.CheckProjectSettings(project, projectRef, false)...)
 	validationErrors = append(validationErrors, validator.CheckPatchedProjectConfigErrors(patchDoc.PatchedProjectConfig)...)
 	catcher := grip.NewBasicCatcher()
 	for _, validationErr := range validationErrors.AtLevel(validator.Error) {
@@ -648,7 +648,7 @@ func setDefaultNotification(username string) error {
 	if u.Settings.Notifications.CommitQueue == "" {
 		u.Settings.Notifications.CommitQueue = user.PreferenceEmail
 		commitQueueSubscriber := event.NewEmailSubscriber(u.Email())
-		commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+		commitQueueSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionCommitQueue,
 			"", commitQueueSubscriber, u.Id)
 		if err != nil {
 			return errors.Wrap(err, "can't create default email subscription")

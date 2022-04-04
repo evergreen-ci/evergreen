@@ -31,112 +31,112 @@ type StatusChanges struct {
 	BuildComplete    bool
 }
 
-func SetActiveState(t *task.Task, caller string, active bool) error {
-	originalTasks := []task.Task{*t}
-	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
-		if err != nil {
-			return errors.Wrapf(err, "error getting execution tasks")
+func SetActiveState(caller string, active bool, tasks ...task.Task) error {
+	tasksToActivate := []task.Task{}
+	versionIdsSet := map[string]bool{}
+	buildToTaskMap := map[string]task.Task{}
+	catcher := grip.NewBasicCatcher()
+	for _, t := range tasks {
+		originalTasks := []task.Task{t}
+		if t.DisplayOnly {
+			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+			if err != nil {
+				catcher.Wrapf(err, "error getting execution tasks")
+			}
+			originalTasks = append(originalTasks, execTasks...)
 		}
-		originalTasks = append(originalTasks, execTasks...)
+		versionIdsSet[t.Version] = true
+		buildToTaskMap[t.BuildId] = t
+		if active {
+			// if the task is being activated, and it doesn't override its dependencies
+			// activate the task's dependencies as well
+			if !t.OverrideDependencies {
+				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
+				if err != nil {
+					catcher.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
+				}
+				if t.IsPartOfSingleHostTaskGroup() {
+					for _, dep := range deps {
+						// reset any already finished tasks in the same task group
+						if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
+							if err = resetTask(dep.Id, caller, false); err != nil {
+								catcher.Wrapf(err, "error resetting dependency '%s'", dep.Id)
+							}
+						} else {
+							tasksToActivate = append(tasksToActivate, dep)
+						}
+					}
+				} else {
+					tasksToActivate = append(tasksToActivate, deps...)
+				}
+			}
+
+			// Investigating strange dispatch state as part of EVG-13144
+			if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
+				if err := resetTask(t.Id, caller, false); err != nil {
+					catcher.Wrap(err, "error resetting task")
+				}
+			} else {
+				tasksToActivate = append(tasksToActivate, originalTasks...)
+			}
+
+			// If the task was not activated by step back, and either the caller is not evergreen
+			// or the task was originally activated by evergreen, deactivate the task
+		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
+			var err error
+			// deactivate later tasks in the group as well, since they won't succeed without this one
+			if t.IsPartOfSingleHostTaskGroup() {
+				tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+				if err != nil {
+					catcher.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+				}
+				for _, taskInGroup := range tasksInGroup {
+					if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
+						originalTasks = append(originalTasks, taskInGroup)
+					}
+				}
+			}
+			if t.Requester == evergreen.MergeTestRequester {
+				if err = DequeueAndRestartForTask(nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
+					catcher.Add(err)
+				}
+			}
+			tasksToActivate = append(tasksToActivate, originalTasks...)
+		} else {
+			continue
+		}
+		if t.IsPartOfDisplay() {
+			if err := UpdateDisplayTaskForTask(&t); err != nil {
+				catcher.Wrap(err, "problem updating display task")
+			}
+		}
 	}
 
 	if active {
-		// if the task is being activated and it doesn't override its dependencies
-		// activate the task's dependencies as well
-		tasksToActivate := []task.Task{}
-		if !t.OverrideDependencies {
-			deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
-			if err != nil {
-				return errors.Wrapf(err, "error getting tasks '%s' depends on", t.Id)
-			}
-			if t.IsPartOfSingleHostTaskGroup() {
-				for _, dep := range deps {
-					// reset any already finished tasks in the same task group
-					if dep.TaskGroup == t.TaskGroup && t.TaskGroup != "" && dep.IsFinished() {
-						if err = resetTask(dep.Id, caller, false); err != nil {
-							return errors.Wrapf(err, "error resetting dependency '%s'", dep.Id)
-						}
-					} else {
-						tasksToActivate = append(tasksToActivate, dep)
-					}
-				}
-			} else {
-				tasksToActivate = append(tasksToActivate, deps...)
-			}
-		}
-
-		// Investigating strange dispatch state as part of EVG-13144
-		if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
-			if err := resetTask(t.Id, caller, false); err != nil {
-				return errors.Wrap(err, "error resetting task")
-			}
-		} else {
-			tasksToActivate = append(tasksToActivate, originalTasks...)
-		}
 		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
 			return errors.Wrapf(err, "can't activate tasks")
 		}
-
-		if t.DistroId == "" && !t.DisplayOnly {
-			grip.Critical(message.Fields{
-				"message": "task is missing distro id",
-				"task_id": t.Id,
-			})
+		versionIdsToActivate := []string{}
+		for v := range versionIdsSet {
+			versionIdsToActivate = append(versionIdsToActivate, v)
 		}
-
-		version, err := VersionFindOneId(t.Version)
-		if err != nil {
-			return errors.Wrapf(err, "error find associated version")
-		}
-		if version == nil {
-			return errors.Errorf("could not find associated version : `%s`", t.Version)
-		}
-		if err = version.SetActivated(); err != nil {
+		if err := ActivateVersions(versionIdsToActivate); err != nil {
 			return errors.Wrapf(err, "Error marking version as activated")
 		}
-
-		// If the task was not activated by step back, and either the caller is not evergreen
-		// or the task was originally activated by evergreen, deactivate the task
-	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
-		var err error
-		// deactivate later tasks in the group as well, since they won't succeed without this one
-		if t.IsPartOfSingleHostTaskGroup() {
-			tasksInGroup, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
-			if err != nil {
-				return errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
-			}
-			for _, taskInGroup := range tasksInGroup {
-				if taskInGroup.TaskGroupOrder > t.TaskGroupOrder {
-					originalTasks = append(originalTasks, taskInGroup)
-				}
-			}
-		}
-		err = task.DeactivateTasks(originalTasks, caller)
-		if err != nil {
+	} else {
+		if err := task.DeactivateTasks(tasksToActivate, caller); err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
-
-		if t.Requester == evergreen.MergeTestRequester {
-			if err = DequeueAndRestartForTask(nil, t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)); err != nil {
-				return err
-			}
-		}
-	} else {
-		return nil
 	}
 
-	if t.IsPartOfDisplay() {
-		if err := UpdateDisplayTaskForTask(t); err != nil {
-			return errors.Wrap(err, "problem updating display task")
+	for b, item := range buildToTaskMap {
+		t := buildToTaskMap[b]
+		if err := UpdateBuildAndVersionStatusForTask(&item); err != nil {
+			return errors.Wrapf(err, "problem updating build and version status for task '%s'", t.Id)
 		}
 	}
 
-	if err := UpdateBuildAndVersionStatusForTask(t); err != nil {
-		return errors.Wrap(err, "problem updating build and version status for task")
-	}
-
-	return nil
+	return catcher.Resolve()
 }
 
 func SetActiveStateById(id, user string, active bool) error {
@@ -147,7 +147,7 @@ func SetActiveStateById(id, user string, active bool) error {
 	if t == nil {
 		return errors.Errorf("task '%s' not found", id)
 	}
-	return SetActiveState(t, user, active)
+	return SetActiveState(user, active, *t)
 }
 
 // activatePreviousTask will set the Active state for the first task with a
@@ -182,7 +182,7 @@ func activatePreviousTask(taskId, caller string, originalStepbackTask *task.Task
 	}
 
 	// activate the task
-	if err = SetActiveState(prevTask, caller, true); err != nil {
+	if err = SetActiveState(caller, true, *prevTask); err != nil {
 		return errors.Wrapf(err, "error setting task '%s' active", prevTask.Id)
 	}
 	// add the task that we're actually stepping back so that we know to activate it
@@ -341,7 +341,7 @@ func AbortTask(taskId, caller string) error {
 	}
 
 	// set the active state and then set the abort
-	if err = SetActiveState(t, caller, false); err != nil {
+	if err = SetActiveState(caller, false, *t); err != nil {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
@@ -400,7 +400,7 @@ func DeactivatePreviousTasks(t *task.Task, caller string) error {
 			continue
 		}
 
-		if err = SetActiveState(&t, caller, false); err != nil {
+		if err = SetActiveState(caller, false, t); err != nil {
 			return err
 		}
 	}
@@ -1238,12 +1238,11 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 // MarkHostTaskUndispatched marks a task as no longer dispatched to a host. If
 // it's part of a display task, update the display task as necessary.
 func MarkHostTaskUndispatched(t *task.Task) error {
-	// record that the task as undispatched on the host
 	if err := t.MarkAsHostUndispatched(); err != nil {
 		return errors.WithStack(err)
 	}
-	// the task was successfully dispatched, log the event
-	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
+
+	event.LogHostTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)
@@ -1255,13 +1254,12 @@ func MarkHostTaskUndispatched(t *task.Task) error {
 // MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
 // part of a display task, update the display task as necessary.
 func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
-	// record that the task was dispatched on the host
 	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "error marking task %s as dispatched "+
 			"on host %s", t.Id, h.Id)
 	}
-	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, t.Execution, h.Id)
+
+	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay() {
 		return UpdateDisplayTaskForTask(t)
@@ -1558,7 +1556,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 			// Need to consider tasks that have been dispatched since the last exec task finished.
-		} else if (execTask.IsDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
+		} else if (execTask.IsHostDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
 			hasTasksToRun = true
 		}
 

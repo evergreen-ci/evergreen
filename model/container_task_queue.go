@@ -152,7 +152,7 @@ func (q *ContainerTaskQueue) getProjectRefs(tasks []task.Task) (map[string]Proje
 		return map[string]ProjectRef{}, nil
 	}
 
-	projRefs, err := FindProjectRefsByIds(projRefIDs)
+	projRefs, err := FindProjectRefsByIds(projRefIDs...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project refs for tasks")
 	}

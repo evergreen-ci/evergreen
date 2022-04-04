@@ -42,6 +42,7 @@ const (
 type TaskEventData struct {
 	Execution int    `bson:"execution" json:"execution"`
 	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	PodID     string `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
@@ -108,12 +109,26 @@ func LogTaskCreated(taskId string, execution int) {
 	logTaskEvent(taskId, TaskCreated, TaskEventData{Execution: execution})
 }
 
-func LogTaskDispatched(taskId string, execution int, hostId string) {
+// LogHostTaskDispatched logs an event for a host task being dispatched.
+func LogHostTaskDispatched(taskId string, execution int, hostId string) {
 	logTaskEvent(taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-func LogTaskUndispatched(taskId string, execution int, hostId string) {
+// LogContainerTaskDispatched logs an event for a container task being
+// dispatched to a pod.
+func LogContainerTaskDispatched(taskID string, execution int, podID string) {
+	logTaskEvent(taskID, TaskDispatched, TaskEventData{Execution: execution, PodID: podID})
+}
+
+// LogHostTaskUndispatched logs an event for a host being marked undispatched.
+func LogHostTaskUndispatched(taskId string, execution int, hostId string) {
 	logTaskEvent(taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
+}
+
+// LogContainerTaskDispatched logs an event for a container task being marked
+// unallocated.
+func LogContainerTaskUnallocated(taskID string, execution int, podID string) {
+	logTaskEvent(taskID, TaskUndispatched, TaskEventData{Execution: execution, PodID: podID})
 }
 
 func LogTaskStarted(taskId string, execution int) {

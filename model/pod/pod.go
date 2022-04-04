@@ -1,8 +1,10 @@
 package pod
 
 import (
+	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
@@ -27,6 +29,9 @@ type Pod struct {
 	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
 	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
+	// AgentVersion is the version of the agent running on this pod if it's a
+	// pod that runs tasks.
+	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
 	// RunningTask is the ID of the task currently running on the pod.
 	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 }
@@ -424,4 +429,30 @@ func (p *Pod) GetSecret() (*Secret, error) {
 		return nil, errors.New("pod does not have a secret")
 	}
 	return &s, nil
+}
+
+// SetRunningTask sets the task to dispatch to the pod.
+func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, taskID string) error {
+	query := bson.M{
+		IDKey:          p.ID,
+		StatusKey:      StatusRunning,
+		RunningTaskKey: nil,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			RunningTaskKey: taskID,
+		},
+	}
+
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return err
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("pod was not updated")
+	}
+
+	p.RunningTask = taskID
+
+	return nil
 }

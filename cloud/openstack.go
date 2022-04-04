@@ -263,6 +263,11 @@ func (m *openStackManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with openstack provider")
 }
 
+// Cleanup is a noop for the openstack provider.
+func (m *openStackManager) Cleanup(context.Context) error {
+	return nil
+}
+
 // TimeTilNextPayment always returns 0. The OpenStack dashboard requires third-party
 // plugins for billing, monitoring, and other management tools.
 func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {

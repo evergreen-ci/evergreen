@@ -263,6 +263,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.PodInitDisabled, dbSettings.ServiceFlags.PodInitDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, dbSettings.ServiceFlags.PodAllocatorDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, dbSettings.ServiceFlags.S3BinaryDownloadsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, dbSettings.ServiceFlags.CloudCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.GenerateTasksExperimentDisabled, dbSettings.ServiceFlags.GenerateTasksExperimentDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {

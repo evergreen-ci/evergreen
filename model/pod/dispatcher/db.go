@@ -139,10 +139,3 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 
 	return pd, nil
 }
-
-// GetGroupID returns the pod dispatcher group ID for the task.
-func GetGroupID(t *task.Task) string {
-	// TODO (PM-2618): handle task units that represent task groups rather than
-	// standalone tasks.
-	return t.Id
-}

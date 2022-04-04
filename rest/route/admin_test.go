@@ -187,6 +187,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settings.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settings.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settings.ServiceFlags.S3BinaryDownloadsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settings.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.GenerateTasksExperimentDisabled, settings.ServiceFlags.GenerateTasksExperimentDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)

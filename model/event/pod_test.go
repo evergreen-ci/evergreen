@@ -27,6 +27,21 @@ func TestPodEvents(t *testing.T) {
 			assert.Equal(t, oldStatus, data.OldStatus)
 			assert.Equal(t, newStatus, data.NewStatus)
 		},
+		"LogPodAssignedTask": func(t *testing.T) {
+			podID := "pod_id"
+			taskID := "task_id"
+			LogPodAssignedTask(podID, taskID)
+
+			events, err := Find(AllLogCollection, MostRecentPodEvents(podID, 10))
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+
+			assert.Equal(t, podID, events[0].ResourceId)
+			require.NotZero(t, events[0].Data)
+			data, ok := events[0].Data.(*podData)
+			require.True(t, ok)
+			assert.Equal(t, taskID, data.TaskID)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.Clear(AllLogCollection))

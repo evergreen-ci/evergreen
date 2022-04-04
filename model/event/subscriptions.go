@@ -51,28 +51,28 @@ var (
 type OwnerType string
 
 const (
-	OwnerTypePerson                         OwnerType = "person"
-	OwnerTypeProject                        OwnerType = "project"
-	TaskDurationKey                                   = "task-duration-secs"
-	TaskPercentChangeKey                              = "task-percent-change"
-	BuildDurationKey                                  = "build-duration-secs"
-	BuildPercentChangeKey                             = "build-percent-change"
-	VersionDurationKey                                = "version-duration-secs"
-	VersionPercentChangeKey                           = "version-percent-change"
-	TestRegexKey                                      = "test-regex"
-	RenotifyIntervalKey                               = "renotify-interval"
-	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
-	ImplicitSubscriptionPatchFirstFailure             = "patch-first-failure"
-	ImplicitSubscriptionBuildBreak                    = "build-break"
-	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
-	ImplicitSubscriptionSpawnHostOutcome              = "spawnhost-outcome"
+	OwnerTypePerson                        OwnerType = "person"
+	OwnerTypeProject                       OwnerType = "project"
+	TaskDurationKey                                  = "task-duration-secs"
+	TaskPercentChangeKey                             = "task-percent-change"
+	BuildDurationKey                                 = "build-duration-secs"
+	BuildPercentChangeKey                            = "build-percent-change"
+	VersionDurationKey                               = "version-duration-secs"
+	VersionPercentChangeKey                          = "version-percent-change"
+	TestRegexKey                                     = "test-regex"
+	RenotifyIntervalKey                              = "renotify-interval"
+	GeneralSubscriptionPatchOutcome                  = "patch-outcome"
+	GeneralSubscriptionPatchFirstFailure             = "patch-first-failure"
+	GeneralSubscriptionBuildBreak                    = "build-break"
+	GeneralSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
+	GeneralSubscriptionSpawnHostOutcome              = "spawnhost-outcome"
+	GeneralSubscriptionCommitQueue                   = "commit-queue"
 
-	ImplicitSubscriptionCommitQueue = "commit-queue"
-	ObjectTask                      = "task"
-	ObjectVersion                   = "version"
-	ObjectBuild                     = "build"
-	ObjectHost                      = "host"
-	ObjectPatch                     = "patch"
+	ObjectTask    = "task"
+	ObjectVersion = "version"
+	ObjectBuild   = "build"
+	ObjectHost    = "host"
+	ObjectPatch   = "patch"
 
 	TriggerOutcome                   = "outcome"
 	TriggerGithubCheckOutcome        = "github-check-outcome"
@@ -698,7 +698,7 @@ func IsValidOwnerType(in string) bool {
 	}
 }
 
-func CreateOrUpdateImplicitSubscription(resourceType string, id string,
+func CreateOrUpdateGeneralSubscription(resourceType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
 	var sub *Subscription
@@ -712,17 +712,17 @@ func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 		if sub == nil {
 			var temp Subscription
 			switch resourceType {
-			case ImplicitSubscriptionPatchOutcome:
+			case GeneralSubscriptionPatchOutcome:
 				temp = NewPatchOutcomeSubscriptionByOwner(user, subscriber)
-			case ImplicitSubscriptionPatchFirstFailure:
+			case GeneralSubscriptionPatchFirstFailure:
 				temp = NewFirstTaskFailureInVersionSubscriptionByOwner(user, subscriber)
-			case ImplicitSubscriptionBuildBreak:
+			case GeneralSubscriptionBuildBreak:
 				temp = NewBuildBreakSubscriptionByOwner(user, subscriber)
-			case ImplicitSubscriptionSpawnhostExpiration:
+			case GeneralSubscriptionSpawnhostExpiration:
 				temp = NewSpawnhostExpirationSubscription(user, subscriber)
-			case ImplicitSubscriptionSpawnHostOutcome:
+			case GeneralSubscriptionSpawnHostOutcome:
 				temp = NewSpawnHostOutcomeByOwner(user, subscriber)
-			case ImplicitSubscriptionCommitQueue:
+			case GeneralSubscriptionCommitQueue:
 				temp = NewCommitQueueSubscriptionByOwner(user, subscriber)
 			default:
 				return nil, errors.Errorf("unknown subscription resource type: %s", resourceType)
@@ -843,7 +843,7 @@ func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription
 	return Subscription{
 		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: ResourceTypeTask,
-		Trigger:      ImplicitSubscriptionBuildBreak,
+		Trigger:      GeneralSubscriptionBuildBreak,
 		Selectors: []Selector{
 			{
 				Type: SelectorOwner,

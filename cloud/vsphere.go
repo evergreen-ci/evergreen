@@ -222,6 +222,11 @@ func (m *vsphereManager) CheckInstanceType(context.Context, string) error {
 	return errors.New("can't specify instance type with vsphere provider")
 }
 
+// Cleanup is a noop for the vsphere provider.
+func (m *vsphereManager) Cleanup(context.Context) error {
+	return nil
+}
+
 // GetDNSName returns the IPv4 address of the host.
 func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ip, err := m.client.GetIP(ctx, h)

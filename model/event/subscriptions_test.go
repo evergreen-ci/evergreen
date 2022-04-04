@@ -541,13 +541,13 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
 	s.Nil(sub)
 }
 
-func (s *subscriptionsSuite) TestCreateOrUpdateImplicitSubscription() {
+func (s *subscriptionsSuite) TestCreateOrUpdateGeneralSubscription() {
 	subscriber := Subscriber{
 		Type:   SlackSubscriberType,
 		Target: "@octocat",
 	}
 
-	subscription, err := CreateOrUpdateImplicitSubscription(ImplicitSubscriptionCommitQueue, "",
+	subscription, err := CreateOrUpdateGeneralSubscription(GeneralSubscriptionCommitQueue, "",
 		subscriber, "octocat")
 	s.NoError(err)
 

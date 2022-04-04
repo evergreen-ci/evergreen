@@ -16,8 +16,7 @@
                   "githubWebhooksEnabled": false,
                   "vars": {
                     "vars": {
-                      "foo": "bar",
-                      "hello": ""
+                      "hello": "world"
                     }
                   }
                 },
@@ -25,10 +24,10 @@
                   "projectRef": {
                     "branch": "main"
                   },
+                  "githubWebhooksEnabled": true,
                   "vars": {
                     "vars": {
-                      "foo": "bar",
-                      "hello": ""
+                      "hello": "universe"
                     }
                   }     
                 }

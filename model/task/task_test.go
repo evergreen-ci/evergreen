@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -2109,6 +2110,157 @@ func TestDeactivateTasks(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestMarkAsContainerDispatched(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	getDispatchableContainerTask := func() Task {
+		return Task{
+			Id:                utility.RandomString(),
+			Activated:         true,
+			ActivatedTime:     time.Now(),
+			Status:            evergreen.TaskContainerAllocated,
+			ExecutionPlatform: ExecutionPlatformContainer,
+		}
+	}
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	checkTaskDispatched := func(t *testing.T, taskID string) {
+		dbTask, err := FindOneId(taskID)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
+		assert.False(t, utility.IsZeroTime(dbTask.DispatchTime))
+		assert.False(t, utility.IsZeroTime(dbTask.LastHeartbeat))
+		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			checkTaskDispatched(t, tsk.Id)
+		},
+		"FailsWithTaskWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Status = evergreen.TaskContainerUnallocated
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+		},
+		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Activated = false
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+		},
+		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Priority = evergreen.DisabledTaskPriority
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+		},
+		"FailsWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{TaskId: "task", Finished: true, Unattainable: true},
+			}
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+		},
+		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			require.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+
+			dbTask, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			require.NoError(t, db.Clear(Collection))
+
+			tCase(tctx, t, env, getDispatchableContainerTask())
+		})
+	}
+}
+
+func TestMarkAsContainerDeallocated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	checkTaskUnallocated := func(t *testing.T, taskID string) {
+		dbTask, err := FindOneId(taskID)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
+		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
+		assert.Zero(t, dbTask.AgentVersion)
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
+			checkTaskUnallocated(t, tsk.Id)
+		},
+		"FailsWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Status = evergreen.TaskSucceeded
+			require.NoError(t, tsk.Insert())
+			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
+		},
+		"FailsWithDifferentDBTaskStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Status = evergreen.TaskContainerUnallocated
+			require.NoError(t, tsk.Insert())
+			tsk.Status = evergreen.TaskContainerAllocated
+
+			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
+		},
+		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			require.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
+
+			dbTask, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			tsk := Task{
+				Id:                utility.RandomString(),
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				Status:            evergreen.TaskContainerAllocated,
+				DispatchTime:      time.Now(),
+				LastHeartbeat:     time.Now(),
+				ExecutionPlatform: ExecutionPlatformContainer,
+			}
+			require.NoError(t, db.Clear(Collection))
+
+			tCase(tctx, t, env, tsk)
+		})
 	}
 }
 
