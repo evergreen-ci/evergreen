@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -60,6 +61,9 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(err)
 		return
+	}
+	if parentDistro == nil {
+		j.AddError(errors.Errorf("distro '%s' not found", j.DistroId))
 	}
 	minHosts := 0
 	if parentDistro != nil {
