@@ -75,8 +75,8 @@ func GetCommandFactory(name string) (CommandFactory, bool) {
 	return evgRegistry.getCommandFactory(name)
 }
 
-func Render(c model.PluginCommandConf, fns map[string]*model.YAMLCommandSet) ([]Command, error) {
-	return evgRegistry.renderCommands(c, fns)
+func Render(c model.PluginCommandConf, project *model.Project) ([]Command, error) {
+	return evgRegistry.renderCommands(c, project)
 }
 
 func RegisteredCommandNames() []string { return evgRegistry.registeredCommandNames() }
@@ -137,7 +137,7 @@ func (r *commandRegistry) getCommandFactory(name string) (CommandFactory, bool) 
 }
 
 func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
-	funcs map[string]*model.YAMLCommandSet) ([]Command, error) {
+	project *model.Project) ([]Command, error) {
 
 	var (
 		parsed []model.PluginCommandConf
@@ -146,7 +146,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	)
 
 	if name := commandInfo.Function; name != "" {
-		cmds, ok := funcs[name]
+		cmds, ok := project.Functions[name]
 		if !ok {
 			errs = append(errs, fmt.Sprintf("function '%s' not found in project functions", name))
 		} else if cmds != nil {
@@ -189,7 +189,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 			errs = append(errs, errors.Wrapf(err, "problem parsing input of %s (%s)", c.Command, c.DisplayName).Error())
 			continue
 		}
-		cmd.SetType(c.Type)
+		cmd.SetType(c.GetType(project))
 		cmd.SetDisplayName(c.DisplayName)
 		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
 

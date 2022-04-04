@@ -49,7 +49,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
-					pluginCmds, err := Render(command, conf.Project.Functions)
+					pluginCmds, err := Render(command, conf.Project)
 					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
@@ -111,7 +111,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
-					pluginCmds, err := Render(command, conf.Project.Functions)
+					pluginCmds, err := Render(command, conf.Project)
 					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)

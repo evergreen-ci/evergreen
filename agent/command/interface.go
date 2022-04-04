@@ -27,10 +27,9 @@ type Command interface {
 	// A string name for the command
 	Name() string
 
-	// Type reports on or overrides the default command type
-	// (e.g. system or task.) The setter MUST NOT override a value
-	// if it has already been set.
+	// Type returns the command's type (e.g. system or test).
 	Type() string
+	// SetType sets the command's type (e.g. system or test).
 	SetType(string)
 
 	DisplayName() string
@@ -64,9 +63,7 @@ func (b *base) SetType(n string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.typeName == "" {
-		b.typeName = n
-	}
+	b.typeName = n
 }
 
 func (b *base) DisplayName() string {
