@@ -173,7 +173,7 @@ Evergreen Projects
         <label class="control-label">Batch Time (min)</label>
       </div>
       <div class="col-lg-4">
-        <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
+        <input class="form-control" type="number" ng-model="settingsFormData.batch_time">
         <label class="icon fa fa-warning project-error" ng-show="!isBatchTimeValid(settingsFormData.batch_time)">&nbsp;Batch time must be a number, &gt;=0.</label>
       </div>
     </div>
@@ -965,6 +965,54 @@ Evergreen Projects
             <button class="plus-button btn btn-primary" type="button" ng-click="showPeriodicBuildModal()">
             <i class="fa fa-plus"></i> New Periodic Build
             </button>
+          </div>
+        </div>
+      </div>
+      <!-- Custom container resource aliases -->
+      <div class="variables">
+        <div class="form-group">
+          <div class="col-header col-lg-6 form-control-static">
+            <h3>Container Sizes</h3>
+            <div class="muted small">Specify custom computing resource configurations for running tasks in containers. Memory field denotes the memory (in MB) that the container will be allocated, and CPU is the CPU units that will be allocated. 1024 CPU units is equivalent to 1vCPU.</div>
+          </div>
+        </div>
+        <div id="container-sizes-list-header" class="form-group">
+          <div class="col-lg-2"> <label class="control-label"> Name </label> </div>
+          <div class="col-lg-2"> <label class="control-label"> Memory MB </label> </div>
+          <div class="col-lg-2"> <label class="control-label"> CPU </label> </div>
+          <div class="col-lg-2"></div>
+        </div>
+        <div id="container-sizes-list" class="form-group" ng-repeat="(name, obj) in settingsFormData.container_sizes track by $index">
+          <div class="col-lg-2">
+            <input class="form-control" ng-model="name" type="text" placeholder="name">
+          </div>
+          <div class="col-lg-2">
+            <input class="form-control" ng-model="obj.memory_mb" type="number" placeholder="memory mb">
+          </div>
+          <div class="col-lg-2">
+            <input class="form-control" ng-model="obj.cpu" type="number" placeholder="cpu">
+          </div>
+          <div class="col-lg-2">
+            <button class="btn btn-default btn-danger" type="button" ng-click="removeContainerSize(name)">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="col-lg-2">
+            <input ng-model="container_size.name" class="form-control" type="text" placeholder="name">
+          </div>
+          <div class="col-lg-2">
+            <input ng-model="container_size.memory_mb" class="form-control" type="number" placeholder="memory mb">
+          </div>
+          <div class="col-lg-2">
+            <input ng-model="container_size.cpu" class="form-control" type="number" placeholder="cpu">
+          </div>
+          <div class="col-lg-2">
+            <button class="plus-button btn btn-primary " ng-disabled="!validContainerSize(container_size)" type="button" ng-click="addContainerSize()">
+              <i class="fa fa-plus"></i>
+            </button>
+            <label class="distro-error">[[invalidContainerSizeMessage]]</label>
           </div>
         </div>
       </div>

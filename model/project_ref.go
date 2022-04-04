@@ -107,6 +107,9 @@ type ProjectRef struct {
 	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
+	// Container settings
+	ContainerSizes map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
@@ -142,6 +145,15 @@ type AlertConfig struct {
 	// Data contains provider-specific on how a notification should be delivered.
 	// Typed as bson.M so that the appropriate provider can parse out necessary details
 	Settings bson.M `bson:"settings" json:"settings"`
+}
+
+// ContainerResources specifies the computing resources given to the container.
+// MemoryMB is the memory (in MB) that the container will be allocated, and
+// CPU is the CPU units that will be allocated. 1024 CPU units is
+// equivalent to 1vCPU.
+type ContainerResources struct {
+	MemoryMB int `bson:"memory_mb,omitempty" json:"memory_mb" yaml:"memory_mb"`
+	CPU      int `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
 }
 
 type TriggerDefinition struct {
@@ -455,6 +467,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 		pRefToMerge := ProjectRef{
 			PeriodicBuilds:       projectConfig.PeriodicBuilds,
 			GithubTriggerAliases: projectConfig.GithubTriggerAliases,
+			ContainerSizes:       projectConfig.ContainerSizes,
 		}
 		if projectConfig.WorkstationConfig != nil {
 			pRefToMerge.WorkstationConfig = *projectConfig.WorkstationConfig

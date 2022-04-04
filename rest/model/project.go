@@ -178,8 +178,8 @@ func (t *APITaskSpecifier) ToService() (interface{}, error) {
 type APIPeriodicBuildDefinition struct {
 	ID            *string    `json:"id"`
 	ConfigFile    *string    `json:"config_file"`
-	IntervalHours *int       `son:"interval_hours"`
-	Alias         *string    `son:"alias,omitempty"`
+	IntervalHours *int       `json:"interval_hours"`
+	Alias         *string    `json:"alias,omitempty"`
 	Message       *string    `json:"message,omitempty"`
 	NextRunTime   *time.Time `json:"next_run_time,omitempty"`
 }
@@ -371,6 +371,23 @@ func (opts *APITaskSyncOptions) ToService() (interface{}, error) {
 type APIWorkstationConfig struct {
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
 	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
+}
+
+type APIContainerResources struct {
+	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
+	CPU      *int `bson:"cpu" json:"cpu"`
+}
+
+func (cr *APIContainerResources) BuildFromService(h model.ContainerResources) {
+	cr.MemoryMB = utility.ToIntPtr(h.MemoryMB)
+	cr.CPU = utility.ToIntPtr(h.CPU)
+}
+
+func (cr *APIContainerResources) ToService() model.ContainerResources {
+	return model.ContainerResources{
+		MemoryMB: utility.FromIntPtr(cr.MemoryMB),
+		CPU:      utility.FromIntPtr(cr.CPU),
+	}
 }
 
 type APIWorkstationSetupCommand struct {
