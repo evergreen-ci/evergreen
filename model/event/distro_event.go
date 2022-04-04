@@ -12,9 +12,10 @@ const (
 	ResourceTypeDistro = "DISTRO"
 
 	// event types
-	EventDistroAdded    = "DISTRO_ADDED"
-	EventDistroModified = "DISTRO_MODIFIED"
-	EventDistroRemoved  = "DISTRO_REMOVED"
+	EventDistroAdded      = "DISTRO_ADDED"
+	EventDistroModified   = "DISTRO_MODIFIED"
+	EventDistroAMIModfied = "DISTRO_AMI_MODIFIED"
+	EventDistroRemoved    = "DISTRO_REMOVED"
 )
 
 // DistroEventData implements EventData.
@@ -55,4 +56,9 @@ func LogDistroModified(distroId, userId string, data interface{}) {
 // LogDistroRemoved should take in DistroData in order to preserve the ProviderSettingsList
 func LogDistroRemoved(distroId, userId string, data interface{}) {
 	LogDistroEvent(distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
+}
+
+// LogDistroAMIModified logs when the default region's AMI is modified.
+func LogDistroAMIModified(distroId, userId string) {
+	LogDistroEvent(distroId, EventDistroAMIModfied, DistroEventData{UserId: userId})
 }

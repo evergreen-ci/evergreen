@@ -280,10 +280,11 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			if err != nil {
 				return errors.Wrapf(err, "error finding host '%s' for task", v.HostId)
 			}
-			if h != nil && len(h.Distro.ProviderSettingsList) == 1 {
-				ami, ok := h.Distro.ProviderSettingsList[0].Lookup("ami").StringValueOK()
-				if ok {
+			if h != nil {
+				ami := h.GetAMI()
+				if ami != "" {
 					at.Ami = utility.ToStringPtr(ami)
+
 				}
 			}
 		}

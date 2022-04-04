@@ -144,21 +144,7 @@ var (
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 
-	// taskQueueInfoLengthKey             = bsonutil.MustHaveTag(DistroQueueInfo{}, "Length")
-	// taskQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
-	// taskQueueInfoMaxDurationKey        = bsonutil.MustHaveTag(DistroQueueInfo{}, "MaxDurationThreshold")
 	taskQueueInfoPlanCreatedAtKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "PlanCreatedAt")
-	// taskQueueInfoCountDurationOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountDurationOverThreshold")
-	// taskQueueInfoCountWaitOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountWaitOverThreshold")
-	// taskQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
-	// taskQueueInfoAliasQueueKey         = bsonutil.MustHaveTag(DistroQueueInfo{}, "AliasQueue")
-
-	// taskQueueInfoGroupNameKey                  = bsonutil.MustHaveTag(TaskGroupInfo{}, "Name")
-	// taskQueueInfoGroupCountKey                 = bsonutil.MustHaveTag(TaskGroupInfo{}, "Count")
-	// taskQueueInfoGroupMaxHostsKey              = bsonutil.MustHaveTag(TaskGroupInfo{}, "MaxHosts")
-	// taskQueueInfoGroupExpectedDuratioKey       = bsonutil.MustHaveTag(TaskGroupInfo{}, "ExpectedDuration")
-	// taskQueueInfoGroupCountOverThresholdKey    = bsonutil.MustHaveTag(TaskGroupInfo{}, "CountOverThreshold")
-	// taskQueueInfoGroupDurationOverThresholdKey = bsonutil.MustHaveTag(TaskGroupInfo{}, "DurationOverThreshold")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers

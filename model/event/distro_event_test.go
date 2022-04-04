@@ -30,10 +30,10 @@ func TestLoggingDistroEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForDistro, err := Find(AllLogCollection, DistroEventsInOrder(distroId))
+			eventsForDistro, err := FindLatestPrimaryDistroEvents(distroId, 10)
 			So(err, ShouldBeNil)
 
-			event := eventsForDistro[0]
+			event := eventsForDistro[2]
 			So(event.EventType, ShouldEqual, EventDistroAdded)
 			So(event.ResourceId, ShouldEqual, distroId)
 
@@ -58,7 +58,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(ami, ShouldEqual, "ami-123456")
 
-			event = eventsForDistro[2]
+			event = eventsForDistro[0]
 			So(event.EventType, ShouldEqual, EventDistroRemoved)
 			So(event.ResourceId, ShouldEqual, distroId)
 

@@ -68,6 +68,19 @@ func (d *Distro) NewDistroData() DistroData {
 	return res
 }
 
+func (d *Distro) GetDefaultAMI() string {
+	if len(d.ProviderSettingsList) == 0 {
+		return ""
+	}
+	settingsDoc, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
+	// An error indicates that settings aren't set up to have a relevant AMI.
+	if err != nil {
+		return ""
+	}
+	ami, _ := settingsDoc.Lookup("ami").StringValueOK()
+	return ami
+}
+
 // BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
 	// Required
