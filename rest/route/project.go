@@ -402,7 +402,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
-			allAliases, err = data.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases)
+			allAliases, err = data.FindProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
 			if err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error checking existing patch definitions"))
 			}
@@ -816,7 +816,7 @@ func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 type projectIDGetHandler struct {
 	projectName          string
 	includeRepo          bool
-	includeParserProject bool
+	includeProjectConfig bool
 }
 
 func makeGetProjectByID() gimlet.RouteHandler {
@@ -830,12 +830,12 @@ func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
 func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	h.includeRepo = r.URL.Query().Get("includeRepo") == "true"
-	h.includeParserProject = r.URL.Query().Get("includeParserProject") == "true"
+	h.includeProjectConfig = r.URL.Query().Get("includeProjectConfig") == "true"
 	return nil
 }
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := data.FindProjectById(h.projectName, h.includeRepo, h.includeParserProject)
+	project, err := data.FindProjectById(h.projectName, h.includeRepo, h.includeProjectConfig)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -861,7 +861,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = data.FindProjectAliases(project.Id, repoId, nil); err != nil {
+	if projectModel.Aliases, err = data.FindProjectAliases(project.Id, repoId, nil, h.includeProjectConfig); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {

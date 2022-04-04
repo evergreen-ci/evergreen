@@ -83,6 +83,53 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+func FindAliasesMergedWithProjectConfig(projectID string) ([]ProjectAlias, error) {
+	dbAliases, err := FindAliasesForProjectFromDb(projectID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", projectID)
+	}
+	dbAliasMap := aliasesToMap(dbAliases)
+	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project config")
+	}
+	commitQueueAliases := dbAliasMap[evergreen.CommitQueueAlias]
+	githubPrAliases := dbAliasMap[evergreen.GithubPRAlias]
+	githubChecksAliases := dbAliasMap[evergreen.GithubChecksAlias]
+	gitTagAliases := dbAliasMap[evergreen.GitTagAlias]
+	patchAliases := []ProjectAlias{}
+	for alias, aliases := range dbAliasMap {
+		if IsPatchAlias(alias) {
+			patchAliases = append(patchAliases, aliases...)
+		}
+	}
+	mergedAliases := []ProjectAlias{}
+	if projectConfig != nil {
+		if len(commitQueueAliases) == 0 && len(projectConfig.CommitQueueAliases) > 0 {
+			commitQueueAliases = projectConfig.CommitQueueAliases
+		}
+
+		if len(githubPrAliases) == 0 && len(projectConfig.GitHubPRAliases) > 0 {
+			githubPrAliases = projectConfig.GitHubPRAliases
+		}
+		if len(githubChecksAliases) == 0 && len(projectConfig.GitHubChecksAliases) > 0 {
+			githubChecksAliases = projectConfig.GitHubChecksAliases
+		}
+		if len(gitTagAliases) == 0 && len(projectConfig.GitTagAliases) > 0 {
+			gitTagAliases = projectConfig.GitTagAliases
+		}
+		if len(patchAliases) == 0 && len(projectConfig.PatchAliases) > 0 {
+			patchAliases = projectConfig.PatchAliases
+		}
+	}
+	mergedAliases = append(mergedAliases, commitQueueAliases...)
+	mergedAliases = append(mergedAliases, githubPrAliases...)
+	mergedAliases = append(mergedAliases, githubChecksAliases...)
+	mergedAliases = append(mergedAliases, gitTagAliases...)
+	mergedAliases = append(mergedAliases, patchAliases...)
+	return mergedAliases, nil
+}
+
 // FindAliasesForRepo fetches all aliases for a given project
 func FindAliasesForRepo(repoId string) ([]ProjectAlias, error) {
 	out := []ProjectAlias{}

@@ -11,7 +11,7 @@ import (
 // FindProjectAliases queries the database to find all aliases.
 // If the repoId is given, we default to repo aliases if there are no project aliases.
 // If aliasesToAdd are given, then we fold those aliases in and remove any that are marked as deleted.
-func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias) ([]restModel.APIProjectAlias, error) {
+func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
 	var err error
 	var aliases model.ProjectAliases
 	// should this logic just be folded into FindProjectAliases?
@@ -25,7 +25,11 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 		}
 	}
 	if projectId != "" {
-		aliases, err = model.FindAliasesForProjectFromDb(projectId)
+		if includeProjectConfig {
+			aliases, err = model.FindAliasesMergedWithProjectConfig(projectId)
+		} else {
+			aliases, err = model.FindAliasesForProjectFromDb(projectId)
+		}
 		if err != nil {
 			return nil, err
 		}

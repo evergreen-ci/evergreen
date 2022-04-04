@@ -68,29 +68,72 @@ func (a *AliasSuite) SetupTest() {
 			Task:      "repo_task",
 		},
 	}
+	projectConfig := &model.ProjectConfig{
+		Id:      "project_id",
+		Project: "project_id",
+		ProjectConfigFields: model.ProjectConfigFields{
+			PatchAliases: []model.ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     "alias-2",
+				},
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     "alias-1",
+				},
+			},
+			CommitQueueAliases: []model.ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     evergreen.CommitQueueAlias,
+				},
+			},
+			GitHubChecksAliases: []model.ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "project-1",
+					Alias:     evergreen.GithubChecksAlias,
+				},
+			},
+		}}
+	a.NoError(projectConfig.Insert())
 	for _, v := range aliases {
 		a.NoError(v.Upsert())
 	}
 }
 
+func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
+	found, err := FindProjectAliases("project_id", "", nil, true)
+	a.NoError(err)
+	a.Len(found, 5)
+	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
+	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubChecksAlias)
+	a.Equal(utility.FromStringPtr(found[2].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[3].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[4].Alias), "bar")
+}
+
 func (a *AliasSuite) TestFindProjectAliases() {
-	found, err := FindProjectAliases("project_id", "", nil)
+	found, err := FindProjectAliases("project_id", "", nil, false)
 	a.NoError(err)
 	a.Len(found, 3)
 
-	found, err = FindProjectAliases("project_id", "repo_id", nil)
+	found, err = FindProjectAliases("project_id", "repo_id", nil, false)
 	a.NoError(err)
 	a.Len(found, 3) // ignore repo
 
-	found, err = FindProjectAliases("non-existent", "", nil)
+	found, err = FindProjectAliases("non-existent", "", nil, false)
 	a.NoError(err)
 	a.Len(found, 0)
 
-	found, err = FindProjectAliases("non-existent", "repo_id", nil)
+	found, err = FindProjectAliases("non-existent", "repo_id", nil, false)
 	a.NoError(err)
 	a.Len(found, 1) // from repo
 
-	found, err = FindProjectAliases("", "repo_id", nil)
+	found, err = FindProjectAliases("", "repo_id", nil, false)
 	a.NoError(err)
 	a.Len(found, 1)
 
@@ -98,24 +141,24 @@ func (a *AliasSuite) TestFindProjectAliases() {
 }
 
 func (a *AliasSuite) TestCopyProjectAliases() {
-	res, err := FindProjectAliases("new_project_id", "", nil)
+	res, err := FindProjectAliases("new_project_id", "", nil, false)
 	a.NoError(err)
 	a.Len(res, 0)
 
 	a.NoError(model.CopyProjectAliases("project_id", "new_project_id"))
 
-	res, err = FindProjectAliases("project_id", "", nil)
+	res, err = FindProjectAliases("project_id", "", nil, false)
 	a.NoError(err)
 	a.Len(res, 3)
 
-	res, err = FindProjectAliases("new_project_id", "", nil)
+	res, err = FindProjectAliases("new_project_id", "", nil, false)
 	a.NoError(err)
 	a.Len(res, 3)
 
 }
 
 func (a *AliasSuite) TestUpdateProjectAliases() {
-	found, err := FindProjectAliases("other_project_id", "", nil)
+	found, err := FindProjectAliases("other_project_id", "", nil, false)
 	a.NoError(err)
 	a.Require().Len(found, 2)
 	toUpdate := found[0]
@@ -132,7 +175,7 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 		},
 	}
 	a.NoError(UpdateProjectAliases("other_project_id", aliasUpdates))
-	found, err = FindProjectAliases("other_project_id", "", nil)
+	found, err = FindProjectAliases("other_project_id", "", nil, false)
 	a.NoError(err)
 	a.Require().Len(found, 2) // added one alias, deleted another
 

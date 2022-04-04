@@ -24,10 +24,10 @@ const EventLogLimit = 10
 type DBProjectConnector struct{}
 
 // FindProjectById queries the database for the project matching the projectRef.Id.
-func FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
+func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
-	if includeRepo && includeParserProject {
+	if includeRepo && includeProjectConfig {
 		p, err = model.FindMergedProjectRef(id, "", true)
 	} else if includeRepo {
 		p, err = model.FindMergedProjectRef(id, "", false)

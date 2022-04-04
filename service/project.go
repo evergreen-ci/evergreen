@@ -247,10 +247,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
-	if projectRef.UseRepoSettings() {
-		http.Error(w, "can't modify branch projects here", http.StatusBadRequest)
-		return
-	}
+	//if projectRef.UseRepoSettings() {
+	//	http.Error(w, "can't modify branch projects here", http.StatusBadRequest)
+	//	return
+	//}
 	id = projectRef.Id
 	origProjectRef := *projectRef
 
