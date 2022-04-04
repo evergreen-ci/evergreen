@@ -3,7 +3,10 @@ package command
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCommandRegistry(t *testing.T) {
@@ -42,4 +45,57 @@ func TestGlobalCommandRegistryNamesMatchExpectedValues(t *testing.T) {
 		cmd := factory()
 		assert.Equal(name, cmd.Name())
 	}
+}
+
+func TestRenderCommands(t *testing.T) {
+	registry := newCommandRegistry()
+	registry.cmds = map[string]CommandFactory{
+		"command.mock": func() Command { return &mockCommand{} },
+	}
+
+	t.Run("NoType", func(t *testing.T) {
+		info := model.PluginCommandConf{Command: "command.mock"}
+		project := model.Project{}
+
+		cmds, err := registry.renderCommands(info, &project)
+		assert.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, model.DefaultCommandType, cmds[0].Type())
+	})
+
+	t.Run("ProjectHasType", func(t *testing.T) {
+		info := model.PluginCommandConf{Command: "command.mock"}
+		project := model.Project{CommandType: evergreen.CommandTypeSetup}
+
+		cmds, err := registry.renderCommands(info, &project)
+		assert.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, evergreen.CommandTypeSetup, cmds[0].Type())
+	})
+
+	t.Run("CommandConfHasType", func(t *testing.T) {
+		info := model.PluginCommandConf{
+			Command: "command.mock",
+			Type:    evergreen.CommandTypeSystem,
+		}
+		project := model.Project{}
+
+		cmds, err := registry.renderCommands(info, &project)
+		assert.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, evergreen.CommandTypeSystem, cmds[0].Type())
+	})
+
+	t.Run("ConfAndProjectHaveType", func(t *testing.T) {
+		info := model.PluginCommandConf{
+			Command: "command.mock",
+			Type:    evergreen.CommandTypeSystem,
+		}
+		project := model.Project{CommandType: evergreen.CommandTypeSetup}
+
+		cmds, err := registry.renderCommands(info, &project)
+		assert.NoError(t, err)
+		require.Len(t, cmds, 1)
+		assert.Equal(t, evergreen.CommandTypeSystem, cmds[0].Type())
+	})
 }

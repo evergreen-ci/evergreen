@@ -27,7 +27,7 @@ type Command interface {
 	// A string name for the command
 	Name() string
 
-	// Type reports on the command's type (e.g. system or test).
+	// Type returns the command's type (e.g. system or test).
 	Type() string
 	// SetType sets the command's type (e.g. system or test).
 	SetType(string)
