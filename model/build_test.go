@@ -1,14 +1,10 @@
-package data
+package model
 
 import (
-	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,17 +18,13 @@ type BuildConnectorFetchByIdSuite struct {
 
 func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	s := new(BuildConnectorFetchByIdSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, model.ProjectRefCollection, model.VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, ProjectRefCollection, VersionCollection))
 	vId := "v"
-	version := &model.Version{Id: vId}
+	version := &Version{Id: vId}
 	builds := []build.Build{
 		{Id: "build1", Version: vId},
 		{Id: "build2", Version: vId},
@@ -41,7 +33,7 @@ func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
 	for _, item := range builds {
 		s.Require().NoError(item.Insert())
 	}
-	projRef := model.ProjectRef{Repo: "project", Id: "branch"}
+	projRef := ProjectRef{Repo: "project", Id: "branch"}
 	s.NoError(projRef.Insert())
 }
 
@@ -73,18 +65,14 @@ type BuildConnectorChangeStatusSuite struct {
 
 func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	s := new(BuildConnectorChangeStatusSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, VersionCollection))
 
 	vId := "v"
-	version := &model.Version{Id: vId}
+	version := &Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 	build2 := &build.Build{Id: "build2", Version: vId}
 
@@ -94,14 +82,14 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
-	err := model.SetBuildActivation("build1", true, "user1")
+	err := SetBuildActivation("build1", true, "user1")
 	s.NoError(err)
 	b, err := build.FindOneId("build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
-	err = model.SetBuildActivation("build1", false, "user1")
+	err = SetBuildActivation("build1", false, "user1")
 	s.NoError(err)
 	b, err = build.FindOneId("build1")
 	s.NoError(err)
@@ -110,10 +98,10 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetPriority() {
-	err := model.SetBuildPriority("build1", int64(2), "")
+	err := SetBuildPriority("build1", int64(2), "")
 	s.NoError(err)
 
-	err = model.SetBuildPriority("build1", int64(3), "")
+	err = SetBuildPriority("build1", int64(3), "")
 	s.NoError(err)
 }
 
@@ -127,18 +115,14 @@ type BuildConnectorAbortSuite struct {
 
 func TestBuildConnectorAbortSuite(t *testing.T) {
 	s := new(BuildConnectorAbortSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorAbortSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, VersionCollection))
 
 	vId := "v"
-	version := &model.Version{Id: vId}
+	version := &Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 
 	s.NoError(build1.Insert())
@@ -146,7 +130,7 @@ func (s *BuildConnectorAbortSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
-	err := model.AbortBuild("build1", "user1")
+	err := AbortBuild("build1", "user1")
 	s.NoError(err)
 	b, err := build.FindOne(build.ById("build1"))
 	s.NoError(err)
@@ -163,18 +147,14 @@ type BuildConnectorRestartSuite struct {
 
 func TestBuildConnectorRestartSuite(t *testing.T) {
 	s := new(BuildConnectorRestartSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
 func (s *BuildConnectorRestartSuite) SetupSuite() {
-	s.NoError(db.ClearCollections(build.Collection, model.VersionCollection))
+	s.NoError(db.ClearCollections(build.Collection, VersionCollection))
 
 	vId := "v"
-	version := &model.Version{Id: vId}
+	version := &Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 
 	s.NoError(build1.Insert())
@@ -182,9 +162,9 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {
-	err := model.RestartAllBuildTasks("build1", "user1")
+	err := RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 
-	err = model.RestartAllBuildTasks("build1", "user1")
+	err = RestartAllBuildTasks("build1", "user1")
 	s.NoError(err)
 }

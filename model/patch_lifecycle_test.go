@@ -159,6 +159,26 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	return configPatch
 }
 
+func TestSetPriority(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection), "problem clearing collections")
+	patches := []*patch.Patch{
+		{Id: patch.NewId("aabbccddeeff001122334455"), Version: "aabbccddeeff001122334455"},
+	}
+	t1 := task.Task{
+		Id:      "t1",
+		Version: "aabbccddeeff001122334455",
+	}
+	assert.NoError(t, t1.Insert())
+	for _, p := range patches {
+		assert.NoError(t, p.Insert())
+	}
+	err := SetVersionPriority("aabbccddeeff001122334455", 7, "")
+	assert.NoError(t, err)
+	foundTask, err := task.FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(7), foundTask.Priority)
+}
+
 func TestGetPatchedProject(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
