@@ -1,0 +1,16 @@
+mutation {
+    saveProjectSettingsForSection(
+        projectSettings: {
+            projectRef: {
+                id: "second_project_id",
+                identifier: "sandbox"
+            }
+        },
+        section: GENERAL
+    ) {
+        projectRef {
+            id
+            identifier
+        }
+    }
+}

@@ -2473,7 +2473,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, ob
 	usr := mustHaveUser(ctx)
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
 }
@@ -2483,7 +2483,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, obj *
 	usr := mustHaveUser(ctx)
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, obj, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error saving project settings for section: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
 }
@@ -4253,16 +4253,16 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
 
-		if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
+		if id, hasId := args["id"].(string); hasId {
+			return hasProjectPermission(ctx, id, next, permissionLevel)
+		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
+			return hasProjectPermission(ctx, projectId, next, permissionLevel)
+		} else if identifier, hasIdentifier := args["identifier"].(string); hasIdentifier {
 			pid, err := model.GetIdForProject(identifier)
 			if err != nil {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project with identifier: %s", identifier))
 			}
 			return hasProjectPermission(ctx, pid, next, permissionLevel)
-		} else if id, hasId := args["id"].(string); hasId {
-			return hasProjectPermission(ctx, id, next, permissionLevel)
-		} else if projectId, hasProjectId := args["projectId"].(string); hasProjectId {
-			return hasProjectPermission(ctx, projectId, next, permissionLevel)
 		}
 		return nil, ResourceNotFound.Send(ctx, "Could not find project")
 	}

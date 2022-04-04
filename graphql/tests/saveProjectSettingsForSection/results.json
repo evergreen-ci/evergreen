@@ -47,6 +47,23 @@
           }
         }
       }
+    },
+    {
+      "query_file": "changeIdentifier.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "Identifier is already being used for another project",
+            "path": [
+              "saveProjectSettingsForSection"
+            ],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
     }
   ]
 }
