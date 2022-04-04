@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -11,6 +10,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/pkg/errors"
 )
 
 const (
