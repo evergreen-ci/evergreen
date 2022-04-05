@@ -2306,17 +2306,6 @@
       }
     },
     {
-      "query_file": "schedule-task-mutation.graphql",
-      "result": {
-        "data": {
-          "scheduleTask": {
-            "activated": true,
-            "activatedBy": "testuser"
-          }
-        }
-      }
-    },
-    {
       "query_file": "unschedule-task-mutation.graphql",
       "result": {
         "data": {

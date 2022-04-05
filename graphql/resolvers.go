@@ -2791,16 +2791,6 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	scheduledTasks = append(scheduledTasks, scheduled...)
 	return scheduledTasks, nil
 }
-func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskID)
-	if err != nil {
-		return nil, err
-	}
-	if len(scheduled) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task: %s", taskID))
-	}
-	return scheduled[0], nil
-}
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), false, taskID)
