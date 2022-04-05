@@ -2252,18 +2252,6 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 	return allLogPointers, nil
 }
 
-func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*GroupedBuildVariant, error) {
-	patch, err := data.FindPatchById(patchID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
-	}
-	groupedBuildVariants, err := generateBuildVariants(*patch.Id, []string{}, []string{}, []string{})
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating grouped build variants: %s", err))
-	}
-	return groupedBuildVariants, nil
-}
-
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
 	commitQueue, err := data.FindCommitQueueForProject(id)
 	if err != nil {
