@@ -238,8 +238,11 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
-	// return success on duplicate job errors so AWS won't keep retrying
-	terminationJob := units.NewHostTerminationJob(sns.env, h, true, "got interruption warning")
+	terminationJob := units.NewHostTerminationJob(sns.env, h, units.HostTerminationOptions{
+		TerminateIfBusy:          true,
+		TerminationReason:        "got interruption warning",
+		SkipCloudHostTermination: true,
+	})
 	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, terminationJob); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":          "could not enqueue host termination job",
