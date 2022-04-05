@@ -2368,10 +2368,9 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
 		}
 		tqd := TaskQueueDistro{
-			ID:         distro.Distro,
-			QueueCount: len(distro.Queue),
-			TaskCount:  len(distro.Queue),
-			HostCount:  numHosts,
+			ID:        distro.Distro,
+			TaskCount: len(distro.Queue),
+			HostCount: numHosts,
 		}
 		distros = append(distros, &tqd)
 	}

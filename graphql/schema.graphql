@@ -714,7 +714,6 @@ type TaskQueueItem {
 
 type TaskQueueDistro {
   id: ID!
-  queueCount: Int! @deprecated(reason: "queueCount is deprecated, use taskCount instead")
   taskCount: Int!
   hostCount: Int!
 }

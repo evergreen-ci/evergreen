@@ -998,10 +998,9 @@ type ComplexityRoot struct {
 	}
 
 	TaskQueueDistro struct {
-		HostCount  func(childComplexity int) int
-		ID         func(childComplexity int) int
-		QueueCount func(childComplexity int) int
-		TaskCount  func(childComplexity int) int
+		HostCount func(childComplexity int) int
+		ID        func(childComplexity int) int
+		TaskCount func(childComplexity int) int
 	}
 
 	TaskQueueItem struct {
@@ -6318,13 +6317,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskQueueDistro.ID(childComplexity), true
 
-	case "TaskQueueDistro.queueCount":
-		if e.complexity.TaskQueueDistro.QueueCount == nil {
-			break
-		}
-
-		return e.complexity.TaskQueueDistro.QueueCount(childComplexity), true
-
 	case "TaskQueueDistro.taskCount":
 		if e.complexity.TaskQueueDistro.TaskCount == nil {
 			break
@@ -8147,7 +8139,6 @@ type TaskQueueItem {
 
 type TaskQueueDistro {
   id: ID!
-  queueCount: Int! @deprecated(reason: "queueCount is deprecated, use taskCount instead")
   taskCount: Int!
   hostCount: Int!
 }
@@ -33232,41 +33223,6 @@ func (ec *executionContext) _TaskQueueDistro_id(ctx context.Context, field graph
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TaskQueueDistro_queueCount(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TaskQueueDistro",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.QueueCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _TaskQueueDistro_taskCount(ctx context.Context, field graphql.CollectedField, obj *TaskQueueDistro) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -47826,11 +47782,6 @@ func (ec *executionContext) _TaskQueueDistro(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("TaskQueueDistro")
 		case "id":
 			out.Values[i] = ec._TaskQueueDistro_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "queueCount":
-			out.Values[i] = ec._TaskQueueDistro_queueCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
