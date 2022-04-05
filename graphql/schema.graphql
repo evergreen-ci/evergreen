@@ -992,7 +992,6 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
-  displayTestName: String @deprecated(reason: "displayTestName deprecated, use testFile instead (EVG-15379)")
   logs: TestLog!
   exitCode: Int
   startTime: Time
