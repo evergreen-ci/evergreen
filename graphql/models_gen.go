@@ -51,7 +51,6 @@ type Dependency struct {
 	RequiredStatus RequiredStatus `json:"requiredStatus"`
 	BuildVariant   string         `json:"buildVariant"`
 	TaskID         string         `json:"taskId"`
-	UILink         string         `json:"uiLink"`
 }
 
 type DisplayTask struct {

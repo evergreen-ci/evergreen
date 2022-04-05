@@ -1014,7 +1014,6 @@ type Dependency {
   requiredStatus: RequiredStatus!
   buildVariant: String!
   taskId: String!
-  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
 type PatchMetadata {
