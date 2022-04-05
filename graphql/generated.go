@@ -8290,7 +8290,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  baseVersionID: String
+  baseVersionID: String @deprecated(reason: "Use versionFull.baseVersion.id instead")
   parameters: [Parameter!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
