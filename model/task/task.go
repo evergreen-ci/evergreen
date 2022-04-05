@@ -1629,17 +1629,16 @@ func DeactivateDependencies(tasks []string, caller string) error {
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
 // at this time, it will set it to the finish time minus the timeout time.
 func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) error {
-	// if there is no start time set, either set it to the create time
-	// or set 2 hours previous to the finish time.
+	// if there is no start time set, either set the start time to the activated time
+	// or set it to 2 hours prior to the finish time.
 	if utility.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
 		t.StartTime = timedOutStart
-		if timedOutStart.Before(t.IngestTime) {
-			t.StartTime = t.IngestTime
+		if timedOutStart.Before(t.ActivatedTime) {
+			t.StartTime = t.ActivatedTime
 		}
 	}
-
-	t.TimeTaken = finishTime.Sub(t.StartTime)
+	t.TimeTaken = finishTime.Sub(t.ActivatedTime)
 
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",
