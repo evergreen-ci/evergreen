@@ -125,19 +125,14 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExecution][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	artifacts, err := FindAll(BySecret(toReplace))
-	if err != nil {
-		catcher.Wrap(err, "finding artifact files by secret")
-	}
+	catcher.Wrap(err, "finding artifact files by secret")
 	changes := map[TaskIDAndExecution][]string{}
 	for i, artifact := range artifacts {
 		for j, file := range artifact.Files {
 			if file.AwsSecret == toReplace {
 				if !dryRun {
 					artifacts[i].Files[j].AwsSecret = replacement
-					err := artifacts[i].Update()
-					if err != nil {
-						catcher.Wrapf(err, "updating artifact file info for task %s, execution %d", artifact.TaskId, artifact.Execution)
-					}
+					catcher.Wrapf(artifacts[i].Update(), "updating artifact file info for task %s, execution %d", artifact.TaskId, artifact.Execution)
 				}
 				key := TaskIDAndExecution{
 					TaskID:    artifact.TaskId,
