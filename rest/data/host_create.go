@@ -248,7 +248,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	var d *distro.Distro
 	var err error
 
-	d, err = distro.FindByID(createHost.Distro)
+	d, err = distro.FindOneId(createHost.Distro)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding distro '%s'", createHost.Distro)
 	}
@@ -340,9 +340,12 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if len(distroIDs) == 0 {
 			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
 		}
-		d, err = distro.FindOneId(distroIDs[0])
+		foundDistro, err := distro.FindOneId(distroIDs[0])
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+		}
+		if foundDistro != nil {
+			d = *foundDistro
 		}
 		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")

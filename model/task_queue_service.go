@@ -85,9 +85,13 @@ func (s *taskDispatchService) Refresh(distroID string) error {
 }
 
 func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
-	d, err := distro.FindOneId(distroID)
+	d := distro.Distro{}
+	foundDistro, err := distro.FindOneId(distroID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "database error for find() by distro id '%s'", distroID)
+	}
+	if foundDistro != nil {
+		d = *foundDistro
 	}
 	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.

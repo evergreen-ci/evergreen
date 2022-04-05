@@ -2517,9 +2517,12 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	var d distro.Distro
 	var err error
 	if distroID != "" {
-		d, err = distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
+		foundDistro, err := distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+		}
+		if foundDistro != nil {
+			d = *foundDistro
 		}
 	}
 

@@ -725,7 +725,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 			return nil, err
 		}
 	}
-	dist, err := distro.FindByID(spawnHostInput.DistroID)
+	dist, err := distro.FindOneId(spawnHostInput.DistroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
 	}

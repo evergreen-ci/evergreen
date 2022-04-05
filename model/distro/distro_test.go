@@ -201,7 +201,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 
 	err := ValidateContainerPoolDistros(testSettings)
 	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
-	assert.Contains(err.Error(), "error finding distro for container pool 'test-pool-3'")
+	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }
 
 func TestGetDistroIds(t *testing.T) {

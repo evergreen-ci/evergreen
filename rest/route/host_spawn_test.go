@@ -60,7 +60,7 @@ func TestHostPostHandler(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.Status())
 
 	h0 := resp.Data().(*model.APIHost)
-	d0, err := distro.FindByID("distro")
+	d0, err := distro.FindOneId("distro")
 	assert.NoError(err)
 	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
 	assert.False(ok)
@@ -81,7 +81,7 @@ func TestHostPostHandler(t *testing.T) {
 	assert.NoError(d.Update())
 
 	h1 := resp.Data().(*model.APIHost)
-	d1, err := distro.FindByID("distro")
+	d1, err := distro.FindOneId("distro")
 	assert.NoError(err)
 	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
 	assert.True(ok)

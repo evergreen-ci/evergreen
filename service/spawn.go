@@ -80,9 +80,12 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		// Make a best-effort attempt to find a matching distro, but don't error
 		// if we can't find one.
 		for _, distroID := range dat.Expand([]string{r.FormValue("distro_id")}) {
-			spawnDistro, err = distro.FindOneId(distroID)
+			foundSpawnDistro, err := distro.FindOneId(distroID)
 			if err == nil {
 				break
+			}
+			if foundSpawnDistro != nil {
+				spawnDistro = *foundSpawnDistro
 			}
 		}
 	}

@@ -78,13 +78,17 @@ const Collection = "distro"
 var All = db.Query(nil).Sort([]string{IdKey})
 
 // FindOne gets one Distro for the given query.
-func FindOne(query db.Q) (Distro, error) {
-	d := Distro{}
-	return d, db.FindOneQ(Collection, query, &d)
+func FindOne(query db.Q) (*Distro, error) {
+	d := &Distro{}
+	err := db.FindOneQ(Collection, query, d)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return d, err
 }
 
 // FindOneId returns one Distro by Id.
-func FindOneId(id string) (Distro, error) {
+func FindOneId(id string) (*Distro, error) {
 	return FindOne(ById(id))
 }
 
@@ -93,18 +97,6 @@ func Find(query db.Q) ([]Distro, error) {
 	distros := []Distro{}
 	err := db.FindAllQ(Collection, query, &distros)
 	return distros, err
-}
-
-func FindByID(id string) (*Distro, error) {
-	d, err := FindOneId(id)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "problem finding distro")
-	}
-
-	return &d, nil
 }
 
 func FindAll() ([]Distro, error) {
@@ -183,7 +175,7 @@ func ByIds(ids []string) db.Q {
 }
 
 func FindByIdWithDefaultSettings(id string) (*Distro, error) {
-	d, err := FindByID(id)
+	d, err := FindOneId(id)
 	if err != nil {
 		return d, errors.WithStack(err)
 	}

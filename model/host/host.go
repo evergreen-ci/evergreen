@@ -2137,9 +2137,12 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "error find parent distro")
 	}
+	if parentDistro == nil {
+		return 0, 0, errors.Errorf("distro '%s' not found", pool.Distro)
+	}
 
 	if !ignoreMaxHosts { // only want to spawn amount of parents allowed based on pool size
-		if numNewParentsToSpawn, err = parentCapacity(parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
+		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
 			return 0, 0, errors.Wrap(err, "could not calculate number of parents needed to spawn")
 		}
 	}

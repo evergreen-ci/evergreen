@@ -42,7 +42,7 @@ func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[st
 			prioritizedIds = append(prioritizedIds, t.Id)
 		}
 	} else { // this is temporary: logic should be added in EVG-13795
-		d, err := distro.FindByID(distroId)
+		d, err := distro.FindOneId(distroId)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find distro")
 		}

@@ -283,9 +283,9 @@ func TestAverageStatistics(t *testing.T) {
 			So(avgBuckets[1].AverageTime, ShouldEqual, 0)
 			So(avgBuckets[2].AverageTime, ShouldEqual, 15*time.Second)
 
-			Convey("if the distro id given does not exist, it shoud return an empty list", func() {
+			Convey("if the distro id given does not exist, it shoud return an empty list and no error", func() {
 				_, err := AverageStatistics("noId", frameBounds)
-				So(err, ShouldNotBeNil)
+				So(err, ShouldBeNil)
 			})
 		})
 	})

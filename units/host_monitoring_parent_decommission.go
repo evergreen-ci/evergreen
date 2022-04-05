@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -56,12 +57,17 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	parentDistro, err := distro.FindByID(j.DistroId)
+	parentDistro, err := distro.FindOneId(j.DistroId)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
-	minHosts := parentDistro.HostAllocatorSettings.MinimumHosts
+	minHosts := 0
+	if parentDistro == nil {
+		j.AddError(errors.Errorf("distro '%s' not found", j.DistroId))
+	} else if parentDistro != nil {
+		minHosts = parentDistro.HostAllocatorSettings.MinimumHosts
+	}
 	parentCount := len(parents)
 
 	for _, h := range parents {

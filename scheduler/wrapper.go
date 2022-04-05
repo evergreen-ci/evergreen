@@ -33,6 +33,9 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
+	if distro == nil {
+		return errors.Errorf("distro '%s' not found", conf.DistroID)
+	}
 
 	if err = underwaterUnschedule(distro.Id); err != nil {
 		return errors.Wrap(err, "problem unscheduling underwater tasks")
@@ -81,7 +84,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	taskFindingBegins := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
-	tasks, err := finder(distro)
+	tasks, err := finder(*distro)
 	if err != nil {
 		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
 	}
@@ -99,7 +102,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	/////////////////
 
 	planningPhaseBegins := time.Now()
-	prioritizedTasks, err := PrioritizeTasks(&distro, tasks, TaskPlannerOptions{
+	prioritizedTasks, err := PrioritizeTasks(distro, tasks, TaskPlannerOptions{
 		StartedAt:        taskFindingBegins,
 		ID:               schedulerInstanceID,
 		IsSecondaryQueue: false,
