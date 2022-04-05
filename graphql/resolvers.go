@@ -4003,14 +4003,6 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 	}, nil
 }
 
-func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIVersion) (*string, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision).WithFields(model.VersionIdentifierKey))
-	if baseVersion == nil || err != nil {
-		return nil, nil
-	}
-	return &baseVersion.Id, nil
-}
-
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision))
 	if baseVersion == nil || err != nil {
