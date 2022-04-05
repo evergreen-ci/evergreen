@@ -1090,7 +1090,6 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
   order: Int!
 }
