@@ -855,7 +855,6 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
   versionFull: Version
   status: String!
   variants: [String!]!
