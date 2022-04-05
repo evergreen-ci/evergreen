@@ -193,19 +193,6 @@
       }
     },
     {
-      "query_file": "patchMetadata.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "taskity_task",
-            "patchMetadata": {
-              "author": "brian.samek"
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "versionMetadata.graphql",
       "result": {
         "data": {

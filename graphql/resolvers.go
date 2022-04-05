@@ -3244,22 +3244,6 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 	return failedTestCount, nil
 }
 
-// TODO: deprecated
-func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
-	version, err := model.VersionFindOneId(*obj.Version)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving version %s: %s", *obj.Version, err.Error()))
-	}
-	if version == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
-	}
-	patchMetadata := PatchMetadata{
-		Author:  version.Author,
-		PatchID: version.Id,
-	}
-	return &patchMetadata, nil
-}
-
 func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask) (*string, error) {
 	host, err := host.FindOne(host.ById(*at.HostId))
 	if err != nil {

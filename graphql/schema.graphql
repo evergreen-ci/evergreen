@@ -1016,11 +1016,6 @@ type Dependency {
   taskId: String!
 }
 
-type PatchMetadata {
-  author: String!
-  patchID: String!
-}
-
 
 type AbortInfo {
   user: String!
@@ -1077,7 +1072,6 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   patch: Patch
-  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project

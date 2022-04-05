@@ -524,11 +524,6 @@ type ComplexityRoot struct {
 		TimeTaken func(childComplexity int) int
 	}
 
-	PatchMetadata struct {
-		Author  func(childComplexity int) int
-		PatchID func(childComplexity int) int
-	}
-
 	PatchProject struct {
 		Variants func(childComplexity int) int
 	}
@@ -921,7 +916,6 @@ type ComplexityRoot struct {
 		MinQueuePosition        func(childComplexity int) int
 		Order                   func(childComplexity int) int
 		Patch                   func(childComplexity int) int
-		PatchMetadata           func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
@@ -1421,7 +1415,6 @@ type TaskResolver interface {
 
 	MinQueuePosition(ctx context.Context, obj *model.APITask) (int, error)
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
-	PatchMetadata(ctx context.Context, obj *model.APITask) (*PatchMetadata, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
@@ -3762,20 +3755,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PatchDuration.TimeTaken(childComplexity), true
 
-	case "PatchMetadata.author":
-		if e.complexity.PatchMetadata.Author == nil {
-			break
-		}
-
-		return e.complexity.PatchMetadata.Author(childComplexity), true
-
-	case "PatchMetadata.patchID":
-		if e.complexity.PatchMetadata.PatchID == nil {
-			break
-		}
-
-		return e.complexity.PatchMetadata.PatchID(childComplexity), true
-
 	case "PatchProject.variants":
 		if e.complexity.PatchProject.Variants == nil {
 			break
@@ -5943,13 +5922,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Patch(childComplexity), true
-
-	case "Task.patchMetadata":
-		if e.complexity.Task.PatchMetadata == nil {
-			break
-		}
-
-		return e.complexity.Task.PatchMetadata(childComplexity), true
 
 	case "Task.patchNumber":
 		if e.complexity.Task.PatchNumber == nil {
@@ -8495,11 +8467,6 @@ type Dependency {
   taskId: String!
 }
 
-type PatchMetadata {
-  author: String!
-  patchID: String!
-}
-
 
 type AbortInfo {
   user: String!
@@ -8556,7 +8523,6 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   patch: Patch
-  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project
@@ -21363,76 +21329,6 @@ func (ec *executionContext) _PatchDuration_time(ctx context.Context, field graph
 	return ec.marshalOPatchTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _PatchMetadata_author(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "PatchMetadata",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Author, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _PatchMetadata_patchID(ctx context.Context, field graphql.CollectedField, obj *PatchMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "PatchMetadata",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PatchID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _PatchProject_variants(ctx context.Context, field graphql.CollectedField, obj *PatchProject) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -31353,41 +31249,6 @@ func (ec *executionContext) _Task_patch(ctx context.Context, field graphql.Colle
 	res := resTmp.(*model.APIPatch)
 	fc.Result = res
 	return ec.marshalOPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Task_patchMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().PatchMetadata(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*PatchMetadata)
-	fc.Result = res
-	return ec.marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Task_patchNumber(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
@@ -44984,38 +44845,6 @@ func (ec *executionContext) _PatchDuration(ctx context.Context, sel ast.Selectio
 	return out
 }
 
-var patchMetadataImplementors = []string{"PatchMetadata"}
-
-func (ec *executionContext) _PatchMetadata(ctx context.Context, sel ast.SelectionSet, obj *PatchMetadata) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, patchMetadataImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("PatchMetadata")
-		case "author":
-			out.Values[i] = ec._PatchMetadata_author(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "patchID":
-			out.Values[i] = ec._PatchMetadata_patchID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var patchProjectImplementors = []string{"PatchProject"}
 
 func (ec *executionContext) _PatchProject(ctx context.Context, sel ast.SelectionSet, obj *PatchProject) graphql.Marshaler {
@@ -47572,20 +47401,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_patch(ctx, field, obj)
-				return res
-			})
-		case "patchMetadata":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_patchMetadata(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "patchNumber":
@@ -50874,20 +50689,6 @@ func (ec *executionContext) marshalNPatch2ᚖgithubᚗcomᚋevergreenᚑciᚋeve
 func (ec *executionContext) unmarshalNPatchConfigure2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchConfigure(ctx context.Context, v interface{}) (PatchConfigure, error) {
 	res, err := ec.unmarshalInputPatchConfigure(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNPatchMetadata2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v PatchMetadata) graphql.Marshaler {
-	return ec._PatchMetadata(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNPatchMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchMetadata(ctx context.Context, sel ast.SelectionSet, v *PatchMetadata) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._PatchMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPatchTasks2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatchTasks(ctx context.Context, sel ast.SelectionSet, v PatchTasks) graphql.Marshaler {

@@ -144,11 +144,6 @@ type PatchDuration struct {
 	Time      *PatchTime `json:"time"`
 }
 
-type PatchMetadata struct {
-	Author  string `json:"author"`
-	PatchID string `json:"patchID"`
-}
-
 type PatchProject struct {
 	Variants []*ProjectBuildVariant `json:"variants"`
 }
