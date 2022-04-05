@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -581,7 +580,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 	if err != nil || d == nil {
 		// Should we bailout if there is a database error leaving us unsure if the distro document actually exists?
 		m := "database error while retrieving distro document;"
-		if adb.ResultsNotFound(err) {
+		if d == nil {
 			m = "cannot find the db.distro document for the given distro;"
 		}
 		grip.Warning(message.Fields{

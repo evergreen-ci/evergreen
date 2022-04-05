@@ -62,11 +62,10 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
+	minHosts := 0
 	if parentDistro == nil {
 		j.AddError(errors.Errorf("distro '%s' not found", j.DistroId))
-	}
-	minHosts := 0
-	if parentDistro != nil {
+	} else if parentDistro != nil {
 		minHosts = parentDistro.HostAllocatorSettings.MinimumHosts
 	}
 	parentCount := len(parents)
