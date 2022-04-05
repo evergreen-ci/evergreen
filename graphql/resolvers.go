@@ -2701,22 +2701,6 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	return scheduledTasks, nil
 }
 
-func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
-	if len(taskIds) == 0 {
-		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
-	}
-	modifications := model.VersionModification{
-		Action:  evergreen.RestartAction,
-		Abort:   abort,
-		TaskIds: taskIds,
-	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &patchID, nil
-}
-
 func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
