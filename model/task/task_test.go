@@ -1025,7 +1025,7 @@ func TestTaskStatusCount(t *testing.T) {
 
 func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(db.ClearCollections(Collection, testresult.Collection))
+	require.NoError(t, db.ClearCollections(Collection, testresult.Collection))
 	dt := Task{
 		Id:             "dt",
 		DisplayOnly:    true,
@@ -1165,7 +1165,7 @@ func TestCircularDependency(t *testing.T) {
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
 		err := t1.CircularDependencies()
-		assert.Contains(err.Error(), "Dependency cycle detected")
+		assert.Contains(err.Error(), "dependency cycle detected")
 	})
 }
 

@@ -1346,7 +1346,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding task IDs for version", versionId)
+		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
 	}
 	return tasks, nil
 }

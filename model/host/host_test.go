@@ -2448,7 +2448,7 @@ func TestGetContainersNotParent(t *testing.T) {
 	assert.NoError(host8.Insert())
 
 	containers, err := host1.GetContainers()
-	assert.EqualError(err, "Host does not host containers")
+	assert.Error(err)
 	assert.Empty(containers)
 }
 
@@ -2597,7 +2597,7 @@ func TestFindParentOfContainerNoParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	assert.EqualError(err, "Host does not have a parent")
+	assert.Error(err)
 	assert.Nil(parent)
 }
 
@@ -2645,7 +2645,7 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 	assert.NoError(host2.Insert())
 
 	parent, err := host1.GetParent()
-	assert.EqualError(err, "Host found is not a parent")
+	assert.Error(err)
 	assert.Nil(parent)
 }
 
@@ -4190,21 +4190,21 @@ func TestMakeHostTags(t *testing.T) {
 		tagSlice := []string{"key1=value1", badTag}
 		tags, err := MakeHostTags(tagSlice)
 		assert.Nil(t, tags)
-		assert.EqualError(t, err, fmt.Sprintf("problem parsing tag '%s'", badTag))
+		assert.EqualError(t, err, fmt.Sprintf("parsing tag '%s'", badTag))
 	})
 	t.Run("LongKey", func(t *testing.T) {
 		badKey := strings.Repeat("a", 129)
 		tagSlice := []string{"key1=value", fmt.Sprintf("%s=value2", badKey)}
 		tags, err := MakeHostTags(tagSlice)
 		assert.Nil(t, tags)
-		assert.EqualError(t, err, fmt.Sprintf("key '%s' is longer than 128 characters", badKey))
+		assert.EqualError(t, err, fmt.Sprintf("key '%s' is longer than maximum limit of 128 characters", badKey))
 	})
 	t.Run("LongValue", func(t *testing.T) {
 		badValue := strings.Repeat("a", 257)
 		tagSlice := []string{"key1=value2", fmt.Sprintf("key2=%s", badValue)}
 		tags, err := MakeHostTags(tagSlice)
 		assert.Nil(t, tags)
-		assert.EqualError(t, err, fmt.Sprintf("value '%s' is longer than 256 characters", badValue))
+		assert.EqualError(t, err, fmt.Sprintf("value '%s' is longer than maximum limit of 256 characters", badValue))
 	})
 	t.Run("BadPrefix", func(t *testing.T) {
 		badPrefix := "aws:"

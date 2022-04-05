@@ -248,9 +248,7 @@ func TestFilterInvalidAfterDateNotUTC(t *testing.T) {
 }
 
 func TestFilterInvalidBeforeDateNotUTC(t *testing.T) {
-	var err error
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	// With BeforeDate not a UTC day.

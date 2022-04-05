@@ -313,7 +313,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Cannot notify by jira-issue for version", respErr.Message)
+	s.Equal("cannot notify by jira-issue for version", respErr.Message)
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
@@ -371,7 +371,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: foo must be a number", respErr.Message)
+	s.Contains(respErr.Message, "invalid task duration")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -400,7 +400,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: -2 cannot be negative", respErr.Message)
+	s.Contains(respErr.Message, "cannot be negative")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -429,7 +429,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax", respErr.Message)
+	s.Contains(respErr.Message, "unable to parse a as float")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,

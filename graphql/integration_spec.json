@@ -2638,7 +2638,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task exec2: no commit queue found for 'logkeeper'",
+            "message": "Error aborting task exec2: dequeueing and restarting task 'exec2': no commit queue found for project 'logkeeper'",
             "path": [
               "abortTask"
             ],
@@ -2655,7 +2655,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task exec1: Task 'exec1' is currently 'pass' - cannot abort task in this status",
+            "message": "Error aborting task exec1: task 'exec1' is currently 'pass' - cannot abort task in this status",
             "path": [
               "abortTask"
             ],

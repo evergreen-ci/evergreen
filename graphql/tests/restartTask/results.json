@@ -11,7 +11,7 @@
       "result": {
         "errors": [
           {
-            "message": "error restarting task nonexistent: cannot restart task nonexistent because it could not be found",
+            "message": "error restarting task nonexistent: cannot restart task 'nonexistent' because it could not be found",
             "path": ["restartTask"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
