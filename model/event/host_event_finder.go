@@ -42,10 +42,11 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	defer cancel()
 	cursor, err := env.DB().Collection(AllLogCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
-		grip.Warning(message.WrapError(err,
-			message.Fields{
-				"op": "host stats for distro agg",
-			}))
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not get recent host statuses",
+			"host_id": hostId,
+			"count":   n,
+		}))
 		return 0, []string{}
 	}
 

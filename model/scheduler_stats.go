@@ -130,11 +130,11 @@ func bucketResource(resource ResourceInfo, frameStart, frameEnd time.Time, bucke
 	}
 
 	if !utility.IsZeroTime(end) && (end.Before(frameStart) || end.Equal(frameStart)) {
-		return currentBuckets, errors.Errorf("invalid resource end time, %v that is before the time frame, %v", end, frameStart)
+		return currentBuckets, errors.Errorf("invalid resource end time %v that is before the time frame %v", end, frameStart)
 	}
 
 	if !utility.IsZeroTime(end) && end.Before(start) {
-		return currentBuckets, errors.Errorf("termination time, %v is before start time, %v and exists", end, start)
+		return currentBuckets, errors.Errorf("termination time %v is before start time %v and exists", end, start)
 	}
 
 	// if the times are equal then just return since nothing should be bucketed
@@ -201,7 +201,7 @@ func CreateHostBuckets(hosts []host.Host, bounds FrameBounds) ([]Bucket, []error
 		}
 		hostBuckets, err = bucketResource(hostResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, hostBuckets)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "error bucketing host %s", h.Id))
+			errs = append(errs, errors.Wrapf(err, "bucketing host '%s'", h.Id))
 		}
 	}
 	return hostBuckets, errs
@@ -222,7 +222,7 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, bounds FrameBoun
 		}
 		taskBuckets, err = bucketResource(taskResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, taskBuckets)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "error bucketing task %v", t.Id))
+			errs = append(errs, errors.Wrapf(err, "bucketing task '%s'", t.Id))
 		}
 	}
 
@@ -235,7 +235,7 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, bounds FrameBoun
 		}
 		taskBuckets, err = bucketResource(taskResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, taskBuckets)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "error bucketing task %v", t.Id))
+			errs = append(errs, errors.Wrapf(err, "bucketing task '%s'", t.Id))
 		}
 	}
 	return taskBuckets, errs
@@ -384,7 +384,7 @@ func AverageTaskLatency(since time.Duration) (*AverageTimes, error) {
 
 	stats := AverageTimes{}
 	if err := db.Aggregate(task.Collection, pipeline, &stats.Times); err != nil {
-		return &AverageTimes{}, errors.Wrap(err, "error running average task latency aggregation")
+		return &AverageTimes{}, errors.Wrap(err, "aggregating average task latency")
 	}
 	// set mongodb times to golang times
 	for i, t := range stats.Times {

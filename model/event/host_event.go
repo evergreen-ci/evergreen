@@ -82,7 +82,9 @@ type HostEventData struct {
 }
 
 var (
-	hostDataStatusKey = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+	hostDataStatusKey        = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+	hostDataTaskIDKey        = bsonutil.MustHaveTag(HostEventData{}, "TaskId")
+	hostDataTaskExecutionKey = bsonutil.MustHaveTag(HostEventData{}, "Execution")
 )
 
 func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
@@ -228,17 +230,16 @@ func LogVolumeExpirationWarningSent(volumeID string) {
 	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
 }
 
-// UpdateExecutions updates host events to track multiple executions of the same task
+// UpdateExecutions updates host events to track multiple executions of the same
+// task.
 func UpdateExecutions(hostId, taskId string, execution int) error {
-	taskIdKey := bsonutil.MustHaveTag(HostEventData{}, "TaskId")
-	executionKey := bsonutil.MustHaveTag(HostEventData{}, "Execution")
 	query := bson.M{
-		"r_id":                    hostId,
-		DataKey + "." + taskIdKey: taskId,
+		ResourceIdKey:                     hostId,
+		DataKey + "." + hostDataTaskIDKey: taskId,
 	}
 	update := bson.M{
 		"$set": bson.M{
-			DataKey + "." + executionKey: strconv.Itoa(execution),
+			DataKey + "." + hostDataTaskExecutionKey: strconv.Itoa(execution),
 		},
 	}
 	_, err := db.UpdateAll(AllLogCollection, query, update)

@@ -75,11 +75,11 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 	defer cancel()
 	cursor, err := coll.Aggregate(ctx, pipeline, &options.AggregateOptions{Hint: durationIndex})
 	if err != nil {
-		return nil, errors.Wrap(err, "error aggregating task average duration")
+		return nil, errors.Wrap(err, "aggregating task average duration")
 	}
 	err = cursor.All(ctx, &results)
 	if err != nil {
-		return nil, errors.Wrap(err, "error aggregating task average duration")
+		return nil, errors.Wrap(err, "iterating and decoding task average duration")
 	}
 
 	return results, nil

@@ -88,7 +88,7 @@ func FindOneById(id string) (*DBUser, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding user by id")
+		return nil, errors.Wrap(err, "finding user by ID")
 	}
 	return u, nil
 }
@@ -142,7 +142,7 @@ func FindOneByToken(token string) (*DBUser, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding user by token")
+		return nil, errors.Wrap(err, "finding user by token")
 	}
 	return u, nil
 }
@@ -157,7 +157,7 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch user by github uid")
+		return nil, errors.Wrap(err, "finding user by GitHub UID")
 	}
 
 	return &u, nil
@@ -173,7 +173,7 @@ func FindByGithubName(name string) (*DBUser, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch user by github name")
+		return nil, errors.Wrap(err, "finding user by GitHub name")
 	}
 
 	return &u, nil
@@ -186,7 +186,7 @@ func FindByRole(role string) ([]DBUser, error) {
 		db.Query(bson.M{RolesKey: role}),
 		&res,
 	)
-	return res, errors.Wrapf(err, "error finding users with role '%s'", role)
+	return res, errors.Wrapf(err, "finding users with role '%s'", role)
 }
 
 // FindHumanUsersByRoles returns human users that have any of the given roles.
@@ -200,7 +200,7 @@ func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 		}),
 		&res,
 	)
-	return res, errors.Wrapf(err, "error finding users with roles '%v'", roles)
+	return res, errors.Wrapf(err, "finding users with roles '%s'", roles)
 }
 
 // GetPatchUser gets a user from their GitHub UID. If no such user is found, it
@@ -208,13 +208,13 @@ func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	u, err := FindByGithubUID(gitHubUID)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't look for user")
+		return nil, errors.Wrap(err, "finding user by GitHub UID")
 	}
 	if u == nil {
 		// set to a default user
 		u, err = FindOne(ById(evergreen.GithubPatchUser))
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get user for pull request")
+			return nil, errors.Wrap(err, "getting user for pull request")
 		}
 		// default user doesn't exist yet
 		if u == nil {
@@ -224,7 +224,7 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 				APIKey:   utility.RandomString(),
 			}
 			if err = u.Insert(); err != nil {
-				return nil, errors.Wrap(err, "failed to create github patch user")
+				return nil, errors.Wrap(err, "creating GitHub patch user")
 			}
 		}
 	}
@@ -268,7 +268,7 @@ func DeleteServiceUser(id string) error {
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	result, err := coll.DeleteOne(ctx, query)
 	if err != nil {
-		return errors.Wrap(err, "unable to delete service user")
+		return errors.Wrap(err, "deleting service user")
 	}
 	if result.DeletedCount < 1 {
 		return errors.Errorf("service user '%s' not found", id)
@@ -312,11 +312,11 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	)
 
 	if err := res.Err(); err != nil {
-		return nil, errors.Wrapf(err, "problem find/create user '%s'", userId)
+		return nil, errors.Wrapf(err, "finding/creating user '%s'", userId)
 	}
 
 	if err := res.Decode(u); err != nil {
-		return nil, errors.Wrapf(err, "problem decoding result for user '%s'", userId)
+		return nil, errors.Wrapf(err, "decoding user '%s'", userId)
 
 	}
 	return u, nil
@@ -331,7 +331,7 @@ func FindNeedsReauthorization(reauthorizeAfter time.Duration) ([]DBUser, error) 
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
 	}))
-	return users, errors.Wrap(err, "could not find users who need reauthorization")
+	return users, errors.Wrap(err, "finding users who need reauthorization")
 }
 
 // FindServiceUsers returns all API-only users.
@@ -347,7 +347,7 @@ func FindServiceUsers() ([]DBUser, error) {
 func PutLoginCache(g gimlet.User) (string, error) {
 	u, err := FindOneById(g.Username())
 	if err != nil {
-		return "", errors.Wrap(err, "problem finding user by id")
+		return "", errors.Wrap(err, "finding user by ID")
 	}
 	if u == nil {
 		return "", errors.Errorf("no user '%s' found", g.Username())
@@ -371,7 +371,7 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	update := bson.M{"$set": setFields}
 
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return "", errors.Wrap(err, "problem updating user cache")
+		return "", errors.Wrap(err, "updating user cache")
 	}
 	return token, nil
 }
@@ -384,7 +384,7 @@ func PutLoginCache(g gimlet.User) (string, error) {
 func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, error) {
 	u, err := FindOneByToken(token)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "problem getting user from cache")
+		return nil, false, errors.Wrap(err, "getting user from cache")
 	}
 	if u == nil {
 		return nil, false, nil
@@ -401,14 +401,14 @@ func ClearLoginCache(user gimlet.User) error {
 
 	u, err := FindOneById(user.Username())
 	if err != nil {
-		return errors.Wrapf(err, "problem finding user %s by id", user.Username())
+		return errors.Wrapf(err, "finding user '%s' by ID", user.Username())
 	}
 	if u == nil {
 		return errors.Errorf("no user '%s' found", user.Username())
 	}
 	query := bson.M{IdKey: u.Id}
 	if err := UpdateOne(query, update); err != nil {
-		return errors.Wrap(err, "problem updating user cache")
+		return errors.Wrap(err, "updating user cache")
 	}
 
 	return nil
@@ -420,7 +420,7 @@ func ClearAllLoginCaches() error {
 	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
 	query := bson.M{}
 	if err := UpdateAll(query, update); err != nil {
-		return errors.Wrap(err, "problem updating user cache")
+		return errors.Wrap(err, "updating user cache")
 	}
 	return nil
 }

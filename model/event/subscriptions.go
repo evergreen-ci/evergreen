@@ -122,7 +122,7 @@ func (s *Subscription) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalSubscription{}
 
 	if err := raw.Unmarshal(&temp); err != nil {
-		return errors.Wrap(err, "error unmarshalling subscriber")
+		return errors.Wrap(err, "unmarshalling subscriber")
 	}
 
 	s.ID = temp.ID
@@ -433,7 +433,7 @@ func regexMatchesValue(regexString string, values []string) bool {
 func CopyProjectSubscriptions(oldProject, newProject string) error {
 	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
 	if err != nil {
-		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
+		return errors.Wrapf(err, "finding subscription for project '%s'", oldProject)
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -509,7 +509,7 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
+		return nil, errors.Wrap(err, "fetching subcription by ID")
 	}
 
 	return &out, nil
@@ -530,7 +530,7 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 		if selector.Type == SelectorObject {
 			if selector.Data == ObjectBuild || selector.Data == ObjectVersion || selector.Data == ObjectTask {
 				if sub.Subscriber.Type == JIRAIssueSubscriberType || sub.Subscriber.Type == EvergreenWebhookSubscriberType {
-					return false, fmt.Sprintf("Cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
+					return false, fmt.Sprintf("cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
 				}
 			}
 		}
@@ -566,7 +566,7 @@ func (s *Subscription) Validate() error {
 		catcher.New("subscription trigger is required")
 	}
 	if !IsValidOwnerType(string(s.OwnerType)) {
-		catcher.Errorf("%s is not a valid owner type", s.OwnerType)
+		catcher.Errorf("'%s' is not a valid owner type", s.OwnerType)
 	}
 	// Disallow creating a JIRA comment type subscriber for every task in a project
 	if s.OwnerType == OwnerTypeProject &&
@@ -584,28 +584,28 @@ func (s *Subscription) runCustomValidation() error {
 	catcher := grip.NewBasicCatcher()
 
 	if taskDurationVal, ok := s.TriggerData[TaskDurationKey]; ok {
-		catcher.Add(validatePositiveInt(taskDurationVal))
+		catcher.Wrap(validatePositiveInt(taskDurationVal), "invalid task duration")
 	}
 	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
-		catcher.Add(validatePositiveFloat(taskPercentVal))
+		catcher.Wrap(validatePositiveFloat(taskPercentVal), "invalid task percentage runtime change")
 	}
 	if versionDurationVal, ok := s.TriggerData[VersionDurationKey]; ok {
-		catcher.Add(validatePositiveInt(versionDurationVal))
+		catcher.Wrap(validatePositiveInt(versionDurationVal), "invalid version duration")
 	}
 	if versionPercentVal, ok := s.TriggerData[VersionPercentChangeKey]; ok {
-		catcher.Add(validatePositiveFloat(versionPercentVal))
+		catcher.Wrap(validatePositiveFloat(versionPercentVal), "invalid version percentage runtime change")
 	}
 	if buildDurationVal, ok := s.TriggerData[BuildDurationKey]; ok {
-		catcher.Add(validatePositiveInt(buildDurationVal))
+		catcher.Wrap(validatePositiveInt(buildDurationVal), "invalid build duration")
 	}
 	if buildPercentVal, ok := s.TriggerData[BuildPercentChangeKey]; ok {
-		catcher.Add(validatePositiveFloat(buildPercentVal))
+		catcher.Wrap(validatePositiveFloat(buildPercentVal), "invalid build percentage runtime change")
 	}
 	if testRegex, ok := s.TriggerData[TestRegexKey]; ok {
-		catcher.Add(validateRegex(testRegex))
+		catcher.Wrap(validateRegex(testRegex), "invalid test regex")
 	}
 	if renotifyInterval, ok := s.TriggerData[RenotifyIntervalKey]; ok {
-		catcher.Add(validatePositiveInt(renotifyInterval))
+		catcher.Wrap(validatePositiveInt(renotifyInterval), "invalid renotify interval")
 	}
 	return catcher.Resolve()
 }
@@ -613,7 +613,7 @@ func (s *Subscription) runCustomValidation() error {
 func validatePositiveInt(s string) error {
 	val, err := strconv.Atoi(s)
 	if err != nil {
-		return fmt.Errorf("%s must be a number", s)
+		return errors.Wrapf(err, "invalid number '%s'", s)
 	}
 	if val < 0 {
 		return fmt.Errorf("%d cannot be negative", val)
@@ -624,10 +624,10 @@ func validatePositiveInt(s string) error {
 func validatePositiveFloat(s string) error {
 	val, err := util.TryParseFloat(s)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "invalid number '%s'", s)
 	}
 	if val <= 0 {
-		return fmt.Errorf("%f must be positive", val)
+		return fmt.Errorf("%f cannot be negative", val)
 	}
 	return nil
 }
@@ -676,7 +676,7 @@ func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription
 		return nil, nil
 	}
 	if !IsValidOwnerType(string(ownerType)) {
-		return nil, errors.Errorf("%s is not a valid owner type", ownerType)
+		return nil, errors.Errorf("'%s' is not a valid owner type", ownerType)
 	}
 	query := db.Query(bson.M{
 		subscriptionOwnerKey:     owner,
@@ -684,7 +684,7 @@ func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription
 	})
 	subscriptions := []Subscription{}
 	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
-	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
+	return subscriptions, errors.Wrapf(err, "retrieving subscriptions for owner '%s'", owner)
 }
 
 func IsValidOwnerType(in string) bool {
@@ -705,7 +705,7 @@ func CreateOrUpdateGeneralSubscription(resourceType string, id string,
 	if id != "" {
 		sub, err = FindSubscriptionByID(id)
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding subscription")
+			return nil, errors.Wrap(err, "finding subscription")
 		}
 	}
 	if subscriber.Validate() == nil {
@@ -735,12 +735,12 @@ func CreateOrUpdateGeneralSubscription(resourceType string, id string,
 		sub.OwnerType = OwnerTypePerson
 		sub.Owner = user
 		if err := sub.Upsert(); err != nil {
-			return nil, errors.Wrap(err, "failed to update subscription")
+			return nil, errors.Wrap(err, "upserting subscription")
 		}
 	} else {
 		if id != "" {
 			if err := RemoveSubscription(id); err != nil {
-				return nil, errors.Wrap(err, "error removing subscription")
+				return nil, errors.Wrap(err, "removing subscription")
 			}
 			sub = nil
 		}

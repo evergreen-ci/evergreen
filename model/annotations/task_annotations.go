@@ -98,7 +98,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 
 	annotation, err := FindOneByTaskIdAndExecution(taskId, execution)
 	if err != nil {
-		return errors.Wrapf(err, "error finding task annotation")
+		return errors.Wrapf(err, "finding task annotation")
 	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
@@ -111,7 +111,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 			"$set": bson.M{NoteKey: note},
 		},
 	)
-	return errors.Wrapf(err, "problem updating note for task '%s'", taskId)
+	return errors.Wrapf(err, "updating note for task '%s'", taskId)
 }
 
 func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
@@ -128,7 +128,7 @@ func AddIssueToAnnotation(taskId string, execution int, issue IssueLink, usernam
 			"$push": bson.M{IssuesKey: issue},
 		},
 	)
-	return errors.Wrapf(err, "problem adding task annotation issue for task '%s'", taskId)
+	return errors.Wrapf(err, "adding task annotation issue for task '%s'", taskId)
 }
 
 func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
@@ -145,7 +145,7 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 			"$push": bson.M{SuspectedIssuesKey: issue},
 		},
 	)
-	return errors.Wrapf(err, "problem adding task annotation suspected issue for task '%s'", taskId)
+	return errors.Wrapf(err, "adding task annotation suspected issue for task '%s'", taskId)
 }
 
 func RemoveIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
@@ -201,7 +201,7 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 			"$set": update,
 		},
 	)
-	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
+	return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 }
 
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
@@ -218,5 +218,5 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 			"$push": bson.M{CreatedIssuesKey: ticket},
 		},
 	)
-	return errors.Wrapf(err, "problem adding ticket to '%s'", taskId)
+	return errors.Wrapf(err, "adding ticket to task '%s'", taskId)
 }

@@ -287,7 +287,7 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 			if !evaluatedExcludes.contain(cell) {
 				v, err := buildMatrixVariant(axes, cell, &matrices[i], ase)
 				if err != nil {
-					errs = append(errs, errors.Wrapf(err, "%v: error building matrix cell %v",
+					errs = append(errs, errors.Wrapf(err, "%s: building matrix cell %v",
 						m.Id, cell))
 					continue
 				}
@@ -296,7 +296,7 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 		}
 		// safety check to make sure the exclude field is actually working
 		if len(m.Exclude) > 0 && len(unpruned) == len(pruned) {
-			errs = append(errs, errors.Errorf("%v: exclude field did not exclude anything", m.Id))
+			errs = append(errs, errors.Errorf("%s: exclude field did not exclude anything", m.Id))
 		}
 		matrixVariants = append(matrixVariants, pruned...)
 	}
@@ -340,7 +340,7 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 			return nil, err
 		}
 		if err := v.mergeAxisValue(axisVal); err != nil {
-			return nil, errors.Wrapf(err, "processing axis value %v, %v", a.Id, axisVal.Id)
+			return nil, errors.Wrapf(err, "processing axis value %s, %s", a.Id, axisVal.Id)
 		}
 		// for display names, fall back to the axis values id so we have *something*
 		if axisVal.DisplayName != "" {
@@ -388,12 +388,12 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 		}
 		matchers, errs := r.If.evaluatedCopies(ase) // we could cache this
 		if len(errs) > 0 {
-			return nil, errors.Errorf("evaluating rules for matrix %v: %v", m.Id, errs)
+			return nil, errors.Errorf("evaluating rules for matrix %s: %v", m.Id, errs)
 		}
 		if matchers.contain(mv) {
 			if r.Then.Set != nil {
 				if err := v.mergeAxisValue(*r.Then.Set); err != nil {
-					return nil, errors.Wrapf(err, "evaluating %s rule %d", m.Id, i)
+					return nil, errors.Wrapf(err, "evaluating '%s' rule %d", m.Id, i)
 				}
 			}
 			// we append add/remove task rules internally and execute them

@@ -33,7 +33,7 @@ func FindLastKnownGoodProjectConfig(projectId string) (*ProjectConfig, error) {
 	}
 	pc, err := ProjectConfigFindOne(db.Query(q).Sort([]string{"-" + ProjectConfigCreateTimeKey}))
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error finding recent valid project config for '%s'", projectId)
+		return nil, errors.Wrapf(err, "finding recent valid project config for project '%s'", projectId)
 	}
 	return pc, nil
 }

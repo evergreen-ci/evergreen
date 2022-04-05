@@ -42,19 +42,13 @@ var (
 func (i HostTaskInconsistency) Error() string {
 	switch {
 	case i.Task == "" && i.TaskHostCache == "":
-		return fmt.Sprintf("host %s says it is running task %s, which does not exist",
-			i.Host, i.HostTaskCache)
+		return fmt.Sprintf("host '%s' says it is running task '%s', which does not exist", i.Host, i.HostTaskCache)
 	case i.Host == "" && i.HostTaskCache == "":
-		return fmt.Sprintf("task %s says it is running on host %s, which is not a running host",
-			i.Task, i.TaskHostCache)
+		return fmt.Sprintf("task '%s' says it is running on host '%s', which is not a running task", i.Task, i.TaskHostCache)
 	case i.HostTaskCache == i.Task:
-		return fmt.Sprintf(
-			"host %s says it is running task %s, but that task says it is assigned to %s",
-			i.Host, i.Task, i.TaskHostCache)
+		return fmt.Sprintf("host '%s' says it is running task '%s', but that task says it is assigned to '%s'", i.Host, i.Task, i.TaskHostCache)
 	case i.TaskHostCache == i.Host:
-		return fmt.Sprintf(
-			"task %s says it is running on host %s, but that host says it is running %s",
-			i.Task, i.Host, i.HostTaskCache)
+		return fmt.Sprintf("task '%s' says it is running on host '%s', but that host says it is running '%s'", i.Task, i.Host, i.HostTaskCache)
 	default:
 		// this should never be hit
 		return fmt.Sprintf("inconsistent mapping: %s/%s, %s/%s",
@@ -91,7 +85,7 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	// say they are running.
 	runningHosts, err := host.Find(host.IsRunningTask)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "querying for running hosts:")
+		return nil, nil, errors.Wrap(err, "querying for running hosts")
 	}
 
 	for _, h := range runningHosts {
@@ -99,14 +93,14 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	}
 	hostsTasks, err := task.Find(task.ByIds(hostTaskIds))
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "querying for hosts' tasks:")
+		return nil, nil, errors.Wrap(err, "querying for hosts' tasks")
 	}
 
 	// fetch all tasks with an assigned host and the hosts they say
 	// they are assigned to
 	runningTasks, err := task.Find(task.IsDispatchedOrStarted)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "querying for running tasks:")
+		return nil, nil, errors.Wrap(err, "querying for running tasks")
 	}
 	for _, t := range append(hostsTasks, runningTasks...) {
 		taskToHost[t.Id] = t.HostId
@@ -114,7 +108,7 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	}
 	tasksHosts, err := host.Find(host.ByIds(taskHostIds))
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "querying for tasks' hosts:")
+		return nil, nil, errors.Wrap(err, "querying for tasks' hosts")
 	}
 
 	// we only want to have running hosts that are not empty.
@@ -176,8 +170,7 @@ func auditHostTaskMapping(hostToTask, taskToHost map[string]string) []HostTaskIn
 }
 
 func (shi StuckHostInconsistency) Error() string {
-	return fmt.Sprintf(
-		"host %s has a running task %s with complete status %s", shi.Host, shi.RunningTask, shi.TaskStatus)
+	return fmt.Sprintf("host %s has a running task %s with complete status %s", shi.Host, shi.RunningTask, shi.TaskStatus)
 }
 
 // CheckStuckHosts queries for hosts that tasks that are

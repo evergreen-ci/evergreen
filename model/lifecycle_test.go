@@ -161,8 +161,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
-			"Error clearing test collection")
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
 
 		b := &build.Build{
 			Id: "build",
@@ -201,8 +200,7 @@ func TestBuildRestart(t *testing.T) {
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones", func() {
 
-			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection),
-				"Error clearing test collection")
+			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection))
 			b := &build.Build{Id: "build"}
 			So(b.Insert(), ShouldBeNil)
 
@@ -241,8 +239,7 @@ func TestBuildRestart(t *testing.T) {
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
 
-			require.NoError(t, db.ClearCollections(build.Collection),
-				"Error clearing test collection")
+			require.NoError(t, db.ClearCollections(build.Collection))
 			b := &build.Build{Id: "build"}
 			So(b.Insert(), ShouldBeNil)
 
@@ -285,8 +282,7 @@ func TestBuildRestart(t *testing.T) {
 func TestBuildMarkAborted(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection),
-			"Error clearing test collection")
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 		v := &Version{
 			Id: "v",
@@ -410,8 +406,7 @@ func TestSetVersionActivation(t *testing.T) {
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection),
-			"Error clearing test collection")
+		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 		Convey("when changing the activated status of the build to true", func() {
 			Convey("the activated status of the build and all undispatched"+
@@ -606,8 +601,7 @@ func TestBuildSetActivated(t *testing.T) {
 func TestBuildMarkStarted(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.Clear(build.Collection), "Error clearing"+
-			" '%v' collection", build.Collection)
+		require.NoError(t, db.Clear(build.Collection))
 
 		b := &build.Build{
 			Id:     "build",
@@ -636,8 +630,7 @@ func TestBuildMarkFinished(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.Clear(build.Collection), "Error clearing"+
-			" '%v' collection", build.Collection)
+		require.NoError(t, db.Clear(build.Collection))
 
 		startTime := time.Now()
 		b := &build.Build{
@@ -673,8 +666,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 	Convey("When creating a build from a version", t, func() {
 
-		require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection, build.Collection, task.Collection, ProjectAliasCollection),
-			"Error clearing test collection")
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection, build.Collection, task.Collection, ProjectAliasCollection))
 
 		// the mock build variant we'll be using. runs all three tasks
 		buildVar1 := parserBV{
@@ -1327,7 +1319,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 func TestCreateTaskGroup(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(build.Collection, task.Collection), "Error clearing collection")
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection))
 	projYml := `
   tasks:
   - name: example_task_1
@@ -1554,8 +1546,7 @@ func TestDeletingBuild(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		require.NoError(t, db.Clear(build.Collection), "Error clearing"+
-			" '%v' collection", build.Collection)
+		require.NoError(t, db.Clear(build.Collection))
 
 		b := &build.Build{
 			Id: "build",
@@ -1565,8 +1556,7 @@ func TestDeletingBuild(t *testing.T) {
 		Convey("deleting it should remove it and all its associated"+
 			" tasks from the database", func() {
 
-			require.NoError(t, db.ClearCollections(task.Collection), "Error"+
-				" clearing '%v' collection", task.Collection)
+			require.NoError(t, db.ClearCollections(task.Collection))
 
 			// insert two tasks that are part of the build, and one that isn't
 			matchingTaskOne := &task.Task{
@@ -2122,7 +2112,7 @@ func TestMarkAsHostDispatched(t *testing.T) {
 
 		b = &build.Build{Id: buildId}
 
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection), "Error clearing test collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
 
 		So(taskDoc.Insert(), ShouldBeNil)
 		So(b.Insert(), ShouldBeNil)

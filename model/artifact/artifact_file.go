@@ -49,13 +49,13 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
-	//AwsKey is the key with which the file was uploaded to s3
+	// AwsKey is the key with which the file was uploaded to s3.
 	AwsKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
-	//AwsSercret is the secret with which the file was uploaded to s3
+	// AwsSercret is the secret with which the file was uploaded to s3.
 	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
-	//Bucket is the aws bucket in which the file is stored
+	// Bucket is the aws bucket in which the file is stored.
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
-	//FileKey is the path to the file in the bucket
+	// FileKey is the path to the file in the bucket.
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 }
 
@@ -70,7 +70,7 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 			continue
 		case file.Visibility == Signed && hasUser:
 			if !file.ContainsSigningParams() {
-				return nil, errors.Errorf("error presigning the url for %s, awsSecret, awsKey, bucket, or filekey missing", file.Name)
+				return nil, errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
 			}
 			requestParams := thirdparty.RequestParams{
 				Bucket:    file.Bucket,
@@ -80,7 +80,7 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 			}
 			urlStr, err := thirdparty.PreSign(requestParams)
 			if err != nil {
-				return nil, errors.Wrap(err, "problem presigning url")
+				return nil, errors.Wrap(err, "presigning url")
 			}
 			file.Link = urlStr
 			publicFiles = append(publicFiles, file)
@@ -100,7 +100,7 @@ func (f *File) ContainsSigningParams() bool {
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 	artifacts, err := FindAll(ByTaskIdsAndExecutions(tasks))
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding artifact files for task")
+		return nil, errors.Wrap(err, "finding artifact files for task")
 	}
 	if artifacts == nil {
 		taskIds := []string{}
@@ -109,7 +109,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		}
 		artifacts, err = FindAll(ByTaskIds(taskIds))
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
+			return nil, errors.Wrap(err, "finding artifact files for task without execution number")
 		}
 		if artifacts == nil {
 			return []File{}, nil
@@ -126,7 +126,7 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 	catcher := grip.NewBasicCatcher()
 	artifacts, err := FindAll(BySecret(toReplace))
 	if err != nil {
-		catcher.Wrap(err, "error finding artifact files by secret")
+		catcher.Wrap(err, "finding artifact files by secret")
 	}
 	changes := map[TaskIDAndExecution][]string{}
 	for i, artifact := range artifacts {
@@ -136,7 +136,7 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 					artifacts[i].Files[j].AwsSecret = replacement
 					err := artifacts[i].Update()
 					if err != nil {
-						catcher.Wrapf(err, "Error updating artifact file info for task %s, execution %d", artifact.TaskId, artifact.Execution)
+						catcher.Wrapf(err, "updating artifact file info for task %s, execution %d", artifact.TaskId, artifact.Execution)
 					}
 				}
 				key := TaskIDAndExecution{

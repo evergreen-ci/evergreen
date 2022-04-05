@@ -29,7 +29,7 @@ func TestFindDistroById(t *testing.T) {
 	require.NotNil(t, session)
 	defer session.Close()
 
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "dropping database")
 
 	id := fmt.Sprintf("distro_%d", rand.Int())
 	d := &Distro{
@@ -49,7 +49,7 @@ func TestFindAllDistros(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "dropping database")
 
 	numDistros := 10
 	for i := 0; i < numDistros; i++ {

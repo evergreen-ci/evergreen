@@ -72,7 +72,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem getting project '%s'", projectID)
+		return nil, errors.Wrapf(err, "getting project '%s'", projectID)
 	}
 	if project == nil {
 		return nil, errors.Errorf("project '%s' does not exist", projectID)
@@ -80,7 +80,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 
 	projectVars, err := FindOneProjectVars(project.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem getting project vars for project '%s'", projectID)
+		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectID)
 	}
 	if !project.UseRepoSettings() {
 		return projectVars, nil
@@ -88,7 +88,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 
 	repoVars, err := FindOneProjectVars(project.RepoRefId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem getting project vars for repo '%s'", project.RepoRefId)
+		return nil, errors.Wrapf(err, "getting project vars for repo '%s'", project.RepoRefId)
 	}
 	if repoVars == nil {
 		return projectVars, nil
@@ -106,7 +106,7 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 	catcher := grip.NewBasicCatcher()
 	matchingProjects, err := GetVarsByValue(toReplace)
 	if err != nil {
-		catcher.Wrap(err, "failed to fetch projects with matching value")
+		catcher.Wrap(err, "fetching projects with matching value")
 	}
 	if matchingProjects == nil {
 		catcher.New("no projects with matching value found")
@@ -130,7 +130,7 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 					project.Vars[key] = replacement
 					_, err = project.Upsert()
 					if err != nil {
-						catcher.Wrapf(err, "problem overwriting variables for project '%s'", project.Id)
+						catcher.Wrapf(err, "overwriting variables for project '%s'", project.Id)
 					}
 
 					after := ProjectSettings{
@@ -141,7 +141,7 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 					}
 
 					if err = LogProjectModified(project.Id, username, &before, &after); err != nil {
-						catcher.Wrapf(err, "Error logging project modification for project '%s'", project.Id)
+						catcher.Wrapf(err, "logging project modification for project '%s'", project.Id)
 					}
 				}
 				changes[project.Id] = append(changes[project.Id], key)
@@ -155,17 +155,17 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 func CopyProjectVars(oldProjectId, newProjectId string) error {
 	vars, err := FindOneProjectVars(oldProjectId)
 	if err != nil {
-		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
+		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
 	}
 	vars.Id = newProjectId
 	_, err = vars.Upsert()
-	return errors.Wrapf(err, "error inserting variables for project '%s", newProjectId)
+	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
 
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars, err := FindOneProjectVars(projectId)
 	if err != nil {
-		return errors.Wrap(err, "problem getting project vars")
+		return errors.Wrap(err, "getting project vars")
 	}
 	if vars == nil {
 		vars = &ProjectVars{}
@@ -181,13 +181,13 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
 	vars.PrivateVars[ProjectAWSSSHKeyValue] = true // redact value, but not key name
 	_, err = vars.Upsert()
-	return errors.Wrap(err, "problem saving project keys")
+	return errors.Wrap(err, "saving project keys")
 }
 
 func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	vars, err := FindMergedProjectVars(projectId)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting project vars")
+		return nil, errors.Wrap(err, "getting project vars")
 	}
 	if vars == nil {
 		return nil, errors.New("no variables for project")

@@ -29,7 +29,7 @@ func TestTaskHistory(t *testing.T) {
 			buildVariants, projectName)
 
 		Convey("when finding task history items", func() {
-			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection), "Error clearing test collections")
+			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
 
 			for i := 10; i < 20; i++ {
 				projectToUse := projectName
@@ -266,7 +266,7 @@ func TestSetDefaultsAndValidate(t *testing.T) {
 
 func TestBuildTestHistoryQuery(t *testing.T) {
 	Convey("With a version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection), "Error clearing task collections")
+		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection))
 		testVersion := Version{
 			Id:                  "testVersion",
 			Revision:            "abc",
@@ -646,7 +646,7 @@ func TestGetTestHistory(t *testing.T) {
 		GetTestHistoryV2,
 	}
 	for _, testFunc := range testFuncs {
-		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection), "Error clearing task collections")
+		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection))
 		project := "proj"
 		now := time.Now()
 
@@ -1113,7 +1113,7 @@ func TestGetTestHistory(t *testing.T) {
 }
 
 func TestTaskHistoryPickaxe(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection, RepositoriesCollection), "error clearing collections")
+	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection, RepositoriesCollection))
 	assert := assert.New(t)
 	proj := Project{
 		Identifier: "proj",

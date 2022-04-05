@@ -40,12 +40,12 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, d *distro.Distro) error
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, "could not get hosts to be terminated")
+		return errors.Wrap(err, "getting inactive static host to terminate")
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, h := range toTerminate {
-		catcher.Wrapf(h.SetStatus(evergreen.HostTerminated, evergreen.User, "static host removed from distro"), "could not terminate host '%s'", h.Id)
+		catcher.Wrapf(h.SetStatus(evergreen.HostTerminated, evergreen.User, "static host removed from distro"), "terminating host '%s'", h.Id)
 	}
 
-	return errors.Wrap(catcher.Resolve(), "could not terminate static hosts")
+	return errors.Wrap(catcher.Resolve(), "terminating inactive static hosts")
 }

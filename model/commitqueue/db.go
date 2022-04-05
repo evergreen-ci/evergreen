@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -50,7 +49,7 @@ func findOne(query db.Q) (*CommitQueue, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding queue by id")
+		return nil, errors.Wrap(err, "finding queue by id")
 	}
 	return queue, err
 }
@@ -68,8 +67,7 @@ func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	)
 
 	if adb.ResultsNotFound(err) {
-		grip.Error(errors.Wrapf(err, "update failed for queue '%s', %+v", id, queue))
-		return errors.Errorf("update failed for queue '%s', %+v", id, queue)
+		return errors.Wrap(err, "adding item to queue")
 	}
 
 	return err
@@ -88,8 +86,7 @@ func addAtPosition(id string, queue []CommitQueueItem, item CommitQueueItem, pos
 		}},
 	)
 	if adb.ResultsNotFound(err) {
-		grip.Error(errors.Wrapf(err, "force update failed for queue '%s', %+v", id, queue))
-		return errors.Errorf("force update failed for queue '%s', %+v", id, queue)
+		return errors.Wrapf(err, "adding item to queue at position %d", pos)
 	}
 	return err
 }

@@ -42,11 +42,11 @@ var depTaskIds = []Dependency{
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}), "Error setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}), "setting task status")
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}), "Error setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}), "setting task status")
 	}
 }
 
@@ -830,7 +830,7 @@ func TestIsSystemUnresponsive(t *testing.T) {
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
-	require.NoError(t, db.Clear(testresult.Collection), "error clearing collections")
+	require.NoError(t, db.Clear(testresult.Collection))
 	assert := assert.New(t)
 
 	tasks := []Task{
@@ -1025,7 +1025,7 @@ func TestTaskStatusCount(t *testing.T) {
 
 func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
+	require.NoError(db.ClearCollections(Collection, testresult.Collection))
 	dt := Task{
 		Id:             "dt",
 		DisplayOnly:    true,
@@ -1135,14 +1135,14 @@ func TestBlocked(t *testing.T) {
 			assert.Equal(t, "", state)
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(Collection))
+		require.NoError(t, db.ClearCollections(Collection))
 		t.Run(name, test)
 	}
 }
 
 func TestCircularDependency(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:          "t1",
 		DisplayName: "t1",
@@ -1171,7 +1171,7 @@ func TestCircularDependency(t *testing.T) {
 
 func TestSiblingDependency(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:          "t1",
 		DisplayName: "t1",
@@ -1222,7 +1222,7 @@ func TestSiblingDependency(t *testing.T) {
 
 func TestBulkInsert(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1_a := Task{
 		Id:      "t1",
 		Version: "version",
@@ -1251,7 +1251,7 @@ func TestBulkInsert(t *testing.T) {
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
@@ -1287,7 +1287,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	activatedStepbackTask := Task{
 		Id:          "activated",
@@ -1364,7 +1364,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
@@ -1392,7 +1392,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
@@ -1422,7 +1422,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 
 func TestGetRecentTaskStats(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
 		{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
@@ -1484,7 +1484,7 @@ func TestGetResultCountList(t *testing.T) {
 
 func TestFindVariantsWithTask(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	tasks := Tasks{
 		&Task{Id: "1", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 15, BuildVariant: "bv1"},
 		&Task{Id: "2", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 12, BuildVariant: "bv2"},
@@ -1502,7 +1502,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 
 func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := &Task{
 		Id:     "t1",
@@ -1562,7 +1562,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1", DependsOn: depTaskIds}
 	assert.NoError(t, t1.Insert())
 
@@ -1602,7 +1602,7 @@ func TestAddDependency(t *testing.T) {
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := &Task{Id: "t1"}
 	tasks := []Task{
@@ -1640,7 +1640,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 
 func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{
 			Id:        "t0",
@@ -1739,7 +1739,7 @@ func TestGetTimeSpent(t *testing.T) {
 }
 
 func TestUpdateDependsOn(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
 	assert.NoError(t, t1.Insert())
 	t2 := &Task{
@@ -1765,7 +1765,7 @@ func TestUpdateDependsOn(t *testing.T) {
 
 func TestDisplayTaskCache(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	const displayTaskCount = 50
 	const execPerDisplay = 10
 
@@ -2340,7 +2340,7 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 }
 
 func TestGetLatestExecution(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	sample := Task{
 		Id:        "task_id_some_other_stuff",
 		Execution: 55,
@@ -2355,7 +2355,7 @@ func TestGetLatestExecution(t *testing.T) {
 }
 
 func TestArchiveMany(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	t1 := Task{
 		Id:      "t1",
 		Status:  evergreen.TaskFailed,
@@ -2403,7 +2403,7 @@ func TestArchiveMany(t *testing.T) {
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
 		Id:             "dt1",
 		DisplayOnly:    true,
@@ -2438,7 +2438,7 @@ func TestAddParentDisplayTasks(t *testing.T) {
 }
 
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
 		Id:            "t1",
 		DisplayTaskId: utility.ToStringPtr(""),
@@ -2472,7 +2472,7 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
 		Id:             "dt1",
 		DisplayOnly:    true,
@@ -2505,7 +2505,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 }
 
 func TestGetTasksByVersionExecTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	// test that we can handle the different kinds of tasks
 	t1 := Task{
 		Id:            "execWithDisplayId",
@@ -2546,7 +2546,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 }
 
 func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	inactiveTask := Task{
 		Id:            "inactiveTask",
@@ -2569,7 +2569,7 @@ func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
 }
 
 func TestGetTasksByVersionAnnotations(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
 		Id:        "t1",
 		Version:   "v1",
@@ -2613,7 +2613,7 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 }
 
 func TestGetTasksByVersionBaseTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := Task{
 		Id:                  "t1",
@@ -2898,7 +2898,7 @@ func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTas
 }
 
 func TestHasMatchingTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:        "t1",
 		Version:   "v1",
@@ -2953,7 +2953,7 @@ func TestHasMatchingTasks(t *testing.T) {
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",
@@ -2987,7 +2987,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
 	t.Run("Fetching latest execution with mismatching executions", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",
@@ -3025,7 +3025,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
 	t.Run("Fetching older executions with same execution", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",

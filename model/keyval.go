@@ -27,7 +27,7 @@ func (kv *KeyVal) Inc() error {
 	_, err := db.FindAndModify(KeyValCollection, bson.M{"_id": key}, nil, change, kv)
 
 	if err != nil {
-		return errors.Wrapf(err, "problem incrementing key %s", key)
+		return errors.Wrapf(err, "incrementing key '%s'", key)
 	}
 
 	return nil

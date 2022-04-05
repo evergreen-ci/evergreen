@@ -42,7 +42,7 @@ func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*b
 
 	if taskQueue.Length() != 0 {
 		if err := d.rebuild(taskQueue.Queue); err != nil {
-			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", taskQueue.Distro)
+			return nil, errors.Wrapf(err, "creating distro DAG task dispatch service for distro '%s'", taskQueue.Distro)
 		}
 	}
 
@@ -86,7 +86,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 
 	taskQueueItems := taskQueue.Queue
 	if err := d.rebuild(taskQueueItems); err != nil {
-		return errors.Wrapf(err, "error defining the DirectedGraph for distro '%s'", d.distroID)
+		return errors.Wrapf(err, "building the directed graph for distro '%s'", d.distroID)
 	}
 
 	grip.Debug(message.Fields{
@@ -148,7 +148,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 			"distro_id":          d.distroID,
 		})
 
-		return errors.Errorf("a Node for the dependent taskQueueItem '%s' is not present in the DAG for distro '%s'", toID, d.distroID)
+		return errors.Errorf("a node for the dependent task queue item '%s' is not present in the DAG for distro '%s'", toID, d.distroID)
 	}
 
 	// Cannot add a self edge within the DAG!
@@ -220,7 +220,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		for _, dependency := range item.Dependencies {
 			// addEdge(A, B) means that B depends on A.
 			if err := d.addEdge(dependency, item.Id); err != nil {
-				return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error defining a DirectedGraph incorporating task dependencies", d.distroID)
+				return errors.Wrapf(err, "adding edge")
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			"num_task_groups":            len(d.taskGroups),
 		}))
 
-		return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error ordering a DirectedGraph incorporating task dependencies", d.distroID)
+		return errors.Wrapf(err, "topologically sorting the dependency graph")
 	}
 
 	d.sorted = sorted

@@ -52,7 +52,7 @@ func init() {
 }
 
 func clearAll(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection), "Error clearing test collection")
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -160,7 +160,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 }
 
 func TestSetPriority(t *testing.T) {
-	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
 	patches := []*patch.Patch{
 		{Id: patch.NewId("aabbccddeeff001122334455"), Version: "aabbccddeeff001122334455"},
 	}
@@ -629,7 +629,7 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 func TestAddNewPatch(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	p := &patch.Patch{
 		Activated: true,
 	}
@@ -717,7 +717,7 @@ func TestAddNewPatch(t *testing.T) {
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	p := &patch.Patch{
 		Activated: true,
 	}

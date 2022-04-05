@@ -71,7 +71,7 @@ func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webho
 	if webhook == nil {
 		pRefWebHook, _, err := IsWebhookConfigured(projName, "")
 		if err != nil {
-			return errors.Wrapf(err, "Error retrieving webhook config for %s", projName)
+			return errors.Wrapf(err, "retrieving webhook config for project '%s'", projName)
 		}
 		webhook = &pRefWebHook
 		webhookConfigured = webhook != nil && webhook.Endpoint != ""
@@ -162,7 +162,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
-		return nil, bbConfig, errors.Wrapf(err, "Error searching for tickets: %s", err.Error())
+		return nil, bbConfig, errors.Wrapf(err, "searching for tickets")
 	}
 
 	var featuresURL string
@@ -188,7 +188,7 @@ func BbGetTask(taskId string, executionString string) (*task.Task, error) {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if t == nil {
-		return nil, errors.Errorf("no task found for task id: %s and execution: %d", taskId, execution)
+		return nil, errors.Errorf("no task found for task id '%s' and execution %d", taskId, execution)
 	}
 
 	if err = t.PopulateTestResults(); err != nil {

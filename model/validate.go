@@ -28,7 +28,7 @@ const (
 // returns a task, http status code, and error.
 func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task, int, error) {
 	if taskId == "" {
-		return nil, http.StatusBadRequest, errors.New("missing task id")
+		return nil, http.StatusBadRequest, errors.New("missing task ID")
 	}
 	t, err := task.FindOneId(taskId)
 	if err != nil {
@@ -40,7 +40,7 @@ func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task,
 	if checkSecret {
 		secret := r.Header.Get(evergreen.TaskSecretHeader)
 		if secret != t.Secret {
-			return nil, http.StatusConflict, errors.Errorf("Wrong secret sent for task '%s'", taskId)
+			return nil, http.StatusConflict, errors.Errorf("wrong secret sent for task '%s'", taskId)
 		}
 	}
 	return t, http.StatusOK, nil
@@ -55,12 +55,12 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		// fall back to the host header if host ids are not part of the path
 		hostId = r.Header.Get(evergreen.HostHeader)
 		if hostId == "" {
-			return nil, http.StatusBadRequest, errors.Errorf("Request %s is missing host information", r.URL)
+			return nil, http.StatusBadRequest, errors.Errorf("request %s is missing host information", r.URL)
 		}
 	}
 	secret := r.Header.Get(evergreen.HostSecretHeader)
 	if secret == "" {
-		return nil, http.StatusBadRequest, errors.Errorf("Missing host secret for host '%s'", hostId)
+		return nil, http.StatusBadRequest, errors.Errorf("missing host secret for host '%s'", hostId)
 	}
 
 	// If the host was provisioned through user data, the host will be started
@@ -73,7 +73,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		return nil, http.StatusNotFound, errors.Errorf("host '%s' not found", hostId)
 	}
 	if secret != h.Secret {
-		return nil, http.StatusUnauthorized, errors.Errorf("Invalid host secret for host '%s'", hostId)
+		return nil, http.StatusUnauthorized, errors.Errorf("invalid host secret for host '%s'", hostId)
 	}
 
 	// if the task is attached to the context, check host-task relationship
@@ -84,7 +84,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		}
 	}
 	if badHostTaskRelationship(h, t) {
-		return nil, http.StatusConflict, errors.Errorf("Host '%s' should be running '%s', not '%s'", hostId, h.RunningTask, t.Id)
+		return nil, http.StatusConflict, errors.Errorf("host '%s' should be running task '%s', not '%s'", hostId, h.RunningTask, t.Id)
 	}
 	return h, http.StatusOK, nil
 }

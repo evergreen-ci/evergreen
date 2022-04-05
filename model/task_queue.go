@@ -62,7 +62,7 @@ func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo,
 	err := db.FindOneQ(collection, q, taskQueue)
 
 	if err != nil {
-		return DistroQueueInfo{}, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
+		return DistroQueueInfo{}, errors.Wrapf(err, "finding distro queue info for distro '%s'", distroID)
 	}
 
 	return taskQueue.DistroQueueInfo, nil
@@ -72,9 +72,9 @@ func RemoveTaskQueues(distroID string) error {
 	query := db.Query(bson.M{taskQueueDistroKey: distroID})
 	catcher := grip.NewBasicCatcher()
 	err := db.RemoveAllQ(TaskQueuesCollection, query)
-	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "removing task queue for distro '%s'", distroID))
 	err = db.RemoveAllQ(TaskAliasQueuesCollection, query)
-	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "problem removing task queue for '%s'", distroID))
+	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "removing task alias queue for distro '%s'", distroID))
 	return catcher.Resolve()
 }
 
@@ -212,7 +212,7 @@ func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 	tasksInVersion, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
 	if err != nil {
-		return errors.Wrap(err, "problem finding version for task")
+		return errors.Wrap(err, "finding version for task")
 	}
 
 	// tmap maps tasks to their dependencies
@@ -231,7 +231,7 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 	catcher := grip.NewBasicCatcher()
 	for _, group := range tarjan.Connections(tmap) {
 		if len(group) > 1 {
-			catcher.Add(errors.Errorf("Cycle detected: %s", strings.Join(group, ", ")))
+			catcher.Errorf("task dependency cycle detected: %s", strings.Join(group, ", "))
 		}
 	}
 	return catcher.Resolve()
@@ -240,15 +240,15 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 func BlockTaskGroupTasks(taskID string) error {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return errors.Wrapf(err, "problem finding task %s", taskID)
+		return errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return errors.Errorf("found nil task %s", taskID)
+		return errors.Errorf("task '%s' not found", taskID)
 	}
 
 	p, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
-		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
+		return errors.Wrapf(err, "getting project for task '%s'", t.Id)
 	}
 	tg := p.FindTaskGroup(t.TaskGroup)
 	if tg == nil {
@@ -262,7 +262,7 @@ func BlockTaskGroupTasks(taskID string) error {
 		}
 	}
 	if indexOfTask == -1 {
-		return errors.Errorf("Could not find task '%s' in task group", t.DisplayName)
+		return errors.Errorf("could not find task '%s' in task group", t.DisplayName)
 	}
 	taskNamesToBlock := []string{}
 	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
@@ -270,10 +270,10 @@ func BlockTaskGroupTasks(taskID string) error {
 	}
 	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
 	if err != nil {
-		return errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", "))
+		return errors.Wrapf(err, "finding tasks '%s'", strings.Join(taskNamesToBlock, ", "))
 	}
 	if err = ValidateNewGraph(t, tasksToBlock); err != nil {
-		return errors.Wrap(err, "problem validating proposed dependencies")
+		return errors.Wrap(err, "validating proposed dependencies")
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -385,12 +385,12 @@ func ClearTaskQueue(distroId string) error {
 	// task queue should always exist, so proceed with clearing
 	distroQueueInfo, err := GetDistroQueueInfo(distroId)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error getting task queue info"))
+		catcher.Wrap(err, "getting task queue info")
 	}
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error clearing task queue"))
+		catcher.Wrap(err, "clearing task queue")
 	}
 
 	// make sure task alias queue actually exists before modifying
@@ -399,7 +399,7 @@ func ClearTaskQueue(distroId string) error {
 	}
 	aliasCount, err := db.Count(TaskAliasQueuesCollection, aliasQuery)
 	if err != nil {
-		catcher.Add(err)
+		catcher.Wrap(err, "counting task alias queues matching distro")
 	}
 	// want to at least try to clear even in the case of an error
 	if aliasCount == 0 && err == nil {
@@ -411,20 +411,21 @@ func ClearTaskQueue(distroId string) error {
 	}
 	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error getting task alias queue info"))
+		catcher.Add(errors.Wrap(err, "getting task alias queue info"))
 	}
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "error clearing task alias queue"))
+		catcher.Add(errors.Wrap(err, "clearing task alias queue"))
 	}
 	return catcher.Resolve()
 }
 
 // clearQueueInfo takes in a DistroQueueInfo and blanks out appropriate fields
+// for a cleared queue.
 func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
-	new_distroQueueInfo := DistroQueueInfo{
+	return DistroQueueInfo{
 		Length:                     0,
 		ExpectedDuration:           time.Duration(0),
 		MaxDurationThreshold:       distroQueueInfo.MaxDurationThreshold,
@@ -434,8 +435,6 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 		TaskGroupInfos:             []TaskGroupInfo{},
 		AliasQueue:                 distroQueueInfo.AliasQueue,
 	}
-
-	return new_distroQueueInfo
 }
 
 func clearTaskQueueCollection(distroId string, distroQueueInfo DistroQueueInfo) error {
@@ -521,13 +520,13 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrapf(err, "problem building task queue for '%s'", q.DistroID)
+		return nil, errors.Wrapf(err, "building task queue for distro '%s'", q.DistroID)
 	}
 	if len(out) == 0 {
 		return nil, nil
 	}
 	if len(out) > 1 {
-		return nil, errors.Errorf("task queue result malformed [num=%d, id=%s], programmer error",
+		return nil, errors.Errorf("programmer error: task queue result malformed [num=%d, id=%s]",
 			len(out), q.DistroID)
 	}
 
@@ -614,7 +613,7 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	err := db.FindOneQ(TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
 
 	grip.DebugWhen(err == nil, message.Fields{
-		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
+		"message":                              "fetched the distro's task queue items to create its task queue",
 		"distro":                               distroID,
 		"task_queue_generated_at":              queue.GeneratedAt,
 		"num_task_queue_items":                 len(queue.Queue),
@@ -689,7 +688,7 @@ func runTimeMapAggregation(collection string, pipe []bson.M) (map[string]time.Ti
 	err := db.Aggregate(collection, pipe, &out)
 
 	if err != nil {
-		return map[string]time.Time{}, errors.Wrapf(err, "problem running aggregation for %s", collection)
+		return map[string]time.Time{}, errors.Wrapf(err, "aggregating times from collection '%s'", collection)
 	}
 
 	switch len(out) {
@@ -698,7 +697,7 @@ func runTimeMapAggregation(collection string, pipe []bson.M) (map[string]time.Ti
 	case 1:
 		return out[0], nil
 	default:
-		return map[string]time.Time{}, errors.Errorf("produced invalid results with too many elements: [%s:%d]", collection, len(out))
+		return map[string]time.Time{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d results", collection, len(out))
 	}
 
 }
@@ -709,7 +708,7 @@ func runDurationMapAggregation(collection string, pipe []bson.M) (map[string]tim
 	err := db.Aggregate(collection, pipe, &out)
 
 	if err != nil {
-		return map[string]time.Duration{}, errors.Wrapf(err, "problem running aggregation for %s", collection)
+		return map[string]time.Duration{}, errors.Wrapf(err, "aggregating durations from collection '%s'", collection)
 	}
 
 	switch len(out) {
@@ -718,7 +717,7 @@ func runDurationMapAggregation(collection string, pipe []bson.M) (map[string]tim
 	case 1:
 		return out[0], nil
 	default:
-		return map[string]time.Duration{}, errors.Errorf("produced invalid results with too many elements: [%s:%d]", collection, len(out))
+		return map[string]time.Duration{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d results", collection, len(out))
 	}
 
 }
