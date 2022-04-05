@@ -47,25 +47,25 @@ func TestEc2AssumeRoleExecute(t *testing.T) {
 		Secret: conf.Task.Secret,
 	}, nil)
 	require.NoError(t, err)
-	c := &ec2AssumeRole{}
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
-		"FailsWithNoARN": func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			c.RoleARN = ""
-			c.DurationSeconds = 0
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
+		"FailsWithNoARN": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			c := &ec2AssumeRole{}
 			err := c.Execute(ctx, comm, logger, conf)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "must specify role ARN")
 		},
-		"FailsWithInvalidDuration": func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			c.RoleARN = "randomRoleArn1234567890"
-			c.DurationSeconds = -10
+		"FailsWithInvalidDuration": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			c := &ec2AssumeRole{
+				RoleARN:         "randomRoleArn1234567890",
+				DurationSeconds: -10,
+			}
 			err := c.Execute(ctx, comm, logger, conf)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot specify a non-positive duration")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			testCase(ctx, t, c, comm, logger, conf)
+			testCase(ctx, t, comm, logger, conf)
 		})
 	}
 }
