@@ -1077,7 +1077,6 @@ type Task {
   project: Project
   projectId: String!
   projectIdentifier: String
-  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
   requester: String!
