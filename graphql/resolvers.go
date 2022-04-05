@@ -3260,38 +3260,6 @@ func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask
 	return &patchMetadata, nil
 }
 
-func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITask) (*BaseTaskMetadata, error) {
-	i, err := at.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
-	}
-	baseTask, err := t.FindTaskOnBaseCommit()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
-	}
-	if baseTask == nil {
-		return nil, nil
-	}
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
-	}
-
-	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
-	baseTaskMetadata := BaseTaskMetadata{
-		BaseTaskLink:     fmt.Sprintf("%s/task/%s", config.Ui.Url, baseTask.Id),
-		BaseTaskDuration: &dur,
-	}
-	if baseTask.TimeTaken == 0 {
-		baseTaskMetadata.BaseTaskDuration = nil
-	}
-	return &baseTaskMetadata, nil
-}
-
 func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask) (*string, error) {
 	host, err := host.FindOne(host.ById(*at.HostId))
 	if err != nil {

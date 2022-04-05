@@ -13,42 +13,6 @@
       }
     },
     {
-      "query_file": "baseTaskMetadata.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "baseTaskMetadata": {
-              "baseTaskDuration": 30000000,
-              "baseTaskLink": "/task/base-task-1"
-            }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "baseTaskMetadata-base-task-not-finished.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "baseTaskMetadata": {
-              "baseTaskDuration": null,
-              "baseTaskLink": "/task/base-task-2"
-            }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "baseTaskMetadata-no-base-task.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "baseTaskMetadata": null
-          }
-        }
-      }
-    },
-    {
       "query_file": "reliesOn-task-status-not-success-nor-fail.graphql",
       "result": {
         "data": {

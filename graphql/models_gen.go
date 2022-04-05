@@ -23,11 +23,6 @@ type AbortInfo struct {
 	PrClosed                bool   `json:"prClosed"`
 }
 
-type BaseTaskMetadata struct {
-	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
-	BaseTaskLink     string             `json:"baseTaskLink"`
-}
-
 type BaseTaskResult struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`

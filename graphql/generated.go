@@ -100,11 +100,6 @@ type ComplexityRoot struct {
 		Status func(childComplexity int) int
 	}
 
-	BaseTaskMetadata struct {
-		BaseTaskDuration func(childComplexity int) int
-		BaseTaskLink     func(childComplexity int) int
-	}
-
 	BaseTaskResult struct {
 		ID     func(childComplexity int) int
 		Status func(childComplexity int) int
@@ -886,7 +881,6 @@ type ComplexityRoot struct {
 		Annotation              func(childComplexity int) int
 		BaseStatus              func(childComplexity int) int
 		BaseTask                func(childComplexity int) int
-		BaseTaskMetadata        func(childComplexity int) int
 		Blocked                 func(childComplexity int) int
 		BuildId                 func(childComplexity int) int
 		BuildVariant            func(childComplexity int) int
@@ -1402,7 +1396,6 @@ type TaskResolver interface {
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
-	BaseTaskMetadata(ctx context.Context, obj *model.APITask) (*BaseTaskMetadata, error)
 
 	BuildVariantDisplayName(ctx context.Context, obj *model.APITask) (*string, error)
 	CanAbort(ctx context.Context, obj *model.APITask) (bool, error)
@@ -1620,20 +1613,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BaseTaskInfo.Status(childComplexity), true
-
-	case "BaseTaskMetadata.baseTaskDuration":
-		if e.complexity.BaseTaskMetadata.BaseTaskDuration == nil {
-			break
-		}
-
-		return e.complexity.BaseTaskMetadata.BaseTaskDuration(childComplexity), true
-
-	case "BaseTaskMetadata.baseTaskLink":
-		if e.complexity.BaseTaskMetadata.BaseTaskLink == nil {
-			break
-		}
-
-		return e.complexity.BaseTaskMetadata.BaseTaskLink(childComplexity), true
 
 	case "BaseTaskResult.id":
 		if e.complexity.BaseTaskResult.ID == nil {
@@ -5685,13 +5664,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.BaseTask(childComplexity), true
 
-	case "Task.baseTaskMetadata":
-		if e.complexity.Task.BaseTaskMetadata == nil {
-			break
-		}
-
-		return e.complexity.Task.BaseTaskMetadata(childComplexity), true
-
 	case "Task.blocked":
 		if e.complexity.Task.Blocked == nil {
 			break
@@ -8528,10 +8500,6 @@ type PatchMetadata {
   patchID: String!
 }
 
-type BaseTaskMetadata {
-  baseTaskDuration: Duration
-  baseTaskLink: String!
-}
 
 type AbortInfo {
   user: String!
@@ -8552,7 +8520,6 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
@@ -11772,73 +11739,6 @@ func (ec *executionContext) _BaseTaskInfo_status(ctx context.Context, field grap
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _BaseTaskMetadata_baseTaskDuration(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "BaseTaskMetadata",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BaseTaskDuration, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIDuration)
-	fc.Result = res
-	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _BaseTaskMetadata_baseTaskLink(ctx context.Context, field graphql.CollectedField, obj *BaseTaskMetadata) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "BaseTaskMetadata",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BaseTaskLink, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _BaseTaskResult_id(ctx context.Context, field graphql.CollectedField, obj *BaseTaskResult) (ret graphql.Marshaler) {
@@ -30246,38 +30146,6 @@ func (ec *executionContext) _Task_baseStatus(ctx context.Context, field graphql.
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_baseTaskMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().BaseTaskMetadata(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*BaseTaskMetadata)
-	fc.Result = res
-	return ec.marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Task_blocked(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -42810,35 +42678,6 @@ func (ec *executionContext) _BaseTaskInfo(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var baseTaskMetadataImplementors = []string{"BaseTaskMetadata"}
-
-func (ec *executionContext) _BaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, obj *BaseTaskMetadata) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, baseTaskMetadataImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("BaseTaskMetadata")
-		case "baseTaskDuration":
-			out.Values[i] = ec._BaseTaskMetadata_baseTaskDuration(ctx, field, obj)
-		case "baseTaskLink":
-			out.Values[i] = ec._BaseTaskMetadata_baseTaskLink(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var baseTaskResultImplementors = []string{"BaseTaskResult"}
 
 func (ec *executionContext) _BaseTaskResult(ctx context.Context, sel ast.SelectionSet, obj *BaseTaskResult) graphql.Marshaler {
@@ -47460,17 +47299,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_baseStatus(ctx, field, obj)
-				return res
-			})
-		case "baseTaskMetadata":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_baseTaskMetadata(ctx, field, obj)
 				return res
 			})
 		case "blocked":
@@ -53000,13 +52828,6 @@ func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._Annotation(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOBaseTaskMetadata2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskMetadata(ctx context.Context, sel ast.SelectionSet, v *BaseTaskMetadata) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._BaseTaskMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOBaseTaskResult2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBaseTaskResult(ctx context.Context, sel ast.SelectionSet, v *BaseTaskResult) graphql.Marshaler {
