@@ -116,6 +116,12 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	modified := false
 	switch section {
 	case model.ProjectPageGeneralSection:
+		if mergedProjectRef.Identifier != mergedBeforeRef.Identifier {
+			if err = handleIdentifierConflict(mergedProjectRef); err != nil {
+				return nil, err
+			}
+		}
+
 		// only need to check Github conflicts once so we use else if statements to handle this
 		if mergedProjectRef.Owner != mergedBeforeRef.Owner || mergedProjectRef.Repo != mergedBeforeRef.Repo {
 			if err = handleGithubConflicts(mergedProjectRef, "Changing owner/repo"); err != nil {
@@ -255,6 +261,17 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 	}
 	return &res, errors.Wrapf(catcher.Resolve(), "error saving section '%s'", section)
+}
+
+func handleIdentifierConflict(pRef *model.ProjectRef) error {
+	conflictingRef, err := model.FindBranchProjectRef(pRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "Error checking for conflicting project ref")
+	}
+	if conflictingRef != nil && conflictingRef.Id != pRef.Id {
+		return errors.New("Identifier is already being used for another project")
+	}
+	return nil
 }
 
 func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {

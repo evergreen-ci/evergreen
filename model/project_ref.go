@@ -1688,6 +1688,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefEnabledKey:                 p.Enabled,
 			ProjectRefBranchKey:                  p.Branch,
 			ProjectRefDisplayNameKey:             p.DisplayName,
+			ProjectRefIdentifierKey:              p.Identifier,
 			ProjectRefBatchTimeKey:               p.BatchTime,
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
