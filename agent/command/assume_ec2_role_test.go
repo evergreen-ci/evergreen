@@ -50,6 +50,8 @@ func TestEc2AssumeRoleExecute(t *testing.T) {
 	c := &ec2AssumeRole{}
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
 		"FailsWithNoARN": func(ctx context.Context, t *testing.T, c *ec2AssumeRole, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			c.RoleARN = ""
+			c.DurationSeconds = 0
 			err := c.Execute(ctx, comm, logger, conf)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "must specify role ARN")
