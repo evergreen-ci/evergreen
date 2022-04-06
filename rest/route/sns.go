@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -31,7 +30,6 @@ const (
 	messageTypeNotification             = "Notification"
 	messageTypeUnsubscribeConfirmation  = "UnsubscribeConfirmation"
 
-	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
 	ecsTaskStateChangeType = "ECS Task State Change"
@@ -161,13 +159,6 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 	}
 
 	switch notification.DetailType {
-	case interruptionWarningType:
-		if err := sns.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "problem processing interruption warning").Error(),
-			}
-		}
 	case instanceStateChangeType:
 		switch notification.Detail.State {
 		case ec2.InstanceStateNameTerminated:
@@ -193,81 +184,6 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instanceID string) error {
-	h, err := host.FindOneId(instanceID)
-	if err != nil {
-		return err
-	}
-	// don't make AWS keep retrying if we haven't heard of the host
-	if h == nil {
-		return nil
-	}
-
-	instanceType := "Empty Distro.ProviderSettingsList, unable to get instance_type"
-	if len(h.Distro.ProviderSettingsList) > 0 {
-		if stringVal, ok := h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK(); ok {
-			instanceType = stringVal
-		}
-	}
-	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "database error counting running hosts by distro_id",
-			"host_id":       h.Id,
-			"distro_id":     h.Distro.Id,
-			"instance_type": instanceType,
-		}))
-		existingHostCount = -1
-	}
-
-	grip.Info(message.Fields{
-		"message":            "got interruption warning from AWS",
-		"distro":             h.Distro.Id,
-		"running_host_count": existingHostCount,
-		"instance_type":      instanceType,
-		"host_id":            h.Id,
-	})
-
-	if h.Status == evergreen.HostTerminated {
-		return nil
-	}
-
-	if sns.skipEarlyTermination(h) {
-		return nil
-	}
-
-	terminationJob := units.NewHostTerminationJob(sns.env, h, units.HostTerminationOptions{
-		TerminateIfBusy:          true,
-		TerminationReason:        "got interruption warning",
-		SkipCloudHostTermination: true,
-	})
-	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, terminationJob); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":          "could not enqueue host termination job",
-			"host_id":          h.Id,
-			"enqueue_job_type": terminationJob.Type(),
-		}))
-	}
-
-	return nil
-}
-
-// skipEarlyTermination decides if we should terminate the instance now or wait for AWS to do it.
-// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html#billing-for-interrupted-spot-instances
-func (sns *ec2SNS) skipEarlyTermination(h *host.Host) bool {
-	// Let AWS terminate if we're within the first hour
-	if utility.IsZeroTime(h.StartTime) || time.Now().Sub(h.StartTime) < time.Hour {
-		return true
-	}
-
-	// Let AWS terminate Windows hosts themselves.
-	if h.Distro.IsWindows() {
-		return true
-	}
-
-	return false
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {
