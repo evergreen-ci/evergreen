@@ -1155,7 +1155,7 @@ type ProjectEventSettings{
 
 type RepoEventSettings{
   githubWebhooksEnabled: Boolean!
-  projectRef: Project
+  projectRef: RepoRef
   vars: ProjectVars
   aliases: [ProjectAlias!]
   subscriptions: [ProjectSubscription!]

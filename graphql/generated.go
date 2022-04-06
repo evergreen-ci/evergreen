@@ -8738,7 +8738,7 @@ type ProjectEventSettings{
 
 type RepoEventSettings{
   githubWebhooksEnabled: Boolean!
-  projectRef: Project
+  projectRef: RepoRef
   vars: ProjectVars
   aliases: [ProjectAlias!]
   subscriptions: [ProjectSubscription!]
@@ -27566,7 +27566,7 @@ func (ec *executionContext) _RepoEventSettings_projectRef(ctx context.Context, f
 	}
 	res := resTmp.(model.APIProjectRef)
 	fc.Result = res
-	return ec.marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+	return ec.marshalORepoRef2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RepoEventSettings_vars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectEventSettings) (ret graphql.Marshaler) {
