@@ -587,7 +587,7 @@ func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
 }
 
-// ByIP produces a query that returns a running host with the given ip address.
+// ByIPAndRunning produces a query that returns a running host with the given ip address.
 func ByIPAndRunning(ip string) db.Q {
 	return db.Query(bson.M{
 		"$or": []bson.M{
