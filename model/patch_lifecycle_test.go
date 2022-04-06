@@ -306,7 +306,7 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch.Alias = evergreen.CommitQueueAlias
 				_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "No builds or tasks for commit queue version")
+				So(err.Error(), ShouldContainSubstring, "no builds or tasks for commit queue version")
 			})
 			Reset(func() {
 				So(db.Clear(distro.Collection), ShouldBeNil)
