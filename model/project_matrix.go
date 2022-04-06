@@ -287,8 +287,7 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 			if !evaluatedExcludes.contain(cell) {
 				v, err := buildMatrixVariant(axes, cell, &matrices[i], ase)
 				if err != nil {
-					errs = append(errs, errors.Wrapf(err, "%s: building matrix cell %v",
-						m.Id, cell))
+					errs = append(errs, errors.Wrapf(err, "building cell '%v' for matrix '%s'", cell, m.Id))
 					continue
 				}
 				pruned = append(pruned, *v)
@@ -296,7 +295,7 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 		}
 		// safety check to make sure the exclude field is actually working
 		if len(m.Exclude) > 0 && len(unpruned) == len(pruned) {
-			errs = append(errs, errors.Errorf("%s: exclude field did not exclude anything", m.Id))
+			errs = append(errs, errors.Errorf("exclude field did not exclude anything for matrix '%s'", m.Id))
 		}
 		matrixVariants = append(matrixVariants, pruned...)
 	}
@@ -340,7 +339,7 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 			return nil, err
 		}
 		if err := v.mergeAxisValue(axisVal); err != nil {
-			return nil, errors.Wrapf(err, "processing axis value %s, %s", a.Id, axisVal.Id)
+			return nil, errors.Wrapf(err, "processing value '%s' for axis '%s'", axisVal.Id, a.Id)
 		}
 		// for display names, fall back to the axis values id so we have *something*
 		if axisVal.DisplayName != "" {
