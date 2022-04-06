@@ -664,7 +664,7 @@ func (h *hostIpAddressGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *hostIpAddressGetHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOne(host.ByIP(h.IP))
+	host, err := host.FindOne(host.ByIPAndRunning(h.IP))
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error fetching host information for '%s'", h.IP))
 	}
