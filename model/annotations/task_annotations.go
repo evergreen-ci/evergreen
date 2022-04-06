@@ -98,7 +98,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 
 	annotation, err := FindOneByTaskIdAndExecution(taskId, execution)
 	if err != nil {
-		return errors.Wrapf(err, "finding task annotation")
+		return errors.Wrap(err, "finding task annotation")
 	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {

@@ -406,7 +406,7 @@ func (c *PluginCommandConf) resolveParams() error {
 	}
 	if c.ParamsYAML != "" {
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-			return errors.Wrapf(err, "error unmarshalling params")
+			return errors.Wrapf(err, "unmarshalling params from YAML")
 		}
 		c.Params = out
 	}
@@ -1170,7 +1170,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 
 	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "loading project config for version %s", versionStr)
+		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
 	return projectInfo.Project, nil
 }
@@ -1484,7 +1484,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
 			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars)
-			catcher.Add(errors.Wrap(err, "getting task/variant pairs for alias"))
+			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 			"message": "problem adding variants/tasks for alias",
@@ -1663,13 +1663,13 @@ func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, [
 		var variantRegex *regexp.Regexp
 		variantRegex, err := regexp.Compile(v.Variant)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "compiling regex: %s", v.Variant)
+			return nil, nil, errors.Wrapf(err, "compiling regex '%s'", v.Variant)
 		}
 
 		var taskRegex *regexp.Regexp
 		taskRegex, err = regexp.Compile(v.Task)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "compiling regex: %s", v.Task)
+			return nil, nil, errors.Wrapf(err, "compiling regex '%s'", v.Task)
 		}
 
 		for _, variant := range p.BuildVariants {

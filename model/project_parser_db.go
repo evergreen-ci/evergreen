@@ -127,7 +127,7 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 			return bv.Expansions, nil
 		}
 	}
-	return nil, errors.Errorf("finding variant")
+	return nil, errors.New("could not find variant")
 }
 
 func checkConfigNumberQuery(id string, configNum int) bson.M {

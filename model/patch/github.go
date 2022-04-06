@@ -118,7 +118,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		return nil, errors.New("incomplete PR")
 	}
 	if msgDeliveryID == "" {
-		return nil, errors.New("unique msg id cannot be empty")
+		return nil, errors.New("unique msg ID cannot be empty")
 	}
 	if len(strings.Split(pr.Base.Repo.GetFullName(), "/")) != 2 {
 		return nil, errors.New("base repo name is invalid (expected [owner]/[repo])")
@@ -133,7 +133,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		return nil, errors.New("PR number must not be 0")
 	}
 	if pr.User.GetLogin() == "" || pr.User.GetID() == 0 {
-		return nil, errors.New("GitHub sender missing login name or uid")
+		return nil, errors.New("GitHub sender missing login name or UID")
 	}
 	if pr.Head.GetSHA() == "" {
 		return nil, errors.New("head hash must not be empty")

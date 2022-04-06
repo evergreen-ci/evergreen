@@ -170,7 +170,7 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 func RemoveGithubHook(hookID int) error {
 	hook, err := FindGithubHookByID(hookID)
 	if err != nil {
-		return errors.Wrap(err, "finding webhooks")
+		return errors.Wrap(err, "finding hooks")
 	}
 	if hook == nil {
 		return errors.Errorf("no hook found for ID '%d'", hookID)

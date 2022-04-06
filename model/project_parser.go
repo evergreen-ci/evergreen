@@ -149,7 +149,7 @@ func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 	for i, pt := range pp.Tasks {
 		for j := range pt.Commands {
 			if err := pp.Tasks[i].Commands[j].resolveParams(); err != nil {
-				return nil, errors.Wrapf(err, "marshalling commands for task")
+				return nil, errors.Wrapf(err, "marshalling command '%s' for task", pp.Tasks[i].Commands[j].GetDisplayName())
 			}
 		}
 	}
@@ -684,17 +684,17 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	case ReadFromPatch:
 		fileContents, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, "fetching remote configuration file")
+			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
 		return fileContents, nil
 	case ReadFromPatchDiff:
 		originalConfig, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, "fetching remote configuration file")
+			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
 		fileContents, err := MakePatchedConfig(ctx, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, string(originalConfig))
 		if err != nil {
-			return nil, errors.Wrapf(err, "patching remote configuration file")
+			return nil, errors.Wrap(err, "patching remote configuration file")
 		}
 		return fileContents, nil
 	default:
@@ -828,7 +828,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-			return nil, errors.Wrap(yamlErr, "unmarshalling into parser project")
+			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
 	}
 

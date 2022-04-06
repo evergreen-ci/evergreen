@@ -1242,7 +1242,7 @@ func (h *Host) SetVolumes(volumes []VolumeAttachment) error {
 			},
 		})
 	if err != nil {
-		return errors.Wrapf(err, "updating host volumes")
+		return errors.Wrap(err, "updating host volumes")
 	}
 	h.Volumes = volumes
 	return nil
@@ -1264,7 +1264,7 @@ func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 		&h,
 	)
 	if err != nil {
-		return errors.Wrapf(err, "finding host and adding volume")
+		return errors.Wrap(err, "finding host and adding volume")
 	}
 
 	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(h.Id),
@@ -1294,7 +1294,7 @@ func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 		&h,
 	)
 	if err != nil {
-		return errors.Wrapf(err, "finding host and removing volume")
+		return errors.Wrap(err, "finding host and removing volume")
 	}
 
 	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),

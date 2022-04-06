@@ -250,7 +250,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			continue
 		}
 		if err = adminUser.AddRole(adminRole); err != nil {
-			catcher.Wrapf(err, "adding role %s to user '%s'", adminRole, addedUser)
+			catcher.Wrapf(err, "adding role '%s' to user '%s'", adminRole, addedUser)
 			r.removeFromAdminsList(addedUser)
 			continue
 		}

@@ -292,7 +292,7 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 
 		diffs, err := thirdparty.GetDiffsFromMboxPatch(rawStr)
 		if err != nil {
-			return errors.Wrapf(err, "getting patch diffs for formatted patch")
+			return errors.Wrap(err, "getting patch diffs for formatted patch")
 		}
 		p.Patches[i].PatchSet.Patch = diffs
 	}

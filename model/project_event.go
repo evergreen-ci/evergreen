@@ -150,7 +150,7 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}
-	return errors.Wrapf(LogProjectModified(id, userId, before, after), "logging project modified")
+	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {

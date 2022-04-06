@@ -71,7 +71,7 @@ func CreateProjectConfig(yml []byte, identifier string) (*ProjectConfig, error) 
 	p := &ProjectConfig{}
 	if err := util.UnmarshalYAMLWithFallback(yml, p); err != nil {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-		return nil, errors.Wrap(yamlErr, "unmarshalling into project config")
+		return nil, errors.Wrap(yamlErr, "unmarshalling project config from YAML")
 	}
 	if p.isEmpty() {
 		return nil, nil

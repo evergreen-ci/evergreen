@@ -403,7 +403,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 	if intermediateProject == nil {
 		intermediateProject, err = createIntermediateProject([]byte(config), false)
 		if err != nil {
-			return nil, errors.Wrapf(err, "creating intermediate project")
+			return nil, errors.Wrap(err, "creating intermediate project")
 		}
 	}
 

@@ -166,13 +166,13 @@ func RevertConfig(guid string, user string) error {
 		return errors.Wrap(err, "finding events")
 	}
 	if len(events) == 0 {
-		return errors.Errorf("finding event with GUID %s", guid)
+		return errors.Errorf("finding event with GUID '%s'", guid)
 	}
 	evt := events[0]
 	data := evt.Data.(*AdminEventData)
 	current := evergreen.ConfigRegistry.GetSection(data.Section)
 	if current == nil {
-		return errors.Errorf("finding section %s", data.Section)
+		return errors.Errorf("finding section '%s'", data.Section)
 	}
 	err = current.Get(evergreen.GetEnvironment())
 	if err != nil {

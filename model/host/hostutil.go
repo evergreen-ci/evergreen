@@ -1109,7 +1109,7 @@ func (h *Host) spawnHostConfigFile() string {
 func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting owner %s for host", h.ProvisionOptions.OwnerId)
+		return nil, errors.Wrapf(err, "getting owner '%s' for host", h.ProvisionOptions.OwnerId)
 	}
 
 	conf := struct {

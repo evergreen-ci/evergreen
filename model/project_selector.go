@@ -375,7 +375,7 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 	if len(vs.MatrixSelector) > 0 {
 		evaluatedSelector, errs := vs.MatrixSelector.evaluatedCopy(v.axisEval)
 		if len(errs) > 0 {
-			return nil, errors.Errorf("evaluating variant selector %v: %v", vs.MatrixSelector, errs)
+			return nil, errors.Errorf("evaluating variant selector %v: %s", vs.MatrixSelector, errs)
 		}
 		results := []string{}
 		// this could be sped up considerably with caching, but I doubt we'll need to

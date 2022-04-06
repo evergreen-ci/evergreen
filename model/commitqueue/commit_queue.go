@@ -167,7 +167,7 @@ func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
 			q.Queue[i].Version = item.Version
 		}
 	}
-	return errors.Wrapf(addVersionID(q.ProjectID, item), "updating version")
+	return errors.Wrap(addVersionID(q.ProjectID, item), "updating version")
 }
 
 func (q *CommitQueue) FindItem(issue string) int {
@@ -183,12 +183,12 @@ func (q *CommitQueue) FindItem(issue string) int {
 func EnsureCommitQueueExistsForProject(id string) error {
 	cq, err := FindOneId(id)
 	if err != nil {
-		return errors.Wrapf(err, "finding commit queue")
+		return errors.Wrap(err, "finding commit queue")
 	}
 	if cq == nil {
 		cq = &CommitQueue{ProjectID: id}
 		if err = InsertQueue(cq); err != nil {
-			return errors.Wrapf(err, "inserting new commit queue")
+			return errors.Wrap(err, "inserting new commit queue")
 		}
 	}
 	return nil

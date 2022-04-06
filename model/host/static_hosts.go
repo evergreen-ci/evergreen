@@ -40,7 +40,7 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, d *distro.Distro) error
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, "getting inactive static host to terminate")
+		return errors.Wrap(err, "getting inactive static hosts for termination")
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, h := range toTerminate {

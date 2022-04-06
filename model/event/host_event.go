@@ -234,12 +234,12 @@ func LogVolumeExpirationWarningSent(volumeID string) {
 // task.
 func UpdateExecutions(hostId, taskId string, execution int) error {
 	query := bson.M{
-		ResourceIdKey:                     hostId,
-		DataKey + "." + hostDataTaskIDKey: taskId,
+		ResourceIdKey: hostId,
+		bsonutil.GetDottedKeyName(DataKey, hostDataTaskIDKey): taskId,
 	}
 	update := bson.M{
 		"$set": bson.M{
-			DataKey + "." + hostDataTaskExecutionKey: strconv.Itoa(execution),
+			bsonutil.GetDottedKeyName(DataKey, hostDataTaskExecutionKey): strconv.Itoa(execution),
 		},
 	}
 	_, err := db.UpdateAll(AllLogCollection, query, update)

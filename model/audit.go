@@ -170,7 +170,7 @@ func auditHostTaskMapping(hostToTask, taskToHost map[string]string) []HostTaskIn
 }
 
 func (shi StuckHostInconsistency) Error() string {
-	return fmt.Sprintf("host %s has a running task %s with complete status %s", shi.Host, shi.RunningTask, shi.TaskStatus)
+	return fmt.Sprintf("host '%s' has a running task '%s' with complete status '%s'", shi.Host, shi.RunningTask, shi.TaskStatus)
 }
 
 // CheckStuckHosts queries for hosts that tasks that are
