@@ -30,7 +30,7 @@ type APIVersion struct {
 	Requester          *string        `json:"requester"`
 	Errors             []*string      `json:"errors"`
 	Activated          *bool          `json:"activated"`
-	Aborted            *bool          `json:"aborted`
+	Aborted            *bool          `json:"aborted"`
 }
 
 type buildDetail struct {
