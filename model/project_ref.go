@@ -1062,6 +1062,37 @@ func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
 
+// GetTasksWithOptions
+func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
+	projectId, err := GetIdForProject(projectName)
+	if err != nil {
+		return nil, err
+	}
+	if opts.NumVersions <= 0 {
+		opts.NumVersions = defaultVersionLimit
+	}
+	match := bson.M{
+		task.ProjectKey:     projectId,
+		task.DisplayNameKey: taskName,
+	}
+	if opts.StartAfter > 0 {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
+	}
+	if opts.BuildVariant != "" {
+		match[task.BuildVariantKey] = opts.BuildVariant
+	}
+	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+	pipeline = append(pipeline, bson.M{"$limit": opts.NumVersions})
+
+	res := []task.Task{}
+
+	if err := db.Aggregate(task.Collection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating tasks")
+	}
+	return res, nil
+}
+
 func FindFirstProjectRef() (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefPrivateKey, RepoRefPrivateKey, false)

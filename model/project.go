@@ -36,6 +36,12 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
+type GetProjectTasksOpts struct {
+	NumVersions  int    `json:"num_versions"`
+	BuildVariant string `json:"build_variant"`
+	StartAfter   int    `json:"start_after"`
+}
+
 type Project struct {
 	Enabled             bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback            bool                       `yaml:"stepback,omitempty" bson:"stepback"`

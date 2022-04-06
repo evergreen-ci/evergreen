@@ -3,6 +3,8 @@ package model
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"testing"
 	"time"
 
@@ -1676,6 +1678,58 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
+}
+
+func TestGetProjectTasksWithOptions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	assert.NoError(t, p.Insert())
+
+	for i := 0; i <= 20; i++ {
+		myTask := task.Task{
+			Id:          fmt.Sprintf("t%d", i),
+			BuildId:     fmt.Sprintf("bv%d", i),
+			Version:     fmt.Sprintf("v%d", i),
+			DisplayName: "my_task",
+		}
+		bv := build.Build{
+			Id:           myTask.BuildId,
+			BuildVariant: "my_bv",
+			Version:      myTask.Version,
+			Tasks: []build.TaskCache{
+				{Id: myTask.Id},
+			},
+			Activated: true,
+		}
+		v := Version{
+			Id:                  myTask.Version,
+			Identifier:          "my_project",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i,
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildId:      bv.Id,
+					BuildVariant: "my_bv",
+				},
+			},
+		}
+
+		if i == 0 || i == 1 || i == 20 {
+			myTask.Activated = true
+		}
+		assert.NoError(t, v.Insert())
+		assert.NoError(t, bv.Insert())
+		assert.NoError(t, myTask.Insert())
+	}
+
+	// test with tasks
+	opts := GetProjectTasksOpts{}
+
+	_, err := GetTasksWithOptions("my_ident", "task1", opts)
+	assert.NoError(t, err)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {

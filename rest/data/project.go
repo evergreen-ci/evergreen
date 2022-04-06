@@ -106,6 +106,23 @@ func VerifyUniqueProject(name string) error {
 	return nil
 }
 
+// GetProjectTasksWithOptions
+func GetProjectTasksWithOptions(projectName string, taskName string, opts model.GetProjectTasksOpts) ([]restModel.APITask, error) {
+	tasks, err := model.GetTasksWithOptions(projectName, taskName, opts)
+	if err != nil {
+		return nil, err
+	}
+	res := []restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := restModel.APITask{}
+		if err = apiTask.BuildFromService(&t); err != nil {
+			return nil, errors.Wrap(err, "error building API tasks")
+		}
+		res = append(res, apiTask)
+	}
+	return res, nil
+}
+
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
 func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	var repoVars *model.ProjectVars
