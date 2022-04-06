@@ -130,6 +130,11 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	assert.NoError(t, spawnHost.Insert())
 
 	for name, test := range map[string]func(*testing.T){
+		"InstanceInterruptionWarningInitiatesTermination": func(t *testing.T) {
+			rh.payload = sns.Payload{MessageId: messageID}
+			require.NoError(t, rh.handleInstanceInterruptionWarning(ctx, agentHost.Id))
+			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
+		},
 		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, rh.handleInstanceTerminated(ctx, agentHost.Id))
 			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
