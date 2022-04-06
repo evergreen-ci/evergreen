@@ -119,6 +119,9 @@ func TestHostPostHandler(t *testing.T) {
 
 func TestHostStopHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
+	}()
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStopHandler{
@@ -130,6 +133,10 @@ func TestHostStopHandler(t *testing.T) {
 		host.Host{
 			Id:     "host-stopped",
 			Status: evergreen.HostStopped,
+		},
+		host.Host{
+			Id:     "host-stopping",
+			Status: evergreen.HostStopping,
 		},
 		host.Host{
 			Id:     "host-provisioning",
@@ -144,17 +151,22 @@ func TestHostStopHandler(t *testing.T) {
 		assert.NoError(t, hostToAdd.Insert())
 	}
 
-	h.hostID = "host-stopped"
+	h.hostID = hosts[0].Id
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
-	h.hostID = "host-provisioning"
+	h.hostID = hosts[1].Id
+	resp = h.Run(ctx)
+	require.NotZero(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	h.hostID = hosts[2].Id
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
-	h.hostID = "host-running"
+	h.hostID = hosts[3].Id
 	h.subscriptionType = event.SlackSubscriberType
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
@@ -166,7 +178,10 @@ func TestHostStopHandler(t *testing.T) {
 }
 
 func TestHostStartHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
+	}()
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	h := &hostStartHandler{
@@ -192,18 +207,18 @@ func TestHostStartHandler(t *testing.T) {
 
 	h.hostID = "host-running"
 	resp := h.Run(ctx)
-	assert.NotNil(t, resp)
+	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 	h.hostID = "host-stopped"
 	h.subscriptionType = event.SlackSubscriberType
 	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
+	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
 	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
-	assert.Len(t, subscriptions, 2)
+	assert.Len(t, subscriptions, 1)
 }
 
 func TestCreateVolumeHandler(t *testing.T) {
