@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"testing"
 	"time"
@@ -1681,55 +1680,52 @@ func TestUpdateAdminRolesError(t *testing.T) {
 }
 
 func TestGetProjectTasksWithOptions(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection))
 	p := ProjectRef{
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
 	assert.NoError(t, p.Insert())
 
-	for i := 0; i <= 20; i++ {
+	for i := 0; i <= 50; i++ {
 		myTask := task.Task{
-			Id:          fmt.Sprintf("t%d", i),
-			BuildId:     fmt.Sprintf("bv%d", i),
-			Version:     fmt.Sprintf("v%d", i),
-			DisplayName: "my_task",
-		}
-		bv := build.Build{
-			Id:           myTask.BuildId,
-			BuildVariant: "my_bv",
-			Version:      myTask.Version,
-			Tasks: []build.TaskCache{
-				{Id: myTask.Id},
-			},
-			Activated: true,
-		}
-		v := Version{
-			Id:                  myTask.Version,
-			Identifier:          "my_project",
-			Requester:           evergreen.RepotrackerVersionRequester,
+			Id:                  fmt.Sprintf("t%d", i),
 			RevisionOrderNumber: i,
-			BuildVariants: []VersionBuildStatus{
-				{
-					BuildId:      bv.Id,
-					BuildVariant: "my_bv",
-				},
-			},
+			DisplayName:         "t1",
+			Project:             "my_project",
 		}
-
-		if i == 0 || i == 1 || i == 20 {
-			myTask.Activated = true
+		if i%2 == 0 {
+			myTask.BuildVariant = "bv1"
 		}
-		assert.NoError(t, v.Insert())
-		assert.NoError(t, bv.Insert())
 		assert.NoError(t, myTask.Insert())
 	}
-
-	// test with tasks
 	opts := GetProjectTasksOpts{}
 
-	_, err := GetTasksWithOptions("my_ident", "task1", opts)
+	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
+	assert.Len(t, tasks, defaultVersionLimit)
+
+	opts.NumVersions = 5
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 5)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 50)
+	assert.Equal(t, tasks[4].RevisionOrderNumber, 46)
+
+	opts.NumVersions = 10
+	opts.StartAt = 20
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 10)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 20)
+	assert.Equal(t, tasks[9].RevisionOrderNumber, 11)
+
+	opts.NumVersions = defaultVersionLimit
+	opts.StartAt = 31
+	opts.BuildVariant = "bv1"
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 15)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {

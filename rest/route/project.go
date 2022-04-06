@@ -1016,7 +1016,7 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 	if h.opts.NumVersions < 1 {
 		return errors.New("'num_versions' must be a positive integer")
 	}
-	if h.opts.StartAfter < 0 {
+	if h.opts.StartAt < 0 {
 		return errors.New("'start' must be a non-negative integer")
 	}
 

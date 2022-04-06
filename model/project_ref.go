@@ -1075,8 +1075,8 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 		task.ProjectKey:     projectId,
 		task.DisplayNameKey: taskName,
 	}
-	if opts.StartAfter > 0 {
-		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.StartAfter}
+	if opts.StartAt > 0 {
+		match[task.RevisionOrderNumberKey] = bson.M{"$lte": opts.StartAt}
 	}
 	if opts.BuildVariant != "" {
 		match[task.BuildVariantKey] = opts.BuildVariant
