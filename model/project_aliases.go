@@ -83,14 +83,10 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// FindAliasesMergedWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
+// MergeAliasesWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
 // on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
 // project YAML in the case that both are defined.
-func FindAliasesMergedWithProjectConfig(projectID string) ([]ProjectAlias, error) {
-	dbAliases, err := FindAliasesForProjectFromDb(projectID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", projectID)
-	}
+func MergeAliasesWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
 	dbAliasMap := aliasesToMap(dbAliases)
 	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
 	if err != nil {

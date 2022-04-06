@@ -16,7 +16,6 @@ import (
 func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
 	var err error
 	var aliases model.ProjectAliases
-	// should this logic just be folded into FindProjectAliases?
 	aliasesToDelete := []string{}
 	aliasModels := []restModel.APIProjectAlias{}
 	for _, a := range aliasesToAdd {
@@ -27,20 +26,21 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 		}
 	}
 	if projectId != "" {
-		if includeProjectConfig {
-			aliases, err = model.FindAliasesMergedWithProjectConfig(projectId)
-		} else {
-			aliases, err = model.FindAliasesForProjectFromDb(projectId)
-		}
+		aliases, err = model.FindAliasesForProjectFromDb(projectId)
 		if err != nil {
 			return nil, err
 		}
 	}
-
 	if len(aliases) == 0 && repoId != "" {
 		aliases, err = model.FindAliasesForRepo(repoId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding aliases for repo '%s'", repoId)
+		}
+	}
+	if projectId != "" && includeProjectConfig {
+		aliases, err = model.MergeAliasesWithProjectConfig(projectId, aliases)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if aliases == nil {
