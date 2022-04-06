@@ -123,7 +123,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		return errors.WithStack(err)
 	}
 	if originalScript != c.Script {
-		logger.Task().Warning("`${SHELL_EXPANSION}` syntax will not work due to evergreen expansions. See Evergreen FAQ for details.")
+		logger.Task().Info("`${SHELL_EXPANSION}` syntax will will only work for Evergreen expansions.")
 	}
 
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
