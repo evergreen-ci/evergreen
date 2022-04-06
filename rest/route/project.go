@@ -982,8 +982,6 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/projects/{project_id}/tasks/{task_id}
 
-const defaultTaskLimit = 20
-
 type getProjectTasksHandler struct {
 	projectName string
 	taskName    string

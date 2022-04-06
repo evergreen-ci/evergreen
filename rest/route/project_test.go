@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -665,6 +666,42 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		DisabledStatsCache:    utility.TruePtr(),
 		FilesIgnoredFromCache: []string{"ignored"},
 	}
+}
+
+func TestGetProjectTasks(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
+	const projectId = "proj"
+	project := serviceModel.ProjectRef{
+		Id:         projectId,
+		Identifier: "p1",
+	}
+	assert.NoError(project.Insert())
+	for i := 0; i <= 20; i++ {
+		myTask := task.Task{
+			Id:                  fmt.Sprintf("t%d", i),
+			RevisionOrderNumber: i,
+			DisplayName:         "t1",
+			Project:             projectId,
+		}
+		assert.NoError(myTask.Insert())
+	}
+
+	h := getProjectTasksHandler{
+		projectName: "p1",
+		taskName:    "t1",
+		opts: serviceModel.GetProjectTasksOpts{
+			NumVersions: 10,
+		},
+	}
+
+	resp := h.Run(context.Background())
+	assert.Equal(http.StatusOK, resp.Status())
+	assert.Len(resp.Data(), 10)
 }
 
 func TestGetProjectVersions(t *testing.T) {
