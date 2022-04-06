@@ -412,7 +412,7 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, requesters []string) (*int, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
-		return nil, errors.Errorf("invalid requesters '%s'", invalidRequesters)
+		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	// First check if we are already looking at the most recent commit.
 	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
@@ -465,7 +465,7 @@ type MainlineCommitVersionOptions struct {
 func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
-		return nil, errors.Errorf("invalid requesters '%s'", invalidRequesters)
+		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,

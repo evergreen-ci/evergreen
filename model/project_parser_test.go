@@ -748,7 +748,7 @@ tasks:
 	_, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "execution task execTask3 is listed in more than 1 display task")
+	assert.Contains(err.Error(), "execution task 'execTask3' is listed in more than 1 display task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 
 	// test that a display task can't share a name with an execution task
@@ -774,7 +774,7 @@ tasks:
 	_, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
 	assert.NotNil(proj)
 	assert.NotNil(err)
-	assert.Contains(err.Error(), "display task execTask1 cannot have the same name as an execution task")
+	assert.Contains(err.Error(), "display task 'execTask1' cannot have the same name as an execution task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 
 	// test that wildcard selectors are resolved correctly
@@ -2026,10 +2026,10 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 
 	err := main.mergeOrderedUnique(add)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "pre can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "post can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "timeout can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "early termination can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "pre can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "post can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "timeout can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "early termination can only be defined in one YAML")
 }
 
 func TestMergeUnique(t *testing.T) {
@@ -2083,14 +2083,14 @@ func TestMergeUniqueFail(t *testing.T) {
 	}
 
 	err := main.mergeUnique(add)
-	assert.Contains(t, err.Error(), "stepback can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "batch time can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "pre error fails task can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "display name can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "command type can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "callback timeout can only be defined in one yaml")
-	assert.Contains(t, err.Error(), "exec timeout secs can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "stepback can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "batch time can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "pre error fails task can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "display name can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "command type can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "callback timeout can only be defined in one YAML")
+	assert.Contains(t, err.Error(), "exec timeout secs can only be defined in one YAML")
 }
 
 func TestMergeBuildVariant(t *testing.T) {
@@ -2309,7 +2309,7 @@ func TestMergeMatrixFail(t *testing.T) {
 
 	err := main.mergeMatrix(add)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "matrixes can only be defined in one yaml")
+	assert.Contains(t, err.Error(), "matrixes can only be defined in one YAML")
 }
 
 func TestMergeMultipleProjectConfigs(t *testing.T) {

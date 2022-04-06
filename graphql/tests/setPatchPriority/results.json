@@ -30,7 +30,7 @@
       "result": {
         "errors": [
           {
-            "message": "Insufficient access to set priority 999, can only set priority less than or equal to 100",
+            "message": "insufficient access to set priority 999, can only set priority less than or equal to 100",
             "path": ["setPatchPriority"],
             "extensions": {
               "code": "FORBIDDEN"
