@@ -5074,7 +5074,7 @@ func (*FindHostsSuite) hosts() []Host {
 				Id:      "distro2",
 				Aliases: []string{"alias125"},
 			},
-			Status:         evergreen.HostRunning,
+			Status:         evergreen.HostTerminated,
 			ExpirationTime: time.Now().Add(time.Hour),
 			IP:             "ip2",
 		}, {
@@ -5198,17 +5198,11 @@ func (s *FindHostsSuite) TestFindByIP() {
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 	s.Equal("ip1", h1.IP)
-
-	h2, ok := FindOne(ByIPAndRunning("ip2"))
-	s.NoError(ok)
-	s.NotNil(h2)
-	s.Equal("host2", h2.Id)
-	s.Equal("ip2", h2.IP)
 }
 
 func (s *FindHostsSuite) TestFindByIPFail() {
 	// terminated host
-	h1, ok := FindOne(ByIPAndRunning("ip3"))
+	h1, ok := FindOne(ByIPAndRunning("ip2"))
 	s.NoError(ok)
 	s.Nil(h1)
 
