@@ -230,27 +230,6 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 		"host_id":            h.Id,
 	})
 
-	if h.Status == evergreen.HostTerminated {
-		return nil
-	}
-
-	if sns.skipEarlyTermination(h) {
-		return nil
-	}
-
-	terminationJob := units.NewHostTerminationJob(sns.env, h, units.HostTerminationOptions{
-		TerminateIfBusy:          true,
-		TerminationReason:        "got interruption warning",
-		SkipCloudHostTermination: true,
-	})
-	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, terminationJob); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":          "could not enqueue host termination job",
-			"host_id":          h.Id,
-			"enqueue_job_type": terminationJob.Type(),
-		}))
-	}
-
 	return nil
 }
 
