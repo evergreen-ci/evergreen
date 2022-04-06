@@ -11,6 +11,8 @@ import (
 // FindProjectAliases queries the database to find all aliases.
 // If the repoId is given, we default to repo aliases if there are no project aliases.
 // If aliasesToAdd are given, then we fold those aliases in and remove any that are marked as deleted.
+// If includeProjectConfig, a merged list of aliases defined on the project page and the project config YAML will be returned,
+// with aliases set on the project page taking precedence.
 func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
 	var err error
 	var aliases model.ProjectAliases

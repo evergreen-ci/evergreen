@@ -83,6 +83,9 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+// FindAliasesMergedWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
+// on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
+// project YAML in the case that both are defined.
 func FindAliasesMergedWithProjectConfig(projectID string) ([]ProjectAlias, error) {
 	dbAliases, err := FindAliasesForProjectFromDb(projectID)
 	if err != nil {
@@ -93,10 +96,6 @@ func FindAliasesMergedWithProjectConfig(projectID string) ([]ProjectAlias, error
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project config")
 	}
-	commitQueueAliases := dbAliasMap[evergreen.CommitQueueAlias]
-	githubPrAliases := dbAliasMap[evergreen.GithubPRAlias]
-	githubChecksAliases := dbAliasMap[evergreen.GithubChecksAlias]
-	gitTagAliases := dbAliasMap[evergreen.GitTagAlias]
 	patchAliases := []ProjectAlias{}
 	for alias, aliases := range dbAliasMap {
 		if IsPatchAlias(alias) {
@@ -105,27 +104,26 @@ func FindAliasesMergedWithProjectConfig(projectID string) ([]ProjectAlias, error
 	}
 	mergedAliases := []ProjectAlias{}
 	if projectConfig != nil {
-		if len(commitQueueAliases) == 0 && len(projectConfig.CommitQueueAliases) > 0 {
-			commitQueueAliases = projectConfig.CommitQueueAliases
+		if len(dbAliasMap[evergreen.CommitQueueAlias]) == 0 {
+			dbAliasMap[evergreen.CommitQueueAlias] = projectConfig.CommitQueueAliases
 		}
-
-		if len(githubPrAliases) == 0 && len(projectConfig.GitHubPRAliases) > 0 {
-			githubPrAliases = projectConfig.GitHubPRAliases
+		if len(dbAliasMap[evergreen.GithubPRAlias]) == 0 {
+			dbAliasMap[evergreen.GithubPRAlias] = projectConfig.GitHubPRAliases
 		}
-		if len(githubChecksAliases) == 0 && len(projectConfig.GitHubChecksAliases) > 0 {
-			githubChecksAliases = projectConfig.GitHubChecksAliases
+		if len(dbAliasMap[evergreen.GithubChecksAlias]) == 0 {
+			dbAliasMap[evergreen.GithubChecksAlias] = projectConfig.GitHubChecksAliases
 		}
-		if len(gitTagAliases) == 0 && len(projectConfig.GitTagAliases) > 0 {
-			gitTagAliases = projectConfig.GitTagAliases
+		if len(dbAliasMap[evergreen.GitTagAlias]) == 0 {
+			dbAliasMap[evergreen.GitTagAlias] = projectConfig.GitTagAliases
 		}
-		if len(patchAliases) == 0 && len(projectConfig.PatchAliases) > 0 {
+		if len(patchAliases) == 0 {
 			patchAliases = projectConfig.PatchAliases
 		}
 	}
-	mergedAliases = append(mergedAliases, commitQueueAliases...)
-	mergedAliases = append(mergedAliases, githubPrAliases...)
-	mergedAliases = append(mergedAliases, githubChecksAliases...)
-	mergedAliases = append(mergedAliases, gitTagAliases...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.CommitQueueAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubChecksAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GitTagAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubPRAlias]...)
 	mergedAliases = append(mergedAliases, patchAliases...)
 	return mergedAliases, nil
 }
