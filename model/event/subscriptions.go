@@ -530,7 +530,7 @@ func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 		if selector.Type == SelectorObject {
 			if selector.Data == ObjectBuild || selector.Data == ObjectVersion || selector.Data == ObjectTask {
 				if sub.Subscriber.Type == JIRAIssueSubscriberType || sub.Subscriber.Type == EvergreenWebhookSubscriberType {
-					return false, fmt.Sprintf("cannot notify by subscriber '%s' for selector '%s'", sub.Subscriber.Type, selector.Data)
+					return false, fmt.Sprintf("cannot notify by subscriber type '%s' for selector '%s'", sub.Subscriber.Type, selector.Data)
 				}
 			}
 		}

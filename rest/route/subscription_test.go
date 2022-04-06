@@ -313,7 +313,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("cannot notify by jira-issue for version", respErr.Message)
+	s.Equal("cannot notify by subscriber 'jira-issue' for selector 'version'", respErr.Message)
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
