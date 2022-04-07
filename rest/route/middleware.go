@@ -32,7 +32,6 @@ type (
 )
 
 const (
-	// VersionToStartAt value used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
 	RequestContext requestContextKey = 0
 )
@@ -50,7 +49,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	opCtx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "loading resources from context")))
 		return
 	}
 
@@ -60,7 +59,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		// Project is private and user is not authorized so return not found
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    "Project not found",
+			Message:    "project not found",
 		}))
 		return
 	}
@@ -68,7 +67,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	if opCtx.Patch != nil && user == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    "Not found",
+			Message:    "user associated with patch not found",
 		}))
 		return
 	}
@@ -141,7 +140,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	if opCtx == nil || opCtx.ProjectRef == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    "No project found",
+			Message:    "no project found",
 		}))
 		return
 	}
@@ -155,7 +154,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	if !isAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    "Not authorized",
+			Message:    "not authorized",
 		}))
 		return
 	}
@@ -179,7 +178,7 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	if !ok || repoId == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    "Not authorized",
+			Message:    "not authorized",
 		}))
 		return
 	}
@@ -192,7 +191,7 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	if repoRef == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("repo with id '%s' not found", repoId),
+			Message:    fmt.Sprintf("repo '%s' not found", repoId),
 		}))
 		return
 	}
@@ -205,7 +204,7 @@ func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reques
 	if !isRepoAdmin {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    "Not authorized",
+			Message:    "not authorized",
 		}))
 		return
 	}
@@ -230,7 +229,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		if hostID == "" {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "not authorized",
 			}))
 			return
 		}
@@ -243,33 +242,30 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	if h == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
+			Message:    fmt.Sprintf("host '%s' not found", hostID),
 		}))
 		return
 	}
 
 	if h.StartedBy == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Host was not started by task",
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is not started by any task", h.Id)))
 		return
 	}
 	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
 		return
 	}
 	if t == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task with id %s not found", h.StartedBy),
+			Message:    fmt.Sprintf("task '%s' not found", h.StartedBy),
 		}))
 	}
 	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
-			Message:    err.Error(),
+			Message:    errors.Wrapf(err, "invalid host '%s' associated with task '%s'", t.HostId, t.Id).Error(),
 		}))
 		return
 	}
@@ -300,7 +296,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	if _, statusCode, err := model.ValidateHost(hostID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
-			Message:    err.Error(),
+			Message:    errors.Wrapf(err, "invalid host '%s'", hostID).Error(),
 		}))
 		return
 	}
@@ -330,7 +326,7 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		return
 	}
 	if err := data.CheckPodSecret(id, secret); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking pod secret")))
 		return
 	}
 
@@ -351,7 +347,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		if taskID == "" {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "not authorized",
 			}))
 			return
 		}
@@ -359,14 +355,14 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	if code, err := data.CheckTaskSecret(taskID, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
-			Message:    err.Error(),
+			Message:    errors.Wrapf(err, "checking secret for task '%s'", taskID).Error(),
 		}))
 		return
 	}
 	if _, code, err := model.ValidateHost("", r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
-			Message:    err.Error(),
+			Message:    errors.Wrapf(err, "invalid host associated with task '%s'", taskID).Error(),
 		}))
 		return
 	}
@@ -426,7 +422,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 	if !ok || itemId == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "No item provided",
+			Message:    "no item provided",
 		}))
 		return
 	}
@@ -434,13 +430,13 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 	if bson.IsObjectIdHex(itemId) {
 		patch, err := data.FindPatchById(itemId)
 		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding commit queue item '%s'", itemId)))
 			return
 		}
 		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "not authorized",
 			}))
 			return
 		}
@@ -463,7 +459,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "not authorized",
 			}))
 			return
 		}
@@ -481,18 +477,12 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	opCtx := MustHaveProjectContext(ctx)
 	projRef, err := opCtx.GetProjectRef()
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
 
 	if !projRef.CommitQueue.IsEnabled() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Commit queue is not enabled for project",
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("commit queue is not enabled for project '%s'", projRef.Id)))
 		return
 	}
 
@@ -515,33 +505,27 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		itemId, ok = vars["patch_id"]
 	}
 	if !ok || itemId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "No item provided",
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("no commit queue items provided")))
 		return
 	}
 
 	if bson.IsObjectIdHex(itemId) {
 		patch, err := data.FindPatchById(itemId)
 		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", itemId)))
 			return
 		}
 		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "not authorized",
 			}))
 			return
 		}
 	} else if itemInt, err := strconv.Atoi(itemId); err == nil {
 		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
 		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("unable to get pull request info, PR number ('%d') may be invalid: %s", itemInt, err),
-			}))
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "unable to get pull request info, PR number (%d) may be invalid", itemInt)))
 			return
 		}
 
@@ -552,15 +536,12 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "not authorized",
 			}))
 			return
 		}
 	} else {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "commit queue item is not a valid identifier",
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("commit queue item is not a valid identifier")))
 		return
 	}
 
@@ -647,7 +628,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	if projectID == "" && versionID != "" {
 		projectID, err = model.FindProjectForVersion(versionID)
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding version '%s'", versionID)
 		}
 	}
 
@@ -658,7 +639,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		}
 		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for patch '%s'", patchID)
 		}
 	}
 
@@ -666,7 +647,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	if projectID == "" && buildID != "" {
 		projectID, err = build.FindProjectForBuild(buildID)
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for build '%s'", buildID)
 		}
 	}
 
@@ -675,14 +656,14 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		var test *model.TestLog
 		test, err = model.FindOneTestLogById(testLog)
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding test log '%s'", testLog)
 		}
 		if test == nil {
-			return nil, http.StatusNotFound, errors.Errorf("test log with id '%s' not found", testLog)
+			return nil, http.StatusNotFound, errors.Errorf("test log '%s' not found", testLog)
 		}
 		projectID, err = task.FindProjectForTask(test.Task)
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for task '%s' associated with test log '%s'", test.Task, test.Id)
 		}
 	}
 
@@ -691,7 +672,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	if projectID == "" && taskID != "" {
 		projectID, err = task.FindProjectForTask(taskID)
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding project for task '%s'", taskID)
 		}
 	}
 
@@ -702,7 +683,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 			return nil, http.StatusInternalServerError, errors.WithStack(err)
 		}
 		if repoRef == nil {
-			return nil, http.StatusNotFound, errors.Errorf("error finding the repo '%s'", repoID)
+			return nil, http.StatusNotFound, errors.Errorf("repo '%s' not found", repoID)
 		}
 		return []string{repoID}, http.StatusOK, nil
 	}
@@ -712,7 +693,7 @@ func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 		return nil, http.StatusNotFound, errors.WithStack(err)
 	}
 	if projectRef == nil {
-		return nil, http.StatusNotFound, errors.Errorf("error finding the project '%s'", projectID)
+		return nil, http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
 	}
 	projectID = projectRef.Id
 
@@ -758,7 +739,7 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	if distroID == "" && hostID != "" {
 		distroID, err = host.FindDistroForHost(hostID)
 		if err != nil {
-			return nil, http.StatusNotFound, err
+			return nil, http.StatusNotFound, errors.Wrapf(err, "finding distro for host '%s'", hostID)
 		}
 	}
 
@@ -769,18 +750,18 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 
 	dat, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrap(err, "could not get distro lookup table")
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "getting distro lookup table")
 	}
 	distroIDs := dat.Expand([]string{distroID})
 	if len(distroIDs) == 0 {
-		return nil, http.StatusNotFound, errors.Errorf("could not resolve distro '%s'", distroID)
+		return nil, http.StatusNotFound, errors.Errorf("distro '%s' did not match any existing distros", distroID)
 	}
 	// Verify that all the concrete distros that this request is accessing
 	// exist.
 	for _, resolvedDistroID := range distroIDs {
 		d, err := distro.FindOneId(resolvedDistroID)
 		if err != nil {
-			return nil, http.StatusInternalServerError, errors.WithStack(err)
+			return nil, http.StatusInternalServerError, errors.Wrapf(err, "finding distro '%s'", resolvedDistroID)
 		}
 		if d == nil {
 			return nil, http.StatusNotFound, errors.Errorf("distro '%s' does not exist", resolvedDistroID)
@@ -833,7 +814,7 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		opts.Permission = evergreen.PermissionAdminSettings
 		opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
 	default:
-		http.Error(rw, fmt.Sprintf("%s is not a valid resource type", resourceType), http.StatusBadRequest)
+		http.Error(rw, fmt.Sprintf("resource type '%s' is not recognized", resourceType), http.StatusBadRequest)
 		return
 	}
 	if err != nil {

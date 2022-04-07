@@ -132,7 +132,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 	assert.NoError(env.RoleManager().AddScope(adminScope))
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
-	r, err := http.NewRequest("GET", "/projects/orchard", nil)
+	r, err := http.NewRequest(http.MethodGet, "/projects/orchard", nil)
 	assert.NoError(err)
 	assert.NotNil(r)
 
@@ -555,7 +555,7 @@ func TestProjectViewPermission(t *testing.T) {
 	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, env.RoleManager())
 	assert.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
-	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://foo.com/bar", nil)
 
 	// no project should 404
 	rw := httptest.NewRecorder()
@@ -669,7 +669,7 @@ func TestEventLogPermission(t *testing.T) {
 	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, env.RoleManager())
 	assert.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
-	req := httptest.NewRequest("GET", "http://foo.com/bar", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://foo.com/bar", nil)
 
 	// no user + private project should 404
 	rw := httptest.NewRecorder()

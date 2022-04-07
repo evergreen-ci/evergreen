@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -49,7 +48,7 @@ func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) er
 	case "email":
 		h.handler = makeEmailNotification(h.environment)
 	default:
-		return errors.Errorf("'%s' is not a supported {type}", t)
+		return errors.Errorf("unsupported notification type '%s'", t)
 	}
 
 	return h.handler.Parse(ctx, r)
@@ -88,7 +87,7 @@ func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.
 	body := utility.NewRequestReader(r)
 	h.APIJiraComment = &model.APIJiraComment{}
 	if err := gimlet.GetJSON(body, h.APIJiraComment); err != nil {
-		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraComment")
+		return errors.Wrap(err, "reading Jira comment from JSON request body")
 	}
 
 	return nil
@@ -98,20 +97,17 @@ func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.
 func (h *jiraCommentNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
 	i, err := h.APIJiraComment.ToService()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIJiraComment to message.JIRAComment"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting Jira comment to service model"))
 	}
 	comment, ok := i.(*message.JIRAComment)
 	if !ok {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for message.JIRAComment", i),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected Jira comment message but got type %T", i))
 	}
 
 	h.composer = message.NewJIRACommentMessage(level.Notice, comment.IssueID, comment.Body)
 	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAComment)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderJIRAComment"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Jira comment sender"))
 	}
 
 	h.sender.Send(h.composer)
@@ -147,7 +143,7 @@ func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Re
 	body := utility.NewRequestReader(r)
 	h.APIJiraIssue = &model.APIJiraIssue{}
 	if err := gimlet.GetJSON(body, h.APIJiraIssue); err != nil {
-		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraIssue")
+		return errors.Wrap(err, "reading Jira issue from JSON request body")
 	}
 
 	return nil
@@ -157,23 +153,20 @@ func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Re
 func (h *jiraIssueNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
 	i, err := h.APIJiraIssue.ToService()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIJiraIssue to message.JiraIssue"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting Jira issue to service model"))
 	}
 	issue, ok := i.(*message.JiraIssue)
 	if !ok {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for message.JiraIssue", i),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected Jira issue message but got type %T", i))
 	}
 
 	h.composer = message.MakeJiraMessage(issue)
 	if err = h.composer.SetPriority(level.Notice); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error setting priority level on jira message"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting priority on Jira message"))
 	}
 	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAIssue)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderJIRAIssue"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Jira issue sender"))
 	}
 
 	h.sender.Send(h.composer)
@@ -209,7 +202,7 @@ func (h *slackNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 	body := utility.NewRequestReader(r)
 	h.APISlack = &model.APISlack{}
 	if err := gimlet.GetJSON(body, h.APISlack); err != nil {
-		return errors.Wrap(err, "API error while unmarshalling JSON to model.APISlack")
+		return errors.Wrap(err, "reading Slack payload from JSON request body")
 	}
 
 	return nil
@@ -218,17 +211,14 @@ func (h *slackNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 // Run dispatches the notification.
 func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
 	attachments := []message.SlackAttachment{}
-	for _, a := range h.APISlack.Attachments {
+	for idx, a := range h.APISlack.Attachments {
 		i, err := a.ToService()
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APISlackAttachment to message.SlackAttachment"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting Slack attachment at index %d to service model", idx))
 		}
 		attachment, ok := i.(*message.SlackAttachment)
 		if !ok {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Unexpected type %T for message.SlackAttachment", i),
-			})
+			return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected Slack attachment message but got type %T", i))
 		}
 		attachments = append(attachments, *attachment)
 	}
@@ -238,7 +228,7 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 	h.composer = message.NewSlackMessage(level.Notice, target, msg, attachments)
 	s, err := h.environment.GetSender(evergreen.SenderSlack)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderSlack"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Slack sender"))
 	}
 
 	h.sender = s
@@ -275,7 +265,7 @@ func (h *emailNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 	body := utility.NewRequestReader(r)
 	h.APIEmail = &model.APIEmail{}
 	if err := gimlet.GetJSON(body, h.APIEmail); err != nil {
-		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIEmail")
+		return errors.Wrap(err, "reading email payload from JSON request body")
 	}
 
 	return nil
@@ -285,20 +275,17 @@ func (h *emailNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 func (h *emailNotificationPostHandler) Run(ctx context.Context) gimlet.Responder {
 	i, err := h.APIEmail.ToService()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIEmail to message.Email"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting email to service model"))
 	}
 	email, ok := i.(*message.Email)
 	if !ok {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for message.Email", i),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("programmatic error: expected email message but got type %T", i))
 	}
 
 	h.composer = message.NewEmailMessage(level.Notice, *email)
 	h.sender, err = h.environment.GetSender(evergreen.SenderEmail)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderEmail"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting email sender"))
 	}
 
 	h.sender.Send(h.composer)

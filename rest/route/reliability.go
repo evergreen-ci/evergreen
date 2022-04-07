@@ -4,6 +4,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -84,7 +86,7 @@ func (trh *taskReliabilityHandler) readGroupBy(groupByValue string) (stats.Group
 
 	default:
 		return stats.GroupBy(""), gimlet.ErrorResponse{
-			Message:    "Invalid group_by value",
+			Message:    "invalid 'group by'",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -109,7 +111,7 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	trh.filter.Limit, err = trh.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid limit value",
+			Message:    "invalid limit",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -118,13 +120,13 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	trh.filter.Tasks = trh.readStringList(vals["tasks"])
 	if len(trh.filter.Tasks) == 0 {
 		return gimlet.ErrorResponse{
-			Message:    "Missing Tasks values",
+			Message:    "must specify at least one task",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	if len(trh.filter.Tasks) > reliabilityAPIMaxNumTasksLimit {
 		return gimlet.ErrorResponse{
-			Message:    "Too many Tasks values",
+			Message:    fmt.Sprintf("cannot request more than %d tasks", reliabilityAPIMaxNumTasksLimit),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -134,7 +136,7 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	trh.filter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid before_date value",
+			Message:    "invalid 'before' date",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -144,7 +146,7 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	trh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid after_date value",
+			Message:    "invalid 'after' date",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -153,7 +155,7 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	trh.filter.Sort, err = trh.readSort(vals.Get("sort"))
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid sort value",
+			Message:    "invalid sort",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -162,7 +164,7 @@ func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) e
 	trh.filter.Significance, err = trh.readFloat(vals.Get("significance"), 0.0, 1.0, reliability.DefaultSignificance)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			Message:    "Invalid Significance value",
+			Message:    "invalid significance value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -181,7 +183,7 @@ func (trh *taskReliabilityHandler) readFloat(floatString string, min, max, defau
 	}
 
 	if value < min || value > max {
-		return 0, errors.New("Invalid float parameter value")
+		return 0, errors.New("invalid float value")
 	}
 	return value, nil
 }
@@ -206,7 +208,7 @@ func (trh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error
 		return stats.SortLatestFirst, nil
 	default:
 		return stats.Sort(""), gimlet.ErrorResponse{
-			Message:    "Invalid sort value",
+			Message:    fmt.Sprintf("invalid sort '%s'", sortValue),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -220,14 +222,11 @@ func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) e
 
 	err := trh.parseTaskReliabilityFilter(r.URL.Query())
 	if err != nil {
-		return errors.Wrap(err, "Invalid query parameters")
+		return errors.Wrap(err, "parsing task reliability parameters")
 	}
 	err = trh.filter.ValidateForTaskReliability()
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    err.Error(),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.Wrap(err, "validating task reliability parameters")
 	}
 	return nil
 }
@@ -235,7 +234,7 @@ func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) e
 func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving service flags"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "retrieving service flags"))
 	}
 	if flags.TaskReliabilityDisabled {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -248,7 +247,7 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 
 	taskReliabilityResult, err = data.GetTaskReliabilityScores(trh.filter)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task reliability stats"))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -270,14 +269,13 @@ func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 			},
 		})
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"Problem paginating response"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
 	}
 
 	for _, apiTaskStats := range taskReliabilityResult {
 		if err = resp.AddData(apiTaskStats); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for task '%s' in build variant '%s'", utility.FromStringPtr(apiTaskStats.TaskName), utility.FromStringPtr(apiTaskStats.BuildVariant)))
 		}
 	}
 

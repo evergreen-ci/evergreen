@@ -56,7 +56,7 @@ func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(`{"host1": {"status": "quarantined"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal("quarantined", s.route.HostToStatus["host1"].Status)
@@ -70,7 +70,7 @@ func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(`{"host1": {"status": "This is an invalid state"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 
 	s.Error(err)
@@ -83,7 +83,7 @@ func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(``)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.Error(err)
 	s.EqualError(err, "Argument read error: unexpected end of JSON input")
@@ -259,7 +259,7 @@ func (s *HostModifySuite) TestParse() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	// empty
-	r, err := http.NewRequest("PATCH", "/hosts/my-host", bytes.NewReader(nil))
+	r, err := http.NewRequest(http.MethodPatch, "/hosts/my-host", bytes.NewReader(nil))
 	s.NoError(err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
 	s.Error(h.Parse(ctx, r))
@@ -277,7 +277,7 @@ func (s *HostModifySuite) TestParse() {
 	s.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest("PATCH", "/hosts/my-host", buffer)
+	r, err = http.NewRequest(http.MethodPatch, "/hosts/my-host", buffer)
 	s.NoError(err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
 
@@ -798,7 +798,7 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	}
 
 	var r *http.Request
-	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", utility.FromStringPtr(mod.HostID)), bytes.NewReader(data))
+	r, err = http.NewRequest(http.MethodPost, fmt.Sprintf("https://example.com/hosts/%s", utility.FromStringPtr(mod.HostID)), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -943,12 +943,12 @@ func TestClearHostsHandler(t *testing.T) {
 	handler := offboardUserHandler{}
 	json := []byte(`{"email": "user0@mongodb.com"}`)
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"})
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
 	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
 
 	u := user.DBUser{Id: "user0"}
 	assert.NoError(t, u.Insert())
-	req, _ = http.NewRequest("PATCH", "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
+	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
 	assert.NoError(t, handler.Parse(ctx, req))
 	assert.Equal(t, "user0", handler.user)
 	assert.True(t, handler.dryRun)

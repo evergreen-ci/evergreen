@@ -1518,7 +1518,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 			"task_id":         t.Id,
 			"display_task_id": t.DisplayTaskId,
 		})
-		return errors.Errorf("display task not found for task: '%s'", t.Id)
+		return errors.Errorf("display task not found for task '%s'", t.Id)
 	}
 	if !dt.DisplayOnly {
 		return errors.Errorf("task '%s' is not a display task", dt.Id)
@@ -1588,10 +1588,10 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	// refresh task status from db in case of race
 	taskWithStatus, err := task.FindOneIdWithFields(dt.Id, task.StatusKey)
 	if err != nil {
-		return errors.Wrap(err, "refreshing task status")
+		return errors.Wrapf(err, "refreshing task '%s'", dt.Id)
 	}
 	if taskWithStatus == nil {
-		return errors.New("task not found")
+		return errors.Errorf("task '%s' not found", dt.Id)
 	}
 	wasFinished := taskWithStatus.IsFinished()
 	err = task.UpdateOne(

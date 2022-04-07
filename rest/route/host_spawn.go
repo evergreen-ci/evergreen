@@ -49,26 +49,26 @@ func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 
 func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	hph.options = &model.HostRequestOptions{}
-	return errors.WithStack(utility.ReadJSON(r.Body, hph.options))
+	return errors.Wrap(utility.ReadJSON(r.Body, hph.options), "reading host options from JSON request body")
 }
 
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	if hph.options.NoExpiration {
 		if err := CheckUnexpirableHostLimitExceeded(user.Id, hph.settings.Spawnhost.UnexpirableHostsPerUser); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking expirable host limit"))
 		}
 	}
 
 	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.settings)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
 	}
 
 	hostModel := &model.APIHost{}
 	err = hostModel.BuildFromService(intentHost)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting created intent host to API model"))
 	}
 
 	return gimlet.NewJSONResponse(hostModel)
@@ -104,7 +104,7 @@ func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	h.options = &host.HostModifyOptions{}
 	if err := utility.ReadJSON(body, h.options); err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "reading host modification options from JSON request body")
 	}
 
 	return nil
@@ -112,17 +112,13 @@ func (h *hostModifyHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	// Find host to be modified
 	foundHost, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user))
 	}
 
 	if foundHost.Status == evergreen.HostTerminated {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "cannot modify a terminated host",
-		})
+		return gimlet.MakeJSONErrorResponder(errors.New("cannot modify a terminated host"))
 	}
 
 	// Validate host modify request
@@ -140,21 +136,21 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(CheckUnexpirableHostLimitExceeded(user.Id, h.env.Settings().Spawnhost.UnexpirableHostsPerUser))
 	}
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "Invalid host modify request"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid host modify request"))
 	}
 
 	modifyJob := units.NewSpawnhostModifyJob(foundHost, *h.options, utility.RoundPartOfMinute(1).Format(units.TSFormat))
 	if err = h.env.RemoteQueue().Put(ctx, modifyJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error creating spawnhost modify job"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "enqueueing spawn host modification job"))
 	}
 
 	if h.options.SubscriptionType != "" {
 		subscription, err := makeSpawnHostSubscription(h.hostID, h.options.SubscriptionType, user)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating spawn host subscription"))
 		}
 		if err = data.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving subscription"))
 		}
 	}
 
@@ -199,10 +195,10 @@ func checkInstanceTypeHostStopped(h *host.Host) error {
 func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
 	count, err := host.CountSpawnhostsWithNoExpirationByUser(userId)
 	if err != nil {
-		return errors.Wrapf(err, "error counting number of existing non-expiring hosts for '%s'", userId)
+		return errors.Wrapf(err, "counting number of existing non-expiring hosts for user '%s'", userId)
 	}
 	if count >= maxHosts {
-		return errors.Errorf("can have at most %d unexpirable hosts", maxHosts)
+		return errors.Errorf("cannot exceed total unexpirable hosts limit %d", maxHosts)
 	}
 	return nil
 }
@@ -210,10 +206,10 @@ func CheckUnexpirableHostLimitExceeded(userId string, maxHosts int) error {
 func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
 	totalSize, err := host.FindTotalVolumeSizeByUser(user)
 	if err != nil {
-		return errors.Wrapf(err, "error finding total volume size for user")
+		return errors.Wrap(err, "finding total volume size")
 	}
 	if totalSize+newSize > maxSize {
-		return errors.Errorf("volume size limit %d exceeded", maxSize)
+		return errors.Errorf("cannot exceed user total volume size limit %d", maxSize)
 	}
 	return nil
 }
@@ -244,7 +240,7 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
 	if err != nil {
-		return errors.Wrap(err, "can't get host id")
+		return errors.Wrap(err, "invalid host ID")
 	}
 
 	body := utility.NewRequestReader(r)
@@ -264,7 +260,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	host, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by host id '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user))
 	}
 
 	statusCode, err := data.StopSpawnHost(ctx, h.env, user, host)
@@ -278,10 +274,10 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.subscriptionType != "" {
 		subscription, err := makeSpawnHostSubscription(h.hostID, h.subscriptionType, user)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating spawn host subscription"))
 		}
 		if err = data.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving subscription"))
 		}
 	}
 
@@ -314,7 +310,7 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
 	if err != nil {
-		return errors.Wrap(err, "can't get host id")
+		return errors.Wrap(err, "invalid host ID")
 	}
 
 	body := utility.NewRequestReader(r)
@@ -334,7 +330,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	host, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user))
 	}
 
 	statusCode, err := data.StartSpawnHost(ctx, h.env, user, host)
@@ -348,10 +344,10 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.subscriptionType != "" {
 		subscription, err := makeSpawnHostSubscription(h.hostID, h.subscriptionType, user)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't make subscription"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating spawn host subscription"))
 		}
 		if err = data.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't save subscription"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "saving subscription"))
 		}
 	}
 
@@ -383,12 +379,12 @@ func (h *attachVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *attachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.attachment = &host.VolumeAttachment{}
-	if err := errors.WithStack(utility.ReadJSON(r.Body, h.attachment)); err != nil {
-		return errors.Wrap(err, "error parsing input")
+	if err := utility.ReadJSON(r.Body, h.attachment); err != nil {
+		return errors.Wrap(err, "reading volume attachment from JSON request body")
 	}
 
 	if h.attachment.VolumeID == "" {
-		return errors.New("must provide a volume ID")
+		return errors.New("attachment must provide a volume ID")
 	}
 
 	var err error
@@ -404,87 +400,59 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	targetHost, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting host '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting host '%s' with owner '%s'", h.hostID, user))
 	}
 
 	if utility.StringSliceContains(evergreen.DownHostStatus, targetHost.Status) {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Errorf("host '%s' status is %s", targetHost.Id, targetHost.Status).Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot attach volume to host '%s' whose status is '%s'", targetHost.Id, targetHost.Status))
 	}
 	if h.attachment.DeviceName != "" {
 		if utility.StringSliceContains(targetHost.HostVolumeDeviceNames(), h.attachment.DeviceName) {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Errorf("host '%s' already has a volume with device name '%s'", h.hostID, h.attachment.DeviceName).Error(),
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' already has a volume with device name '%s'", h.hostID, h.attachment.DeviceName))
 		}
 	}
 
 	// Check whether attachment already attached to a host
 	attachedHost, err := host.FindHostWithVolume(h.attachment.VolumeID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "error checking whether attachment '%s' is already attached to host", h.attachment.VolumeID).Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking whether attachment '%s' is already attached to host", h.attachment.VolumeID))
 	}
 	if attachedHost != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Errorf("attachment '%s' is already attached to a host", h.attachment.VolumeID).Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("attachment '%s' is already attached to a host", h.attachment.VolumeID))
 	}
 
 	v, err := host.FindVolumeByID(h.attachment.VolumeID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "error checking whether attachment '%s' exists", h.attachment.VolumeID).Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking whether attachment '%s' exists", h.attachment.VolumeID))
 	}
 	if v == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Errorf("attachment '%s' does not exist", h.attachment.VolumeID).Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("attachment '%s' does not exist", h.attachment.VolumeID))
 	}
 
 	if v.AvailabilityZone != targetHost.Zone {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Errorf("Host and volume must have same availability zone").Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.New("host and volume must have same availability zone"))
 	}
 
 	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting manager options for spawnhost attach volume job"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager options"))
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "error getting cloud manager for spawnhost attach volume job").Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager"))
 	}
+
 	grip.Info(message.Fields{
 		"message": "attaching volume to spawnhost",
 		"host_id": h.hostID,
 		"volume":  h.attachment,
 	})
+
 	if err = mgr.AttachVolume(ctx, targetHost, h.attachment); err != nil {
 		if cloud.ModifyVolumeBadRequest(err) {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    err.Error(),
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "attaching volume '%s' to spawn host '%s'", h.attachment.VolumeID, h.hostID))
 		}
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "error attaching volume %s for spawnhost %s", h.attachment.VolumeID, h.hostID).Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "attaching volume '%s' to spawn host '%s'", h.attachment.VolumeID, h.hostID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -515,17 +483,14 @@ func (h *detachVolumeHandler) Factory() gimlet.RouteHandler {
 
 func (h *detachVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.attachment = &host.VolumeAttachment{}
-	if err := errors.WithStack(utility.ReadJSON(r.Body, h.attachment)); err != nil {
-		return err
-	}
-	if h.attachment == nil {
-		return errors.New("body is nil")
+	if err := utility.ReadJSON(r.Body, h.attachment); err != nil {
+		return errors.Wrap(err, "reading volume attachment from JSON request body")
 	}
 
 	var err error
 	h.hostID, err = validateID(gimlet.GetVars(r)["host_id"])
 	if err != nil {
-		return err
+		return errors.Wrap(err, "invalid host ID")
 	}
 
 	return nil
@@ -535,7 +500,7 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	targetHost, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error getting targetHost '%s'", h.hostID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", h.hostID, user))
 	}
 
 	if targetHost.HomeVolumeID == h.attachment.VolumeID {
@@ -554,32 +519,26 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if !found {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("attachment '%s' is not attached to targetHost '%s", h.attachment.VolumeID, h.hostID),
+			Message:    fmt.Sprintf("attachment '%s' is not attached to host '%s", h.attachment.VolumeID, h.hostID),
 		})
 	}
 
 	grip.Info(message.Fields{
-		"message": "detaching volume from spawnhost",
+		"message": "detaching volume from spawn host",
 		"host_id": h.hostID,
 		"volume":  h.attachment.VolumeID,
 	})
 	mgrOpts, err := cloud.GetManagerOptions(targetHost.Distro)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting manager options for spawnhost detach volume job"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager options"))
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "error getting cloud manager for spawnhost detach volume job").Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager"))
 	}
 
 	if err = mgr.DetachVolume(ctx, targetHost, h.attachment.VolumeID); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "error detaching volume %s from spawnhost %s", h.attachment.VolumeID, h.hostID).Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "detaching volume '%s' from spawn host '%s'", h.attachment.VolumeID, h.hostID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -611,10 +570,10 @@ func (h *createVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.volume = &host.Volume{}
 	if err := utility.ReadJSON(r.Body, h.volume); err != nil {
-		return err
+		return errors.Wrap(err, "reading volume from JSON request body")
 	}
 	if h.volume.Size == 0 {
-		return errors.New("Size is required")
+		return errors.New("volume size is required")
 	}
 	h.provider = evergreen.ProviderNameEc2OnDemand
 	return nil
@@ -633,28 +592,22 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err := cloud.ValidVolumeOptions(h.volume, h.env.Settings()); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid volume options"))
 	}
 
 	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
 	if err := checkVolumeLimitExceeded(u.Username(), h.volume.Size, maxVolumeFromSettings); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 	}
 
 	res, err := cloud.CreateVolume(ctx, h.env, h.volume, h.provider)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating new volume"))
 	}
 	volumeModel := &model.APIVolume{}
 	err = volumeModel.BuildFromService(res)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting created volume to API model"))
 	}
 
 	return gimlet.NewJSONResponse(volumeModel)
@@ -715,16 +668,10 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 
 	attachedHost, err := host.FindHostWithVolume(h.VolumeID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("problem finding host with volume"),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host with volume '%s'", h.VolumeID))
 	}
 	if attachedHost != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Must detach from host '%s'", attachedHost.Id),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("host with volume '%s' not found", h.VolumeID))
 	}
 
 	mgrOpts := cloud.ManagerOpts{
@@ -733,16 +680,10 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager"))
 	}
 	if err = mgr.DeleteVolume(ctx, volume); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting volume"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -776,10 +717,10 @@ func (h *modifyVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	if err = utility.ReadJSON(r.Body, h.opts); err != nil {
-		return err
+		return errors.Wrap(err, "reading volume modification options from JSON request body")
 	}
 	if h.volumeID, err = validateID(gimlet.GetVars(r)["volume_id"]); err != nil {
-		return err
+		return errors.Wrap(err, "invalid volume ID")
 	}
 
 	h.provider = evergreen.ProviderNameEc2OnDemand
@@ -791,14 +732,13 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	volume, err := host.FindVolumeByID(h.volumeID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding volume '%s'", h.volumeID))
 	}
-
 	// Volume does not exist
 	if volume == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("attachment '%s' does not exist", h.volumeID),
+			Message:    fmt.Sprintf("volume '%s' not found", h.volumeID),
 		})
 	}
 
@@ -806,75 +746,51 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if u.Id != volume.CreatedBy {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    fmt.Sprintf("not authorized to modify attachment '%s'", volume.ID),
+			Message:    fmt.Sprintf("not authorized to modify volume '%s'", volume.ID),
 		})
 	}
 
 	if h.opts.NewName != "" {
 		if err = volume.SetDisplayName(h.opts.NewName); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting new volume name '%s'", h.opts.NewName))
 		}
 	}
 
 	if h.opts.Size != 0 {
 		sizeIncrease := h.opts.Size - volume.Size
 		if sizeIncrease <= 0 {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("volumes can only be sized up (current size is %d GiB)", volume.Size),
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("volumes can only be sized up (current size is %d GiB)", volume.Size))
 		}
 		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
 		if err = checkVolumeLimitExceeded(u.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    err.Error(),
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 		}
 	}
 
 	if !utility.IsZeroTime(h.opts.Expiration) {
 		if h.opts.Expiration.Before(volume.Expiration) {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "can't move expiration time earlier",
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot make expiration time earlier than current expiration %s", volume.Expiration.Format(time.RFC1123)))
 		}
 		if h.opts.Expiration.Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("can't extend expiration past max duration '%s'", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)),
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot extend expiration past max expiration %s", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)))
 		}
 
 		if h.opts.NoExpiration {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "can't specify both expiration and no-expiration",
-			})
+			return gimlet.MakeJSONErrorResponder(errors.New("cannot specify both an expiration time and also no expiration"))
 		}
 	}
 
 	if h.opts.NoExpiration {
 		if h.opts.HasExpiration {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "can't specify both has expiration and no-expiration",
-			})
+			return gimlet.MakeJSONErrorResponder(errors.New("cannot specify both having an expiration and no expiration"))
 		}
 		var unexpirableVolumesForUser int
 		unexpirableVolumesForUser, err = host.CountNoExpirationVolumesForUser(u.Id)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    "can't get no-expire count",
-			})
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "counting number of unexpirable volumes already owned by user '%s'", u.Id))
 		}
 		if h.env.Settings().Spawnhost.UnexpirableVolumesPerUser-unexpirableVolumesForUser <= 0 {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "user '%s' has no unexpirable volumes remaining",
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("user '%s' has no unexpirable volumes remaining", u.Id))
 		}
 	}
 
@@ -885,22 +801,13 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	var mgr cloud.Manager
 	mgr, err = cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager"))
 	}
 	if err = mgr.ModifyVolume(ctx, volume, h.opts); err != nil {
 		if cloud.ModifyVolumeBadRequest(err) {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    err.Error(),
-			})
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "modifying volume '%s'", volume.ID))
 		}
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "modifying volume '%s'", volume.ID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -928,21 +835,21 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	volumes, err := host.FindVolumesByUser(u.Username())
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volumes for user '%s'", u.Username()))
 	}
 
 	volumeDocs := []model.APIVolume{}
 	for _, v := range volumes {
 		volumeDoc := model.APIVolume{}
 		if err = volumeDoc.BuildFromService(v); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting volume '%s' to API model", v.ID))
 		}
 
 		// if the volume is attached to a host, also return the host ID and volume device name
 		if v.Host != "" {
 			h, err := host.FindOneId(v.Host)
 			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' associated with volume '%s'", v.Host, v.ID))
 			}
 			if h != nil {
 				for _, attachment := range h.Volumes {
@@ -956,6 +863,8 @@ func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	return gimlet.NewJSONResponse(volumeDocs)
 }
+
+// kim: TODO: continue here
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -984,23 +893,23 @@ func (h *getVolumeByIDHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
 	v, err := host.FindVolumeByID(h.volumeID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volume '%s'", h.volumeID))
 	}
 	if v == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    "volume not found",
+			Message:    fmt.Sprintf("volume '%s' not found", h.volumeID),
 		})
 	}
 	volumeDoc := &model.APIVolume{}
 	if err = volumeDoc.BuildFromService(v); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "err converting volume '%s' to API model", v.ID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting volume '%s' to API model", v.ID))
 	}
 	// if the volume is attached to a host, also return the host ID and volume device name
 	if v.Host != "" {
 		attachedHost, err := host.FindOneId(v.Host)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "error querying for host"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' for attached volume", v.Host))
 		}
 		if attachedHost != nil {
 			for _, attachment := range attachedHost.Volumes {
@@ -1172,24 +1081,15 @@ func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request
 
 	addHours, err := strconv.Atoi(utility.FromStringPtr(hostModify.AddHours))
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "expiration not a number",
-		}
+		return errors.New("additional hours to expiration is not a valid integer")
 	}
 	h.addHours = time.Duration(addHours) * time.Hour
 
 	if h.addHours <= 0 {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "must add more than 0 hours to expiration",
-		}
+		return errors.New("must add a positive number of hours to the expiration")
 	}
 	if h.addHours > evergreen.MaxSpawnHostExpirationDurationHours {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot add more than %s", evergreen.MaxSpawnHostExpirationDurationHours.String()),
-		}
+		return errors.Errorf("cannot add more than %s to expiration", evergreen.MaxSpawnHostExpirationDurationHours)
 	}
 
 	return nil
@@ -1202,26 +1102,17 @@ func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if host.Status == evergreen.HostTerminated {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "cannot extend expiration of a terminated host",
-		})
+		return gimlet.MakeJSONErrorResponder(errors.New("cannot extend expiration of a terminated host"))
 	}
 
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "extending cloud host expiration"))
 	}
 
 	if err := host.SetExpirationTime(newExp); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "Error extending host expiration time").Error(),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "extending host expiration"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -1251,10 +1142,9 @@ func (hs *hostStartProcesses) Factory() gimlet.RouteHandler {
 }
 
 func (hs *hostStartProcesses) Parse(ctx context.Context, r *http.Request) error {
-	var err error
 	hostScriptOpts := model.APIHostScript{}
-	if err = utility.ReadJSON(utility.NewRequestReader(r), &hostScriptOpts); err != nil {
-		return errors.Wrap(err, "can't read host command from json")
+	if err := utility.ReadJSON(utility.NewRequestReader(r), &hostScriptOpts); err != nil {
+		return errors.Wrap(err, "reading script from JSON request body")
 	}
 	hs.script = hostScriptOpts.Script
 	hs.hostIDs = hostScriptOpts.Hosts
@@ -1271,16 +1161,16 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
-				Output:   errors.Wrap(err, "can't get host").Error(),
-			}), "can't add data for host '%s'", hostID))
+				Output:   errors.Wrapf(err, "finding host '%s'", hostID).Error(),
+			}), "adding data for host '%s'", hostID))
 			continue
 		}
 		if h.Status != evergreen.HostRunning {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
-				Output:   fmt.Sprintf("can't run script on host with status '%s'", h.Status),
-			}), "can't add data for host '%s'", hostID))
+				Output:   fmt.Sprintf("can't run script on host with status '%s' because it is not running", h.Status),
+			}), "adding data for host '%s'", hostID))
 			continue
 		}
 		if !h.Distro.JasperCommunication() {
@@ -1288,13 +1178,13 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 				HostID:   hostID,
 				Complete: true,
 				Output:   fmt.Sprintf("can't run script on host of distro '%s' because it doesn't support Jasper communication", h.Distro.Id),
-			}), "can't add data for host '%s'", hostID))
+			}), "adding data for host '%s'", hostID))
 			continue
 		}
 
 		logger, err := jasper.NewInMemoryLogger(host.OutputBufferSize)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating new in-memory logger"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating new in-memory logger for process output"))
 		}
 		bashPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 		opts := &options.Create{
@@ -1306,15 +1196,15 @@ func (hs *hostStartProcesses) Run(ctx context.Context) gimlet.Responder {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   hostID,
 				Complete: true,
-				Output:   errors.Wrap(err, "can't run script with Jasper").Error(),
-			}), "can't add data for host '%s'", hostID))
+				Output:   errors.Wrap(err, "running script with Jasper").Error(),
+			}), "adding data for host '%s'", hostID))
 			continue
 		}
 		grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 			HostID:   hostID,
 			Complete: false,
 			ProcID:   procID,
-		}), "can't add data for host '%s'", hostID))
+		}), "adding data for host '%s'", hostID))
 	}
 
 	return response
@@ -1346,7 +1236,7 @@ func (h *hostGetProcesses) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	hostProcesses := []model.APIHostProcess{}
 	if err = utility.ReadJSON(utility.NewRequestReader(r), &hostProcesses); err != nil {
-		return errors.Wrap(err, "can't read host processes from json")
+		return errors.Wrap(err, "reading host processes from JSON request body")
 	}
 	h.hostProcesses = hostProcesses
 
@@ -1363,8 +1253,8 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 				HostID:   process.HostID,
 				ProcID:   process.ProcID,
 				Complete: true,
-				Output:   errors.Wrap(err, "can't get host").Error(),
-			}), "can't add data for host '%s'", process.HostID))
+				Output:   errors.Wrapf(err, "getting host '%s'", process.HostID).Error(),
+			}), "adding data for process on host '%s'", process.HostID))
 			continue
 		}
 
@@ -1373,8 +1263,8 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 			grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
 				HostID:   process.HostID,
 				Complete: true,
-				Output:   errors.Wrap(err, "can't get process with Jasper").Error(),
-			}), "can't add data for host '%s'", process.HostID))
+				Output:   errors.Wrapf(err, "getting output for process '%s'", process.ProcID).Error(),
+			}), "adding data for process on host '%s'", process.HostID))
 			continue
 		}
 		grip.Error(errors.Wrapf(response.AddData(model.APIHostProcess{
@@ -1382,7 +1272,7 @@ func (h *hostGetProcesses) Run(ctx context.Context) gimlet.Responder {
 			Complete: complete,
 			ProcID:   process.ProcID,
 			Output:   output,
-		}), "can't add data for host '%s'", process.HostID))
+		}), "adding data for process on host '%s'", process.HostID))
 	}
 
 	return response

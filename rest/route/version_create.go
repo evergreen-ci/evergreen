@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -35,10 +34,7 @@ func (h *versionCreateHandler) Factory() gimlet.RouteHandler {
 func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	err := utility.ReadJSON(r.Body, h)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("error parsing request body: %s", err.Error()),
-		}
+		return errors.Wrap(err, "reading version creation options from JSON request body")
 	}
 	return nil
 }
@@ -54,10 +50,10 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	var err error
 	projectInfo.Ref, err = data.FindProjectById(h.ProjectID, true, true)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding project '%s'", h.ProjectID))
 	}
 	if projectInfo.Ref == nil {
-		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' doesn't exist", h.ProjectID))
+		return gimlet.NewJSONErrorResponse(errors.Errorf("project '%s' not found", h.ProjectID))
 	}
 	p := &model.Project{}
 	opts := &model.GetProjectOpts{
@@ -66,24 +62,18 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectInfo.IntermediateProject, err = model.LoadProjectInto(ctx, h.Config, opts, projectInfo.Ref.Id, p)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "unable to unmarshal yaml config").Error(),
-		})
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "loading project from config"))
 	}
 	if projectInfo.Ref.IsVersionControlEnabled() {
 		projectInfo.Config, err = model.CreateProjectConfig(h.Config, projectInfo.Ref.Id)
 		if err != nil {
-			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "unable to unmarshal project config yaml").Error(),
-			})
+			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "creating project config"))
 		}
 	}
 	projectInfo.Project = p
 	newVersion, err := h.sc.CreateVersionFromConfig(ctx, projectInfo, metadata, h.Active)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating version from project config"))
 	}
 	return gimlet.NewJSONResponse(newVersion)
 }

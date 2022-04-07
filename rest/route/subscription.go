@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ func (s *subscriptionPostHandler) Factory() gimlet.RouteHandler {
 func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	s.Subscriptions = &[]model.APISubscription{}
 	if err := utility.ReadJSON(r.Body, s.Subscriptions); err != nil {
-		return err
+		return errors.Wrap(err, "reading subscriptions from JSON request body")
 	}
 
 	return nil
@@ -41,7 +41,7 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
 	err := data.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions, false)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving subscriptions"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -69,31 +69,21 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 	s.owner = r.FormValue("owner")
 	s.ownerType = r.FormValue("type")
 	if !event.IsValidOwnerType(s.ownerType) {
-		fmt.Println(s.ownerType)
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid owner type",
-		}
+		return errors.Errorf("invalid owner type '%s'", s.ownerType)
 	}
 	if s.owner == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Owner cannot be blank",
-		}
+		return errors.New("owner must be specified")
 	}
 	if s.ownerType == string(event.OwnerTypePerson) && s.owner != u.Username() {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    "Cannot get subscriptions for someone other than yourself",
+			Message:    "cannot get subscriptions for someone other than yourself",
 		}
 	}
 	if s.ownerType == string(event.OwnerTypeProject) {
 		id, err := dbModel.GetIdForProject(s.owner)
 		if err != nil {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "owner not found",
-			}
+			return errors.Wrapf(err, "getting ID for project '%s'", s.owner)
 		}
 		s.owner = id
 	}
@@ -104,7 +94,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
 	subs, err := data.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting subscriptions"))
 	}
 
 	return gimlet.NewJSONResponse(subs)
@@ -129,10 +119,7 @@ func (s *subscriptionDeleteHandler) Factory() gimlet.RouteHandler {
 func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 	idString := r.FormValue("id")
 	if idString == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Must specify an ID to delete",
-		}
+		return errors.New("must specify a subscription ID to delete")
 	}
 	s.id = idString
 
@@ -141,7 +128,7 @@ func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) 
 
 func (s *subscriptionDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	if err := data.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "deleting subscription"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

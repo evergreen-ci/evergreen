@@ -33,7 +33,7 @@ func (h *getManifestHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *getManifestHandler) Run(ctx context.Context) gimlet.Responder {
 	manifest, err := manifest.GetManifestByTask(h.taskID)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error getting manifest using task '%s'", h.taskID))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting manifest using task '%s'", h.taskID))
 	}
 	return gimlet.NewJSONResponse(manifest)
 }

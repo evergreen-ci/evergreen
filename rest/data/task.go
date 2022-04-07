@@ -34,7 +34,7 @@ func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) 
 		if !found {
 			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+				Message:    fmt.Sprintf("task '%s' not found", taskId),
 			}
 		}
 	}
@@ -86,7 +86,7 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, lim
 		if !found {
 			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+				Message:    fmt.Sprintf("task '%s' not found", taskId),
 			}
 		}
 	}
@@ -96,22 +96,7 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, lim
 func CheckTaskSecret(taskID string, r *http.Request) (int, error) {
 	_, code, err := serviceModel.ValidateTask(taskID, true, r)
 	if code == http.StatusConflict {
-		return http.StatusUnauthorized, errors.New("Not authorized")
+		return http.StatusUnauthorized, errors.Wrapf(err, "invalid task '%s'", taskID)
 	}
 	return code, errors.WithStack(err)
-}
-
-type TaskFilterOptions struct {
-	Statuses                       []string
-	BaseStatuses                   []string
-	Variants                       []string
-	TaskNames                      []string
-	Page                           int
-	Limit                          int
-	FieldsToProject                []string
-	Sorts                          []task.TasksSortOrder
-	IncludeExecutionTasks          bool
-	IncludeBaseTasks               bool
-	IncludeEmptyActivation         bool
-	IncludeBuildVariantDisplayName bool
 }

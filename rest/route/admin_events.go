@@ -39,7 +39,7 @@ func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 	if ok && len(k) > 0 {
 		h.Timestamp, err = time.Parse(time.RFC3339, k[0])
 		if err != nil {
-			return errors.Wrap(err, "problem parsing time as RFC-3339")
+			return errors.Wrap(err, "parsing time as RFC-3339")
 		}
 	}
 
@@ -56,7 +56,7 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 
 	events, err := data.GetAdminEventLog(h.Timestamp, h.Limit+1)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin event log"))
 	}
 
 	lastIndex := len(events)
@@ -73,15 +73,14 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 			},
 		})
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"problem paginating response"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "paginating response"))
 		}
 	}
 
 	events = events[:lastIndex]
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
-		catcher.Add(resp.AddData(model.Model(&events[i])))
+		catcher.Wrapf(resp.AddData(model.Model(&events[i])), "adding data for event at index %d", i)
 	}
 
 	if catcher.HasErrors() {
@@ -123,7 +122,7 @@ func (h *revertHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	err := event.RevertConfig(h.GUID, u.Username())
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }

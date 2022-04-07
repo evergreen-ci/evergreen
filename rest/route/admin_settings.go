@@ -30,13 +30,13 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin config"))
 	}
 	settingsModel := model.NewConfigModel()
 
 	err = settingsModel.BuildFromService(settings)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting Evergreen admin settings to API model"))
 	}
 
 	return gimlet.NewJSONResponse(settingsModel)
@@ -59,7 +59,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin config"))
 	}
 
 	return gimlet.NewJSONResponse(&model.APIUiV2URL{
@@ -80,38 +80,38 @@ func (h *adminPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	return errors.Wrap(gimlet.GetJSON(r.Body, &h.model), "error parsing request body")
+	return errors.Wrap(gimlet.GetJSON(r.Body, &h.model), "parsing request body")
 }
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	oldSettings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving existing settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "gettign existing Evergreen admin settings"))
 	}
 
 	// validate the changes
 	newSettings, err := data.SetEvergreenSettings(h.model, oldSettings, u, false)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error applying new settings"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "dry run applying new settings"))
 	}
 	if err = newSettings.Validate(); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Validation error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "new settings are invalid"))
 	}
 
 	err = distro.ValidateContainerPoolDistros(newSettings)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Validation error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "container pool distros are invalid"))
 	}
 
 	_, err = data.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "applying new settings"))
 	}
 
 	err = h.model.BuildFromService(newSettings)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error building API model"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting new admin settings to API model"))
 	}
 
 	return gimlet.NewJSONResponse(h.model)

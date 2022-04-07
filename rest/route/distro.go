@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -51,16 +51,19 @@ func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) er
 // Run returns the given distro's setup script.
 func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil || d == nil {
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
+	}
+	if d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
 
 	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to API model"))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro.Setup)
@@ -90,7 +93,7 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, h); err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "reading distro setup script parameters from request body")
 	}
 
 	return nil
@@ -102,18 +105,18 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
 
 	d.Setup = h.Setup
 	if err = data.UpdateDistro(d, d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
 
 	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to API model"))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
@@ -144,7 +147,7 @@ func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "parsing request body")
 	}
 	h.body = b
 
@@ -158,10 +161,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	original, err := distro.FindOneId(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
 	}
 
 	apiDistro := &model.APIDistro{
@@ -185,12 +185,12 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		CloneMethod: utility.ToStringPtr(distro.CloneMethodLegacySSH),
 	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling JSON request body into API distro model"))
 	}
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
 	}
 	// Existing resource
 	if original != nil {
@@ -200,7 +200,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if err = data.UpdateDistro(original, newDistro); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating existing distro '%s'", h.distroID))
 		}
 		event.LogDistroModified(h.distroID, user.Username(), newDistro.NewDistroData())
 		if newDistro.GetDefaultAMI() != original.GetDefaultAMI() {
@@ -216,13 +216,10 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	responder := gimlet.NewJSONResponse(struct{}{})
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HTTP status code to %d", http.StatusCreated))
 	}
 	if err = newDistro.Insert(); err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("distro with id '%s' was not inserted", h.distroID),
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting new distro"))
 	}
 
 	return responder
@@ -254,15 +251,18 @@ func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) erro
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil || d == nil {
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
+	}
+	if d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
 	err = data.DeleteDistroById(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for remove() by distro id '%s'", h.distroID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting distro '%s'", h.distroID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -292,7 +292,7 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "reading request body")
 	}
 	h.body = b
 
@@ -303,21 +303,24 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	old, err := distro.FindOneId(h.distroID)
-	if err != nil || old == nil {
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
+	}
+	if old == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
 
 	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(old); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting old distro to API model"))
 	}
 	oldSettingsList := apiDistro.ProviderSettingsList
 	apiDistro.ProviderSettingsList = nil
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling request body into distro API model"))
 	}
 	if len(apiDistro.ProviderSettingsList) == 0 {
 		apiDistro.ProviderSettingsList = oldSettingsList
@@ -325,7 +328,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
 	}
 	d, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 	if respErr != nil {
@@ -333,7 +336,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err = data.UpdateDistro(old, d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
 	event.LogDistroModified(h.distroID, user.Username(), d.NewDistroData())
 	if d.GetDefaultAMI() != old.GetDefaultAMI() {
@@ -368,16 +371,19 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
-	if err != nil || d == nil {
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
+	}
+	if d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
 
 	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to API model"))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
@@ -412,13 +418,17 @@ func (h *distroAMIHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
+	}
 	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", h.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
 		})
 	}
-	if !strings.HasPrefix(d.Provider, "ec2") {
+
+	if !cloud.IsEc2Provider(d.Provider) {
 		return gimlet.NewJSONResponse("")
 	}
 
@@ -431,8 +441,8 @@ func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 		ami, _ := ec2Settings.Lookup("ami").StringValueOK()
 		return gimlet.NewTextResponse(ami)
 	}
-	return gimlet.MakeJSONErrorResponder(errors.Errorf(
-		"no settings available for region '%s' for distro '%s'", h.region, h.distroID))
+
+	return gimlet.MakeJSONErrorResponder(errors.Errorf("no settings available for region '%s' for distro '%s'", h.region, h.distroID))
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -462,19 +472,16 @@ func (h *modifyDistrosSettingsHandler) Parse(ctx context.Context, r *http.Reques
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return errors.Wrap(err, "Argument read error")
+		return errors.Wrap(err, "reading request body")
 	}
 	if err = json.Unmarshal(b, h.settings); err != nil {
-		return errors.Wrap(err, "API error while unmarshalling JSON")
+		return errors.Wrap(err, "unmarshalling request body as document")
 	}
 
 	var ok bool
 	h.region, ok = h.settings.Lookup("region").StringValueOK()
 	if !ok || h.region == "" {
-		return gimlet.ErrorResponse{
-			Message:    "region must be explicitly defined",
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.New("region must be explicitly defined")
 	}
 
 	vals := r.URL.Query()
@@ -487,9 +494,9 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	u := MustHaveUser(ctx)
 	allDistros, err := distro.Find(distro.All)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding distros"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding all distros"))
 	}
-	if allDistros == nil {
+	if len(allDistros) == 0 {
 		return gimlet.NewJSONInternalErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no distros found"),
@@ -499,11 +506,11 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	modifiedAMIDistroIds := []string{}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "error finding settings"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, d := range allDistros {
-		if !strings.HasPrefix(d.Provider, "ec2") || len(d.ProviderSettingsList) <= 1 {
+		if !cloud.IsEc2Provider(d.Provider) || len(d.ProviderSettingsList) <= 1 {
 			continue
 		}
 		originalAMI := d.GetDefaultAMI()
@@ -511,7 +518,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 			// validate distro with old settings
 			originalErrors, err := validator.CheckDistro(ctx, &d, settings, false)
 			if err != nil {
-				catcher.Add(errors.Wrapf(err, "error validating original distro '%s'", d.Id))
+				catcher.Wrapf(err, "validating original distro '%s'", d.Id)
 				continue
 			}
 
@@ -528,7 +535,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 			// validate distro with new settings
 			vErrors, err := validator.CheckDistro(ctx, &d, settings, false)
 			if err != nil {
-				catcher.Add(errors.Wrapf(err, "error validating distro '%s'", d.Id))
+				catcher.Wrapf(err, "validating updated distro '%s'", d.Id)
 				continue
 			}
 			if len(vErrors) != 0 {
@@ -544,7 +551,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 					})
 					continue
 				}
-				catcher.Add(errors.Errorf("distro '%s' is not valid: %s", d.Id, vErrors.String()))
+				catcher.Errorf("distro '%s' is not valid: %s", d.Id, vErrors.String())
 				continue
 			}
 			modifiedDistros = append(modifiedDistros, d)
@@ -554,14 +561,14 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 		}
 	}
 	if catcher.HasErrors() {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(catcher.Resolve(), "no distros updated"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(catcher.Resolve(), "no distros updated"))
 	}
 
 	modifiedIDs := []string{}
 	for _, d := range modifiedDistros {
 		if !h.dryRun {
 			if err = d.Update(); err != nil {
-				catcher.Add(errors.Wrapf(err, "error updating distro '%s'", d.Id))
+				catcher.Wrapf(err, "updating distro '%s'", d.Id)
 				continue
 			}
 			event.LogDistroModified(d.Id, u.Username(), d.NewDistroData())
@@ -576,7 +583,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	if catcher.HasErrors() {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(catcher.Resolve(), "not all distros updated"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(catcher.Resolve(), "bulk updating distros"))
 	}
 	grip.Info(message.Fields{
 		"message":              "updated distro provider settings",
@@ -610,9 +617,9 @@ func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 	distros, err := distro.Find(distro.All)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for find() all distros"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding all distros"))
 	}
-	if distros == nil {
+	if len(distros) == 0 {
 		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no distros found"),
@@ -621,18 +628,18 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting JSON response format"))
 	}
 
 	for _, d := range distros {
 		distroModel := &model.APIDistro{}
 		if err = distroModel.BuildFromService(d); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting distro '%s' to API model", d.Id))
 		}
 
 		err = resp.AddData(distroModel)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for distro '%s'", d.Id))
 		}
 	}
 
@@ -644,13 +651,13 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
 	i, err := apiDistro.ToService()
 	if err != nil {
-		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIDistro to distro.Distro"))
+		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting distro to service model"))
 	}
 	d, ok := i.(*distro.Distro)
 	if !ok {
-		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		return nil, gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for distro.Distro", i),
+			Message:    fmt.Sprintf("programmatic error: expected distro but got type %T", i),
 		})
 	}
 
@@ -658,7 +665,7 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 	if resourceID != id {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", resourceID),
+			Message:    fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to '%s'", id, resourceID),
 		})
 	}
 
@@ -708,7 +715,7 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, &h.opts); err != nil {
-		return errors.Wrap(err, "could not read request")
+		return errors.Wrap(err, "reading request body")
 	}
 
 	if h.opts.Script == "" {
@@ -726,7 +733,7 @@ func (h *distroExecuteHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "could not find hosts for the distro %s", h.distro))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for the distro '%s'", h.distro))
 	}
 
 	var allHostIDs []string
@@ -739,14 +746,14 @@ func (h *distroExecuteHandler) Run(ctx context.Context) gimlet.Responder {
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if (host.StartedBy == evergreen.User && h.opts.IncludeTaskHosts) || (host.UserHost && h.opts.IncludeSpawnHosts) {
 			if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, h.opts.Script, h.opts.Sudo, h.opts.SudoUser, ts)); err != nil {
-				catcher.Wrapf(err, "problem enqueueing job to run script on host '%s'", host.Id)
+				catcher.Wrapf(err, "enqueueing job to run script on host '%s'", host.Id)
 				continue
 			}
 			hostIDs = append(hostIDs, host.Id)
 		}
 	}
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to run script on hosts"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "bulk enqueueing jobs to run script on distro hosts"))
 	}
 
 	return gimlet.NewJSONResponse(struct {
@@ -783,7 +790,7 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 	defer body.Close()
 
 	if err := utility.ReadJSON(body, &h.opts); err != nil {
-		return errors.Wrap(err, "could not read request body")
+		return errors.Wrap(err, "reading request body")
 	}
 
 	return nil
@@ -794,12 +801,12 @@ func (h *distroIcecreamConfigHandler) Parse(ctx context.Context, r *http.Request
 func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts, err := host.Find(db.Query(host.ByDistroIDsOrAliasesRunning(h.distro)))
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "could not find hosts for the distro '%s'", h.distro))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts for distro '%s'", h.distro))
 	}
 
 	dat, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "could not get distro lookup table"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting distro lookup table"))
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -815,13 +822,13 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 		// existing distro with an alias that matches the deleted distro.
 		distroIDs := dat.Expand([]string{host.Distro.Id})
 		if len(distroIDs) == 0 {
-			catcher.Errorf("could not look up distro '%s'", host.Distro.Id)
+			catcher.Errorf("distro '%s' not found", host.Distro.Id)
 			continue
 		}
 		var distros []distro.Distro
 		distros, err = distro.Find(distro.ByIds(distroIDs))
 		if err != nil {
-			catcher.Errorf("could not find distros matching '%s' for host '%s'", host.Distro.Id, host.Id)
+			catcher.Wrapf(err, "finding distros '%s' for host '%s'", host.Distro.Id, host.Id)
 			continue
 		}
 		var d distro.Distro
@@ -833,21 +840,21 @@ func (h *distroIcecreamConfigHandler) Run(ctx context.Context) gimlet.Responder 
 			}
 		}
 		if !distroFound {
-			catcher.Wrapf(err, "could not resolve distro '%s' for host '%s'", host.Distro.Id, host.Id)
+			catcher.Errorf("could not find any distro '%s' for host '%s' with populated icecream settings", host.Distro.Id, host.Id)
 			continue
 		}
 
 		script := d.IcecreamSettings.GetUpdateConfigScript()
 		ts := utility.RoundPartOfMinute(0).Format(units.TSFormat)
 		if err = h.env.RemoteQueue().Put(ctx, units.NewHostExecuteJob(h.env, host, script, true, "root", ts)); err != nil {
-			catcher.Wrapf(err, "problem enqueueing job to update icecream config file on host '%s'", host.Id)
+			catcher.Wrapf(err, "enqueueing job to update icecream config file on host '%s'", host.Id)
 			continue
 		}
 		hostIDs = append(hostIDs, host.Id)
 	}
 
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem enqueueing jobs to update icecream config on hosts"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "bulk enqueueing jobs to update icecream config on hosts"))
 	}
 
 	return gimlet.NewJSONResponse(struct {
@@ -881,16 +888,19 @@ func (rh *distroClientURLsGetHandler) Parse(ctx context.Context, r *http.Request
 
 func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := distro.FindOneId(rh.distroID)
-	if err != nil || d == nil {
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", rh.distroID))
+	}
+	if d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' not found", rh.distroID),
+			Message:    fmt.Sprintf("distro '%s' not found", rh.distroID),
 		})
 	}
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "could not fetch service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin settings"))
 	}
 
 	var urls []string

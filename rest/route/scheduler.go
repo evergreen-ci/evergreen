@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 type compareTasksRoute struct {
@@ -26,10 +27,7 @@ func (p *compareTasksRoute) Parse(ctx context.Context, r *http.Request) error {
 	request := model.CompareTasksRequest{}
 	err := utility.ReadJSON(r.Body, &request)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}
+		return errors.Wrap(err, "reading task comparison options from JSON request body")
 	}
 	p.request = request
 	return nil
@@ -38,7 +36,7 @@ func (p *compareTasksRoute) Parse(ctx context.Context, r *http.Request) error {
 func (p *compareTasksRoute) Run(ctx context.Context) gimlet.Responder {
 	order, logic, err := data.CompareTasks(p.request.Tasks, p.request.UseLegacy)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "comparing tasks"))
 	}
 	resp := model.CompareTasksResponse{
 		Order: order,

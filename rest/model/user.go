@@ -20,20 +20,20 @@ type APIPubKey struct {
 }
 
 // BuildFromService converts from service level structs to an APIPubKey.
-func (apiPubKey *APIPubKey) BuildFromService(h interface{}) error {
+func (pk *APIPubKey) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.PubKey:
-		apiPubKey.Name = utility.ToStringPtr(v.Name)
-		apiPubKey.Key = utility.ToStringPtr(v.Key)
+		pk.Name = utility.ToStringPtr(v.Name)
+		pk.Key = utility.ToStringPtr(v.Key)
 	default:
-		return errors.Errorf("incorrect type when fetching converting pubkey type")
+		return errors.Errorf("programmatic error: expected public key but got type %T", h)
 	}
 	return nil
 }
 
 // ToService returns a service layer public key using the data from APIPubKey.
-func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not impelemented for APIPubKey")
+func (pk *APIPubKey) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APIPubKey")
 }
 
 type APIUserSettings struct {
@@ -64,15 +64,15 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "converting GitHub user settings to API model")
 		}
 		s.Notifications = &APINotificationPreferences{}
 		err = s.Notifications.BuildFromService(v.Notifications)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "converting GitHub user settings to API model")
 		}
 	default:
-		return errors.Errorf("incorrect type for APIUserSettings")
+		return errors.Errorf("programmatic error: expected user settings but got type %T", h)
 	}
 	return nil
 }
@@ -80,11 +80,11 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 func (s *APIUserSettings) ToService() (interface{}, error) {
 	githubUserInterface, err := s.GithubUser.ToService()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "converting GitHub user settings to service model")
 	}
 	githubUser, ok := githubUserInterface.(user.GithubUser)
 	if !ok {
-		return nil, errors.New("unable to convert GithubUser")
+		return nil, errors.Errorf("programmatic error: expected GitHub user settings but got type %T", githubUserInterface)
 	}
 	preferencesInterface, err := s.Notifications.ToService()
 	if err != nil {
@@ -92,7 +92,7 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	}
 	preferences, ok := preferencesInterface.(user.NotificationPreferences)
 	if !ok {
-		return nil, errors.New("unable to convert NotificationPreferences")
+		return nil, errors.Errorf("programmatic error: expected notification preferences but got type %T", preferencesInterface)
 	}
 	useSpruceOptions := user.UseSpruceOptions{}
 	if s.UseSpruceOptions != nil {
@@ -123,7 +123,7 @@ func (g *APIGithubUser) BuildFromService(h interface{}) error {
 		g.UID = v.UID
 		g.LastKnownAs = utility.ToStringPtr(v.LastKnownAs)
 	default:
-		return errors.Errorf("incorrect type for APIGithubUser")
+		return errors.Errorf("programmatic error: expected GitHub user settings but got type %T", h)
 	}
 	return nil
 }
@@ -184,7 +184,7 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 			n.CommitQueueID = utility.ToStringPtr(v.CommitQueueID)
 		}
 	default:
-		return errors.Errorf("incorrect type for APINotificationPreferences")
+		return errors.Errorf("programmatic error: expected notification preferences but got type %T", h)
 	}
 	return nil
 }
@@ -200,22 +200,22 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	spawnHostOutcome := utility.FromStringPtr(n.SpawnHostOutcome)
 	commitQueue := utility.FromStringPtr(n.CommitQueue)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
-		return nil, errors.New("Build break preference is not a valid type")
+		return nil, errors.New("invalid subscription type build break")
 	}
 	if !user.IsValidSubscriptionPreference(patchFinish) {
-		return nil, errors.New("Patch finish preference is not a valid type")
+		return nil, errors.New("invalid subscription type patch finish")
 	}
 	if !user.IsValidSubscriptionPreference(patchFirstFailure) {
-		return nil, errors.New("Patch first task failure preference is not a valid type")
+		return nil, errors.New("invalid subscription type patch first failure")
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostExpiration) {
-		return nil, errors.New("Spawn Host Expiration preference is not a valid type")
+		return nil, errors.New("invalid subscription type for spawn host expiration")
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostOutcome) {
-		return nil, errors.New("Spawn Host Outcome preference is not a valid type")
+		return nil, errors.New("invalid subscription type for spawn host outcome")
 	}
 	if !user.IsValidSubscriptionPreference(commitQueue) {
-		return nil, errors.New("Commit Queue preference is not a valid type")
+		return nil, errors.New("invalid subscription type for commit queue")
 	}
 	preferences := user.NotificationPreferences{
 		BuildBreak:          user.UserSubscriptionPreference(buildbreak),
@@ -237,7 +237,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUserSettings, error) {
 	oldSettings := APIUserSettings{}
 	if err := oldSettings.BuildFromService(current); err != nil {
-		return oldSettings, errors.Wrap(err, "problem applying update to user settings")
+		return oldSettings, errors.Wrap(err, "converting user settings to API model")
 	}
 
 	reflectOldSettings := reflect.ValueOf(&oldSettings)
@@ -268,7 +268,7 @@ func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
 func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
 	submittedAt, err := FromTimePtr(a.SubmittedAt)
 	if err != nil {
-		return nil, errors.Wrap(err, "error converting time")
+		return nil, errors.Wrap(err, "parsing 'submitted at' time")
 	}
 	result := model.FeedbackSubmission{
 		Type:        utility.FromStringPtr(a.Type),
@@ -305,19 +305,19 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIUserSettings) (*user.UserSettings, error) {
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error retrieving Evergreen settings")
+		return nil, errors.Wrapf(err, "getting Evergreen admin settings")
 	}
 	changedSettings, err := ApplyUserChanges(usr.Settings, userSettings)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem applying user settings")
+		return nil, errors.Wrapf(err, "applying user changes")
 	}
 	userSettingsInterface, err := changedSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error parsing user settings")
+		return nil, errors.Wrapf(err, "converting user settings to service model")
 	}
 	updatedUserSettings, ok := userSettingsInterface.(user.UserSettings)
 	if !ok {
-		return nil, errors.New("Unable to parse settings object")
+		return nil, errors.Errorf("programmatic error: expected user settings but got type %T", userSettingsInterface)
 	}
 
 	if len(updatedUserSettings.GithubUser.LastKnownAs) == 0 {
@@ -327,11 +327,11 @@ func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIU
 		var ghUser *github.User
 		token, err = adminSettings.GetGithubOauthToken()
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error retrieving Github token")
+			return nil, errors.Wrapf(err, "getting GitHub OAuth token")
 		}
 		ghUser, err = thirdparty.GetGithubUser(ctx, token, updatedUserSettings.GithubUser.LastKnownAs)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error fetching user from Github")
+			return nil, errors.Wrapf(err, "getting GitHub user")
 		}
 		updatedUserSettings.GithubUser.LastKnownAs = *ghUser.Login
 		updatedUserSettings.GithubUser.UID = int(*ghUser.ID)

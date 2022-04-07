@@ -1,6 +1,8 @@
 package route
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -56,7 +58,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Routes
-	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger())
+	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolder())
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminBanner())
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(adminSettings).RouteHandler(makeSetAdminBanner())
 	app.AddRoute("/admin/uiv2_url").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminUIV2Url())
@@ -224,7 +226,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	// These requests must not check for credentials and just validate whether a route exists
 	// And allows requests from a origin.
 	for _, route := range app.Routes() {
-		if route.HasMethod("POST") {
+		if route.HasMethod(http.MethodPost) {
 			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
 		}
 	}

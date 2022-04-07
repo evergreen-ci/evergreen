@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -19,14 +18,14 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "API error converting from model.APICreatePod to pod.Pod").Error(),
+			Message:    errors.Wrap(err, "converting pod to service model").Error(),
 		}
 	}
 
 	if err := dbPod.Insert(); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("pod with id '%s' was not inserted", dbPod.ID),
+			Message:    errors.Wrapf(err, "inserting new intent pod '%s'", dbPod.ID).Error(),
 		}
 	}
 
@@ -41,7 +40,7 @@ func CheckPodSecret(id, secret string) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+			Message:    errors.Wrapf(err, "finding pod '%s' by ID", id).Error(),
 		}
 	}
 	if p == nil {
@@ -73,7 +72,7 @@ func FindPodByID(id string) (*model.APIPod, error) {
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+			Message:    errors.Wrapf(err, "finding pod '%s'", id).Error(),
 		}
 	}
 	if p == nil {
@@ -83,7 +82,7 @@ func FindPodByID(id string) (*model.APIPod, error) {
 	if err := apiPod.BuildFromService(p); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "building pod from service model").Error(),
+			Message:    errors.Wrap(err, "converting pod to API model").Error(),
 		}
 	}
 	return &apiPod, nil
@@ -96,7 +95,7 @@ func FindPodByExternalID(id string) (*model.APIPod, error) {
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding pod by ID").Error(),
+			Message:    errors.Wrapf(err, "finding pod with external ID '%s'", id).Error(),
 		}
 	}
 	if p == nil {
@@ -107,7 +106,7 @@ func FindPodByExternalID(id string) (*model.APIPod, error) {
 	if err := apiPod.BuildFromService(p); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "building pod from service model").Error(),
+			Message:    errors.Wrap(err, "converting pod to API model").Error(),
 		}
 	}
 	return &apiPod, nil

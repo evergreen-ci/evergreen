@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -39,11 +38,7 @@ func (h *generateHandler) Factory() gimlet.RouteHandler {
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	if h.files, err = parseJson(r); err != nil {
-		failedJson := []byte{}
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
-		}
+		return errors.Wrap(err, "reading raw JSON from request body")
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
 
@@ -62,7 +57,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 			"message": "error generating tasks",
 			"task_id": h.taskID,
 		}))
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "generating tasks"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -98,7 +93,7 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 			"message": "error polling for generated tasks",
 			"task_id": h.taskID,
 		}))
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "polling generate tasks"))
 	}
 	shouldExit := false
 	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring

@@ -57,10 +57,10 @@ func (sns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return errors.Wrap(err, "problem reading body")
+		return errors.Wrap(err, " reading body")
 	}
 	if err = json.Unmarshal(body, &sns.payload); err != nil {
-		return errors.Wrap(err, "problem unmarshalling payload")
+		return errors.Wrap(err, "unmarshalling JSON payload")
 	}
 
 	if err = sns.payload.VerifyPayload(); err != nil {
@@ -123,7 +123,7 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 	case messageTypeNotification:
 		if err := sns.handleNotification(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":      "problem handling SNS notification",
+				"message":      "handling SNS notification",
 				"notification": sns.payload.Message,
 			}))
 			return gimlet.NewJSONResponse(err)
@@ -156,7 +156,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 	if err := json.Unmarshal([]byte(sns.payload.Message), notification); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "problem unmarshalling notification").Error(),
+			Message:    errors.Wrap(err, "unmarshalling notification").Error(),
 		}
 	}
 
@@ -165,7 +165,7 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 		if err := sns.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "problem processing interruption warning").Error(),
+				Message:    errors.Wrap(err, "processing interruption warning").Error(),
 			}
 		}
 	case instanceStateChangeType:
@@ -174,14 +174,14 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 			if err := sns.handleInstanceTerminated(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrap(err, "problem processing instance termination").Error(),
+					Message:    errors.Wrap(err, "processing instance termination").Error(),
 				}
 			}
 		case ec2.InstanceStateNameStopped, ec2.InstanceStateNameStopping:
 			if err := sns.handleInstanceStopped(ctx, notification.Detail.InstanceID); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrap(err, "problem processing stopped instance").Error(),
+					Message:    errors.Wrap(err, "processing stopped instance").Error(),
 				}
 			}
 		}
@@ -205,7 +205,7 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 		return nil
 	}
 
-	instanceType := "Empty Distro.ProviderSettingsList, unable to get instance_type"
+	var instanceType string
 	if len(h.Distro.ProviderSettingsList) > 0 {
 		if stringVal, ok := h.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK(); ok {
 			instanceType = stringVal
@@ -214,20 +214,22 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 	existingHostCount, err := host.CountRunningHosts(h.Distro.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "database error counting running hosts by distro_id",
-			"host_id":       h.Id,
-			"distro_id":     h.Distro.Id,
-			"instance_type": instanceType,
+			"message":               "database error counting running hosts by distro_id",
+			"host_id":               h.Id,
+			"distro_id":             h.Distro.Id,
+			"instance_type":         instanceType,
+			"missing_instance_type": instanceType == "",
 		}))
 		existingHostCount = -1
 	}
 
 	grip.Info(message.Fields{
-		"message":            "got interruption warning from AWS",
-		"distro":             h.Distro.Id,
-		"running_host_count": existingHostCount,
-		"instance_type":      instanceType,
-		"host_id":            h.Id,
+		"message":               "got interruption warning from AWS",
+		"distro":                h.Distro.Id,
+		"running_host_count":    existingHostCount,
+		"instance_type":         instanceType,
+		"missing_instance_type": instanceType == "",
+		"host_id":               h.Id,
 	})
 
 	return nil

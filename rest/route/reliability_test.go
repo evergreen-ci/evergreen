@@ -366,7 +366,6 @@ func TestParseParameters(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
