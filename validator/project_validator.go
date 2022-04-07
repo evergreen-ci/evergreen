@@ -135,6 +135,7 @@ var projectErrorValidators = []projectValidator{
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateAliases,
+	validateContainers,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -142,6 +143,7 @@ var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
 	validateProjectConfigPeriodicBuilds,
+	validateProjectConfigContainers,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -243,7 +245,14 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIDs, distroAliases)...)
+	containerNameMap := map[string]bool{}
+	for _, container := range project.Containers {
+		if containerNameMap[container.Name] {
+			validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is already defined", container.Name)})
+		}
+		containerNameMap[container.Name] = true
+	}
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases)...)
 	return validationErrs
 }
 
@@ -326,6 +335,20 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 				}
 			}
 		}
+	}
+	return errs
+}
+
+func validateContainers(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	err := model.ValidateContainers(project.Identifier, project.Containers)
+	if err != nil {
+		errs = append(errs,
+			ValidationError{
+				Message: errors.Wrap(err, "error validating containers").Error(),
+				Level:   Error,
+			},
+		)
 	}
 	return errs
 }
@@ -454,6 +477,22 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 		})
 	}
 	return validationErrs
+}
+
+func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, containerResource := range pc.ContainerSizes {
+		err := model.ValidateContainerSize(containerResource)
+		if err != nil {
+			errs = append(errs,
+				ValidationError{
+					Message: errors.Wrap(err, "error validating container resources").Error(),
+					Level:   Error,
+				},
+			)
+		}
+	}
+	return errs
 }
 
 func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
@@ -619,7 +658,7 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 // 1. A referenced task within a buildvariant task object exists in the set of project
 // tasks and is not referenced in the task group of the buildvariant.
 // 2. Any referenced distro exists within the current setting's distro directory
-func ensureReferentialIntegrity(project *model.Project, distroIDs []string, distroAliases []string) ValidationErrors {
+func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -677,9 +716,21 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 							Level: Warning,
 						},
 					)
+				} else if utility.StringSliceContains(distroIDs, distro) && containerNameMap[distro] {
+					errs = append(errs,
+						ValidationError{
+							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
+								"references a container name overlapping with an existing distro '%s', the container "+
+								"configuration will override the distro",
+								task.Name, buildVariant.Name, distro),
+							Level: Warning,
+						},
+					)
 				}
 			}
 		}
+		runOnHasDistro := false
+		runOnHasContainer := false
 		for _, distro := range buildVariant.RunOn {
 			if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
 				errs = append(errs,
@@ -689,7 +740,31 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs []string, dist
 						Level: Warning,
 					},
 				)
+			} else if utility.StringSliceContains(distroIDs, distro) && containerNameMap[distro] {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("buildvariant '%s' "+
+							"references a container name overlapping with an existing distro '%s', the container "+
+							"configuration will override the distro",
+							buildVariant.Name, distro),
+						Level: Warning,
+					},
+				)
 			}
+			if utility.StringSliceContains(distroIDs, distro) {
+				runOnHasDistro = true
+			}
+			if containerNameMap[distro] {
+				runOnHasContainer = true
+			}
+		}
+		if runOnHasContainer && runOnHasDistro {
+			errs = append(errs,
+				ValidationError{
+					Message: "run_on cannot contain a mixture of containers and distros",
+					Level:   Error,
+				},
+			)
 		}
 	}
 	return errs

@@ -108,7 +108,7 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizes map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerSizes map[string]*ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -2432,6 +2432,42 @@ func GetMessageForPatch(patchID string) (string, error) {
 	}
 
 	return project.CommitQueue.Message, nil
+}
+
+func ValidateContainers(project string, containers []Container) error {
+	pRef, err := FindMergedProjectRef(project, "", true)
+	if err != nil {
+		return errors.Errorf("Unable to find merged project ref for project %s", project)
+	}
+	catcher := grip.NewSimpleCatcher()
+	for _, container := range containers {
+		catcher.Add(ValidateContainerSystem(container.System))
+		catcher.Add(ValidateContainerSize(container.Resources))
+		catcher.Add(ValidateContainerSize(pRef.ContainerSizes[container.Size]))
+		catcher.NewWhen(container.Size != "" && pRef.ContainerSizes[container.Size] == nil, fmt.Sprintf("size '%s' is not defined anywhere", container.Size))
+		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
+		catcher.NewWhen(container.Image != "", "image must be defined")
+		catcher.NewWhen(container.Name != "", "name must be defined")
+	}
+	return catcher.Resolve()
+}
+
+func ValidateContainerSystem(containerSystem ContainerSystem) error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(containerSystem.OperatingSystem.Validate())
+	catcher.Add(containerSystem.CPUArchitecture.Validate())
+	catcher.Add(containerSystem.WindowsVersion.Validate())
+	return catcher.Resolve()
+}
+
+func ValidateContainerSize(containerResource *ContainerResources) error {
+	if containerResource == nil {
+		return nil
+	}
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(containerResource.CPU <= 0, "container resource CPU must be a positive integer")
+	catcher.NewWhen(containerResource.MemoryMB <= 0, "container resource Memory MB must be a positive integer")
+	return catcher.Resolve()
 }
 
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {

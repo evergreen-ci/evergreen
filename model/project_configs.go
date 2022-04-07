@@ -36,7 +36,7 @@ type ProjectConfigFields struct {
 	TaskSync               *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
 	GithubTriggerAliases   []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
 	PeriodicBuilds         []PeriodicBuildDefinition      `yaml:"periodic_builds,omitempty" bson:"periodic_builds,omitempty"`
-	ContainerSizes         map[string]ContainerResources  `yaml:"container_sizes,omitempty" bson:"container_sizes,omitempty"`
+	ContainerSizes         map[string]*ContainerResources `yaml:"container_sizes,omitempty" bson:"container_sizes,omitempty"`
 }
 
 // Comment above is used by the linter to detect the end of the struct.
