@@ -45,19 +45,17 @@ func (t *Task) ResultStatus() string {
 // This type implements the grip/message.Composer interface and may be
 // passed directly to grip loggers.
 type ResultCounts struct {
-	Total                    int `json:"total"`
-	Inactive                 int `json:"inactive"`
-	Unstarted                int `json:"unstarted"`
-	Started                  int `json:"started"`
-	Succeeded                int `json:"succeeded"`
-	Failed                   int `json:"failed"`
-	SetupFailed              int `json:"setup-failed"`
-	SystemFailed             int `json:"system-failed"`
-	SystemUnresponsive       int `json:"system-unresponsive"`
-	SystemTimedOut           int `json:"system-timed-out"`
-	TestTimedOut             int `json:"test-timed-out"`
-	TaskUndispatched         int `json:"task-undispatched"`
-	TaskContainerUnallocated int `json:"task-container-unallocated"`
+	Total              int `json:"total"`
+	Inactive           int `json:"inactive"`
+	Unstarted          int `json:"unstarted"`
+	Started            int `json:"started"`
+	Succeeded          int `json:"succeeded"`
+	Failed             int `json:"failed"`
+	SetupFailed        int `json:"setup-failed"`
+	SystemFailed       int `json:"system-failed"`
+	SystemUnresponsive int `json:"system-unresponsive"`
+	SystemTimedOut     int `json:"system-timed-out"`
+	TestTimedOut       int `json:"test-timed-out"`
 
 	loggable      bool
 	cachedMessage string
@@ -71,7 +69,7 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 
 	for _, t := range tasks {
 		out.Total++
-		switch t.GetDisplayStatus() {
+		switch t.ResultStatus() {
 		case evergreen.TaskInactive:
 			out.Inactive++
 		case evergreen.TaskUnstarted:
@@ -92,10 +90,6 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 			out.SystemTimedOut++
 		case evergreen.TaskTestTimedOut:
 			out.TestTimedOut++
-		case evergreen.TaskUndispatched:
-			out.TaskUndispatched++
-		case evergreen.TaskContainerUnallocated:
-			out.TaskContainerUnallocated++
 		}
 	}
 
