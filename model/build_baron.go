@@ -188,7 +188,7 @@ func BbGetTask(taskId string, executionString string) (*task.Task, error) {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if t == nil {
-		return nil, errors.Errorf("no task found for task id '%s' and execution %d", taskId, execution)
+		return nil, errors.Errorf("no task found for task '%s' and execution %d", taskId, execution)
 	}
 
 	if err = t.PopulateTestResults(); err != nil {

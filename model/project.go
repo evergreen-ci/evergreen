@@ -456,7 +456,7 @@ func (c *PluginCommandConf) unmarshalParams() error {
 	if c.ParamsYAML != "" {
 		out := map[string]interface{}{}
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-			return errors.Wrapf(err, "unmarshalling params from YAML")
+			return errors.Wrap(err, "unmarshalling params from YAML")
 		}
 		c.Params = out
 		return nil

@@ -387,7 +387,7 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 		}
 		matchers, errs := r.If.evaluatedCopies(ase) // we could cache this
 		if len(errs) > 0 {
-			return nil, errors.Errorf("evaluating rules for matrix %s: %v", m.Id, errs)
+			return nil, errors.Errorf("evaluating rules for matrix '%s': %v", m.Id, errs)
 		}
 		if matchers.contain(mv) {
 			if r.Then.Set != nil {

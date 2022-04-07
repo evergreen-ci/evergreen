@@ -1079,7 +1079,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		for _, dt := range pbv.DisplayTasks {
 			projectDt := patch.DisplayTask{Name: dt.Name}
 			if _, exists := bvTasks[dt.Name]; exists {
-				errs = append(errs, fmt.Errorf("display task '%s' cannot have the same name as an execution task", dt.Name))
+				errs = append(errs, errors.Errorf("display task '%s' cannot have the same name as an execution task", dt.Name))
 				continue
 			}
 
@@ -1095,7 +1095,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 			for _, et := range tasks {
 				if _, exists := bvTasks[et]; !exists {
-					errs = append(errs, fmt.Errorf("display task '%s' contains execution task '%s' which does not exist in build variant", dt.Name, et))
+					errs = append(errs, errors.Errorf("display task '%s' contains execution task '%s' which does not exist in build variant", dt.Name, et))
 				} else {
 					projectDt.ExecTasks = append(projectDt.ExecTasks, et)
 					displayTaskContents[et]++
@@ -1107,7 +1107,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		}
 		for taskId, count := range displayTaskContents {
 			if count > 1 {
-				errs = append(errs, fmt.Errorf("execution task '%s' is listed in more than 1 display task", taskId))
+				errs = append(errs, errors.Errorf("execution task '%s' is listed in more than 1 display task", taskId))
 				bv.DisplayTasks = nil
 			}
 		}

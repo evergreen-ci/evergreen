@@ -132,7 +132,7 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 			if file.AwsSecret == toReplace {
 				if !dryRun {
 					artifacts[i].Files[j].AwsSecret = replacement
-					catcher.Wrapf(artifacts[i].Update(), "updating artifact file info for task %s, execution %d", artifact.TaskId, artifact.Execution)
+					catcher.Wrapf(artifacts[i].Update(), "updating artifact file info for task '%s', execution %d", artifact.TaskId, artifact.Execution)
 				}
 				key := TaskIDAndExecution{
 					TaskID:    artifact.TaskId,

@@ -49,7 +49,7 @@ func findOne(query db.Q) (*CommitQueue, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "finding queue by id")
+		return nil, errors.Wrap(err, "finding queue by ID")
 	}
 	return queue, err
 }
