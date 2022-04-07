@@ -100,6 +100,9 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	if err != nil {
 		return errors.Wrap(err, "finding task annotation")
 	}
+	if annotation == nil {
+		return errors.Errorf("annotation for task '%s' and execution %d not found", taskId, execution)
+	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
 		return errors.New("note is out of sync, please try again")

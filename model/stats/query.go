@@ -97,17 +97,17 @@ func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	switch groupBy {
 	case GroupByDistro:
 		if len(s.Distro) == 0 {
-			catcher.New("missing distro 'start at' date")
+			catcher.New("missing distro pagination value")
 		}
 		fallthrough
 	case GroupByVariant:
 		if len(s.BuildVariant) == 0 {
-			catcher.New("missing build variant 'start at' date")
+			catcher.New("missing build variant pagination value")
 		}
 		fallthrough
 	case GroupByTask:
 		if len(s.Task) == 0 {
-			catcher.New("missing task 'start at' date")
+			catcher.New("missing task pagination value")
 		}
 	}
 	return catcher.Resolve()
@@ -127,7 +127,7 @@ func (s *StartAt) validateForTests(groupBy GroupBy) error {
 func (s *StartAt) validateForTasks(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
-	catcher.NewWhen(len(s.Test) != 0, "StartAt for task stats should not have any tests")
+	catcher.NewWhen(len(s.Test) != 0, "grouping by tasks should not include a test pagination value")
 	return catcher.Resolve()
 }
 
@@ -153,12 +153,12 @@ type StatsFilter struct {
 // validateCommon performs common validations regardless of the filter's intended use.
 func (f *StatsFilter) ValidateCommon() error {
 	if f == nil {
-		return errors.New("StatsFilter cannot be nil")
+		return errors.New("stats filter cannot be nil")
 	}
 
 	catcher := grip.NewBasicCatcher()
 
-	catcher.NewWhen(f.GroupNumDays <= 0, "invalid GroupNumDays value")
+	catcher.NewWhen(f.GroupNumDays <= 0, "invalid group num days")
 	catcher.NewWhen(len(f.Requesters) == 0, "missing requesters")
 	catcher.Add(f.Sort.validate())
 	catcher.Add(f.GroupBy.validate())

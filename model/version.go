@@ -399,11 +399,11 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "aggregating versions")
+		return nil, errors.Wrap(err, "aggregating versions")
 	}
 
 	if len(res) == 0 {
-		return nil, errors.Errorf("no mainline commit found for project '%s'", projectId)
+		return nil, errors.Errorf("could not find mainline commit for project '%s'", projectId)
 	}
 	return &res[0], nil
 }
@@ -597,7 +597,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "aggregating versions and builds")
+		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	if len(res) == 0 {
 		return res, nil

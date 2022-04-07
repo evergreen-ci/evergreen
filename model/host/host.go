@@ -256,7 +256,7 @@ func (opts *DockerOptions) Validate() error {
 	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
 
 	for _, h := range opts.ExtraHosts {
-		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host %s must be of the form hostname:IP", h)
+		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
 	}
 
 	return catcher.Resolve()
@@ -2132,7 +2132,7 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 	// get parent distro from pool
 	parentDistro, err := distro.FindOneId(pool.Distro)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "find container parent's distro")
+		return 0, 0, errors.Wrap(err, "finding container parent's distro")
 	}
 	if parentDistro == nil {
 		return 0, 0, errors.Errorf("distro '%s' not found", pool.Distro)

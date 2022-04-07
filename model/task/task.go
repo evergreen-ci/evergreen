@@ -336,7 +336,7 @@ type TestResult struct {
 }
 
 // GetLogTestName returns the name of the test in the logging backend. This is
-// used for test logs in cedar where the name of the test in the logging
+// used for test logs in Cedar where the name of the test in the logging
 // service may differ from that in the test results service.
 func (tr TestResult) GetLogTestName() string {
 	if tr.LogTestName != "" {
@@ -819,7 +819,7 @@ func (t *Task) MarkDependenciesFinished(finished bool) error {
 
 // HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() (bool, error) {
-	// Check cedar flags before populating test results to avoid
+	// Check Cedar flags before populating test results to avoid
 	// unnecessarily fetching test results.
 	if t.HasCedarResults {
 		if t.CedarResultsFailed {
@@ -1307,7 +1307,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 // for the CedarResultsFailed to be set to true.
 func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	if !hasCedarResults && failedResults {
-		return errors.New("cannot set cedar results as failed when task does not have cedar results")
+		return errors.New("cannot set Cedar results as failed when task does not have Cedar results")
 	}
 
 	t.HasCedarResults = hasCedarResults
@@ -2694,10 +2694,10 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	t, err := FindOneIdNewOrOld(taskId)
 	if err != nil {
-		return 0, errors.Wrapf(err, fmt.Sprintf("finding task '%s'", taskId))
+		return 0, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
 	if t == nil {
-		return 0, errors.New(fmt.Sprintf("task '%s' not found", taskId))
+		return 0, errors.Errorf("task '%s' not found", taskId)
 	}
 	var taskIds []string
 	if t.DisplayOnly {

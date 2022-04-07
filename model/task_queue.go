@@ -410,15 +410,11 @@ func ClearTaskQueue(distroId string) error {
 		return catcher.Resolve()
 	}
 	distroQueueInfo, err = GetDistroAliasQueueInfo(distroId)
-	if err != nil {
-		catcher.Add(errors.Wrap(err, "getting task alias queue info"))
-	}
+	catcher.Wrap(err, "getting task alias queue info")
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
-	if err != nil {
-		catcher.Add(errors.Wrap(err, "clearing task alias queue"))
-	}
+	catcher.Wrap(err, "clearing task alias queue")
 	return catcher.Resolve()
 }
 
@@ -697,7 +693,7 @@ func runTimeMapAggregation(collection string, pipe []bson.M) (map[string]time.Ti
 	case 1:
 		return out[0], nil
 	default:
-		return map[string]time.Time{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d results", collection, len(out))
+		return map[string]time.Time{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d elements", collection, len(out))
 	}
 
 }
@@ -717,7 +713,7 @@ func runDurationMapAggregation(collection string, pipe []bson.M) (map[string]tim
 	case 1:
 		return out[0], nil
 	default:
-		return map[string]time.Duration{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d results", collection, len(out))
+		return map[string]time.Duration{}, errors.Errorf("expected 0 or 1 element in the result from the aggregation on collection '%s' but actually got %d elements", collection, len(out))
 	}
 
 }

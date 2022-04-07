@@ -55,7 +55,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		// fall back to the host header if host ids are not part of the path
 		hostId = r.Header.Get(evergreen.HostHeader)
 		if hostId == "" {
-			return nil, http.StatusBadRequest, errors.Errorf("request %s is missing host information", r.URL)
+			return nil, http.StatusBadRequest, errors.Errorf("request '%s' is missing host information", r.URL)
 		}
 	}
 	secret := r.Header.Get(evergreen.HostSecretHeader)
@@ -84,7 +84,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		}
 	}
 	if badHostTaskRelationship(h, t) {
-		return nil, http.StatusConflict, errors.Errorf("host '%s' should be running task '%s', not '%s'", hostId, h.RunningTask, t.Id)
+		return nil, http.StatusConflict, errors.Errorf("host '%s' should be running task '%s', not task '%s'", hostId, h.RunningTask, t.Id)
 	}
 	return h, http.StatusOK, nil
 }

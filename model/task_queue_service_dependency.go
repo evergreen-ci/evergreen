@@ -220,7 +220,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		for _, dependency := range item.Dependencies {
 			// addEdge(A, B) means that B depends on A.
 			if err := d.addEdge(dependency, item.Id); err != nil {
-				return errors.Wrapf(err, "adding edge")
+				return errors.Wrap(err, "adding edge")
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			"num_task_groups":            len(d.taskGroups),
 		}))
 
-		return errors.Wrapf(err, "topologically sorting the dependency graph")
+		return errors.Wrap(err, "topologically sorting the dependency graph")
 	}
 
 	d.sorted = sorted

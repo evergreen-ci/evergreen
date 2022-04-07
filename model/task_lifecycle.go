@@ -40,7 +40,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 		originalTasks := []task.Task{t}
 		if t.DisplayOnly {
 			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
-			catcher.Wrapf(err, "getting execution tasks")
+			catcher.Wrap(err, "getting execution tasks")
 			originalTasks = append(originalTasks, execTasks...)
 		}
 		versionIdsSet[t.Version] = true
@@ -101,14 +101,14 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 
 	if active {
 		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
-			return errors.Wrapf(err, "activating tasks")
+			return errors.Wrap(err, "activating tasks")
 		}
 		versionIdsToActivate := []string{}
 		for v := range versionIdsSet {
 			versionIdsToActivate = append(versionIdsToActivate, v)
 		}
 		if err := ActivateVersions(versionIdsToActivate); err != nil {
-			return errors.Wrapf(err, "marking version as activated")
+			return errors.Wrap(err, "marking version as activated")
 		}
 	} else {
 		if err := task.DeactivateTasks(tasksToActivate, caller); err != nil {
@@ -283,7 +283,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 					"exec_tasks": execTasks,
 				})
 			}
-			return errors.Errorf("task '%s' is currently '%s' - cannot reset task in this status",
+			return errors.Errorf("task '%s' current has status '%s' - cannot reset task in this status",
 				t.Id, t.Status)
 		}
 	}
@@ -323,7 +323,7 @@ func AbortTask(taskId, caller string) error {
 	}
 
 	if !t.IsAbortable() {
-		return errors.Errorf("task '%s' is currently '%s' - cannot abort task"+
+		return errors.Errorf("task '%s' currently has status '%s' - cannot abort task"+
 			" in this status", t.Id, t.Status)
 	}
 
@@ -478,7 +478,10 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 
 	if t.Status == detailsCopy.Status {
-		grip.Warningf("Tried to mark task '%s' as finished twice", t.Id)
+		grip.Warning(message.Fields{
+			"message": "tried to mark task as finished twice",
+			"task":    t.Id,
+		})
 		return nil
 	}
 	if !t.HasCedarResults { // Results not in cedar, check the db.
@@ -659,7 +662,7 @@ func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, cal
 			return errors.Wrapf(err, "getting commit queue for project '%s'", project)
 		}
 		if cq == nil {
-			return errors.Errorf("no commit queue found for project '%s'", project)
+			return errors.Errorf("commit queue for project '%s' not found", project)
 		}
 	}
 
@@ -697,7 +700,7 @@ func DequeueAndRestartForTask(cq *commitqueue.CommitQueue, t *task.Task, githubS
 			return errors.Wrapf(err, "getting commit queue for project '%s'", t.Project)
 		}
 		if cq == nil {
-			return errors.Errorf("no commit queue found for project '%s'", t.Project)
+			return errors.Errorf("commit queue for project '%s' not found", t.Project)
 		}
 	}
 	// this must be done before dequeuing so that we know which entries to restart
@@ -757,7 +760,7 @@ func tryDequeueAndAbortCommitQueueVersion(p *patch.Patch, cq commitqueue.CommitQ
 	}
 
 	event.LogCommitQueueConcludeTest(p.Id.Hex(), evergreen.MergeTestFailed)
-	return errors.Wrapf(CancelPatch(p, task.AbortInfo{TaskID: taskId, User: caller}), "aborting failed commit queue patch")
+	return errors.Wrap(CancelPatch(p, task.AbortInfo{TaskID: taskId, User: caller}), "aborting failed commit queue patch")
 }
 
 // removeNextMergeTaskDependency basically removes the given merge task from a linked list of
@@ -1359,7 +1362,7 @@ func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
 		if t.IsPartOfDisplay() {
 			dt, err := t.GetDisplayTask()
 			if err != nil {
-				return results, errors.Wrapf(err, "getting display task")
+				return results, errors.Wrap(err, "getting display task")
 			}
 			displayTasksToCheck[t.DisplayTask.Id] = *dt
 		} else if t.DisplayOnly {
@@ -1448,7 +1451,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 				"message": "problem blocking task group tasks",
 				"task_id": t.Id,
 			}))
-			return errors.Wrapf(err, "blocking task group tasks")
+			return errors.Wrap(err, "blocking task group tasks")
 		}
 		grip.Debug(message.Fields{
 			"message": "blocked task group tasks for task",
@@ -1510,7 +1513,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	}
 	dt, err := t.GetDisplayTask()
 	if err != nil {
-		return errors.Wrapf(err, "getting display task for task")
+		return errors.Wrap(err, "getting display task for task")
 	}
 	if dt == nil {
 		grip.Error(message.Fields{

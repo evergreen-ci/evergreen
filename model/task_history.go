@@ -472,7 +472,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (ma
 // checks that there is a project id and either a list of test names or task names.
 func (t *TestHistoryParameters) validate() error {
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(t.Project == "", "no project ID specified")
+	catcher.NewWhen(t.Project == "", "must specify project ID")
 
 	catcher.NewWhen(len(t.TestNames) == 0 && len(t.TaskNames) == 0, "must include test names or task names")
 	// A test can either have failed, silently failed, got skipped, or passed.
@@ -498,7 +498,7 @@ func (t *TestHistoryParameters) validate() error {
 
 	if (!utility.IsZeroTime(t.AfterDate) || !utility.IsZeroTime(t.BeforeDate)) &&
 		(t.AfterRevision != "" || t.BeforeRevision != "") {
-		catcher.New("cannot have both date and revision time range")
+		catcher.New("cannot specify both date time range and revision range")
 	}
 
 	catcher.NewWhen(t.Sort != -1 && t.Sort != 1, "sort parameter can only be -1 or 1")

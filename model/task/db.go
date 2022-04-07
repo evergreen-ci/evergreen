@@ -1706,7 +1706,7 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
 		}})
-	return errors.Wrapf(err, "adding details of host creation failure to task")
+	return errors.Wrap(err, "adding details of host creation failure to task")
 }
 
 func FindActivatedStepbackTasks(projectId string) ([]Task, error) {

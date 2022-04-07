@@ -102,7 +102,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 		return nil, err
 	}
 	if v == nil {
-		return nil, errors.Errorf("couldn't find version '%v'", result[0]["_id"])
+		return nil, errors.Errorf("version '%v' not found", result[0]["_id"])
 	}
 	return v, nil
 }

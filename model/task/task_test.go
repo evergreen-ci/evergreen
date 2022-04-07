@@ -42,11 +42,11 @@ var depTaskIds = []Dependency{
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}), "setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}), "setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 	}
 }
 
@@ -933,8 +933,7 @@ func TestTaskSetResultsFields(t *testing.T) {
 	}
 
 	Convey("SetResults", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
-		So(db.Clear(testresult.Collection), ShouldBeNil)
+		So(db.ClearCollections(Collection, testresult.Collection), ShouldBeNil)
 
 		taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
 		So(err, ShouldBeNil)

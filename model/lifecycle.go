@@ -380,7 +380,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 	if err = build.SetBuildStartedForTasks(tasksToRestart, caller); err != nil {
-		return errors.Wrapf(err, "setting builds started")
+		return errors.Wrap(err, "setting builds started")
 	}
 	version, err := VersionFindOneId(versionId)
 	if err != nil {
@@ -396,7 +396,7 @@ func RestartVersions(versionsToRestart []*VersionToRestart, abortInProgress bool
 	catcher := grip.NewBasicCatcher()
 	for _, t := range versionsToRestart {
 		err := RestartVersion(*t.VersionId, t.TaskIds, abortInProgress, caller)
-		catcher.Add(errors.Wrapf(err, "restarting tasks for version '%s'", *t.VersionId))
+		catcher.Wrapf(err, "restarting tasks for version '%s'", *t.VersionId)
 	}
 	return errors.Wrap(catcher.Resolve(), "restarting tasks")
 }
@@ -478,7 +478,7 @@ func restartTasksForBuild(buildId string, tasks []task.Task, caller string) erro
 		}
 	}
 
-	return errors.Wrapf(build.SetBuildStartedForTasks(tasks, caller), "setting builds started")
+	return errors.Wrap(build.SetBuildStartedForTasks(tasks, caller), "setting builds started")
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
@@ -600,7 +600,7 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 			continue
 		}
 		activateTaskAt, err := pRef.GetActivationTimeForTask(project.FindTaskForVariant(t.DisplayName, b.BuildVariant))
-		batchTimeCatcher.Add(errors.Wrapf(err, "getting activation time for task '%s'", t.DisplayName))
+		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
 			TaskId:   t.Id,
@@ -1190,7 +1190,6 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 			return createTime, errors.Wrap(err, "finding base version for patch version")
 		}
 		if baseVersion == nil {
-			grip.Warningf("Could not find base version for patch version '%s'", v.Id)
 			// The database data may be incomplete and missing the base Version
 			// In that case we don't want to fail, we fallback to the patch version's CreateTime.
 			return v.CreateTime, nil
@@ -1583,11 +1582,11 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 		if !activateVariant {
 			activateVariantAt, err = projectRef.GetActivationTimeForVariant(p.FindBuildVariant(pair.Variant))
-			batchTimeCatcher.Add(errors.Wrapf(err, "getting activation time for variant '%s'", pair.Variant))
+			batchTimeCatcher.Wrapf(err, "getting activation time for variant '%s'", pair.Variant)
 		}
 		for taskName, id := range batchTimeTasksToIds {
 			activateTaskAt, err := projectRef.GetActivationTimeForTask(p.FindTaskForVariant(taskName, pair.Variant))
-			batchTimeCatcher.Add(errors.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant))
+			batchTimeCatcher.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant)
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 				TaskId:   id,
 				TaskName: taskName,

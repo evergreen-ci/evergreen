@@ -214,7 +214,7 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 		// set to a default user
 		u, err = FindOne(ById(evergreen.GithubPatchUser))
 		if err != nil {
-			return nil, errors.Wrap(err, "getting user for pull request")
+			return nil, errors.Wrap(err, "getting user for PR")
 		}
 		// default user doesn't exist yet
 		if u == nil {
@@ -404,7 +404,7 @@ func ClearLoginCache(user gimlet.User) error {
 		return errors.Wrapf(err, "finding user '%s' by ID", user.Username())
 	}
 	if u == nil {
-		return errors.Errorf("no user '%s' found", user.Username())
+		return errors.Errorf("user '%s' not found", user.Username())
 	}
 	query := bson.M{IdKey: u.Id}
 	if err := UpdateOne(query, update); err != nil {

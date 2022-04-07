@@ -236,7 +236,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	opts.PatchOpts.env = env
 	projectFileBytes, err = getFileForPatchDiff(ctx, *opts)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "fetching remote configuration file")
+		return nil, nil, errors.Wrap(err, "fetching remote configuration file")
 	}
 
 	// apply remote configuration patch if needed
@@ -244,7 +244,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		opts.ReadFileFrom = ReadFromPatchDiff
 		projectFileBytes, err = MakePatchedConfig(ctx, env, p, path, string(projectFileBytes))
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "patching remote configuration file")
+			return nil, nil, errors.Wrap(err, "patching remote configuration file")
 		}
 	}
 	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
@@ -260,7 +260,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 	ppOut, err := yaml.Marshal(pp)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "marshalling parser project into YAML")
+		return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
 	}
 	patchConfig := &PatchConfig{
 		PatchedParserProject: string(ppOut),
@@ -268,7 +268,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	if pc != nil {
 		pcOut, err := yaml.Marshal(pc)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "marshalling project config into YAML")
+			return nil, nil, errors.Wrap(err, "marshalling project config into YAML")
 		}
 		patchConfig.PatchedProjectConfig = string(pcOut)
 	}
@@ -632,7 +632,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string, githubOauthToken string) error {
 	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
 	if err != nil {
-		return errors.Errorf("fetching child patch intent: %s", err)
+		return errors.Wrap(err, "fetching child patch intent")
 	}
 	if intent == nil {
 		return errors.New("child patch intent not found")
@@ -645,7 +645,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 	if triggerIntent.ParentStatus == "" {
 		childPatchDoc, err := patch.FindOneId(childPatchId)
 		if err != nil {
-			return errors.Errorf("fetching child patch: %s", err)
+			return errors.Wrap(err, "fetching child patch")
 		}
 		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
