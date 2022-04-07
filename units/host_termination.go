@@ -30,10 +30,9 @@ func init() {
 }
 
 type hostTerminationJob struct {
-	HostID          string `bson:"host_id" json:"host_id"`
-	Reason          string `bson:"reason,omitempty" json:"reason,omitempty"`
-	TerminateIfBusy bool   `bson:"terminate_if_busy" json:"terminate_if_busy"`
-	job.Base        `bson:"metadata" json:"metadata"`
+	HostID                 string `bson:"host_id" json:"host_id"`
+	HostTerminationOptions `bson:",inline" json:"host_termination_options"`
+	job.Base               `bson:"metadata" json:"metadata"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -51,13 +50,25 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
-func NewHostTerminationJob(env evergreen.Environment, h *host.Host, terminateIfBusy bool, reason string) amboy.Job {
+// HostTerminationOptions represent options to control how a host is terminated.
+type HostTerminationOptions struct {
+	// TerminateIfBusy, if set, will terminate a host even if it's currently
+	// running a task. Otherwise, if it's running a task, termination will
+	// either refuse to terminate the host or will reset the task.
+	TerminateIfBusy bool `bson:"terminate_if_busy,omitempty" json:"terminate_if_busy,omitempty"`
+	// SkipCloudHostTermination, if set, will skip terminating the host in the
+	// cloud. The host will still be marked terminated in the DB.
+	SkipCloudHostTermination bool `bson:"skip_cloud_host_termination,omitempty" json:"skip_cloud_host_termination,omitempty"`
+	// TerminationReason is the reason that the host was terminated.
+	TerminationReason string `bson:"termination_reason,omitempty" json:"termination_reason,omitempty"`
+}
+
+func NewHostTerminationJob(env evergreen.Environment, h *host.Host, opts HostTerminationOptions) amboy.Job {
 	j := makeHostTerminationJob()
 	j.host = h
 	j.HostID = h.Id
 	j.env = env
-	j.TerminateIfBusy = terminateIfBusy
-	j.Reason = reason
+	j.HostTerminationOptions = opts
 	ts := utility.RoundPartOfHour(2).Format(TSFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", HostTerminationJobName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", HostTerminationJobName, h.Id)})
@@ -115,7 +126,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"job_type": j.Type().Name,
 				"status":   j.host.Status,
 				"provider": j.host.Distro.Provider,
-				"reason":   j.Reason,
+				"reason":   j.TerminationReason,
 				"message":  "attempted to terminate a non-idle parent",
 			})
 			return
@@ -149,7 +160,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// we're aware of.
 	switch j.host.Status {
 	case evergreen.HostUninitialized, evergreen.HostBuildingFailed:
-		if err := j.host.Terminate(evergreen.User, j.Reason); err != nil {
+		if err := j.host.Terminate(evergreen.User, j.TerminationReason); err != nil {
 			j.AddError(errors.Wrap(err, "terminating intent host in DB"))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "problem terminating intent host in DB",
@@ -329,7 +340,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"host_id":           j.host.Id,
 		"distro":            j.host.Distro.Id,
 		"job":               j.ID(),
-		"reason":            j.Reason,
+		"reason":            j.TerminationReason,
 		"total_idle_secs":   j.host.TotalIdleTime.Seconds(),
 		"total_uptime_secs": j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
 		"termination_time":  j.host.TerminationTime,
@@ -353,7 +364,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 // checkAndTerminateCloudHost checks if the host is still up according to the
 // cloud provider. If so, it will attempt to terminate it in the cloud and mark
 // the host as terminated. If not, it will just mark the host as terminated.
+//
+// If this job is set to skip cloud host termination, it will ignore the cloud
+// host and only mark the host as terminated in the DB .
 func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, oldStatus string) error {
+	if j.SkipCloudHostTermination {
+		return errors.Wrap(j.host.Terminate(evergreen.User, j.TerminationReason), "marking DB host terminated")
+	}
+
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {
 		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
@@ -391,7 +409,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 		return catcher.Resolve()
 	}
 
-	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.Reason); err != nil {
+	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.TerminationReason); err != nil {
 		return errors.Wrap(err, "terminating cloud host")
 	}
 
