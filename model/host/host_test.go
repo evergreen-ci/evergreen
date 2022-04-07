@@ -5193,23 +5193,22 @@ func (s *FindHostsSuite) TestFindByIdFail() {
 }
 
 func (s *FindHostsSuite) TestFindByIP() {
-	h1, ok := FindOne(ByIP("ip1"))
+	h1, ok := FindOne(ByIPAndRunning("ip1"))
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 	s.Equal("ip1", h1.IP)
-
-	h2, ok := FindOne(ByIP("ip2"))
-	s.NoError(ok)
-	s.NotNil(h2)
-	s.Equal("host2", h2.Id)
-	s.Equal("ip2", h2.IP)
 }
 
 func (s *FindHostsSuite) TestFindByIPFail() {
-	h, ok := FindOne(ByIP("nonexistent"))
+	// terminated host
+	h1, ok := FindOne(ByIPAndRunning("ip2"))
 	s.NoError(ok)
-	s.Nil(h)
+	s.Nil(h1)
+
+	h2, ok := FindOne(ByIPAndRunning("nonexistent"))
+	s.NoError(ok)
+	s.Nil(h2)
 }
 
 func (s *FindHostsSuite) TestFindHostsByDistro() {
