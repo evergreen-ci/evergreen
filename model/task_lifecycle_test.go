@@ -3484,7 +3484,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
-	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+	assert.Equal(evergreen.TaskSystemUnresponse, dbTask.Status)
 	assert.True(dbTask.Details.TimedOut)
 	assert.True(dbTask.Activated)
 	assert.Equal(11*time.Minute, dbTask.TimeTaken)
