@@ -1725,6 +1725,8 @@ func (t *Task) displayTaskPriority() int {
 		return 20
 	case evergreen.TaskTestTimedOut:
 		return 30
+	case evergreen.TaskTimedOut:
+		return 30
 	case evergreen.TaskSystemFailed:
 		return 40
 	case evergreen.TaskSystemTimedOut:
