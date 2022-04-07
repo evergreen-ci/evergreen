@@ -203,6 +203,7 @@ func (c *awsClientImpl) Close() {
 func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	var output *ec2.Reservation
 	var err error
+	input.SetClientToken(utility.RandomString())
 	msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
@@ -431,6 +432,7 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
+	input.SetClientToken(utility.RandomString())
 	msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
@@ -559,6 +561,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
 	var output *ec2.Volume
 	var err error
+	input.SetClientToken(utility.RandomString())
 	msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
@@ -920,6 +923,7 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
 	var output *ec2.CreateLaunchTemplateOutput
 	var err error
+	input.SetClientToken(utility.RandomString())
 	msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
@@ -1001,6 +1005,7 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
 	var output *ec2.CreateFleetOutput
 	var err error
+	input.SetClientToken(utility.RandomString())
 	msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
