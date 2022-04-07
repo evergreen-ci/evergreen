@@ -1876,12 +1876,12 @@ func TestMergeWithProjectConfig(t *testing.T) {
 					{Command: "overridden"},
 				},
 			},
-			ContainerSizes: map[string]ContainerResources{
-				"small": ContainerResources{
+			ContainerSizes: map[string]*ContainerResources{
+				"small": &ContainerResources{
 					MemoryMB: 200,
 					CPU:      1,
 				},
-				"large": ContainerResources{
+				"large": &ContainerResources{
 					MemoryMB: 400,
 					CPU:      2,
 				},
@@ -1916,8 +1916,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, 1, projectRef.ContainerSizes["small"].CPU)
 	assert.Equal(t, 2, projectRef.ContainerSizes["large"].CPU)
 
-	projectRef.ContainerSizes = map[string]ContainerResources{
-		"xlarge": ContainerResources{
+	projectRef.ContainerSizes = map[string]*ContainerResources{
+		"xlarge": &ContainerResources{
 			MemoryMB: 800,
 			CPU:      4,
 		},

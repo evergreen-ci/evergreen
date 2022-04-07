@@ -1538,7 +1538,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -1558,7 +1558,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble,
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble,
 				ValidationErrors{})
 		})
 
@@ -1572,7 +1572,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
 			So(errs, ShouldNotResemble,
 				ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
@@ -1588,7 +1588,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -1601,7 +1601,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -4228,7 +4228,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
+			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{})
 			if testCase.expectErr {
 				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
 			} else {
