@@ -316,6 +316,15 @@ type UpdateVolumeInput struct {
 	VolumeID     string     `json:"volumeId"`
 }
 
+type UpstreamProject struct {
+	Owner       string `json:"owner"`
+	Repo        string `json:"repo"`
+	Revision    string `json:"revision"`
+	Project     string `json:"project"`
+	TriggerID   string `json:"TriggerID"`
+	TriggerType string `json:"TriggerType"`
+}
+
 type UserConfig struct {
 	User          string `json:"user"`
 	APIKey        string `json:"api_key"`

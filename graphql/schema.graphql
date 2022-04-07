@@ -234,6 +234,16 @@ type Version {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   manifest: Manifest
+  upstreamProject: UpstreamProject
+}
+
+type UpstreamProject {
+  owner: String!
+  repo: String!
+  revision: String!
+  project: String!
+  TriggerID: String!
+  TriggerType: String!
 }
 
 type Manifest {
