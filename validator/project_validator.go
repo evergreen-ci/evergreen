@@ -707,7 +707,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			}
 
 			for _, distro := range task.RunOn {
-				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
+				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) && !containerNameMap[distro] {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
@@ -732,7 +732,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 		runOnHasDistro := false
 		runOnHasContainer := false
 		for _, distro := range buildVariant.RunOn {
-			if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) {
+			if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) && !containerNameMap[distro] {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' references a nonexistent distro '%s'",

@@ -1581,16 +1581,41 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		Convey("an error should be thrown if a referenced distro for a "+
 			"buildvariant has the same name as an existing container", func() {
 			project := &model.Project{
-				Containers: []model.Container{
+				BuildVariants: []model.BuildVariant{
 					{
-						Name: "rhel55",
+						Name:  "enterprise",
+						RunOn: []string{"rhel55"},
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
+			containerNameMap := map[string]bool{
+				"rhel55": true,
+			}
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases)
+			So(errs, ShouldNotResemble,
+				ValidationErrors{})
+			So(len(errs), ShouldEqual, 2)
+			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
+			So(errs[1].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
+		})
+
+		Convey("an error should be thrown if a buildvariant references a mix of distros and containers to run on", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"rhel55", "c1"},
+					},
+				},
+			}
+			containerNameMap := map[string]bool{
+				"c1": true,
+			}
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases)
 			So(errs, ShouldNotResemble,
 				ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
 		})
 
 		Convey("no error should be thrown if a referenced distro ID for a "+
@@ -3050,12 +3075,12 @@ func TestValidateContainers(t *testing.T) {
 	p.Containers[0].Name = ""
 	verrs = validateContainers(p)
 	assert.Len(t, verrs, 1)
-	assert.Equal(t, verrs[0].Message, "name must be defined")
+	assert.Contains(t, verrs[0].Message, "name must be defined")
 	p.Containers[0].Name = "c1"
 	p.Containers[0].Image = ""
 	verrs = validateContainers(p)
 	assert.Len(t, verrs, 1)
-	assert.Equal(t, verrs[0].Message, "image must be defined")
+	assert.Contains(t, verrs[0].Message, "image must be defined")
 	p.Containers[0].Image = "demo:image"
 	p.Containers[0].Resources = &model.ContainerResources{
 		MemoryMB: 100,
@@ -3063,16 +3088,16 @@ func TestValidateContainers(t *testing.T) {
 	}
 	verrs = validateContainers(p)
 	assert.Len(t, verrs, 1)
-	assert.Equal(t, verrs[0].Message, "size and resources cannot both be defined")
+	assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
 	p.Containers[0].Size = ""
 	p.Containers[0].Resources = nil
 	verrs = validateContainers(p)
 	assert.Len(t, verrs, 1)
-	assert.Equal(t, verrs[0].Message, "either size or resources must be defined")
+	assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
 	p.Containers[0].Size = "s2"
 	verrs = validateContainers(p)
 	assert.Len(t, verrs, 1)
-	assert.Equal(t, verrs[0].Message, "size 's2' is not defined anywhere")
+	assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
 	p.Containers[0].System = model.ContainerSystem{
 		OperatingSystem: "oops",
 		CPUArchitecture: "oops",

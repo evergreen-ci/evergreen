@@ -2447,8 +2447,8 @@ func ValidateContainers(project string, containers []Container) error {
 		catcher.NewWhen(container.Size != "" && pRef.ContainerSizes[container.Size] == nil, fmt.Sprintf("size '%s' is not defined anywhere", container.Size))
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
-		catcher.NewWhen(container.Image != "", "image must be defined")
-		catcher.NewWhen(container.Name != "", "name must be defined")
+		catcher.NewWhen(container.Image == "", "image must be defined")
+		catcher.NewWhen(container.Name == "", "name must be defined")
 	}
 	return catcher.Resolve()
 }

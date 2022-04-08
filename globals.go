@@ -1096,7 +1096,7 @@ const (
 // Validate checks that the container OS is recognized.
 func (c ContainerOS) Validate() error {
 	switch c {
-	case LinuxOS, WindowsOS:
+	case LinuxOS, WindowsOS, "":
 		return nil
 	default:
 		return errors.Errorf("unrecognized container OS '%s'", c)
@@ -1114,7 +1114,7 @@ const (
 // Validate checks that the container CPU architecture is recognized.
 func (c CPUArchitecture) Validate() error {
 	switch c {
-	case ArchARM64, ArchAMD64:
+	case ArchARM64, ArchAMD64, "":
 		return nil
 	default:
 		return errors.Errorf("unrecognized CPU architecture '%s'", c)
