@@ -283,7 +283,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 					"exec_tasks": execTasks,
 				})
 			}
-			return errors.Errorf("task '%s' current has status '%s' - cannot reset task in this status",
+			return errors.Errorf("task '%s' currently has status '%s' - cannot reset task in this status",
 				t.Id, t.Status)
 		}
 	}

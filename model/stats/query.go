@@ -118,7 +118,7 @@ func (s *StartAt) validateForTests(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
 	if len(s.Test) == 0 {
-		catcher.New("missing StartAt Test value")
+		catcher.New("missing test pagination value")
 	}
 	return catcher.Resolve()
 }
