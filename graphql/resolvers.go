@@ -284,74 +284,6 @@ func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*A
 	return &info, nil
 }
 
-func (r *taskResolver) ReliesOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
-	dependencies := []*Dependency{}
-	if len(at.DependsOn) == 0 {
-		return dependencies, nil
-	}
-	depIds := []string{}
-	for _, dep := range at.DependsOn {
-		depIds = append(depIds, dep.TaskId)
-	}
-
-	dependencyTasks, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
-		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *at.Id, err.Error()))
-	}
-
-	taskMap := map[string]*task.Task{}
-	for i := range dependencyTasks {
-		taskMap[dependencyTasks[i].Id] = &dependencyTasks[i]
-	}
-
-	i, err := at.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
-	}
-
-	for _, dep := range at.DependsOn {
-		depTask, ok := taskMap[dep.TaskId]
-		if !ok {
-			continue
-		}
-		var metStatus MetStatus
-		if !depTask.IsFinished() {
-			metStatus = "PENDING"
-		} else if t.SatisfiesDependency(depTask) {
-			metStatus = "MET"
-		} else {
-			metStatus = "UNMET"
-		}
-		var requiredStatus RequiredStatus
-		switch dep.Status {
-		case model.AllStatuses:
-			requiredStatus = "MUST_FINISH"
-			break
-		case evergreen.TaskFailed:
-			requiredStatus = "MUST_FAIL"
-			break
-		default:
-			requiredStatus = "MUST_SUCCEED"
-		}
-
-		dependency := Dependency{
-			Name:           depTask.DisplayName,
-			BuildVariant:   depTask.BuildVariant,
-			MetStatus:      metStatus,
-			RequiredStatus: requiredStatus,
-			UILink:         fmt.Sprintf("/task/%s", depTask.Id),
-		}
-
-		dependencies = append(dependencies, &dependency)
-	}
-	return dependencies, nil
-}
-
 func (r *taskResolver) DependsOn(ctx context.Context, at *restModel.APITask) ([]*Dependency, error) {
 	dependencies := []*Dependency{}
 	if len(at.DependsOn) == 0 {
@@ -2252,18 +2184,6 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 	return allLogPointers, nil
 }
 
-func (r *queryResolver) PatchBuildVariants(ctx context.Context, patchID string) ([]*GroupedBuildVariant, error) {
-	patch, err := data.FindPatchById(patchID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding patch `%s`: %s", patchID, err))
-	}
-	groupedBuildVariants, err := generateBuildVariants(*patch.Id, []string{}, []string{}, []string{})
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating grouped build variants: %s", err))
-	}
-	return groupedBuildVariants, nil
-}
-
 func (r *queryResolver) CommitQueue(ctx context.Context, id string) (*restModel.APICommitQueue, error) {
 	commitQueue, err := data.FindCommitQueueForProject(id)
 	if err != nil {
@@ -2448,10 +2368,9 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
 		}
 		tqd := TaskQueueDistro{
-			ID:         distro.Distro,
-			QueueCount: len(distro.Queue),
-			TaskCount:  len(distro.Queue),
-			HostCount:  numHosts,
+			ID:        distro.Distro,
+			TaskCount: len(distro.Queue),
+			HostCount: numHosts,
 		}
 		distros = append(distros, &tqd)
 	}
@@ -2713,22 +2632,6 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, pa
 	return scheduledTasks, nil
 }
 
-func (r *mutationResolver) RestartPatch(ctx context.Context, patchID string, abort bool, taskIds []string) (*string, error) {
-	if len(taskIds) == 0 {
-		return nil, InputValidationError.Send(ctx, "`taskIds` array is empty. You must provide at least one task id")
-	}
-	modifications := model.VersionModification{
-		Action:  evergreen.RestartAction,
-		Abort:   abort,
-		TaskIds: taskIds,
-	}
-	err := modifyVersionHandler(ctx, patchID, modifications)
-	if err != nil {
-		return nil, err
-	}
-	return &patchID, nil
-}
-
 func (r *mutationResolver) RestartVersions(ctx context.Context, patchID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
 	if len(versionsToRestart) == 0 {
 		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
@@ -2818,16 +2721,6 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, taskIds []string) 
 	}
 	scheduledTasks = append(scheduledTasks, scheduled...)
 	return scheduledTasks, nil
-}
-func (r *mutationResolver) ScheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	scheduled, err := setManyTasksScheduled(ctx, r.sc.GetURL(), true, taskID)
-	if err != nil {
-		return nil, err
-	}
-	if len(scheduled) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find task: %s", taskID))
-	}
-	return scheduled[0], nil
 }
 
 func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
@@ -3281,54 +3174,6 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 	}
 
 	return failedTestCount, nil
-}
-
-// TODO: deprecated
-func (r *taskResolver) PatchMetadata(ctx context.Context, obj *restModel.APITask) (*PatchMetadata, error) {
-	version, err := model.VersionFindOneId(*obj.Version)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving version %s: %s", *obj.Version, err.Error()))
-	}
-	if version == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))
-	}
-	patchMetadata := PatchMetadata{
-		Author:  version.Author,
-		PatchID: version.Id,
-	}
-	return &patchMetadata, nil
-}
-
-func (r *taskResolver) BaseTaskMetadata(ctx context.Context, at *restModel.APITask) (*BaseTaskMetadata, error) {
-	i, err := at.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *at.Id, err.Error()))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
-	}
-	baseTask, err := t.FindTaskOnBaseCommit()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit", *at.Id))
-	}
-	if baseTask == nil {
-		return nil, nil
-	}
-	config, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, "unable to retrieve server config")
-	}
-
-	dur := restModel.NewAPIDuration(baseTask.TimeTaken)
-	baseTaskMetadata := BaseTaskMetadata{
-		BaseTaskLink:     fmt.Sprintf("%s/task/%s", config.Ui.Url, baseTask.Id),
-		BaseTaskDuration: &dur,
-	}
-	if baseTask.TimeTaken == 0 {
-		baseTaskMetadata.BaseTaskDuration = nil
-	}
-	return &baseTaskMetadata, nil
 }
 
 func (r *taskResolver) SpawnHostLink(ctx context.Context, at *restModel.APITask) (*string, error) {
@@ -4039,14 +3884,6 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 		TimeTaken: &apiTimeTaken,
 		Makespan:  &apiMakespan,
 	}, nil
-}
-
-func (r *versionResolver) BaseVersionID(ctx context.Context, obj *restModel.APIVersion) (*string, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*obj.Project, *obj.Revision).WithFields(model.VersionIdentifierKey))
-	if baseVersion == nil || err != nil {
-		return nil, nil
-	}
-	return &baseVersion.Id, nil
 }
 
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {

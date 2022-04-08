@@ -39,7 +39,6 @@ type Query {
   taskFiles(taskId: String!, execution: Int): TaskFiles!
   user(userId: String): User!
   taskLogs(taskId: String!, execution: Int): TaskLogs!
-  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]! @deprecated(reason: "Use version.buildVariants instead")
   commitQueue(id: String!): CommitQueue!
   userSettings: UserSettings
   spruceConfig: SpruceConfig
@@ -108,11 +107,9 @@ type Mutation {
   schedulePatchTasks(patchId: String!): String
   unschedulePatchTasks(patchId: String!, abort: Boolean!): String
   restartVersions(versionId: String!, abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
-  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String @deprecated(reason: "restartPatch deprecated, Use restartVersions instead")
   scheduleUndispatchedBaseTasks(patchId: String!): [Task!]
   enqueuePatch(patchId: String!, commitMessage: String): Patch!
   setPatchPriority(patchId: String!, priority: Int!): String
-  scheduleTask(taskId: String!): Task! @deprecated(reason: "scheduleTask deprecated, Use scheduleTasks instead")
   scheduleTasks(taskIds: [String!]!): [Task!]!
   unscheduleTask(taskId: String!): Task!
   abortTask(taskId: String!): Task!
@@ -226,7 +223,6 @@ type Version {
   patch: Patch
   childVersions: [Version]
   taskCount: Int
-  baseVersionID: String @deprecated(reason: "baseVersionId is deprecated, use baseVersion.id instead")
   baseVersion: Version
   previousVersion: Version
   versionTiming: VersionTiming
@@ -718,7 +714,6 @@ type TaskQueueItem {
 
 type TaskQueueDistro {
   id: ID!
-  queueCount: Int! @deprecated(reason: "queueCount is deprecated, use taskCount instead")
   taskCount: Int!
   hostCount: Int!
 }
@@ -858,7 +853,6 @@ type Patch {
   patchNumber: Int!
   author: String!
   authorDisplayName: String!
-  version: String! @deprecated(reason: "version is deprecated, use versionFull.id instead")
   versionFull: Version
   status: String!
   variants: [String!]!
@@ -871,7 +865,7 @@ type Patch {
   duration: PatchDuration
   time: PatchTime
   taskCount: Int
-  baseVersionID: String
+  baseVersionID: String @deprecated(reason: "Use versionFull.baseVersion.id instead")
   parameters: [Parameter!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   project: PatchProject
@@ -997,7 +991,6 @@ type TestResult {
   status: String!
   baseStatus: String
   testFile: String!
-  displayTestName: String @deprecated(reason: "displayTestName deprecated, use testFile instead (EVG-15379)")
   logs: TestLog!
   exitCode: Int
   startTime: Time
@@ -1020,18 +1013,8 @@ type Dependency {
   requiredStatus: RequiredStatus!
   buildVariant: String!
   taskId: String!
-  uiLink: String! @deprecated(reason: "uiLink is deprecated and should not be used")
 }
 
-type PatchMetadata {
-  author: String!
-  patchID: String!
-}
-
-type BaseTaskMetadata {
-  baseTaskDuration: Duration
-  baseTaskLink: String!
-}
 
 type AbortInfo {
   user: String!
@@ -1052,7 +1035,6 @@ type Task {
   annotation: Annotation
   baseTask: Task
   baseStatus: String
-  baseTaskMetadata: BaseTaskMetadata @deprecated(reason: "baseTaskMetadata is deprecated. Use baseTask instead")
   blocked: Boolean!
   buildId: String!
   buildVariant: String!
@@ -1089,13 +1071,11 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   patch: Patch
-  patchMetadata: PatchMetadata! @deprecated(reason: "patchMetadata is deprecated. Use versionMetadata instead.")
   patchNumber: Int
   priority: Int
   project: Project
   projectId: String!
   projectIdentifier: String
-  reliesOn: [Dependency!]!  @deprecated(reason: "reliesOn is deprecated. Use dependsOn instead.")
   dependsOn: [Dependency!]
   canOverrideDependencies: Boolean!
   requester: String!
@@ -1109,7 +1089,6 @@ type Task {
   taskGroupMaxHosts: Int
   timeTaken: Duration
   totalTestCount: Int!
-  version: String! @deprecated(reason: "version is deprecated. Use versionMetadata instead.")
   versionMetadata: Version!
   order: Int!
 }
