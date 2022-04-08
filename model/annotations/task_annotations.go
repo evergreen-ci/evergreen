@@ -230,8 +230,8 @@ func AddToAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		a.Note.Source = source
 		update[NoteKey] = a.Note
 	}
-	if existingAnnotation.Metadata != nil {
-		update[MetadataKey] = existingAnnotation.Metadata
+	if a.Metadata != nil {
+		update[MetadataKey] = a.Metadata
 	}
 
 	if a.Issues != nil {
