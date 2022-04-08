@@ -207,6 +207,57 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 }
 
+func AddToAnnotation(a *TaskAnnotation, userDisplayName string) error {
+	existingAnnotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	if err != nil {
+		return errors.Wrapf(err, "finding task annotation for task id '%s'", a.TaskId)
+	}
+	if existingAnnotation == nil {
+		return errors.Wrapf(err, "missing task annotation for task id '%s'", a.TaskId)
+	}
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	update := bson.M{
+		TaskIdKey:        a.TaskId,
+		TaskExecutionKey: a.TaskExecution,
+	}
+
+	// Overwrite note and metadata.
+	if a.Note != nil {
+		a.Note.Source = source
+		update[NoteKey] = a.Note
+	}
+	if existingAnnotation.Metadata != nil {
+		update[MetadataKey] = existingAnnotation.Metadata
+	}
+
+	if a.Issues != nil {
+		for i := range a.Issues {
+			a.Issues[i].Source = source
+			existingAnnotation.Issues = append(existingAnnotation.Issues, a.Issues[i])
+		}
+	}
+	update[IssuesKey] = existingAnnotation.Issues
+
+	if a.SuspectedIssues != nil {
+		for i := range a.SuspectedIssues {
+			a.SuspectedIssues[i].Source = source
+			existingAnnotation.SuspectedIssues = append(existingAnnotation.SuspectedIssues, a.SuspectedIssues[i])
+		}
+	}
+	update[SuspectedIssuesKey] = existingAnnotation.SuspectedIssues
+
+	err = db.Update(
+		Collection,
+		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
+		update,
+	)
+	return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
+}
+
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
