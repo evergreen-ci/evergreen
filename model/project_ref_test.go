@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
