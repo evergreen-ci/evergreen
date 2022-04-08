@@ -1133,7 +1133,7 @@ const (
 // Validate checks that the container Windows version is recognized.
 func (w WindowsVersion) Validate() error {
 	switch w {
-	case Windows2022, Windows2019, Windows2016:
+	case Windows2022, Windows2019, Windows2016, "":
 		return nil
 	default:
 		return errors.Errorf("unrecognized windows version '%s'", w)

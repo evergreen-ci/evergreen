@@ -2446,6 +2446,7 @@ func ValidateContainers(project string, containers []Container) error {
 		catcher.Add(ValidateContainerSize(pRef.ContainerSizes[container.Size]))
 		catcher.NewWhen(container.Size != "" && pRef.ContainerSizes[container.Size] == nil, fmt.Sprintf("size '%s' is not defined anywhere", container.Size))
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
+		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image != "", "image must be defined")
 		catcher.NewWhen(container.Name != "", "name must be defined")
 	}
@@ -2457,6 +2458,7 @@ func ValidateContainerSystem(containerSystem ContainerSystem) error {
 	catcher.Add(containerSystem.OperatingSystem.Validate())
 	catcher.Add(containerSystem.CPUArchitecture.Validate())
 	catcher.Add(containerSystem.WindowsVersion.Validate())
+	catcher.NewWhen(containerSystem.OperatingSystem == evergreen.LinuxOS && containerSystem.WindowsVersion != "", "cannot specify windows version when OS is linux")
 	return catcher.Resolve()
 }
 
