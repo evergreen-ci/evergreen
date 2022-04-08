@@ -38,7 +38,7 @@ type userData struct {
 // LogUserEvent logs a DB User change to the event log collection.
 func LogUserEvent(user string, eventType UserEventType, before, after interface{}) error {
 	if err := eventType.validate(); err != nil {
-		return errors.Wrapf(err, "failed to log user event for user '%s'", user)
+		return errors.Wrapf(err, "invalid user event for user '%s'", user)
 	}
 
 	data := userData{
@@ -55,7 +55,7 @@ func LogUserEvent(user string, eventType UserEventType, before, after interface{
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		return errors.Wrapf(err, "failed to log user event for user '%s'", user)
+		return errors.Wrapf(err, "logging user event for user '%s'", user)
 	}
 
 	return nil

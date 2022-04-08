@@ -184,7 +184,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	h = host.NewIntent(emptyHostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
-	s.Contains(err.Error(), "Image must not be empty")
+	s.Contains(err.Error(), "image must not be empty")
 	s.Nil(h)
 
 	emptyHostOpts.DockerOptions.Image = "my image"

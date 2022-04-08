@@ -61,7 +61,7 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 func FindFromVersion(versionID, project, revision, requester string) (*Manifest, error) {
 	manifest, err := FindOne(ById(versionID))
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding manifest")
+		return nil, errors.Wrap(err, "finding manifest")
 	}
 	if manifest != nil {
 		return manifest, nil
@@ -71,7 +71,7 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 	// find the base commit's manifest
 	manifest, err = FindOne(ByBaseProjectAndRevision(project, revision))
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding manifest")
+		return nil, errors.Wrap(err, "finding manifest")
 	}
 	if manifest == nil {
 		return nil, nil
@@ -81,10 +81,10 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 		var p *patch.Patch
 		p, err = patch.FindOneId(versionID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't get patch for '%s'", versionID)
+			return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
 		}
 		if p == nil {
-			return nil, errors.Errorf("no corresponding patch with id '%s'", versionID)
+			return nil, errors.Errorf("no corresponding patch '%s'", versionID)
 		}
 		manifest.ModuleOverrides = make(map[string]string)
 		for _, patchModule := range p.Patches {

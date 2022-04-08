@@ -24,8 +24,7 @@ import (
 func TestFindOneProjectRef(t *testing.T) {
 	evergreen.GetEnvironment().Settings().LoggerConfig.DefaultLogger = "buildlogger"
 	assert := assert.New(t)
-	require.NoError(t, db.Clear(ProjectRefCollection),
-		"Error clearing collection")
+	require.NoError(t, db.Clear(ProjectRefCollection))
 	projectRef := &ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "mci",
@@ -50,8 +49,7 @@ func TestFindOneProjectRef(t *testing.T) {
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection),
-		"Error clearing collection")
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection))
 
 	projectConfig := &ProjectConfig{
 		Id: "ident",
@@ -1839,8 +1837,7 @@ func TestPointers(t *testing.T) {
 }
 
 func TestMergeWithProjectConfig(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection),
-		"Error clearing collection")
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
 
 	projectRef := &ProjectRef{
 		Owner:              "mongodb",

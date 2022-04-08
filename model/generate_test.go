@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -361,82 +360,62 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 
 func (s *GenerateSuite) TestValidateMaxVariants() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	for i := 0; i < maxGeneratedBuildVariants; i++ {
 		g.BuildVariants = append(g.BuildVariants, parserBV{})
 	}
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	g.BuildVariants = append(g.BuildVariants, parserBV{})
-	g.validateMaxTasksAndVariants(c)
-	s.Error(c.Resolve())
+	s.Error(g.validateMaxTasksAndVariants())
 }
 
 func (s *GenerateSuite) TestValidateMaxTasks() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	for i := 0; i < maxGeneratedTasks; i++ {
 		g.Tasks = append(g.Tasks, parserTask{})
 	}
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	g.Tasks = append(g.Tasks, parserTask{})
-	g.validateMaxTasksAndVariants(c)
-	s.Error(c.Resolve())
+	s.Error(g.validateMaxTasksAndVariants())
 }
 
 func (s *GenerateSuite) TestValidateNoRedefine() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
-	g.validateNoRedefine(projectMaps{}, c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateNoRedefine(projectMaps{}))
 
 	g.BuildVariants = []parserBV{parserBV{Name: "buildvariant_name", DisplayName: "I am a buildvariant"}}
 	g.Tasks = []parserTask{parserTask{Name: "task_name"}}
 	g.Functions = map[string]*YAMLCommandSet{"function_name": nil}
-	g.validateNoRedefine(projectMaps{}, c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateNoRedefine(projectMaps{}))
 
 	cachedProject := projectMaps{
 		buildVariants: map[string]struct{}{
 			"buildvariant_name": struct{}{},
 		},
 	}
-	g.validateNoRedefine(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRedefine(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
 			"task_name": &ProjectTask{},
 		},
 	}
-	g.validateNoRedefine(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRedefine(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		functions: map[string]*YAMLCommandSet{
 			"function_name": &YAMLCommandSet{},
 		},
 	}
-	g.validateNoRedefine(cachedProject, c)
-	s.Error(c.Resolve())
-
+	s.Error(g.validateNoRedefine(cachedProject))
 }
 
 func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
 	cachedProject := projectMaps{}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{}
 	g = GeneratedProject{
 		Tasks: []parserTask{
@@ -449,10 +428,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{}
 	g = GeneratedProject{
 		Functions: map[string]*YAMLCommandSet{
@@ -465,10 +442,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
 			"task_name": &ProjectTask{
@@ -491,10 +466,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
 			"task_name": &ProjectTask{
@@ -526,8 +499,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 }
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {

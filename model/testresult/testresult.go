@@ -129,7 +129,7 @@ func InsertMany(results []TestResult) error {
 	catcher := grip.NewSimpleCatcher()
 	for idx, result := range results {
 		if result.TaskID == "" {
-			catcher.Add(errors.New("Cannot insert test result with empty task ID"))
+			catcher.New("cannot insert test result with empty task ID")
 		}
 		docs[idx] = results[idx]
 	}
@@ -245,7 +245,7 @@ func TestResultsFilterSortPaginate(opts TestResultsFilterSortPaginateOpts) ([]Te
 		sort = append(sort, primitive.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
 
-	sort = append(sort, primitive.E{Key: "_id", Value: 1})
+	sort = append(sort, primitive.E{Key: IDKey, Value: 1})
 	pipeline = append(pipeline, bson.M{"$sort": sort})
 
 	if opts.Page > 0 {
@@ -270,7 +270,7 @@ func DeleteWithLimit(ctx context.Context, env evergreen.Environment, ts time.Tim
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}})
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{IDKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts)}})
 	}
 
 	res, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))

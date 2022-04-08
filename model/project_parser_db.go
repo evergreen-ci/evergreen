@@ -85,7 +85,7 @@ func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
 		ParserProjectParametersKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding parser project")
+		return nil, errors.Wrap(err, "finding parser project")
 	}
 	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
 		if v.Config == "" {
@@ -93,7 +93,7 @@ func FindParametersForVersion(v *Version) ([]patch.Parameter, error) {
 		}
 		pp, err = createIntermediateProject([]byte(v.Config), false)
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing legacy config")
+			return nil, errors.Wrap(err, "parsing legacy config")
 		}
 	}
 	return pp.GetParameters(), nil
@@ -103,7 +103,7 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 	pp, err := ParserProjectFindOne(ParserProjectById(v.Id).WithFields(ParserProjectConfigNumberKey,
 		ParserProjectBuildVariantsKey, ParserProjectAxesKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding parser project")
+		return nil, errors.Wrap(err, "finding parser project")
 	}
 
 	if pp == nil || pp.ConfigUpdateNumber < v.ConfigUpdateNumber { // legacy case
@@ -112,7 +112,7 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 		}
 		pp, err = createIntermediateProject([]byte(v.Config), false)
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing legacy config")
+			return nil, errors.Wrap(err, "parsing legacy config")
 		}
 	}
 
@@ -127,7 +127,7 @@ func FindExpansionsForVariant(v *Version, variant string) (util.Expansions, erro
 			return bv.Expansions, nil
 		}
 	}
-	return nil, errors.Errorf("error finding variant")
+	return nil, errors.New("could not find variant")
 }
 
 func checkConfigNumberQuery(id string, configNum int) bson.M {
@@ -149,7 +149,7 @@ func checkConfigNumberQuery(id string, configNum int) bson.M {
 func (pp *ParserProject) TryUpsert() error {
 	err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, pp.ConfigUpdateNumber), pp)
 	if !db.IsDuplicateKey(err) {
-		return errors.Wrapf(err, "database error upserting parser project")
+		return err
 	}
 
 	// log this error but don't return it
@@ -174,7 +174,7 @@ func (pp *ParserProject) UpsertWithConfigNumber(updateNum int) error {
 	pp.ConfigUpdateNumber = updateNum
 	if err := ParserProjectUpsertOne(checkConfigNumberQuery(pp.Id, expectedNum), pp); err != nil {
 		// expose all errors to check duplicate key errors for a race
-		return errors.Wrapf(err, "database error upserting parser project '%s'", pp.Id)
+		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
 	return nil
 }

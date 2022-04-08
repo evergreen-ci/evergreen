@@ -72,7 +72,7 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 	query := db.Query(task.ByBuildIds([]string{original.Id, patch.Id})).WithFields(task.BuildIdKey, task.StatusKey, task.DetailsKey, task.DisplayNameKey)
 	tasks, err := task.FindAll(query)
 	if err != nil {
-		return BuildStatusDiff{}, errors.Wrap(err, "can't get tasks")
+		return BuildStatusDiff{}, errors.Wrap(err, "finding tasks")
 	}
 
 	// build maps of tasks, for matching

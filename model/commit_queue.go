@@ -16,11 +16,11 @@ func GetModulesFromPR(ctx context.Context, githubToken string, prNum int, module
 	for _, mod := range modules {
 		module, err := projectConfig.GetModuleByName(mod.Module)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "can't get module for module name '%s'", mod.Module)
+			return nil, nil, errors.Wrapf(err, "getting module for module name '%s'", mod.Module)
 		}
 		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.Module)
+			return nil, nil, errors.Wrapf(err, "malformed URL for module '%s'", mod.Module)
 		}
 
 		pr, err := thirdparty.GetPullRequest(ctx, prNum, githubToken, owner, repo)

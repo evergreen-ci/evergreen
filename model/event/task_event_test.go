@@ -21,8 +21,7 @@ func init() {
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		require.NoError(t, db.Clear(AllLogCollection),
-			"Error clearing '%v' collection", AllLogCollection)
+		require.NoError(t, db.Clear(AllLogCollection))
 
 		Convey("All task events should be logged correctly", func() {
 			taskId := "task_id"

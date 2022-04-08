@@ -1211,7 +1211,6 @@ func setTaskStatus(taskID string, status string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				// task.DispatchTimeKey: time.Now().Add(-1 * time.Minute),
 				task.StatusKey: status,
 			},
 		},

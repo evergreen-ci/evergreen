@@ -20,13 +20,13 @@ const (
 // on which all the given build variants succeeded. Gives up after 100 versions.
 func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames []string) (*Version, error) {
 	if len(buildVariantNames) == 0 {
-		return nil, errors.New("No build variants specified!")
+		return nil, errors.New("no build variants specified")
 	}
 
 	// Get latest commit order number for this project
 	latestVersion, err := VersionFindOne(VersionByMostRecentSystemRequester(project.Identifier).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
-		return nil, errors.Wrap(err, "Error getting latest version")
+		return nil, errors.Wrap(err, "getting latest version")
 	}
 	if latestVersion == nil {
 		return nil, nil
@@ -82,7 +82,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 
 	err = db.Aggregate(build.Collection, pipeline, &result)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregation failed")
+		return nil, errors.Wrap(err, "aggregating builds")
 	}
 
 	if len(result) == 0 {
@@ -102,8 +102,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 		return nil, err
 	}
 	if v == nil {
-		return nil, errors.Errorf("Couldn't find version with id `%v` after "+
-			"successful aggregation.", result[0]["_id"])
+		return nil, errors.Errorf("version '%v' not found", result[0]["_id"])
 	}
 	return v, nil
 }

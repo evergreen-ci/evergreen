@@ -486,7 +486,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 	versions, err = GetMainlineCommitVersionsWithOptions(p.Id, opts)
 	assert.Nil(t, versions)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), fmt.Sprintf("invalid requesters: %v", opts.Requesters))
+	assert.Contains(t, err.Error(), fmt.Sprintf("invalid requesters %s", opts.Requesters))
 
 }
 

@@ -67,7 +67,7 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 
 	ops := make([]mongo.WriteModel, limit)
 	for idx := 0; idx < limit; idx++ {
-		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{"_id": bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
+		ops[idx] = mongo.NewDeleteOneModel().SetFilter(bson.M{TestLogIdKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}})
 	}
 
 	res, err := env.DB().Collection(TestLogCollection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
@@ -82,7 +82,7 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 func (self *TestLog) Insert() error {
 	self.Id = mgobson.NewObjectId().Hex()
 	if err := self.Validate(); err != nil {
-		return errors.Wrap(err, "cannot insert invalid test log")
+		return errors.Wrap(err, "invalid test log")
 	}
 	return errors.WithStack(db.Insert(TestLogCollection, self))
 }

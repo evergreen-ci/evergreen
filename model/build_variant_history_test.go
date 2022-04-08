@@ -17,9 +17,9 @@ var testConfig = testutil.TestConfig()
 
 func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	require.NoError(t, err, "Error opening database session")
+	require.NoError(t, err, "opening database session")
 	defer session.Close()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping test database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 }
 
 func createVersion(order int, project string, buildVariants []string) error {

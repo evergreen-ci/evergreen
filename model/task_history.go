@@ -260,7 +260,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 
 	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		return chunk, errors.Wrap(err, "problem getting database session")
+		return chunk, errors.Wrap(err, "getting database session")
 	}
 	defer session.Close()
 
@@ -355,7 +355,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCommits int) ([]string, error) {
 	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting database session")
+		return nil, errors.Wrap(err, "getting database session")
 	}
 	defer session.Close()
 
@@ -403,7 +403,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(ctx context.Context, numCo
 		names = append(names, res["_id"].(string))
 		if ctx.Err() != nil {
 			catcher := grip.NewBasicCatcher()
-			catcher.Add(errors.Wrap(ctx.Err(), "iterating results"))
+			catcher.Wrap(ctx.Err(), "iterating results")
 			catcher.Add(iter.Close())
 			return nil, catcher.Resolve()
 		}
@@ -470,15 +470,11 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (ma
 // checks that sort is either -1 or 1,
 // checks that the test statuses and task statuses are valid test or task statuses,
 // checks that there is a project id and either a list of test names or task names.
-func (t *TestHistoryParameters) validate() []string {
-	validationErrors := []string{}
-	if t.Project == "" {
-		validationErrors = append(validationErrors, "no project id specified")
-	}
+func (t *TestHistoryParameters) validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(t.Project == "", "must specify project ID")
 
-	if len(t.TestNames) == 0 && len(t.TaskNames) == 0 {
-		validationErrors = append(validationErrors, "must include test names or task names")
-	}
+	catcher.NewWhen(len(t.TestNames) == 0 && len(t.TaskNames) == 0, "must include test names or task names")
 	// A test can either have failed, silently failed, got skipped, or passed.
 	validTestStatuses := []string{
 		evergreen.TestFailedStatus,
@@ -488,7 +484,7 @@ func (t *TestHistoryParameters) validate() []string {
 	}
 	for _, status := range t.TestStatuses {
 		if !utility.StringSliceContains(validTestStatuses, status) {
-			validationErrors = append(validationErrors, fmt.Sprintf("invalid test status in parameters: %v", status))
+			catcher.Errorf("invalid test status '%s'", status)
 		}
 	}
 
@@ -496,26 +492,25 @@ func (t *TestHistoryParameters) validate() []string {
 	validTaskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded, TaskTimeout, TaskSystemFailure}
 	for _, status := range t.TaskStatuses {
 		if !utility.StringSliceContains(validTaskStatuses, status) {
-			validationErrors = append(validationErrors, fmt.Sprintf("invalid task status in parameters: %v", status))
+			catcher.Errorf("invalid task status '%s'", status)
 		}
 	}
 
 	if (!utility.IsZeroTime(t.AfterDate) || !utility.IsZeroTime(t.BeforeDate)) &&
 		(t.AfterRevision != "" || t.BeforeRevision != "") {
-		validationErrors = append(validationErrors, "cannot have both date and revision time range parameter")
+		catcher.New("cannot specify both date time range and revision range")
 	}
 
-	if t.Sort != -1 && t.Sort != 1 {
-		validationErrors = append(validationErrors, "sort parameter can only be -1 or 1")
-	}
+	catcher.NewWhen(t.Sort != -1 && t.Sort != 1, "sort parameter can only be -1 or 1")
 
 	if t.BeforeRevision == "" && t.AfterRevision == "" && t.Limit == 0 {
-		validationErrors = append(validationErrors, "must specify a range of revisions *or* a limit")
+		catcher.New("must specify a range of revisions or a limit")
 	}
-	return validationErrors
+
+	return catcher.Resolve()
 }
 
-// setDefaultsAndValidate sets the default for test history parameters that do not have values
+// SetDefaultsAndValidate sets the default for test history parameters that do not have values
 // and validates the test parameters.
 func (thp *TestHistoryParameters) SetDefaultsAndValidate() error {
 	if len(thp.TestStatuses) == 0 {
@@ -528,10 +523,8 @@ func (thp *TestHistoryParameters) SetDefaultsAndValidate() error {
 		thp.Sort = -1
 	}
 
-	validationErrors := thp.validate()
-	if len(validationErrors) > 0 {
-		return errors.Errorf("validation error on test history parameters: %s",
-			strings.Join(validationErrors, ", "))
+	if err := thp.validate(); err != nil {
+		return errors.Wrap(err, "invalid test history parameters")
 	}
 	return nil
 }
@@ -680,7 +673,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 				return nil, err
 			}
 			if v == nil {
-				return nil, errors.Errorf("invalid revision : %v", testHistoryParameters.BeforeRevision)
+				return nil, errors.Errorf("invalid revision '%s'", testHistoryParameters.BeforeRevision)
 			}
 			revisionOrderNumberClause["$lte"] = v.RevisionOrderNumber
 		}
@@ -692,7 +685,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 				return nil, err
 			}
 			if v == nil {
-				return nil, errors.Errorf("invalid revision : %v", testHistoryParameters.AfterRevision)
+				return nil, errors.Errorf("invalid revision '%s'", testHistoryParameters.AfterRevision)
 			}
 			revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
 		}
@@ -810,7 +803,7 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	testQuery := db.Query(formTestsQuery(params, taskIds))
 	out, err := task.MergeTestResultsBulk(tasks, &testQuery)
 	if err != nil {
-		return nil, errors.Wrap(err, "error merging test results")
+		return nil, errors.Wrap(err, "merging test results")
 	}
 	return out, nil
 }
@@ -941,7 +934,7 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 			return nil, errors.WithStack(err)
 		}
 		if v == nil {
-			return nil, errors.Errorf("invalid revision : %v", params.BeforeRevision)
+			return nil, errors.Errorf("invalid revision '%s'", params.BeforeRevision)
 		}
 		revisionOrderNumberClause["$lte"] = v.RevisionOrderNumber
 	}
@@ -953,7 +946,7 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 			return nil, errors.WithStack(err)
 		}
 		if v == nil {
-			return nil, errors.Errorf("invalid revision : %v", params.AfterRevision)
+			return nil, errors.Errorf("invalid revision '%s'", params.AfterRevision)
 		}
 		revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
 	}
@@ -1062,7 +1055,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 	// will get sort to use the proper index
 	repo, err := FindRepository(params.Project.Identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding repository")
+		return nil, errors.Wrap(err, "finding repository")
 	}
 	if repo == nil {
 		return nil, errors.New("unable to find repository")
@@ -1070,36 +1063,35 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 	grip.Info(repo)
 	buildVariants, err := task.FindVariantsWithTask(params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding build variants")
+		return nil, errors.Wrap(err, "finding build variants")
 	}
-	grip.Notice(buildVariants)
 	query := bson.M{
-		"build_variant": bson.M{
+		task.BuildVariantKey: bson.M{
 			"$in": buildVariants,
 		},
-		"display_name": params.TaskName,
-		"order": bson.M{
+		task.DisplayNameKey: params.TaskName,
+		task.RevisionOrderNumberKey: bson.M{
 			"$gte": params.OldestOrder,
 			"$lte": params.NewestOrder,
 		},
-		"branch": params.Project.Identifier,
+		task.ProjectKey: params.Project.Identifier,
 	}
 	// If there are build variants in the filter, use them instead
 	if len(params.BuildVariants) > 0 {
-		query["build_variant"] = bson.M{
+		query[task.BuildVariantKey] = bson.M{
 			"$in": params.BuildVariants,
 		}
 	}
 	projection := []string{
-		"_id",
-		"status",
-		"activated",
-		"time_taken",
-		"build_variant",
+		task.IdKey,
+		task.StatusKey,
+		task.ActivatedKey,
+		task.TimeTakenKey,
+		task.BuildVariantKey,
 	}
 	last, err := task.FindWithFields(query, projection...)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error querying tasks")
+		return nil, errors.Wrap(err, "finding tasks")
 	}
 
 	taskIds := []string{}
@@ -1114,12 +1106,12 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 			// Special case: if asking for tasks where the test ran, don't care
 			// about the test status
 			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": primitive.Regex{Pattern: regexp},
+				testresult.TestFileKey: primitive.Regex{Pattern: regexp},
 			})
 		} else {
 			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": primitive.Regex{Pattern: regexp},
-				"status":    result,
+				testresult.TestFileKey: primitive.Regex{Pattern: regexp},
+				testresult.StatusKey:   result,
 			})
 		}
 	}
@@ -1131,7 +1123,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 	})
 	last, err = task.MergeTestResultsBulk(last, &testQuery)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error merging test results")
+		return nil, errors.Wrap(err, "merging test results")
 	}
 	// if only want matching tasks, remove any tasks that have no test results merged
 	if params.OnlyMatchingTasks {

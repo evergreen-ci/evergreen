@@ -253,14 +253,10 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 // Validate checks that the settings from the config file are sane.
 func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if opts.Image == "" {
-		catcher.Errorf("Image must not be empty")
-	}
+	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
 
 	for _, h := range opts.ExtraHosts {
-		if len(strings.Split(h, ":")) != 2 {
-			catcher.Errorf("extra host %s must be of the form hostname:IP", h)
-		}
+		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
 	}
 
 	return catcher.Resolve()
@@ -375,7 +371,7 @@ const (
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
 
-	ErrorParentNotFound        = "Parent not found"
+	ErrorParentNotFound        = "parent not found"
 	ErrorHostAlreadyTerminated = "not changing status of already terminated host"
 )
 
@@ -593,7 +589,7 @@ func (h *Host) SetStopped(user string) error {
 		}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't set host stopped in db")
+		return errors.Wrap(err, "setting host status to stopped")
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostStopped, user, "")
@@ -650,7 +646,7 @@ func (h *Host) SetAgentStartTime() error {
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{AgentStartTimeKey: now}},
 	); err != nil {
-		return errors.Wrap(err, "could not set agent start time")
+		return errors.Wrap(err, "setting agent start time")
 	}
 	h.AgentStartTime = now
 	return nil
@@ -662,7 +658,7 @@ func (h *Host) SetAgentStartTime() error {
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
 	creds, err := env.CertificateDepot().Find(h.JasperCredentialsID)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding creds in depot")
+		return nil, errors.Wrap(err, "finding host Jasper credentials")
 	}
 
 	return creds, nil
@@ -672,8 +668,8 @@ func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment)
 // credentials will expire.
 func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
 	user := &certdepot.User{}
-	if err := env.DB().Collection(evergreen.CredentialsCollection).FindOne(ctx, bson.M{"_id": h.JasperCredentialsID}).Decode(user); err != nil {
-		return time.Time{}, errors.Wrap(err, "problem finding credentials in the database")
+	if err := env.DB().Collection(evergreen.CredentialsCollection).FindOne(ctx, bson.M{IdKey: h.JasperCredentialsID}).Decode(user); err != nil {
+		return time.Time{}, errors.Wrap(err, "finding host Jasper credentials")
 	}
 
 	return user.TTL, nil
@@ -686,7 +682,7 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 	id := env.Settings().DomainName
 	creds, err := env.CertificateDepot().Find(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding '%s' for '%s [%s]'", id, h.Id, h.JasperCredentialsID)
+		return nil, errors.Wrapf(err, "finding client credentials '%s' for host '%s'", id, h.Id)
 	}
 	creds.ServerName = h.JasperCredentialsID
 	return creds, nil
@@ -698,13 +694,13 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*certdepot.Credentials, error) {
 	if h.JasperCredentialsID == "" {
 		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
-			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
+			return nil, errors.Wrap(err, "setting Jasper credentials ID")
 		}
 	}
 	// We have to delete this host's credentials because GenerateInMemory will
 	// fail if credentials already exist in the database.
 	if err := h.DeleteJasperCredentials(ctx, env); err != nil {
-		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
+		return nil, errors.Wrap(err, "deleting existing Jasper credentials")
 	}
 	addToSet := func(set []string, val string) []string {
 		if utility.StringSliceContains(set, val) {
@@ -737,7 +733,7 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 	}
 	creds, err := env.CertificateDepot().GenerateWithOptions(opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "credential generation issue for host '%s'", h.JasperCredentialsID)
+		return nil, errors.Wrapf(err, "generating Jasper credentials for host '%s'", h.JasperCredentialsID)
 	}
 
 	return creds, nil
@@ -749,14 +745,14 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 	if h.JasperCredentialsID == "" {
 		return errors.New("Jasper credentials ID is empty")
 	}
-	return errors.Wrapf(env.CertificateDepot().Save(h.JasperCredentialsID, creds), "problem finding '%s'", h.JasperCredentialsID)
+	return errors.Wrapf(env.CertificateDepot().Save(h.JasperCredentialsID, creds), "finding host Jasper credentials '%s'", h.JasperCredentialsID)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
 	_, err := env.DB().Collection(evergreen.CredentialsCollection).DeleteOne(ctx, bson.M{"_id": h.JasperCredentialsID})
-	return errors.Wrapf(err, "problem deleting credentials for '%s'", h.JasperCredentialsID)
+	return errors.Wrapf(err, "deleting host Jasper credentials for '%s'", h.JasperCredentialsID)
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
@@ -852,7 +848,7 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 	)
 
 	if err != nil {
-		return errors.Wrap(err, "error finding instance")
+		return errors.Wrap(err, "updating IPv6 address")
 	}
 
 	h.IP = ipv6Address
@@ -888,7 +884,7 @@ func (h *Host) UpdateCachedDistroProviderSettings(settingsDocuments []*birch.Doc
 		},
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't set distro provider settings")
+		return errors.Wrap(err, "updating distro provider settings")
 	}
 
 	h.Distro.ProviderSettingsList = settingsDocuments
@@ -944,7 +940,7 @@ func (h *Host) SetProvisionedNotRunning() error {
 			},
 		},
 	); err != nil {
-		return errors.Wrap(err, "problem setting host as provisioned but not running")
+		return errors.Wrap(err, "setting host as provisioned but not running")
 	}
 
 	h.Provisioned = true
@@ -967,7 +963,7 @@ func (h *Host) UpdateStartingToRunning() error {
 		},
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
 	); err != nil {
-		return errors.Wrap(err, "problem changing host status from starting to running")
+		return errors.Wrap(err, "changing host status from starting to running")
 	}
 
 	h.Status = evergreen.HostRunning
@@ -1147,7 +1143,7 @@ func (h *Host) MarkAsReprovisioning() error {
 		},
 	)
 	if err != nil {
-		return errors.Wrap(err, "problem marking host as reprovisioning")
+		return errors.Wrap(err, "marking host as reprovisioning")
 	}
 
 	h.AgentStartTime = utility.ZeroTime
@@ -1319,7 +1315,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 			})
 			return false, nil
 		}
-		return false, errors.Wrapf(err, "error updating running task %s for host %s", t.Id, h.Id)
+		return false, errors.Wrapf(err, "setting running task to '%s' for host '%s'", t.Id, h.Id)
 	}
 	event.LogHostRunningTaskSet(h.Id, t.Id)
 
@@ -1390,10 +1386,10 @@ func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
 	if !h.Distro.LegacyBootstrap() {
 		if err := h.SetNeedsNewAgentMonitor(needsDeploy); err != nil {
-			return errors.Wrap(err, "error setting host needs new agent monitor")
+			return errors.Wrap(err, "setting host needs new agent monitor")
 		}
 	}
-	return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
+	return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "setting host needs new agent")
 }
 
 // SetExpirationTime updates the expiration time of a spawn host
@@ -1519,7 +1515,7 @@ func RemoveStrict(id string) error {
 		return err
 	}
 	if result.DeletedCount == 0 {
-		return errors.Errorf("host %s not found", id)
+		return errors.Errorf("host '%s' not found", id)
 	}
 	return nil
 }
@@ -1533,7 +1529,7 @@ func (h *Host) Replace() error {
 	if errors.Cause(err) == mongo.ErrNoDocuments {
 		return nil
 	}
-	return errors.Wrap(err, "error replacing host")
+	return errors.Wrap(err, "replacing host")
 }
 
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
@@ -1701,7 +1697,7 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 
 	if err != nil {
-		return nil, errors.Wrap(err, "database error")
+		return nil, errors.Wrap(err, "finding hosts to terminate")
 	}
 
 	return hosts, nil
@@ -1723,7 +1719,7 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	var counts []InactiveHostCounts
 	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &counts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error aggregating inactive hosts")
+		return nil, errors.Wrap(err, "aggregating inactive hosts")
 	}
 	return counts, nil
 }
@@ -1736,7 +1732,7 @@ func FindAllRunningContainers() ([]Host, error) {
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding running containers")
+		return nil, errors.Wrap(err, "finding running containers")
 	}
 
 	return hosts, nil
@@ -1750,7 +1746,7 @@ func FindAllRunningParents() ([]Host, error) {
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding running parents")
+		return nil, errors.Wrap(err, "finding running parents")
 	}
 
 	return hosts, nil
@@ -1765,7 +1761,7 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 	}).Sort([]string{LastContainerFinishTimeKey})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding ordered running parents")
+		return nil, errors.Wrap(err, "finding ordered running parents")
 	}
 
 	return hosts, nil
@@ -1786,7 +1782,7 @@ func FindAllRunningParentsByDistroID(distroID string) ([]Host, error) {
 // errors if this host is not a parent
 func (h *Host) GetContainers() ([]Host, error) {
 	if !h.HasContainers {
-		return nil, errors.New("Host does not host containers")
+		return nil, errors.New("host is not a container parent")
 	}
 	query := db.Query(bson.M{"$or": []bson.M{
 		{ParentIDKey: h.Id},
@@ -1794,7 +1790,7 @@ func (h *Host) GetContainers() ([]Host, error) {
 	}})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding containers")
+		return nil, errors.Wrap(err, "finding containers")
 	}
 
 	return hosts, nil
@@ -1802,7 +1798,7 @@ func (h *Host) GetContainers() ([]Host, error) {
 
 func (h *Host) GetActiveContainers() ([]Host, error) {
 	if !h.HasContainers {
-		return nil, errors.New("Host does not host containers")
+		return nil, errors.New("host is not a container parent")
 	}
 	query := db.Query(bson.M{
 		StatusKey: bson.M{
@@ -1814,7 +1810,7 @@ func (h *Host) GetActiveContainers() ([]Host, error) {
 		}})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding containers")
+		return nil, errors.Wrap(err, "finding containers")
 	}
 
 	return hosts, nil
@@ -1824,17 +1820,17 @@ func (h *Host) GetActiveContainers() ([]Host, error) {
 // errors if host is not a container or if parent cannot be found
 func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
-		return nil, errors.New("Host does not have a parent")
+		return nil, errors.New("host does not have a parent")
 	}
 	host, err := FindOneByIdOrTag(h.ParentID)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding parent")
+		return nil, errors.Wrap(err, "finding container parent")
 	}
 	if host == nil {
 		return nil, errors.New(ErrorParentNotFound)
 	}
 	if !host.HasContainers {
-		return nil, errors.New("Host found is not a parent")
+		return nil, errors.New("host found but is not a container parent")
 	}
 
 	return host, nil
@@ -1856,7 +1852,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	})
 	num, err := Count(query)
 	if err != nil {
-		return false, errors.Wrap(err, "Error counting non-terminated containers")
+		return false, errors.Wrap(err, "counting non-terminated containers")
 	}
 
 	return num == 0, nil
@@ -1883,7 +1879,7 @@ func (h *Host) PastMaxExpiration(extension time.Duration) error {
 	proposedTime := h.ExpirationTime.Add(extension)
 
 	if h.ExpirationTime.After(maxExpirationTime) || proposedTime.After(maxExpirationTime) {
-		return errors.Errorf("Spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
+		return errors.Errorf("spawn host cannot be extended more than %d days past creation", evergreen.SpawnHostExpireDays)
 	}
 	return nil
 }
@@ -1901,7 +1897,7 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	}
 
 	if err := UpdateOne(selector, update); err != nil {
-		return errors.Wrapf(err, "error updating finish time for host %s", h.Id)
+		return errors.Wrapf(err, "updating last container finish time for host '%s'", h.Id)
 	}
 
 	return nil
@@ -1944,7 +1940,8 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 	return dbHosts, nil
 }
 
-// FindAllHostsSpawnedByTasks finds all running hosts spawned by the `createhost` command.
+// FindAllHostsSpawnedByTasks finds all running hosts spawned by the
+// `host.create` command.
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
@@ -1952,7 +1949,7 @@ func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks")
+		return nil, errors.Wrap(err, "finding hosts spawned by tasks")
 	}
 	return hosts, nil
 }
@@ -1968,7 +1965,7 @@ func FindHostsSpawnedByTask(taskID string, execution int) ([]Host, error) {
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks by task ID")
+		return nil, errors.Wrapf(err, "finding hosts spawned by task '%s' for execution %d", taskID, execution)
 	}
 	return hosts, nil
 }
@@ -1982,7 +1979,7 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding hosts spawned by builds by build ID")
+		return nil, errors.Wrapf(err, "finding hosts spawned by build '%s'", buildID)
 	}
 	return hosts, nil
 }
@@ -2002,7 +1999,7 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	}
 
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding terminated hosts")
+		return nil, errors.Wrap(err, "finding terminated hosts that have a running task")
 	}
 
 	return hosts, nil
@@ -2087,7 +2084,7 @@ func (hosts HostGroup) Uphosts() HostGroup {
 func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	allParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not find running parent hosts")
+		return nil, errors.Wrapf(err, "finding running container parents in container pool '%s'", d.ContainerPool)
 	}
 
 	containersOnParents := make([]ContainersOnParents, 0)
@@ -2096,7 +2093,7 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 		parent := allParents[i]
 		currentContainers, err := parent.GetActiveContainers()
 		if err != nil && !adb.ResultsNotFound(err) {
-			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
+			return nil, errors.Wrapf(err, "finding active containers for container parent '%s'", parent.Id)
 		}
 		containersOnParents = append(containersOnParents,
 			ContainersOnParents{
@@ -2111,13 +2108,13 @@ func GetContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainersNeeded int, ignoreMaxHosts bool) (int, int, error) {
 	existingParents, err := findUphostParentsByContainerPool(pool.Id)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "could not find uphost parents")
+		return 0, 0, errors.Wrap(err, "finding container parents that are up")
 	}
 
 	// find all child containers running on those parents
 	existingContainers, err := HostGroup(existingParents).FindUphostContainersOnParents()
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "could not find running containers")
+		return 0, 0, errors.Wrap(err, "finding containers that are up")
 	}
 
 	// create numParentsNeededParams struct
@@ -2135,7 +2132,7 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 	// get parent distro from pool
 	parentDistro, err := distro.FindOneId(pool.Distro)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "error find parent distro")
+		return 0, 0, errors.Wrap(err, "finding container parent's distro")
 	}
 	if parentDistro == nil {
 		return 0, 0, errors.Errorf("distro '%s' not found", pool.Distro)
@@ -2143,7 +2140,7 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newContainer
 
 	if !ignoreMaxHosts { // only want to spawn amount of parents allowed based on pool size
 		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
-			return 0, 0, errors.Wrap(err, "could not calculate number of parents needed to spawn")
+			return 0, 0, errors.Wrap(err, "calculating number of parents that need to spawn")
 		}
 	}
 
@@ -2202,8 +2199,8 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 	return numNewParents, nil
 }
 
-// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
-// of the container pool specified by the given ID
+// findAllRunningParentsByContainerPool returns a slice of hosts that are
+// parents of the container pool specified by the given ID.
 func findAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
 	query := db.Query(bson.M{
@@ -2214,7 +2211,7 @@ func findAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 	return Find(query)
 }
 
-// findUphostParents returns the number of initializing parent host intent documents
+// findUphostParents returns the container parent hosts that are up.
 func findUphostParentsByContainerPool(poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
 	query := db.Query(bson.M{
@@ -2305,14 +2302,14 @@ func (h *Host) SetTags() error {
 	)
 }
 
-// MakeHostTags creates and validates a map of supplied instance tags
+// MakeHostTags creates and validates a map of supplied instance tags.
 func MakeHostTags(tagSlice []string) ([]Tag, error) {
 	catcher := grip.NewBasicCatcher()
 	tagsMap := make(map[string]string)
 	for _, tagString := range tagSlice {
 		pair := strings.Split(tagString, "=")
 		if len(pair) != 2 {
-			catcher.Add(errors.Errorf("problem parsing tag '%s'", tagString))
+			catcher.Errorf("parsing tag '%s'", tagString)
 			continue
 		}
 
@@ -2320,29 +2317,22 @@ func MakeHostTags(tagSlice []string) ([]Tag, error) {
 		value := pair[1]
 
 		// AWS tag key must contain no more than 128 characters
-		if len(key) > MaxTagKeyLength {
-			catcher.Add(errors.Errorf("key '%s' is longer than 128 characters", key))
-		}
+		catcher.ErrorfWhen(len(key) > MaxTagKeyLength, "key '%s' is longer than maximum limit of 128 characters", key)
 		// AWS tag value must contain no more than 256 characters
-		if len(value) > MaxTagValueLength {
-			catcher.Add(errors.Errorf("value '%s' is longer than 256 characters", value))
-		}
+		catcher.ErrorfWhen(len(value) > MaxTagValueLength, "value '%s' is longer than maximum limit of 256 characters", value)
 		// tag prefix aws: is reserved
-		if strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:") {
-			catcher.Add(errors.Errorf("illegal tag prefix 'aws:'"))
-		}
+		catcher.ErrorfWhen(strings.HasPrefix(key, "aws:") || strings.HasPrefix(value, "aws:"), "illegal tag prefix 'aws:'")
 
 		tagsMap[key] = value
 	}
 
-	// Make slice of host.Tag structs from map
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
 	tags := []Tag{}
 	for key, value := range tagsMap {
 		tags = append(tags, Tag{Key: key, Value: value, CanBeModified: true})
-	}
-
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
 	}
 
 	return tags, nil
@@ -2392,7 +2382,7 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 	}
 
 	if err := db.Aggregate(Collection, hostPipeline, &res); err != nil {
-		return nil, errors.Wrap(err, "error aggregating hosts")
+		return nil, errors.Wrap(err, "aggregating spawn host usage data")
 	}
 
 	volumePipeline := []bson.M{
@@ -2410,7 +2400,7 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 		}},
 	}
 	if err := db.Aggregate(VolumesCollection, volumePipeline, &res); err != nil {
-		return nil, errors.Wrap(err, "error aggregating volumes")
+		return nil, errors.Wrap(err, "aggregating spawn host volume usage data")
 	}
 	if len(res) == 0 {
 		return nil, errors.New("no host/volume results found")
@@ -2438,7 +2428,7 @@ func AggregateSpawnhostData() (*SpawnHostUsage, error) {
 	}
 
 	if err := db.Aggregate(Collection, instanceTypePipeline, &temp); err != nil {
-		return nil, errors.Wrap(err, "error aggregating instance types")
+		return nil, errors.Wrap(err, "aggregating spawn host instance type usage data")
 	}
 
 	res[0].InstanceTypes = map[string]int{}
@@ -2608,7 +2598,8 @@ func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	return true
 }
 
-// Find a host by ID or Tag and queries for full running task
+// GetHostByIdOrTagWithTask finds a host by ID or tag and includes the full
+// running task with the host.
 func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	pipeline := []bson.M{
 		{
@@ -2623,12 +2614,12 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 				"from":         task.Collection,
 				"localField":   RunningTaskKey,
 				"foreignField": task.IdKey,
-				"as":           "task_full",
+				"as":           RunningTaskFullKey,
 			},
 		},
 		{
 			"$unwind": bson.M{
-				"path":                       "$task_full",
+				"path":                       "$" + RunningTaskFullKey,
 				"preserveNullAndEmptyArrays": true,
 			},
 		},
@@ -2641,11 +2632,11 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	hosts := []Host{}
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "error fetching host")
+		return nil, errors.Wrap(err, "aggregating host by ID or tag with task")
 	}
 	err = cursor.All(ctx, &hosts)
 	if err != nil {
-		return nil, errors.Wrap(err, "error fetching host")
+		return nil, errors.Wrap(err, "retrieving hosts by ID or tag with task")
 	}
 	if len(hosts) == 0 {
 		return nil, errors.Wrap(err, "host not found")
@@ -2654,9 +2645,9 @@ func GetHostByIdOrTagWithTask(hostID string) (*Host, error) {
 	return &hosts[0], nil
 }
 
-// GetPaginatedRunningHosts gets paginated running hosts and applies any filters
+// GetPaginatedRunningHosts gets running hosts with pagination and applies any
+// filters.
 func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses []string, startedBy string, sortBy string, sortDir, page, limit int) ([]Host, *int, int, error) {
-	// PIPELINE FOR ALL RUNNING HOSTS
 	runningHostsPipeline := []bson.M{
 		{
 			"$match": bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}},
@@ -2666,23 +2657,21 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 				"from":         task.Collection,
 				"localField":   RunningTaskKey,
 				"foreignField": task.IdKey,
-				"as":           "task_full",
+				"as":           RunningTaskFullKey,
 			},
 		},
 		{
 			"$unwind": bson.M{
-				"path":                       "$task_full",
+				"path":                       "$" + RunningTaskFullKey,
 				"preserveNullAndEmptyArrays": true,
 			},
 		},
 	}
 
-	// CONTEXT
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
 
-	// TOTAL RUNNING HOSTS COUNT
 	countPipeline := []bson.M{}
 	for _, stage := range runningHostsPipeline {
 		countPipeline = append(countPipeline, stage)
@@ -2703,7 +2692,6 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		totalRunningHostsCount = tmp[0].Count
 	}
 
-	// APPLY FILTERS TO PIPELINE
 	hasFilters := false
 
 	if len(hostID) > 0 {
@@ -2719,9 +2707,10 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	if len(distroID) > 0 {
 		hasFilters = true
 
+		distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$match": bson.M{
-				"distro._id": bson.M{"$regex": distroID, "$options": "i"},
+				distroIDKey: bson.M{"$regex": distroID, "$options": "i"},
 			},
 		})
 	}
@@ -2756,7 +2745,6 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		})
 	}
 
-	// FILTERED HOSTS COUNT
 	var filteredHostsCount *int
 
 	if hasFilters {
@@ -2780,18 +2768,17 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 		}
 	}
 
-	// APPLY SORTERS TO PIPELINE
 	sorters := bson.D{}
 	if len(sortBy) > 0 {
 		sorters = append(sorters, bson.E{Key: sortBy, Value: sortDir})
 	}
-	// _id must be the LAST item in sort array to ensure a consistent sort order when previous sort keys result in a tie
+	// _id must be the last item in the sort array to ensure a consistent sort
+	// order when previous sort keys result in a tie.
 	sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
 	runningHostsPipeline = append(runningHostsPipeline, bson.M{
 		"$sort": sorters,
 	})
 
-	// APPLY PAGINATION
 	if limit > 0 {
 		runningHostsPipeline = append(runningHostsPipeline, bson.M{
 			"$skip": page * limit,
@@ -2843,7 +2830,7 @@ func CountVirtualWorkstationsByInstanceType() ([]VirtualWorkstationCounter, erro
 
 	data := []VirtualWorkstationCounter{}
 	if err := db.Aggregate(Collection, pipeline, &data); err != nil {
-		return nil, errors.Wrap(err, "error getting virtual workstation info")
+		return nil, errors.Wrap(err, "aggregating virtual workstation counts by instance type")
 	}
 	return data, nil
 }

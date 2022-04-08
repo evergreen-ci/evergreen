@@ -72,7 +72,12 @@ func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 
 func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
 	if len(taskIds) == 0 {
-		grip.Error("logManyTaskEvents called with empty taskIds")
+		grip.Error(message.Fields{
+			"message":    "logManyTaskEvents cannot be called with no task IDs",
+			"task_ids":   taskIds,
+			"event_data": eventData,
+			"event_type": eventType,
+		})
 		return
 	}
 	events := []EventLogEntry{}

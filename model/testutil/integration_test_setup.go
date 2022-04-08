@@ -55,10 +55,10 @@ func findConfig(configName string) (string, error) {
 		if yes {
 			return root, nil
 		}
-		return "", errors.Errorf("Can't find evergreen config root: '%v'", root)
+		return "", errors.Errorf("could not find Evergreen config root '%s'", root)
 	}
 
-	return "", errors.Errorf("%v environment variable must be set", evergreen.EvergreenHome)
+	return "", errors.Errorf("environment variable '%s' must be set", evergreen.EvergreenHome)
 }
 
 func isConfigRoot(home string, configName string) (fixed string, is bool) {

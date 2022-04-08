@@ -56,7 +56,7 @@ func GetStatsStatus(projectId string) (StatsStatus, error) {
 		return createDefaultStatsStatus(projectId), nil
 	}
 	if err != nil {
-		return status, errors.Wrap(err, "Failed to retrieve test stats status")
+		return status, errors.Wrap(err, "retrieving test stats status")
 	}
 	return status, nil
 }
@@ -71,7 +71,7 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 	}
 	_, err := db.Upsert(DailyStatsStatusCollection, bson.M{"_id": projectId}, status)
 	if err != nil {
-		return errors.Wrap(err, "Failed to update test stats status")
+		return errors.Wrap(err, "updating test stats status")
 	}
 	return nil
 }
@@ -105,7 +105,7 @@ func GenerateHourlyTestStats(ctx context.Context, opts GenerateOptions) error {
 	pipeline := hourlyTestStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 	err := aggregateIntoCollection(ctx, task.Collection, pipeline, HourlyTestStatsCollection)
 	if err != nil {
-		return errors.Wrap(err, "Failed to generate hourly stats")
+		return errors.Wrap(err, "generating hourly stats")
 	}
 
 	return nil
@@ -127,7 +127,7 @@ func GenerateDailyTestStatsFromHourly(ctx context.Context, opts GenerateOptions)
 	pipeline := dailyTestStatsFromHourlyPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 	err := aggregateIntoCollection(ctx, HourlyTestStatsCollection, pipeline, DailyTestStatsCollection)
 	if err != nil {
-		return errors.Wrap(err, "Failed to aggregate hourly stats into daily stats")
+		return errors.Wrap(err, "aggregating hourly stats into daily stats")
 	}
 	return nil
 }
@@ -152,7 +152,7 @@ func GenerateDailyTaskStats(ctx context.Context, opts GenerateOptions) error {
 	pipeline := dailyTaskStatsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks, opts.Runtime)
 	err := aggregateIntoCollection(ctx, task.Collection, pipeline, DailyTaskStatsCollection)
 	if err != nil {
-		return errors.Wrap(err, "Failed to aggregate daily task stats")
+		return errors.Wrap(err, "aggregating daily task stats")
 	}
 
 	return nil
@@ -232,7 +232,7 @@ func FindStatsToUpdate(opts FindStatsOptions) ([]StatsToUpdate, error) {
 	statsList := []StatsToUpdate{}
 	err := db.Aggregate(task.Collection, pipeline, &statsList)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to aggregate finished tasks")
+		return nil, errors.Wrap(err, "aggregating finished tasks")
 	}
 
 	return statsList, nil

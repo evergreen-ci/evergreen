@@ -73,7 +73,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 		}))
-		return errors.Wrap(err, "Error logging admin event")
+		return errors.Wrap(err, "logging admin event")
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	// get the correct implementation of the interface from the registry
 	section := evergreen.ConfigRegistry.GetSection(out.Section)
 	if section == nil {
-		return nil, errors.Errorf("unable to determine section '%s'", out.Section)
+		return nil, errors.Errorf("getting section '%s' from config registry", out.Section)
 	}
 
 	// create 2 copies of the section interface for our value
@@ -147,11 +147,11 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	// deserialize the before/after values
 	err := in.Changes.Before.Unmarshal(before)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to decode section '%s'", out.Section)
+		return nil, errors.Wrapf(err, "decoding before changes for section '%s'", out.Section)
 	}
 	err = in.Changes.After.Unmarshal(after)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to decode section '%s'", out.Section)
+		return nil, errors.Wrapf(err, "decoding after changes for section '%s'", out.Section)
 	}
 	out.Changes.Before = before
 	out.Changes.After = after
@@ -163,24 +163,24 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 func RevertConfig(guid string, user string) error {
 	events, err := FindAdmin(ByGuid(guid))
 	if err != nil {
-		return errors.Wrap(err, "problem finding events")
+		return errors.Wrap(err, "finding events")
 	}
 	if len(events) == 0 {
-		return errors.Errorf("unable to find event with GUID %s", guid)
+		return errors.Errorf("finding event with GUID '%s'", guid)
 	}
 	evt := events[0]
 	data := evt.Data.(*AdminEventData)
 	current := evergreen.ConfigRegistry.GetSection(data.Section)
 	if current == nil {
-		return errors.Errorf("unable to find section %s", data.Section)
+		return errors.Errorf("finding section '%s'", data.Section)
 	}
 	err = current.Get(evergreen.GetEnvironment())
 	if err != nil {
-		return errors.Wrapf(err, "problem reading section %s", current.SectionId())
+		return errors.Wrapf(err, "reading section '%s'", current.SectionId())
 	}
 	err = data.Changes.Before.Set()
 	if err != nil {
-		return errors.Wrap(err, "problem updating settings")
+		return errors.Wrap(err, "reverting to before settings")
 	}
 
 	return LogAdminEvent(data.Section, current, data.Changes.Before, user)

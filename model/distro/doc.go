@@ -1,3 +1,4 @@
-// Package distro models a queue of tasks with hosts that work on these tasks.
-// Distros typically are an operating system and instance size in EC2.
+// Package distro models an environment configuration for a host. Distros can be
+// used for hosts with different purposes, such as running tasks and virtual
+// workstations.
 package distro

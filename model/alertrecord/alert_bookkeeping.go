@@ -185,17 +185,17 @@ func FindByTaskRegressionTestAndOrderNumber(subscriptionID, testName, taskDispla
 }
 
 func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
-	alerttype := fmt.Sprintf(spawnHostWarningTemplate, hours)
+	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
-	q[TypeKey] = alerttype
+	q[TypeKey] = alertType
 	q[HostIdKey] = hostID
 	return FindOne(db.Query(q).Limit(1))
 }
 
 func FindByVolumeExpirationWithHours(volumeID string, hours int) (*AlertRecord, error) {
-	alerttype := fmt.Sprintf(volumeWarningTemplate, hours)
+	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
-	q[TypeKey] = alerttype
+	q[TypeKey] = alertType
 	q[VolumeIdKey] = volumeID
 	return FindOne(db.Query(q).Limit(1))
 }
@@ -214,31 +214,31 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskD
 		AlertTime:           time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
+	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", taskRegressionByTest)
 }
 
 func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
-	alerttype := fmt.Sprintf(spawnHostWarningTemplate, hours)
+	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
 		SubscriptionID: legacyAlertsSubscription,
-		Type:           alerttype,
+		Type:           alertType,
 		HostId:         hostID,
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", alerttype)
+	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
 }
 
 func InsertNewVolumeExpirationRecord(volumeID string, hours int) error {
-	alerttype := fmt.Sprintf(volumeWarningTemplate, hours)
+	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
 		SubscriptionID: legacyAlertsSubscription,
-		Type:           alerttype,
+		Type:           alertType,
 		VolumeId:       volumeID,
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", alerttype)
+	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
 }

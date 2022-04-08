@@ -639,7 +639,7 @@ func (d *Distro) SetUserdata(userdata, region string) error {
 	}
 	doc, err := d.GetProviderSettingByRegion(region)
 	if err != nil {
-		return errors.Wrap(err, "error getting provider setting from list")
+		return errors.Wrap(err, "getting provider setting from list")
 	}
 
 	d.ProviderSettingsList = []*birch.Document{doc.Set(birch.EC.String("user_data", userdata))}
@@ -668,9 +668,11 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.Version == "" {
 		resolved.Version = config.HostAllocator
 	}
+
 	if !utility.StringSliceContains(evergreen.ValidHostAllocators, resolved.Version) {
-		catcher.Errorf("'%s' is not a valid HostAllocationSettings.Version", resolved.Version)
+		catcher.Errorf("'%s' is not a valid host allocator version", resolved.Version)
 	}
+
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
@@ -687,7 +689,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		resolved.FutureHostFraction = config.FutureHostFraction
 	}
 	if catcher.HasErrors() {
-		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve HostAllocatorSettings for distro '%s'", d.Id)
+		return HostAllocatorSettings{}, errors.Wrapf(catcher.Resolve(), "resolving host allocator settings for distro '%s'", d.Id)
 	}
 
 	d.HostAllocatorSettings = resolved
@@ -726,7 +728,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.Version = config.Planner
 	}
 	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
-		catcher.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version)
+		catcher.Errorf("'%s' is not a valid planner version", resolved.Version)
 	}
 	if resolved.TargetTime == 0 {
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
@@ -757,7 +759,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	resolved.StepbackTaskFactor = config.StepbackTaskFactor
 
 	if catcher.HasErrors() {
-		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
+		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "resolving planner settings for distro '%s'", d.Id)
 	}
 
 	d.PlannerSettings = resolved
@@ -775,7 +777,7 @@ func (d *Distro) Add(creator *user.DBUser) error {
 func (d *Distro) AddPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	if err := rm.AddResourceToScope(evergreen.AllDistrosScope, d.Id); err != nil {
-		return errors.Wrapf(err, "error adding distro '%s' to list of all distros", d.Id)
+		return errors.Wrapf(err, "adding distro '%s' to permissions scope containing all distros", d.Id)
 	}
 	newScope := gimlet.Scope{
 		ID:          fmt.Sprintf("distro_%s", d.Id),
@@ -785,7 +787,7 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		ParentScope: evergreen.AllDistrosScope,
 	}
 	if err := rm.AddScope(newScope); err != nil && !db.IsDuplicateKey(err) {
-		return errors.Wrapf(err, "error adding scope for distro '%s'", d.Id)
+		return errors.Wrapf(err, "adding scope for distro '%s'", d.Id)
 	}
 	newRole := gimlet.Role{
 		ID:     fmt.Sprintf("admin_distro_%s", d.Id),
@@ -797,11 +799,11 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		},
 	}
 	if err := rm.UpdateRole(newRole); err != nil {
-		return errors.Wrapf(err, "error adding admin role for distro '%s'", d.Id)
+		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
 	}
 	if creator != nil {
 		if err := creator.AddRole(newRole.ID); err != nil {
-			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}
 	return nil

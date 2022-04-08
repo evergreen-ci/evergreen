@@ -76,7 +76,7 @@ func TestSubscribers(t *testing.T) {
 	err := db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs)
 
 	require.Error(t, err)
-	assert.Contains(err.Error(), "unknown subscriber type: 'something completely different'")
+	assert.Contains(err.Error(), "unknown subscriber type 'something completely different'")
 
 	if len(fetchedSubs) == 1 {
 		assert.Zero(fetchedSubs[0])

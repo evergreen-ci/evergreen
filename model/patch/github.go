@@ -118,25 +118,25 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		return nil, errors.New("incomplete PR")
 	}
 	if msgDeliveryID == "" {
-		return nil, errors.New("Unique msg id cannot be empty")
+		return nil, errors.New("unique msg ID cannot be empty")
 	}
 	if len(strings.Split(pr.Base.Repo.GetFullName(), "/")) != 2 {
-		return nil, errors.New("Base repo name is invalid (expected [owner]/[repo])")
+		return nil, errors.New("base repo name is invalid (expected [owner]/[repo])")
 	}
 	if pr.Base.GetRef() == "" {
-		return nil, errors.New("Base ref is empty")
+		return nil, errors.New("base ref is empty")
 	}
 	if len(strings.Split(pr.Head.Repo.GetFullName(), "/")) != 2 {
-		return nil, errors.New("Head repo name is invalid (expected [owner]/[repo])")
+		return nil, errors.New("head repo name is invalid (expected [owner]/[repo])")
 	}
 	if pr.GetNumber() == 0 {
 		return nil, errors.New("PR number must not be 0")
 	}
 	if pr.User.GetLogin() == "" || pr.User.GetID() == 0 {
-		return nil, errors.New("Github sender missing login name or uid")
+		return nil, errors.New("GitHub sender missing login name or UID")
 	}
 	if pr.Head.GetSHA() == "" {
-		return nil, errors.New("Head hash must not be empty")
+		return nil, errors.New("head hash must not be empty")
 	}
 	if pr.GetTitle() == "" {
 		return nil, errors.New("PR title must not be empty")

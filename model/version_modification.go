@@ -29,43 +29,43 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 	case evergreen.RestartAction:
 		if modifications.VersionsToRestart == nil { // to maintain backwards compatibility with legacy Ui and support the deprecated restartPatch resolver
 			if err := RestartVersion(version.Id, modifications.TaskIds, modifications.Abort, user.Id); err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
+				return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 			}
 		}
 		if err := RestartVersions(modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
-			return http.StatusInternalServerError, errors.Errorf("error restarting patch: %s", err)
+			return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 		}
 	case evergreen.SetActiveAction:
 		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
 			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
 		}
 		if err := SetVersionActivation(version.Id, modifications.Active, user.Id); err != nil {
-			return http.StatusInternalServerError, errors.Errorf("error activating patch: %s", err)
+			return http.StatusInternalServerError, errors.Wrap(err, "activating patch")
 		}
 		// abort after deactivating the version so we aren't bombarded with failing tasks while
 		// the deactivation is in progress
 		if modifications.Abort {
 			if err := task.AbortVersion(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error aborting patch: %s", err)
+				return http.StatusInternalServerError, errors.Wrap(err, "aborting patch")
 			}
 		}
 		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
 			err := RestartItemsAfterVersion(nil, version.Identifier, version.Id, user.Id)
 			if err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error restarting later commit queue items: %s", err)
+				return http.StatusInternalServerError, errors.Wrap(err, "restarting later commit queue items")
 			}
 			_, err = commitqueue.RemoveCommitQueueItemForVersion(version.Identifier, version.Id, user.DisplayName())
 			if err != nil {
-				return http.StatusInternalServerError, errors.Errorf("error removing patch from commit queue: %s", err)
+				return http.StatusInternalServerError, errors.Wrap(err, "removing patch from commit queue")
 			}
 			p, err := patch.FindOneId(version.Id)
 			if err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "unable to find patch")
+				return http.StatusInternalServerError, errors.Wrap(err, "finding patch")
 			}
 			if p == nil {
 				return http.StatusNotFound, errors.New("patch not found")
 			}
-			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
+			err = SendCommitQueueResult(p, message.GithubStateError, fmt.Sprintf("deactivated by user '%s'", user.DisplayName()))
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to send github status",
 				"patch":   version.Id,
@@ -75,7 +75,7 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 	case evergreen.SetPriorityAction:
 		projId := version.Identifier
 		if projId == "" {
-			return http.StatusNotFound, errors.Errorf("Could not find project for version %s", version.Id)
+			return http.StatusNotFound, errors.Errorf("could not find project for version '%s'", version.Id)
 		}
 		if modifications.Priority > evergreen.MaxTaskPriority {
 			requiredPermission := gimlet.PermissionOpts{
@@ -85,14 +85,14 @@ func ModifyVersion(version Version, user user.DBUser, modifications VersionModif
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
 			if !user.HasPermission(requiredPermission) {
-				return http.StatusUnauthorized, errors.Errorf("Insufficient access to set priority %v, can only set priority less than or equal to %v", modifications.Priority, evergreen.MaxTaskPriority)
+				return http.StatusUnauthorized, errors.Errorf("insufficient access to set priority %d, can only set priority less than or equal to %d", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
 		if err := SetVersionPriority(version.Id, modifications.Priority, user.Id); err != nil {
-			return http.StatusInternalServerError, errors.Errorf("error setting version priority: %s", err)
+			return http.StatusInternalServerError, errors.Wrap(err, "setting version priority")
 		}
 	default:
-		return http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", modifications.Action)
+		return http.StatusBadRequest, errors.Errorf("unrecognized action '%s'", modifications.Action)
 	}
 	return 0, nil
 }

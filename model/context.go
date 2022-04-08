@@ -62,7 +62,7 @@ func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 		var err error
 		ctx.ProjectRef, err = FindFirstProjectRef()
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding project ref")
+			return nil, errors.Wrap(err, "finding project ref")
 		}
 	}
 
@@ -77,12 +77,12 @@ func (ctx *Context) GetProject() (*Project, error) {
 
 	pref, err := ctx.GetProjectRef()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding project")
+		return nil, errors.Wrap(err, "finding project")
 	}
 
 	_, ctx.project, err = FindLatestVersionWithValidProject(pref.Id)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project")
+		return nil, errors.Wrapf(err, "finding project from last good version for project ref '%s'", pref.Id)
 	}
 
 	return ctx.project, nil

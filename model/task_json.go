@@ -97,7 +97,7 @@ func GetDistinctTagNames(projectId string) ([]TaskJSONTag, error) {
 	}, &out)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "An error occurred during db query execution")
+		return nil, errors.Wrap(err, "getting distinct tag names")
 	}
 
 	return out, nil
@@ -111,7 +111,7 @@ func GetTaskJSONTags(taskId string) ([]TagContainer, error) {
 		return nil, err
 	}
 	if t == nil {
-		return nil, errors.Errorf("cannot find task %s", taskId)
+		return nil, errors.Errorf("task '%s' not found", taskId)
 	}
 	tags := []TagContainer{}
 	err = db.Aggregate(TaskJSONCollection, []bson.M{
@@ -282,7 +282,7 @@ func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	if evergreen.IsPatchRequester(t.Requester) {
 		baseVersion, err = VersionFindOne(BaseVersionByProjectIdAndRevision(t.Project, t.Revision))
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding base version for revision '%s'", t.Revision)
+			return nil, errors.Wrapf(err, "finding base version for revision '%s'", t.Revision)
 		}
 		if baseVersion == nil {
 			return nil, errors.Errorf("base version does not exist for revision '%s'", t.Revision)
@@ -341,7 +341,7 @@ func fixPatchInHistory(t *task.Task, baseVersion *Version, history []TaskJSON) (
 		if adb.ResultsNotFound(err) {
 			return history, nil
 		}
-		return nil, errors.Wrap(err, "can't get json for patch task")
+		return nil, errors.Wrap(err, "getting JSON for patch task")
 	}
 	jsonForTask.RevisionOrderNumber = baseVersion.RevisionOrderNumber
 

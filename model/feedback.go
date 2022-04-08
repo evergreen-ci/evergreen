@@ -38,7 +38,7 @@ func FindFeedbackOfType(t string) ([]FeedbackSubmission, error) {
 	query := db.Query(bson.M{FeedbackTypeKey: t})
 	err := db.FindAllQ(FeedbackCollection, query, &out)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding feedback documents")
+		return nil, errors.Wrap(err, "finding feedback documents")
 	}
 	return out, nil
 }

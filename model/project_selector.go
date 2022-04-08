@@ -77,14 +77,14 @@ func (sc selectCriterion) Validate() error {
 		return errors.New("name is empty")
 	}
 	if i := strings.IndexAny(sc.name, InvalidCriterionRunes); i == 0 {
-		return errors.Errorf("name starts with invalid character '%v'", sc.name[i])
+		return errors.Errorf("name contains invalid character '%c'", sc.name[i])
 	}
 	if sc.name == SelectAll {
 		if sc.tagged {
-			return errors.Errorf("cannot use '.' with special name '%v'", SelectAll)
+			return errors.Errorf("cannot use '.' with special name '%s'", SelectAll)
 		}
 		if sc.negated {
-			return errors.Errorf("cannot use '!' with special name '%v'", SelectAll)
+			return errors.Errorf("cannot use '!' with special name '%s'", SelectAll)
 		}
 	}
 	return nil
@@ -375,8 +375,7 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 	if len(vs.MatrixSelector) > 0 {
 		evaluatedSelector, errs := vs.MatrixSelector.evaluatedCopy(v.axisEval)
 		if len(errs) > 0 {
-			return nil, errors.Errorf(
-				"errors evaluating variant selector %v: %v", vs.MatrixSelector, errs)
+			return nil, errors.Errorf("evaluating variant selector %v: %s", vs.MatrixSelector, errs)
 		}
 		results := []string{}
 		// this could be sped up considerably with caching, but I doubt we'll need to

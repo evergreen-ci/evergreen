@@ -16,7 +16,7 @@
         },
         "errors": [
           {
-            "message": "error defaulting to repo for section: error getting before project settings event: couldn't find project ref",
+            "message": "error defaulting to repo for section: getting before project settings event: project ref 'repo_id' not found",
             "path": [
               "defaultSectionToRepo"
             ],

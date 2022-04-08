@@ -142,7 +142,7 @@ type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 
 func ByPatchNameStatusesCommitQueuePaginated(opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
 	if opts.OnlyCommitQueue != nil && opts.IncludeCommitQueue != nil {
-		return nil, 0, errors.New("can't set both includeCommitQueue and onlyCommitQueue")
+		return nil, 0, errors.New("can't both include commit queue patches and also set only including commit queue patches")
 	}
 	if opts.Project != nil && opts.Author != nil {
 		return nil, 0, errors.New("can't set both project and author")
