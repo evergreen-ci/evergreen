@@ -1906,56 +1906,6 @@
   },
   "tests": [
     {
-      "query_file": "patch.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "id": "5e1f8ab8834b87d7b5d251a5",
-            "description": "mydesc",
-            "projectID": "mci",
-            "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
-            "patchNumber": 1,
-            "author": "testuser",
-            "version": "",
-            "status": "created",
-            "tasks": [
-              "test-auth"
-            ],
-            "activated": false,
-            "alias": "",
-            "variants": [
-              "rhel62"
-            ],
-            "variantsTasks": [
-              {
-                "name": "rhel62",
-                "tasks": [
-                  "test-model-host"
-                ]
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patch-does-not-exist.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "400 (Bad Request): id 'i-dont-exist' is not a valid patch id",
-            "path": [
-              "patch"
-            ],
-            "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
       "query_file": "task1.graphql",
       "result": {
         "data": {
