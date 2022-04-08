@@ -1906,60 +1906,6 @@
   },
   "tests": [
     {
-      "query_file": "task1.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "logs": {
-              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=ALL",
-              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=T",
-              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=E",
-              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=S",
-              "eventLogLink": "https://localhost:8443/event_log/task/wuzzup"
-            },
-            "id": "wuzzup",
-            "createTime": "2018-01-10T19:01:36-05:00",
-            "ingestTime": "2018-01-10T19:01:36-05:00",
-            "dispatchTime": "2018-01-10T19:01:36-05:00",
-            "scheduledTime": "2018-01-10T19:01:36-05:00",
-            "startTime": "2018-01-10T19:01:36-05:00",
-            "finishTime": "2018-01-10T19:01:36-05:00",
-            "activatedTime": "2018-01-10T19:01:36-05:00",
-            "version": "version",
-            "projectId": "mci",
-            "revision": "revise",
-            "priority": 5,
-            "taskGroup": "grp",
-            "taskGroupMaxHosts": 100,
-            "activated": false,
-            "activatedBy": "someone",
-            "buildId": "some_thang",
-            "distroId": "distro",
-            "buildVariant": "variant",
-            "displayName": "exec1 display name",
-            "hostId": "host",
-
-            "execution": 0,
-            "patchNumber": 5,
-            "requester": "patch_request",
-            "status": "started",
-            "details": {
-              "status": "status",
-              "type": "type",
-              "description": "description",
-              "timedOut": false
-            },
-            "displayOnly": true,
-            "executionTasks": [
-              "exec1"
-            ],
-            "generateTask": false,
-            "generatedBy": "something"
-          }
-        }
-      }
-    },
-    {
       "query_file": "taskTestStatusAsc.graphql",
       "result": {
         "data": {
