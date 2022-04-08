@@ -206,7 +206,6 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			task.StartTimeKey,
 			task.FinishTimeKey,
 			task.VersionKey,
-			task.HostIdKey,
 			task.StatusKey,
 			task.HostIdKey,
 			task.DistroIdKey,

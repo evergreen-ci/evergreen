@@ -50,12 +50,12 @@ const (
 	// pending a rerun
 	TaskUnstarted = "unstarted"
 
-	// TaskUndispatched indicates either
+	// TaskUndispatched indicates either:
 	//  1. a task is not scheduled to run (when Task.Activated == false)
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
 	TaskUnscheduled  = "unscheduled"
-	// TaskWillRun is a subset of TaskUndispatched and is only used in the UI
+	// TaskWillRun is a subset of undispatched tasks and is only used in the UI
 	TaskWillRun = "will-run"
 
 	// TaskDispatched indicates that an agent has received the task, but
