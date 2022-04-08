@@ -540,7 +540,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "could not update dependency met status")
 	}
 
-	status := t.ResultStatus()
+	status := t.GetDisplayStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
@@ -1619,7 +1619,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 	dt.Details = statusTask.Details
 	dt.TimeTaken = timeTaken
 	if !wasFinished && dt.IsFinished() {
-		event.LogTaskFinished(dt.Id, dt.Execution, "", dt.ResultStatus())
+		event.LogTaskFinished(dt.Id, dt.Execution, "", dt.GetDisplayStatus())
 	}
 	return nil
 }

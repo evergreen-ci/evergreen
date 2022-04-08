@@ -120,7 +120,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"provider":             j.host.Distro.Provider,
 		"requester":            j.task.Requester,
 		"stat":                 "task-end-stats",
-		"status":               j.task.ResultStatus(),
+		"status":               j.task.GetDisplayStatus(),
 		"task":                 j.task.DisplayName,
 		"task_id":              j.task.Id,
 		"total_wait_secs":      j.task.FinishTime.Sub(j.task.ActivatedTime).Seconds(),

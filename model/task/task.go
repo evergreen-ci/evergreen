@@ -1718,12 +1718,14 @@ func (t *Task) GetDisplayStatus() string {
 // in these statuses, which overall status would a user expect to see?"
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
 func (t *Task) displayTaskPriority() int {
-	switch t.ResultStatus() {
+	switch t.GetDisplayStatus() {
 	case evergreen.TaskStarted:
 		return 10
 	case evergreen.TaskFailed:
 		return 20
 	case evergreen.TaskTestTimedOut:
+		return 30
+	case evergreen.TaskTimedOut:
 		return 30
 	case evergreen.TaskSystemFailed:
 		return 40
