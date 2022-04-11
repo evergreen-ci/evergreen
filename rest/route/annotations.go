@@ -203,6 +203,102 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(res)
 }
 
+// Parsing logic for task annotation put and patch routes.
+type annotationByTaskPutOrPatchHandler struct {
+	taskId string
+
+	user       gimlet.User
+	annotation *restModel.APITaskAnnotation
+}
+
+func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (*annotationByTaskPutOrPatchHandler, error) {
+	ret := &annotationByTaskPutOrPatchHandler{}
+	var err error
+	ret.taskId = gimlet.GetVars(r)["task_id"]
+	taskExecutionsAsString := r.URL.Query().Get("execution")
+	if ret.taskId == "" {
+		return nil, gimlet.ErrorResponse{
+			Message:    "task ID cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	body := utility.NewRequestReader(r)
+	defer body.Close()
+	err = json.NewDecoder(body).Decode(ret.annotation)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if taskExecutionsAsString != "" {
+		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
+		if err != nil {
+			return nil, gimlet.ErrorResponse{
+				Message:    "cannot convert execution to integer value",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+
+		if ret.annotation.TaskExecution == nil {
+			ret.annotation.TaskExecution = &taskExecution
+		} else if *ret.annotation.TaskExecution != taskExecution {
+			return nil, gimlet.ErrorResponse{
+				Message:    "Task execution must equal the task execution specified in the annotation",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else if ret.annotation.TaskExecution == nil {
+		return nil, gimlet.ErrorResponse{
+			Message:    "task execution must be specified in the url or request body",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// check if the task exists
+	t, err := task.FindByIdExecution(ret.taskId, ret.annotation.TaskExecution)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task")
+	}
+	if t == nil {
+		return nil, gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("the task '%s' does not exist", ret.taskId),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	if !evergreen.IsFailedTaskStatus(t.Status) {
+		return nil, gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(restModel.ValidateIssues(ret.annotation.Issues))
+	catcher.Add(restModel.ValidateIssues(ret.annotation.SuspectedIssues))
+	if catcher.HasErrors() {
+		return nil, gimlet.ErrorResponse{
+			Message:    catcher.Resolve().Error(),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if ret.annotation.TaskId == nil {
+		taskId := ret.taskId
+		ret.annotation.TaskId = &taskId
+	} else if *ret.annotation.TaskId != ret.taskId {
+		return nil, gimlet.ErrorResponse{
+			Message:    "TaskID must equal the taskId specified in the annotation",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	u := MustHaveUser(ctx)
+	ret.user = u
+	return ret, nil
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // PUT /rest/v2/tasks/{task_id}/annotation
@@ -223,90 +319,13 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
-	var err error
-	h.taskId = gimlet.GetVars(r)["task_id"]
-	taskExecutionsAsString := r.URL.Query().Get("execution")
-	if h.taskId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "task ID cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-	err = json.NewDecoder(body).Decode(&h.annotation)
+	putHandler, err := annotationByTaskPutOrPatchParser(ctx, r)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return err
 	}
-
-	if taskExecutionsAsString != "" {
-		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "cannot convert execution to integer value",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-
-		if h.annotation.TaskExecution == nil {
-			h.annotation.TaskExecution = &taskExecution
-		} else if *h.annotation.TaskExecution != taskExecution {
-			return gimlet.ErrorResponse{
-				Message:    "Task execution must equal the task execution specified in the annotation",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	} else if h.annotation.TaskExecution == nil {
-		return gimlet.ErrorResponse{
-			Message:    "task execution must be specified in the url or request body",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	// check if the task exists
-	t, err := task.FindByIdExecution(h.taskId, h.annotation.TaskExecution)
-	if err != nil {
-		return errors.Wrap(err, "error finding task")
-	}
-	if t == nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	if !evergreen.IsFailedTaskStatus(t.Status) {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(restModel.ValidateIssues(h.annotation.Issues))
-	catcher.Add(restModel.ValidateIssues(h.annotation.SuspectedIssues))
-	if catcher.HasErrors() {
-		return gimlet.ErrorResponse{
-			Message:    catcher.Resolve().Error(),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	if h.annotation.TaskId == nil {
-		taskId := h.taskId
-		h.annotation.TaskId = &taskId
-	} else if *h.annotation.TaskId != h.taskId {
-		return gimlet.ErrorResponse{
-			Message:    "TaskID must equal the taskId specified in the annotation",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	u := MustHaveUser(ctx)
-	h.user = u
+	h.taskId = putHandler.taskId
+	h.annotation = putHandler.annotation
+	h.user = putHandler.user
 	return nil
 }
 
@@ -335,97 +354,21 @@ type annotationByTaskPatchHandler struct {
 }
 
 func makePatchAnnotationsByTask() gimlet.RouteHandler {
-	return &annotationByTaskPutHandler{}
+	return &annotationByTaskPatchHandler{}
 }
 
 func (h *annotationByTaskPatchHandler) Factory() gimlet.RouteHandler {
-	return &annotationByTaskPutHandler{}
+	return &annotationByTaskPatchHandler{}
 }
 
 func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	var err error
-	h.taskId = gimlet.GetVars(r)["task_id"]
-	taskExecutionsAsString := r.URL.Query().Get("execution")
-	if h.taskId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "task ID cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-	err = json.NewDecoder(body).Decode(&h.annotation)
+	patchHandler, err := annotationByTaskPutOrPatchParser(ctx, r)
 	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return err
 	}
-
-	if taskExecutionsAsString != "" {
-		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "cannot convert execution to integer value",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-
-		if h.annotation.TaskExecution == nil {
-			h.annotation.TaskExecution = &taskExecution
-		} else if *h.annotation.TaskExecution != taskExecution {
-			return gimlet.ErrorResponse{
-				Message:    "Task execution must equal the task execution specified in the annotation",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	} else if h.annotation.TaskExecution == nil {
-		return gimlet.ErrorResponse{
-			Message:    "task execution must be specified in the url or request body",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	// check if the task exists
-	t, err := task.FindByIdExecution(h.taskId, h.annotation.TaskExecution)
-	if err != nil {
-		return errors.Wrap(err, "error finding task")
-	}
-	if t == nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task '%s' does not exist", h.taskId),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	if !evergreen.IsFailedTaskStatus(t.Status) {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(restModel.ValidateIssues(h.annotation.Issues))
-	catcher.Add(restModel.ValidateIssues(h.annotation.SuspectedIssues))
-	if catcher.HasErrors() {
-		return gimlet.ErrorResponse{
-			Message:    catcher.Resolve().Error(),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	if h.annotation.TaskId == nil {
-		taskId := h.taskId
-		h.annotation.TaskId = &taskId
-	} else if *h.annotation.TaskId != h.taskId {
-		return gimlet.ErrorResponse{
-			Message:    "TaskID must equal the taskId specified in the annotation",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	u := MustHaveUser(ctx)
-	h.user = u
+	h.taskId = patchHandler.taskId
+	h.annotation = patchHandler.annotation
+	h.user = patchHandler.user
 	return nil
 }
 
