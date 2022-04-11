@@ -238,7 +238,10 @@ type UpstreamProject {
   repo: String!
   revision: String!
   project: String!
-  triggerID: String!
+  triggerID: String! # This is the ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
+  resourceID: String! # This is the ID of the UI linkable resource that triggered the upstream version (corresponds to a task ID or version ID)
+  task: Task
+  version: Version
   triggerType: String!
 }
 

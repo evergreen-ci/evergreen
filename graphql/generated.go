@@ -1109,9 +1109,12 @@ type ComplexityRoot struct {
 		Owner       func(childComplexity int) int
 		Project     func(childComplexity int) int
 		Repo        func(childComplexity int) int
+		ResourceID  func(childComplexity int) int
 		Revision    func(childComplexity int) int
+		Task        func(childComplexity int) int
 		TriggerID   func(childComplexity int) int
 		TriggerType func(childComplexity int) int
+		Version     func(childComplexity int) int
 	}
 
 	UseSpruceOptions struct {
@@ -6839,12 +6842,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UpstreamProject.Repo(childComplexity), true
 
+	case "UpstreamProject.resourceID":
+		if e.complexity.UpstreamProject.ResourceID == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.ResourceID(childComplexity), true
+
 	case "UpstreamProject.revision":
 		if e.complexity.UpstreamProject.Revision == nil {
 			break
 		}
 
 		return e.complexity.UpstreamProject.Revision(childComplexity), true
+
+	case "UpstreamProject.task":
+		if e.complexity.UpstreamProject.Task == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Task(childComplexity), true
 
 	case "UpstreamProject.triggerID":
 		if e.complexity.UpstreamProject.TriggerID == nil {
@@ -6859,6 +6876,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UpstreamProject.TriggerType(childComplexity), true
+
+	case "UpstreamProject.version":
+		if e.complexity.UpstreamProject.Version == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Version(childComplexity), true
 
 	case "UseSpruceOptions.hasUsedSpruceBefore":
 		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
@@ -7723,7 +7747,10 @@ type UpstreamProject {
   repo: String!
   revision: String!
   project: String!
-  triggerID: String!
+  triggerID: String! # This is the ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
+  resourceID: String! # This is the ID of the UI linkable resource that triggered the upstream version (corresponds to a task ID or version ID)
+  task: Task
+  version: Version
   triggerType: String!
 }
 
@@ -35887,6 +35914,105 @@ func (ec *executionContext) _UpstreamProject_triggerID(ctx context.Context, fiel
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _UpstreamProject_resourceID(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_task(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Task, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_version(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _UpstreamProject_triggerType(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -48711,6 +48837,15 @@ func (ec *executionContext) _UpstreamProject(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "resourceID":
+			out.Values[i] = ec._UpstreamProject_resourceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "task":
+			out.Values[i] = ec._UpstreamProject_task(ctx, field, obj)
+		case "version":
+			out.Values[i] = ec._UpstreamProject_version(ctx, field, obj)
 		case "triggerType":
 			out.Values[i] = ec._UpstreamProject_triggerType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

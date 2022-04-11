@@ -3969,7 +3969,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: '%s'", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version %s: '%s'", *obj.Id, err.Error()))
 	}
 	if v == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Version %s not found", *obj.Id))
@@ -3977,8 +3977,9 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 	if v.TriggerID == "" || v.TriggerType == "" {
 		return nil, nil
 	}
+
 	var projectID string
-	var revision string
+	var upstreamProject *UpstreamProject
 	if v.TriggerType == model.ProjectTriggerLevelTask {
 		upstreamTask, err := task.FindOneId(v.TriggerID)
 		if err != nil {
@@ -3987,8 +3988,17 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 		if upstreamTask == nil {
 			return nil, ResourceNotFound.Send(ctx, "upstream task not found")
 		}
+
+		apiTask := restModel.APITask{}
+		if err = apiTask.BuildFromService(upstreamTask); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
+		}
+
 		projectID = upstreamTask.Project
-		revision = upstreamTask.Revision
+		upstreamProject = &UpstreamProject{
+			Revision: upstreamTask.Revision,
+			Task:     &apiTask,
+		}
 	} else if v.TriggerType == model.ProjectTriggerLevelBuild {
 		upstreamBuild, err := build.FindOneId(v.TriggerID)
 		if err != nil {
@@ -3997,24 +4007,40 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 		if upstreamBuild == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Upstream build %s not found", v.TriggerID))
 		}
-		projectID = upstreamBuild.Project
-		revision = upstreamBuild.Revision
+
+		upstreamVersion, err := model.VersionFindOneId(utility.FromStringPtr(&upstreamBuild.Version))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream version %s: '%s'", *obj.Id, err.Error()))
+		}
+		if v == nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("upstream version %s not found", *obj.Id))
+		}
+
+		apiVersion := restModel.APIVersion{}
+		if err = apiVersion.BuildFromService(&upstreamVersion); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamBuild.Id, err.Error()))
+		}
+
+		projectID = upstreamVersion.Identifier
+		upstreamProject = &UpstreamProject{
+			Revision: upstreamBuild.Revision,
+			Version:  &apiVersion,
+		}
 	}
-	upstreamProject, err := model.FindBranchProjectRef(projectID)
+	upstreamProjectRef, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream project, project: %s, error: '%s'", projectID, err.Error()))
 	}
-	if upstreamProject == nil {
+	if upstreamProjectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Upstream project %s not found", projectID))
 	}
-	return &UpstreamProject{
-		Owner:       upstreamProject.Owner,
-		Repo:        upstreamProject.Repo,
-		Revision:    revision,
-		Project:     upstreamProject.Identifier,
-		TriggerID:   v.TriggerID,
-		TriggerType: v.TriggerType,
-	}, nil
+
+	upstreamProject.Owner = upstreamProjectRef.Owner
+	upstreamProject.Repo = upstreamProjectRef.Repo
+	upstreamProject.Project = upstreamProjectRef.Identifier
+	upstreamProject.TriggerID = v.TriggerID
+	upstreamProject.TriggerType = v.TriggerType
+	return upstreamProject, nil
 
 }
 

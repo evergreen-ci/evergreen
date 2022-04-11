@@ -305,12 +305,15 @@ type UpdateVolumeInput struct {
 }
 
 type UpstreamProject struct {
-	Owner       string `json:"owner"`
-	Repo        string `json:"repo"`
-	Revision    string `json:"revision"`
-	Project     string `json:"project"`
-	TriggerID   string `json:"triggerID"`
-	TriggerType string `json:"triggerType"`
+	Owner       string            `json:"owner"`
+	Repo        string            `json:"repo"`
+	Revision    string            `json:"revision"`
+	Project     string            `json:"project"`
+	TriggerID   string            `json:"triggerID"`
+	ResourceID  string            `json:"resourceID"`
+	Task        *model.APITask    `json:"task"`
+	Version     *model.APIVersion `json:"version"`
+	TriggerType string            `json:"triggerType"`
 }
 
 type UserConfig struct {
