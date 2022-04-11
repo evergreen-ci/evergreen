@@ -107,25 +107,25 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
 	if pp.Pre != nil && toMerge.Pre != nil {
-		catcher.New("pre can only be defined in one yaml")
+		catcher.New("pre can only be defined in one YAML")
 	} else if toMerge.Pre != nil {
 		pp.Pre = toMerge.Pre
 	}
 
 	if pp.Post != nil && toMerge.Post != nil {
-		catcher.New("post can only be defined in one yaml")
+		catcher.New("post can only be defined in one YAML")
 	} else if toMerge.Post != nil {
 		pp.Post = toMerge.Post
 	}
 
 	if pp.Timeout != nil && toMerge.Timeout != nil {
-		catcher.New("timeout can only be defined in one yaml")
+		catcher.New("timeout can only be defined in one YAML")
 	} else if toMerge.Timeout != nil {
 		pp.Timeout = toMerge.Timeout
 	}
 
 	if pp.EarlyTermination != nil && toMerge.EarlyTermination != nil {
-		catcher.New("early termination can only be defined in one yaml")
+		catcher.New("early termination can only be defined in one YAML")
 	} else if toMerge.EarlyTermination != nil {
 		pp.EarlyTermination = toMerge.EarlyTermination
 	}
@@ -140,55 +140,55 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
 	if pp.Stepback != nil && toMerge.Stepback != nil {
-		catcher.New("stepback can only be defined in one yaml")
+		catcher.New("stepback can only be defined in one YAML")
 	} else if toMerge.Stepback != nil {
 		pp.Stepback = toMerge.Stepback
 	}
 
 	if pp.BatchTime != nil && toMerge.BatchTime != nil {
-		catcher.New("batch time can only be defined in one yaml")
+		catcher.New("batch time can only be defined in one YAML")
 	} else if toMerge.BatchTime != nil {
 		pp.BatchTime = toMerge.BatchTime
 	}
 
 	if pp.PreErrorFailsTask != nil && toMerge.PreErrorFailsTask != nil {
-		catcher.New("pre error fails task can only be defined in one yaml")
+		catcher.New("pre error fails task can only be defined in one YAML")
 	} else if toMerge.PreErrorFailsTask != nil {
 		pp.PreErrorFailsTask = toMerge.PreErrorFailsTask
 	}
 
 	if pp.PostErrorFailsTask != nil && toMerge.PostErrorFailsTask != nil {
-		catcher.New("post error fails task can only be defined in one yaml")
+		catcher.New("post error fails task can only be defined in one YAML")
 	} else if toMerge.PostErrorFailsTask != nil {
 		pp.PostErrorFailsTask = toMerge.PostErrorFailsTask
 	}
 
 	if pp.OomTracker != nil && toMerge.OomTracker != nil {
-		catcher.New("OOM tracker can only be defined in one yaml")
+		catcher.New("OOM tracker can only be defined in one YAML")
 	} else if toMerge.OomTracker != nil {
 		pp.OomTracker = toMerge.OomTracker
 	}
 
 	if pp.DisplayName != nil && toMerge.DisplayName != nil {
-		catcher.New("display name can only be defined in one yaml")
+		catcher.New("display name can only be defined in one YAML")
 	} else if toMerge.DisplayName != nil {
 		pp.DisplayName = toMerge.DisplayName
 	}
 
 	if pp.CommandType != nil && toMerge.CommandType != nil {
-		catcher.New("command type can only be defined in one yaml")
+		catcher.New("command type can only be defined in one YAML")
 	} else if toMerge.CommandType != nil {
 		pp.CommandType = toMerge.CommandType
 	}
 
 	if pp.CallbackTimeout != nil && toMerge.CallbackTimeout != nil {
-		catcher.New("callback timeout can only be defined in one yaml")
+		catcher.New("callback timeout can only be defined in one YAML")
 	} else if toMerge.CallbackTimeout != nil {
 		pp.CallbackTimeout = toMerge.CallbackTimeout
 	}
 
 	if pp.ExecTimeoutSecs != nil && toMerge.ExecTimeoutSecs != nil {
-		catcher.New("exec timeout secs can only be defined in one yaml")
+		catcher.New("exec timeout secs can only be defined in one YAML")
 	} else if toMerge.ExecTimeoutSecs != nil {
 		pp.ExecTimeoutSecs = toMerge.ExecTimeoutSecs
 	}
@@ -233,7 +233,7 @@ func (pp *ParserProject) mergeMatrix(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
 	if pp.Axes != nil && toMerge.Axes != nil {
-		catcher.New("matrixes can only be defined in one yaml")
+		catcher.New("matrixes can only be defined in one YAML")
 	} else if toMerge.Axes != nil {
 		pp.Axes = toMerge.Axes
 	}

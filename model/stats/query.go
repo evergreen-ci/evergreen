@@ -29,7 +29,7 @@ func (gb GroupBy) validate() error {
 	case GroupByTask:
 	case GroupByTest:
 	default:
-		return errors.Errorf("Invalid GroupBy value: %s", gb)
+		return errors.Errorf("invalid group by '%s'", gb)
 	}
 	return nil
 }
@@ -41,7 +41,7 @@ func (s Sort) validate() error {
 	case SortLatestFirst:
 	case SortEarliestFirst:
 	default:
-		return errors.Errorf("Invalid Sort value: %s", s)
+		return errors.Errorf("invalid sort '%s'", s)
 	}
 	return nil
 }
@@ -92,22 +92,22 @@ func (s *StartAt) validateCommon(groupBy GroupBy) error {
 		catcher.New("StartAt should not be nil")
 	}
 	if !s.Date.Equal(utility.GetUTCDay(s.Date)) {
-		catcher.New("Invalid StartAt Date value")
+		catcher.New("invalid 'start at' date")
 	}
 	switch groupBy {
 	case GroupByDistro:
 		if len(s.Distro) == 0 {
-			catcher.New("Missing StartAt Distro value")
+			catcher.New("missing distro pagination value")
 		}
 		fallthrough
 	case GroupByVariant:
 		if len(s.BuildVariant) == 0 {
-			catcher.New("Missing StartAt BuildVariant value")
+			catcher.New("missing build variant pagination value")
 		}
 		fallthrough
 	case GroupByTask:
 		if len(s.Task) == 0 {
-			catcher.New("Missing StartAt Task value")
+			catcher.New("missing task pagination value")
 		}
 	}
 	return catcher.Resolve()
@@ -118,7 +118,7 @@ func (s *StartAt) validateForTests(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
 	if len(s.Test) == 0 {
-		catcher.New("Missing Start Test value")
+		catcher.New("missing test pagination value")
 	}
 	return catcher.Resolve()
 }
@@ -127,9 +127,7 @@ func (s *StartAt) validateForTests(groupBy GroupBy) error {
 func (s *StartAt) validateForTasks(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
-	if len(s.Test) != 0 {
-		catcher.New("StartAt for task stats should not have a Test value")
-	}
+	catcher.NewWhen(len(s.Test) != 0, "grouping by tasks should not include a test pagination value")
 	return catcher.Resolve()
 }
 
@@ -154,17 +152,14 @@ type StatsFilter struct {
 
 // validateCommon performs common validations regardless of the filter's intended use.
 func (f *StatsFilter) ValidateCommon() error {
-	catcher := grip.NewBasicCatcher()
 	if f == nil {
-		catcher.New("StatsFilter should not be nil")
+		return errors.New("stats filter cannot be nil")
 	}
 
-	if f.GroupNumDays <= 0 {
-		catcher.New("Invalid GroupNumDays value")
-	}
-	if len(f.Requesters) == 0 {
-		catcher.New("Missing Requesters values")
-	}
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(f.GroupNumDays <= 0, "invalid group num days")
+	catcher.NewWhen(len(f.Requesters) == 0, "missing requesters")
 	catcher.Add(f.Sort.validate())
 	catcher.Add(f.GroupBy.validate())
 
@@ -174,15 +169,9 @@ func (f *StatsFilter) ValidateCommon() error {
 // validateDates performs common date validation for test / task stats.
 func (f *StatsFilter) validateDates() error {
 	catcher := grip.NewBasicCatcher()
-	if !f.AfterDate.Equal(utility.GetUTCDay(f.AfterDate)) {
-		catcher.New("Invalid AfterDate value")
-	}
-	if !f.BeforeDate.Equal(utility.GetUTCDay(f.BeforeDate)) {
-		catcher.New("Invalid BeforeDate value")
-	}
-	if !f.BeforeDate.After(f.AfterDate) {
-		catcher.New("Invalid AfterDate/BeforeDate values")
-	}
+	catcher.NewWhen(!f.AfterDate.Equal(utility.GetUTCDay(f.AfterDate)), "'after' date is not in UTC")
+	catcher.NewWhen(!f.BeforeDate.Equal(utility.GetUTCDay(f.BeforeDate)), "'before' date is not in UTC")
+	catcher.NewWhen(!f.BeforeDate.After(f.AfterDate), "'after' date restriction must be earlier than 'before' date restriction")
 
 	return catcher.Resolve()
 }
@@ -194,15 +183,11 @@ func (f *StatsFilter) ValidateForTests() error {
 	catcher.Add(f.ValidateCommon())
 	catcher.Add(f.validateDates())
 
-	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.New("Invalid Limit value")
-	}
+	catcher.NewWhen(f.Limit > MaxQueryLimit || f.Limit <= 0, "invalid limit")
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTests(f.GroupBy))
 	}
-	if len(f.Tests) == 0 && len(f.Tasks) == 0 {
-		catcher.New("Missing Tests or Tasks values")
-	}
+	catcher.NewWhen(len(f.Tests) == 0 && len(f.Tasks) == 0, "missing tests or tasks")
 
 	return catcher.Resolve()
 }
@@ -214,21 +199,13 @@ func (f *StatsFilter) ValidateForTasks() error {
 	catcher.Add(f.ValidateCommon())
 	catcher.Add(f.validateDates())
 
-	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.New("Invalid Limit value")
-	}
+	catcher.NewWhen(f.Limit > MaxQueryLimit || f.Limit <= 0, "invalid limit")
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTasks(f.GroupBy))
 	}
-	if len(f.Tests) > 0 {
-		catcher.New("Invalid Tests value, should be nil or empty")
-	}
-	if len(f.Tasks) == 0 {
-		catcher.New("Missing Tasks values")
-	}
-	if f.GroupBy == GroupByTest {
-		catcher.New("Invalid GroupBy value for a task filter")
-	}
+	catcher.NewWhen(len(f.Tests) > 0, "tests should be empty")
+	catcher.NewWhen(len(f.Tasks) == 0, "missing tasks")
+	catcher.NewWhen(f.GroupBy == GroupByTest, "cannot group by test for a task filter")
 
 	return catcher.Resolve()
 
@@ -259,13 +236,13 @@ func (s *TestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in
 func GetTestStats(filter StatsFilter) ([]TestStats, error) {
 	err := filter.ValidateForTests()
 	if err != nil {
-		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
+		return nil, errors.Wrap(err, "invalid stats filter")
 	}
 	var stats []TestStats
 	pipeline := filter.testStatsQueryPipeline()
 	err = db.Aggregate(DailyTestStatsCollection, pipeline, &stats)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to aggregate test statistics")
+		return nil, errors.Wrap(err, "aggregating test statistics")
 	}
 	return stats, nil
 }
@@ -299,13 +276,13 @@ func (s *TaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in
 func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
 	err := filter.ValidateForTasks()
 	if err != nil {
-		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
+		return nil, errors.Wrap(err, "invalid stats filter")
 	}
 	var stats []TaskStats
 	pipeline := filter.TaskStatsQueryPipeline()
 	err = db.Aggregate(DailyTaskStatsCollection, pipeline, &stats)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
+		return nil, errors.Wrap(err, "aggregating task statistics")
 	}
 	return stats, nil
 }

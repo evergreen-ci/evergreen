@@ -15,8 +15,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 
 	Convey("When decommissioning unused static hosts", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		Convey("if a non-nil slice is passed in, any static hosts with ids not in"+
 			" the slice should be removed from the database", func() {

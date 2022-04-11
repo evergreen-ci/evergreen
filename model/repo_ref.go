@@ -39,7 +39,7 @@ var (
 func (r *RepoRef) Add(creator *user.DBUser) error {
 	err := r.Upsert()
 	if err != nil {
-		return errors.Wrap(err, "Error upserting repo ref")
+		return errors.Wrap(err, "upserting repo ref")
 	}
 	return r.AddPermissions(creator)
 }
@@ -102,7 +102,7 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 		Type:      evergreen.ProjectResourceType,
 	}
 	if err := rm.AddScope(adminScope); err != nil {
-		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
+		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
 	}
 
 	// will be used to request permissions at the repo level
@@ -117,7 +117,7 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 		Permissions: adminPermissions,
 	}
 	if err := rm.AddScope(unrestrictedBranchesScope); err != nil {
-		return errors.Wrapf(err, "error adding scope for repo project '%s'", r.Id)
+		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
 	}
 	// Create view role for project branch admins
 	if !r.IsRestricted() {
@@ -130,16 +130,16 @@ func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
 		}
 
 		if err := rm.UpdateRole(newViewRole); err != nil {
-			return errors.Wrapf(err, "error adding view role for repo project '%s'", r.Id)
+			return errors.Wrapf(err, "adding view role for repo project '%s'", r.Id)
 		}
 	}
 
 	if err := rm.UpdateRole(newAdminRole); err != nil {
-		return errors.Wrapf(err, "error adding admin role for repo project '%s'", r.Id)
+		return errors.Wrapf(err, "adding admin role for repo project '%s'", r.Id)
 	}
 	if creator != nil {
 		if err := creator.AddRole(newAdminRole.ID); err != nil {
-			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newAdminRole.ID, creator.Id)
+			return errors.Wrapf(err, "adding role '%s' to user '%s'", newAdminRole.ID, creator.Id)
 		}
 	}
 	return nil
@@ -154,7 +154,7 @@ func addViewRepoPermissionsToBranchAdmins(repoRefID string, admins []string) err
 		// ignore errors finding user, since project lists may be outdated
 		if err == nil && newViewer != nil {
 			if err = newViewer.AddRole(viewRole); err != nil {
-				catcher.Wrapf(err, "error adding role '%s' to user '%s'", viewRole, admin)
+				catcher.Wrapf(err, "adding role '%s' to user '%s'", viewRole, admin)
 			}
 		}
 	}
@@ -170,7 +170,7 @@ func removeViewRepoPermissionsFromBranchAdmins(repoRefID string, admins []string
 		// ignore errors finding user, since project lists may be outdated
 		if err == nil && adminUser != nil {
 			if err = adminUser.RemoveRole(viewRole); err != nil {
-				catcher.Wrapf(err, "error removing role '%s' from user '%s'", viewRole, admin)
+				catcher.Wrapf(err, "removing role '%s' from user '%s'", viewRole, admin)
 			}
 		}
 	}
@@ -187,13 +187,13 @@ func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
 			continue
 		}
 		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
-			return errors.Wrapf(err, "error removing resource '%s' from unrestricted branches scope", p.Id)
+			return errors.Wrapf(err, "removing resource '%s' from unrestricted branches scope", p.Id)
 		}
 		if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
-			return errors.Wrapf(err, "error removing resource '%s' from unrestricted projects scope", p.Id)
+			return errors.Wrapf(err, "removing resource '%s' from unrestricted projects scope", p.Id)
 		}
 		if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
-			return errors.Wrapf(err, "error adding resource '%s' to restricted projects scope", p.Id)
+			return errors.Wrapf(err, "adding resource '%s' to restricted projects scope", p.Id)
 		}
 
 		// get branch admins that aren't repo admins and remove view repo permissions
@@ -214,13 +214,13 @@ func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 			continue
 		}
 		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
-			return errors.Wrapf(err, "error adding resource '%s' to unrestricted branches scope", p.Id)
+			return errors.Wrapf(err, "adding resource '%s' to unrestricted branches scope", p.Id)
 		}
 		if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
-			return errors.Wrapf(err, "error removing resource '%s' from restricted projects scope", p.Id)
+			return errors.Wrapf(err, "removing resource '%s' from restricted projects scope", p.Id)
 		}
 		if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
-			return errors.Wrapf(err, "error adding resource '%s' to unrestricted projects scope", p.Id)
+			return errors.Wrapf(err, "adding resource '%s' to unrestricted projects scope", p.Id)
 		}
 		// get branch admins that aren't repo admins and remove add repo permissions
 		_, adminsToModify := utility.StringSliceSymmetricDifference(r.Admins, p.Admins)
@@ -240,7 +240,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			r.removeFromAdminsList(addedUser)
 			continue
 		}
@@ -250,7 +250,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			continue
 		}
 		if err = adminUser.AddRole(adminRole); err != nil {
-			catcher.Wrapf(err, "error adding role %s to user %s", adminRole, addedUser)
+			catcher.Wrapf(err, "adding role '%s' to user '%s'", adminRole, addedUser)
 			r.removeFromAdminsList(addedUser)
 			continue
 		}
@@ -259,7 +259,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			catcher.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue
 		}
 		if adminUser == nil {
@@ -267,13 +267,13 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 		}
 
 		if err = adminUser.RemoveRole(adminRole); err != nil {
-			catcher.Wrapf(err, "error removing role %s from user %s", adminRole, removedUser)
+			catcher.Wrapf(err, "removing role '%s' from user '%s'", adminRole, removedUser)
 			r.Admins = append(r.Admins, removedUser)
 			continue
 		}
 	}
 	if err := catcher.Resolve(); err != nil {
-		return errors.Wrap(err, "error updating some admins")
+		return errors.Wrap(err, "updating some admins")
 	}
 	return nil
 }

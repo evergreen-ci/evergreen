@@ -878,7 +878,7 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem with stats query")
+		return nil, errors.Wrap(err, "getting recently-finished tasks")
 	}
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -925,7 +925,7 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 
 	result := []StatusItem{}
 	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "can't get stats list")
+		return nil, errors.Wrap(err, "aggregating recently-finished task stats")
 	}
 
 	return result, nil
@@ -948,7 +948,7 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 	pipeline = append(pipeline, match)
 	result := []Task{}
 	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "Error finding tasks in task collection")
+		return nil, errors.Wrap(err, "finding tasks")
 	}
 	// Get the taskIds that were not found in the previous match stage
 	foundIds := []string{}
@@ -972,7 +972,7 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 		}
 		oldTaskPipeline = append(oldTaskPipeline, match)
 		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
-			return nil, errors.Wrap(err, "error finding tasks in old tasks collection")
+			return nil, errors.Wrap(err, "finding old tasks")
 		}
 
 		result = append(result, oldTasks...)
@@ -1054,7 +1054,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 
 	result := []*BuildVariantTuple{}
 	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "can't get build variant tasks")
+		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
 	if len(result) == 0 {
 		return nil, nil
@@ -1113,7 +1113,7 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 
 	result := []buildVariantTasks{}
 	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "can't get build variant tasks")
+		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
 	if len(result) == 0 {
 		return nil, nil
@@ -1143,7 +1143,7 @@ func FindOneId(id string) (*Task, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding task by id")
+		return nil, errors.Wrap(err, "finding task by ID")
 	}
 
 	return task, nil
@@ -1171,7 +1171,7 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 		return FindOneOldByIdAndExecution(id, execution)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "finding task by id and execution")
+		return nil, errors.Wrap(err, "finding task by ID and execution")
 	}
 
 	return task, nil
@@ -1297,7 +1297,7 @@ func findAllTaskIDs(q db.Q) ([]string, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding task ids for versions")
+		return nil, errors.Wrap(err, "finding tasks")
 	}
 
 	ids := []string{}
@@ -1320,7 +1320,7 @@ func FindStuckDispatching() ([]Task, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding stuck dispatching tasks")
+		return nil, errors.Wrap(err, "finding stuck dispatching tasks")
 	}
 	return tasks, nil
 }
@@ -1346,7 +1346,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding task ids for versions")
+		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
 	}
 	return tasks, nil
 }
@@ -1369,7 +1369,7 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 		TaskGroupKey: taskGroup,
 	}, []string{TaskGroupOrderKey})
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting tasks in task group")
+		return nil, errors.Wrap(err, "getting tasks in task group")
 	}
 	return tasks, nil
 }
@@ -1459,7 +1459,7 @@ func MakeOldID(taskID string, execution int) string {
 func FindAllFirstExecution(query db.Q) ([]Task, error) {
 	existingTasks, err := FindAll(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get current tasks")
+		return nil, errors.Wrap(err, "getting current tasks")
 	}
 	tasks := []Task{}
 	oldIDs := []string{}
@@ -1474,7 +1474,7 @@ func FindAllFirstExecution(query db.Q) ([]Task, error) {
 	if len(oldIDs) > 0 {
 		oldTasks, err := FindAllOld(db.Query(ByIds(oldIDs)))
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get old tasks")
+			return nil, errors.Wrap(err, "getting old tasks")
 		}
 		tasks = append(tasks, oldTasks...)
 	}
@@ -1706,7 +1706,7 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
 		}})
-	return errors.Wrapf(err, "error adding details of host creation failure to task")
+	return errors.Wrap(err, "adding details of host creation failure to task")
 }
 
 func FindActivatedStepbackTasks(projectId string) ([]Task, error) {

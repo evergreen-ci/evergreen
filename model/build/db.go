@@ -300,8 +300,8 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": bson.M{StatusKey: evergreen.BuildStarted}},
 	)
-	catcher.Add(errors.Wrapf(err, "error updating builds to started"))
+	catcher.Wrap(err, "setting builds to started")
 	// update activation for all the builds
-	catcher.Add(errors.Wrap(UpdateActivation(buildIdList, true, caller), "can't activate builds"))
+	catcher.Wrap(UpdateActivation(buildIdList, true, caller), "activating builds")
 	return catcher.Resolve()
 }

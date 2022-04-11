@@ -43,6 +43,7 @@ var (
 	ProvisionTimeKey                   = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                           = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
 	DisplayNameKey                     = bsonutil.MustHaveTag(Host{}, "DisplayName")
+	RunningTaskFullKey                 = bsonutil.MustHaveTag(Host{}, "RunningTaskFull")
 	RunningTaskKey                     = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey                = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskGroupOrderKey           = bsonutil.MustHaveTag(Host{}, "RunningTaskGroupOrder")
@@ -212,7 +213,7 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 	}
 
 	if err := db.Aggregate(Collection, pipeline, &idlehostsByDistroID); err != nil {
-		return nil, errors.Wrap(err, "problem grouping idle hosts by Distro.Id")
+		return nil, errors.Wrap(err, "grouping idle hosts by distro ID")
 	}
 
 	return idlehostsByDistroID, nil
@@ -254,24 +255,24 @@ func idleHostsQuery(distroID string) bson.M {
 
 func CountRunningHosts(distroID string) (int, error) {
 	num, err := Count(db.Query(runningHostsQuery(distroID)))
-	return num, errors.Wrap(err, "problem finding running hosts")
+	return num, errors.Wrap(err, "counting running hosts")
 }
 
 func CountAllRunningDynamicHosts() (int, error) {
 	query := IsLive()
 	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
 	num, err := Count(db.Query(query))
-	return num, errors.Wrap(err, "problem finding running dynamic hosts")
+	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
 func CountStartedTaskHosts() (int, error) {
 	num, err := Count(db.Query(startedTaskHostsQuery("")))
-	return num, errors.Wrap(err, "problem finding provisioning hosts")
+	return num, errors.Wrap(err, "counting starting hosts")
 }
 
 func CountStartedTaskHostsForDistro(distroID string) (int, error) {
 	num, err := Count(db.Query(startedTaskHostsQuery(distroID)))
-	return num, errors.Wrapf(err, "problem finding started hosts for '%s'", distroID)
+	return num, errors.Wrap(err, "counting started task hosts")
 }
 
 // IdleHostsWithDistroID, given a distroID, returns a slice of all idle hosts in that distro
@@ -279,7 +280,7 @@ func IdleHostsWithDistroID(distroID string) ([]Host, error) {
 	q := idleHostsQuery(distroID)
 	idleHosts, err := Find(db.Query(q))
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding idle hosts")
+		return nil, errors.Wrap(err, "finding idle hosts")
 	}
 	return idleHosts, nil
 }
@@ -299,7 +300,7 @@ func AllActiveHosts(distroID string) (HostGroup, error) {
 
 	activeHosts, err := Find(db.Query(q))
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding active hosts")
+		return nil, errors.Wrap(err, "finding active hosts")
 	}
 	return activeHosts, nil
 }
@@ -310,15 +311,15 @@ func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	var hosts []Host
 	timedOutHosts, err := allHostsSpawnedByTasksTimedOut()
 	hosts = append(hosts, timedOutHosts...)
-	catcher.Add(err)
+	catcher.Wrap(err, "finding hosts that have hit their timeout")
 
 	taskHosts, err := allHostsSpawnedByFinishedTasks()
 	hosts = append(hosts, taskHosts...)
-	catcher.Add(err)
+	catcher.Wrap(err, "finding hosts whose tasks have finished")
 
 	buildHosts, err := allHostsSpawnedByFinishedBuilds()
 	hosts = append(hosts, buildHosts...)
-	catcher.Add(err)
+	catcher.Wrap(err, "finding hosts whose builds have finished")
 
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
@@ -374,7 +375,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 	}
 	var hosts []Host
 	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
-		return nil, errors.Wrap(err, "error getting hosts spawned by finished tasks")
+		return nil, err
 	}
 	return hosts, nil
 }
@@ -398,7 +399,7 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 	}
 	var hosts []Host
 	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
-		return nil, errors.Wrap(err, "error getting hosts spawned by finished builds")
+		return nil, err
 	}
 	return hosts, nil
 }
@@ -448,30 +449,30 @@ func ByTaskSpec(group, buildVariant, project, version string) db.Q {
 // the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
-		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', buildVariant is '%s', "+
+		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', build variant is '%s', "+
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
 	numHosts, err := Count(ByTaskSpec(group, buildVariant, project, version))
 	if err != nil {
-		return 0, errors.Wrap(err, "error querying database for host count")
+		return 0, errors.Wrap(err, "counting hosts by task spec")
 	}
 
 	return numHosts, nil
 }
 
-//  MinTaskGroupOrderRunningByTaskSpec returns the smallest task group order number for tasks with the
+// MinTaskGroupOrderRunningByTaskSpec returns the smallest task group order number for tasks with the
 // given group, buildvariant, project, and version that are running on hosts.
 // Returns 0 in the case of missing task group order numbers or no hosts.
 func MinTaskGroupOrderRunningByTaskSpec(group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
-		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', buildVariant is '%s', "+
+		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', build variant is '%s', "+
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
 	hosts, err := Find(ByTaskSpec(group, buildVariant, project, version).WithFields(RunningTaskGroupOrderKey).Sort([]string{RunningTaskGroupOrderKey}))
 	if err != nil {
-		return 0, errors.Wrap(err, "error querying database for hosts")
+		return 0, errors.Wrap(err, "finding hosts by task spec with running task group order")
 	}
 	minTaskGroupOrder := 0
 	//  can look at only one host because we sorted
@@ -587,13 +588,14 @@ func ById(id string) db.Q {
 	return db.Query(bson.D{{Key: IdKey, Value: id}})
 }
 
-// ByIP produces a query that returns a host with the given ip address.
-func ByIP(ip string) db.Q {
+// ByIPAndRunning produces a query that returns a running host with the given ip address.
+func ByIPAndRunning(ip string) db.Q {
 	return db.Query(bson.M{
 		"$or": []bson.M{
 			{IPKey: ip},
 			{IPv4Key: ip},
 		},
+		StatusKey: evergreen.HostRunning,
 	})
 }
 
@@ -631,7 +633,7 @@ func FindOneByJasperCredentialsID(id string) (*Host, error) {
 	h := &Host{}
 	query := bson.M{JasperCredentialsIDKey: id}
 	if err := db.FindOneQ(Collection, db.Query(query), h); err != nil {
-		return nil, errors.Wrapf(err, "could not find host with Jasper credentials ID '%s'", id)
+		return nil, errors.Wrapf(err, "finding host with Jasper credentials ID '%s'", id)
 	}
 	return h, nil
 }
@@ -804,7 +806,7 @@ func FindStaleRunningTasks(cutoff time.Duration, reason StaleTaskReason) ([]task
 	tasks := []task.Task{}
 	err := db.Aggregate(Collection, pipeline, &tasks)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding stale running tasks")
+		return nil, errors.Wrap(err, "finding stale running tasks")
 	}
 	return tasks, nil
 }
@@ -913,7 +915,7 @@ func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 		bootstrapKey:     distro.BootstrapMethodUserData,
 	}))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")
+		return nil, errors.Wrap(err, "finding user data spawn hosts that are still provisioning themselves")
 	}
 	return hosts, nil
 }
@@ -1012,9 +1014,9 @@ func FindOneByIdOrTag(id string) (*Host, error) {
 			{IdKey: id},
 		},
 	})
-	host, err := FindOne(query) // try to find by tag
+	host, err := FindOne(query)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding '%s' by _id or tag field", id)
+		return nil, errors.Wrapf(err, "finding host with ID or tag '%s'", id)
 	}
 	return host, nil
 }
@@ -1078,7 +1080,7 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	var query db.Q
 	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
 	if err != nil {
-		return nil, errors.Wrap(err, "Error querying database")
+		return nil, errors.Wrapf(err, "finding hosts by ID '%s', status '%s', and user '%s'", id, status, user)
 	}
 	return hosts, nil
 }
@@ -1128,7 +1130,7 @@ func FindHostsInRange(params HostsInRangeParams) ([]Host, error) {
 	}
 	hosts, err := Find(db.Query(filter))
 	if err != nil {
-		return nil, errors.Wrap(err, "Error querying database")
+		return nil, errors.Wrap(err, "finding hosts by filters")
 	}
 	return hosts, nil
 }
@@ -1224,7 +1226,7 @@ func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
 	var times []FinishTime
 	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
 	if err != nil {
-		return nil, errors.Wrap(err, "error aggregating parent finish times")
+		return nil, errors.Wrap(err, "aggregating parent finish times")
 	}
 	return times, nil
 
@@ -1241,7 +1243,7 @@ func (h *Host) SetVolumes(volumes []VolumeAttachment) error {
 			},
 		})
 	if err != nil {
-		return errors.Wrapf(err, "error updating host volumes")
+		return errors.Wrap(err, "updating host volumes")
 	}
 	h.Volumes = volumes
 	return nil
@@ -1263,7 +1265,7 @@ func (h *Host) AddVolumeToHost(newVolume *VolumeAttachment) error {
 		&h,
 	)
 	if err != nil {
-		return errors.Wrapf(err, "error finding and updating host")
+		return errors.Wrap(err, "finding host and adding volume")
 	}
 
 	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(h.Id),
@@ -1293,7 +1295,7 @@ func (h *Host) RemoveVolumeFromHost(volumeId string) error {
 		&h,
 	)
 	if err != nil {
-		return errors.Wrapf(err, "error finding and updating host")
+		return errors.Wrap(err, "finding host and removing volume")
 	}
 
 	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),
@@ -1399,7 +1401,7 @@ func StartingHostsByClient(limit int) (map[ClientOptions][]Host, error) {
 	}
 
 	if err := db.Aggregate(Collection, pipeline, &results); err != nil {
-		return nil, errors.Wrap(err, "can't get starting hosts")
+		return nil, errors.Wrap(err, "aggregating starting hosts by client options")
 	}
 
 	optionsMap := make(map[ClientOptions][]Host)

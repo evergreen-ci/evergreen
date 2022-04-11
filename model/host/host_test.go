@@ -58,8 +58,7 @@ func hostIdInSlice(hosts []Host, id string) bool {
 func TestGenericHostFinding(t *testing.T) {
 
 	Convey("When finding hosts", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		Convey("when finding one host", func() {
 			Convey("the matching host should be returned", func() {
@@ -166,8 +165,7 @@ func TestGenericHostFinding(t *testing.T) {
 
 func TestFindingHostsWithRunningTasks(t *testing.T) {
 	Convey("With a host with no running task that is not terminated", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 		h := Host{
 			Id:     "sample_host",
 			Status: evergreen.HostRunning,
@@ -177,8 +175,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 0)
 		Convey("with a host that is terminated with no running task", func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing"+
-				" '%v' collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 			h1 := Host{
 				Id:     "another",
 				Status: evergreen.HostTerminated,
@@ -194,8 +191,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 
 func TestMonitorHosts(t *testing.T) {
 	Convey("With a host with no reachability check", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 		now := time.Now()
 		h := Host{
 			Id:        "sample_host",
@@ -207,8 +203,7 @@ func TestMonitorHosts(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 1)
 		Convey("a host that has a running task and no reachability check should not return", func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing"+
-				" '%v' collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 			anotherHost := Host{
 				Id:          "anotherHost",
 				Status:      evergreen.HostRunning,
@@ -221,7 +216,7 @@ func TestMonitorHosts(t *testing.T) {
 			So(len(found), ShouldEqual, 0)
 		})
 		Convey("a non-user data provisioned host with no reachability check should not return", func() {
-			require.NoError(t, db.Clear(Collection), "clearing collection '%s'", Collection)
+			require.NoError(t, db.Clear(Collection))
 			h := Host{
 				Id:        "id",
 				Status:    evergreen.HostStarting,
@@ -233,7 +228,7 @@ func TestMonitorHosts(t *testing.T) {
 			So(len(found), ShouldEqual, 0)
 		})
 		Convey("a user data provisioned host with no reachability check should return", func() {
-			require.NoError(t, db.Clear(Collection), "clearing collection '%s'", Collection)
+			require.NoError(t, db.Clear(Collection))
 			h := Host{
 				Id:          "id",
 				Status:      evergreen.HostStarting,
@@ -256,8 +251,7 @@ func TestMonitorHosts(t *testing.T) {
 func TestUpdatingHostStatus(t *testing.T) {
 
 	Convey("With a host", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		var err error
 
@@ -390,8 +384,7 @@ func TestSetHostTerminated(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		var err error
 
@@ -424,8 +417,7 @@ func TestHostSetDNSName(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		host := &Host{
 			Id: "hostOne",
@@ -486,8 +478,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		var err error
 
@@ -612,8 +603,7 @@ func TestMarkAsReprovisioning(t *testing.T) {
 func TestHostCreateSecret(t *testing.T) {
 	Convey("With a host with no secret", t, func() {
 
-		require.NoError(t, db.Clear(Collection),
-			"Error clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		host := &Host{Id: "hostOne"}
 		So(host.Insert(), ShouldBeNil)
@@ -659,8 +649,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		initialExpirationTime := time.Now()
 		memHost := &Host{
@@ -707,8 +696,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		var err error
 		var count int
@@ -765,8 +753,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 func TestUpdateHostRunningTask(t *testing.T) {
 	Convey("With a host", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 		oldTaskId := "oldId"
 		newTaskId := "newId"
 		h := Host{
@@ -821,8 +808,7 @@ func TestUpsert(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		host := &Host{
 			Id:     "hostOne",
@@ -897,8 +883,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 
 	Convey("With a multiple hosts of different distros", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		distroA := "distro_a"
 		distroB := "distro_b"
@@ -955,8 +940,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 
 func TestFindNeedsNewAgent(t *testing.T) {
 	Convey("with the a given time for checking and an empty hosts collection", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error"+
-			" clearing '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 		now := time.Now()
 		Convey("with a host that has no last communication time", func() {
 			h := Host{
@@ -1303,7 +1287,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
@@ -1436,7 +1420,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
@@ -1692,7 +1676,7 @@ func TestHostStats(t *testing.T) {
 	const d1 = "distro1"
 	const d2 = "distro2"
 
-	require.NoError(t, db.Clear(Collection), "error clearing hosts collection")
+	require.NoError(t, db.Clear(Collection))
 	host1 := &Host{
 		Id:          "host1",
 		Distro:      distro.Distro{Id: d1},
@@ -1770,7 +1754,7 @@ func TestHostStats(t *testing.T) {
 }
 
 func TestHostFindingWithTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, task.Collection), "error clearing collections")
+	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	assert := assert.New(t)
 	task1 := task.Task{
 		Id: "task1",
@@ -1818,7 +1802,7 @@ func TestHostFindingWithTask(t *testing.T) {
 }
 
 func TestInactiveHostCountPipeline(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection), "error clearing collections")
+	require.NoError(t, db.ClearCollections(Collection))
 	assert := assert.New(t)
 
 	h1 := Host{
@@ -2464,7 +2448,7 @@ func TestGetContainersNotParent(t *testing.T) {
 	assert.NoError(host8.Insert())
 
 	containers, err := host1.GetContainers()
-	assert.EqualError(err, "Host does not host containers")
+	assert.Error(err)
 	assert.Empty(containers)
 }
 
@@ -2613,7 +2597,7 @@ func TestFindParentOfContainerNoParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	assert.EqualError(err, "Host does not have a parent")
+	assert.Error(err)
 	assert.Nil(parent)
 }
 
@@ -2661,14 +2645,13 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 	assert.NoError(host2.Insert())
 
 	parent, err := host1.GetParent()
-	assert.EqualError(err, "Host found is not a parent")
+	assert.Error(err)
 	assert.Nil(parent)
 }
 
 func TestLastContainerFinishTimePipeline(t *testing.T) {
 
-	require.NoError(t, db.Clear(Collection), "error clearing %v collections", Collection)
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
+	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	assert := assert.New(t)
 
 	startTimeOne := time.Now()
@@ -3687,7 +3670,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 
 func TestStaleRunningTasks(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, task.Collection))
+	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 	h1 := Host{
 		Id:          "h1",
 		RunningTask: "t1",
@@ -3736,7 +3719,7 @@ func TestStaleRunningTasks(t *testing.T) {
 
 func TestNumNewParentsNeeded(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
 	d := distro.Distro{
 		Id:            "distro",
@@ -3800,7 +3783,7 @@ func TestNumNewParentsNeeded(t *testing.T) {
 
 func TestNumNewParentsNeeded2(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
 	d := distro.Distro{
 		Id:            "distro",
@@ -3855,7 +3838,7 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 
 func TestFindAvailableParent(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
 	d := distro.Distro{
 		Id:            "distro",
@@ -3932,7 +3915,7 @@ func TestFindAvailableParent(t *testing.T) {
 
 func TestFindNoAvailableParent(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
 	d := distro.Distro{
 		Id:       "distro",
@@ -4004,7 +3987,7 @@ func TestFindNoAvailableParent(t *testing.T) {
 
 func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
 	d := distro.Distro{
 		Id:       "distro",
@@ -4056,7 +4039,7 @@ func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
 
 func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection, task.Collection))
 
 	d := distro.Distro{
 		Id:       "distro",
@@ -4166,7 +4149,7 @@ func TestDeleteTags(t *testing.T) {
 }
 
 func TestSetTags(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	h := Host{
 		Id: "id",
 		InstanceTags: []Tag{
@@ -4207,21 +4190,21 @@ func TestMakeHostTags(t *testing.T) {
 		tagSlice := []string{"key1=value1", badTag}
 		tags, err := MakeHostTags(tagSlice)
 		assert.Nil(t, tags)
-		assert.EqualError(t, err, fmt.Sprintf("problem parsing tag '%s'", badTag))
+		assert.EqualError(t, err, fmt.Sprintf("parsing tag '%s'", badTag))
 	})
 	t.Run("LongKey", func(t *testing.T) {
 		badKey := strings.Repeat("a", 129)
 		tagSlice := []string{"key1=value", fmt.Sprintf("%s=value2", badKey)}
 		tags, err := MakeHostTags(tagSlice)
 		assert.Nil(t, tags)
-		assert.EqualError(t, err, fmt.Sprintf("key '%s' is longer than 128 characters", badKey))
+		assert.EqualError(t, err, fmt.Sprintf("key '%s' is longer than maximum limit of 128 characters", badKey))
 	})
 	t.Run("LongValue", func(t *testing.T) {
 		badValue := strings.Repeat("a", 257)
 		tagSlice := []string{"key1=value2", fmt.Sprintf("key2=%s", badValue)}
 		tags, err := MakeHostTags(tagSlice)
 		assert.Nil(t, tags)
-		assert.EqualError(t, err, fmt.Sprintf("value '%s' is longer than 256 characters", badValue))
+		assert.EqualError(t, err, fmt.Sprintf("value '%s' is longer than maximum limit of 256 characters", badValue))
 	})
 	t.Run("BadPrefix", func(t *testing.T) {
 		badPrefix := "aws:"
@@ -4233,7 +4216,7 @@ func TestMakeHostTags(t *testing.T) {
 }
 
 func TestSetInstanceType(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
 		Id:           "id",
 		InstanceType: "old-instance-type",
@@ -4247,7 +4230,7 @@ func TestSetInstanceType(t *testing.T) {
 }
 
 func TestAggregateSpawnhostData(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, VolumesCollection))
+	require.NoError(t, db.ClearCollections(Collection, VolumesCollection))
 	hosts := []Host{
 		{
 			Id:           "host-1",
@@ -4338,7 +4321,7 @@ func TestAggregateSpawnhostData(t *testing.T) {
 }
 
 func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
 		{
 			Id:           "host-1",
@@ -4386,7 +4369,7 @@ func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
 }
 
 func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
 		{
 			Id:             "host-1",
@@ -4435,7 +4418,7 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 }
 
 func TestAddVolumeToHost(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
 		Id: "host-1",
 		Volumes: []VolumeAttachment{
@@ -4477,7 +4460,7 @@ func TestAddVolumeToHost(t *testing.T) {
 }
 
 func TestRemoveVolumeFromHost(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	h := &Host{
 		Id: "host-1",
 		Volumes: []VolumeAttachment{
@@ -4510,7 +4493,7 @@ func TestRemoveVolumeFromHost(t *testing.T) {
 }
 
 func TestFindHostWithVolume(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	h := Host{
 		Id:       "host-1",
 		UserHost: true,
@@ -4713,7 +4696,7 @@ func TestFindHostsInRange(t *testing.T) {
 }
 
 func TestRemoveAndReplace(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 
 	// removing a nonexistent host errors
 	assert.Error(t, RemoveStrict("asdf"))
@@ -5193,23 +5176,22 @@ func (s *FindHostsSuite) TestFindByIdFail() {
 }
 
 func (s *FindHostsSuite) TestFindByIP() {
-	h1, ok := FindOne(ByIP("ip1"))
+	h1, ok := FindOne(ByIPAndRunning("ip1"))
 	s.NoError(ok)
 	s.NotNil(h1)
 	s.Equal("host1", h1.Id)
 	s.Equal("ip1", h1.IP)
-
-	h2, ok := FindOne(ByIP("ip2"))
-	s.NoError(ok)
-	s.NotNil(h2)
-	s.Equal("host2", h2.Id)
-	s.Equal("ip2", h2.IP)
 }
 
 func (s *FindHostsSuite) TestFindByIPFail() {
-	h, ok := FindOne(ByIP("nonexistent"))
+	// terminated host
+	h1, ok := FindOne(ByIPAndRunning("ip2"))
 	s.NoError(ok)
-	s.Nil(h)
+	s.Nil(h1)
+
+	h2, ok := FindOne(ByIPAndRunning("nonexistent"))
+	s.NoError(ok)
+	s.Nil(h2)
 }
 
 func (s *FindHostsSuite) TestFindHostsByDistro() {

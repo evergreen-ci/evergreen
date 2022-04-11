@@ -62,7 +62,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 
 	item.EnqueueTime = time.Now()
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
-		return 0, errors.Wrapf(err, "can't add '%s' to queue '%s'", item.Issue, q.ProjectID)
+		return 0, errors.Wrapf(err, "adding '%s' to queue for project '%s'", item.Issue, q.ProjectID)
 	}
 	grip.Info(message.Fields{
 		"source":       "commit queue",
@@ -93,7 +93,7 @@ func (q *CommitQueue) EnqueueAtFront(item CommitQueueItem) (int, error) {
 	}
 	item.EnqueueTime = time.Now()
 	if err := addAtPosition(q.ProjectID, q.Queue, item, newPos); err != nil {
-		return 0, errors.Wrapf(err, "can't force add '%s' to queue '%s'", item.Issue, q.ProjectID)
+		return 0, errors.Wrapf(err, "force adding '%s' to queue for project '%s'", item.Issue, q.ProjectID)
 	}
 
 	grip.Warning(message.Fields{
@@ -153,7 +153,7 @@ func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	item := q.Queue[itemIndex]
 
 	if err := remove(q.ProjectID, item.Issue); err != nil {
-		return nil, errors.Wrap(err, "can't remove item")
+		return nil, errors.Wrap(err, "removing item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
@@ -167,7 +167,7 @@ func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
 			q.Queue[i].Version = item.Version
 		}
 	}
-	return errors.Wrapf(addVersionID(q.ProjectID, item), "error updating version")
+	return errors.Wrap(addVersionID(q.ProjectID, item), "updating version")
 }
 
 func (q *CommitQueue) FindItem(issue string) int {
@@ -183,12 +183,12 @@ func (q *CommitQueue) FindItem(issue string) int {
 func EnsureCommitQueueExistsForProject(id string) error {
 	cq, err := FindOneId(id)
 	if err != nil {
-		return errors.Wrapf(err, "database error finding commit queue")
+		return errors.Wrap(err, "finding commit queue")
 	}
 	if cq == nil {
 		cq = &CommitQueue{ProjectID: id}
 		if err = InsertQueue(cq); err != nil {
-			return errors.Wrapf(err, "problem inserting new commit queue")
+			return errors.Wrap(err, "inserting new commit queue")
 		}
 	}
 	return nil
@@ -204,7 +204,7 @@ func TriggersCommitQueue(commentAction string, comment string) bool {
 func ClearAllCommitQueues() (int, error) {
 	clearedCount, err := clearAll()
 	if err != nil {
-		return 0, errors.Wrap(err, "can't clear queue")
+		return 0, errors.Wrap(err, "clearing all commit queues")
 	}
 
 	return clearedCount, nil
@@ -213,10 +213,10 @@ func ClearAllCommitQueues() (int, error) {
 func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*CommitQueueItem, error) {
 	cq, err := FindOneId(projectId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get commit queue for id '%s'", projectId)
+		return nil, errors.Wrapf(err, "getting commit queue for project '%s'", projectId)
 	}
 	if cq == nil {
-		return nil, errors.Errorf("no commit queue found for '%s'", projectId)
+		return nil, errors.Errorf("no commit queue found for project '%s'", projectId)
 	}
 
 	issue := ""
@@ -235,7 +235,7 @@ func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*C
 func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists bool, user string) (*CommitQueueItem, error) {
 	removed, err := cq.Remove(issue)
 	if err != nil {
-		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", issue, cq.ProjectID)
+		return removed, errors.Wrapf(err, "removing item '%s' from commit queue for project '%s'", issue, cq.ProjectID)
 	}
 
 	if removed == nil {
@@ -245,21 +245,21 @@ func (cq *CommitQueue) RemoveItemAndPreventMerge(issue string, versionExists boo
 		err = preventMergeForItem(*removed, user)
 	}
 
-	return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", issue, cq.ProjectID)
+	return removed, errors.Wrapf(err, "preventing merge for item '%s' in commit queue for project '%s'", issue, cq.ProjectID)
 }
 
 func preventMergeForItem(item CommitQueueItem, user string) error {
 	// Disable the merge task
 	mergeTask, err := task.FindMergeTaskForVersion(item.Version)
 	if err != nil {
-		return errors.Wrapf(err, "can't find merge task for '%s'", item.Issue)
+		return errors.Wrapf(err, "finding merge task for '%s'", item.Issue)
 	}
 	if mergeTask == nil {
 		return errors.New("merge task doesn't exist")
 	}
 	event.LogMergeTaskUnscheduled(mergeTask.Id, mergeTask.Execution, user)
 	if err = mergeTask.SetDisabledPriority(user); err != nil {
-		return errors.Wrap(err, "can't disable merge task")
+		return errors.Wrap(err, "disabling merge task")
 	}
 
 	return nil

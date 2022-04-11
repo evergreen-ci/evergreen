@@ -133,7 +133,7 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 func (u *DBUser) UpdateAPIKey(newKey string) error {
 	update := bson.M{"$set": bson.M{APIKeyKey: newKey}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "problem setting api key for user %s", u.Id)
+		return errors.Wrapf(err, "setting API key for user '%s'", u.Id)
 	}
 	u.APIKey = newKey
 	return nil
@@ -143,7 +143,7 @@ func (u *DBUser) UpdateAPIKey(newKey string) error {
 func (u *DBUser) UpdateSettings(settings UserSettings) error {
 	update := bson.M{"$set": bson.M{SettingsKey: settings}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "problem saving user settings for %s", u.Id)
+		return errors.Wrapf(err, "saving user settings for user'%s'", u.Id)
 	}
 	u.Settings = settings
 	return nil
@@ -221,10 +221,10 @@ func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) 
 	}
 	change, err := db.FindAndModify(Collection, targetKeySelector, nil, c, &newUser)
 	if err != nil {
-		return errors.Wrap(err, "couldn't update public key from user")
+		return errors.Wrap(err, "updating public key from user")
 	}
 	if change.Updated != 1 {
-		return errors.Errorf("public key update query succeeded but unexpected ChangeInfo: %+v", change)
+		return errors.Errorf("public key update query expected to update exactly one user, but instead updated %d", change.Updated)
 	}
 	u.PubKeys = newUser.PubKeys
 	return nil
@@ -389,7 +389,7 @@ func (u *DBUser) DeleteAllRoles() error {
 			},
 		}, u)
 	if err != nil {
-		return errors.Wrap(err, "error clearing user roles")
+		return errors.Wrap(err, "clearing user roles")
 	}
 	if info.Updated != 1 {
 		return errors.Errorf("could not find user '%s' to update", u.Id)
@@ -411,7 +411,7 @@ func (u *DBUser) DeleteRoles(roles []string) error {
 			},
 		}, u)
 	if err != nil {
-		return errors.Wrap(err, "error deleting user roles")
+		return errors.Wrap(err, "deleting user roles")
 	}
 	if info.Updated != 1 {
 		return errors.Errorf("could not find user '%s' to update", u.Id)

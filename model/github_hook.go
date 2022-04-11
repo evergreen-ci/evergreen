@@ -95,7 +95,7 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 		return nil, err
 	}
 	if settings.Api.GithubWebhookSecret == "" {
-		return nil, errors.New("Evergreen is not configured for Github Webhooks")
+		return nil, errors.New("Evergreen is not configured for GitHub Webhooks")
 	}
 
 	httpClient := utility.GetOAuth2HTTPClient(token)
@@ -120,7 +120,7 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
-		return nil, errors.New("unexpected data from github")
+		return nil, errors.New("unexpected data from GitHub")
 	}
 	grip.Debug(message.Fields{
 		"ticket":            "EVG-15779",
@@ -139,7 +139,7 @@ func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner 
 func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, owner, repo string) (*GithubHook, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get github token")
+		return nil, errors.Wrap(err, "getting GitHub token")
 	}
 
 	httpClient := utility.GetOAuth2HTTPClient(token)
@@ -150,7 +150,7 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 
 	respHooks, _, err := client.Repositories.ListHooks(newCtx, owner, repo, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get hooks for owner '%s', repo '%s'", owner, repo)
+		return nil, errors.Wrapf(err, "getting hooks for owner '%s', repo '%s'", owner, repo)
 	}
 
 	url := fmt.Sprintf(githubHookURLString, settings.ApiUrl)
@@ -170,10 +170,10 @@ func GetExistingGithubHook(ctx context.Context, settings evergreen.Settings, own
 func RemoveGithubHook(hookID int) error {
 	hook, err := FindGithubHookByID(hookID)
 	if err != nil {
-		return errors.Wrap(err, "can't query for webhooks")
+		return errors.Wrap(err, "finding hooks")
 	}
 	if hook == nil {
-		return errors.Errorf("no hook found for id '%d'", hookID)
+		return errors.Errorf("no hook found for ID '%d'", hookID)
 	}
-	return errors.Wrapf(hook.Remove(), "can't remove hook with ID '%d'", hookID)
+	return errors.Wrapf(hook.Remove(), "removing hook with ID '%d'", hookID)
 }

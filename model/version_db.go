@@ -79,7 +79,7 @@ func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int)
 	for i := 0; i < retryLimit; i++ {
 		v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectId)
+			return nil, errors.Wrapf(err, "finding recent valid version for project '%s'", projectId)
 		}
 		if v == nil || len(v.Errors) == 0 {
 			return v, nil
@@ -328,7 +328,7 @@ func ActivateVersions(versionIds []string) error {
 			},
 		})
 	if err != nil {
-		return errors.Wrap(err, "can't activate versionIds")
+		return errors.Wrap(err, "activating versions")
 	}
 	return nil
 }

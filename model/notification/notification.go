@@ -220,7 +220,7 @@ func (n *Notification) MarkSent() error {
 	}
 
 	if err := db.UpdateId(Collection, n.ID, update); err != nil {
-		return errors.Wrap(err, "failed to update notification")
+		return errors.Wrap(err, "marking notification as sent")
 	}
 
 	return nil
@@ -249,7 +249,7 @@ func (n *Notification) MarkError(sendErr error) error {
 
 	if err := db.UpdateId(Collection, n.ID, update); err != nil {
 		n.Error = ""
-		return errors.Wrap(err, "failed to add error to notification")
+		return errors.Wrap(err, "setting error for notification")
 	}
 
 	return nil
@@ -297,7 +297,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 	}{}
 
 	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
-		return nil, errors.Wrap(err, "failed to count unsent notifications")
+		return nil, errors.Wrap(err, "counting unsent notifications")
 	}
 
 	nStats := NotificationStats{}
@@ -330,7 +330,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		default:
 			grip.Error(message.Fields{
-				"message": fmt.Sprintf("unknown subscriber %s", data.Key),
+				"message": fmt.Sprintf("unknown subscriber '%s'", data.Key),
 			})
 		}
 	}

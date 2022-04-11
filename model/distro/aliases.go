@@ -55,7 +55,7 @@ type AliasLookupTable map[string][]string
 func NewDistroAliasesLookupTable() (AliasLookupTable, error) {
 	all, err := FindAll()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "finding all distros")
 	}
 
 	return buildCache(all), nil

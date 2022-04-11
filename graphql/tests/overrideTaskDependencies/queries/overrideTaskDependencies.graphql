@@ -3,7 +3,7 @@ mutation{
         id
         execution
         status
-        reliesOn {
+        dependsOn {
             name
             metStatus
             requiredStatus

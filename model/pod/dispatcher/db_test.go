@@ -215,7 +215,6 @@ func TestAllocate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, dbEvents)
 		},
-		// "": func(ctx context.Context, t *testing.T, tsk *task.Task, p *pod.Pod) { },
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)

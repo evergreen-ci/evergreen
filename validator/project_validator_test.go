@@ -1260,8 +1260,8 @@ func TestValidatePeriodicBuilds(t *testing.T) {
 	}
 	validationErrs := validateProjectConfigPeriodicBuilds(projectConfig)
 	assert.Len(t, validationErrs, 2)
-	assert.Contains(t, validationErrs[0].Message, "Interval must be a positive integer")
-	assert.Contains(t, validationErrs[1].Message, "A config file must be specified")
+	assert.Contains(t, validationErrs[0].Message, "interval must be a positive integer")
+	assert.Contains(t, validationErrs[1].Message, "a config file must be specified")
 }
 
 func TestValidatePlugins(t *testing.T) {
@@ -2328,7 +2328,7 @@ func TestTaskValidation(t *testing.T) {
 	ctx := context.Background()
 	_, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "spaces are unauthorized")
+	assert.Contains(t, err.Error(), "spaces are not allowed")
 }
 
 func TestTaskGroupValidation(t *testing.T) {
@@ -2812,8 +2812,8 @@ tasks:
 	assert.NotNil(pp)
 	errs := checkTasks(project)
 	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
-	assert.Contains(errs.String(), "invalid task logger config: somethingElse is not a valid log sender")
-	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: commandLogger is not a valid log sender")
+	assert.Contains(errs.String(), "invalid task logger config: 'somethingElse' is not a valid log sender")
+	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: 'commandLogger' is not a valid log sender")
 
 	// no loggers specified should not error
 	yml = `

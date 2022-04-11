@@ -211,7 +211,10 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 				})
 				continue
 			}
-			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, true, "host is expired, decommissioned, or failed to provision")))
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: "host is expired, decommissioned, or failed to provision",
+			})))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -223,7 +226,10 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, true, "host spawned by task has gone out of scope")))
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: "host spawned by task has gone out of scope",
+			})))
 		}
 
 		return catcher.Resolve()

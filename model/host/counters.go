@@ -27,7 +27,7 @@ func (h *Host) IncTaskCount() error {
 	}
 
 	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update, %s", h.Id)
+		return errors.Errorf("expected to update one host document but actually updated %d", info.Updated)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func (h *Host) IncContainerBuildAttempt() error {
 	}
 
 	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update, %s", h.Id)
+		return errors.Errorf("expected to update one host document but actually updated %d", info.Updated)
 	}
 
 	return nil
@@ -60,7 +60,7 @@ func (h *Host) IncContainerBuildAttempt() error {
 
 func (h *Host) IncIdleTime(dur time.Duration) error {
 	if dur < 0 {
-		return errors.Errorf("cannot increment by a negative duration value [%s]", dur)
+		return errors.Errorf("cannot increment idle time by a negative duration %s", dur)
 	}
 
 	query := bson.M{
@@ -80,7 +80,7 @@ func (h *Host) IncIdleTime(dur time.Duration) error {
 	}
 
 	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update, %s", h.Id)
+		return errors.Errorf("expected to update one host document but actually updated %d", info.Updated)
 	}
 
 	return nil

@@ -30,8 +30,7 @@ func buildIdInSlice(builds []Build, id string) bool {
 func TestGenericBuildFinding(t *testing.T) {
 
 	Convey("When finding builds", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		Convey("when finding one build", func() {
 			Convey("the matching build should be returned", func() {
@@ -73,8 +72,7 @@ func TestFindIntermediateBuilds(t *testing.T) {
 
 	Convey("When finding intermediate builds", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		// the two builds to use as endpoints
 
@@ -245,8 +243,7 @@ func TestFindPreviousActivatedBuild(t *testing.T) {
 
 	Convey("When finding the previous activated build", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		currBuild := &Build{
 			Id:                  "curr",
@@ -351,8 +348,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 
 	Convey("When finding all recently finished builds", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
-			" '%v' collection", Collection)
+		require.NoError(t, db.Clear(Collection))
 
 		Convey("all builds returned should be finished", func() {
 
@@ -491,7 +487,7 @@ func TestGenericBuildUpdating(t *testing.T) {
 	Convey("When updating builds", t, func() {
 
 		Reset(func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing '%v' collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 		})
 
 		Convey("updating a single build should update the specified build"+
@@ -517,7 +513,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 	Convey("With a build", t, func() {
 
 		Reset(func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing '%v' collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 		})
 
 		var err error
@@ -538,7 +534,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection))
 	b := &Build{Id: "b1", Activated: true}
 	tasks := []task.Task{
 		{
@@ -601,7 +597,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.True(b.AllUnblockedTasksFinished(tasks))
 
 	// Only one activated task
-	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection))
 	tasks = []task.Task{
 		{
 			Id:        "t1",
@@ -632,7 +628,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.True(b.AllUnblockedTasksFinished(tasks))
 
 	// Build is finished
-	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection))
 	task1 := task.Task{
 		Id:        "t0",
 		BuildId:   "b1",
@@ -648,7 +644,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.Equal(status, evergreen.BuildFailed)
 
 	// Display task
-	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection))
 	t0 := task.Task{
 		Id:      "t0",
 		BuildId: "b1",

@@ -106,8 +106,8 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
 			// should still add newAdmin and delete oldAdmin even with errors
-			assert.EqualError(t, err,
-				"error saving section 'ACCESS': error updating repo admin roles: error updating some admins: no user 'nonexistent' found")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
 			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
 			assert.NoError(t, err)
@@ -372,8 +372,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
-			assert.EqualError(t, err,
-				"error saving section 'ACCESS': error updating project admin roles: error updating some admins: no user 'nonexistent' found")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)

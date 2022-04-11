@@ -185,7 +185,7 @@ func FindByIdWithDefaultSettings(id string) (*Distro, error) {
 	if len(d.ProviderSettingsList) > 1 {
 		providerSettings, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error getting %s provider settings for distro '%s'", evergreen.DefaultEC2Region, id)
+			return nil, errors.Wrapf(err, "getting provider settings for region '%s' in distro '%s'", evergreen.DefaultEC2Region, id)
 		}
 		d.ProviderSettingsList = []*birch.Document{providerSettings}
 	}
