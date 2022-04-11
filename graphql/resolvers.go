@@ -3969,7 +3969,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding version %s: '%s'", *obj.Id, err.Error()))
 	}
 	if v == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Version %s not found", *obj.Id))
@@ -3982,17 +3982,17 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 	if v.TriggerType == model.ProjectTriggerLevelTask {
 		upstreamTask, err := task.FindOneId(v.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding upstream task %s: %s", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream task %s: '%s'", v.TriggerID, err.Error()))
 		}
 		if upstreamTask == nil {
-			return nil, errors.New("upstream task not found")
+			return nil, ResourceNotFound.Send(ctx, "upstream task not found")
 		}
 		projectID = upstreamTask.Project
 		revision = upstreamTask.Revision
 	} else if v.TriggerType == model.ProjectTriggerLevelBuild {
 		upstreamBuild, err := build.FindOneId(v.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding upstream build %s: %s", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream build %s: '%s'", v.TriggerID, err.Error()))
 		}
 		if upstreamBuild == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Upstream build %s not found", v.TriggerID))
@@ -4002,10 +4002,10 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 	}
 	upstreamProject, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding upstream project")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream project, project: %s, error: '%s'", projectID, err.Error()))
 	}
 	if upstreamProject == nil {
-		return nil, errors.New("upstream project not found")
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Upstream project %s not found", projectID))
 	}
 	return &UpstreamProject{
 		Owner:       upstreamProject.Owner,
