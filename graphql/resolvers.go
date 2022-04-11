@@ -1657,6 +1657,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 				key = task.BaseTaskStatusKey
 			case TaskSortCategoryVariant:
 				key = task.BuildVariantKey
+			case TaskSortCategoryDuration:
+				key = task.TaskDurationKey
 			default:
 				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: %s", singleSort.Key))
 			}
@@ -3348,6 +3350,21 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
 	return apiTask, nil
+}
+
+func (r *taskResolver) TaskDuration(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
+	// TaskDuration is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
+	if obj.TaskDuration != 0 {
+		return &obj.TaskDuration, nil
+	}
+	// If status is running / dispatched, calculate the time elapsed since it became active.
+	if utility.FromStringPtr(obj.DisplayStatus) == evergreen.TaskStarted ||
+		utility.FromStringPtr(obj.DisplayStatus) == evergreen.TaskDispatched {
+		timeSinceActivation := restModel.NewAPIDuration(time.Since(utility.FromTimePtr(obj.ActivatedTime)))
+		return &timeSinceActivation, nil
+	}
+	// If any other status, return timeTaken.
+	return &obj.TimeTaken, nil
 }
 
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {

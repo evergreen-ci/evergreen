@@ -76,6 +76,7 @@ type APITask struct {
 	Ami                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
+	TaskDuration            APIDuration         `json:"task_duration"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -262,6 +263,9 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				Id:     utility.ToStringPtr(v.BaseTask.Id),
 				Status: utility.ToStringPtr(v.BaseTask.Status),
 			}
+		}
+		if v.TaskDuration != 0 {
+			at.TaskDuration = NewAPIDuration(v.TaskDuration)
 		}
 
 		if v.ParentPatchID != "" {

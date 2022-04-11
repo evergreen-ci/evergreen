@@ -98,6 +98,7 @@ var (
 	CommitQueueMergeKey         = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey            = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
 	BaseTaskKey                 = bsonutil.MustHaveTag(Task{}, "BaseTask")
+	TaskDurationKey             = bsonutil.MustHaveTag(Task{}, "TaskDuration")
 	BuildVariantDisplayNameKey  = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 
 	// BSON fields for the test result struct

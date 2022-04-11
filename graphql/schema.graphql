@@ -292,6 +292,7 @@ enum TaskSortCategory {
   STATUS
   BASE_STATUS
   VARIANT
+  DURATION
 }
 
 enum TestSortCategory {
@@ -1088,6 +1089,7 @@ type Task {
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
+  taskDuration: Duration
   totalTestCount: Int!
   versionMetadata: Version!
   order: Int!

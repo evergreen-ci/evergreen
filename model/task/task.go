@@ -167,6 +167,9 @@ type Task struct {
 	// BaseTask is not persisted to the db. It is the data of the task on the base commit
 	// It may be added via aggregation
 	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
+	// TaskDuration is not persisted to the db. It is the amount of time the task has been running
+	// or ran. It may be added via aggregation.
+	TaskDuration time.Duration `bson:"task_duration" json:"task_duration"`
 
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
@@ -3188,6 +3191,9 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+			} else if singleSort.Key == TaskDurationKey {
+				sortPipeline = append(sortPipeline, addTaskDuration())
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
@@ -3666,6 +3672,24 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	return pipeline
+}
+
+func addTaskDuration() bson.M {
+	// Time taken for a task is in nanoseconds, but subtracting two dates yields milliseconds.
+	convertToNanoseconds := time.Millisecond
+	return bson.M{
+		"$addFields": bson.M{
+			TaskDurationKey: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$in": []interface{}{"$" + StatusKey, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+					},
+					"then": bson.M{"$multiply": []interface{}{convertToNanoseconds, bson.M{"$subtract": []interface{}{time.Now(), "$" + ActivatedTimeKey}}}},
+					"else": "$" + TimeTakenKey,
+				},
+			},
+		},
+	}
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer

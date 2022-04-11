@@ -439,6 +439,42 @@
       }
     },
     {
+      "query_file": "sort-by-duration.graphql",
+      "result": {
+        "data": {
+          "patchTasks": {
+            "tasks": [
+              {
+                "id": "2",
+                "taskDuration": 71999
+              },
+              {
+                "id": "4.5",
+                "taskDuration": 43598
+              },
+              {
+                "id": "1",
+                "taskDuration": 42167
+              },
+              {
+                "id": "4",
+                "taskDuration": 21789
+              },
+              {
+                "id": "3",
+                "taskDuration": 10003
+              },
+              {
+                "id": "1.5",
+                "taskDuration": 8519
+              }
+            ],
+            "count": 6
+          }
+        }
+      }
+    },
+    {
       "query_file": "sort-base-status-descending.graphql",
       "result": {
         "data": {

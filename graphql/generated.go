@@ -927,6 +927,7 @@ type ComplexityRoot struct {
 		SpawnHostLink           func(childComplexity int) int
 		StartTime               func(childComplexity int) int
 		Status                  func(childComplexity int) int
+		TaskDuration            func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TimeTaken               func(childComplexity int) int
@@ -1423,6 +1424,7 @@ type TaskResolver interface {
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 
+	TaskDuration(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
 }
@@ -5995,6 +5997,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Status(childComplexity), true
 
+	case "Task.taskDuration":
+		if e.complexity.Task.TaskDuration == nil {
+			break
+		}
+
+		return e.complexity.Task.TaskDuration(childComplexity), true
+
 	case "Task.taskGroup":
 		if e.complexity.Task.TaskGroup == nil {
 			break
@@ -7717,6 +7726,7 @@ enum TaskSortCategory {
   STATUS
   BASE_STATUS
   VARIANT
+  DURATION
 }
 
 enum TestSortCategory {
@@ -8513,6 +8523,7 @@ type Task {
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
+  taskDuration: Duration
   totalTestCount: Int!
   versionMetadata: Version!
   order: Int!
@@ -31778,6 +31789,38 @@ func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.C
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Task_taskDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().TaskDuration(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIDuration)
+	fc.Result = res
+	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Task_totalTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -47369,6 +47412,17 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
 		case "timeTaken":
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
+		case "taskDuration":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_taskDuration(ctx, field, obj)
+				return res
+			})
 		case "totalTestCount":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
