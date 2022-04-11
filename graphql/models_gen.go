@@ -309,8 +309,8 @@ type UpstreamProject struct {
 	Repo        string `json:"repo"`
 	Revision    string `json:"revision"`
 	Project     string `json:"project"`
-	TriggerID   string `json:"TriggerID"`
-	TriggerType string `json:"TriggerType"`
+	TriggerID   string `json:"triggerID"`
+	TriggerType string `json:"triggerType"`
 }
 
 type UserConfig struct {

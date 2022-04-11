@@ -238,8 +238,8 @@ type UpstreamProject {
   repo: String!
   revision: String!
   project: String!
-  TriggerID: String!
-  TriggerType: String!
+  triggerID: String!
+  triggerType: String!
 }
 
 type Manifest {

@@ -6846,14 +6846,14 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UpstreamProject.Revision(childComplexity), true
 
-	case "UpstreamProject.TriggerID":
+	case "UpstreamProject.triggerID":
 		if e.complexity.UpstreamProject.TriggerID == nil {
 			break
 		}
 
 		return e.complexity.UpstreamProject.TriggerID(childComplexity), true
 
-	case "UpstreamProject.TriggerType":
+	case "UpstreamProject.triggerType":
 		if e.complexity.UpstreamProject.TriggerType == nil {
 			break
 		}
@@ -7723,8 +7723,8 @@ type UpstreamProject {
   repo: String!
   revision: String!
   project: String!
-  TriggerID: String!
-  TriggerType: String!
+  triggerID: String!
+  triggerType: String!
 }
 
 type Manifest {
@@ -35852,7 +35852,7 @@ func (ec *executionContext) _UpstreamProject_project(ctx context.Context, field 
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _UpstreamProject_TriggerID(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+func (ec *executionContext) _UpstreamProject_triggerID(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -35887,7 +35887,7 @@ func (ec *executionContext) _UpstreamProject_TriggerID(ctx context.Context, fiel
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _UpstreamProject_TriggerType(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+func (ec *executionContext) _UpstreamProject_triggerType(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -48706,13 +48706,13 @@ func (ec *executionContext) _UpstreamProject(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "TriggerID":
-			out.Values[i] = ec._UpstreamProject_TriggerID(ctx, field, obj)
+		case "triggerID":
+			out.Values[i] = ec._UpstreamProject_triggerID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "TriggerType":
-			out.Values[i] = ec._UpstreamProject_TriggerType(ctx, field, obj)
+		case "triggerType":
+			out.Values[i] = ec._UpstreamProject_triggerType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
