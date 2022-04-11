@@ -90,7 +90,7 @@ func MergeAliasesWithProjectConfig(projectID string, dbAliases []ProjectAlias) (
 	dbAliasMap := aliasesToMap(dbAliases)
 	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project config")
+		return nil, errors.Wrap(err, "finding project config")
 	}
 	patchAliases := []ProjectAlias{}
 	for alias, aliases := range dbAliasMap {
@@ -183,7 +183,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias, error) {
 	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project config")
+		return nil, errors.Wrap(err, "finding project config")
 	}
 	if projectConfig == nil {
 		return nil, nil
