@@ -3974,9 +3974,6 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 	if v == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Version %s not found", *obj.Id))
 	}
-	if v.TriggerID == "" {
-		return nil, nil
-	}
 	if v.TriggerID == "" || v.TriggerType == "" {
 		return nil, nil
 	}
