@@ -8,6 +8,12 @@
             project
             triggerID
             triggerType
+            task {
+                id
+            }
+            version {
+                id
+            }
         }
     }
 }
