@@ -3377,6 +3377,9 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 	buildID := utility.FromStringPtr(obj.BuildId)
 	b, err := build.FindOneId(buildID)
 	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s, '%s'", buildID, utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	if b == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find build id: %s for task: %s", buildID, utility.FromStringPtr(obj.Id)))
 	}
 	displayName := b.DisplayName
