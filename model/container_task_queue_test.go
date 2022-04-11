@@ -18,11 +18,12 @@ func TestContainerTaskQueue(t *testing.T) {
 	}()
 	getTaskThatNeedsContainerAllocation := func() task.Task {
 		return task.Task{
-			Id:                utility.RandomString(),
-			Activated:         true,
-			ActivatedTime:     time.Now(),
-			Status:            evergreen.TaskContainerUnallocated,
-			ExecutionPlatform: task.ExecutionPlatformContainer,
+			Id:                 utility.RandomString(),
+			Activated:          true,
+			ActivatedTime:      time.Now(),
+			Status:             evergreen.TaskUndispatched,
+			ContainerAllocated: false,
+			ExecutionPlatform:  task.ExecutionPlatformContainer,
 		}
 	}
 	getProjectRef := func() ProjectRef {
@@ -47,7 +48,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			require.NoError(t, needsAllocation0.Insert())
 
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Status = evergreen.TaskContainerAllocated
+			doesNotNeedAllocation.ContainerAllocated = true
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
 			needsAllocation1 := getTaskThatNeedsContainerAllocation()

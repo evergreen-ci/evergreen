@@ -98,17 +98,21 @@ type Task struct {
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
-	// used to indicate whether task should be scheduled to run
-	Activated                bool         `bson:"activated" json:"activated"`
-	ActivatedBy              string       `bson:"activated_by" json:"activated_by"`
-	DeactivatedForDependency bool         `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
-	BuildId                  string       `bson:"build_id" json:"build_id"`
-	DistroId                 string       `bson:"distro" json:"distro"`
-	BuildVariant             string       `bson:"build_variant" json:"build_variant"`
-	BuildVariantDisplayName  string       `bson:"build_variant_display_name" json:"-"`
-	DependsOn                []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents            int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
-	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	// Activated indicates whether the task should be scheduled to run or not.
+	Activated                bool   `bson:"activated" json:"activated"`
+	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
+	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
+	// ContainerAllocated indicates whether this task has been allocated a
+	// container to run it. It only applies to tasks running in containers.
+	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
+
+	BuildId                 string       `bson:"build_id" json:"build_id"`
+	DistroId                string       `bson:"distro" json:"distro"`
+	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
+	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents           int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies    bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// DistroAliases refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
@@ -499,13 +503,13 @@ func (t *Task) IsHostDispatchable() bool {
 // IsContainerDispatchable returns true if the task should run in a container
 // and can be dispatched.
 func (t *Task) IsContainerDispatchable() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerAllocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskUndispatched && t.Activated && t.ContainerAllocated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
 // container or not.
 func (t *Task) ShouldAllocateContainer() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskUndispatched && t.Activated && !t.ContainerAllocated && t.Priority != evergreen.DisabledTaskPriority
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -948,7 +952,8 @@ func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
 // marked as dispatched to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string, dispatchedAt time.Time) error {
 	query := shouldContainerTaskDispatchQuery()
-	query[StatusKey] = evergreen.TaskContainerAllocated
+	query[StatusKey] = evergreen.TaskUndispatched
+	query[ContainerAllocatedKey] = true
 	update := bson.M{
 		"$set": bson.M{
 			StatusKey:        evergreen.TaskDispatched,
@@ -1004,17 +1009,21 @@ func (t *Task) MarkAsHostUndispatched() error {
 // MarkAsContainerDeallocated marks a container task that was allocated as no
 // longer allocated.
 func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
-	if t.Status != evergreen.TaskContainerAllocated {
-		return errors.Errorf("cannot deallocate a container task if it's not currently allocated - current status is '%s'", t.Status)
+	if t.Status != evergreen.TaskUndispatched {
+		return errors.Errorf("cannot deallocate a container task if it's not currently undispatched - current status is '%s'", t.Status)
+	}
+	if !t.ContainerAllocated {
+		return errors.New("cannot deallocate a container task if it's not currently allocated")
 	}
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
-		IdKey:     t.Id,
-		StatusKey: evergreen.TaskContainerAllocated,
+		IdKey:                 t.Id,
+		StatusKey:             evergreen.TaskUndispatched,
+		ContainerAllocatedKey: true,
 	}, bson.M{
 		"$set": bson.M{
-			StatusKey:        evergreen.TaskContainerUnallocated,
-			DispatchTimeKey:  utility.ZeroTime,
-			LastHeartbeatKey: utility.ZeroTime,
+			ContainerAllocatedKey: false,
+			DispatchTimeKey:       utility.ZeroTime,
+			LastHeartbeatKey:      utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			AgentVersionKey: 1,
@@ -1027,7 +1036,7 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 		return errors.New("task was not updated")
 	}
 
-	t.Status = evergreen.TaskContainerUnallocated
+	t.ContainerAllocated = false
 	t.DispatchTime = utility.ZeroTime
 	t.LastHeartbeat = utility.ZeroTime
 
@@ -1736,8 +1745,6 @@ func (t *Task) displayTaskPriority() int {
 	case evergreen.TaskSetupFailed:
 		return 70
 	case evergreen.TaskUndispatched:
-		return 80
-	case evergreen.TaskContainerUnallocated:
 		return 80
 	case evergreen.TaskInactive:
 		return 90
@@ -2949,15 +2956,13 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 // TaskStatusCount holds counts for task statuses
 type TaskStatusCount struct {
-	Succeeded            int `json:"succeeded"`
-	Failed               int `json:"failed"`
-	Started              int `json:"started"`
-	Undispatched         int `json:"undispatched"`
-	Inactive             int `json:"inactive"`
-	Dispatched           int `json:"dispatched"`
-	ContainerUnallocated int `json:"container_unallocated"`
-	ContainerAllocated   int `json:"container_allocated"`
-	TimedOut             int `json:"timed_out"`
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
 }
 
 func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
@@ -2976,10 +2981,6 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 		tsc.Undispatched++
 	case evergreen.TaskInactive:
 		tsc.Inactive++
-	case evergreen.TaskContainerUnallocated:
-		tsc.ContainerUnallocated++
-	case evergreen.TaskContainerAllocated:
-		tsc.ContainerAllocated++
 	}
 }
 

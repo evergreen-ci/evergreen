@@ -142,7 +142,7 @@ func TestAllocate(t *testing.T) {
 		dbTask, err := task.FindOneId(tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskContainerAllocated, dbTask.Status)
+		assert.True(t, dbTask.ContainerAllocated)
 
 		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
 		require.NoError(t, err)
@@ -233,9 +233,10 @@ func TestAllocate(t *testing.T) {
 			})
 			require.NoError(t, err)
 			tCase(tctx, t, env, &task.Task{
-				Id:        "task",
-				Status:    evergreen.TaskContainerUnallocated,
-				Activated: true,
+				Id:                 "task",
+				Status:             evergreen.TaskUndispatched,
+				ContainerAllocated: false,
+				Activated:          true,
 			}, p)
 		})
 	}

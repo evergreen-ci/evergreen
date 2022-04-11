@@ -134,12 +134,13 @@ func TestAssignNextTask(t *testing.T) {
 
 	getDispatchableTask := func() task.Task {
 		return task.Task{
-			Id:                utility.RandomString(),
-			Activated:         true,
-			ActivatedTime:     time.Now(),
-			Status:            evergreen.TaskContainerAllocated,
-			ExecutionPlatform: task.ExecutionPlatformContainer,
-			DisplayTaskId:     utility.ToStringPtr(""),
+			Id:                 utility.RandomString(),
+			Activated:          true,
+			ActivatedTime:      time.Now(),
+			Status:             evergreen.TaskUndispatched,
+			ContainerAllocated: true,
+			ExecutionPlatform:  task.ExecutionPlatformContainer,
+			DisplayTaskId:      utility.ToStringPtr(""),
 		}
 	}
 	getProjectRef := func() model.ProjectRef {
@@ -187,7 +188,7 @@ func TestAssignNextTask(t *testing.T) {
 		dbTask, err := task.FindOneId(tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+		assert.False(t, dbTask.ContainerAllocated)
 	}
 
 	checkDispatcherTasks := func(t *testing.T, pd PodDispatcher, taskIDs []string) {
@@ -296,9 +297,10 @@ func TestAssignNextTask(t *testing.T) {
 			checkTaskDispatchedToPod(t, dispatchableTask0, params.pod)
 			checkDispatcherTasks(t, params.dispatcher, []string{dispatchableTask1.Id})
 		},
-		"DequeuesTaskWithUndispatchableStatusAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
+		"DequeuesTaskWithoutContainerAllocatedAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			require.NoError(t, params.pod.Insert())
-			params.task.Status = evergreen.TaskContainerUnallocated
+			params.task.Status = evergreen.TaskUndispatched
+			params.task.ContainerAllocated = false
 			require.NoError(t, params.task.Insert())
 			require.NoError(t, params.ref.Insert())
 			require.NoError(t, params.dispatcher.Insert())

@@ -197,11 +197,11 @@ func (pd *PodDispatcher) dequeue(ctx context.Context, env evergreen.Environment)
 }
 
 // dequeueUndispatchableTask removes the task from the dispatcher and, if the
-// task status indicates a container has been allocated for it, marks it as
+// task indicates a container has been allocated for it, marks it as
 // unallocated.
 func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
-	if t.Status != evergreen.TaskContainerAllocated {
-		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task")
+	if t.Status != evergreen.TaskUndispatched || !t.ContainerAllocated {
+		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task that is already in a non-allocated state")
 	}
 
 	if err := t.MarkAsContainerDeallocated(ctx, env); err != nil {
