@@ -108,7 +108,7 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizes map[string]*ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerSizes map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -2434,17 +2434,17 @@ func GetMessageForPatch(patchID string) (string, error) {
 	return project.CommitQueue.Message, nil
 }
 
-func ValidateContainers(project string, containers []Container) error {
-	pRef, err := FindMergedProjectRef(project, "", true)
-	if err != nil {
-		return errors.Errorf("Unable to find merged project ref for project %s", project)
-	}
+// ValidateContainers inspects the list of containers defined in the project YAML and checks that each
+// are properly configured, and that their definitions can coexist with what is defined for container sizes
+// on the project admin page.
+func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, container := range containers {
-		catcher.Add(ValidateContainerSystem(container.System))
-		catcher.Add(ValidateContainerSize(container.Resources))
-		catcher.Add(ValidateContainerSize(pRef.ContainerSizes[container.Size]))
-		catcher.NewWhen(container.Size != "" && pRef.ContainerSizes[container.Size] == nil, fmt.Sprintf("size '%s' is not defined anywhere", container.Size))
+		catcher.Add(container.System.Validate())
+		catcher.Add(container.Resources.Validate())
+		size, ok := pRef.ContainerSizes[container.Size]
+		catcher.AddWhen(ok, size.Validate())
+		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
@@ -2453,22 +2453,21 @@ func ValidateContainers(project string, containers []Container) error {
 	return catcher.Resolve()
 }
 
-func ValidateContainerSystem(containerSystem ContainerSystem) error {
+func (c ContainerSystem) Validate() error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(containerSystem.OperatingSystem.Validate())
-	catcher.Add(containerSystem.CPUArchitecture.Validate())
-	catcher.Add(containerSystem.WindowsVersion.Validate())
-	catcher.NewWhen(containerSystem.OperatingSystem == evergreen.LinuxOS && containerSystem.WindowsVersion != "", "cannot specify windows version when OS is linux")
+	catcher.Add(c.OperatingSystem.Validate())
+	catcher.Add(c.CPUArchitecture.Validate())
+	if c.OperatingSystem == evergreen.WindowsOS {
+		catcher.Add(c.WindowsVersion.Validate())
+	}
+	catcher.NewWhen(c.OperatingSystem == evergreen.LinuxOS && c.WindowsVersion != "", "cannot specify windows version when OS is linux")
 	return catcher.Resolve()
 }
 
-func ValidateContainerSize(containerResource *ContainerResources) error {
-	if containerResource == nil {
-		return nil
-	}
+func (c ContainerResources) Validate() error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.NewWhen(containerResource.CPU <= 0, "container resource CPU must be a positive integer")
-	catcher.NewWhen(containerResource.MemoryMB <= 0, "container resource Memory MB must be a positive integer")
+	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
+	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
 	return catcher.Resolve()
 }
 

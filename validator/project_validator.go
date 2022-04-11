@@ -135,7 +135,6 @@ var projectErrorValidators = []projectValidator{
 	validateDuplicateBVTasks,
 	validateGenerateTasks,
 	validateAliases,
-	validateContainers,
 }
 
 // Functions used to validate the syntax of project configs representing properties found on the project page.
@@ -159,6 +158,7 @@ var projectWarningValidators = []projectValidator{
 var projectSettingsValidators = []projectSettingsValidator{
 	validateTaskSyncSettings,
 	validateVersionControl,
+	validateContainers,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
@@ -248,7 +248,7 @@ func CheckProjectErrors(project *model.Project, includeLong bool) ValidationErro
 	containerNameMap := map[string]bool{}
 	for _, container := range project.Containers {
 		if containerNameMap[container.Name] {
-			validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is already defined", container.Name)})
+			validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is defined multiple times", container.Name)})
 		}
 		containerNameMap[container.Name] = true
 	}
@@ -339,9 +339,9 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(project *model.Project) ValidationErrors {
+func validateContainers(project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
-	err := model.ValidateContainers(project.Identifier, project.Containers)
+	err := model.ValidateContainers(ref, project.Containers)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -482,7 +482,7 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, containerResource := range pc.ContainerSizes {
-		err := model.ValidateContainerSize(containerResource)
+		err := containerResource.Validate()
 		if err != nil {
 			errs = append(errs,
 				ValidationError{
@@ -654,10 +654,7 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// Ensures that:
-// 1. A referenced task within a buildvariant task object exists in the set of project
-// tasks and is not referenced in the task group of the buildvariant.
-// 2. Any referenced distro exists within the current setting's distro directory
+// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names
 func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
@@ -706,23 +703,22 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					})
 			}
 
-			for _, distro := range task.RunOn {
-				if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) && !containerNameMap[distro] {
+			for _, name := range task.RunOn {
+				if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) && !containerNameMap[name] {
 					errs = append(errs,
 						ValidationError{
-							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
-								"references a nonexistent distro '%s'",
-								task.Name, buildVariant.Name, distro),
+							Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a nonexistent distro or container named '%s'",
+								task.Name, buildVariant.Name, name),
 							Level: Warning,
 						},
 					)
-				} else if utility.StringSliceContains(distroIDs, distro) && containerNameMap[distro] {
+				} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
 								"references a container name overlapping with an existing distro '%s', the container "+
 								"configuration will override the distro",
-								task.Name, buildVariant.Name, distro),
+								task.Name, buildVariant.Name, name),
 							Level: Warning,
 						},
 					)
@@ -731,30 +727,30 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 		}
 		runOnHasDistro := false
 		runOnHasContainer := false
-		for _, distro := range buildVariant.RunOn {
-			if !utility.StringSliceContains(distroIDs, distro) && !utility.StringSliceContains(distroAliases, distro) && !containerNameMap[distro] {
+		for _, name := range buildVariant.RunOn {
+			if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) && !containerNameMap[name] {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' references a nonexistent distro '%s'",
-							buildVariant.Name, distro),
+						Message: fmt.Sprintf("buildvariant '%s' references a nonexistent distro or container named '%s'",
+							buildVariant.Name, name),
 						Level: Warning,
 					},
 				)
-			} else if utility.StringSliceContains(distroIDs, distro) && containerNameMap[distro] {
+			} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' "+
 							"references a container name overlapping with an existing distro '%s', the container "+
 							"configuration will override the distro",
-							buildVariant.Name, distro),
+							buildVariant.Name, name),
 						Level: Warning,
 					},
 				)
 			}
-			if utility.StringSliceContains(distroIDs, distro) {
+			if utility.StringSliceContains(distroIDs, name) {
 				runOnHasDistro = true
 			}
-			if containerNameMap[distro] {
+			if containerNameMap[name] {
 				runOnHasContainer = true
 			}
 		}
