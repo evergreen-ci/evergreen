@@ -497,19 +497,54 @@ func (t *Task) IsFinished() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && t.Status == evergreen.TaskUndispatched && t.Activated
+	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && len(t.ExecutionTasks) == 0 && t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
 // IsContainerDispatchable returns true if the task should run in a container
 // and can be dispatched.
 func (t *Task) IsContainerDispatchable() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskUndispatched && t.Activated && t.ContainerAllocated && t.Priority != evergreen.DisabledTaskPriority
+	if !t.ContainerAllocated {
+		return false
+	}
+	return t.isContainerScheduled()
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
 // container or not.
 func (t *Task) ShouldAllocateContainer() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskUndispatched && t.Activated && !t.ContainerAllocated && t.Priority != evergreen.DisabledTaskPriority
+	if t.ContainerAllocated {
+		return false
+	}
+
+	return t.isContainerScheduled()
+}
+
+// isContainerTaskScheduled returns whether or not the task is in a state
+// where it should eventually dispatch to run on a container.
+func (t *Task) isContainerScheduled() bool {
+	if t.ExecutionPlatform != ExecutionPlatformContainer {
+		return false
+	}
+	if t.Status != evergreen.TaskUndispatched {
+		return false
+	}
+	if !t.Activated {
+		return false
+	}
+	if t.Priority <= evergreen.DisabledTaskPriority {
+		return false
+	}
+
+	for _, dep := range t.DependsOn {
+		if dep.Unattainable {
+			return false
+		}
+		if !dep.Finished {
+			return false
+		}
+	}
+
+	return true
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -951,7 +986,7 @@ func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
 // to a pod. If the task is part of a display task, the display task is also
 // marked as dispatched to a pod.
 func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string, dispatchedAt time.Time) error {
-	query := shouldContainerTaskDispatchQuery()
+	query := isContainerTaskScheduledQuery()
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
 	update := bson.M{
