@@ -8,10 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -35,8 +35,8 @@ func setupHostTerminationQueryIndex(t *testing.T) {
 }
 
 func TestHostTerminationJob(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host){
-		"TerminatesRunningHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host){
+		"TerminatesRunningHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			require.NoError(t, h.Insert())
 			mcp.Set(h.Id, cloud.MockInstance{
 				IsUp:   true,
@@ -67,7 +67,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 		},
-		"SkipsCloudHostTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"SkipsCloudHostTermination": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			require.NoError(t, h.Insert())
 			mcp.Set(h.Id, cloud.MockInstance{
 				IsUp:   true,
@@ -99,7 +99,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusRunning, cloudHost.Status, "cloud host should be unchanged because cloud host termination should be skipped")
 		},
-		"NoopsForStaticHosts": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"NoopsForStaticHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Provider = evergreen.ProviderNameStatic
 			h.Distro.Provider = evergreen.ProviderNameStatic
 			require.NoError(t, h.Insert())
@@ -116,7 +116,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
-		"FailsWithNonexistentDBHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"FailsWithNonexistentDBHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
 				TerminationReason: "foo",
@@ -128,7 +128,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			assert.Error(t, j.Error())
 		},
-		"ReterminatesCloudHostIfAlreadyMarkedTerminated": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"ReterminatesCloudHostIfAlreadyMarkedTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 			mcp.Set(h.Id, cloud.MockInstance{
@@ -143,7 +143,7 @@ func TestHostTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 		},
-		"TerminatesDBHostWithoutCloudHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"TerminatesDBHostWithoutCloudHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			require.NoError(t, h.Insert())
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
@@ -158,7 +158,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.NotEqual(t, evergreen.HostRunning, dbHost.Status)
 		},
-		"MarksUninitializedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"MarksUninitializedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostUninitialized
 			require.NoError(t, h.Insert())
 
@@ -174,7 +174,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
-		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
 			require.NoError(t, h.Insert())
 
@@ -190,7 +190,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
-		"NoopsWithAlreadyTerminatedIntentHost": func(ctx context.Context, t *testing.T, env *mock.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"NoopsWithAlreadyTerminatedIntentHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			// The ID must be a valid intent host ID.
 			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostTerminated
@@ -214,8 +214,7 @@ func TestHostTerminationJob(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			env := testutil.NewEnvironment(ctx, t)
 
 			h := &host.Host{
 				Id:          "i-12345",
@@ -225,7 +224,10 @@ func TestHostTerminationJob(t *testing.T) {
 				Provisioned: true,
 			}
 
-			tCase(ctx, t, env, cloud.GetMockProvider(), h)
+			provider := cloud.GetMockProvider()
+			provider.Reset()
+
+			tCase(ctx, t, env, provider, h)
 		})
 	}
 }
