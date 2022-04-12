@@ -71,11 +71,6 @@ func getMockProjectSettings() model.ProjectSettings {
 
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	s.setup = func() error {
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 
@@ -248,11 +243,6 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.AllLogCollection))
 
 	vars := &model.ProjectVars{
@@ -307,11 +297,6 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 }
 
 func TestGetProjectAliasResults(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 	p := model.Project{
 		Identifier: "helloworld",

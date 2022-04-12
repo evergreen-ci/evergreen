@@ -30,11 +30,6 @@ type UserRouteSuite struct {
 
 func TestUserRouteSuiteWithDB(t *testing.T) {
 	s := new(UserRouteSuite)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -150,20 +145,15 @@ type userPermissionPostSuite struct {
 }
 
 func TestPostUserPermissionSuite(t *testing.T) {
-	// kim: TODO: remove
 	s := &userPermissionPostSuite{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.env = testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
 func (s *userPermissionPostSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	// kim: TODO: remove
-	// env := evergreen.GetEnvironment()
-	// _ = s.env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
 	s.Require().NoError(db.CreateCollections(evergreen.ScopeCollection))
 	s.u = user.DBUser{
 		Id: "user",
@@ -210,8 +200,6 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	// valid input that should create a new role + scope
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := evergreen.GetEnvironment()
 	validBody := `{ "resource_type": "project", "resources": ["foo"], "permissions": {"project_tasks": 10} }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
@@ -267,14 +255,9 @@ func TestDeleteUserPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	// env := &mock.Environment{}
-	// require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id:          "user",
 		SystemRoles: []string{"role1", "role2", "role3", evergreen.BasicProjectAccessRole},
@@ -320,15 +303,8 @@ func TestGetUserPermissions(t *testing.T) {
 	defer cancel()
 
 	env := testutil.NewEnvironment(ctx, t)
-	// env := &mock.Environment{}
-	// require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
-	// kim: TODO: remove
-	// _ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id:          "user",
@@ -351,11 +327,6 @@ func TestPostUserRoles(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	// env := &mock.Environment{}
-	// require.NoError(t, env.Configure(ctx))
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	env.SetUserManager(serviceutil.MockUserManager{})
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection))
 	rm := env.RoleManager()
@@ -411,9 +382,6 @@ func TestPostUserRoles(t *testing.T) {
 func TestServiceUserOperations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(user.Collection))
 
 	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"] }`
@@ -472,9 +440,6 @@ func TestServiceUserOperations(t *testing.T) {
 func TestGetUsersForRole(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(user.Collection))
 
 	u1 := user.DBUser{
@@ -520,9 +485,6 @@ func TestGetUsersForResourceId(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
-	// env := &mock.Environment{}
-	// require.NoError(t, env.Configure(ctx))
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
 

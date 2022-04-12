@@ -12,11 +12,6 @@ import (
 )
 
 func TestCompareTasks(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(distro.Collection, task.Collection, model.VersionCollection))
 	distroId := "d"
 	t1 := task.Task{

@@ -24,12 +24,6 @@ type SubscriptionRouteSuite struct {
 
 func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 	s := new(SubscriptionRouteSuite)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
-
 	suite.Run(t, s)
 }
 

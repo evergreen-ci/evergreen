@@ -77,9 +77,6 @@ func TestParseParameters(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(groupContext, t)
-	// evergreen.SetEnvironment(env)
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Tasks": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -372,9 +369,6 @@ func TestParse(t *testing.T) {
 
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(groupContext, t)
-	// evergreen.SetEnvironment(env)
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Parse": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -478,11 +472,8 @@ func TestParse(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	// kim: TODO: remove
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// env := testutil.NewEnvironment(groupContext, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	proj := model.ProjectRef{
 		Id: "project",
@@ -761,11 +752,6 @@ func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
 }
 
 func TestReliability(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()

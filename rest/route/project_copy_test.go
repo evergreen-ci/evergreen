@@ -24,11 +24,6 @@ type ProjectCopySuite struct {
 }
 
 func TestProjectCopySuite(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectCopySuite))
 }
 
@@ -126,11 +121,6 @@ type copyVariablesSuite struct {
 }
 
 func TestCopyVariablesSuite(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(copyVariablesSuite))
 }
 

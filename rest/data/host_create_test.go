@@ -21,11 +21,6 @@ import (
 
 func TestListHostsForTask(t *testing.T) {
 	assert := assert.New(t)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(host.Collection, build.Collection, task.Collection))
 	hosts := []*host.Host{
@@ -97,12 +92,6 @@ func TestListHostsForTask(t *testing.T) {
 }
 
 func TestCreateHostsFromTask(t *testing.T) {
-	// Setup tests
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.String("region", "us-east-1"),
@@ -325,11 +314,6 @@ buildvariants:
 
 func TestCreateContainerFromTask(t *testing.T) {
 	assert := assert.New(t)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
 		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))

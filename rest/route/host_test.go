@@ -848,11 +848,6 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 	for _, userToAdd := range users {
 		grip.Error(userToAdd.Insert())
 	}
-	// kim: TODO: remove
-	// cmd := map[string]string{
-	//     "create": evergreen.ScopeCollection,
-	// }
-	// grip.Error(env.DB().RunCommand(nil, cmd).Err())
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	rm := env.RoleManager()
 	require.NoError(t, rm.AddScope(gimlet.Scope{
@@ -968,8 +963,6 @@ func TestRemoveAdminHandler(t *testing.T) {
 	assert.NoError(t, projectRef1.Insert())
 
 	offboardedUser := "user0"
-	// kim: TODO: remove
-	// env := evergreen.GetEnvironment()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)

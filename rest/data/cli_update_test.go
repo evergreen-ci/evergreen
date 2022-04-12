@@ -15,11 +15,6 @@ type cliUpdateConnectorSuite struct {
 }
 
 func TestUpdateConnector(t *testing.T) {
-	// kim: TODO: test
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))

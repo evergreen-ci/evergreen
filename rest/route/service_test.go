@@ -66,11 +66,6 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
 		So(db.Clear(host.Collection), ShouldBeNil)
@@ -309,11 +304,6 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	numTasks := 300
 	projectName := "project_1"
 	commit := "commit_1"
@@ -521,11 +511,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
@@ -904,11 +889,6 @@ func TestTestPaginator(t *testing.T) {
 }
 
 func TestTaskExecutionPatchPrepare(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		tep := &taskExecutionPatchHandler{}
 
@@ -1012,11 +992,6 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	Convey("With a task in the DB and a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
 		version := serviceModel.Version{
@@ -1062,11 +1037,6 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 }
 
 func TestTaskResetPrepare(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		trh := &taskRestartHandler{}
 
@@ -1111,11 +1081,6 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		rm := makeGetTaskRoute("https://example.net/test")
@@ -1190,11 +1155,6 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	Convey("With a task returned by the Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, serviceModel.VersionCollection, build.Collection))
 		timeNow := time.Now()
@@ -1257,11 +1217,8 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func TestParentTaskInfo(t *testing.T) {
-	// kim: TODO: remove
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	buildID := "test"
 	dtID := "displayTask"
@@ -1315,11 +1272,8 @@ func TestParentTaskInfo(t *testing.T) {
 }
 
 func TestOptionsRequest(t *testing.T) {
-	// kim: TODO: remove
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	route := "/rest/v2/tasks/test/restart"

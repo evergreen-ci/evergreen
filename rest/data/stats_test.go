@@ -18,11 +18,6 @@ import (
 
 func TestMockGetTestStats(t *testing.T) {
 	assert := assert.New(t)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
 	filter := &stats.StatsFilter{}
 	proj := model.ProjectRef{
@@ -42,11 +37,6 @@ func TestMockGetTestStats(t *testing.T) {
 
 func TestMockGetTaskStats(t *testing.T) {
 	assert := assert.New(t)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(db.Clear(stats.DailyTaskStatsCollection))
 	filter := &stats.StatsFilter{}
 	// Add stats
@@ -131,11 +121,6 @@ func insertTaskStats(filter *stats.StatsFilter, numTests int, limit int) error {
 }
 
 func TestGetTaskStats(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection, model.ProjectRefCollection))
 	}()
@@ -172,11 +157,6 @@ func TestGetTaskStats(t *testing.T) {
 }
 
 func TestGetTestStats(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(stats.DailyTestStatsCollection, model.ProjectRefCollection))
 	}()

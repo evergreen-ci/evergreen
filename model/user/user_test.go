@@ -34,7 +34,7 @@ func (s *UserTestSuite) SetupSuite() {
 
 func (s *UserTestSuite) SetupTest() {
 	s.NoError(db.ClearCollections(Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.ClearCollections(evergreen.ScopeCollection))
 	s.users = []*DBUser{
 		&DBUser{
 			Id:     "Test1",

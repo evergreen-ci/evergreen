@@ -566,7 +566,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 func TestAddPermissions(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id: "me",
 	}

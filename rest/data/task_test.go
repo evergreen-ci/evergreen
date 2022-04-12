@@ -36,11 +36,6 @@ type TaskConnectorFetchByBuildSuite struct {
 
 func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByBuildSuite)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.Clear(task.Collection))
 
 	s.taskIds = make([][]string, 2)
@@ -185,11 +180,6 @@ type TaskConnectorFetchByProjectAndCommitSuite struct {
 
 func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByProjectAndCommitSuite)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
 
 	s.numCommits = 2
@@ -346,11 +336,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindEmptyProjectAndCommi
 
 func TestCheckTaskSecret(t *testing.T) {
 	assert := assert.New(t)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection))
 
 	task := task.Task{

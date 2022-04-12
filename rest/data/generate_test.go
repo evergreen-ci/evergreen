@@ -17,11 +17,7 @@ import (
 func TestGeneratePoll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	env := testutil.NewEnvironment(ctx, t)
-	// require.NoError(t, env.Configure(ctx))
 	require.NoError(t, db.ClearCollections(task.Collection))
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()

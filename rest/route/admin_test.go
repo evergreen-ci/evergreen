@@ -291,8 +291,6 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
-	// kim: TODO: remove
-	// queue := evergreen.GetEnvironment().LocalQueue()
 	queue := s.env.LocalQueue()
 	handler := makeRestartRoute(evergreen.RestartTasks, queue)
 

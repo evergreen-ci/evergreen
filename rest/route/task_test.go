@@ -33,11 +33,6 @@ type TaskAbortSuite struct {
 }
 
 func TestTaskAbortSuite(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(TaskAbortSuite))
 }
 
@@ -89,11 +84,6 @@ func (s *TaskAbortSuite) TestAbort() {
 
 func TestFetchArtifacts(t *testing.T) {
 	assert := assert.New(t)
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require := require.New(t)
 
 	assert.NoError(db.ClearCollections(task.Collection, task.OldCollection, artifact.Collection))
@@ -208,11 +198,6 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 }
 
 func TestGetDisplayTask(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	for testName, testCase := range map[string]func(context.Context, *testing.T){
 		"SucceedsWithTaskInDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
@@ -281,9 +266,6 @@ func TestGetDisplayTask(t *testing.T) {
 func TestGetTaskSyncReadCredentials(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	creds := model.APIS3Credentials{
 		Key:    utility.ToStringPtr("key"),
 		Secret: utility.ToStringPtr("secret"),
@@ -354,9 +336,6 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 func TestGetTaskSyncPath(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// kim: TODO: remove
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	expected := task.Task{
 		Id:           "task_id",
 		Project:      "project",

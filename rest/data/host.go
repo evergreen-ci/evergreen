@@ -85,7 +85,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 
 // GenerateHostProvisioningScript generates and returns the script to
 // provision the host given by host ID.
-func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
+func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environment, hostID string) (string, error) {
 	if hostID == "" {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -106,7 +106,6 @@ func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string,
 		}
 	}
 
-	env := evergreen.GetEnvironment()
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return "", gimlet.ErrorResponse{

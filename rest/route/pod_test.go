@@ -16,11 +16,6 @@ import (
 )
 
 func TestPostPod(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podPostHandler){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			copied := ph.Factory()
@@ -98,11 +93,6 @@ func TestPostPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(pod.Collection))
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podGetHandler){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, ph *podGetHandler) {
@@ -133,7 +123,6 @@ func TestGetPod(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
-		// "": func(ctx context.Context, t *testing.T, ph *podGetHandler) {},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())

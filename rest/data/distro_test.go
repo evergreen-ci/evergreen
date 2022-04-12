@@ -11,11 +11,6 @@ import (
 )
 
 func TestDeleteDistroById(t *testing.T) {
-	// kim: TODO: remove
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// env := testutil.NewEnvironment(ctx, t)
-	// evergreen.SetEnvironment(env)
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	require.NoError(t, err)
 	defer session.Close()
