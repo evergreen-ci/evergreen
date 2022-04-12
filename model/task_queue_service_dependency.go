@@ -227,7 +227,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			return errors.Wrap(err, "topologically sorting the dependency graph")
 		}
 
-		var cycles [][]string
+		cycles := make([][]string, 0, len(unorderableNodes))
 		for _, cycle := range unorderableNodes {
 			cycleIDs := make([]string, 0, len(cycle))
 			for _, node := range cycle {
@@ -235,7 +235,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			}
 			cycles = append(cycles, cycleIDs)
 		}
-		grip.Warning(message.Fields{
+		grip.Error(message.Fields{
 			"dispatcher": DAGDispatcher,
 			"function":   "rebuild",
 			"message":    "tasks in the queue form dependency cycle(s)",
