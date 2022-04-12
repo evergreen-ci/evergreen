@@ -15,8 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Thing struct {
@@ -74,11 +72,7 @@ func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
 
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
-	require.NoError(t, client.Database("amboy_test").Drop(ctx))
+	require.NoError(t, db.DropDatabases(env.Settings().Amboy.DB))
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)

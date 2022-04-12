@@ -1076,6 +1076,7 @@ func TestDisableHostHandler(t *testing.T) {
 func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.Clear(host.Collection))
 	defer func() {
 		assert.NoError(t, db.Clear(host.Collection))
@@ -1092,6 +1093,7 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 	t.Run("SucceedsWithValidHostID", func(t *testing.T) {
 		rh := hostProvisioningOptionsGetHandler{
 			hostID: h.Id,
+			env:    env,
 		}
 		resp := rh.Run(ctx)
 		require.Equal(t, http.StatusOK, resp.Status())
@@ -1100,13 +1102,16 @@ func TestHostProvisioningOptionsGetHandler(t *testing.T) {
 		assert.NotEmpty(t, opts.Content)
 	})
 	t.Run("FailsWithoutHostID", func(t *testing.T) {
-		rh := hostProvisioningOptionsGetHandler{}
+		rh := hostProvisioningOptionsGetHandler{
+			env: env,
+		}
 		resp := rh.Run(ctx)
 		assert.NotEqual(t, http.StatusOK, resp.Status())
 	})
 	t.Run("FailsWithInvalidHostID", func(t *testing.T) {
 		rh := hostProvisioningOptionsGetHandler{
 			hostID: "foo",
+			env:    env,
 		}
 		resp := rh.Run(ctx)
 		assert.NotEqual(t, http.StatusOK, resp.Status())

@@ -199,6 +199,24 @@ func DropAllIndexes(collections ...string) error {
 	return nil
 }
 
+// DropDatabases drops all of the given databases, returning an error immediately
+// if dropping any of the databases fails.
+func DropDatabases(dbs ...string) error {
+	session, _, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	for _, db := range dbs {
+		if err := session.DB(db).DropDatabase(); err != nil {
+			return errors.Wrapf(err, "dropping database '%s'", db)
+		}
+	}
+
+	return nil
+}
+
 // Remove removes one item matching the query from the specified collection.
 func Remove(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
