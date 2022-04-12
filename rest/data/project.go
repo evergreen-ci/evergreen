@@ -23,11 +23,13 @@ const EventLogLimit = 10
 // from the Connector through interactions with the backing database.
 type DBProjectConnector struct{}
 
-// FindProjectById queries the database for the project matching the projectRef.Id.
-func FindProjectById(id string, includeRepo bool, includeParserProject bool) (*model.ProjectRef, error) {
+// FindProjectById queries the database for the project matching the projectRef.Id. If the bool flag is set,
+// the project config properties in the project YAML will be merged into the result if the properties are
+// not set on the project page.
+func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
-	if includeRepo && includeParserProject {
+	if includeRepo && includeProjectConfig {
 		p, err = model.FindMergedProjectRef(id, "", true)
 	} else if includeRepo {
 		p, err = model.FindMergedProjectRef(id, "", false)

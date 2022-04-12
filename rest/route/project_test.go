@@ -454,9 +454,10 @@ func TestProjectGetByIDSuite(t *testing.T) {
 }
 
 func (s *ProjectGetByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.ProjectConfigCollection))
 	s.NoError(getTestProjectRef().Insert())
 	s.NoError(getTestVar().Insert())
+	s.NoError(getTestProjectConfig().Insert())
 	s.rm = makeGetProjectByID().(*projectIDGetHandler)
 }
 
@@ -474,6 +475,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	ctx := context.Background()
 	h := s.rm.(*projectIDGetHandler)
 	h.projectName = "dimoxinil"
+	h.includeProjectConfig = true
 
 	resp := s.rm.Run(ctx)
 	s.Require().NotNil(resp.Data())
@@ -481,6 +483,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
+	s.Equal(utility.FromStringPtr(projectRef.Aliases[0].Alias), evergreen.CommitQueueAlias)
 	cachedProject, err := data.FindProjectById(h.projectName, false, false)
 	s.NoError(err)
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
@@ -621,6 +624,21 @@ func getTestVar() *serviceModel.ProjectVars {
 		Id:   "dimoxinil",
 		Vars: map[string]string{"apple": "green", "banana": "yellow", "lemon": "yellow"},
 	}
+}
+
+func getTestProjectConfig() *serviceModel.ProjectConfig {
+	return &serviceModel.ProjectConfig{
+		Id:      "dimoxinil",
+		Project: "dimoxinil",
+		ProjectConfigFields: serviceModel.ProjectConfigFields{
+			CommitQueueAliases: []serviceModel.ProjectAlias{
+				{
+					ID:        mgobson.NewObjectId(),
+					ProjectID: "dimoxinil",
+					Alias:     evergreen.CommitQueueAlias,
+				},
+			},
+		}}
 }
 
 func getTestAliases() []serviceModel.ProjectAlias {
