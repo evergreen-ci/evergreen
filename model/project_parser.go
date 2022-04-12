@@ -87,6 +87,8 @@ type ParserProject struct {
 	// List of yamls to merge
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
+	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
+	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 } // End of ParserProject struct
