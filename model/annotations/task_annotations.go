@@ -225,15 +225,6 @@ func AddToAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		TaskExecutionKey: a.TaskExecution,
 	}
 
-	// Overwrite note and metadata.
-	if a.Note != nil {
-		a.Note.Source = source
-		update[NoteKey] = a.Note
-	}
-	if a.Metadata != nil {
-		update[MetadataKey] = a.Metadata
-	}
-
 	if a.Issues != nil {
 		for i := range a.Issues {
 			a.Issues[i].Source = source
