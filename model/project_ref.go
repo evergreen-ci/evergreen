@@ -2434,6 +2434,53 @@ func GetMessageForPatch(patchID string) (string, error) {
 	return project.CommitQueue.Message, nil
 }
 
+// ValidateContainers inspects the list of containers defined in the project YAML and checks that each
+// are properly configured, and that their definitions can coexist with what is defined for container sizes
+// on the project admin page.
+func ValidateContainers(pRef *ProjectRef, containers []Container) error {
+	catcher := grip.NewSimpleCatcher()
+	for _, container := range containers {
+		catcher.Add(container.System.Validate())
+		size, ok := pRef.ContainerSizes[container.Size]
+		if ok {
+			catcher.Add(size.Validate())
+		}
+		if container.Resources != nil {
+			catcher.Add(container.Resources.Validate())
+		}
+		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
+		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
+		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
+		catcher.NewWhen(container.Image == "", "image must be defined")
+		catcher.NewWhen(container.Name == "", "name must be defined")
+	}
+	return catcher.Resolve()
+}
+
+// Validate that essential ContainerSystem fields are properly defined and no data contradictions exist.
+func (c ContainerSystem) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	if c.OperatingSystem != "" {
+		catcher.Add(c.OperatingSystem.Validate())
+	}
+	if c.CPUArchitecture != "" {
+		catcher.Add(c.CPUArchitecture.Validate())
+	}
+	if c.OperatingSystem == evergreen.WindowsOS {
+		catcher.Add(c.WindowsVersion.Validate())
+	}
+	catcher.NewWhen(c.OperatingSystem == evergreen.LinuxOS && c.WindowsVersion != "", "cannot specify windows version when OS is linux")
+	return catcher.Resolve()
+}
+
+// Validate that essential ContainerResources fields are properly defined.
+func (c ContainerResources) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
+	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
+	return catcher.Resolve()
+}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")

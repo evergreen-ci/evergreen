@@ -1538,7 +1538,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -1558,7 +1558,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble,
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble,
 				ValidationErrors{})
 		})
 
@@ -1572,10 +1572,50 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
 			So(errs, ShouldNotResemble,
 				ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
+		})
+
+		Convey("an error should be thrown if a referenced distro for a "+
+			"buildvariant has the same name as an existing container", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"rhel55"},
+					},
+				},
+			}
+			containerNameMap := map[string]bool{
+				"rhel55": true,
+			}
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases)
+			So(errs, ShouldNotResemble,
+				ValidationErrors{})
+			So(len(errs), ShouldEqual, 2)
+			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
+			So(errs[1].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
+		})
+
+		Convey("an error should be thrown if a buildvariant references a mix of distros and containers to run on", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"rhel55", "c1"},
+					},
+				},
+			}
+			containerNameMap := map[string]bool{
+				"c1": true,
+			}
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases)
+			So(errs, ShouldNotResemble,
+				ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
 		})
 
 		Convey("no error should be thrown if a referenced distro ID for a "+
@@ -1588,7 +1628,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -1601,7 +1641,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -3007,6 +3047,79 @@ func TestValidateVersionControl(t *testing.T) {
 
 }
 
+func TestValidateContainers(t *testing.T) {
+	require.NoError(t, db.Clear(model.ProjectRefCollection))
+	ref := &model.ProjectRef{
+		Identifier: "proj",
+		ContainerSizes: map[string]model.ContainerResources{
+			"s1": model.ContainerResources{
+				MemoryMB: 100,
+				CPU:      1,
+			},
+		},
+	}
+	require.NoError(t, ref.Insert())
+	p := &model.Project{
+		Identifier: "proj",
+		Containers: []model.Container{
+			{
+				Name:       "c1",
+				Image:      "demo/image:latest",
+				WorkingDir: "/root",
+				Size:       "s1",
+			},
+		},
+	}
+	verrs := validateContainers(p, ref, false)
+	assert.Len(t, verrs, 0)
+	p.Containers[0].Name = ""
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "name must be defined")
+	p.Containers[0].Name = "c1"
+	p.Containers[0].Image = ""
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "image must be defined")
+	p.Containers[0].Image = "demo:image"
+	p.Containers[0].Resources = &model.ContainerResources{
+		MemoryMB: 100,
+		CPU:      1,
+	}
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
+	p.Containers[0].Size = ""
+	p.Containers[0].Resources = nil
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
+	p.Containers[0].Size = "s2"
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
+	p.Containers[0].System = model.ContainerSystem{
+		OperatingSystem: "oops",
+		CPUArchitecture: "oops",
+	}
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
+	assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
+	p.Containers[0].System = model.ContainerSystem{
+		OperatingSystem: evergreen.LinuxOS,
+		CPUArchitecture: evergreen.ArchARM64,
+	}
+	p.Containers[0].Resources = &model.ContainerResources{
+		MemoryMB: 0,
+		CPU:      -1,
+	}
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
+	assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
+}
+
 func TestValidateTaskSyncSettings(t *testing.T) {
 	for testName, testParams := range map[string]struct {
 		tasks                    []model.ProjectTask
@@ -4228,7 +4341,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
+			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{})
 			if testCase.expectErr {
 				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
 			} else {

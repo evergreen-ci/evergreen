@@ -592,9 +592,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	for i, buildDef := range responseRef.PeriodicBuilds {
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
 	}
-	for _, containerResource := range responseRef.ContainerSizes {
-		catcher.NewWhen(utility.FromIntPtr(containerResource.CPU) <= 0, "container resource CPU must be a positive integer")
-		catcher.NewWhen(utility.FromIntPtr(containerResource.MemoryMB) <= 0, "container resource Memory MB must be a positive integer")
+	for size, containerResource := range containerSizes {
+		catcher.Wrapf(containerResource.Validate(), "invalid container size '%s'", size)
 	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
