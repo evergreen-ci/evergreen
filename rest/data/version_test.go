@@ -260,9 +260,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 
 func TestCreateVersionFromConfig(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	require.NoError(t, db.CreateCollections(model.ParserProjectCollection))
 
 	ref := model.ProjectRef{
@@ -294,7 +292,8 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	p := &model.Project{}
-	ctx = context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	pp, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{

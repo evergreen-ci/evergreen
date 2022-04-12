@@ -503,7 +503,7 @@ func TestDetachFromRepo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, ProjectAliasCollection))
-			db.CreateCollections(evergreen.ScopeCollection)
+			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
 				Id:        "myProject",

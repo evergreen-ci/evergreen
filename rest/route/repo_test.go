@@ -148,7 +148,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	independentAlias.Alias = evergreen.GithubChecksAlias
 	assert.NoError(t, independentAlias.Upsert())
 
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "the amazing Annie"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "the amazing Annie"})
 	settings, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{repoRef.Owner}

@@ -15,7 +15,7 @@ import (
 func TestRepoRefUpdateAdminRoles(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
 	env := evergreen.GetEnvironment()
-	require.NoError(t, db.CreateCollection(evergreen.ScopeCollection))
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	rm := env.RoleManager()
 	r := RepoRef{ProjectRef{
 		Id: "proj",

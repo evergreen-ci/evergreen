@@ -5111,7 +5111,7 @@ func TestFindHostsSuite(t *testing.T) {
 
 	s.setup = func(s *FindHostsSuite) {
 		s.NoError(db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-		require.NoError(t, db.ClearCollections(evergreen.ScopeCollection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		hosts := s.hosts()
 		for _, h := range hosts {
