@@ -654,7 +654,7 @@ func checkProjectFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names
+// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names.
 func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names

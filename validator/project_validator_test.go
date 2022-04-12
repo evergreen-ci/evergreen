@@ -3048,6 +3048,10 @@ func TestValidateVersionControl(t *testing.T) {
 }
 
 func TestValidateContainers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := tu.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(model.ProjectRefCollection))
 	ref := &model.ProjectRef{
 		Identifier: "proj",
@@ -3070,15 +3074,15 @@ func TestValidateContainers(t *testing.T) {
 			},
 		},
 	}
-	verrs := validateContainers(p, &model.ProjectRef{}, false)
+	verrs := validateContainers(p, ref, false)
 	assert.Len(t, verrs, 0)
 	p.Containers[0].Name = ""
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "name must be defined")
 	p.Containers[0].Name = "c1"
 	p.Containers[0].Image = ""
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "image must be defined")
 	p.Containers[0].Image = "demo:image"
@@ -3086,23 +3090,23 @@ func TestValidateContainers(t *testing.T) {
 		MemoryMB: 100,
 		CPU:      1,
 	}
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
 	p.Containers[0].Size = ""
 	p.Containers[0].Resources = nil
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
 	p.Containers[0].Size = "s2"
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
 	p.Containers[0].System = model.ContainerSystem{
 		OperatingSystem: "oops",
 		CPUArchitecture: "oops",
 	}
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
 	assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
@@ -3114,10 +3118,10 @@ func TestValidateContainers(t *testing.T) {
 		MemoryMB: 0,
 		CPU:      -1,
 	}
-	verrs = validateContainers(p, &model.ProjectRef{}, false)
+	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
-	assert.Contains(t, verrs[0].Message, "container resource Memory MB must be a positive integer")
+	assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 }
 
 func TestValidateTaskSyncSettings(t *testing.T) {

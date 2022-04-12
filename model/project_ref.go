@@ -2441,9 +2441,13 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, container := range containers {
 		catcher.Add(container.System.Validate())
-		catcher.Add(container.Resources.Validate())
 		size, ok := pRef.ContainerSizes[container.Size]
-		catcher.AddWhen(ok, size.Validate())
+		if ok {
+			catcher.Add(size.Validate())
+		}
+		if container.Resources != nil {
+			catcher.Add(container.Resources.Validate())
+		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
@@ -2453,10 +2457,15 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 	return catcher.Resolve()
 }
 
+// Validate that essential ContainerSystem fields are properly defined and no data contradictions exist.
 func (c ContainerSystem) Validate() error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(c.OperatingSystem.Validate())
-	catcher.Add(c.CPUArchitecture.Validate())
+	if c.OperatingSystem != "" {
+		catcher.Add(c.OperatingSystem.Validate())
+	}
+	if c.CPUArchitecture != "" {
+		catcher.Add(c.CPUArchitecture.Validate())
+	}
 	if c.OperatingSystem == evergreen.WindowsOS {
 		catcher.Add(c.WindowsVersion.Validate())
 	}
@@ -2464,6 +2473,7 @@ func (c ContainerSystem) Validate() error {
 	return catcher.Resolve()
 }
 
+// Validate that essential ContainerResources fields are properly defined.
 func (c ContainerResources) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
