@@ -2690,7 +2690,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 		Status:       evergreen.TaskSucceeded,
 		BaseTask:     BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
 		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    72839128901, // ~ 1 min
+		TimeTaken:    time.Minute,
 	}
 	t2 := Task{
 		Id:           "t2",
@@ -2701,7 +2701,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 		Status:       evergreen.TaskFailed,
 		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
 		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    1453810928376, // ~ 24 min
+		TimeTaken:    25 * time.Minute,
 	}
 	t3 := Task{
 		Id:           "t3",
@@ -2723,7 +2723,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 		Status:       evergreen.TaskSetupFailed,
 		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
 		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:    9846571930199, // ~ 2.5 hours
+		TimeTaken:    2 * time.Hour,
 	}
 
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))

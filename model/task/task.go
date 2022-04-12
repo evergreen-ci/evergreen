@@ -3684,7 +3684,7 @@ func addTaskDuration() bson.M {
 					"if": bson.M{
 						"$eq": []string{"$" + StatusKey, evergreen.TaskStarted},
 					},
-					"then": bson.M{"$multiply": []interface{}{convertToNanoseconds, bson.M{"$subtract": []interface{}{time.Now(), "$" + StartTimeKey}}}},
+					"then": bson.M{"$multiply": []interface{}{convertToNanoseconds, bson.M{"$subtract": []interface{}{"$$NOW", "$" + StartTimeKey}}}},
 					"else": "$" + TimeTakenKey,
 				},
 			},
