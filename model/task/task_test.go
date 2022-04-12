@@ -2188,7 +2188,6 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		dbTask, err := FindOneId(taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
 		assert.False(t, dbTask.ContainerAllocated)
 		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
@@ -2202,12 +2201,13 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
 			checkTaskUnallocated(t, tsk.Id)
 		},
-		"FailsWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskSucceeded
+		"FailsWithUnallocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
+
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
-		"FailsWithDifferentDBTaskAllocationState": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+		"FailsWithUnallocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
 			tsk.ContainerAllocated = true

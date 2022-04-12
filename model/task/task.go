@@ -1009,15 +1009,12 @@ func (t *Task) MarkAsHostUndispatched() error {
 // MarkAsContainerDeallocated marks a container task that was allocated as no
 // longer allocated.
 func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
-	if t.Status != evergreen.TaskUndispatched {
-		return errors.Errorf("cannot deallocate a container task if it's not currently undispatched - current status is '%s'", t.Status)
-	}
 	if !t.ContainerAllocated {
 		return errors.New("cannot deallocate a container task if it's not currently allocated")
 	}
+
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
 		IdKey:                 t.Id,
-		StatusKey:             evergreen.TaskUndispatched,
 		ContainerAllocatedKey: true,
 	}, bson.M{
 		"$set": bson.M{
