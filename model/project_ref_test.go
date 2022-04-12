@@ -1687,15 +1687,20 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	}
 	assert.NoError(t, p.Insert())
 
-	for i := 0; i <= 50; i++ {
+	// total of 50 tasks eligible to be found
+	for i := 0; i < 100; i++ {
 		myTask := task.Task{
 			Id:                  fmt.Sprintf("t%d", i),
 			RevisionOrderNumber: i,
 			DisplayName:         "t1",
 			Project:             "my_project",
+			Status:              evergreen.TaskSucceeded,
+		}
+		if i%3 == 0 {
+			myTask.BuildVariant = "bv1"
 		}
 		if i%2 == 0 {
-			myTask.BuildVariant = "bv1"
+			myTask.Status = evergreen.TaskUndispatched
 		}
 		assert.NoError(t, myTask.Insert())
 	}
@@ -1709,19 +1714,20 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 5)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 50)
-	assert.Equal(t, tasks[4].RevisionOrderNumber, 46)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
+	assert.Equal(t, tasks[4].RevisionOrderNumber, 91)
 
 	opts.NumVersions = 10
 	opts.StartAt = 20
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 10)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 20)
-	assert.Equal(t, tasks[9].RevisionOrderNumber, 11)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 19)
+	assert.Equal(t, tasks[9].RevisionOrderNumber, 1)
 
 	opts.NumVersions = defaultVersionLimit
-	opts.StartAt = 31
+	opts.StartAt = 90
+	// 1 in every 6 tasks should qualify for this
 	opts.BuildVariant = "bv1"
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)

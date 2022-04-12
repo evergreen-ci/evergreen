@@ -1007,12 +1007,11 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 			return errors.Wrap(err, "error parsing request body")
 		}
 	}
-
+	if h.opts.NumVersions < 0 {
+		return errors.New("'num_versions' must be a positive integer")
+	}
 	if h.opts.NumVersions == 0 {
 		h.opts.NumVersions = defaultVersionLimit
-	}
-	if h.opts.NumVersions < 1 {
-		return errors.New("'num_versions' must be a positive integer")
 	}
 	if h.opts.StartAt < 0 {
 		return errors.New("'start' must be a non-negative integer")
@@ -1027,12 +1026,7 @@ func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting versions"))
 	}
 
-	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error constructing response"))
-	}
-
-	return resp
+	return gimlet.NewJSONResponse(versions)
 }
 
 type GetProjectAliasResultsHandler struct {

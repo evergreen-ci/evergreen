@@ -106,7 +106,7 @@ func VerifyUniqueProject(name string) error {
 	return nil
 }
 
-// GetProjectTasksWithOptions
+// GetProjectTasksWithOptions finds the previous tasks that have run on a project that adhere to the passed in options.
 func GetProjectTasksWithOptions(projectName string, taskName string, opts model.GetProjectTasksOpts) ([]restModel.APITask, error) {
 	tasks, err := model.GetTasksWithOptions(projectName, taskName, opts)
 	if err != nil {
