@@ -32,7 +32,6 @@ import (
 
 type HostsChangeStatusesSuite struct {
 	route *hostsChangeStatusesHandler
-	ctx   context.Context
 	env   evergreen.Environment
 	suite.Suite
 }
@@ -41,7 +40,6 @@ func TestHostsChangeStatusesSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s := &HostsChangeStatusesSuite{
-		ctx: ctx,
 		env: testutil.NewEnvironment(ctx, t),
 	}
 	suite.Run(t, s)
@@ -53,7 +51,8 @@ func (s *HostsChangeStatusesSuite) SetupTest() {
 }
 
 func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(`{"host1": {"status": "quarantined"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
@@ -66,7 +65,8 @@ func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
 }
 
 func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(`{"host1": {"status": "This is an invalid state"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
@@ -78,7 +78,8 @@ func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
 }
 
 func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root"})
 
 	json := []byte(``)
@@ -94,7 +95,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 		"host2": hostStatus{Status: "decommissioned"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
@@ -107,7 +109,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
 		"host4": hostStatus{Status: "terminated"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusUnauthorized, res.Status())
@@ -119,7 +122,8 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 		"host3": hostStatus{Status: "decommissioned"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
@@ -131,7 +135,8 @@ func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 		"host1": hostStatus{Status: "terminated"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
@@ -143,7 +148,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 		"host1": hostStatus{Status: "running"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
@@ -155,7 +161,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 		"host1": hostStatus{Status: "quarantined"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
@@ -167,7 +174,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 		"host1": hostStatus{Status: "decommissioned"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusBadRequest, res.Status())
@@ -179,7 +187,8 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 		"invalid": hostStatus{Status: "decommissioned"},
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	res := h.Run(ctx)
 	s.Equal(http.StatusNotFound, res.Status())
@@ -209,7 +218,8 @@ func (s *HostModifySuite) SetupTest() {
 
 func (s *HostModifySuite) TestRunHostNotFound() {
 	h := s.route.Factory().(*hostModifyHandler)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	h.hostID = "host-invalid"
@@ -220,7 +230,8 @@ func (s *HostModifySuite) TestRunHostNotFound() {
 
 func (s *HostModifySuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostModifyHandler)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	h.hostID = "host1"
@@ -231,7 +242,8 @@ func (s *HostModifySuite) TestRunHostNotStartedByUser() {
 
 func (s *HostModifySuite) TestRunValidHost() {
 	h := s.route.Factory().(*hostModifyHandler)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	h.hostID = "host2"
@@ -242,7 +254,8 @@ func (s *HostModifySuite) TestRunValidHost() {
 
 func (s *HostModifySuite) TestParse() {
 	h := s.route.Factory().(*hostModifyHandler)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	// empty
@@ -384,7 +397,8 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithNoUserPanics() {
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 	s.rm.hostID = "host-that-doesn't-exist"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := s.rm.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -394,7 +408,8 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host1"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
@@ -414,7 +429,8 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	foundHost, err := host.FindOneId("host3")
 	s.NoError(err)
 	s.Equal(evergreen.HostUninitialized, foundHost.Status)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
@@ -437,7 +453,8 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	foundHost, err := host.FindOneId("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
@@ -454,7 +471,8 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	foundHost, err := host.FindOneId("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
@@ -471,7 +489,8 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 	foundHost, err := host.FindOneId("host2")
 	s.NoError(err)
 	s.Equal(evergreen.HostRunning, foundHost.Status)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
@@ -521,7 +540,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
@@ -536,7 +556,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFail
 	h.hostID = "host3"
 	h.rdpPassword = "Hunter2!"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
@@ -547,7 +568,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host-that-doesn't-exist"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 
 	resp := h.Run(ctx)
@@ -579,7 +601,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
@@ -594,7 +617,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost()
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)
@@ -639,7 +663,8 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host-that-doesn't-exist"
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -672,7 +697,8 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	h.hostID = "host2"
 	h.addHours = 9001 * time.Hour
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
@@ -689,7 +715,8 @@ func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	h.hostID = "host2"
 	h.addHours = 1 * time.Hour
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
@@ -724,7 +751,8 @@ func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	h.hostID = "host2"
 	h.addHours = 1 * time.Hour
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 
 	resp := h.Run(ctx)
@@ -743,7 +771,8 @@ func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsers
 	h.hostID = "host2"
 	h.addHours = 1 * time.Hour
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	resp := h.Run(ctx)

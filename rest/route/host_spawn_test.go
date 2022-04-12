@@ -176,7 +176,7 @@ func TestHostStartHandler(t *testing.T) {
 	h := &hostStartHandler{
 		env: testutil.NewEnvironment(ctx, t),
 	}
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	hosts := []host.Host{
 		host.Host{
