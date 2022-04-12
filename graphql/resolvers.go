@@ -3357,11 +3357,10 @@ func (r *taskResolver) TaskDuration(ctx context.Context, obj *restModel.APITask)
 	if obj.TaskDuration != 0 {
 		return &obj.TaskDuration, nil
 	}
-	// If status is running / dispatched, calculate the time elapsed since it became active.
-	if utility.FromStringPtr(obj.DisplayStatus) == evergreen.TaskStarted ||
-		utility.FromStringPtr(obj.DisplayStatus) == evergreen.TaskDispatched {
-		timeSinceActivation := restModel.NewAPIDuration(time.Since(utility.FromTimePtr(obj.ActivatedTime)))
-		return &timeSinceActivation, nil
+	// If status is running, calculate the time elapsed since it started.
+	if utility.FromStringPtr(obj.DisplayStatus) == evergreen.TaskStarted {
+		timeSinceStart := restModel.NewAPIDuration(time.Since(utility.FromTimePtr(obj.StartTime)))
+		return &timeSinceStart, nil
 	}
 	// If any other status, return timeTaken.
 	return &obj.TimeTaken, nil

@@ -2682,48 +2682,48 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := Task{
-		Id:            "t1",
-		Version:       "v1",
-		BuildVariant:  "bv_foo",
-		DisplayName:   "displayName_foo",
-		Execution:     0,
-		Status:        evergreen.TaskSucceeded,
-		BaseTask:      BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
-		ActivatedTime: time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:     72839128901, // ~ 1 min
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv_foo",
+		DisplayName:  "displayName_foo",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		BaseTask:     BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    72839128901, // ~ 1 min
 	}
 	t2 := Task{
-		Id:            "t2",
-		Version:       "v1",
-		BuildVariant:  "bv_bar",
-		DisplayName:   "displayName_bar",
-		Execution:     0,
-		Status:        evergreen.TaskFailed,
-		BaseTask:      BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
-		ActivatedTime: time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:     1453810928376, // ~ 24 min
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv_bar",
+		DisplayName:  "displayName_bar",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    1453810928376, // ~ 24 min
 	}
 	t3 := Task{
-		Id:            "t3",
-		Version:       "v1",
-		BuildVariant:  "bv_qux",
-		DisplayName:   "displayName_qux",
-		Execution:     0,
-		Status:        evergreen.TaskStarted,
-		BaseTask:      BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
-		ActivatedTime: time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
-		TimeTaken:     0,
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv_qux",
+		DisplayName:  "displayName_qux",
+		Execution:    0,
+		Status:       evergreen.TaskStarted,
+		BaseTask:     BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    0,
 	}
 	t4 := Task{
-		Id:            "t4",
-		Version:       "v1",
-		BuildVariant:  "bv_baz",
-		DisplayName:   "displayName_baz",
-		Execution:     0,
-		Status:        evergreen.TaskSetupFailed,
-		BaseTask:      BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
-		ActivatedTime: time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
-		TimeTaken:     9846571930199, // ~ 2.5 hours
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv_baz",
+		DisplayName:  "displayName_baz",
+		Execution:    0,
+		Status:       evergreen.TaskSetupFailed,
+		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    9846571930199, // ~ 2.5 hours
 	}
 
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
