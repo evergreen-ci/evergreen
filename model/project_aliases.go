@@ -83,6 +83,47 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+// MergeAliasesWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
+// on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
+// project YAML in the case that both are defined.
+func MergeAliasesWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
+	dbAliasMap := aliasesToMap(dbAliases)
+	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "finding project config")
+	}
+	patchAliases := []ProjectAlias{}
+	for alias, aliases := range dbAliasMap {
+		if IsPatchAlias(alias) {
+			patchAliases = append(patchAliases, aliases...)
+		}
+	}
+	mergedAliases := []ProjectAlias{}
+	if projectConfig != nil {
+		if len(dbAliasMap[evergreen.CommitQueueAlias]) == 0 {
+			dbAliasMap[evergreen.CommitQueueAlias] = projectConfig.CommitQueueAliases
+		}
+		if len(dbAliasMap[evergreen.GithubPRAlias]) == 0 {
+			dbAliasMap[evergreen.GithubPRAlias] = projectConfig.GitHubPRAliases
+		}
+		if len(dbAliasMap[evergreen.GithubChecksAlias]) == 0 {
+			dbAliasMap[evergreen.GithubChecksAlias] = projectConfig.GitHubChecksAliases
+		}
+		if len(dbAliasMap[evergreen.GitTagAlias]) == 0 {
+			dbAliasMap[evergreen.GitTagAlias] = projectConfig.GitTagAliases
+		}
+		if len(patchAliases) == 0 {
+			patchAliases = projectConfig.PatchAliases
+		}
+	}
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.CommitQueueAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubChecksAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GitTagAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubPRAlias]...)
+	mergedAliases = append(mergedAliases, patchAliases...)
+	return mergedAliases, nil
+}
+
 // FindAliasesForRepo fetches all aliases for a given project
 func FindAliasesForRepo(repoId string) ([]ProjectAlias, error) {
 	out := []ProjectAlias{}

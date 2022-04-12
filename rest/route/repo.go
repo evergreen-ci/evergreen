@@ -59,7 +59,7 @@ func (h *repoIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	repoModel.Variables = *repoVars
 
-	if repoModel.Aliases, err = data.FindProjectAliases("", repo.Id, nil); err != nil {
+	if repoModel.Aliases, err = data.FindProjectAliases("", repo.Id, nil, false); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
@@ -177,7 +177,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	allAuthorizedTeams := utility.UniqueStrings(append(h.originalRepo.GitTagAuthorizedTeams, h.newRepoRef.GitTagAuthorizedTeams...))
 	h.newRepoRef.GitTagAuthorizedTeams, _ = utility.StringSliceSymmetricDifference(allAuthorizedTeams, teamsToDelete)
 
-	repoAliases, err := data.FindProjectAliases("", h.newRepoRef.Id, h.apiNewRepoRef.Aliases)
+	repoAliases, err := data.FindProjectAliases("", h.newRepoRef.Id, h.apiNewRepoRef.Aliases, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -315,7 +315,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 					catcher.Errorf("if repo PR testing enabled, must have aliases")
 				} else if len(info.prTestingIds) > 0 {
 					// verify that the project with PR testing enabled has aliases defined
-					branchAliases, err := data.FindProjectAliases(info.prTestingIds[0], "", nil)
+					branchAliases, err := data.FindProjectAliases(info.prTestingIds[0], "", nil, false)
 					if err != nil {
 						return errors.Wrapf(err, "error getting branch '%s' aliases", info.prTestingIds[0])
 					}
@@ -331,7 +331,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 					catcher.Errorf("if repo commit queue enabled, must have aliases")
 				} else if len(info.commitQueueIds) > 0 {
 					// verify that the branch with the commit queue enabled has aliases defined in the branch
-					branchAliases, err := data.FindProjectAliases(info.commitQueueIds[0], "", nil)
+					branchAliases, err := data.FindProjectAliases(info.commitQueueIds[0], "", nil, false)
 					if err != nil {
 						return errors.Wrapf(err, "error getting branch '%s' aliases", info.commitQueueIds[0])
 					}
@@ -347,7 +347,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 				} else if len(info.gitTagIds) > 0 {
 					for _, branchId := range info.gitTagIds {
 						// verify that the branch with git tag versions enabled has aliases defined in the branch
-						branchAliases, err := data.FindProjectAliases(branchId, "", nil)
+						branchAliases, err := data.FindProjectAliases(branchId, "", nil, false)
 						if err != nil {
 							return errors.Wrapf(err, "error getting branch '%s' aliases", branchId)
 						}
@@ -363,7 +363,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 				} else if len(info.githubCheckIds) > 0 {
 					for _, branchId := range info.githubCheckIds {
 						// verify that the branch with github checks versions enabled has aliases defined in the branch
-						branchAliases, err := data.FindProjectAliases(branchId, "", nil)
+						branchAliases, err := data.FindProjectAliases(branchId, "", nil, false)
 						if err != nil {
 							return errors.Wrapf(err, "error getting branch '%s' aliases", branchId)
 						}
