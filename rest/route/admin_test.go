@@ -33,12 +33,16 @@ import (
 type AdminRouteSuite struct {
 	getHandler  gimlet.RouteHandler
 	postHandler gimlet.RouteHandler
+	env         evergreen.Environment
 
 	suite.Suite
 }
 
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.env = testutil.NewEnvironment(ctx, t)
 	// run the rest of the tests
 	suite.Run(t, s)
 }
@@ -287,7 +291,9 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
-	queue := evergreen.GetEnvironment().LocalQueue()
+	// kim: TODO: remove
+	// queue := evergreen.GetEnvironment().LocalQueue()
+	queue := s.env.LocalQueue()
 	handler := makeRestartRoute(evergreen.RestartTasks, queue)
 
 	s.NotNil(handler)

@@ -282,14 +282,16 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 func TestChangeOwnerRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	// kim: TODO: remove
+	// env := evergreen.GetEnvironment()
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	// _ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 	settings := testutil.TestConfig()
 	settings.GithubOrgs = []string{"evergreen-ci"}
 	settings.GithubOrgs = []string{"newOwner"}
 	assert.NoError(t, evergreen.UpdateConfig(settings))
 
-	evergreen.SetEnvironment(env)
+	// evergreen.SetEnvironment(env)
 	pRef := ProjectRef{
 		Id:        "myProject",
 		Owner:     "evergreen-ci",
@@ -327,8 +329,10 @@ func TestChangeOwnerRepo(t *testing.T) {
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	// kim: TODO: remove
+	// env := evergreen.GetEnvironment()
+	// _ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
 
 	pRef := ProjectRef{
 		Id:     "myProject",
@@ -506,8 +510,10 @@ func TestDetachFromRepo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, ProjectAliasCollection))
-			env := evergreen.GetEnvironment()
-			_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+			// kim: TODO: remove
+			// env := evergreen.GetEnvironment()
+			// _ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+			db.CreateCollections(evergreen.ScopeCollection)
 
 			pRef := &ProjectRef{
 				Id:        "myProject",
@@ -863,7 +869,9 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	// kim: TODO: remove
+	// _ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	doc1 := &ProjectRef{
 		Id:                    "id1",
 		Owner:                 "mongodb",

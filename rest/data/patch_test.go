@@ -31,10 +31,11 @@ type PatchConnectorFetchByProjectSuite struct {
 
 func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByProjectSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -187,10 +188,11 @@ type PatchConnectorFetchByIdSuite struct {
 
 func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByIdSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -256,10 +258,11 @@ type PatchConnectorAbortByIdSuite struct {
 
 func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -372,10 +375,11 @@ type PatchConnectorChangeStatusSuite struct {
 
 func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	s := new(PatchConnectorChangeStatusSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -439,10 +443,11 @@ type PatchConnectorFetchByUserSuite struct {
 
 func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 

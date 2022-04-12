@@ -30,10 +30,11 @@ type UserRouteSuite struct {
 
 func TestUserRouteSuiteWithDB(t *testing.T) {
 	s := new(UserRouteSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -143,27 +144,32 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 
 type userPermissionPostSuite struct {
 	suite.Suite
-	h gimlet.RouteHandler
-	u user.DBUser
+	h   gimlet.RouteHandler
+	u   user.DBUser
+	env evergreen.Environment
 }
 
 func TestPostUserPermissionSuite(t *testing.T) {
+	// kim: TODO: remove
+	s := &userPermissionPostSuite{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-	suite.Run(t, &userPermissionPostSuite{})
+	s.env = testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
+	suite.Run(t, s)
 }
 
 func (s *userPermissionPostSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	// kim: TODO: remove
+	// env := evergreen.GetEnvironment()
+	// _ = s.env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
+	s.Require().NoError(db.CreateCollections(evergreen.ScopeCollection))
 	s.u = user.DBUser{
 		Id: "user",
 	}
 	s.Require().NoError(s.u.Insert())
-	s.h = makeModifyUserPermissions(env.RoleManager())
+	s.h = makeModifyUserPermissions(s.env.RoleManager())
 }
 
 func (s *userPermissionPostSuite) TestNoUser() {
@@ -202,8 +208,10 @@ func (s *userPermissionPostSuite) TestInvalidPermissions() {
 
 func (s *userPermissionPostSuite) TestValidInput() {
 	// valid input that should create a new role + scope
-	ctx := context.Background()
-	env := evergreen.GetEnvironment()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// kim: TODO: remove
+	// env := evergreen.GetEnvironment()
 	validBody := `{ "resource_type": "project", "resources": ["foo"], "permissions": {"project_tasks": 10} }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
@@ -211,13 +219,13 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.NoError(s.h.Parse(ctx, request))
 	resp := s.h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	roles, err := env.RoleManager().GetAllRoles()
+	roles, err := s.env.RoleManager().GetAllRoles()
 	s.NoError(err)
 	s.Len(roles, 1)
 	dbUser, err := user.FindOneById(s.u.Id)
 	s.NoError(err)
 	s.Equal(dbUser.SystemRoles[0], roles[0].ID)
-	foundScope, err := env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
+	foundScope, err := s.env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
 	s.NoError(err)
 	s.NotNil(foundScope)
 
@@ -228,10 +236,10 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.NoError(err)
 	s.NoError(s.h.Parse(ctx, request))
 	_ = s.h.Run(ctx)
-	roles, err = env.RoleManager().GetAllRoles()
+	roles, err = s.env.RoleManager().GetAllRoles()
 	s.NoError(err)
 	s.Len(roles, 2)
-	newScope, err := env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
+	newScope, err := s.env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
 	s.NoError(err)
 	s.NotNil(foundScope)
 	s.Equal(newScope.ID, foundScope.ID)
@@ -243,10 +251,10 @@ func (s *userPermissionPostSuite) TestValidInput() {
 		s.NoError(dbUser.RemoveRole(role))
 	}
 	_ = s.h.Run(ctx)
-	roles, err = env.RoleManager().GetAllRoles()
+	roles, err = s.env.RoleManager().GetAllRoles()
 	s.NoError(err)
 	s.Len(roles, 2)
-	newScope, err = env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
+	newScope, err = s.env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
 	s.NoError(err)
 	s.NotNil(foundScope)
 	s.Equal(newScope.ID, foundScope.ID)
@@ -259,7 +267,11 @@ func TestDeleteUserPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// env := &mock.Environment{}
+	// require.NoError(t, env.Configure(ctx))
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
 	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection}).Err()
@@ -306,11 +318,18 @@ func TestDeleteUserPermissions(t *testing.T) {
 func TestGetUserPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// env := &mock.Environment{}
+	// require.NoError(t, env.Configure(ctx))
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	// kim: TODO: remove
+	// _ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id:          "user",
 		SystemRoles: []string{"role1", evergreen.BasicProjectAccessRole, evergreen.BasicDistroAccessRole},
@@ -332,10 +351,14 @@ func TestPostUserRoles(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// env := &mock.Environment{}
+	// require.NoError(t, env.Configure(ctx))
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	env.SetUserManager(serviceutil.MockUserManager{})
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection))
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 	u := user.DBUser{
 		Id: "user",
 	}
@@ -388,8 +411,9 @@ func TestPostUserRoles(t *testing.T) {
 func TestServiceUserOperations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(user.Collection))
 
 	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"] }`
@@ -448,8 +472,9 @@ func TestServiceUserOperations(t *testing.T) {
 func TestGetUsersForRole(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(user.Collection))
 
 	u1 := user.DBUser{
@@ -495,9 +520,11 @@ func TestGetUsersForResourceId(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// evergreen.SetEnvironment(env)
+	// env := &mock.Environment{}
+	// require.NoError(t, env.Configure(ctx))
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 
 	u1 := user.DBUser{
 		Id: "me",

@@ -28,7 +28,8 @@ import (
 // Tests for PATCH /rest/v2/projects/{project_id}
 
 type ProjectPatchByIDSuite struct {
-	rm gimlet.RouteHandler
+	rm  gimlet.RouteHandler
+	env evergreen.Environment
 
 	suite.Suite
 }
@@ -36,9 +37,12 @@ type ProjectPatchByIDSuite struct {
 func TestProjectPatchSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-	suite.Run(t, new(ProjectPatchByIDSuite))
+	s := &ProjectPatchByIDSuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	// kim: TODO: remove
+	// evergreen.SetEnvironment(env)
+	suite.Run(t, s)
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
@@ -72,7 +76,9 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 			evergreen.PermissionLogs:            evergreen.LogsView.Value,
 		},
 	}
-	roleManager := evergreen.GetEnvironment().RoleManager()
+	// kim: TODO: remove
+	// roleManager := evergreen.GetEnvironment().RoleManager()
+	roleManager := s.env.RoleManager()
 	err = roleManager.UpdateRole(projectAdminRole)
 	s.NoError(err)
 	adminScope := gimlet.Scope{
@@ -333,10 +339,11 @@ type ProjectPutSuite struct {
 }
 
 func TestProjectPutSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectPutSuite))
 }
 
@@ -446,10 +453,11 @@ type ProjectGetByIDSuite struct {
 }
 
 func TestProjectGetByIDSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectGetByIDSuite))
 }
 
@@ -518,10 +526,11 @@ type ProjectGetSuite struct {
 }
 
 func TestProjectGetSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectGetSuite))
 }
 
@@ -687,10 +696,11 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
@@ -743,10 +753,11 @@ func TestGetProjectVersions(t *testing.T) {
 }
 
 func TestDeleteProject(t *testing.T) {
+	// kim: TODO: remove
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(
 		serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection,
@@ -873,8 +884,9 @@ func TestDeleteProject(t *testing.T) {
 func TestAttachProjectToRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
 		evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -940,8 +952,9 @@ func TestAttachProjectToRepo(t *testing.T) {
 func TestDetachProjectFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
 		evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -1017,10 +1030,11 @@ type ProjectPutRotateSuite struct {
 }
 
 func TestProjectPutRotateSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(ProjectPutRotateSuite))
 }
 

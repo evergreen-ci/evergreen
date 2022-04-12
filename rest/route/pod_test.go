@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -18,10 +16,11 @@ import (
 )
 
 func TestPostPod(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podPostHandler){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, ph *podPostHandler) {
 			copied := ph.Factory()
@@ -90,10 +89,7 @@ func TestPostPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			p := makePostPod(env)
+			p := makePostPod(testutil.NewEnvironment(ctx, t))
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podPostHandler))
@@ -102,10 +98,11 @@ func TestPostPod(t *testing.T) {
 }
 
 func TestGetPod(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(pod.Collection))
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ph *podGetHandler){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, ph *podGetHandler) {
@@ -142,10 +139,7 @@ func TestGetPod(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			p := makeGetPod(env)
+			p := makeGetPod(testutil.NewEnvironment(ctx, t))
 			require.NotZero(t, p)
 
 			tCase(ctx, t, p.(*podGetHandler))

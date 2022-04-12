@@ -32,15 +32,23 @@ import (
 
 type HostsChangeStatusesSuite struct {
 	route *hostsChangeStatusesHandler
+	ctx   context.Context
+	env   evergreen.Environment
 	suite.Suite
 }
 
 func TestHostsChangeStatusesSuite(t *testing.T) {
-	suite.Run(t, new(HostsChangeStatusesSuite))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := &HostsChangeStatusesSuite{
+		ctx: ctx,
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	suite.Run(t, s)
 }
 
 func (s *HostsChangeStatusesSuite) SetupTest() {
-	getMockHostsConnector()
+	setupMockHostsConnector(s.T(), s.env)
 	s.route = makeChangeHostsStatuses().(*hostsChangeStatusesHandler)
 }
 
@@ -181,16 +189,22 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 
 type HostModifySuite struct {
 	route *hostModifyHandler
+	env   evergreen.Environment
 	suite.Suite
 }
 
 func TestHostModifySuite(t *testing.T) {
-	suite.Run(t, new(HostModifySuite))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := &HostModifySuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	suite.Run(t, s)
 }
 
 func (s *HostModifySuite) SetupTest() {
-	getMockHostsConnector()
-	s.route = makeHostModifyRouteManager(evergreen.GetEnvironment()).(*hostModifyHandler)
+	setupMockHostsConnector(s.T(), s.env)
+	s.route = makeHostModifyRouteManager(s.env).(*hostModifyHandler)
 }
 
 func (s *HostModifySuite) TestRunHostNotFound() {
@@ -265,18 +279,21 @@ func (s *HostModifySuite) TestParse() {
 
 type HostSuite struct {
 	route *hostIDGetHandler
+	env   evergreen.Environment
 	suite.Suite
 }
 
 func TestHostSuite(t *testing.T) {
-	suite.Run(t, new(HostSuite))
-}
-
-func (s *HostSuite) SetupSuite() {
-	getMockHostsConnector()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := &HostSuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
+	suite.Run(t, s)
 }
 
 func (s *HostSuite) SetupTest() {
+	setupMockHostsConnector(s.T(), s.env)
 	s.route = &hostIDGetHandler{}
 }
 
@@ -338,17 +355,22 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 ////////////////////////////////////////////////////////////////////////
 
 type hostTerminateHostHandlerSuite struct {
-	rm *hostTerminateHandler
+	rm  *hostTerminateHandler
+	env evergreen.Environment
 	suite.Suite
 }
 
 func TestTerminateHostHandler(t *testing.T) {
-	s := &hostTerminateHostHandlerSuite{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := &hostTerminateHostHandlerSuite{
+		env: testutil.NewEnvironment(ctx, t),
+	}
 	suite.Run(t, s)
 }
 
 func (s *hostTerminateHostHandlerSuite) SetupTest() {
-	getMockHostsConnector()
+	setupMockHostsConnector(s.T(), s.env)
 	s.rm = makeTerminateHostRoute().(*hostTerminateHandler)
 }
 
@@ -479,11 +501,12 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 
 	s.env.Settings().Keys["ssh_key_name"] = "ssh_key"
 
+	setupMockHostsConnector(t, s.env)
+
 	suite.Run(t, s)
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
-	getMockHostsConnector()
 	s.rm = makeHostChangePassword(s.env)
 }
 
@@ -595,12 +618,14 @@ type hostExtendExpirationHandlerSuite struct {
 }
 
 func TestHostExtendExpirationHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	s := &hostExtendExpirationHandlerSuite{}
+	setupMockHostsConnector(t, testutil.NewEnvironment(ctx, t))
 	suite.Run(t, s)
 }
 
 func (s *hostExtendExpirationHandlerSuite) SetupTest() {
-	getMockHostsConnector()
 	s.rm = makeExtendHostExpiration()
 }
 
@@ -752,8 +777,8 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	return r, nil
 }
 
-func getMockHostsConnector() {
-	grip.Error(db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
+func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
+	require.NoError(t, db.ClearCollections(evergreen.ScopeCollection, evergreen.RoleCollection, host.Collection, user.Collection))
 	windowsDistro := distro.Distro{
 		Id:       "windows",
 		Arch:     "windows_amd64",
@@ -823,22 +848,19 @@ func getMockHostsConnector() {
 	for _, userToAdd := range users {
 		grip.Error(userToAdd.Insert())
 	}
-	cmd := map[string]string{
-		"create": evergreen.ScopeCollection,
-	}
-	grip.Error(evergreen.GetEnvironment().DB().RunCommand(nil, cmd).Err())
-	rm := evergreen.GetEnvironment().RoleManager()
-	grip.Error(rm.AddScope(gimlet.Scope{
+	// kim: TODO: remove
+	// cmd := map[string]string{
+	//     "create": evergreen.ScopeCollection,
+	// }
+	// grip.Error(env.DB().RunCommand(nil, cmd).Err())
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	rm := env.RoleManager()
+	require.NoError(t, rm.AddScope(gimlet.Scope{
 		ID:        "root",
 		Resources: []string{windowsDistro.Id},
 		Type:      evergreen.DistroResourceType,
 	}))
-	grip.Error(rm.AddScope(gimlet.Scope{
-		ID:        "root",
-		Resources: []string{"windows"},
-		Type:      evergreen.DistroResourceType,
-	}))
-	grip.Error(rm.UpdateRole(gimlet.Role{
+	require.NoError(t, rm.UpdateRole(gimlet.Role{
 		ID:    "root",
 		Scope: "root",
 		Permissions: gimlet.Permissions{
@@ -946,7 +968,11 @@ func TestRemoveAdminHandler(t *testing.T) {
 	assert.NoError(t, projectRef1.Insert())
 
 	offboardedUser := "user0"
-	env := evergreen.GetEnvironment()
+	// kim: TODO: remove
+	// env := evergreen.GetEnvironment()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
 	userManager := env.UserManager()
 
 	handler := offboardUserHandler{
@@ -1029,6 +1055,8 @@ func TestHostFilterGetHandler(t *testing.T) {
 }
 
 func TestDisableHostHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(t, db.ClearCollections(host.Collection))
 	hostID := "h1"
 	hosts := []host.Host{
@@ -1042,7 +1070,7 @@ func TestDisableHostHandler(t *testing.T) {
 	}
 	dh := disableHost{
 		hostID: hostID,
-		env:    evergreen.GetEnvironment(),
+		env:    testutil.NewEnvironment(ctx, t),
 	}
 
 	responder := dh.Run(context.Background())

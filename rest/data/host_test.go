@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -101,18 +102,21 @@ func (*HostConnectorSuite) users() []user.DBUser {
 }
 
 func TestHostConnectorSuite(t *testing.T) {
+	// kim: TODO: remove
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// evergreen.SetEnvironment(env)
 	s := new(HostConnectorSuite)
 
 	s.setup = func(s *HostConnectorSuite) {
 		s.NoError(db.ClearCollections(user.Collection, host.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-		cmd := map[string]string{
-			"create": evergreen.ScopeCollection,
-		}
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+		// kim: TODO: remove
+		// cmd := map[string]string{
+		//     "create": evergreen.ScopeCollection,
+		// }
+		// _ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		hosts := s.hosts()
 		for _, h := range hosts {
@@ -132,7 +136,7 @@ func TestHostConnectorSuite(t *testing.T) {
 			SystemRoles: []string{"root"},
 		}
 		s.NoError(root.Insert())
-		rm := evergreen.GetEnvironment().RoleManager()
+		rm := env.RoleManager()
 		s.NoError(rm.AddScope(gimlet.Scope{
 			ID:        "root",
 			Resources: []string{"distro2", "distro5"},

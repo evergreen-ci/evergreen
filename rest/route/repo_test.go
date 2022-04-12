@@ -24,8 +24,9 @@ import (
 func TestGetRepoIDHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(
 		dbModel.RepoRefCollection,
 		dbModel.ProjectVarsCollection,
@@ -83,8 +84,9 @@ func TestGetRepoIDHandler(t *testing.T) {
 func TestPatchRepoIDHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
 		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection,
 		dbModel.ProjectRefCollection))
@@ -247,8 +249,9 @@ func TestPatchRepoIDHandler(t *testing.T) {
 func TestPatchHandlersWithRestricted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	// kim: TODO: remove
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
 		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection, user.Collection,
 		dbModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -290,7 +293,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	ctx = gimlet.AttachUser(context.Background(), u)
 
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 	allProjectsScope := &gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
 		Resources: []string{},

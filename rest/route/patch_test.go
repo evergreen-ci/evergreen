@@ -38,10 +38,11 @@ type PatchByIdSuite struct {
 }
 
 func TestPatchByIdSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchByIdSuite))
 }
 
@@ -94,10 +95,11 @@ type PatchesByProjectSuite struct {
 }
 
 func TestPatchesByProjectSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchesByProjectSuite))
 }
 
@@ -239,10 +241,11 @@ type PatchAbortSuite struct {
 }
 
 func TestPatchAbortSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchAbortSuite))
 }
 
@@ -352,10 +355,11 @@ type PatchesChangeStatusSuite struct {
 }
 
 func TestPatchesChangeStatusSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchesChangeStatusSuite))
 }
 
@@ -421,10 +425,11 @@ type PatchRestartSuite struct {
 }
 
 func TestPatchRestartSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, new(PatchRestartSuite))
 }
 
@@ -490,10 +495,11 @@ type PatchesByUserSuite struct {
 
 func TestPatchesByUserSuite(t *testing.T) {
 	s := new(PatchesByUserSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -597,10 +603,11 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 }
 
 func TestPatchRawHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
 	patchString := `main diff`
@@ -645,11 +652,11 @@ func TestPatchRawHandler(t *testing.T) {
 }
 
 func TestSchedulePatchRoute(t *testing.T) {
-	// setup, lots of setup
+	// kim: TODO: remove
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	const config = `
 functions:
   "fetch source" :
@@ -773,10 +780,11 @@ buildvariants:
   - name: failing_test
   - name: timeout_test`
 	require.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": serviceModel.VersionCollection})
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": serviceModel.ParserProjectCollection})
+	require.NoError(t, db.CreateCollections(build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
+	// _ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": build.Collection})
+	// _ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": task.Collection})
+	// _ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": serviceModel.VersionCollection})
+	// _ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": serviceModel.ParserProjectCollection})
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set())

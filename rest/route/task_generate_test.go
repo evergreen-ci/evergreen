@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -54,10 +53,11 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// kim: TODO: remove
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection))
 	task1 := task.Task{
 		Id: "task1",
@@ -71,10 +71,13 @@ func TestGenerateExecute(t *testing.T) {
 }
 
 func TestGeneratePollParse(t *testing.T) {
+	// kim: TODO: remove
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	// env := testutil.NewEnvironment(ctx, t)
+	// evergreen.SetEnvironment(env)
+	// require.NoError(t, env.Configure(ctx))
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
@@ -97,7 +100,7 @@ func TestGeneratePollRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	// evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection))
 	tasks := []task.Task{
 		{
