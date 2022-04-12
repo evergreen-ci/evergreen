@@ -3048,10 +3048,6 @@ func TestValidateVersionControl(t *testing.T) {
 }
 
 func TestValidateContainers(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := tu.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(model.ProjectRefCollection))
 	ref := &model.ProjectRef{
 		Identifier: "proj",
