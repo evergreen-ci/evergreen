@@ -687,6 +687,7 @@ func TestGetProjectTasks(t *testing.T) {
 			RevisionOrderNumber: i,
 			DisplayName:         "t1",
 			Project:             projectId,
+			Status:              evergreen.TaskSucceeded,
 		}
 		assert.NoError(myTask.Insert())
 	}
