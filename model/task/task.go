@@ -1732,21 +1732,21 @@ func (t *Task) displayTaskPriority() int {
 	case evergreen.TaskTestTimedOut:
 		return 30
 	case evergreen.TaskTimedOut:
-		return 30
-	case evergreen.TaskSystemFailed:
 		return 40
-	case evergreen.TaskSystemTimedOut:
+	case evergreen.TaskSystemFailed:
 		return 50
-	case evergreen.TaskSystemUnresponse:
+	case evergreen.TaskSystemTimedOut:
 		return 60
-	case evergreen.TaskSetupFailed:
+	case evergreen.TaskSystemUnresponse:
 		return 70
-	case evergreen.TaskUndispatched:
+	case evergreen.TaskSetupFailed:
 		return 80
-	case evergreen.TaskInactive:
+	case evergreen.TaskUndispatched:
 		return 90
-	case evergreen.TaskSucceeded:
+	case evergreen.TaskInactive:
 		return 100
+	case evergreen.TaskSucceeded:
+		return 110
 	}
 	return 1000
 }
