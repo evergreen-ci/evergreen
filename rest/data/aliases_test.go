@@ -111,9 +111,9 @@ func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
 	a.Len(found, 5)
 	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
 	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubChecksAlias)
-	a.Equal(utility.FromStringPtr(found[2].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[2].Alias), "bar")
 	a.Equal(utility.FromStringPtr(found[3].Alias), "foo")
-	a.Equal(utility.FromStringPtr(found[4].Alias), "bar")
+	a.Equal(utility.FromStringPtr(found[4].Alias), "foo")
 }
 
 func (a *AliasSuite) TestFindProjectAliases() {
