@@ -46,6 +46,7 @@ var (
 	RevisionKey                 = bsonutil.MustHaveTag(Task{}, "Revision")
 	LastHeartbeatKey            = bsonutil.MustHaveTag(Task{}, "LastHeartbeat")
 	ActivatedKey                = bsonutil.MustHaveTag(Task{}, "Activated")
+	ContainerAllocatedKey       = bsonutil.MustHaveTag(Task{}, "ContainerAllocated")
 	DeactivatedForDependencyKey = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
 	BuildIdKey                  = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey                 = bsonutil.MustHaveTag(Task{}, "DistroId")
@@ -227,19 +228,6 @@ var (
 						"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
 					},
 					"then": evergreen.TaskTimedOut,
-				},
-				// TODO (PM-2620): Handle these statuses properly in the UI.
-				{
-					"case": bson.M{
-						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerAllocated},
-					},
-					"then": evergreen.TaskContainerAllocated,
-				},
-				{
-					"case": bson.M{
-						"$eq": []string{"$" + StatusKey, evergreen.TaskContainerUnallocated},
-					},
-					"then": evergreen.TaskContainerUnallocated,
 				},
 				// A task will be unscheduled if it is not activated
 				{
@@ -780,7 +768,8 @@ func schedulableHostTasksQuery() bson.M {
 // a container to be allocated to them sorted by activation time.
 func FindNeedsContainerAllocation() ([]Task, error) {
 	q := shouldContainerTaskDispatchQuery()
-	q[StatusKey] = evergreen.TaskContainerUnallocated
+	q[StatusKey] = evergreen.TaskUndispatched
+	q[ContainerAllocatedKey] = false
 	return FindAll(db.Query(q).Sort([]string{ActivatedTimeKey}))
 }
 
