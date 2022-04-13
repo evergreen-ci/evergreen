@@ -725,6 +725,88 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "task-1-note_1_updated", annotation.Note.Message)
 }
 
+func TestBulkCreateAnnotationHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
+
+	h := &bulkCreateAnnotationHandler{
+		opts: bulkCreateAnnotationsOpts{
+			TaskUpdates: []TaskUpdate{
+				{
+					Annotation: restModel.APITaskAnnotation{
+						Issues: []restModel.APIIssueLink{
+							{
+								URL:             utility.ToStringPtr("issuelink.com"),
+								ConfidenceScore: utility.ToFloat32Ptr(-12.000000),
+							},
+							{
+								URL:             utility.ToStringPtr("https://issuelink.com/ticket"),
+								ConfidenceScore: utility.ToFloat32Ptr(112.000000),
+							},
+						},
+						SuspectedIssues: []restModel.APIIssueLink{
+							{
+								URL: utility.ToStringPtr("https://issuelinkcom"),
+							},
+						},
+					},
+					Tasks: []TaskData{
+						{
+							TaskId:    "t1",
+							Execution: 0,
+						},
+						{
+							TaskId:    "t2",
+							Execution: 0,
+						},
+						{
+							TaskId:    "t3",
+							Execution: 0,
+						},
+					},
+				},
+				{
+					Annotation: restModel.APITaskAnnotation{
+						Issues: []restModel.APIIssueLink{
+							{
+								URL:             utility.ToStringPtr("anotherissuelink.com"),
+								ConfidenceScore: utility.ToFloat32Ptr(-15.000000),
+							},
+							{
+								URL:             utility.ToStringPtr("https://anotherissuelink.com/ticket"),
+								ConfidenceScore: utility.ToFloat32Ptr(103.000000),
+							},
+						},
+						SuspectedIssues: []restModel.APIIssueLink{
+							{
+								URL: utility.ToStringPtr("https://anotherissuelinkcom"),
+							},
+						},
+					},
+					Tasks: []TaskData{
+						{
+							TaskId:    "t1",
+							Execution: 1,
+						},
+						{
+							TaskId:    "t2",
+							Execution: 1,
+						},
+						{
+							TaskId:    "t1",
+							Execution: 2,
+						},
+					},
+				},
+			},
+		},
+		user: &user.DBUser{Id: "test_annotation_user"},
+	}
+	resp := h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+}
+
 // test created tickets route
 func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection, task.OldCollection, model.ProjectRefCollection))

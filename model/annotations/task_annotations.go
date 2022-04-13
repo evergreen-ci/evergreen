@@ -204,6 +204,37 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
 }
 
+func InsertManyAnnotations(a []*TaskAnnotation, userDisplayName string) error {
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	for _, ann := range a {
+		if ann.Note != nil {
+			ann.Note.Source = source
+		}
+		if ann.Issues != nil {
+			for i := range ann.Issues {
+				ann.Issues[i].Source = source
+			}
+		}
+		if ann.SuspectedIssues != nil {
+			for i := range ann.SuspectedIssues {
+				ann.SuspectedIssues[i].Source = source
+			}
+		}
+	}
+	err := db.InsertMany(
+		Collection,
+		a,
+	)
+	if err != nil {
+		return errors.Wrap(err, "bulk inserting annotations")
+	}
+	return nil
+}
+
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
