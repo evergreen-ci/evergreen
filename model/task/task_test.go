@@ -2265,6 +2265,7 @@ func TestIsHostDispatchable(t *testing.T) {
 			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
 			tsk.ExecutionPlatform = ""
 			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
 			assert.False(t, tsk.IsHostDispatchable())
@@ -2329,6 +2330,7 @@ func TestIsContainerDispatchable(t *testing.T) {
 			assert.False(t, tsk.IsContainerDispatchable())
 		},
 		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
 			tsk.ExecutionPlatform = ""
 			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
 			assert.False(t, tsk.IsContainerDispatchable())
@@ -2373,6 +2375,7 @@ func TestShouldAllocateContainer(t *testing.T) {
 			assert.False(t, tsk.ShouldAllocateContainer())
 		},
 		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
 			tsk.ExecutionPlatform = ""
 			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
 			assert.False(t, tsk.ShouldAllocateContainer())

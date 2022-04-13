@@ -497,7 +497,7 @@ func (t *Task) IsFinished() bool {
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && len(t.ExecutionTasks) == 0 && t.Status == evergreen.TaskUndispatched && t.Activated
+	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly && t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
 // IsContainerDispatchable returns true if the task should run in a container
