@@ -978,6 +978,57 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/projects/{project_id}/tasks/{task_id}
+
+type getProjectTasksHandler struct {
+	projectName string
+	taskName    string
+	opts        dbModel.GetProjectTasksOpts
+	url         string
+}
+
+func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
+	return &getProjectTasksHandler{url: url}
+}
+
+func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
+	return &getProjectTasksHandler{url: h.url}
+}
+
+func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectName = gimlet.GetVars(r)["project_id"]
+	h.taskName = gimlet.GetVars(r)["task_id"]
+	// body is optional
+	b, _ := ioutil.ReadAll(r.Body)
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, &h.opts); err != nil {
+			return errors.Wrap(err, "error parsing request body")
+		}
+	}
+	if h.opts.Limit < 0 {
+		return errors.New("'num_versions' must be a positive integer")
+	}
+	if h.opts.Limit == 0 {
+		h.opts.Limit = defaultVersionLimit
+	}
+	if h.opts.StartAt < 0 {
+		return errors.New("'start' must be a non-negative integer")
+	}
+
+	return nil
+}
+
+func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
+	versions, err := data.GetProjectTasksWithOptions(h.projectName, h.taskName, h.opts)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting versions"))
+	}
+
+	return gimlet.NewJSONResponse(versions)
+}
+
 type GetProjectAliasResultsHandler struct {
 	version             string
 	alias               string

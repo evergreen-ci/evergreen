@@ -599,9 +599,6 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
-	if len(res) == 0 {
-		return res, nil
-	}
 	return res, nil
 }
 
