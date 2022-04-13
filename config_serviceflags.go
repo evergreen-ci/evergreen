@@ -33,6 +33,7 @@ type ServiceFlags struct {
 	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	GenerateTasksExperimentDisabled bool `bson:"generate_tasks_experiment_disabled" json:"generate_tasks_experiment_disabled"`
+	ContainerConfigurationsDisabled bool `bson:"container_configurations_disabled" json:"container_configurations_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -103,6 +104,7 @@ func (c *ServiceFlags) Set() error {
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			generateTasksExperimentDisabledKey: c.GenerateTasksExperimentDisabled,
+			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 
