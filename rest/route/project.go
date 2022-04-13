@@ -1007,11 +1007,11 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 			return errors.Wrap(err, "error parsing request body")
 		}
 	}
-	if h.opts.NumVersions < 0 {
+	if h.opts.Limit < 0 {
 		return errors.New("'num_versions' must be a positive integer")
 	}
-	if h.opts.NumVersions == 0 {
-		h.opts.NumVersions = defaultVersionLimit
+	if h.opts.Limit == 0 {
+		h.opts.Limit = defaultVersionLimit
 	}
 	if h.opts.StartAt < 0 {
 		return errors.New("'start' must be a non-negative integer")

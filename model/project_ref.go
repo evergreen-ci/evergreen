@@ -1062,15 +1062,15 @@ func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
 
-// GetTasksWithOptions will find the last number of tasks (denoted by NumVersions) that exist for a given project.
+// GetTasksWithOptions will find the last number of tasks (denoted by Limit) that exist for a given project.
 // This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
 func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
 	projectId, err := GetIdForProject(projectName)
 	if err != nil {
 		return nil, err
 	}
-	if opts.NumVersions <= 0 {
-		opts.NumVersions = defaultVersionLimit
+	if opts.Limit <= 0 {
+		opts.Limit = defaultVersionLimit
 	}
 	finishedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskSucceeded)
 	match := bson.M{
@@ -1086,7 +1086,7 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	}
 	pipeline := []bson.M{bson.M{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": opts.NumVersions})
+	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []task.Task{}
 

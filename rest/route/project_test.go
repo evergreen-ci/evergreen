@@ -696,7 +696,7 @@ func TestGetProjectTasks(t *testing.T) {
 		projectName: "p1",
 		taskName:    "t1",
 		opts: serviceModel.GetProjectTasksOpts{
-			NumVersions: 10,
+			Limit: 10,
 		},
 	}
 

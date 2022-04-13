@@ -1710,14 +1710,14 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, tasks, defaultVersionLimit)
 
-	opts.NumVersions = 5
+	opts.Limit = 5
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 5)
 	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
 	assert.Equal(t, tasks[4].RevisionOrderNumber, 91)
 
-	opts.NumVersions = 10
+	opts.Limit = 10
 	opts.StartAt = 20
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
@@ -1725,7 +1725,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	assert.Equal(t, tasks[0].RevisionOrderNumber, 19)
 	assert.Equal(t, tasks[9].RevisionOrderNumber, 1)
 
-	opts.NumVersions = defaultVersionLimit
+	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
 	// 1 in every 6 tasks should qualify for this
 	opts.BuildVariant = "bv1"
