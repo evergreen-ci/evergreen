@@ -61,7 +61,7 @@ type ParserProject struct {
 	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 	Enabled *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 
-	// Beginning of ParserProject mergeable fields (used by the linter).
+	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
@@ -93,7 +93,7 @@ type ParserProject struct {
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
-} // End of ParserProject mergeable fields (used by the linter).
+} // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
 	Name                    string             `yaml:"name,omitempty" bson:"name,omitempty"`
