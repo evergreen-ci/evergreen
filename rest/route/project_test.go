@@ -87,7 +87,8 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 }
 
 func (s *ProjectPatchByIDSuite) TestParse() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
 	json := []byte(`{"private" : false}`)
@@ -99,7 +100,8 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	json := []byte(`{"id": "Verboten"}`)
 	h := s.rm.(*projectIDPatchHandler)
@@ -112,7 +114,8 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	json := []byte(`{"display_name": "This is a display name"}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/non-existent", bytes.NewBuffer(json))
@@ -123,7 +126,8 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
@@ -144,7 +148,8 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "commit_queue": {"enabled": true}}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -162,7 +167,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG", "ticket_search_projects": ["EVG"]}}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -181,7 +187,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "build_baron_settings": {"ticket_create_project": "EVG"}}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -199,7 +206,8 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 }
 
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	jsonBody := []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -238,7 +246,8 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 }
 
 func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
@@ -262,7 +271,8 @@ func (s *ProjectPatchByIDSuite) TestFilesIgnoredFromCache() {
 }
 
 func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 	h := s.rm.(*projectIDPatchHandler)
 	h.user = &user.DBUser{Id: "me"}
@@ -346,7 +356,8 @@ func (s *ProjectPutSuite) SetupTest() {
 }
 
 func (s *ProjectPutSuite) TestParse() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
@@ -374,7 +385,8 @@ func (s *ProjectPutSuite) TestParse() {
 }
 
 func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	u := user.DBUser{
 		Id: "user",
@@ -417,7 +429,8 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 }
 
 func (s *ProjectPutSuite) TestRunExistingFails() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
@@ -457,7 +470,8 @@ func (s *ProjectGetByIDSuite) SetupTest() {
 }
 
 func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := s.rm.(*projectIDGetHandler)
 	h.projectName = "non-existent"
 
@@ -467,7 +481,8 @@ func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
 }
 
 func (s *ProjectGetByIDSuite) TestRunExistingId() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := s.rm.(*projectIDGetHandler)
 	h.projectName = "dimoxinil"
 	h.includeProjectConfig = true
@@ -549,19 +564,23 @@ func (s *ProjectGetSuite) SetupTest() {
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldErrorIfNoResults() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	s.route.key = "zzz"
 	s.route.limit = 1
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(ctx)
 	s.Equal(http.StatusNotFound, resp.Status())
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no projects found")
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	s.route.key = "projectC"
 	s.route.limit = 1
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	payload := resp.Data().([]interface{})
 
@@ -576,10 +595,12 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	s.route.key = "projectA"
 	s.route.limit = 100
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(ctx)
 	s.NotNil(resp)
 	payload := resp.Data().([]interface{})
 
@@ -592,7 +613,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 
 func (s *ProjectGetSuite) TestGetRecentVersions() {
 	getVersions := makeFetchProjectVersionsLegacy()
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// valid request with defaults
 	request, err := http.NewRequest("GET", "/projects/projectA/recent_versions", bytes.NewReader(nil))
@@ -680,8 +702,6 @@ func TestGetProjectTasks(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
@@ -708,13 +728,15 @@ func TestGetProjectTasks(t *testing.T) {
 		},
 	}
 
-	resp := h.Run(context.Background())
+	resp := h.Run(ctx)
 	assert.Equal(http.StatusOK, resp.Status())
 	assert.Len(resp.Data(), 10)
 }
 
 func TestGetProjectVersions(t *testing.T) {
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(db.ClearCollections(serviceModel.VersionCollection, serviceModel.ProjectRefCollection))
 	const projectId = "proj"
 	project := serviceModel.ProjectRef{
@@ -759,7 +781,7 @@ func TestGetProjectVersions(t *testing.T) {
 		},
 	}
 
-	resp := h.Run(context.Background())
+	resp := h.Run(ctx)
 	respJson, err := json.Marshal(resp.Data())
 	assert.NoError(err)
 	assert.Contains(string(respJson), `"version_id":"v4"`)
@@ -1046,7 +1068,8 @@ func (s *ProjectPutRotateSuite) SetupTest() {
 }
 
 func (s *ProjectPutRotateSuite) TestRotateProjectVars() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
 
 	dryRunTrue := []byte(
