@@ -36,6 +36,12 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
+type GetProjectTasksOpts struct {
+	Limit        int    `json:"num_versions"`
+	BuildVariant string `json:"build_variant"`
+	StartAt      int    `json:"start_at"`
+}
+
 type Project struct {
 	Enabled             bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback            bool                       `yaml:"stepback,omitempty" bson:"stepback"`
@@ -140,8 +146,7 @@ func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
 		}
 	}
 
-	return BuildVariantTaskUnit{}, errors.Errorf("could not find task %s in build variant %s",
-		name, b.Name)
+	return BuildVariantTaskUnit{}, errors.Errorf("could not find task '%s' in build variant '%s'", name, b.Name)
 }
 
 func (b BuildVariant) GetDisplayTask(name string) *patch.DisplayTask {
@@ -165,7 +170,7 @@ func (b BuildVariants) Get(name string) (BuildVariant, error) {
 		}
 	}
 
-	return BuildVariant{}, errors.Errorf("could not find build variant named %s", name)
+	return BuildVariant{}, errors.Errorf("could not find build variant named '%s'", name)
 }
 
 // Populate updates the base fields of the BuildVariantTaskUnit with
@@ -298,12 +303,12 @@ type ParameterInfo struct {
 // Container holds all properties that are configurable when defining a container
 // for tasks and build variants to run on in a project YAML file.
 type Container struct {
-	Name       string             `yaml:"name" bson:"name"`
-	WorkingDir string             `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string             `yaml:"image" bson:"image"`
-	Size       string             `yaml:"size,omitempty" bson:"size"`
-	Resources  ContainerResources `yaml:"resources,omitempty" bson:"resources"`
-	System     ContainerSystem    `yaml:"system,omitempty" bson:"system"`
+	Name       string              `yaml:"name" bson:"name"`
+	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
+	Image      string              `yaml:"image" bson:"image"`
+	Size       string              `yaml:"size,omitempty" bson:"size"`
+	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
+	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
 }
 
 // ContainerSystem specifies the architecture and OS for the running container to use.
@@ -357,7 +362,7 @@ func GetModuleByName(moduleList ModuleList, moduleName string) (*Module, error) 
 		}
 	}
 
-	return nil, errors.Errorf("Module '%s' doesn't exist", moduleName)
+	return nil, errors.Errorf("module '%s' doesn't exist", moduleName)
 }
 
 type TestSuite struct {
@@ -407,7 +412,7 @@ func (c *PluginCommandConf) resolveParams() error {
 	}
 	if c.ParamsYAML != "" {
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-			return errors.Wrapf(err, "error unmarshalling params")
+			return errors.Wrapf(err, "unmarshalling params from YAML")
 		}
 		c.Params = out
 	}
@@ -457,7 +462,7 @@ func (c *PluginCommandConf) unmarshalParams() error {
 	if c.ParamsYAML != "" {
 		out := map[string]interface{}{}
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-			return errors.Wrapf(err, "error unmarshalling params from yaml")
+			return errors.Wrap(err, "unmarshalling params from YAML")
 		}
 		c.Params = out
 		return nil
@@ -465,7 +470,7 @@ func (c *PluginCommandConf) unmarshalParams() error {
 	if len(c.Params) != 0 {
 		bytes, err := yaml.Marshal(c.Params)
 		if err != nil {
-			return errors.Wrap(err, "error marshalling params into yaml")
+			return errors.Wrap(err, "marshalling params into YAML")
 		}
 		c.ParamsYAML = string(bytes)
 	}
@@ -499,7 +504,7 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 	res := c.List()
 	for idx := range res {
 		if err := res[idx].resolveParams(); err != nil {
-			return nil, errors.Wrap(err, "error resolving params for command set")
+			return nil, errors.Wrap(err, "resolving params for command set")
 		}
 	}
 	return res, nil
@@ -625,7 +630,7 @@ func (c *LoggerConfig) IsValid() error {
 func (o *LogOpts) IsValid() error {
 	catcher := grip.NewBasicCatcher()
 	if !utility.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Errorf("%s is not a valid log sender", o.Type)
+		catcher.Errorf("'%s' is not a valid log sender", o.Type)
 	}
 	if o.Type == SplunkLogSender && o.SplunkServer == "" {
 		catcher.New("Splunk logger requires a server URL")
@@ -941,7 +946,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	projectRef, err := FindBranchProjectRef(t.Project)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding project ref")
+		return nil, errors.Wrap(err, "finding project ref")
 	}
 
 	expansions := util.Expansions{}
@@ -970,7 +975,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			var upstreamTask *task.Task
 			upstreamTask, err = task.FindOneId(t.TriggerID)
 			if err != nil {
-				return nil, errors.Wrap(err, "error finding task")
+				return nil, errors.Wrap(err, "finding task")
 			}
 			if upstreamTask == nil {
 				return nil, errors.New("upstream task not found")
@@ -982,7 +987,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			var upstreamBuild *build.Build
 			upstreamBuild, err = build.FindOneId(t.TriggerID)
 			if err != nil {
-				return nil, errors.Wrap(err, "error finding build")
+				return nil, errors.Wrap(err, "finding build")
 			}
 			if upstreamBuild == nil {
 				return nil, errors.New("upstream build not found")
@@ -994,10 +999,10 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		var upstreamProject *ProjectRef
 		upstreamProject, err = FindBranchProjectRef(upstreamProjectID)
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding project")
+			return nil, errors.Wrap(err, "finding project")
 		}
 		if upstreamProject == nil {
-			return nil, errors.Errorf("upstream project %s not found", t.Project)
+			return nil, errors.Errorf("upstream project '%s' not found", t.Project)
 		}
 		expansions.Put("trigger_repo_owner", upstreamProject.Owner)
 		expansions.Put("trigger_repo_name", upstreamProject.Repo)
@@ -1006,7 +1011,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	v, err := VersionFindOneId(t.Version)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding version")
+		return nil, errors.Wrap(err, "finding version")
 	}
 	if v == nil {
 		return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
@@ -1045,7 +1050,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 		var p *patch.Patch
 		p, err = patch.FindOne(patch.ByVersion(t.Version))
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding patch for version '%s'", t.Version)
+			return nil, errors.Wrapf(err, "finding patch for version '%s'", t.Version)
 		}
 		if p == nil {
 			return nil, errors.Errorf("no patch found for version '%s'", t.Version)
@@ -1077,7 +1082,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 
 	bvExpansions, err := FindExpansionsForVariant(v, t.BuildVariant)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting expansions for variant")
+		return nil, errors.Wrap(err, "getting expansions for variant")
 	}
 	expansions.Update(bvExpansions)
 	return expansions, nil
@@ -1166,12 +1171,12 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, err
 	}
 	if ver == nil {
-		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
+		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
 	projectInfo, err := LoadProjectForVersion(ver, ver.Identifier, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
 	return projectInfo.Project, nil
 }
@@ -1179,12 +1184,12 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	bv, err := p.BuildVariants.Get(t.BuildVariant)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding buildvariant for task '%s'", t.Id)
+		return "", errors.Wrapf(err, "finding build variant for task '%s'", t.Id)
 	}
 
 	bvt, err := bv.Get(t.DisplayName)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding buildvarianttask for task '%s'", t.Id)
+		return "", errors.Wrapf(err, "finding build variant task unit for task '%s'", t.Id)
 	}
 
 	var distro string
@@ -1194,7 +1199,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	} else if len(bv.RunOn) > 0 {
 		distro = bv.RunOn[0]
 	} else {
-		return "", errors.Errorf("cannot find the distro for %s", t.Id)
+		return "", errors.Errorf("cannot find the distro for task '%s'", t.Id)
 	}
 
 	return distro, nil
@@ -1235,11 +1240,11 @@ func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, er
 	}
 
 	if lastGoodVersion == nil {
-		return nil, nil, errors.WithStack(errors.Wrapf(err, "could not find a valid version for project %s", projectId))
+		return nil, nil, errors.Wrapf(err, "finding a valid version for project '%s'", projectId)
 	}
 
-	return nil, nil, errors.Wrapf(err, "Error loading project from "+
-		"last good version for project, %s", lastGoodVersion.Identifier)
+	return nil, nil, errors.Wrapf(err, "loading project from "+
+		"last good version for project '%s'", lastGoodVersion.Identifier)
 }
 
 func (bvt *BuildVariantTaskUnit) HasBatchTime() bool {
@@ -1322,7 +1327,7 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 			return &v, nil
 		}
 	}
-	return nil, errors.New("No such module on this project.")
+	return nil, errors.New("no such module on this project")
 }
 
 func (p *Project) FindTasksForVariant(build string) []string {
@@ -1480,12 +1485,12 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
 		vars, err := p.findAliasesForPatch(alias, patchDoc)
-		catcher.Wrapf(err, "error retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
+		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		var aliasPairs, displayTaskPairs []TVPair
 		if !catcher.HasErrors() {
 			aliasPairs, displayTaskPairs, err = p.BuildProjectTVPairsWithAlias(vars)
-			catcher.Add(errors.Wrap(err, "failed to get task/variant pairs for alias"))
+			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 			"message": "problem adding variants/tasks for alias",
@@ -1577,22 +1582,22 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 func (p *Project) findAliasesForPatch(alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
 	vars, shouldExit, err := FindAliasInProjectOrRepoFromDb(p.Identifier, alias)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get alias from project")
+		return nil, errors.Wrap(err, "getting alias from project")
 	}
 	if !shouldExit && len(vars) == 0 {
 		if len(patchDoc.PatchedProjectConfig) > 0 {
 			projectConfig, err := CreateProjectConfig([]byte(patchDoc.PatchedProjectConfig), p.Identifier)
 			if err != nil {
-				return nil, errors.Wrap(err, "can't retrieve aliases from patched config")
+				return nil, errors.Wrap(err, "retrieving aliases from patched config")
 			}
 			vars, err = findAliasFromProjectConfig(projectConfig, alias)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
 		} else {
 			vars, err = findMatchingAliasForProjectConfig(p.Identifier, alias)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error retrieving alias '%s' from project config", alias)
+				return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 			}
 		}
 	}
@@ -1664,13 +1669,13 @@ func (p *Project) BuildProjectTVPairsWithAlias(vars []ProjectAlias) ([]TVPair, [
 		var variantRegex *regexp.Regexp
 		variantRegex, err := regexp.Compile(v.Variant)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
+			return nil, nil, errors.Wrapf(err, "compiling regex '%s'", v.Variant)
 		}
 
 		var taskRegex *regexp.Regexp
 		taskRegex, err = regexp.Compile(v.Task)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "Error compiling regex: %s", v.Task)
+			return nil, nil, errors.Wrapf(err, "compiling regex '%s'", v.Task)
 		}
 
 		for _, variant := range p.BuildVariants {
@@ -1711,7 +1716,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 			if specifier.PatchAlias != "" {
 				aliases, err := FindAliasInProjectRepoOrConfig(p.Identifier, specifier.PatchAlias)
 				if err != nil {
-					return nil, errors.Wrap(err, "can't get alias from project")
+					return nil, errors.Wrap(err, "getting alias from project")
 				}
 				projectAliases = append(projectAliases, aliases...)
 			} else {
@@ -1724,7 +1729,7 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 	pairs := TaskVariantPairs{}
 	pairs.ExecTasks, pairs.DisplayTasks, err = p.BuildProjectTVPairsWithAlias(projectAliases)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get pairs matching patch aliases")
+		return nil, errors.Wrap(err, "getting pairs matching patch aliases")
 	}
 	pairs = p.extractDisplayTasks(pairs)
 	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester)
@@ -1803,7 +1808,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 		).Sort([]string{"-" + VersionCreateTimeKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error fetching versions from database")
+		return nil, nil, nil, errors.Wrap(err, "fetching versions from database")
 	}
 
 	// create a slice of the version ids (used to fetch the builds)
@@ -1823,7 +1828,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 				build.RevisionKey,
 			))
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error fetching builds from database")
+		return nil, nil, nil, errors.Wrap(err, "fetching builds from database")
 	}
 
 	// group the builds by version
@@ -1836,7 +1841,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 	// maxTime ensures the query won't go on indefinitely when the request is cancelled.
 	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "error fetching tasks from database")
+		return nil, nil, nil, errors.Wrap(err, "fetching tasks from database")
 	}
 	taskMap := task.TaskSliceToMap(tasksFromDb)
 
@@ -1872,7 +1877,7 @@ type VariantsAndTasksFromProject struct {
 func GetVariantsAndTasksFromProject(ctx context.Context, patchedConfig, patchProject string) (*VariantsAndTasksFromProject, error) {
 	project := &Project{}
 	if _, err := LoadProjectInto(ctx, []byte(patchedConfig), nil, patchProject, project); err != nil {
-		return nil, errors.Errorf("Error unmarshaling project config: %v", err)
+		return nil, errors.Wrap(err, "unmarshalling project config")
 	}
 
 	// retrieve tasks and variant mappings' names

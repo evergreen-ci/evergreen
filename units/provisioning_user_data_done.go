@@ -120,7 +120,10 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 			j.AddError(j.host.SetStatus(evergreen.HostProvisionFailed, evergreen.User,
 				"decommissioning host after failing to mount volume"))
 
-			terminateJob := NewHostTerminationJob(j.env, j.host, true, "failed to mount volume")
+			terminateJob := NewHostTerminationJob(j.env, j.host, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: "failed to mount volume",
+			})
 			terminateJob.SetPriority(100)
 			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminateJob))
 

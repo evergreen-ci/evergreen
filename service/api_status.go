@@ -43,7 +43,7 @@ type stuckHostResp struct {
 
 // consistentTaskAssignment returns any disparities between tasks' and hosts's views
 // of their mapping between each other. JSON responses take the form of
-//  {status: “ERROR/SUCCESS”, errors:[error strings], tasks:[ids], hosts:[ids]}
+//  {status: "ERROR/SUCCESS", errors:[error strings], tasks:[ids], hosts:[ids]}
 func (as *APIServer) consistentTaskAssignment(w http.ResponseWriter, r *http.Request) {
 	disparities, err := model.AuditHostTaskConsistency()
 	if err != nil {

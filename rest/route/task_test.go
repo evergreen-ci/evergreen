@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -34,10 +33,6 @@ type TaskAbortSuite struct {
 }
 
 func TestTaskAbortSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, new(TaskAbortSuite))
 }
 
@@ -89,10 +84,6 @@ func (s *TaskAbortSuite) TestAbort() {
 
 func TestFetchArtifacts(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require := require.New(t)
 
 	assert.NoError(db.ClearCollections(task.Collection, task.OldCollection, artifact.Collection))
@@ -207,10 +198,6 @@ func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
 }
 
 func TestGetDisplayTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	for testName, testCase := range map[string]func(context.Context, *testing.T){
 		"SucceedsWithTaskInDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
@@ -279,8 +266,6 @@ func TestGetDisplayTask(t *testing.T) {
 func TestGetTaskSyncReadCredentials(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	creds := model.APIS3Credentials{
 		Key:    utility.ToStringPtr("key"),
 		Secret: utility.ToStringPtr("secret"),
@@ -351,8 +336,6 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 func TestGetTaskSyncPath(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	expected := task.Task{
 		Id:           "task_id",
 		Project:      "project",

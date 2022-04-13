@@ -1,15 +1,12 @@
 package data
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -125,9 +122,5 @@ func (s *DBUserConnectorSuite) TestUpdateSettingsCommitQueue() {
 
 func TestDBUserConnector(t *testing.T) {
 	s := &DBUserConnectorSuite{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }

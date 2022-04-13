@@ -44,7 +44,7 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 		interfaces[i] = &events[i]
 	}
 	if catcher.HasErrors() {
-		return errors.Errorf("not logging events, some events are invalid: %s", catcher.String())
+		return errors.Wrap(catcher.Resolve(), "invalid events")
 	}
 	return db.InsertMany(l.collection, interfaces...)
 }
@@ -67,7 +67,7 @@ func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	})
 	if err != nil {
 		event.ProcessedAt = time.Time{}
-		return errors.Wrap(err, "failed to update 'processed at' time")
+		return errors.Wrap(err, "updating 'processed at' time")
 	}
 
 	return nil

@@ -1,18 +1,15 @@
 package data
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"sort"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,10 +17,6 @@ import (
 )
 
 func TestFindTestById(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	tests := []testresult.TestResult{
 		testresult.TestResult{
 			ID:        mgobson.ObjectIdHex("507f191e810c19729de860ea"),
@@ -61,10 +54,6 @@ func TestFindTestById(t *testing.T) {
 
 func TestFindTestsByTaskId(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 	assert.NoError(db.EnsureIndex(testresult.Collection, mongo.IndexModel{
 		Keys: testresult.TestResultsIndex}))
@@ -215,10 +204,6 @@ func TestFindTestsByTaskId(t *testing.T) {
 
 func TestFindTestsByTaskIdPaginationOrderDependsOnObjectId(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	serviceContext := &DBTestConnector{}
@@ -272,10 +257,6 @@ func TestFindTestsByTaskIdPaginationOrderDependsOnObjectId(t *testing.T) {
 
 func TestFindTestsByDisplayTaskId(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	serviceContext := &DBTestConnector{}

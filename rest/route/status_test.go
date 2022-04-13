@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
@@ -26,10 +25,6 @@ type StatusSuite struct {
 }
 
 func TestStatusSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, new(StatusSuite))
 }
 

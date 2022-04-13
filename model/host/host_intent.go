@@ -35,10 +35,10 @@ type CreateOptions struct {
 	HomeVolumeID          string
 }
 
-// NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
-// does not exist yet but is intended to be picked up by the hostinit package and started. This
+// NewIntent creates an intent host using the given host settings. An intent host is a host that
+// does not exist yet in the cloud but will be eventually started by the system. This
 // function takes distro information, the name of the instance, the provider of the instance and
-// a CreateOptions and returns an IntentHost.
+// a CreateOptions and returns an intent host.
 func NewIntent(options CreateOptions) *Host {
 	creationTime := time.Now()
 	instanceName := options.Distro.GenerateName()
@@ -136,7 +136,7 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	// get the parents that are running and split into ones that already have a container from this distro
 	currentHosts, err := GetContainersOnParents(d)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Could not find number of containers on parents")
+		return nil, nil, errors.Wrapf(err, "getting containers on parents for distro '%s'", d.Id)
 	}
 	maxImages := defaultMaxImagesPerParent
 	if pool.MaxImages > 0 {
@@ -165,10 +165,10 @@ func MakeContainersAndParents(d distro.Distro, pool *evergreen.ContainerPool, ne
 	}
 	parentDistro, err := distro.FindByIdWithDefaultSettings(pool.Distro)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error finding distro")
+		return nil, nil, errors.Wrap(err, "finding distro")
 	}
 	if parentDistro == nil {
-		return nil, nil, errors.Errorf("distro %s not found", pool.Distro)
+		return nil, nil, errors.Errorf("distro '%s' not found", pool.Distro)
 	}
 
 	for i := 0; i < numNewParents; i++ {

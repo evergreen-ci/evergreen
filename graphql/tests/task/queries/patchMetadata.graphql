@@ -1,8 +1,0 @@
-{
-  task(taskId: "taskity_task") {
-    id
-    patchMetadata {
-      author
-    }
-  }
-}

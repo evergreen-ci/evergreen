@@ -988,7 +988,7 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 
 	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
-		return errors.Wrap(err, "problem running aggregation")
+		return errors.Wrap(err, "running aggregation")
 	}
 
 	buf := make([]mongo.WriteModel, 0, bulkSize)
@@ -1005,7 +1005,7 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 
 		if len(buf) >= bulkSize {
 			if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
-				return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
+				return errors.Wrapf(err, "bulk writing to collection '%s'", outputCollection)
 			}
 			buf = make([]mongo.WriteModel, 0, bulkSize)
 
@@ -1015,15 +1015,15 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 	}
 
 	if err = cursor.Err(); err != nil {
-		return errors.Wrap(err, "problem running aggregation")
+		return errors.Wrap(err, "running aggregation")
 	}
 
 	if err = cursor.Close(ctx); err != nil {
-		return errors.Wrap(err, "problem closing cursor")
+		return errors.Wrap(err, "closing cursor")
 	}
 
 	if err = doBulkWrite(ctx, env, outputCollection, buf); err != nil {
-		return errors.Wrapf(err, "problem bulk writing to %s", outputCollection)
+		return errors.Wrapf(err, "bulk writing to collection '%s'", outputCollection)
 	}
 
 	return nil
@@ -1036,13 +1036,13 @@ func doBulkWrite(ctx context.Context, env evergreen.Environment, outputCollectio
 
 	res, err := env.DB().Collection(outputCollection).BulkWrite(ctx, buf)
 	if err != nil {
-		return errors.Wrap(err, "problem with bulk write operation")
+		return errors.Wrapf(err, "bulk writing operation to collection '%s'", outputCollection)
 	}
 
 	totalModified := res.UpsertedCount + res.ModifiedCount + res.InsertedCount
 
 	if totalModified != int64(len(buf)) {
-		return errors.Errorf("failed to materialize view: %d of %d", totalModified, len(buf))
+		return errors.Errorf("materializing view: %d of %d", totalModified, len(buf))
 	}
 
 	return nil

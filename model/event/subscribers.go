@@ -58,7 +58,7 @@ func (s *Subscriber) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(i
 func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalSubscriber{}
 	if err := raw.Unmarshal(&temp); err != nil {
-		return errors.Wrap(err, "can't unmarshal subscriber data")
+		return errors.Wrap(err, "unmarshalling subscriber data")
 	}
 	if len(temp.Type) == 0 {
 		return errors.New("could not find subscriber type")
@@ -84,11 +84,11 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		return nil
 
 	default:
-		return errors.Errorf("unknown subscriber type: '%s'", temp.Type)
+		return errors.Errorf("unknown subscriber type '%s'", temp.Type)
 	}
 
 	if err := temp.Target.Unmarshal(s.Target); err != nil {
-		return errors.Wrap(err, "couldn't unmarshal subscriber info")
+		return errors.Wrap(err, "unmarshalling subscriber info")
 	}
 
 	return nil
@@ -112,12 +112,8 @@ func (s *Subscriber) String() string {
 
 func (s *Subscriber) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if !utility.StringSliceContains(SubscriberTypes, s.Type) {
-		catcher.Add(errors.Errorf("%s is not a valid subscriber type", s.Type))
-	}
-	if s.Target == nil {
-		catcher.Add(errors.New("target is required for subscriber"))
-	}
+	catcher.ErrorfWhen(!utility.StringSliceContains(SubscriberTypes, s.Type), "'%s' is not a valid subscriber type", s.Type)
+	catcher.NewWhen(s.Target == nil, "target is required for subscriber")
 	return catcher.Resolve()
 }
 

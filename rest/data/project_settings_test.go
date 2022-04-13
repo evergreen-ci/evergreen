@@ -18,11 +18,10 @@ import (
 )
 
 func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
-	rm := evergreen.GetEnvironment().RoleManager()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	rm := env.RoleManager()
 
 	for name, test := range map[string]func(t *testing.T, ref model.RepoRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.RepoRef) {
@@ -106,8 +105,8 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
 			// should still add newAdmin and delete oldAdmin even with errors
-			assert.EqualError(t, err,
-				"error saving section 'ACCESS': error updating repo admin roles: error updating some admins: no user 'nonexistent' found")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
 			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
 			assert.NoError(t, err)
@@ -152,7 +151,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:         "myRepoId",
@@ -237,8 +236,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.ProjectRef) {
@@ -372,8 +370,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				ProjectRef: apiProjectRef,
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
-			assert.EqualError(t, err,
-				"error saving section 'ACCESS': error updating project admin roles: error updating some admins: no user 'nonexistent' found")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
 			assert.NoError(t, err)
@@ -469,7 +467,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
 			Id:         "myId",

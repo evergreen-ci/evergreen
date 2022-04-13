@@ -167,7 +167,7 @@ func FindVolumesByUser(userID string) ([]Volume, error) {
 func FindSortedVolumesByUser(userID string) ([]Volume, error) {
 	volumes, err := FindVolumesByUser(userID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting volumes for '%s'", userID)
+		return nil, errors.Wrapf(err, "getting volumes for user '%s'", userID)
 	}
 
 	sort.SliceStable(volumes, func(i, j int) bool {
@@ -187,7 +187,7 @@ func FindSortedVolumesByUser(userID string) ([]Volume, error) {
 func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 	volume, err := FindVolumeByID(volumeID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get volume '%s'", volumeID)
+		return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
 	}
 	if volume == nil {
 		return nil, errors.Errorf("volume '%s' does not exist", volumeID)
@@ -195,7 +195,7 @@ func ValidateVolumeCanBeAttached(volumeID string) (*Volume, error) {
 	var sourceHost *Host
 	sourceHost, err = FindHostWithVolume(volumeID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get source host for volume '%s'", volumeID)
+		return nil, errors.Wrapf(err, "getting host with volume '%s' attached", volumeID)
 	}
 	if sourceHost != nil {
 		return nil, errors.Errorf("volume '%s' is already attached to host '%s'", volumeID, sourceHost.Id)

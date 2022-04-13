@@ -10,7 +10,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
@@ -85,7 +88,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 
 // GenerateHostProvisioningScript generates and returns the script to
 // provision the host given by host ID.
-func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string, error) {
+func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environment, hostID string) (string, error) {
 	if hostID == "" {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -106,7 +109,6 @@ func GenerateHostProvisioningScript(ctx context.Context, hostID string) (string,
 		}
 	}
 
-	env := evergreen.GetEnvironment()
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
@@ -164,4 +166,63 @@ func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) 
 	}
 
 	return hostById, nil
+}
+
+var errHostStatusChangeConflict = errors.New("conflicting host status modification is in progress")
+
+// TerminateSpawnHost enqueues a job to terminate a spawn host.
+func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
+	if h.Status == evergreen.HostTerminated {
+		return http.StatusBadRequest, errors.Errorf("host '%s' is already terminated", h.Id)
+	}
+
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, terminateJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
+}
+
+// StopSpawnHost enqueues a job to stop a running spawn host.
+func StopSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
+	if h.Status == evergreen.HostStopped {
+		return http.StatusBadRequest, errors.Errorf("host '%s' is already stopped", h.Id)
+	}
+	if h.Status != evergreen.HostRunning && h.Status != evergreen.HostStopping {
+		return http.StatusBadRequest, errors.Errorf("host '%s' cannot stop when its status is '%s'", h.Id, h.Status)
+	}
+
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	stopJob := units.NewSpawnhostStopJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, stopJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+
+}
+
+// StartSpawnHost enqueues a job to start a stopped spawn host.
+func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
+	if h.Status != evergreen.HostStopped {
+		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be started when its status is '%s'", h.Id, h.Status)
+	}
+
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	startJob := units.NewSpawnhostStartJob(h, u.Id, ts)
+	if err := env.RemoteQueue().Put(ctx, startJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
+
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
 }

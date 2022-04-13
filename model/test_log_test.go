@@ -41,7 +41,7 @@ func TestTestLogInsertAndFind(t *testing.T) {
 				So(logFromDB, ShouldResemble, log)
 			})
 
-			Convey("but a nonexistant test log should not be found", func() {
+			Convey("but a nonexistent test log should not be found", func() {
 				logFromDB, err := FindOneTestLog("blech", "blah", 1)
 				So(logFromDB, ShouldBeNil)
 				So(err, ShouldBeNil)

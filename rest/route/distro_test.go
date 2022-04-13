@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -1545,8 +1544,7 @@ func (s *distroExecuteSuite) SetupTest() {
 	s.NoError(db.ClearCollections(host.Collection))
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	env := &mock.Environment{}
-	s.env = env
+	s.env = testutil.NewEnvironment(ctx, s.T())
 	hostToAdd := host.Host{
 		Id: "host1",
 		Distro: distro.Distro{
@@ -1555,7 +1553,6 @@ func (s *distroExecuteSuite) SetupTest() {
 		},
 	}
 	s.Require().NoError(hostToAdd.Insert())
-	s.Require().NoError(env.Configure(ctx))
 	h := makeDistroExecute(s.env)
 	rh, ok := h.(*distroExecuteHandler)
 	s.Require().True(ok)
@@ -1654,9 +1651,7 @@ func (s *distroClientURLsGetSuite) SetupTest() {
 	s.NoError(err)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	env := &mock.Environment{}
-	s.env = env
-	s.Require().NoError(env.Configure(ctx))
+	s.env = testutil.NewEnvironment(ctx, s.T())
 	h := makeGetDistroClientURLs(s.env)
 	rh, ok := h.(*distroClientURLsGetHandler)
 	s.Require().True(ok)

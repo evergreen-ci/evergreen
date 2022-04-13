@@ -8,12 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
@@ -26,11 +24,6 @@ type SubscriptionRouteSuite struct {
 
 func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 	s := new(SubscriptionRouteSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-
 	suite.Run(t, s)
 }
 
@@ -313,7 +306,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Cannot notify by jira-issue for version", respErr.Message)
+	s.Equal("cannot notify by subscriber type 'jira-issue' for selector 'version'", respErr.Message)
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
@@ -371,7 +364,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: foo must be a number", respErr.Message)
+	s.Contains(respErr.Message, "invalid task duration")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -400,7 +393,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: -2 cannot be negative", respErr.Message)
+	s.Contains(respErr.Message, "cannot be negative")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -429,7 +422,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.Require().Equal(400, resp.Status())
 	respErr, ok = resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax", respErr.Message)
+	s.Contains(respErr.Message, "unable to parse a as float")
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,

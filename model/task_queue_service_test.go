@@ -785,56 +785,63 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	}
 }
 
-func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
+func (s *taskDAGDispatchServiceSuite) TestSelfEdge() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items := []TaskQueueItem{}
 
-	t1 := task.Task{
-		Id:                  "1",
-		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
-		TaskGroup:           "",
-		StartTime:           utility.ZeroTime,
-		BuildVariant:        "init_test_run",
-		Version:             "5d88953e2a60ed61eefe9561",
-		Project:             "ops-manager-kubernetes",
-		Activated:           true,
-		ActivatedBy:         "",
-		DistroId:            "archlinux-test",
-		Requester:           "patch_request",
-		Status:              evergreen.TaskUndispatched,
-		Revision:            "1a53e026e05561c3efbb626185e155a7d1e4865d",
-		RevisionOrderNumber: 1846,
+	t0 := task.Task{
+		Id: "t0",
 		DependsOn: []task.Dependency{
-			task.Dependency{
-				TaskId:       "1",
-				Status:       "success",
-				Unattainable: false,
+			{TaskId: "t0"},
+		},
+	}
+	s.Require().NoError(t0.Insert())
+
+	s.taskQueue = TaskQueue{
+		Queue: []TaskQueueItem{
+			{
+				Id:           "t0",
+				Dependencies: []string{"t0"},
 			},
 		},
 	}
-	item1 := TaskQueueItem{
-		Id:            "1",
-		Group:         "",
-		BuildVariant:  "init_test_run",
-		Version:       "5d88953e2a60ed61eefe9561",
-		Project:       "ops-manager-kubernetes",
-		Requester:     "patch_request",
-		GroupMaxHosts: 0,
-		IsDispatched:  false,
-		Dependencies:  []string{"1"},
+
+	dispatcher, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	nextTask := dispatcher.FindNextTask(TaskSpec{}, time.Time{})
+	s.Nil(nextTask)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestDependencyCycle() {
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	for _, t := range []task.Task{
+		{
+			Id:        "t0",
+			DependsOn: []task.Dependency{{TaskId: "t1"}},
+		},
+		{
+			Id:        "t1",
+			DependsOn: []task.Dependency{{TaskId: "t0"}},
+		},
+		{
+			Id: "t2",
+		},
+	} {
+		s.Require().NoError(t.Insert())
 	}
 
-	s.Require().NoError(t1.Insert())
-	items = append(items, item1)
+	s.taskQueue = TaskQueue{Queue: []TaskQueueItem{
+		{Id: "t0", Dependencies: []string{"t1"}},
+		{Id: "t1", Dependencies: []string{"t0"}},
+		{Id: "t2"},
+	}}
 
-	s.taskQueue = TaskQueue{
-		Distro: "archlinux-test",
-		Queue:  items,
-	}
+	dispatcher, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
 
-	_, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
-	s.Error(err)
-	s.Contains(err.Error(), "cannot add a self edge to task")
+	nextTask := dispatcher.FindNextTask(TaskSpec{}, time.Time{})
+	s.Require().NotNil(nextTask)
+	s.Equal("t2", nextTask.Id)
 }
 
 func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
@@ -1211,7 +1218,6 @@ func setTaskStatus(taskID string, status string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				// task.DispatchTimeKey: time.Now().Add(-1 * time.Minute),
 				task.StatusKey: status,
 			},
 		},

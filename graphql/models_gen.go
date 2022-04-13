@@ -23,11 +23,6 @@ type AbortInfo struct {
 	PrClosed                bool   `json:"prClosed"`
 }
 
-type BaseTaskMetadata struct {
-	BaseTaskDuration *model.APIDuration `json:"baseTaskDuration"`
-	BaseTaskLink     string             `json:"baseTaskLink"`
-}
-
 type BaseTaskResult struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`
@@ -51,7 +46,6 @@ type Dependency struct {
 	RequiredStatus RequiredStatus `json:"requiredStatus"`
 	BuildVariant   string         `json:"buildVariant"`
 	TaskID         string         `json:"taskId"`
-	UILink         string         `json:"uiLink"`
 }
 
 type DisplayTask struct {
@@ -148,11 +142,6 @@ type PatchDuration struct {
 	Makespan  *string    `json:"makespan"`
 	TimeTaken *string    `json:"timeTaken"`
 	Time      *PatchTime `json:"time"`
-}
-
-type PatchMetadata struct {
-	Author  string `json:"author"`
-	PatchID string `json:"patchID"`
 }
 
 type PatchProject struct {
@@ -270,10 +259,9 @@ type TaskLogs struct {
 }
 
 type TaskQueueDistro struct {
-	ID         string `json:"id"`
-	QueueCount int    `json:"queueCount"`
-	TaskCount  int    `json:"taskCount"`
-	HostCount  int    `json:"hostCount"`
+	ID        string `json:"id"`
+	TaskCount int    `json:"taskCount"`
+	HostCount int    `json:"hostCount"`
 }
 
 type TaskResult struct {
@@ -314,6 +302,18 @@ type UpdateVolumeInput struct {
 	NoExpiration *bool      `json:"noExpiration"`
 	Name         *string    `json:"name"`
 	VolumeID     string     `json:"volumeId"`
+}
+
+type UpstreamProject struct {
+	Owner       string            `json:"owner"`
+	Repo        string            `json:"repo"`
+	Revision    string            `json:"revision"`
+	Project     string            `json:"project"`
+	TriggerID   string            `json:"triggerID"`
+	ResourceID  string            `json:"resourceID"`
+	Task        *model.APITask    `json:"task"`
+	Version     *model.APIVersion `json:"version"`
+	TriggerType string            `json:"triggerType"`
 }
 
 type UserConfig struct {

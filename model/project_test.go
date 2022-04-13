@@ -1428,7 +1428,7 @@ func TestLoggerConfigValidate(t *testing.T) {
 	config = &LoggerConfig{
 		Agent: []LogOpts{{Type: "foo"}},
 	}
-	assert.EqualError(config.IsValid(), "invalid agent logger config: foo is not a valid log sender")
+	assert.EqualError(config.IsValid(), "invalid agent logger config: 'foo' is not a valid log sender")
 
 	config = &LoggerConfig{
 		System: []LogOpts{{Type: SplunkLogSender}},

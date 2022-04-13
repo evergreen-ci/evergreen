@@ -29,7 +29,7 @@ func TestFindDistroById(t *testing.T) {
 	require.NotNil(t, session)
 	defer session.Close()
 
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 
 	id := fmt.Sprintf("distro_%d", rand.Int())
 	d := &Distro{
@@ -49,7 +49,7 @@ func TestFindAllDistros(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 
 	numDistros := 10
 	for i := 0; i < numDistros; i++ {
@@ -566,7 +566,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 func TestAddPermissions(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id: "me",
 	}

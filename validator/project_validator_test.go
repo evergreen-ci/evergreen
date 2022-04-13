@@ -1260,8 +1260,8 @@ func TestValidatePeriodicBuilds(t *testing.T) {
 	}
 	validationErrs := validateProjectConfigPeriodicBuilds(projectConfig)
 	assert.Len(t, validationErrs, 2)
-	assert.Contains(t, validationErrs[0].Message, "Interval must be a positive integer")
-	assert.Contains(t, validationErrs[1].Message, "A config file must be specified")
+	assert.Contains(t, validationErrs[0].Message, "interval must be a positive integer")
+	assert.Contains(t, validationErrs[1].Message, "a config file must be specified")
 }
 
 func TestValidatePlugins(t *testing.T) {
@@ -1538,7 +1538,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -1558,7 +1558,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble,
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble,
 				ValidationErrors{})
 		})
 
@@ -1572,10 +1572,50 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases)
 			So(errs, ShouldNotResemble,
 				ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
+		})
+
+		Convey("an error should be thrown if a referenced distro for a "+
+			"buildvariant has the same name as an existing container", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"rhel55"},
+					},
+				},
+			}
+			containerNameMap := map[string]bool{
+				"rhel55": true,
+			}
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases)
+			So(errs, ShouldNotResemble,
+				ValidationErrors{})
+			So(len(errs), ShouldEqual, 2)
+			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
+			So(errs[1].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
+		})
+
+		Convey("an error should be thrown if a buildvariant references a mix of distros and containers to run on", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"rhel55", "c1"},
+					},
+				},
+			}
+			containerNameMap := map[string]bool{
+				"c1": true,
+			}
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases)
+			So(errs, ShouldNotResemble,
+				ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
 		})
 
 		Convey("no error should be thrown if a referenced distro ID for a "+
@@ -1588,7 +1628,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -1601,7 +1641,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -2328,7 +2368,7 @@ func TestTaskValidation(t *testing.T) {
 	ctx := context.Background()
 	_, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "spaces are unauthorized")
+	assert.Contains(t, err.Error(), "spaces are not allowed")
 }
 
 func TestTaskGroupValidation(t *testing.T) {
@@ -2812,8 +2852,8 @@ tasks:
 	assert.NotNil(pp)
 	errs := checkTasks(project)
 	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
-	assert.Contains(errs.String(), "invalid task logger config: somethingElse is not a valid log sender")
-	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: commandLogger is not a valid log sender")
+	assert.Contains(errs.String(), "invalid task logger config: 'somethingElse' is not a valid log sender")
+	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: 'commandLogger' is not a valid log sender")
 
 	// no loggers specified should not error
 	yml = `
@@ -3005,6 +3045,79 @@ func TestValidateVersionControl(t *testing.T) {
 	verrs = validateVersionControl(&model.Project{}, ref, false)
 	assert.Equal(t, "version control is enabled for project 'proj' but no project config fields have been set.", verrs[0].Message)
 
+}
+
+func TestValidateContainers(t *testing.T) {
+	require.NoError(t, db.Clear(model.ProjectRefCollection))
+	ref := &model.ProjectRef{
+		Identifier: "proj",
+		ContainerSizes: map[string]model.ContainerResources{
+			"s1": model.ContainerResources{
+				MemoryMB: 100,
+				CPU:      1,
+			},
+		},
+	}
+	require.NoError(t, ref.Insert())
+	p := &model.Project{
+		Identifier: "proj",
+		Containers: []model.Container{
+			{
+				Name:       "c1",
+				Image:      "demo/image:latest",
+				WorkingDir: "/root",
+				Size:       "s1",
+			},
+		},
+	}
+	verrs := validateContainers(p, ref, false)
+	assert.Len(t, verrs, 0)
+	p.Containers[0].Name = ""
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "name must be defined")
+	p.Containers[0].Name = "c1"
+	p.Containers[0].Image = ""
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "image must be defined")
+	p.Containers[0].Image = "demo:image"
+	p.Containers[0].Resources = &model.ContainerResources{
+		MemoryMB: 100,
+		CPU:      1,
+	}
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
+	p.Containers[0].Size = ""
+	p.Containers[0].Resources = nil
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
+	p.Containers[0].Size = "s2"
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
+	p.Containers[0].System = model.ContainerSystem{
+		OperatingSystem: "oops",
+		CPUArchitecture: "oops",
+	}
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
+	assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
+	p.Containers[0].System = model.ContainerSystem{
+		OperatingSystem: evergreen.LinuxOS,
+		CPUArchitecture: evergreen.ArchARM64,
+	}
+	p.Containers[0].Resources = &model.ContainerResources{
+		MemoryMB: 0,
+		CPU:      -1,
+	}
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
+	assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 }
 
 func TestValidateTaskSyncSettings(t *testing.T) {
@@ -4228,7 +4341,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{})
+			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{})
 			if testCase.expectErr {
 				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
 			} else {

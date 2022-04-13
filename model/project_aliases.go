@@ -49,9 +49,9 @@ const (
 // __github               ^ubuntu1604.*$    ^compile.*$
 //
 // This will cause a GitHub pull request to create and finalize a patch which runs
-// all tasks containing the string “test” on all variants containing the string
-// “linux”; and to run all tasks beginning with the string “compile” to run on all
-// variants beginning with the string “ubuntu1604”.
+// all tasks containing the string "test" on all variants containing the string
+// "linux"; and to run all tasks beginning with the string "compile" to run on all
+// variants beginning with the string "ubuntu1604".
 
 // Git tags use a special alias "__git_tag" and create a new version for the matching
 // variants/tasks, assuming the tag matches the defined git_tag regex.
@@ -78,9 +78,50 @@ func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
 	})
 	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project aliases")
+		return nil, errors.Wrap(err, "finding project aliases")
 	}
 	return out, nil
+}
+
+// MergeAliasesWithProjectConfig returns a merged list of project aliases that includes the merged result of aliases defined
+// on the project ref and aliases defined in the project YAML.  Aliases defined on the project ref will take precedence over the
+// project YAML in the case that both are defined.
+func MergeAliasesWithProjectConfig(projectID string, dbAliases []ProjectAlias) ([]ProjectAlias, error) {
+	dbAliasMap := aliasesToMap(dbAliases)
+	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "finding project config")
+	}
+	patchAliases := []ProjectAlias{}
+	for alias, aliases := range dbAliasMap {
+		if IsPatchAlias(alias) {
+			patchAliases = append(patchAliases, aliases...)
+		}
+	}
+	mergedAliases := []ProjectAlias{}
+	if projectConfig != nil {
+		if len(dbAliasMap[evergreen.CommitQueueAlias]) == 0 {
+			dbAliasMap[evergreen.CommitQueueAlias] = projectConfig.CommitQueueAliases
+		}
+		if len(dbAliasMap[evergreen.GithubPRAlias]) == 0 {
+			dbAliasMap[evergreen.GithubPRAlias] = projectConfig.GitHubPRAliases
+		}
+		if len(dbAliasMap[evergreen.GithubChecksAlias]) == 0 {
+			dbAliasMap[evergreen.GithubChecksAlias] = projectConfig.GitHubChecksAliases
+		}
+		if len(dbAliasMap[evergreen.GitTagAlias]) == 0 {
+			dbAliasMap[evergreen.GitTagAlias] = projectConfig.GitTagAliases
+		}
+		if len(patchAliases) == 0 {
+			patchAliases = projectConfig.PatchAliases
+		}
+	}
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.CommitQueueAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubChecksAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GitTagAlias]...)
+	mergedAliases = append(mergedAliases, dbAliasMap[evergreen.GithubPRAlias]...)
+	mergedAliases = append(mergedAliases, patchAliases...)
+	return mergedAliases, nil
 }
 
 // FindAliasesForRepo fetches all aliases for a given project
@@ -107,7 +148,7 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 	})
 	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project aliases")
+		return nil, errors.Wrap(err, "finding project aliases for repo")
 	}
 	return out, nil
 }
@@ -124,14 +165,14 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 	})
 	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "error finding project aliases")
+		return nil, false, errors.Wrap(err, "finding project aliases")
 	}
 
 	if len(out) == 0 && IsPatchAlias(alias) {
 		// return true if any patch aliases are defined
 		numPatchAliases, err := countPatchAliases(projectID)
 		if err != nil {
-			return nil, false, errors.Wrap(err, "error counting patch aliases")
+			return nil, false, errors.Wrap(err, "counting patch aliases")
 		}
 		return nil, numPatchAliases > 0, nil
 	}
@@ -142,7 +183,7 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, bo
 func findMatchingAliasForProjectConfig(projectID, alias string) ([]ProjectAlias, error) {
 	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding project config")
+		return nil, errors.Wrap(err, "finding project config")
 	}
 	if projectConfig == nil {
 		return nil, nil
@@ -202,7 +243,7 @@ func getFullProjectConfigAliases(projectConfig *ProjectConfig) []ProjectAlias {
 func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, error) {
 	aliases, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
 	if err != nil {
-		return nil, errors.Wrap(err, "error checking for existing aliases")
+		return nil, errors.Wrap(err, "checking for existing aliases")
 	}
 	// If nothing is defined in the DB, check the project config,
 	// unless the alias defined is a patch alias and there are patch aliases
@@ -218,14 +259,14 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 func FindAliasInProjectRepoOrPatchedConfig(projectID, alias, patchedConfig string) ([]ProjectAlias, error) {
 	aliases, shouldExit, err := FindAliasInProjectOrRepoFromDb(projectID, alias)
 	if err != nil {
-		return nil, errors.Wrap(err, "error checking for existing aliases")
+		return nil, errors.Wrap(err, "checking for existing aliases")
 	}
 	if len(aliases) > 0 || shouldExit || patchedConfig == "" {
 		return aliases, nil
 	}
 	projectConfig, err := CreateProjectConfig([]byte(patchedConfig), "")
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating project config from patch")
+		return nil, errors.Wrap(err, "creating project config from patch")
 	}
 	return findAliasFromProjectConfig(projectConfig, alias)
 }
@@ -235,7 +276,7 @@ func FindAliasInProjectRepoOrPatchedConfig(projectID, alias, patchedConfig strin
 func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, bool, error) {
 	aliases, shouldExit, err := findMatchingAliasForProjectRef(projectID, alias)
 	if err != nil {
-		return aliases, false, errors.Wrapf(err, "error finding aliases for project ref '%s'", projectID)
+		return aliases, false, errors.Wrapf(err, "finding aliases for project ref '%s'", projectID)
 	}
 	if shouldExit {
 		return aliases, true, nil
@@ -246,7 +287,7 @@ func FindAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, bo
 func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, bool, error) {
 	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
-		return aliases, false, errors.Wrapf(err, "error finding project '%s'", projectID)
+		return aliases, false, errors.Wrapf(err, "finding project '%s'", projectID)
 	}
 	if project == nil {
 		return aliases, false, errors.Errorf("project '%s' does not exist", projectID)
@@ -257,13 +298,13 @@ func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) (
 
 	aliases, err = findMatchingAliasForRepo(project.RepoRefId, alias)
 	if err != nil {
-		return aliases, false, errors.Wrapf(err, "error finding aliases for repo '%s'", project.RepoRefId)
+		return aliases, false, errors.Wrapf(err, "finding aliases for repo '%s'", project.RepoRefId)
 	}
 	shouldExit := false
 	if IsPatchAlias(alias) {
 		numRepoPatchAliases, err := countPatchAliases(project.RepoRefId)
 		if err != nil {
-			return nil, false, errors.Wrap(err, "error counting patch aliases")
+			return nil, false, errors.Wrap(err, "counting patch aliases")
 		}
 		shouldExit = numRepoPatchAliases > 0
 	}
@@ -287,11 +328,11 @@ func HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, e
 func CopyProjectAliases(oldProjectId, newProjectId string) error {
 	aliases, err := FindAliasesForProjectFromDb(oldProjectId)
 	if err != nil {
-		return errors.Wrapf(err, "error finding aliases for project '%s'", oldProjectId)
+		return errors.Wrapf(err, "finding aliases for project '%s'", oldProjectId)
 	}
 	if aliases != nil {
 		if err = UpsertAliasesForProject(aliases, newProjectId); err != nil {
-			return errors.Wrapf(err, "error inserting aliases for project '%s'", newProjectId)
+			return errors.Wrapf(err, "inserting aliases for project '%s'", newProjectId)
 		}
 	}
 	return nil
@@ -344,7 +385,7 @@ func (p *ProjectAlias) Upsert() error {
 		idKey: p.ID,
 	}, bson.M{"$set": update})
 	if err != nil {
-		return errors.Wrapf(err, "failed to insert project alias '%s'", p.ID)
+		return errors.Wrapf(err, "inserting project alias '%s'", p.ID)
 	}
 	return nil
 }
@@ -369,7 +410,7 @@ func RemoveProjectAlias(id string) error {
 	}
 	err := db.Remove(ProjectAliasCollection, bson.M{idKey: mgobson.ObjectIdHex(id)})
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove project alias %s", id)
+		return errors.Wrapf(err, "removing project alias '%s'", id)
 	}
 	return nil
 }
@@ -391,7 +432,7 @@ func aliasesMatchingGitTag(a ProjectAliases, tag string) (ProjectAliases, error)
 	for _, alias := range a {
 		gitTagRegex, err := regexp.Compile(alias.GitTag)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to compile regex %s", gitTagRegex)
+			return nil, errors.Wrapf(err, "compiling git tag regex '%s'", alias.GitTag)
 		}
 		if isValidRegexOrTag(tag, alias.GitTag, nil, nil, gitTagRegex) {
 			res = append(res, alias)
@@ -405,7 +446,7 @@ func (a ProjectAliases) AliasesMatchingVariant(variant string, variantTags []str
 	for _, alias := range a {
 		variantRegex, err := regexp.Compile(alias.Variant)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to compile regex %s", variantRegex)
+			return nil, errors.Wrapf(err, "compiling variant regex '%s'", alias.Variant)
 		}
 		if isValidRegexOrTag(variant, alias.Variant, variantTags, alias.VariantTags, variantRegex) {
 			res = append(res, alias)
@@ -419,7 +460,7 @@ func (a ProjectAliases) HasMatchingTask(taskName string, taskTags []string) (boo
 	for _, alias := range a {
 		taskRegex, err := regexp.Compile(alias.Task)
 		if err != nil {
-			return false, errors.Wrapf(err, "unable to compile regex %s", taskRegex)
+			return false, errors.Wrapf(err, "compiling task regex '%s'", alias.Task)
 		}
 		if isValidRegexOrTag(taskName, alias.Task, taskTags, alias.TaskTags, taskRegex) {
 			return true, nil

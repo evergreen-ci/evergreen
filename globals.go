@@ -57,11 +57,6 @@ const (
 	TaskUnscheduled  = "unscheduled"
 	// TaskWillRun is a subset of TaskUndispatched and is only used in the UI
 	TaskWillRun = "will-run"
-	// TaskContainerUnallocated indicates that a tasks's container has not been requested.
-	TaskContainerUnallocated = "container-unallocated"
-	// TaskContainerAllocated indicates that a tasks's container has been requested
-	// from the cloud provider but hasn't started yet.
-	TaskContainerAllocated = "container-allocated"
 
 	// TaskDispatched indicates that an agent has received the task, but
 	// the agent has not yet told Evergreen that it's running the task
@@ -325,7 +320,6 @@ var TaskUnstartedStatuses = []string{
 	TaskInactive,
 	TaskUnstarted,
 	TaskUndispatched,
-	TaskContainerAllocated,
 }
 
 func IsUnstartedTaskStatus(status string) bool {
@@ -725,8 +719,14 @@ var (
 	// are in a finished state.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
 	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
-	TaskUncompletedStatuses = []string{TaskStarted, TaskUnstarted, TaskUndispatched, TaskDispatched, TaskConflict,
-		TaskInactive, TaskContainerUnallocated, TaskContainerAllocated}
+	TaskUncompletedStatuses = []string{
+		TaskStarted,
+		TaskUnstarted,
+		TaskUndispatched,
+		TaskDispatched,
+		TaskConflict,
+		TaskInactive,
+	}
 
 	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 

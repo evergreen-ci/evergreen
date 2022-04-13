@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -16,8 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Thing struct {
@@ -54,10 +51,6 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection))
 	task1 := task.Task{
 		Id: "task1",
@@ -74,17 +67,12 @@ func TestGeneratePollParse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
 
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
-	require.NoError(t, client.Database("amboy_test").Drop(ctx))
+	require.NoError(t, db.DropDatabases(env.Settings().Amboy.DB))
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
@@ -97,7 +85,6 @@ func TestGeneratePollRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection))
 	tasks := []task.Task{
 		{

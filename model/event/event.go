@@ -62,7 +62,7 @@ func (e *EventLogEntry) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(
 func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	temp := UnmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
-		return errors.Wrap(err, "can't unmarshal event container type")
+		return errors.Wrap(err, "unmarshalling event into generic event log entry")
 	}
 
 	e.Data = NewEventFromType(temp.ResourceType)
@@ -70,7 +70,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
-		return errors.Wrap(err, "failed to unmarshal data")
+		return errors.Wrap(err, "unmarshalling data")
 	}
 
 	// IDs for events were ObjectIDs previously, so we need to do this
@@ -95,10 +95,10 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 
 func (e *EventLogEntry) validateEvent() error {
 	if e.Data == nil {
-		return errors.New("event log entry cannot have nil Data")
+		return errors.New("event log entry cannot have nil data")
 	}
 	if len(e.ResourceType) == 0 {
-		return errors.New("event log entry has no r_type")
+		return errors.New("event log entry has no resource type")
 	}
 	if e.ID == "" {
 		e.ID = mgobson.NewObjectId().Hex()
@@ -107,7 +107,7 @@ func (e *EventLogEntry) validateEvent() error {
 		loc, _ := time.LoadLocation("UTC")
 		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
 		if err != nil {
-			return errors.Wrap(err, "failed to set processed time")
+			return errors.Wrap(err, "setting processed at time")
 		}
 		e.ProcessedAt = notSubscribableTime
 	}

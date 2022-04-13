@@ -38,8 +38,12 @@ type CommitQueueSuite struct {
 func TestCommitQueueSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	require.NoError(t, testConfig.Set())
 	suite.Run(t, new(CommitQueueSuite))

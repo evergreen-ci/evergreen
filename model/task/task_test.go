@@ -42,11 +42,11 @@ var depTaskIds = []Dependency{
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}), "Error setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}), "Error setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 	}
 }
 
@@ -731,9 +731,9 @@ func TestEndingTask(t *testing.T) {
 			now := time.Now()
 			Convey("a task with a create time < 2 hours should have the start time set to the ingest time", func() {
 				t := &Task{
-					Id:            "tid",
-					Status:        evergreen.TaskDispatched,
-					ActivatedTime: now.Add(-30 * time.Minute),
+					Id:         "tid",
+					Status:     evergreen.TaskDispatched,
+					IngestTime: now.Add(-30 * time.Minute),
 				}
 				So(t.Insert(), ShouldBeNil)
 				details := &apimodels.TaskEndDetail{
@@ -742,7 +742,7 @@ func TestEndingTask(t *testing.T) {
 				So(t.MarkEnd(now, details), ShouldBeNil)
 				t, err := FindOne(db.Query(ById(t.Id)))
 				So(err, ShouldBeNil)
-				So(t.StartTime.Unix(), ShouldEqual, t.ActivatedTime.Unix())
+				So(t.StartTime.Unix(), ShouldEqual, t.IngestTime.Unix())
 				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 			Convey("a task with a create time > 2 hours should have the start time set to two hours"+
@@ -830,7 +830,7 @@ func TestIsSystemUnresponsive(t *testing.T) {
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
-	require.NoError(t, db.Clear(testresult.Collection), "error clearing collections")
+	require.NoError(t, db.Clear(testresult.Collection))
 	assert := assert.New(t)
 
 	tasks := []Task{
@@ -933,8 +933,7 @@ func TestTaskSetResultsFields(t *testing.T) {
 	}
 
 	Convey("SetResults", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
-		So(db.Clear(testresult.Collection), ShouldBeNil)
+		So(db.ClearCollections(Collection, testresult.Collection), ShouldBeNil)
 
 		taskCreateTime, err := time.Parse(time.RFC3339, "2019-09-25T17:40:35Z")
 		So(err, ShouldBeNil)
@@ -1013,19 +1012,15 @@ func TestTaskStatusCount(t *testing.T) {
 	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})
 	counts.IncrementStatus(evergreen.TaskDispatched, details)
 	counts.IncrementStatus(evergreen.TaskInactive, details)
-	counts.IncrementStatus(evergreen.TaskContainerUnallocated, details)
-	counts.IncrementStatus(evergreen.TaskContainerAllocated, details)
 	assert.Equal(1, counts.TimedOut)
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
-	assert.Equal(1, counts.ContainerAllocated)
-	assert.Equal(1, counts.ContainerUnallocated)
 }
 
 func TestPopulateTestResultsForDisplayTask(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
+	require.NoError(t, db.ClearCollections(Collection, testresult.Collection))
 	dt := Task{
 		Id:             "dt",
 		DisplayOnly:    true,
@@ -1114,35 +1109,15 @@ func TestBlocked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "", state)
 		},
-		"BlockedStateContainerStatus": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: AllStatuses},
-				},
-			}
-			t2 := Task{
-				Id:     "t2",
-				Status: evergreen.TaskContainerUnallocated,
-				DependsOn: []Dependency{
-					{TaskId: "t3", Unattainable: true},
-				},
-			}
-			require.NoError(t, t2.Insert())
-			dependencies := map[string]*Task{t2.Id: &t2}
-			state, err := t1.BlockedState(dependencies)
-			assert.NoError(t, err)
-			assert.Equal(t, "", state)
-		},
 	} {
-		assert.NoError(t, db.ClearCollections(Collection))
+		require.NoError(t, db.ClearCollections(Collection))
 		t.Run(name, test)
 	}
 }
 
 func TestCircularDependency(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:          "t1",
 		DisplayName: "t1",
@@ -1165,13 +1140,13 @@ func TestCircularDependency(t *testing.T) {
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
 		err := t1.CircularDependencies()
-		assert.Contains(err.Error(), "Dependency cycle detected")
+		assert.Contains(err.Error(), "dependency cycle detected")
 	})
 }
 
 func TestSiblingDependency(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:          "t1",
 		DisplayName: "t1",
@@ -1222,7 +1197,7 @@ func TestSiblingDependency(t *testing.T) {
 
 func TestBulkInsert(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1_a := Task{
 		Id:      "t1",
 		Version: "version",
@@ -1251,7 +1226,7 @@ func TestBulkInsert(t *testing.T) {
 
 func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
@@ -1287,7 +1262,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
 	activatedStepbackTask := Task{
 		Id:          "activated",
@@ -1364,7 +1339,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
@@ -1392,7 +1367,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 }
 
 func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 	require.NoError(t, db.EnsureIndex(Collection,
 		mongo.IndexModel{Keys: ActivatedTasksByDistroIndex}))
 
@@ -1422,7 +1397,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 
 func TestGetRecentTaskStats(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
 		{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
@@ -1484,7 +1459,7 @@ func TestGetResultCountList(t *testing.T) {
 
 func TestFindVariantsWithTask(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	tasks := Tasks{
 		&Task{Id: "1", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 15, BuildVariant: "bv1"},
 		&Task{Id: "2", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 12, BuildVariant: "bv2"},
@@ -1502,7 +1477,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 
 func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := &Task{
 		Id:     "t1",
@@ -1562,7 +1537,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 }
 
 func TestAddDependency(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1", DependsOn: depTaskIds}
 	assert.NoError(t, t1.Insert())
 
@@ -1602,7 +1577,7 @@ func TestAddDependency(t *testing.T) {
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := &Task{Id: "t1"}
 	tasks := []Task{
@@ -1640,7 +1615,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 
 func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{
 			Id:        "t0",
@@ -1739,7 +1714,7 @@ func TestGetTimeSpent(t *testing.T) {
 }
 
 func TestUpdateDependsOn(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
 	assert.NoError(t, t1.Insert())
 	t2 := &Task{
@@ -1765,7 +1740,7 @@ func TestUpdateDependsOn(t *testing.T) {
 
 func TestDisplayTaskCache(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	const displayTaskCount = 50
 	const execPerDisplay = 10
 
@@ -2124,11 +2099,12 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 
 	getDispatchableContainerTask := func() Task {
 		return Task{
-			Id:                utility.RandomString(),
-			Activated:         true,
-			ActivatedTime:     time.Now(),
-			Status:            evergreen.TaskContainerAllocated,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			Id:                 utility.RandomString(),
+			Activated:          true,
+			ActivatedTime:      time.Now(),
+			Status:             evergreen.TaskUndispatched,
+			ContainerAllocated: true,
+			ExecutionPlatform:  ExecutionPlatformContainer,
 		}
 	}
 
@@ -2152,8 +2128,8 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
 			checkTaskDispatched(t, tsk.Id)
 		},
-		"FailsWithTaskWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskContainerUnallocated
+		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
 
 			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
@@ -2212,7 +2188,7 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		dbTask, err := FindOneId(taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+		assert.False(t, dbTask.ContainerAllocated)
 		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
 		assert.Zero(t, dbTask.AgentVersion)
@@ -2225,15 +2201,16 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
 			checkTaskUnallocated(t, tsk.Id)
 		},
-		"FailsWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskSucceeded
+		"FailsWithUnallocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
+
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
-		"FailsWithDifferentDBTaskStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskContainerUnallocated
+		"FailsWithUnallocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
-			tsk.Status = evergreen.TaskContainerAllocated
+			tsk.ContainerAllocated = true
 
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
@@ -2249,18 +2226,169 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
-			tsk := Task{
-				Id:                utility.RandomString(),
-				Activated:         true,
-				ActivatedTime:     time.Now(),
-				Status:            evergreen.TaskContainerAllocated,
-				DispatchTime:      time.Now(),
-				LastHeartbeat:     time.Now(),
-				ExecutionPlatform: ExecutionPlatformContainer,
-			}
 			require.NoError(t, db.Clear(Collection))
+			tsk := Task{
+				Id:                 utility.RandomString(),
+				Activated:          true,
+				ActivatedTime:      time.Now(),
+				Status:             evergreen.TaskUndispatched,
+				ContainerAllocated: true,
+				DispatchTime:       time.Now(),
+				LastHeartbeat:      time.Now(),
+				ExecutionPlatform:  ExecutionPlatformContainer,
+			}
 
 			tCase(tctx, t, env, tsk)
+		})
+	}
+}
+
+func TestIsHostDispatchable(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsTrueForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.True(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForContainerTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			hostDispatchableTask := Task{
+				Id:                "task-id",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				ExecutionPlatform: ExecutionPlatformHost,
+			}
+			tCase(t, hostDispatchableTask)
+		})
+	}
+}
+
+func TestIsContainerDispatchable(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutContainerAllocated": func(t *testing.T, tsk Task) {
+			tsk.ContainerAllocated = false
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithUnattainableDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:       "dependency0",
+					Unattainable: true,
+					Finished:     true,
+				},
+			}
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithUnfinishedDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:       "dependency0",
+					Unattainable: false,
+					Finished:     false,
+				},
+			}
+			assert.False(t, tsk.IsContainerDispatchable())
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformHost
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			containerDispatchableTask := Task{
+				Id:                 "task-id",
+				Status:             evergreen.TaskUndispatched,
+				Activated:          true,
+				ContainerAllocated: true,
+				ExecutionPlatform:  ExecutionPlatformContainer,
+			}
+			tCase(t, containerDispatchableTask)
+		})
+	}
+}
+
+func TestShouldAllocateContainer(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskAlreadyAllocatedContainer": func(t *testing.T, tsk Task) {
+			tsk.ContainerAllocated = true
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformHost
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			taskThatNeedsContainerAllocation := Task{
+				Id:                "task-id",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				ExecutionPlatform: ExecutionPlatformContainer,
+			}
+			tCase(t, taskThatNeedsContainerAllocation)
 		})
 	}
 }
@@ -2340,7 +2468,7 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 }
 
 func TestGetLatestExecution(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	sample := Task{
 		Id:        "task_id_some_other_stuff",
 		Execution: 55,
@@ -2355,7 +2483,7 @@ func TestGetLatestExecution(t *testing.T) {
 }
 
 func TestArchiveMany(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	t1 := Task{
 		Id:      "t1",
 		Status:  evergreen.TaskFailed,
@@ -2403,7 +2531,7 @@ func TestArchiveMany(t *testing.T) {
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
 		Id:             "dt1",
 		DisplayOnly:    true,
@@ -2438,7 +2566,7 @@ func TestAddParentDisplayTasks(t *testing.T) {
 }
 
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
 		Id:            "t1",
 		DisplayTaskId: utility.ToStringPtr(""),
@@ -2472,7 +2600,7 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
-	assert.NoError(t, db.Clear(Collection))
+	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
 		Id:             "dt1",
 		DisplayOnly:    true,
@@ -2505,7 +2633,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 }
 
 func TestGetTasksByVersionExecTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	// test that we can handle the different kinds of tasks
 	t1 := Task{
 		Id:            "execWithDisplayId",
@@ -2546,7 +2674,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 }
 
 func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	inactiveTask := Task{
 		Id:            "inactiveTask",
@@ -2569,7 +2697,7 @@ func TestGetTasksByVersionIncludeEmptyActivation(t *testing.T) {
 }
 
 func TestGetTasksByVersionAnnotations(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection, annotations.Collection))
+	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
 		Id:        "t1",
 		Version:   "v1",
@@ -2613,7 +2741,7 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 }
 
 func TestGetTasksByVersionBaseTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 
 	t1 := Task{
 		Id:                  "t1",
@@ -2898,7 +3026,7 @@ func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTas
 }
 
 func TestHasMatchingTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:        "t1",
 		Version:   "v1",
@@ -2953,7 +3081,7 @@ func TestHasMatchingTasks(t *testing.T) {
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 	tasksToFetch := []*string{utility.ToStringPtr("t1"), utility.ToStringPtr("t2")}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",
@@ -2987,7 +3115,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
 	t.Run("Fetching latest execution with mismatching executions", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",
@@ -3025,7 +3153,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
 	t.Run("Fetching older executions with same execution", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(Collection, OldCollection))
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",

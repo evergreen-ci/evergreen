@@ -110,7 +110,7 @@ func (v *Version) LastSuccessful() (*Version, error) {
 	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
 		[]string{"-" + VersionRevisionOrderNumberKey}))
 	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving last successful version")
+		return nil, errors.Wrap(err, "retrieving last successful version")
 	}
 	return lastGreen, nil
 }
@@ -178,13 +178,13 @@ func (v *Version) IsChild() bool {
 
 func (v *Version) GetParentVersion() (*Version, error) {
 	if v.ParentPatchID == "" {
-		return nil, errors.Errorf("Version '%v's ParentPatchID is nil", v.Id)
+		return nil, errors.Errorf("version '%s' is missing parent patch ID", v.Id)
 	}
 	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	} else if parentVersion == nil {
-		return nil, errors.Errorf("Version '%v' not found", v.ParentPatchID)
+		return nil, errors.Errorf("version '%s' not found", v.ParentPatchID)
 	}
 	return parentVersion, nil
 }
@@ -194,7 +194,7 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 		v.SatisfiedTriggers = []string{}
 	}
 	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
-	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "error adding satisfied trigger")
+	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "adding satisfied trigger")
 }
 
 func (v *Version) UpdateStatus(newStatus string) error {
@@ -222,7 +222,7 @@ func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
 	query := db.Query(task.ByVersion(v.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(query)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "can't get tasks for version '%s'", v.Id)
+		return 0, 0, errors.Wrapf(err, "getting tasks for version '%s'", v.Id)
 	}
 	if tasks == nil {
 		return 0, 0, errors.Errorf("no tasks found for version '%s'", v.Id)
@@ -319,7 +319,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	} else if v == nil {
-		return nil, errors.Errorf("Version '%v' not found", versionId)
+		return nil, errors.Errorf("version '%s' not found", versionId)
 	}
 
 	// Versions in the same push event, assuming that no two push events happen at the exact same time
@@ -399,11 +399,11 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating versions")
+		return nil, errors.Wrap(err, "aggregating versions")
 	}
 
 	if len(res) == 0 {
-		return nil, errors.Errorf("no mainline commit found for project '%v'", projectId)
+		return nil, errors.Errorf("could not find mainline commit for project '%s'", projectId)
 	}
 	return &res[0], nil
 }
@@ -412,7 +412,7 @@ func getMostRecentMainlineCommit(projectId string) (*Version, error) {
 func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, requesters []string) (*int, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
-		return nil, errors.Errorf("invalid requesters: %v", invalidRequesters)
+		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	// First check if we are already looking at the most recent commit.
 	mostRecentCommit, err := getMostRecentMainlineCommit(projectId)
@@ -439,7 +439,7 @@ func GetPreviousPageCommitOrderNumber(projectId string, order int, limit int, re
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating versions")
+		return nil, errors.Wrap(err, "aggregating versions")
 	}
 
 	// If there are no newer mainline commits, return nil to indicate that we are already on the first page.
@@ -465,7 +465,7 @@ type MainlineCommitVersionOptions struct {
 func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitVersionOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
-		return nil, errors.Errorf("invalid requesters: %v", invalidRequesters)
+		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
@@ -488,7 +488,7 @@ func GetMainlineCommitVersionsWithOptions(projectId string, opts MainlineCommitV
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating versions")
+		return nil, errors.Wrap(err, "aggregating versions")
 	}
 
 	return res, nil
@@ -597,10 +597,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 	res := []Version{}
 
 	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
-		return nil, errors.Wrapf(err, "error aggregating versions and builds")
-	}
-	if len(res) == 0 {
-		return res, nil
+		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
 }

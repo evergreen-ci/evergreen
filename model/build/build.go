@@ -161,7 +161,7 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 			},
 		},
 	)
-	return errors.Wrapf(err, "can't set build activation to '%t'", active)
+	return errors.Wrapf(err, "setting build activation to %t", active)
 }
 
 // UpdateStatus sets the build status to the given string.
@@ -252,7 +252,7 @@ func TryMarkStarted(buildId string, startTime time.Time) error {
 func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 	b.Status = status
 	b.FinishTime = finishTime
-	b.TimeTaken = finishTime.Sub(b.ActivatedTime)
+	b.TimeTaken = finishTime.Sub(b.StartTime)
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{
@@ -269,7 +269,7 @@ func (b *Build) GetTimeSpent() (time.Duration, time.Duration, error) {
 	query := db.Query(task.ByBuildId(b.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(query)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "can't get tasks")
+		return 0, 0, errors.Wrap(err, "getting tasks")
 	}
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
@@ -301,5 +301,5 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 		return nil
 	}
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
-	return errors.Wrap(err, "can't bulk insert Builds")
+	return errors.Wrap(err, "bulk inserting builds")
 }

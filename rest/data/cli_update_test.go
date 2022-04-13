@@ -1,12 +1,10 @@
 package data
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -17,10 +15,6 @@ type cliUpdateConnectorSuite struct {
 }
 
 func TestUpdateConnector(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	s := &cliUpdateConnectorSuite{}
 	s.setup = func() {
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))

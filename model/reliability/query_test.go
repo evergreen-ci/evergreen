@@ -218,128 +218,91 @@ func TestFilterValidAfterEqualsBefore(t *testing.T) {
 }
 
 func TestFilterInvalidAfterDateAfterBeforeDate(t *testing.T) {
-	var err error
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	// With AfterDate after BeforeDate.
 	filter.AfterDate = day2
 	filter.BeforeDate = day1
-	err = filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Invalid AfterDate/BeforeDate values", err.Error())
-
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidAfterDateEqualBeforeDate(t *testing.T) {
-	var err error
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	// With AfterDate equal to BeforeDate.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(-24 * time.Hour)
-	err = filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Invalid AfterDate/BeforeDate values", err.Error())
-
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidAfterDateNotUTC(t *testing.T) {
-	var err error
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	// With AfterDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
-	err = filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Invalid BeforeDate value", err.Error())
-
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidBeforeDateNotUTC(t *testing.T) {
-	var err error
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	// With BeforeDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
-	err = filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Invalid BeforeDate value", err.Error())
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidForTasks(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Tasks = []string{}
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Missing Tasks values", err.Error())
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidGroupNumDays(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.GroupNumDays = -1
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Invalid GroupNumDays value", err.Error())
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterMissingRequesters(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Requesters = []string{}
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Missing Requesters values", err.Error())
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidLimit(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Limit = -1
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Equal("Invalid Limit value", err.Error())
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidSort(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Sort = stats.Sort("invalid")
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Contains(err.Error(), "Invalid Sort value:")
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestFilterInvalidGroupBy(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.GroupBy = stats.GroupBy("invalid")
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	assert.Contains(err.Error(), "Invalid GroupBy value:")
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestGetTaskStatsEmptyCollection(t *testing.T) {
@@ -521,7 +484,6 @@ func TestGetTaskReliability(t *testing.T) {
 
 func TestValidateForTaskReliability(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 
 	filter := TaskReliabilityFilter{
 		StatsFilter: stats.StatsFilter{
@@ -529,11 +491,7 @@ func TestValidateForTaskReliability(t *testing.T) {
 		},
 		Significance: MaxSignificanceLimit + 1,
 	}
-	err := filter.ValidateForTaskReliability()
-	require.Error(err)
-	message := err.Error()
-	assert.Contains(message, "Invalid Limit value")
-	assert.Contains(message, "Invalid Significance value")
+	assert.Error(filter.ValidateForTaskReliability())
 }
 
 func TestGetTaskReliabilityScores(t *testing.T) {

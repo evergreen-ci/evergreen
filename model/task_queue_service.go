@@ -88,7 +88,7 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 	d := distro.Distro{}
 	foundDistro, err := distro.FindOneId(distroID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "database error for find() by distro id '%s'", distroID)
+		return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 	}
 	if foundDistro != nil {
 		d = *foundDistro

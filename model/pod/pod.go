@@ -68,7 +68,7 @@ func (o *TaskIntentPodOptions) Validate() error {
 	catcher.NewWhen(o.CPU <= 0, "CPU must be a positive non-zero value")
 	catcher.NewWhen(o.MemoryMB <= 0, "memory must be a positive non-zero value")
 	catcher.Wrap(o.OS.Validate(), "invalid OS")
-	catcher.Wrap(o.Arch.Validate(), "invalid arch")
+	catcher.Wrap(o.Arch.Validate(), "invalid CPU architecture")
 	if o.OS == OSWindows {
 		catcher.Wrap(o.WindowsVersion.Validate(), "must specify a valid Windows version")
 	}

@@ -418,13 +418,13 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
 		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(p.Owner, p.Repo, p.Branch)
 		if err != nil {
-			return errors.Wrapf(err, "error querying for hidden project")
+			return errors.Wrap(err, "finding hidden project")
 		}
 		if hidden != nil {
 			p.Id = hidden.Id
 			err := p.Upsert()
 			if err != nil {
-				return errors.Wrapf(err, "error upserting project ref '%s'", hidden.Id)
+				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
 			}
 			if creator != nil {
 				_, err = p.UpdateAdminRoles([]string{creator.Id}, nil)
@@ -436,7 +436,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
-		return errors.Wrap(err, "Error inserting project ref")
+		return errors.Wrap(err, "inserting project ref")
 	}
 	return p.AddPermissions(creator)
 }
@@ -455,7 +455,7 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
 // the project ref.
-func (p *ProjectRef) MergeWithProjectConfig(version string) error {
+func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 	projectConfig, err := FindProjectConfigForProjectOrVersion(p.Id, version)
 	if err != nil {
 		return err
@@ -494,7 +494,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) error {
 func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
-		return errors.Wrap(err, "error getting before project settings event")
+		return errors.Wrap(err, "getting before project settings event")
 	}
 	if err := p.AddToRepoScope(u); err != nil {
 		return err
@@ -505,7 +505,7 @@ func (p *ProjectRef) AttachToRepo(u *user.DBUser) error {
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "error attaching repo to scope")
+		return errors.Wrap(err, "attaching repo to scope")
 	}
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
@@ -516,12 +516,12 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
-		return errors.Wrapf(err, "error finding repo ref '%s'", p.RepoRefId)
+		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
 	if repoRef == nil {
 		repoRef, err = p.createNewRepoRef(u)
 		if err != nil {
-			return errors.Wrapf(err, "error creating new repo ref")
+			return errors.Wrapf(err, "creating new repo ref")
 		}
 	}
 	if p.RepoRefId == "" {
@@ -530,18 +530,18 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 
 	// add the project to the repo admin scope
 	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
-		return errors.Wrapf(err, "error adding resource to repo '%s' admin scope", p.RepoRefId)
+		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
 	// only give branch admins view access if the repo isn't restricted
 	if !repoRef.IsRestricted() {
 		if err := addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins); err != nil {
-			return errors.Wrapf(err, "error giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
+			return errors.Wrapf(err, "giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
 		}
 	}
 	// if the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access
 	if !p.IsRestricted() {
 		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
-			return errors.Wrap(err, "error adding resource to unrestricted branches scope")
+			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
 	}
 	return nil
@@ -552,7 +552,7 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
-		return errors.Wrap(err, "error getting before project settings event")
+		return errors.Wrap(err, "getting before project settings event")
 	}
 
 	// remove from relevant repo scopes
@@ -562,7 +562,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 
 	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
 	if err != nil {
-		return errors.Wrap(err, "error finding merged project ref")
+		return errors.Wrap(err, "finding merged project ref")
 	}
 	if mergedProject == nil {
 		return errors.Errorf("project ref '%s' doesn't exist", p.Id)
@@ -572,25 +572,25 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	// Wait to save merged project until we've gotten the variables.
 	mergedVars, err := FindMergedProjectVars(before.ProjectRef.Id)
 	if err != nil {
-		return errors.Wrap(err, "error finding merged project vars")
+		return errors.Wrap(err, "finding merged project vars")
 	}
 
 	mergedProject.RepoRefId = ""
 	if err = mergedProject.Upsert(); err != nil {
-		return errors.Wrap(err, "error detaching project from repo")
+		return errors.Wrap(err, "detaching project from repo")
 	}
 
 	// catch any resulting errors so that we log before returning
 	catcher := grip.NewBasicCatcher()
 	if mergedVars != nil {
 		_, err = mergedVars.Upsert()
-		catcher.Wrap(err, "error saving merged vars")
+		catcher.Wrap(err, "saving merged vars")
 	}
 
 	if len(before.Subscriptions) == 0 {
 		// Save repo subscriptions as project subscriptions if none exist
 		subs, err := event.FindSubscriptionsByOwner(before.ProjectRef.RepoRefId, event.OwnerTypeProject)
-		catcher.Wrap(err, "error finding repo subscriptions")
+		catcher.Wrap(err, "finding repo subscriptions")
 
 		for _, s := range subs {
 			s.ID = ""
@@ -601,7 +601,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 
 	// Handle each category of aliases as it's own case
 	repoAliases, err := FindAliasesForRepo(before.ProjectRef.RepoRefId)
-	catcher.Wrap(err, "error finding repo aliases")
+	catcher.Wrap(err, "finding repo aliases")
 
 	hasInternalAliases := map[string]bool{}
 	hasPatchAlias := false
@@ -640,20 +640,20 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 	before, err := GetProjectSettingsById(p.Id, false)
 	if err != nil {
-		return errors.Wrap(err, "error getting before project settings event")
+		return errors.Wrap(err, "getting before project settings event")
 	}
 
 	allowedOrgs := evergreen.GetEnvironment().Settings().GithubOrgs
 	if err := p.ValidateOwnerAndRepo(allowedOrgs); err != nil {
-		return errors.Wrapf(err, "error validating new owner/repo")
+		return errors.Wrap(err, "validating new owner/repo")
 	}
 
 	if p.UseRepoSettings() {
 		if err := p.RemoveFromRepoScope(); err != nil {
-			return errors.Wrapf(err, "error removing project from old repo scope")
+			return errors.Wrap(err, "removing project from old repo scope")
 		}
 		if err := p.AddToRepoScope(u); err != nil {
-			return errors.Wrapf(err, "error addding project to new repo scope")
+			return errors.Wrap(err, "adding project to new repo scope")
 		}
 	}
 	update := bson.M{
@@ -664,7 +664,7 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		},
 	}
 	if err := db.UpdateId(ProjectRefCollection, p.Id, update); err != nil {
-		return errors.Wrap(err, "error updating owner/repo in the DB")
+		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
 	return GetAndLogProjectModified(p.Id, u.Id, false, before)
 }
@@ -678,14 +678,14 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	if !p.IsRestricted() {
 		if err := rm.RemoveResourceFromScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
-			return errors.Wrap(err, "error removing resource from unrestricted branches scope")
+			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
 	}
 	if err := removeViewRepoPermissionsFromBranchAdmins(p.RepoRefId, p.Admins); err != nil {
-		return errors.Wrap(err, "error removing view repo permissions from branch admins")
+		return errors.Wrap(err, "removing view repo permissions from branch admins")
 	}
 	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
-		return errors.Wrapf(err, "error removing from repo '%s' admin scope", p.Repo)
+		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
 	}
 	p.RepoRefId = ""
 	return nil
@@ -698,7 +698,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 		parentScope = evergreen.RestrictedProjectsScope
 	}
 	if err := rm.AddResourceToScope(parentScope, p.Id); err != nil {
-		return errors.Wrapf(err, "unable to add '%s' to the '%s' scope", p.Id, parentScope)
+		return errors.Wrapf(err, "adding project '%s' to the scope '%s'", p.Id, parentScope)
 	}
 
 	// add scope for the branch-level project configurations
@@ -709,7 +709,7 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 		Type:      evergreen.ProjectResourceType,
 	}
 	if err := rm.AddScope(newScope); err != nil {
-		return errors.Wrapf(err, "error adding scope for project '%s'", p.Id)
+		return errors.Wrapf(err, "adding scope for project '%s'", p.Id)
 	}
 	newRole := gimlet.Role{
 		ID:          fmt.Sprintf("admin_project_%s", p.Id),
@@ -720,16 +720,16 @@ func (p *ProjectRef) AddPermissions(creator *user.DBUser) error {
 		newRole.Owners = []string{creator.Id}
 	}
 	if err := rm.UpdateRole(newRole); err != nil {
-		return errors.Wrapf(err, "error adding admin role for project '%s'", p.Id)
+		return errors.Wrapf(err, "adding admin role for project '%s'", p.Id)
 	}
 	if creator != nil {
 		if err := creator.AddRole(newRole.ID); err != nil {
-			return errors.Wrapf(err, "error adding role '%s' to user '%s'", newRole.ID, creator.Id)
+			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}
 	if p.UseRepoSettings() {
 		if err := p.AddToRepoScope(creator); err != nil {
-			return errors.Wrapf(err, "error adding project to repo '%s'", p.RepoRefId)
+			return errors.Wrapf(err, "adding project to repo '%s'", p.RepoRefId)
 		}
 	}
 	return nil
@@ -775,7 +775,7 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 func FindMergedProjectRef(identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding project ref '%s'", identifier)
+		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 	}
 	if pRef == nil {
 		return nil, nil
@@ -783,20 +783,20 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 	if pRef.UseRepoSettings() {
 		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
+			return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
 		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
+			return nil, errors.Wrapf(err, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, pRef.Identifier)
 		}
 	}
 	if includeProjectConfig && pRef.IsVersionControlEnabled() {
 		err = pRef.MergeWithProjectConfig(version)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to merge project config with project ref %s", pRef.Identifier)
+			return nil, errors.Wrapf(err, "merging project config with project ref '%s'", pRef.Identifier)
 		}
 	}
 	return pRef, nil
@@ -811,7 +811,7 @@ func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
 	if pRef.RepoRefId != "" {
 		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding repo ref '%s'", pRef.RepoRefId)
+			return nil, errors.Wrapf(err, "finding repo ref '%s'", pRef.RepoRefId)
 		}
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist", pRef.RepoRefId)
@@ -820,7 +820,7 @@ func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
 	}
 	repoRef, err := FindRepoRefByOwnerAndRepo(pRef.Owner, pRef.Repo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding repo ref for repo '%s/%s'", pRef.Owner, pRef.Repo)
+		return nil, errors.Wrapf(err, "finding repo ref for repo '%s/%s'", pRef.Owner, pRef.Repo)
 	}
 	if repoRef == nil {
 		return &pRef, nil
@@ -894,7 +894,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 
 	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding all enabled projects")
+		return nil, errors.Wrap(err, "finding all enabled projects")
 	}
 	// for every setting in the project ref, if all enabled projects have the same setting, then use that
 	defer func() {
@@ -913,7 +913,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 
 	// creates scope and give user admin access to repo
 	if err = repoRef.Add(u); err != nil {
-		return nil, errors.Wrapf(err, "problem adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
+		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
 
 	enabledProjectIds := []string{}
@@ -922,21 +922,21 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	}
 	commonProjectVars, err := getCommonProjectVariables(enabledProjectIds)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting common project variables")
+		return nil, errors.Wrap(err, "getting common project variables")
 	}
 	commonProjectVars.Id = repoRef.Id
 	if err = commonProjectVars.Insert(); err != nil {
-		return nil, errors.Wrap(err, "error inserting project variables for repo")
+		return nil, errors.Wrap(err, "inserting project variables for repo")
 	}
 
 	commonAliases, err := getCommonAliases(enabledProjectIds)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting common project aliases")
+		return nil, errors.Wrap(err, "getting common project aliases")
 	}
 	for _, a := range commonAliases {
 		a.ProjectID = repoRef.Id
 		if err = a.Upsert(); err != nil {
-			return nil, errors.Wrapf(err, "error upserting alias for repo")
+			return nil, errors.Wrap(err, "upserting alias for repo")
 		}
 	}
 
@@ -948,7 +948,7 @@ func getCommonAliases(projectIds []string) (ProjectAliases, error) {
 	for i, id := range projectIds {
 		aliases, err := FindAliasesForProjectFromDb(id)
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding aliases for project")
+			return nil, errors.Wrap(err, "finding aliases for project")
 		}
 		if i == 0 {
 			commonAliases = aliases
@@ -997,7 +997,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	for i, id := range projectIds {
 		vars, err := FindOneProjectVars(id)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding variables for project '%s'", id)
+			return nil, errors.Wrapf(err, "finding variables for project '%s'", id)
 		}
 		if vars == nil {
 			continue
@@ -1062,6 +1062,40 @@ func CountProjectRefsWithIdentifier(identifier string) (int, error) {
 	return db.CountQ(ProjectRefCollection, byId(identifier))
 }
 
+// GetTasksWithOptions will find the last number of tasks (denoted by Limit) that exist for a given project.
+// This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
+func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
+	projectId, err := GetIdForProject(projectName)
+	if err != nil {
+		return nil, err
+	}
+	if opts.Limit <= 0 {
+		opts.Limit = defaultVersionLimit
+	}
+	finishedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskSucceeded)
+	match := bson.M{
+		task.ProjectKey:     projectId,
+		task.DisplayNameKey: taskName,
+		task.StatusKey:      bson.M{"$in": finishedStatuses},
+	}
+	if opts.StartAt > 0 {
+		match[task.RevisionOrderNumberKey] = bson.M{"$lte": opts.StartAt}
+	}
+	if opts.BuildVariant != "" {
+		match[task.BuildVariantKey] = opts.BuildVariant
+	}
+	pipeline := []bson.M{bson.M{"$match": match}}
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+
+	res := []task.Task{}
+
+	if err := db.Aggregate(task.Collection, pipeline, &res); err != nil {
+		return nil, errors.Wrapf(err, "error aggregating tasks")
+	}
+	return res, nil
+}
+
 func FindFirstProjectRef() (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
 	pipeline := projectRefPipelineForValueIsBool(ProjectRefPrivateKey, RepoRefPrivateKey, false)
@@ -1073,7 +1107,7 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 	)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "error aggregating project ref")
+		return nil, errors.Wrap(err, "aggregating project ref")
 	}
 	projectRef.checkDefaultLogger()
 
@@ -1105,7 +1139,7 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 				var err error
 				repoRef, err = FindOneRepoRef(pRef.RepoRefId)
 				if err != nil {
-					return nil, errors.Wrapf(err, "error finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
+					return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
 				}
 				if repoRef == nil {
 					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
@@ -1114,7 +1148,7 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 			}
 			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error merging settings")
+				return nil, errors.Wrap(err, "merging settings")
 			}
 			pRefs[i] = *mergedProject
 		}
@@ -1271,7 +1305,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy string) (*ProjectRef, error) {
 	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
+		return nil, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
 	}
 	for _, p := range projectRefs {
@@ -1294,7 +1328,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 	// if no projects are enabled, check if the repo has PR testing enabled, in which case we can use a disabled/hidden project.
 	repoRef, err := FindRepoRefByOwnerAndRepo(owner, repo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding merged repo refs for repo '%s/%s'", owner, repo)
+		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
 	if repoRef == nil || !repoRef.IsEnabled() || !repoRef.IsPRTestingEnabledByCaller(calledBy) || repoRef.RemotePath == "" {
 		grip.Debug(message.Fields{
@@ -1309,7 +1343,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 
 	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding merged all project refs for repo '%s/%s' with branch '%s'",
+		return nil, errors.Wrapf(err, "finding merged all project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
 	}
 
@@ -1370,7 +1404,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
+		return nil, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
 	}
 	for _, p := range projectRefs {
@@ -1393,7 +1427,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	hook, err := FindGithubHook(projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Id)
+		return false, errors.Wrapf(err, "finding GitHub hook for project '%s'", projectRef.Id)
 	}
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
@@ -1402,7 +1436,7 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return false, errors.Wrap(err, "error finding evergreen settings")
+		return false, errors.Wrap(err, "finding evergreen settings")
 	}
 
 	hook, err = SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
@@ -1423,7 +1457,7 @@ func EnableWebhooks(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	}
 
 	if err = hook.Insert(); err != nil {
-		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Id)
+		return false, errors.Wrapf(err, "inserting new webhook for project '%s'", projectRef.Id)
 	}
 	projectRef.TracksPushEvents = utility.TruePtr()
 	return true, nil
@@ -1441,7 +1475,7 @@ func UpdateAdminRoles(project *ProjectRef, toAdd, toDelete []string) error {
 func FindProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
 	projects, err := FindProjectRefs(key, limit, sortDir)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
+		return nil, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
 	}
 
 	return projects, nil
@@ -1450,7 +1484,7 @@ func FindProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
 // UpdateProjectRevision updates the given project's revision
 func UpdateProjectRevision(projectID, revision string) error {
 	if err := UpdateLastRevision(projectID, revision); err != nil {
-		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
+		return errors.Wrapf(err, "updating revision for project '%s'", projectID)
 	}
 
 	return nil
@@ -1501,7 +1535,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 		if projectRefs[i].UseRepoSettings() {
 			mergedProject, err := mergeBranchAndRepoSettings(&projectRefs[i], repoRef)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error merging settings")
+				return nil, errors.Wrap(err, "merging settings")
 			}
 			projectRefs[i] = *mergedProject
 		}
@@ -1515,20 +1549,20 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 	if isRepo {
 		repoRef, err := FindOneRepoRef(projectId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding repo ref")
+			return nil, errors.Wrap(err, "finding repo ref")
 		}
 		if repoRef == nil {
-			return nil, errors.Wrap(err, "couldn't find repo ref")
+			return nil, errors.Errorf("repo ref '%s' not found", projectId)
 		}
 		return GetProjectSettings(&repoRef.ProjectRef)
 	}
 
 	pRef, err = FindBranchProjectRef(projectId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding project ref")
+		return nil, errors.Wrap(err, "finding project ref")
 	}
 	if pRef == nil {
-		return nil, errors.Errorf("couldn't find project ref")
+		return nil, errors.Errorf("project ref '%s' not found", projectId)
 	}
 
 	return GetProjectSettings(pRef)
@@ -1538,22 +1572,22 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	hook, err := FindGithubHook(p.Owner, p.Repo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Database error finding github hook for project '%s'", p.Id)
+		return nil, errors.Wrapf(err, "finding GitHub hook for project '%s'", p.Id)
 	}
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding variables for project '%s'", p.Id)
+		return nil, errors.Wrapf(err, "finding variables for project '%s'", p.Id)
 	}
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
 	projectAliases, err := FindAliasesForProjectFromDb(p.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding aliases for project '%s'", p.Id)
+		return nil, errors.Wrapf(err, "finding aliases for project '%s'", p.Id)
 	}
 	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding subscription for project '%s'", p.Id)
+		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
@@ -1650,7 +1684,7 @@ func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
 func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	conflicts, err := projectRef.GetGithubProjectConflicts()
 	if err != nil {
-		return false, errors.Wrapf(err, "database error finding github conflicts")
+		return false, errors.Wrap(err, "finding GitHub conflicts")
 	}
 	if len(conflicts.CommitQueueIdentifiers) > 0 {
 		return false, nil
@@ -1675,7 +1709,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	if isRepo {
 		coll = RepoRefCollection
 		if p == nil {
-			return false, errors.New("can't default repo to repo")
+			return false, errors.New("can't default project ref for a repo")
 		}
 	}
 	if p == nil {
@@ -1790,7 +1824,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	}
 
 	if err != nil {
-		return false, errors.Wrap(err, "error saving section")
+		return false, errors.Wrap(err, "saving section")
 	}
 	return true, nil
 }
@@ -1802,12 +1836,12 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
 	before, err := GetProjectSettingsById(projectId, false)
 	if err != nil {
-		return errors.Wrap(err, "error getting before project settings event")
+		return errors.Wrap(err, "getting before project settings event")
 	}
 
 	modified, err := SaveProjectPageForSection(projectId, nil, section, false)
 	if err != nil {
-		return errors.Wrapf(err, "error defaulting project ref to repo for section '%s'", section)
+		return errors.Wrapf(err, "defaulting project ref to repo for section '%s'", section)
 	}
 
 	// Handle sections that modify collections outside of the project ref.
@@ -1827,7 +1861,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 		if err == nil {
 			modified = true
 		}
-		catcher.Wrapf(err, "error defaulting to repo for section '%s'", section)
+		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
 	case ProjectPageGithubAndCQSection:
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
@@ -1865,7 +1899,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 		catcher.Add(GetAndLogProjectModified(projectId, userId, false, before))
 	}
 
-	return errors.Wrapf(catcher.Resolve(), "error defaulting to repo for section '%s'", section)
+	return errors.Wrapf(catcher.Resolve(), "defaulting to repo for section '%s'", section)
 }
 
 // getBatchTimeForVariant returns the Batch Time to be used for this variant
@@ -1899,12 +1933,12 @@ func handleBatchTimeOverflow(in int) int {
 func GetActivationTimeWithCron(curTime time.Time, cronBatchTime string) (time.Time, error) {
 
 	if strings.HasPrefix(cronBatchTime, intervalPrefix) {
-		return time.Time{}, errors.Errorf("cannot use '%s' in cron batchtime '%s'", intervalPrefix, cronBatchTime)
+		return time.Time{}, errors.Errorf("cannot use interval '%s' in cron batchtime '%s'", intervalPrefix, cronBatchTime)
 	}
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.DowOptional | cron.Descriptor)
 	sched, err := parser.Parse(cronBatchTime)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "error parsing cron batchtime '%s'", cronBatchTime)
+		return time.Time{}, errors.Wrapf(err, "parsing cron batchtime '%s'", cronBatchTime)
 	}
 	return sched.Next(curTime), nil
 }
@@ -1925,7 +1959,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 
 	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
-		return time.Time{}, errors.Wrap(err, "error finding version")
+		return time.Time{}, errors.Wrap(err, "finding version")
 	}
 
 	if lastActivated == nil {
@@ -1960,7 +1994,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
-		return defaultRes, errors.Wrap(err, "error finding version")
+		return defaultRes, errors.Wrap(err, "finding version")
 	}
 	if lastActivated == nil {
 		return defaultRes, nil
@@ -1992,7 +2026,7 @@ func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error)
 
 	matchingProjects, err := FindMergedEnabledProjectRefsByRepoAndBranch(p.Owner, p.Repo, p.Branch)
 	if err != nil {
-		return res, errors.Wrap(err, "error getting conflicting projects")
+		return res, errors.Wrap(err, "getting conflicting projects")
 	}
 
 	for _, conflictingRef := range matchingProjects {
@@ -2030,7 +2064,7 @@ func (p *ProjectRef) ValidateIdentifier() error {
 	}
 	count, err := CountProjectRefsWithIdentifier(p.Identifier)
 	if err != nil {
-		return errors.Wrapf(err, "error counting other project refs")
+		return errors.Wrap(err, "counting other project refs")
 	}
 	if count > 0 {
 		return errors.New("identifier cannot match another project's identifier")
@@ -2053,9 +2087,9 @@ func RemoveAdminFromProjects(toDelete string) error {
 
 	catcher := grip.NewBasicCatcher()
 	_, err := db.UpdateAll(ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
-	catcher.Add(errors.Wrap(err, "error updating projects"))
+	catcher.Wrap(err, "updating projects")
 	_, err = db.UpdateAll(RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
-	catcher.Add(errors.Wrap(err, "error updating repos"))
+	catcher.Wrap(err, "updating repos")
 	return catcher.Resolve()
 }
 
@@ -2065,15 +2099,15 @@ func (p *ProjectRef) MakeRestricted() error {
 	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
 		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
-			return errors.Wrap(err, "error removing resource from unrestricted branches scope")
+			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
 	}
 
 	if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
-		return errors.Wrapf(err, "unable to remove %s from list of unrestricted projects", p.Id)
+		return errors.Wrapf(err, "removing project '%s' from list of unrestricted projects", p.Id)
 	}
 	if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
-		return errors.Wrapf(err, "unable to add %s to list of restricted projects", p.Id)
+		return errors.Wrapf(err, "adding project '%s' to list of restricted projects", p.Id)
 	}
 
 	return nil
@@ -2085,15 +2119,15 @@ func (p *ProjectRef) MakeUnrestricted() error {
 	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
 		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
-			return errors.Wrap(err, "error adding resource to unrestricted branches scope")
+			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
 	}
 
 	if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
-		return errors.Wrapf(err, "unable to remove %s from list of restricted projects", p.Id)
+		return errors.Wrapf(err, "removing project '%s' from list of restricted projects", p.Id)
 	}
 	if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
-		return errors.Wrapf(err, "unable to add %s to list of unrestricted projects", p.Id)
+		return errors.Wrapf(err, "adding project '%s' to list of unrestricted projects", p.Id)
 	}
 	return nil
 }
@@ -2106,17 +2140,17 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	rm := evergreen.GetEnvironment().RoleManager()
 	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
-		return false, errors.Wrap(err, "error finding role with admin permissions")
+		return false, errors.Wrap(err, "finding role with admin permissions")
 	}
 	if role == nil {
-		return false, errors.Errorf("no admin role for %s found", p.Id)
+		return false, errors.Errorf("no admin role for project '%s' found", p.Id)
 	}
 	viewRole := ""
 	allBranchAdmins := []string{}
 	if p.RepoRefId != "" {
 		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
 		if err != nil {
-			return false, errors.Wrapf(err, "error finding branch admins for repo '%s'", p.RepoRefId)
+			return false, errors.Wrapf(err, "finding branch admins for repo '%s'", p.RepoRefId)
 		}
 		viewRole = GetViewRepoRole(p.RepoRefId)
 	}
@@ -2125,7 +2159,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	for _, addedUser := range toAdd {
 		adminUser, err := user.FindOneById(addedUser)
 		if err != nil {
-			catcher.Wrapf(err, "error finding user '%s'", addedUser)
+			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
@@ -2135,13 +2169,13 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			continue
 		}
 		if err = adminUser.AddRole(role.ID); err != nil {
-			catcher.Wrapf(err, "error adding role %s to user %s", role.ID, addedUser)
+			catcher.Wrapf(err, "adding role '%s' to user '%s'", role.ID, addedUser)
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
 		if viewRole != "" {
 			if err = adminUser.AddRole(viewRole); err != nil {
-				catcher.Wrapf(err, "error adding role %s to user %s", viewRole, addedUser)
+				catcher.Wrapf(err, "adding role '%s' to user '%s'", viewRole, addedUser)
 				continue
 			}
 		}
@@ -2149,7 +2183,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
 		if err != nil {
-			catcher.Wrapf(err, "error finding user %s", removedUser)
+			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue
 		}
 		if adminUser == nil {
@@ -2157,18 +2191,18 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 		}
 
 		if err = adminUser.RemoveRole(role.ID); err != nil {
-			catcher.Wrapf(err, "error removing role %s from user %s", role.ID, removedUser)
+			catcher.Wrapf(err, "removing role '%s' from user '%s'", role.ID, removedUser)
 			p.Admins = append(p.Admins, removedUser)
 			continue
 		}
 		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
 			if err = adminUser.RemoveRole(viewRole); err != nil {
-				catcher.Wrapf(err, "error removing role %s from user %s", viewRole, removedUser)
+				catcher.Wrapf(err, "removing role '%s' from user '%s'", viewRole, removedUser)
 				continue
 			}
 		}
 	}
-	return true, errors.Wrap(catcher.Resolve(), "error updating some admins")
+	return true, errors.Wrap(catcher.Resolve(), "updating some admin roles")
 }
 
 func (p *ProjectRef) removeFromAdminsList(user string) {
@@ -2317,7 +2351,7 @@ func (p *ProjectRef) UpdateNextPeriodicBuild(definition string, nextRun time.Tim
 		},
 	}
 
-	return errors.Wrapf(db.Update(collection, filter, update), "error updating collection '%s'", collection)
+	return errors.Wrapf(db.Update(collection, filter, update), "updating collection '%s'", collection)
 }
 
 func (p *ProjectRef) CommitQueueIsOn() error {
@@ -2338,11 +2372,11 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding task")
+		return nil, errors.Wrap(err, "finding task")
 	}
 	pRef, err := FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting project '%s'", t.Project)
+		return nil, errors.Wrapf(err, "getting project '%s'", t.Project)
 	}
 	if pRef == nil {
 		return nil, errors.Errorf("project ref '%s' doesn't exist", t.Project)
@@ -2357,23 +2391,23 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	}
 	token, err := conf.GetGithubOauthToken()
 	if err != nil {
-		return "", errors.Wrap(err, "error getting github token")
+		return "", errors.Wrap(err, "getting GitHub token")
 	}
 
 	pRef, err := GetProjectRefForTask(taskId)
 	if err != nil {
-		return "", errors.Wrap(err, "error getting project")
+		return "", errors.Wrap(err, "getting project")
 	}
 
 	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
-			"error fetching spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
 	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
 		return "", errors.Wrapf(err,
-			"unable to spawn host script for '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+			"unable to spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
 
 	return string(fileContents), nil
@@ -2382,7 +2416,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 func (t *TriggerDefinition) Validate(parentProject string) error {
 	upstreamProject, err := FindBranchProjectRef(t.Project)
 	if err != nil {
-		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
+		return errors.Wrapf(err, "finding upstream project '%s'", t.Project)
 	}
 	if upstreamProject == nil {
 		return errors.Errorf("project '%s' not found", t.Project)
@@ -2400,11 +2434,11 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	}
 	_, regexErr := regexp.Compile(t.BuildVariantRegex)
 	if regexErr != nil {
-		return errors.Wrap(regexErr, "invalid variant regex")
+		return errors.Wrapf(regexErr, "invalid variant regex '%s'", t.BuildVariantRegex)
 	}
 	_, regexErr = regexp.Compile(t.TaskRegex)
 	if regexErr != nil {
-		return errors.Wrap(regexErr, "invalid task regex")
+		return errors.Wrapf(regexErr, "invalid task regex '%s'", t.TaskRegex)
 	}
 	if t.ConfigFile == "" && t.GenerateFile == "" {
 		return errors.New("must provide a config file or generated tasks file")
@@ -2418,20 +2452,67 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 func GetMessageForPatch(patchID string) (string, error) {
 	requestedPatch, err := patch.FindOneId(patchID)
 	if err != nil {
-		return "", errors.Wrap(err, "error finding patch")
+		return "", errors.Wrap(err, "finding patch")
 	}
 	if requestedPatch == nil {
 		return "", errors.New("no patch found")
 	}
 	project, err := FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to find project for patch")
+		return "", errors.Wrap(err, "finding project for patch")
 	}
 	if project == nil {
 		return "", errors.New("patch has nonexistent project")
 	}
 
 	return project.CommitQueue.Message, nil
+}
+
+// ValidateContainers inspects the list of containers defined in the project YAML and checks that each
+// are properly configured, and that their definitions can coexist with what is defined for container sizes
+// on the project admin page.
+func ValidateContainers(pRef *ProjectRef, containers []Container) error {
+	catcher := grip.NewSimpleCatcher()
+	for _, container := range containers {
+		catcher.Add(container.System.Validate())
+		size, ok := pRef.ContainerSizes[container.Size]
+		if ok {
+			catcher.Add(size.Validate())
+		}
+		if container.Resources != nil {
+			catcher.Add(container.Resources.Validate())
+		}
+		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
+		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
+		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
+		catcher.NewWhen(container.Image == "", "image must be defined")
+		catcher.NewWhen(container.Name == "", "name must be defined")
+	}
+	return catcher.Resolve()
+}
+
+// Validate that essential ContainerSystem fields are properly defined and no data contradictions exist.
+func (c ContainerSystem) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	if c.OperatingSystem != "" {
+		catcher.Add(c.OperatingSystem.Validate())
+	}
+	if c.CPUArchitecture != "" {
+		catcher.Add(c.CPUArchitecture.Validate())
+	}
+	if c.OperatingSystem == evergreen.WindowsOS {
+		catcher.Add(c.WindowsVersion.Validate())
+	}
+	catcher.NewWhen(c.OperatingSystem == evergreen.LinuxOS && c.WindowsVersion != "", "cannot specify windows version when OS is linux")
+	return catcher.Resolve()
+}
+
+// Validate that essential ContainerResources fields are properly defined.
+func (c ContainerResources) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
+	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
+	return catcher.Resolve()
 }
 
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
@@ -2441,7 +2522,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 	childProjectId, err := GetIdForProject(definition.ChildProject)
 	if err != nil {
-		return definition, errors.Wrapf(err, "error finding child project '%s'", definition.ChildProject)
+		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
 	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.PatchSucceeded, evergreen.PatchFailed}, definition.Status) {
@@ -2478,7 +2559,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 			var aliases []ProjectAlias
 			aliases, err = FindAliasInProjectRepoOrConfig(definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
-				return definition, errors.Wrap(err, "problem fetching aliases for project")
+				return definition, errors.Wrap(err, "fetching aliases for project")
 			}
 			if len(aliases) == 0 {
 				return definition, errors.Errorf("patch alias '%s' is not defined for project '%s'", specifier.PatchAlias, definition.ChildProject)
@@ -2491,12 +2572,8 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 func (d *PeriodicBuildDefinition) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if d.IntervalHours <= 0 {
-		catcher.New("Interval must be a positive integer")
-	}
-	if d.ConfigFile == "" {
-		catcher.New("A config file must be specified")
-	}
+	catcher.NewWhen(d.IntervalHours <= 0, "interval must be a positive integer")
+	catcher.NewWhen(d.ConfigFile == "", "a config file must be specified")
 
 	if d.ID == "" {
 		d.ID = utility.RandomString()
@@ -2509,7 +2586,7 @@ func (d *PeriodicBuildDefinition) Validate() error {
 func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool, error) {
 	projectRef, err := FindMergedProjectRef(project, version, true)
 	if err != nil || projectRef == nil {
-		return evergreen.WebHook{}, false, errors.Errorf("Unable to find merged project ref for project %s", project)
+		return evergreen.WebHook{}, false, errors.Errorf("finding merged project ref for project '%s'", project)
 	}
 	webHook := projectRef.TaskAnnotationSettings.FileTicketWebhook
 	if webHook.Endpoint != "" {
@@ -2527,7 +2604,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	if triggerType == ProjectTriggerLevelTask {
 		upstreamTask, err := task.FindOneId(triggerID)
 		if err != nil {
-			return "", errors.Wrap(err, "error finding upstream task")
+			return "", errors.Wrap(err, "finding upstream task")
 		}
 		if upstreamTask == nil {
 			return "", errors.New("upstream task not found")
@@ -2536,7 +2613,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	} else if triggerType == ProjectTriggerLevelBuild {
 		upstreamBuild, err := build.FindOneId(triggerID)
 		if err != nil {
-			return "", errors.Wrap(err, "error finding upstream build")
+			return "", errors.Wrap(err, "finding upstream build")
 		}
 		if upstreamBuild == nil {
 			return "", errors.New("upstream build not found")
@@ -2545,7 +2622,7 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 	}
 	upstreamProject, err := FindBranchProjectRef(projectID)
 	if err != nil {
-		return "", errors.Wrap(err, "error finding upstream project")
+		return "", errors.Wrap(err, "finding upstream project")
 	}
 	if upstreamProject == nil {
 		return "", errors.New("upstream project not found")

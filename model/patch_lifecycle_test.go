@@ -52,7 +52,7 @@ func init() {
 }
 
 func clearAll(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection), "Error clearing test collection")
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection))
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -160,7 +160,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 }
 
 func TestSetPriority(t *testing.T) {
-	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
 	patches := []*patch.Patch{
 		{Id: patch.NewId("aabbccddeeff001122334455"), Version: "aabbccddeeff001122334455"},
 	}
@@ -306,7 +306,7 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch.Alias = evergreen.CommitQueueAlias
 				_, err = FinalizePatch(ctx, configPatch, evergreen.MergeTestRequester, token)
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "No builds or tasks for commit queue version")
+				So(err.Error(), ShouldContainSubstring, "no builds or tasks for commit queue version")
 			})
 			Reset(func() {
 				So(db.Clear(distro.Collection), ShouldBeNil)
@@ -629,7 +629,7 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 func TestAddNewPatch(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	p := &patch.Patch{
 		Activated: true,
 	}
@@ -717,7 +717,7 @@ func TestAddNewPatch(t *testing.T) {
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection), "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	p := &patch.Patch{
 		Activated: true,
 	}
