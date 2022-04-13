@@ -4092,9 +4092,17 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 		if len(p.ChildPatches) > 0 {
 			patchStatuses := []string{*p.Status}
 			for _, cp := range p.ChildPatches {
-				patchStatuses = append(patchStatuses, *cp.Status)
+				v, err := model.VersionFindOneId(*cp.Id)
+				if err != nil {
+					return "", InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", *cp.Id, err.Error()))
+				}
+				status = *cp.Status
+				if v != nil && v.Aborted && *cp.Status != evergreen.PatchFailed {
+					status = evergreen.PatchAborted
+				}
+				patchStatuses = append(patchStatuses, status)
 			}
-			status = patch.GetCollectiveStatus(patchStatuses)
+			return patch.GetCollectiveStatus(patchStatuses), nil
 		}
 	}
 	if *obj.Aborted && status != evergreen.PatchFailed {

@@ -1047,6 +1047,7 @@ func GetCollectiveStatus(statuses []string) string {
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
+	hasAborted := false
 
 	for _, s := range statuses {
 		switch s {
@@ -1058,10 +1059,12 @@ func GetCollectiveStatus(statuses []string) string {
 			hasFailure = true
 		case evergreen.PatchSucceeded:
 			hasSuccess = true
+		case evergreen.PatchAborted:
+			hasAborted = true
 		}
 	}
 
-	if !(hasCreated || hasFailure || hasSuccess) {
+	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
 		grip.Critical(message.Fields{
 			"message":  "An unknown patch status was found",
 			"cause":    "Programmer error: new statuses should be added to patch.getCollectiveStatus().",
@@ -1075,6 +1078,8 @@ func GetCollectiveStatus(statuses []string) string {
 		return evergreen.PatchCreated
 	} else if hasFailure {
 		return evergreen.PatchFailed
+	} else if hasAborted {
+		return evergreen.PatchAborted
 	} else if hasSuccess {
 		return evergreen.PatchSucceeded
 	}
