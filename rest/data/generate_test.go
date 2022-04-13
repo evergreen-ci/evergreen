@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -19,13 +18,12 @@ func TestGeneratePoll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(task.Collection))
 	require.NotNil(t, env)
 	q := env.RemoteQueueGroup()
 	require.NotNil(t, q)
 
-	finished, generateErrs, err := GeneratePoll(context.Background(), "task-0", q)
+	finished, generateErrs, err := GeneratePoll(ctx, "task-0", q)
 	assert.False(t, finished)
 	assert.Empty(t, generateErrs)
 	assert.Error(t, err)
@@ -37,7 +35,7 @@ func TestGeneratePoll(t *testing.T) {
 		GeneratedTasks: false,
 	}).Insert())
 
-	finished, generateErrs, err = GeneratePoll(context.Background(), "task-1", q)
+	finished, generateErrs, err = GeneratePoll(ctx, "task-1", q)
 	assert.False(t, finished)
 	assert.Empty(t, generateErrs)
 	assert.NoError(t, err)
@@ -49,7 +47,7 @@ func TestGeneratePoll(t *testing.T) {
 		GeneratedTasks: true,
 	}).Insert())
 
-	finished, generateErrs, err = GeneratePoll(context.Background(), "task-2", q)
+	finished, generateErrs, err = GeneratePoll(ctx, "task-2", q)
 	assert.True(t, finished)
 	assert.Empty(t, generateErrs)
 	assert.NoError(t, err)

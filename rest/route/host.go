@@ -546,10 +546,13 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 type hostProvisioningOptionsGetHandler struct {
 	hostID string
+	env    evergreen.Environment
 }
 
-func makeHostProvisioningOptionsGetHandler() gimlet.RouteHandler {
-	return &hostProvisioningOptionsGetHandler{}
+func makeHostProvisioningOptionsGetHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostProvisioningOptionsGetHandler{
+		env: env,
+	}
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Factory() gimlet.RouteHandler {
@@ -566,7 +569,7 @@ func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	script, err := data.GenerateHostProvisioningScript(ctx, rh.hostID)
+	script, err := data.GenerateHostProvisioningScript(ctx, rh.env, rh.hostID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}

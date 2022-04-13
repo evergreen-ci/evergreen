@@ -18,11 +18,10 @@ import (
 )
 
 func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
-	rm := evergreen.GetEnvironment().RoleManager()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
+	rm := env.RoleManager()
 
 	for name, test := range map[string]func(t *testing.T, ref model.RepoRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.RepoRef) {
@@ -152,7 +151,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:         "myRepoId",
@@ -237,8 +236,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		model.ProjectPageGeneralSection: func(t *testing.T, ref model.ProjectRef) {
@@ -469,7 +467,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
 			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		pRef := model.ProjectRef{
 			Id:         "myId",

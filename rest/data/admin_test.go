@@ -28,10 +28,6 @@ type AdminDataSuite struct {
 
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 

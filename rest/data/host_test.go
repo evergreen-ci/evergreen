@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,6 +25,7 @@ func init() {
 }
 
 type HostConnectorSuite struct {
+	env   evergreen.Environment
 	setup func(*HostConnectorSuite)
 	suite.Suite
 }
@@ -103,16 +105,12 @@ func (*HostConnectorSuite) users() []user.DBUser {
 func TestHostConnectorSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	s := new(HostConnectorSuite)
+	s.env = testutil.NewEnvironment(ctx, t)
 
 	s.setup = func(s *HostConnectorSuite) {
 		s.NoError(db.ClearCollections(user.Collection, host.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-		cmd := map[string]string{
-			"create": evergreen.ScopeCollection,
-		}
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		hosts := s.hosts()
 		for _, h := range hosts {
@@ -132,7 +130,7 @@ func TestHostConnectorSuite(t *testing.T) {
 			SystemRoles: []string{"root"},
 		}
 		s.NoError(root.Insert())
-		rm := evergreen.GetEnvironment().RoleManager()
+		rm := s.env.RoleManager()
 		s.NoError(rm.AddScope(gimlet.Scope{
 			ID:        "root",
 			Resources: []string{"distro2", "distro5"},
@@ -258,34 +256,16 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptSucceeds() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.withNewEnvironment(ctx, func() {
-		script, err := GenerateHostProvisioningScript(ctx, "host1")
-		s.Require().NoError(err)
-		s.NotZero(script)
-	})
+	script, err := GenerateHostProvisioningScript(ctx, s.env, "host1")
+	s.Require().NoError(err)
+	s.NotZero(script)
 
 }
 
 func (s *HostConnectorSuite) TestGenerateHostProvisioningScriptFailsWithInvalidHostID() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.withNewEnvironment(ctx, func() {
-		script, err := GenerateHostProvisioningScript(ctx, "foo")
-		s.Error(err)
-		s.Zero(script)
-	})
-}
-
-func (s *HostConnectorSuite) withNewEnvironment(ctx context.Context, testCase func()) {
-	// We have to set the environment temporarily because the suites in this
-	// package drop the database, but some host tests require that host
-	// credentials collection to be bootstrapped with the CA.
-	oldEnv := evergreen.GetEnvironment()
-	defer func() {
-		evergreen.SetEnvironment(oldEnv)
-	}()
-	env := testutil.NewEnvironment(ctx, s.T())
-	evergreen.SetEnvironment(env)
-
-	testCase()
+	script, err := GenerateHostProvisioningScript(ctx, s.env, "foo")
+	s.Error(err)
+	s.Zero(script)
 }

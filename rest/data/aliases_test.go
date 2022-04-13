@@ -1,7 +1,6 @@
 package data
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,7 +8,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,10 +17,6 @@ type AliasSuite struct {
 }
 
 func TestAliasSuite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, new(AliasSuite))
 }
 
@@ -107,8 +101,8 @@ func (a *AliasSuite) SetupTest() {
 
 func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
 	found, err := FindProjectAliases("project_id", "", nil, true)
-	a.NoError(err)
-	a.Len(found, 5)
+	a.Require().NoError(err)
+	a.Require().Len(found, 5)
 	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
 	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubChecksAlias)
 	a.Equal(utility.FromStringPtr(found[2].Alias), "foo")

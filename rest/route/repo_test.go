@@ -24,8 +24,6 @@ import (
 func TestGetRepoIDHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(
 		dbModel.RepoRefCollection,
 		dbModel.ProjectVarsCollection,
@@ -83,8 +81,6 @@ func TestGetRepoIDHandler(t *testing.T) {
 func TestPatchRepoIDHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
 		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection,
 		dbModel.ProjectRefCollection))
@@ -152,7 +148,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	independentAlias.Alias = evergreen.GithubChecksAlias
 	assert.NoError(t, independentAlias.Upsert())
 
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "the amazing Annie"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "the amazing Annie"})
 	settings, err := evergreen.GetConfig()
 	assert.NoError(t, err)
 	settings.GithubOrgs = []string{repoRef.Owner}
@@ -248,7 +244,6 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
 		dbModel.ProjectAliasCollection, dbModel.GithubHooksCollection, commitqueue.Collection, user.Collection,
 		dbModel.ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
@@ -290,7 +285,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	ctx = gimlet.AttachUser(context.Background(), u)
 
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 	allProjectsScope := &gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
 		Resources: []string{},
