@@ -774,6 +774,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 			Stepback:         in.Stepback,
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
+			RunOnContainer:   in.RunOnContainer,
 		}
 		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t])
@@ -1215,7 +1216,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		distroID      string
 		distroAliases []string
 	)
-
 	if len(buildVarTask.RunOn) > 0 {
 		distroID = buildVarTask.RunOn[0]
 
@@ -1297,6 +1297,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		// TODO (EVG-16169): set ExecutionPlatform based on whether or not the task
 		// is running in a host or container.
 		ExecutionPlatform: task.ExecutionPlatformHost,
+		RunOnContainer:    utility.FromBoolPtr(buildVarTask.RunOnContainer),
 	}
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator

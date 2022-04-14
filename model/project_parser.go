@@ -135,6 +135,7 @@ type parserTask struct {
 	GitTagOnly      *bool               `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults *bool               `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	RunOnContainer  *bool               `yaml:"run_on_container,omitempty" bson:"run_on_container"`
 }
 
 func (pp *ParserProject) Insert() error {
@@ -424,7 +425,8 @@ type parserBVTaskUnit struct {
 	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
-	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	Activate       *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	RunOnContainer *bool `yaml:"run_on_container,omitempty" bson:"run_on_container"`
 }
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
@@ -877,7 +879,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 	buildVariants, errs := GetVariantsWithMatrices(ase, pp.Axes, pp.BuildVariants)
 	catcher.Extend(errs)
 	vse := NewVariantSelectorEvaluator(buildVariants, ase)
-	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
+	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups, pp.Containers)
 	catcher.Extend(errs)
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
@@ -924,7 +926,7 @@ func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix)
 // evaluateTaskUnits translates intermediate tasks into true ProjectTask types,
 // evaluating any selectors in the DependsOn field.
 func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pts []parserTask, tgs []parserTaskGroup) ([]ProjectTask, []TaskGroup, []error) {
+	pts []parserTask, tgs []parserTaskGroup, containers []Container) ([]ProjectTask, []TaskGroup, []error) {
 	tasks := []ProjectTask{}
 	groups := []TaskGroup{}
 	var evalErrs, errs []error
@@ -947,6 +949,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
+		t.RunOnContainer = utility.ToBoolPtr(shouldRunOnContainer(t, containers))
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
@@ -982,6 +985,19 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		groups = append(groups, tg)
 	}
 	return tasks, groups, evalErrs
+}
+
+func shouldRunOnContainer(task ProjectTask, containers []Container) bool {
+	containerNameMap := map[string]bool{}
+	for _, container := range containers {
+		containerNameMap[container.Name] = true
+	}
+	for _, r := range task.RunOn {
+		if containerNameMap[r] {
+			return true
+		}
+	}
+	return false
 }
 
 // evaluateBuildsVariants translates intermediate tasks into true BuildVariant types,
@@ -1208,6 +1224,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:    bvt.CronBatchTime,
 		BatchTime:        bvt.BatchTime,
 		Activate:         bvt.Activate,
+		RunOnContainer:   bvt.RunOnContainer,
 	}
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
@@ -1226,6 +1243,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if res.GitTagOnly == nil {
 		res.GitTagOnly = pt.GitTagOnly
+	}
+	if res.RunOnContainer == nil {
+		res.RunOnContainer = pt.RunOnContainer
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
