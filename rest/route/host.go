@@ -556,7 +556,9 @@ func makeHostProvisioningOptionsGetHandler(env evergreen.Environment) gimlet.Rou
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Factory() gimlet.RouteHandler {
-	return &hostProvisioningOptionsGetHandler{}
+	return &hostProvisioningOptionsGetHandler{
+		env: rh.env,
+	}
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
