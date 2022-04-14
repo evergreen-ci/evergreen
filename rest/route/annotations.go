@@ -280,18 +280,18 @@ func (h *bulkCreateAnnotationHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (h *bulkCreateAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
-	taskAnnotations := []*annotations.TaskAnnotation{}
+	taskAnnotations := []annotations.TaskAnnotation{}
 	for _, update := range h.opts.TaskUpdates {
 		for _, t := range update.Tasks {
 			ann := update.Annotation
 			ann.TaskId = &t.TaskId
 			ann.TaskExecution = &t.Execution
-			taskAnnotations = append(taskAnnotations, restModel.APITaskAnnotationToService(ann))
+			taskAnnotations = append(taskAnnotations, *restModel.APITaskAnnotationToService(ann))
 		}
 	}
 	err := annotations.InsertManyAnnotations(taskAnnotations, h.user.DisplayName())
 	if err != nil {
-		gimlet.NewJSONInternalErrorResponse(err)
+		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
 	responder := gimlet.NewJSONResponse(struct{}{})

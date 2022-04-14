@@ -204,35 +204,45 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
 }
 
-func InsertManyAnnotations(a []*TaskAnnotation, userDisplayName string) error {
+func InsertManyAnnotations(annotations []TaskAnnotation, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
 		Requester: APIRequester,
 	}
-	for _, ann := range a {
-		if ann.Note != nil {
-			ann.Note.Source = source
+	for i, _ := range annotations {
+		if annotations[i].Id == "" {
+			annotations[i].Id = bson.NewObjectId().Hex()
 		}
-		if ann.Issues != nil {
-			for i := range ann.Issues {
-				ann.Issues[i].Source = source
+		if annotations[i].Note != nil {
+			annotations[i].Note.Source = source
+		}
+		if annotations[i].Issues != nil {
+			for i := range annotations[i].Issues {
+				annotations[i].Issues[i].Source = source
 			}
 		}
-		if ann.SuspectedIssues != nil {
-			for i := range ann.SuspectedIssues {
-				ann.SuspectedIssues[i].Source = source
+		if annotations[i].SuspectedIssues != nil {
+			for i := range annotations[i].SuspectedIssues {
+				annotations[i].SuspectedIssues[i].Source = source
 			}
 		}
 	}
-	err := db.InsertMany(
-		Collection,
-		a,
+	err := InsertMany(
+		annotations,
 	)
 	if err != nil {
 		return errors.Wrap(err, "bulk inserting annotations")
 	}
 	return nil
+}
+
+func InsertMany(annotations []TaskAnnotation) error {
+	docs := make([]interface{}, len(annotations))
+	for idx := range annotations {
+		docs[idx] = &annotations[idx]
+	}
+	return errors.WithStack(db.InsertMany(Collection, docs...))
 }
 
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
