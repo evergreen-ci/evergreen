@@ -204,6 +204,7 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	return errors.Wrapf(err, "problem adding task annotation for '%s'", a.TaskId)
 }
 
+// InsertManyAnnotations updates the source for a list of task annotations and their issues and then inserts them into the DB.
 func InsertManyAnnotations(annotations []TaskAnnotation, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
@@ -237,6 +238,7 @@ func InsertManyAnnotations(annotations []TaskAnnotation, userDisplayName string)
 	return nil
 }
 
+// InsertMany bulk inserts a list of task annotations into the DB.
 func InsertMany(annotations []TaskAnnotation) error {
 	docs := make([]interface{}, len(annotations))
 	for idx := range annotations {
