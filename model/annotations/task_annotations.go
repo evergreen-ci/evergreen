@@ -207,44 +207,52 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 }
 
-func AddToAnnotation(a *TaskAnnotation, userDisplayName string) error {
+// PatchAnnotation adds issues onto existing annotations.
+func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) error {
 	existingAnnotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding task annotation for task id '%s'", a.TaskId)
 	}
 	if existingAnnotation == nil {
-		return errors.Wrapf(err, "missing task annotation for task id '%s'", a.TaskId)
+		if !upsert {
+			return nil
+		} else {
+			return UpdateAnnotation(a, userDisplayName)
+		}
 	}
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
 		Requester: APIRequester,
 	}
-	update := bson.M{
-		TaskIdKey:        a.TaskId,
-		TaskExecutionKey: a.TaskExecution,
-	}
+	update := bson.M{}
 
 	if a.Issues != nil {
 		for i := range a.Issues {
 			a.Issues[i].Source = source
 			existingAnnotation.Issues = append(existingAnnotation.Issues, a.Issues[i])
 		}
+		update[IssuesKey] = existingAnnotation.Issues
 	}
-	update[IssuesKey] = existingAnnotation.Issues
 
 	if a.SuspectedIssues != nil {
 		for i := range a.SuspectedIssues {
 			a.SuspectedIssues[i].Source = source
 			existingAnnotation.SuspectedIssues = append(existingAnnotation.SuspectedIssues, a.SuspectedIssues[i])
 		}
+		update[SuspectedIssuesKey] = existingAnnotation.SuspectedIssues
 	}
-	update[SuspectedIssuesKey] = existingAnnotation.SuspectedIssues
 
-	err = db.Update(
+	if len(update) == 0 {
+		return nil
+	}
+
+	_, err = db.Upsert(
 		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
-		update,
+		bson.M{
+			"$set": update,
+		},
 	)
 	return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
 }

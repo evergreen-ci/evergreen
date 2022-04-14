@@ -160,13 +160,13 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
 }
 
-func TestInsertIssue(t *testing.T) {
+func TestPatchIssue(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float32(91.23)}
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue1, "bynn.lee"))
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
 	a := TaskAnnotation{TaskId: "t1", TaskExecution: 0, SuspectedIssues: []IssueLink{issue2}}
-	assert.NoError(t, AddToAnnotation(&a, "not bynn"))
+	assert.NoError(t, PatchAnnotation(&a, "not bynn", true))
 
 	annotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
@@ -183,4 +183,18 @@ func TestInsertIssue(t *testing.T) {
 	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)
 	assert.Equal(t, "not bynn", annotation.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "EVG-2345", annotation.SuspectedIssues[0].IssueKey)
+
+	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456"}
+	insert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, SuspectedIssues: []IssueLink{issue3}}
+	assert.NoError(t, PatchAnnotation(&insert, "insert", true))
+	annotation, err = FindOneByTaskIdAndExecution(insert.TaskId, insert.TaskExecution)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Len(t, annotation.SuspectedIssues, 1)
+	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
+	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)
+	assert.Equal(t, "insert", annotation.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
+
 }

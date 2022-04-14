@@ -204,20 +204,14 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // Parsing logic for task annotation put and patch routes.
-type annotationByTaskPutOrPatchHandler struct {
-	taskId string
-
-	user       gimlet.User
-	annotation *restModel.APITaskAnnotation
-}
-
-func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (*annotationByTaskPutOrPatchHandler, error) {
-	ret := &annotationByTaskPutOrPatchHandler{}
+func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
+	var taskId string
+	var annotation *restModel.APITaskAnnotation
 	var err error
-	ret.taskId = gimlet.GetVars(r)["task_id"]
+	taskId = gimlet.GetVars(r)["task_id"]
 	taskExecutionsAsString := r.URL.Query().Get("execution")
-	if ret.taskId == "" {
-		return nil, gimlet.ErrorResponse{
+	if taskId == "" {
+		return "", nil, gimlet.ErrorResponse{
 			Message:    "task ID cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -225,9 +219,9 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (*an
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	err = json.NewDecoder(body).Decode(ret.annotation)
+	err = json.NewDecoder(body).Decode(annotation)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{
+		return "", nil, gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -236,67 +230,64 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (*an
 	if taskExecutionsAsString != "" {
 		taskExecution, err := strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
-			return nil, gimlet.ErrorResponse{
+			return "", nil, gimlet.ErrorResponse{
 				Message:    "cannot convert execution to integer value",
 				StatusCode: http.StatusBadRequest,
 			}
 		}
 
-		if ret.annotation.TaskExecution == nil {
-			ret.annotation.TaskExecution = &taskExecution
-		} else if *ret.annotation.TaskExecution != taskExecution {
-			return nil, gimlet.ErrorResponse{
+		if annotation.TaskExecution == nil {
+			annotation.TaskExecution = &taskExecution
+		} else if *annotation.TaskExecution != taskExecution {
+			return "", nil, gimlet.ErrorResponse{
 				Message:    "Task execution must equal the task execution specified in the annotation",
 				StatusCode: http.StatusBadRequest,
 			}
 		}
-	} else if ret.annotation.TaskExecution == nil {
-		return nil, gimlet.ErrorResponse{
+	} else if annotation.TaskExecution == nil {
+		return "", nil, gimlet.ErrorResponse{
 			Message:    "task execution must be specified in the url or request body",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
 	// check if the task exists
-	t, err := task.FindByIdExecution(ret.taskId, ret.annotation.TaskExecution)
+	t, err := task.FindByIdExecution(taskId, annotation.TaskExecution)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding task")
+		return "", nil, errors.Wrap(err, "finding task")
 	}
 	if t == nil {
-		return nil, gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("the task '%s' does not exist", ret.taskId),
+		return "", nil, gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("the task '%s' does not exist", taskId),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	if !evergreen.IsFailedTaskStatus(t.Status) {
-		return nil, gimlet.ErrorResponse{
+		return "", nil, gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", t.Status),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(restModel.ValidateIssues(ret.annotation.Issues))
-	catcher.Add(restModel.ValidateIssues(ret.annotation.SuspectedIssues))
+	catcher.Add(restModel.ValidateIssues(annotation.Issues))
+	catcher.Add(restModel.ValidateIssues(annotation.SuspectedIssues))
 	if catcher.HasErrors() {
-		return nil, gimlet.ErrorResponse{
+		return "", nil, gimlet.ErrorResponse{
 			Message:    catcher.Resolve().Error(),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	if ret.annotation.TaskId == nil {
-		taskId := ret.taskId
-		ret.annotation.TaskId = &taskId
-	} else if *ret.annotation.TaskId != ret.taskId {
-		return nil, gimlet.ErrorResponse{
+	if annotation.TaskId == nil {
+		annotation.TaskId = &taskId
+	} else if *annotation.TaskId != taskId {
+		return "", nil, gimlet.ErrorResponse{
 			Message:    "TaskID must equal the taskId specified in the annotation",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	u := MustHaveUser(ctx)
-	ret.user = u
-	return ret, nil
+	return taskId, annotation, nil
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -319,13 +310,15 @@ func (h *annotationByTaskPutHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request) error {
-	putHandler, err := annotationByTaskPutOrPatchParser(ctx, r)
+	taskId, annotation, err := annotationByTaskPutOrPatchParser(ctx, r)
 	if err != nil {
 		return err
 	}
-	h.taskId = putHandler.taskId
-	h.annotation = putHandler.annotation
-	h.user = putHandler.user
+	h.taskId = taskId
+	h.annotation = annotation
+
+	u := MustHaveUser(ctx)
+	h.user = u
 	return nil
 }
 
@@ -348,6 +341,7 @@ func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 type annotationByTaskPatchHandler struct {
 	taskId string
+	upsert bool
 
 	user       gimlet.User
 	annotation *restModel.APITaskAnnotation
@@ -362,18 +356,21 @@ func (h *annotationByTaskPatchHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	patchHandler, err := annotationByTaskPutOrPatchParser(ctx, r)
+	taskId, annotation, err := annotationByTaskPutOrPatchParser(ctx, r)
 	if err != nil {
 		return err
 	}
-	h.taskId = patchHandler.taskId
-	h.annotation = patchHandler.annotation
-	h.user = patchHandler.user
+	h.taskId = taskId
+	h.annotation = annotation
+	h.upsert = r.URL.Query().Get("upsert") == "true"
+
+	u := MustHaveUser(ctx)
+	h.user = u
 	return nil
 }
 
 func (h *annotationByTaskPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.AddToAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := annotations.PatchAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}
