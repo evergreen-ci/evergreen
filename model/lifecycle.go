@@ -1212,34 +1212,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	buildVarTask.RunOn = dat.Expand(buildVarTask.RunOn)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
 
-	var (
-		distroID      string
-		distroAliases []string
-	)
-	if len(buildVarTask.RunOn) > 0 {
-		distroID = buildVarTask.RunOn[0]
-
-		if len(buildVarTask.RunOn) > 1 {
-			distroAliases = append(distroAliases, buildVarTask.RunOn[1:]...)
-		}
-
-	} else if len(buildVariant.RunOn) > 0 {
-		distroID = buildVariant.RunOn[0]
-
-		if len(buildVariant.RunOn) > 1 {
-			distroAliases = append(distroAliases, buildVariant.RunOn[1:]...)
-		}
-	} else {
-		grip.Warning(message.Fields{
-			"task_id":   id,
-			"message":   "task is not runnable as there is no distro specified",
-			"variant":   buildVariant.Name,
-			"project":   project.Identifier,
-			"version":   v.Revision,
-			"requester": v.Requester,
-		})
-	}
-
 	activatedTime := utility.ZeroTime
 	if activateTask {
 		activatedTime = time.Now()
@@ -1266,8 +1238,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		DisplayName:         buildVarTask.Name,
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
-		DistroId:            distroID,
-		DistroAliases:       distroAliases,
 		CreateTime:          createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       utility.ZeroTime,
@@ -1299,6 +1269,17 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		ExecutionPlatform: task.ExecutionPlatformHost,
 		RunOnContainer:    utility.FromBoolPtr(buildVarTask.RunOnContainer),
 	}
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+	if !flags.ContainerConfigurationsDisabled && utility.FromBoolPtr(buildVarTask.RunOnContainer) {
+		t.Container = generateContainer(id, buildVarTask, buildVariant, project, v)
+	} else {
+		distroID, distroAliases := generateDistros(id, buildVarTask, buildVariant, project, v)
+		t.DistroId = distroID
+		t.DistroAliases = distroAliases
+	}
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
 	} else if t.Activated {
@@ -1313,6 +1294,58 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		tg.InjectInfo(t)
 	}
 	return t, nil
+}
+
+func generateDistros(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) (string, []string) {
+	var (
+		distroID      string
+		distroAliases []string
+	)
+
+	if len(buildVarTask.RunOn) > 0 {
+		distroID = buildVarTask.RunOn[0]
+
+		if len(buildVarTask.RunOn) > 1 {
+			distroAliases = append(distroAliases, buildVarTask.RunOn[1:]...)
+		}
+
+	} else if len(buildVariant.RunOn) > 0 {
+		distroID = buildVariant.RunOn[0]
+
+		if len(buildVariant.RunOn) > 1 {
+			distroAliases = append(distroAliases, buildVariant.RunOn[1:]...)
+		}
+	} else {
+		grip.Warning(message.Fields{
+			"task_id":   id,
+			"message":   "task is not runnable as there is no distro specified",
+			"variant":   buildVariant.Name,
+			"project":   project.Identifier,
+			"version":   v.Revision,
+			"requester": v.Requester,
+		})
+	}
+	return distroID, distroAliases
+}
+
+func generateContainer(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) string {
+	var container string
+
+	if len(buildVarTask.RunOn) > 0 {
+		container = buildVarTask.RunOn[0]
+	} else if len(buildVariant.RunOn) > 0 {
+		container = buildVariant.RunOn[0]
+	} else {
+		grip.Warning(message.Fields{
+			"task_id":   id,
+			"message":   "task is not runnable as there is no container specified",
+			"variant":   buildVariant.Name,
+			"project":   project.Identifier,
+			"version":   v.Revision,
+			"requester": v.Requester,
+		})
+	}
+	return container
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string, bv *BuildVariant, b *build.Build,

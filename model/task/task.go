@@ -108,6 +108,7 @@ type Task struct {
 
 	BuildId                 string       `bson:"build_id" json:"build_id"`
 	DistroId                string       `bson:"distro" json:"distro"`
+	Container               string       `bson:"container" json:"container"`
 	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`

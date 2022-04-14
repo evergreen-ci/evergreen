@@ -41,6 +41,7 @@ type APITask struct {
 	ActivatedBy             *string             `json:"activated_by"`
 	BuildId                 *string             `json:"build_id"`
 	DistroId                *string             `json:"distro_id"`
+	Container               *string             `json:"container"`
 	BuildVariant            *string             `json:"build_variant"`
 	BuildVariantDisplayName *string             `json:"build_variant_display_name"`
 	DependsOn               []APIDependency     `json:"depends_on"`
@@ -220,6 +221,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			ActivatedBy:             utility.ToStringPtr(v.ActivatedBy),
 			BuildId:                 utility.ToStringPtr(v.BuildId),
 			DistroId:                utility.ToStringPtr(v.DistroId),
+			Container:               utility.ToStringPtr(v.Container),
 			BuildVariant:            utility.ToStringPtr(v.BuildVariant),
 			BuildVariantDisplayName: utility.ToStringPtr(v.BuildVariantDisplayName),
 			DisplayName:             utility.ToStringPtr(v.DisplayName),
@@ -342,6 +344,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		ActivatedBy:         utility.FromStringPtr(ad.ActivatedBy),
 		BuildId:             utility.FromStringPtr(ad.BuildId),
 		DistroId:            utility.FromStringPtr(ad.DistroId),
+		Container:           utility.FromStringPtr(ad.Container),
 		BuildVariant:        utility.FromStringPtr(ad.BuildVariant),
 		DisplayName:         utility.FromStringPtr(ad.DisplayName),
 		HostId:              utility.FromStringPtr(ad.HostId),

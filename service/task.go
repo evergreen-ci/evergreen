@@ -37,6 +37,7 @@ type uiTaskData struct {
 	Revision             string                  `json:"gitspec"`
 	BuildVariant         string                  `json:"build_variant"`
 	Distro               string                  `json:"distro"`
+	Container            string                  `json:"container"`
 	BuildId              string                  `json:"build_id"`
 	Status               string                  `json:"status"`
 	TaskWaiting          string                  `json:"task_waiting"`
@@ -241,6 +242,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Status:               projCtx.Task.Status,
 		TaskEndDetails:       projCtx.Task.Details,
 		Distro:               projCtx.Task.DistroId,
+		Container:            projCtx.Task.Container,
 		BuildVariant:         projCtx.Task.BuildVariant,
 		BuildId:              projCtx.Task.BuildId,
 		Activated:            projCtx.Task.Activated,
