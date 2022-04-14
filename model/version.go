@@ -115,24 +115,26 @@ func (v *Version) LastSuccessful() (*Version, error) {
 	return lastGreen, nil
 }
 
-func (self *Version) UpdateBuildVariants() error {
+// UpdateBuildVariants sets this version's build variants.
+func (v *Version) UpdateBuildVariants() error {
 	return VersionUpdateOne(
-		bson.M{VersionIdKey: self.Id},
+		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
-				VersionBuildVariantsKey: self.BuildVariants,
+				VersionBuildVariantsKey: v.BuildVariants,
 			},
 		},
 	)
 }
 
-func (self *Version) SetActivated() error {
-	if utility.FromBoolPtr(self.Activated) {
+// SetActivated sets this version to activated if it's not already activated.
+func (v *Version) SetActivated() error {
+	if utility.FromBoolPtr(v.Activated) {
 		return nil
 	}
-	self.Activated = utility.TruePtr()
+	v.Activated = utility.TruePtr()
 	return VersionUpdateOne(
-		bson.M{VersionIdKey: self.Id},
+		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey: true,
@@ -141,13 +143,15 @@ func (self *Version) SetActivated() error {
 	)
 }
 
-func (self *Version) SetNotActivated() error {
-	if !utility.FromBoolTPtr(self.Activated) {
+// SetNotActivated sets this version to inactive if it's been explicitly set to
+// activated.
+func (v *Version) SetNotActivated() error {
+	if !utility.FromBoolTPtr(v.Activated) {
 		return nil
 	}
-	self.Activated = utility.FalsePtr()
+	v.Activated = utility.FalsePtr()
 	return VersionUpdateOne(
-		bson.M{VersionIdKey: self.Id},
+		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey: false,
@@ -156,10 +160,11 @@ func (self *Version) SetNotActivated() error {
 	)
 }
 
-func (self *Version) SetAborted(aborted bool) error {
-	self.Aborted = aborted
+// SetAborted sets the version as aborted.
+func (v *Version) SetAborted(aborted bool) error {
+	v.Aborted = aborted
 	return VersionUpdateOne(
-		bson.M{VersionIdKey: self.Id},
+		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionAbortedKey: aborted,
@@ -168,8 +173,8 @@ func (self *Version) SetAborted(aborted bool) error {
 	)
 }
 
-func (self *Version) Insert() error {
-	return db.Insert(VersionCollection, self)
+func (v *Version) Insert() error {
+	return db.Insert(VersionCollection, v)
 }
 
 func (v *Version) IsChild() bool {

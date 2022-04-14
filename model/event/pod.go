@@ -28,9 +28,10 @@ const (
 
 // podData contains information relevant to a pod event.
 type podData struct {
-	OldStatus string `bson:"old_status,omitempty" json:"old_status,omitempty"`
-	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty"`
-	TaskID    string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	OldStatus     string `bson:"old_status,omitempty" json:"old_status,omitempty"`
+	NewStatus     string `bson:"new_status,omitempty" json:"new_status,omitempty"`
+	TaskID        string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	TaskExecution int    `bson:"task_execution,omitempty" json:"task_execution,omitempty"`
 }
 
 // LogPodEvent logs an event for a pod to the event log.
@@ -66,6 +67,6 @@ func LogPodStatusChanged(id, oldStatus, newStatus string) {
 
 // LogPodAssignedTask logs an event indicating that the pod has been assigned a
 // task to run.
-func LogPodAssignedTask(id, taskID string) {
-	LogPodEvent(id, EventPodAssignedTask, podData{TaskID: taskID})
+func LogPodAssignedTask(id, taskID string, execution int) {
+	LogPodEvent(id, EventPodAssignedTask, podData{TaskID: taskID, TaskExecution: execution})
 }
