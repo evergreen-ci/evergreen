@@ -212,39 +212,39 @@ func InsertManyAnnotations(annotations []TaskAnnotation, userDisplayName string)
 		Requester: APIRequester,
 	}
 	for i, _ := range annotations {
-		if annotations[i].Id == "" {
-			annotations[i].Id = bson.NewObjectId().Hex()
+		update := bson.M{}
+		if annotations[i].Metadata != nil {
+			update[MetadataKey] = annotations[i].Metadata
 		}
 		if annotations[i].Note != nil {
 			annotations[i].Note.Source = source
+			update[NoteKey] = annotations[i].Note
 		}
 		if annotations[i].Issues != nil {
 			for i := range annotations[i].Issues {
 				annotations[i].Issues[i].Source = source
 			}
+			update[IssuesKey] = annotations[i].Issues
 		}
 		if annotations[i].SuspectedIssues != nil {
 			for i := range annotations[i].SuspectedIssues {
 				annotations[i].SuspectedIssues[i].Source = source
 			}
+			update[SuspectedIssuesKey] = annotations[i].SuspectedIssues
+		}
+
+		_, err := db.Upsert(
+			Collection,
+			ByTaskIdAndExecution(annotations[i].TaskId, annotations[i].TaskExecution),
+			bson.M{
+				"$set": update,
+			},
+		)
+		if err != nil {
+			return errors.Wrap(err, "bulk inserting annotations")
 		}
 	}
-	err := InsertMany(
-		annotations,
-	)
-	if err != nil {
-		return errors.Wrap(err, "bulk inserting annotations")
-	}
 	return nil
-}
-
-// InsertMany bulk inserts a list of task annotations into the DB.
-func InsertMany(annotations []TaskAnnotation) error {
-	docs := make([]interface{}, len(annotations))
-	for idx := range annotations {
-		docs[idx] = &annotations[idx]
-	}
-	return errors.WithStack(db.InsertMany(Collection, docs...))
 }
 
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {

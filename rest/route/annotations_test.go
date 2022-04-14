@@ -805,9 +805,17 @@ func TestBulkCreateAnnotationHandler(t *testing.T) {
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	annotations, err := annotations.FindByTaskIds([]string{"t1", "t2", "t3"})
+	taskAnnotations, err := annotations.FindByTaskIds([]string{"t1", "t2", "t3"})
 	assert.NoError(t, err)
-	assert.Len(t, annotations, 6)
+	assert.Len(t, taskAnnotations, 6)
+
+	// ensure re-running the same annotations does not cause an error
+	resp = h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	taskAnnotations, err = annotations.FindByTaskIds([]string{"t1", "t2", "t3"})
+	assert.NoError(t, err)
+	assert.Len(t, taskAnnotations, 6)
 }
 
 // test created tickets route
