@@ -12,6 +12,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -1679,6 +1680,61 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
+}
+
+func TestGetProjectTasksWithOptions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection))
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	assert.NoError(t, p.Insert())
+
+	// total of 50 tasks eligible to be found
+	for i := 0; i < 100; i++ {
+		myTask := task.Task{
+			Id:                  fmt.Sprintf("t%d", i),
+			RevisionOrderNumber: i,
+			DisplayName:         "t1",
+			Project:             "my_project",
+			Status:              evergreen.TaskSucceeded,
+		}
+		if i%3 == 0 {
+			myTask.BuildVariant = "bv1"
+		}
+		if i%2 == 0 {
+			myTask.Status = evergreen.TaskUndispatched
+		}
+		assert.NoError(t, myTask.Insert())
+	}
+	opts := GetProjectTasksOpts{}
+
+	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, defaultVersionLimit)
+
+	opts.Limit = 5
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 5)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
+	assert.Equal(t, tasks[4].RevisionOrderNumber, 91)
+
+	opts.Limit = 10
+	opts.StartAt = 20
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 10)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 19)
+	assert.Equal(t, tasks[9].RevisionOrderNumber, 1)
+
+	opts.Limit = defaultVersionLimit
+	opts.StartAt = 90
+	// 1 in every 6 tasks should qualify for this
+	opts.BuildVariant = "bv1"
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 15)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {

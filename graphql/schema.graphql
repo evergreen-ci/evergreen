@@ -230,6 +230,19 @@ type Version {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   manifest: Manifest
+  upstreamProject: UpstreamProject
+}
+
+type UpstreamProject {
+  owner: String!
+  repo: String!
+  revision: String!
+  project: String!
+  triggerID: String! # This is the ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
+  resourceID: String! # This is the ID of the UI linkable resource that triggered the upstream version (corresponds to a task ID or version ID)
+  task: Task
+  version: Version
+  triggerType: String!
 }
 
 type Manifest {
@@ -536,16 +549,13 @@ input RepoRefInput {
 }
 
 input TriggerAliasInput {
-  project: String
+  project: String!
   level: String!
-  definitionID: String!
   buildVariantRegex: String!
   taskRegex: String!
   status: String!
   dateCutoff: Int!
   configFile: String!
-  generateFile: String!
-  command: String!
   alias: String!
 }
 
@@ -1347,16 +1357,13 @@ type RepoRef {
 }
 
 type TriggerAlias {
-  project: String
+  project: String!
   level: String!
-  definitionID: String!
   buildVariantRegex: String!
   taskRegex: String!
   status: String!
   dateCutoff: Int!
   configFile: String!
-  generateFile: String!
-  command: String!
   alias: String!
 }
 

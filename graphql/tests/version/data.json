@@ -212,23 +212,26 @@
 	"remote_path" : ".evergreen.yml",
 	"r" : "gitter_request",
 	"author_id" : "arjun.patel",
-	"activated" : true
+	"activated" : true,
+  "trigger_id": "1",
+  "trigger_type" : "task"
 }
   ],
   "tasks": [
     {
       "_id": "1",
       "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "branch": "evergreen"
     },
     {
       "_id": "2",
       "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
@@ -237,7 +240,7 @@
     {
       "_id": "XYZ",
       "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "silver",
       "r": "github_pull_request",
@@ -246,7 +249,7 @@
     {
       "_id": "X",
       "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "gold",
       "r": "github_pull_request",
@@ -255,7 +258,7 @@
     {
       "_id": "3",
       "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
@@ -264,7 +267,7 @@
     {
       "_id": "4",
       "version": "5e4ff3abe3c3317e352062e4",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "compile",
       "r": "github_pull_request",
@@ -273,7 +276,7 @@
     {
       "_id": "base-task-1",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
@@ -282,7 +285,7 @@
     {
       "_id": "base-task-2",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
@@ -291,7 +294,7 @@
     {
       "_id": "base-task-3",
       "version": "evergreen_5e823e1f28baeaa22ae00823d83e03082cd148ab",
-      "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "windows",
       "display_name": "lint",
       "r": "github_pull_request",
@@ -403,7 +406,9 @@
   "project_ref": [
     {
       "_id": "evergreen",
-      "identifier": "evergreen"
+      "identifier": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
     },
     {
       "_id": "spruce",

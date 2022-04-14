@@ -129,8 +129,8 @@ type Task struct {
 	// Tags that describe the task
 	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
-	// The host the task was run on. This value is empty for display tasks
-	HostId string `bson:"host_id" json:"host_id"`
+	// The host the task was run on. This value is only set for host tasks.
+	HostId string `bson:"host_id,omitempty" json:"host_id"`
 
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
@@ -495,19 +495,26 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
+// IsDispatchable returns true if the task should make progress towards
+// dispatching to run.
+func (t *Task) IsDispatchable() bool {
+	return t.IsHostDispatchable() || t.ShouldAllocateContainer() || t.IsContainerDispatchable()
+}
+
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly && t.Status == evergreen.TaskUndispatched && t.Activated
+	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
-// IsContainerDispatchable returns true if the task should run in a container
-// and can be dispatched.
-func (t *Task) IsContainerDispatchable() bool {
-	if !t.ContainerAllocated {
-		return false
-	}
-	return t.isContainerScheduled()
+// IsHostTask returns true if it's a task that runs on hosts.
+func (t *Task) IsHostTask() bool {
+	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly
+}
+
+// IsContainerTask returns true if it's a task that runs on containers.
+func (t *Task) IsContainerTask() bool {
+	return t.ExecutionPlatform == ExecutionPlatformContainer
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
@@ -520,10 +527,19 @@ func (t *Task) ShouldAllocateContainer() bool {
 	return t.isContainerScheduled()
 }
 
+// IsContainerDispatchable returns true if the task should run in a container
+// and can be dispatched.
+func (t *Task) IsContainerDispatchable() bool {
+	if !t.ContainerAllocated {
+		return false
+	}
+	return t.isContainerScheduled()
+}
+
 // isContainerTaskScheduled returns whether or not the task is in a state
 // where it should eventually dispatch to run on a container.
 func (t *Task) isContainerScheduled() bool {
-	if t.ExecutionPlatform != ExecutionPlatformContainer {
+	if !t.IsContainerTask() {
 		return false
 	}
 	if t.Status != evergreen.TaskUndispatched {
@@ -1059,7 +1075,8 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 			LastHeartbeatKey:      utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			AgentVersionKey: 1,
+			AgentVersionKey:           1,
+			ContainerAllocatedTimeKey: 1,
 		},
 	})
 	if err != nil {
@@ -1072,6 +1089,8 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 	t.ContainerAllocated = false
 	t.DispatchTime = utility.ZeroTime
 	t.LastHeartbeat = utility.ZeroTime
+	t.ContainerAllocatedTime = time.Time{}
+	t.AgentVersion = ""
 
 	return nil
 }
@@ -1611,10 +1630,9 @@ func DeactivateTasks(tasks []Task, caller string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:              false,
-				ActivatedByKey:            caller,
-				ScheduledTimeKey:          utility.ZeroTime,
-				ContainerAllocatedTimeKey: utility.ZeroTime,
+				ActivatedKey:     false,
+				ActivatedByKey:   caller,
+				ScheduledTimeKey: utility.ZeroTime,
 			},
 		},
 	)
@@ -1655,7 +1673,6 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			ActivatedKey:                false,
 			DeactivatedForDependencyKey: true,
 			ScheduledTimeKey:            utility.ZeroTime,
-			ContainerAllocatedTimeKey:   utility.ZeroTime,
 		}},
 	)
 	if err != nil {
@@ -1787,30 +1804,35 @@ func (t *Task) displayTaskPriority() int {
 	return 1000
 }
 
-// Reset sets the task state to be activated, with a new secret,
-// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
+// Reset sets the task state to a state in which it is scheduled to re-run.
 func (t *Task) Reset() error {
-	reset := resetTaskUpdate(t)
-
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
-		reset,
+		resetTaskUpdate(t),
 	)
 }
 
-// Reset sets the task state to be activated, with a new secret,
-// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
-func ResetTasks(taskIds []string) error {
-	_, err := UpdateAll(
-		bson.M{
-			IdKey: bson.M{"$in": taskIds},
-		},
-		resetTaskUpdate(nil),
-	)
+// ResetTasks performs the same DB updates as (*Task).Reset, but resets many
+// tasks instead of a single one.
+func ResetTasks(tasks []Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+	var taskIDs []string
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
 
-	return err
+	if _, err := UpdateAll(
+		bson.M{IdKey: bson.M{"$in": taskIDs}},
+		resetTaskUpdate(nil),
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func resetTaskUpdate(t *Task) bson.M {
@@ -1825,7 +1847,6 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
 		t.ScheduledTime = utility.ZeroTime
-		t.ContainerAllocatedTime = utility.ZeroTime
 		t.FinishTime = utility.ZeroTime
 		t.DependenciesMetTime = utility.ZeroTime
 		t.TimeTaken = 0
@@ -1833,26 +1854,23 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.Details = apimodels.TaskEndDetail{}
 		t.HasCedarResults = false
 		t.ResetWhenFinished = false
-		t.HostId = ""
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 	}
 	update := bson.M{
 		"$set": bson.M{
-			ActivatedKey:              true,
-			ActivatedTimeKey:          now,
-			SecretKey:                 newSecret,
-			HostIdKey:                 "",
-			StatusKey:                 evergreen.TaskUndispatched,
-			DispatchTimeKey:           utility.ZeroTime,
-			StartTimeKey:              utility.ZeroTime,
-			ScheduledTimeKey:          utility.ZeroTime,
-			ContainerAllocatedTimeKey: utility.ZeroTime,
-			FinishTimeKey:             utility.ZeroTime,
-			DependenciesMetTimeKey:    utility.ZeroTime,
-			TimeTakenKey:              0,
-			LastHeartbeatKey:          utility.ZeroTime,
+			ActivatedKey:           true,
+			ActivatedTimeKey:       now,
+			SecretKey:              newSecret,
+			StatusKey:              evergreen.TaskUndispatched,
+			DispatchTimeKey:        utility.ZeroTime,
+			StartTimeKey:           utility.ZeroTime,
+			ScheduledTimeKey:       utility.ZeroTime,
+			FinishTimeKey:          utility.ZeroTime,
+			DependenciesMetTimeKey: utility.ZeroTime,
+			TimeTakenKey:           0,
+			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:              "",
@@ -1860,6 +1878,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			CedarResultsFailedKey:   "",
 			ResetWhenFinishedKey:    "",
 			AgentVersionKey:         "",
+			HostIdKey:               "",
 			HostCreateDetailsKey:    "",
 			OverrideDependenciesKey: "",
 		},
@@ -2240,7 +2259,10 @@ func (t *Task) Insert() error {
 	return db.Insert(Collection, t)
 }
 
-// Inserts the task into the old_tasks collection
+// Archive modifies the current execution of the task so that it is no longer
+// considered the latest execution. This task execution is inserted
+// into the old_tasks collection. If this is a display task, its execution tasks
+// are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
@@ -2278,9 +2300,17 @@ func (t *Task) Archive() error {
 	}
 	t.Aborted = false
 
-	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
-	if err != nil {
-		return errors.Wrap(err, "updating host event logs")
+	if t.IsHostTask() {
+		// Host event logs involving running a host task don't include the
+		// execution number but need it to distinguish which task execution it
+		// ran once the task is no longer the latest execution. This
+		// retroactively sets the task execution for event logs involving the
+		// host running this task so that it correctly identifies this archived
+		// execution.
+		err = event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution)
+		if err != nil {
+			return errors.Wrap(err, "updating host event logs")
+		}
 	}
 	return nil
 }
@@ -2363,7 +2393,15 @@ func ArchiveMany(tasks []Task) error {
 
 	eventLogErrs := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		eventLogErrs.Add(event.UpdateExecutions(t.HostId, t.Id, t.Execution))
+		if t.IsHostTask() {
+			// Host event logs involving running a host task don't include the
+			// execution number but need it to distinguish which task execution
+			// it ran once the task is no longer the latest execution. This
+			// retroactively sets the task execution for event logs involving
+			// the host running this task so that it correctly identifies this
+			// archived execution.
+			eventLogErrs.Wrapf(event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution), "updating execution %d of task '%s' for host '%s'", t.Execution, t.Id, t.HostId)
+		}
 	}
 
 	return eventLogErrs.Resolve()

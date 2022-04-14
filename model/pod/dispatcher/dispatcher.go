@@ -132,7 +132,7 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
-		event.LogPodAssignedTask(p.ID, t.Id)
+		event.LogPodAssignedTask(p.ID, t.Id, t.Execution)
 		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
 
 		return t, nil

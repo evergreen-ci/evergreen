@@ -143,6 +143,7 @@ func TestAllocate(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.True(t, dbTask.ContainerAllocated)
+		assert.NotZero(t, dbTask.ContainerAllocatedTime)
 
 		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
 		require.NoError(t, err)

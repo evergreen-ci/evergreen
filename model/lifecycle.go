@@ -1491,8 +1491,8 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 // Returns activated task IDs.
-func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project,
-	tasks TaskVariantPairs, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, error) {
+func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project, tasks TaskVariantPairs,
+	existingBuilds []build.Build, syncAtEndOpts patch.SyncAtEndOptions, projectRef *ProjectRef, generatedBy string) ([]string, error) {
 
 	taskIdTables, err := getTaskIdTables(v, p, tasks, projectRef.Identifier)
 	if err != nil {
@@ -1503,10 +1503,6 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 	newActivatedTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
 
-	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
 		variantsProcessed[b.BuildVariant] = true
@@ -1629,15 +1625,11 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns activated task IDs.
 func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project, pairs TaskVariantPairs,
-	syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
+	existingBuilds []build.Build, syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
 	}
 
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
-	if err != nil {
-		return nil, err
-	}
 	distroAliases, err := distro.NewDistroAliasesLookupTable()
 	if err != nil {
 		return nil, err
@@ -1649,7 +1641,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	}
 
 	activatedTaskIds := []string{}
-	for _, b := range builds {
+	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
 		tasksInBuild, err := task.FindWithFields(task.ByBuildId(b.Id), task.DisplayNameKey, task.ActivatedKey)
