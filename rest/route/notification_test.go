@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
@@ -17,18 +18,22 @@ import (
 // Tests for POST /rest/v2/notifications/jira_comment
 
 type JiraCommentNotificationSuite struct {
-	rm          gimlet.RouteHandler
-	environment evergreen.Environment
+	rm  gimlet.RouteHandler
+	env evergreen.Environment
 
 	suite.Suite
 }
 
 func TestJiraCommentNotificationSuite(t *testing.T) {
-	suite.Run(t, new(JiraCommentNotificationSuite))
+	s := new(JiraCommentNotificationSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.env = testutil.NewEnvironment(ctx, t)
+	suite.Run(t, s)
 }
 
 func (s *JiraCommentNotificationSuite) SetupSuite() {
-	s.rm = makeJiraCommentNotification(evergreen.GetEnvironment())
+	s.rm = makeJiraCommentNotification(s.env)
 }
 
 func (s *JiraCommentNotificationSuite) TestParseValidJSON() {
@@ -51,18 +56,22 @@ func (s *JiraCommentNotificationSuite) TestParseValidJSON() {
 // Tests for POST /rest/v2/notifications/jira_issue
 
 type JiraIssueNotificationSuite struct {
-	rm          gimlet.RouteHandler
-	environment evergreen.Environment
+	rm  gimlet.RouteHandler
+	env evergreen.Environment
 
 	suite.Suite
 }
 
 func TestJiraIssueNotificationSuite(t *testing.T) {
-	suite.Run(t, new(JiraIssueNotificationSuite))
+	s := new(JiraIssueNotificationSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.env = testutil.NewEnvironment(ctx, t)
+	suite.Run(t, s)
 }
 
 func (s *JiraIssueNotificationSuite) SetupSuite() {
-	s.rm = makeJiraIssueNotification(evergreen.GetEnvironment())
+	s.rm = makeJiraIssueNotification(s.env)
 }
 
 func (s *JiraIssueNotificationSuite) TestParseValidJSON() {
@@ -105,19 +114,22 @@ func (s *JiraIssueNotificationSuite) TestParseValidJSON() {
 // Tests for POST /rest/v2/notifications/slack
 
 type SlackNotificationSuite struct {
-	rm          gimlet.RouteHandler
-	environment evergreen.Environment
+	rm  gimlet.RouteHandler
+	env evergreen.Environment
 
 	suite.Suite
 }
 
 func TestSlackNotificationSuite(t *testing.T) {
-
-	suite.Run(t, new(SlackNotificationSuite))
+	s := new(SlackNotificationSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.env = testutil.NewEnvironment(ctx, t)
+	suite.Run(t, s)
 }
 
 func (s *SlackNotificationSuite) SetupSuite() {
-	s.rm = makeSlackNotification(evergreen.GetEnvironment())
+	s.rm = makeSlackNotification(s.env)
 }
 
 func (s *SlackNotificationSuite) TestParseValidJSON() {
@@ -200,19 +212,22 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 // Tests for POST /rest/v2/notifications/email
 
 type EmailNotificationSuite struct {
-	rm          gimlet.RouteHandler
-	environment evergreen.Environment
+	rm  gimlet.RouteHandler
+	env evergreen.Environment
 
 	suite.Suite
 }
 
 func TestEmailNotificationSuite(t *testing.T) {
-
-	suite.Run(t, new(EmailNotificationSuite))
+	s := new(EmailNotificationSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.env = testutil.NewEnvironment(ctx, t)
+	suite.Run(t, s)
 }
 
 func (s *EmailNotificationSuite) SetupSuite() {
-	s.rm = makeEmailNotification(evergreen.GetEnvironment())
+	s.rm = makeEmailNotification(s.env)
 }
 
 func (s *EmailNotificationSuite) TestParseValidJSON() {

@@ -304,6 +304,18 @@ type UpdateVolumeInput struct {
 	VolumeID     string     `json:"volumeId"`
 }
 
+type UpstreamProject struct {
+	Owner       string            `json:"owner"`
+	Repo        string            `json:"repo"`
+	Revision    string            `json:"revision"`
+	Project     string            `json:"project"`
+	TriggerID   string            `json:"triggerID"`
+	ResourceID  string            `json:"resourceID"`
+	Task        *model.APITask    `json:"task"`
+	Version     *model.APIVersion `json:"version"`
+	TriggerType string            `json:"triggerType"`
+}
+
 type UserConfig struct {
 	User          string `json:"user"`
 	APIKey        string `json:"api_key"`

@@ -122,8 +122,12 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	// Cache project data in maps for quick lookup
 	cachedProject := cacheProjectData(p)
 
+	// We've updated the parser project in a previous iteration of the generator job, so we don't try to update.
+	if utility.StringSliceContains(pp.UpdatedByGenerators, g.TaskID) {
+		return p, pp, v, nil
+	}
 	// Validate generated project against original project.
-	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
+	if err := g.validateGeneratedProject(cachedProject); err != nil {
 		// Return version in this error case for handleError, which checks for a race. We only need to do this in cases where there is a validation check.
 		return nil, pp, v, errors.Wrap(err, "generated project is invalid")
 	}
@@ -158,7 +162,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 		return mongo.ErrNoDocuments
 	}
 
-	if err := updateParserProject(v, pp); err != nil {
+	if err := updateParserProject(v, pp, t.Id); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -168,14 +172,19 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	return nil
 }
 
-// update the parser project using the newest config number (if using legacy version config, this comes from version)
-func updateParserProject(v *Version, pp *ParserProject) error {
+// updateParserProject updates the parser project along with generated task ID and updated config number
+// (if using legacy version config, this comes from version).
+func updateParserProject(v *Version, pp *ParserProject, taskId string) error {
+	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
+		// This generator has already updated the parser project so continue.
+		return nil
+	}
 	updateNum := pp.ConfigUpdateNumber + 1
-	// legacy: most likely a version for which no parser project exists
+	// Legacy: most likely a version for which no parser project exists.
 	if pp.ConfigUpdateNumber < v.ConfigUpdateNumber {
 		updateNum = v.ConfigUpdateNumber + 1
 	}
-
+	pp.UpdatedByGenerators = append(pp.UpdatedByGenerators, taskId)
 	if err := pp.UpsertWithConfigNumber(updateNum); err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
@@ -222,15 +231,16 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		"task":    g.TaskID,
 	}))
 
-	// group into new builds and new tasks for existing builds
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
+	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
 		return errors.Wrap(err, "finding builds for version")
 	}
 	buildSet := map[string]struct{}{}
-	for _, b := range builds {
+	for _, b := range existingBuilds {
 		buildSet[b.BuildVariant] = struct{}{}
 	}
+
+	// Group into new builds and new tasks for existing builds.
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
 	for _, execTask := range newTVPairs.ExecTasks {
@@ -264,12 +274,14 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants, syncAtEndOpts, projectRef.Identifier, g.TaskID)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants,
+		existingBuilds, syncAtEndOpts, projectRef.Identifier, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
-	activatedTasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants, syncAtEndOpts, projectRef, g.TaskID)
+	activatedTasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants,
+		existingBuilds, syncAtEndOpts, projectRef, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
@@ -548,7 +560,7 @@ func validateCommands(projectTask *ProjectTask, cachedProject projectMaps, pvt p
 	return catcher.Resolve()
 }
 
-func (g *GeneratedProject) validateGeneratedProject(p *Project, cachedProject projectMaps) error {
+func (g *GeneratedProject) validateGeneratedProject(cachedProject projectMaps) error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(g.validateMaxTasksAndVariants())

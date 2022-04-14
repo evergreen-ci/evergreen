@@ -5111,10 +5111,7 @@ func TestFindHostsSuite(t *testing.T) {
 
 	s.setup = func(s *FindHostsSuite) {
 		s.NoError(db.ClearCollections(user.Collection, Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-		cmd := map[string]string{
-			"create": evergreen.ScopeCollection,
-		}
-		_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		hosts := s.hosts()
 		for _, h := range hosts {

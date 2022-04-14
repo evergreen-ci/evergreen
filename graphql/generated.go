@@ -1090,11 +1090,8 @@ type ComplexityRoot struct {
 	TriggerAlias struct {
 		Alias             func(childComplexity int) int
 		BuildVariantRegex func(childComplexity int) int
-		Command           func(childComplexity int) int
 		ConfigFile        func(childComplexity int) int
 		DateCutoff        func(childComplexity int) int
-		DefinitionID      func(childComplexity int) int
-		GenerateFile      func(childComplexity int) int
 		Level             func(childComplexity int) int
 		Project           func(childComplexity int) int
 		Status            func(childComplexity int) int
@@ -1104,6 +1101,18 @@ type ComplexityRoot struct {
 	UIConfig struct {
 		DefaultProject func(childComplexity int) int
 		UserVoice      func(childComplexity int) int
+	}
+
+	UpstreamProject struct {
+		Owner       func(childComplexity int) int
+		Project     func(childComplexity int) int
+		Repo        func(childComplexity int) int
+		ResourceID  func(childComplexity int) int
+		Revision    func(childComplexity int) int
+		Task        func(childComplexity int) int
+		TriggerID   func(childComplexity int) int
+		TriggerType func(childComplexity int) int
+		Version     func(childComplexity int) int
 	}
 
 	UseSpruceOptions struct {
@@ -1174,6 +1183,7 @@ type ComplexityRoot struct {
 		TaskCount         func(childComplexity int) int
 		TaskStatusCounts  func(childComplexity int, options *BuildVariantOptions) int
 		TaskStatuses      func(childComplexity int) int
+		UpstreamProject   func(childComplexity int) int
 		VersionTiming     func(childComplexity int) int
 	}
 
@@ -1465,6 +1475,7 @@ type VersionResolver interface {
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
+	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -6739,13 +6750,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TriggerAlias.BuildVariantRegex(childComplexity), true
 
-	case "TriggerAlias.command":
-		if e.complexity.TriggerAlias.Command == nil {
-			break
-		}
-
-		return e.complexity.TriggerAlias.Command(childComplexity), true
-
 	case "TriggerAlias.configFile":
 		if e.complexity.TriggerAlias.ConfigFile == nil {
 			break
@@ -6759,20 +6763,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TriggerAlias.DateCutoff(childComplexity), true
-
-	case "TriggerAlias.definitionID":
-		if e.complexity.TriggerAlias.DefinitionID == nil {
-			break
-		}
-
-		return e.complexity.TriggerAlias.DefinitionID(childComplexity), true
-
-	case "TriggerAlias.generateFile":
-		if e.complexity.TriggerAlias.GenerateFile == nil {
-			break
-		}
-
-		return e.complexity.TriggerAlias.GenerateFile(childComplexity), true
 
 	case "TriggerAlias.level":
 		if e.complexity.TriggerAlias.Level == nil {
@@ -6815,6 +6805,69 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UIConfig.UserVoice(childComplexity), true
+
+	case "UpstreamProject.owner":
+		if e.complexity.UpstreamProject.Owner == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Owner(childComplexity), true
+
+	case "UpstreamProject.project":
+		if e.complexity.UpstreamProject.Project == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Project(childComplexity), true
+
+	case "UpstreamProject.repo":
+		if e.complexity.UpstreamProject.Repo == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Repo(childComplexity), true
+
+	case "UpstreamProject.resourceID":
+		if e.complexity.UpstreamProject.ResourceID == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.ResourceID(childComplexity), true
+
+	case "UpstreamProject.revision":
+		if e.complexity.UpstreamProject.Revision == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Revision(childComplexity), true
+
+	case "UpstreamProject.task":
+		if e.complexity.UpstreamProject.Task == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Task(childComplexity), true
+
+	case "UpstreamProject.triggerID":
+		if e.complexity.UpstreamProject.TriggerID == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.TriggerID(childComplexity), true
+
+	case "UpstreamProject.triggerType":
+		if e.complexity.UpstreamProject.TriggerType == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.TriggerType(childComplexity), true
+
+	case "UpstreamProject.version":
+		if e.complexity.UpstreamProject.Version == nil {
+			break
+		}
+
+		return e.complexity.UpstreamProject.Version(childComplexity), true
 
 	case "UseSpruceOptions.hasUsedSpruceBefore":
 		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
@@ -7178,6 +7231,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.TaskStatuses(childComplexity), true
+
+	case "Version.upstreamProject":
+		if e.complexity.Version.UpstreamProject == nil {
+			break
+		}
+
+		return e.complexity.Version.UpstreamProject(childComplexity), true
 
 	case "Version.versionTiming":
 		if e.complexity.Version.VersionTiming == nil {
@@ -7664,6 +7724,19 @@ type Version {
   taskStatuses: [String!]!
   baseTaskStatuses: [String!]!
   manifest: Manifest
+  upstreamProject: UpstreamProject
+}
+
+type UpstreamProject {
+  owner: String!
+  repo: String!
+  revision: String!
+  project: String!
+  triggerID: String! # This is the ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
+  resourceID: String! # This is the ID of the UI linkable resource that triggered the upstream version (corresponds to a task ID or version ID)
+  task: Task
+  version: Version
+  triggerType: String!
 }
 
 type Manifest {
@@ -7971,16 +8044,13 @@ input RepoRefInput {
 }
 
 input TriggerAliasInput {
-  project: String
+  project: String!
   level: String!
-  definitionID: String!
   buildVariantRegex: String!
   taskRegex: String!
   status: String!
   dateCutoff: Int!
   configFile: String!
-  generateFile: String!
-  command: String!
   alias: String!
 }
 
@@ -8783,16 +8853,13 @@ type RepoRef {
 }
 
 type TriggerAlias {
-  project: String
+  project: String!
   level: String!
-  definitionID: String!
   buildVariantRegex: String!
   taskRegex: String!
   status: String!
   dateCutoff: Int!
   configFile: String!
-  generateFile: String!
-  command: String!
   alias: String!
 }
 
@@ -35261,11 +35328,14 @@ func (ec *executionContext) _TriggerAlias_project(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TriggerAlias_level(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
@@ -35287,41 +35357,6 @@ func (ec *executionContext) _TriggerAlias_level(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Level, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TriggerAlias_definitionID(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DefinitionID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35513,76 +35548,6 @@ func (ec *executionContext) _TriggerAlias_configFile(ctx context.Context, field 
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _TriggerAlias_generateFile(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.GenerateFile, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TriggerAlias_command(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Command, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _TriggerAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -35683,6 +35648,315 @@ func (ec *executionContext) _UIConfig_defaultProject(ctx context.Context, field 
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_owner(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Owner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_repo(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_revision(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Revision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_project(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Project, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_triggerID(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TriggerID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_resourceID(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResourceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_task(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Task, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_version(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UpstreamProject_triggerType(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UpstreamProject",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TriggerType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
@@ -37398,6 +37672,38 @@ func (ec *executionContext) _Version_manifest(ctx context.Context, field graphql
 	res := resTmp.(*Manifest)
 	fc.Result = res
 	return ec.marshalOManifest2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐManifest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_upstreamProject(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().UpstreamProject(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*UpstreamProject)
+	fc.Result = res
+	return ec.marshalOUpstreamProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpstreamProject(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _VersionTiming_makespan(ctx context.Context, field graphql.CollectedField, obj *VersionTiming) (ret graphql.Marshaler) {
@@ -41823,7 +42129,7 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
-			it.Project, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Project, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41832,14 +42138,6 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("level"))
 			it.Level, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "definitionID":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("definitionID"))
-			it.DefinitionID, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -41880,22 +42178,6 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configFile"))
 			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "generateFile":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generateFile"))
-			it.GenerateFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "command":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("command"))
-			it.Command, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -48327,13 +48609,11 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("TriggerAlias")
 		case "project":
 			out.Values[i] = ec._TriggerAlias_project(ctx, field, obj)
-		case "level":
-			out.Values[i] = ec._TriggerAlias_level(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "definitionID":
-			out.Values[i] = ec._TriggerAlias_definitionID(ctx, field, obj)
+		case "level":
+			out.Values[i] = ec._TriggerAlias_level(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -48359,16 +48639,6 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 			}
 		case "configFile":
 			out.Values[i] = ec._TriggerAlias_configFile(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "generateFile":
-			out.Values[i] = ec._TriggerAlias_generateFile(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "command":
-			out.Values[i] = ec._TriggerAlias_command(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -48403,6 +48673,67 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = ec._UIConfig_userVoice(ctx, field, obj)
 		case "defaultProject":
 			out.Values[i] = ec._UIConfig_defaultProject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var upstreamProjectImplementors = []string{"UpstreamProject"}
+
+func (ec *executionContext) _UpstreamProject(ctx context.Context, sel ast.SelectionSet, obj *UpstreamProject) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, upstreamProjectImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpstreamProject")
+		case "owner":
+			out.Values[i] = ec._UpstreamProject_owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "repo":
+			out.Values[i] = ec._UpstreamProject_repo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._UpstreamProject_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "project":
+			out.Values[i] = ec._UpstreamProject_project(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "triggerID":
+			out.Values[i] = ec._UpstreamProject_triggerID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "resourceID":
+			out.Values[i] = ec._UpstreamProject_resourceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "task":
+			out.Values[i] = ec._UpstreamProject_task(ctx, field, obj)
+		case "version":
+			out.Values[i] = ec._UpstreamProject_version(ctx, field, obj)
+		case "triggerType":
+			out.Values[i] = ec._UpstreamProject_triggerType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -48889,6 +49220,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_manifest(ctx, field, obj)
+				return res
+			})
+		case "upstreamProject":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_upstreamProject(ctx, field, obj)
 				return res
 			})
 		default:
@@ -54581,6 +54923,13 @@ func (ec *executionContext) marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 		return graphql.Null
 	}
 	return ec._UIConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOUpstreamProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpstreamProject(ctx context.Context, sel ast.SelectionSet, v *UpstreamProject) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UpstreamProject(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUseSpruceOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUseSpruceOptions(ctx context.Context, sel ast.SelectionSet, v *model.APIUseSpruceOptions) graphql.Marshaler {

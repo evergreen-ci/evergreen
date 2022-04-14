@@ -1012,14 +1012,10 @@ func TestTaskStatusCount(t *testing.T) {
 	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})
 	counts.IncrementStatus(evergreen.TaskDispatched, details)
 	counts.IncrementStatus(evergreen.TaskInactive, details)
-	counts.IncrementStatus(evergreen.TaskContainerUnallocated, details)
-	counts.IncrementStatus(evergreen.TaskContainerAllocated, details)
 	assert.Equal(1, counts.TimedOut)
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
-	assert.Equal(1, counts.ContainerAllocated)
-	assert.Equal(1, counts.ContainerUnallocated)
 }
 
 func TestPopulateTestResultsForDisplayTask(t *testing.T) {
@@ -1103,26 +1099,6 @@ func TestBlocked(t *testing.T) {
 			t2 := Task{
 				Id:     "t2",
 				Status: evergreen.TaskUndispatched,
-				DependsOn: []Dependency{
-					{TaskId: "t3", Unattainable: true},
-				},
-			}
-			require.NoError(t, t2.Insert())
-			dependencies := map[string]*Task{t2.Id: &t2}
-			state, err := t1.BlockedState(dependencies)
-			assert.NoError(t, err)
-			assert.Equal(t, "", state)
-		},
-		"BlockedStateContainerStatus": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: AllStatuses},
-				},
-			}
-			t2 := Task{
-				Id:     "t2",
-				Status: evergreen.TaskContainerUnallocated,
 				DependsOn: []Dependency{
 					{TaskId: "t3", Unattainable: true},
 				},
@@ -2123,11 +2099,12 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 
 	getDispatchableContainerTask := func() Task {
 		return Task{
-			Id:                utility.RandomString(),
-			Activated:         true,
-			ActivatedTime:     time.Now(),
-			Status:            evergreen.TaskContainerAllocated,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			Id:                 utility.RandomString(),
+			Activated:          true,
+			ActivatedTime:      time.Now(),
+			Status:             evergreen.TaskUndispatched,
+			ContainerAllocated: true,
+			ExecutionPlatform:  ExecutionPlatformContainer,
 		}
 	}
 
@@ -2151,8 +2128,8 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
 			checkTaskDispatched(t, tsk.Id)
 		},
-		"FailsWithTaskWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskContainerUnallocated
+		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
 
 			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
@@ -2211,10 +2188,11 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		dbTask, err := FindOneId(taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+		assert.False(t, dbTask.ContainerAllocated)
 		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
 		assert.Zero(t, dbTask.AgentVersion)
+		assert.Zero(t, dbTask.ContainerAllocatedTime)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
@@ -2224,15 +2202,16 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
 			checkTaskUnallocated(t, tsk.Id)
 		},
-		"FailsWithoutContainerAllocatedStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskSucceeded
+		"FailsWithUnallocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
+
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
-		"FailsWithDifferentDBTaskStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskContainerUnallocated
+		"FailsWithUnallocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
-			tsk.Status = evergreen.TaskContainerAllocated
+			tsk.ContainerAllocated = true
 
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
@@ -2248,18 +2227,216 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)
 			defer tcancel()
 
-			tsk := Task{
-				Id:                utility.RandomString(),
-				Activated:         true,
-				ActivatedTime:     time.Now(),
-				Status:            evergreen.TaskContainerAllocated,
-				DispatchTime:      time.Now(),
-				LastHeartbeat:     time.Now(),
-				ExecutionPlatform: ExecutionPlatformContainer,
-			}
 			require.NoError(t, db.Clear(Collection))
+			tsk := Task{
+				Id:                     utility.RandomString(),
+				Activated:              true,
+				ActivatedTime:          time.Now(),
+				Status:                 evergreen.TaskUndispatched,
+				ContainerAllocated:     true,
+				ContainerAllocatedTime: time.Now(),
+				DispatchTime:           time.Now(),
+				LastHeartbeat:          time.Now(),
+				ExecutionPlatform:      ExecutionPlatformContainer,
+			}
 
 			tCase(tctx, t, env, tsk)
+		})
+	}
+}
+
+func TestIsDispatchable(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForHostTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.IsDispatchable())
+		},
+		"ReturnsTrueForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.True(t, tsk.IsDispatchable())
+		},
+		"ReturnsTrueForContainerTaskWithoutContainerAllocated": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			tsk.ContainerAllocated = false
+			assert.True(t, tsk.IsDispatchable())
+		},
+		"ReturnsTrueForContainerTaskWithContainerAllocated": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			tsk.ContainerAllocated = true
+			assert.True(t, tsk.IsDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.IsDispatchable())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.IsDispatchable())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.IsDispatchable())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			hostDispatchableTask := Task{
+				Id:                "task-id",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				ExecutionPlatform: ExecutionPlatformHost,
+			}
+			tCase(t, hostDispatchableTask)
+		})
+	}
+}
+
+func TestIsHostDispatchable(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsTrueForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.True(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForContainerTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.IsHostDispatchable())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			hostDispatchableTask := Task{
+				Id:                "task-id",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				ExecutionPlatform: ExecutionPlatformHost,
+			}
+			tCase(t, hostDispatchableTask)
+		})
+	}
+}
+
+func TestIsContainerDispatchable(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutContainerAllocated": func(t *testing.T, tsk Task) {
+			tsk.ContainerAllocated = false
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithUnattainableDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:       "dependency0",
+					Unattainable: true,
+					Finished:     true,
+				},
+			}
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithUnfinishedDependencies": func(t *testing.T, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:       "dependency0",
+					Unattainable: false,
+					Finished:     false,
+				},
+			}
+			assert.False(t, tsk.IsContainerDispatchable())
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformHost
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.IsContainerDispatchable())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			containerDispatchableTask := Task{
+				Id:                 "task-id",
+				Status:             evergreen.TaskUndispatched,
+				Activated:          true,
+				ContainerAllocated: true,
+				ExecutionPlatform:  ExecutionPlatformContainer,
+			}
+			tCase(t, containerDispatchableTask)
+		})
+	}
+}
+
+func TestShouldAllocateContainer(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
+			assert.True(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ""
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskAlreadyAllocatedContainer": func(t *testing.T, tsk Task) {
+			tsk.ContainerAllocated = true
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformHost
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskDispatched
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
+			tsk.Activated = false
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
+			tsk.DisplayOnly = true
+			tsk.ExecutionPlatform = ""
+			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
+			assert.False(t, tsk.ShouldAllocateContainer())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			taskThatNeedsContainerAllocation := Task{
+				Id:                "task-id",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				ExecutionPlatform: ExecutionPlatformContainer,
+			}
+			tCase(t, taskThatNeedsContainerAllocation)
 		})
 	}
 }
@@ -2840,6 +3017,96 @@ func TestAbortVersion(t *testing.T) {
 	assert.NotEmpty(t, otherExecTask.AbortInfo.TaskID)
 }
 
+func TestArchive(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.AllLogCollection))
+	}()
+	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
+		dbTask, err := FindOneOldId(oldTaskID)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.NotZero(t, dbTask.OldTaskId)
+		assert.NotEqual(t, dbTask.OldTaskId, dbTask.Id)
+		assert.True(t, dbTask.Archived)
+		assert.False(t, dbTask.Aborted)
+		assert.Zero(t, dbTask.AbortInfo)
+	}
+
+	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, execution int) {
+		dbTask, err := FindOneOldId(oldTaskID)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+
+		events, err := event.FindAllByResourceID(hostID)
+		require.NoError(t, err)
+		assert.NotEmpty(t, events)
+
+		for _, e := range events {
+			hostEventData, ok := e.Data.(*event.HostEventData)
+			require.True(t, ok)
+			require.Equal(t, hostEventData.TaskId, dbTask.OldTaskId)
+			require.Equal(t, hostEventData.TaskExecution, dbTask.Execution)
+		}
+	}
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"ArchivesHostTaskAndUpdatesEventLog": func(t *testing.T, tsk Task) {
+			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
+			archivedExecution := tsk.Execution
+			require.NoError(t, tsk.Insert())
+
+			hostID := "hostID"
+			event.LogHostRunningTaskSet(hostID, tsk.Id)
+			event.LogHostRunningTaskCleared(hostID, tsk.Id)
+
+			require.NoError(t, tsk.Archive())
+
+			checkTaskIsArchived(t, archivedTaskID)
+			checkEventLogHostTaskExecutions(t, hostID, archivedTaskID, archivedExecution)
+		},
+		"ArchivesDisplayTaskAndItsExecutionTasks": func(t *testing.T, dt Task) {
+			execTask := Task{
+				Id:            "execTask",
+				DisplayTaskId: utility.ToStringPtr(dt.Id),
+			}
+			archivedExecTaskID := MakeOldID(execTask.Id, execTask.Execution)
+			archivedExecution := execTask.Execution
+			require.NoError(t, execTask.Insert())
+
+			hostID := "hostID"
+			event.LogHostRunningTaskSet(hostID, execTask.Id)
+			event.LogHostRunningTaskCleared(hostID, execTask.Id)
+
+			dt.DisplayOnly = true
+			dt.ExecutionTasks = []string{execTask.Id}
+			archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
+			require.NoError(t, dt.Insert())
+
+			require.NoError(t, dt.Archive())
+
+			checkTaskIsArchived(t, archivedExecTaskID)
+			checkTaskIsArchived(t, archivedDisplayTaskID)
+
+			checkEventLogHostTaskExecutions(t, hostID, archivedExecTaskID, archivedExecution)
+		},
+		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
+			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
+			tsk.ExecutionPlatform = ExecutionPlatformContainer
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.Archive())
+			checkTaskIsArchived(t, archivedTaskID)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.AllLogCollection))
+			tsk := Task{
+				Id: "taskID",
+			}
+			tCase(t, tsk)
+		})
+	}
+}
+
 func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -3240,49 +3507,49 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.Require().NoError(db.ClearCollections(Collection, OldCollection, annotations.Collection))
-	task_known_2 := &Task{
+	taskKnown2 := &Task{
 		Id:        "task_known",
 		Execution: 2,
 		Version:   "version_known",
 		Status:    evergreen.TaskSucceeded,
 	}
-	task_not_known := &Task{
+	taskNotKnown := &Task{
 		Id:        "task_not_known",
 		Execution: 0,
 		Version:   "version_not_known",
 		Status:    evergreen.TaskFailed,
 	}
-	task_no_annotation := &Task{
+	taskNoAnnotation := &Task{
 		Id:        "task_no_annotation",
 		Execution: 0,
 		Version:   "version_no_annotation",
 		Status:    evergreen.TaskFailed,
 	}
-	task_with_empty_issues := &Task{
+	taskWithEmptyIssues := &Task{
 		Id:        "task_with_empty_issues",
 		Execution: 0,
 		Version:   "version_with_empty_issues",
 		Status:    evergreen.TaskFailed,
 	}
-	s.NoError(task_known_2.Insert())
-	s.NoError(task_not_known.Insert())
-	s.NoError(task_no_annotation.Insert())
-	s.NoError(task_with_empty_issues.Insert())
+	s.NoError(taskKnown2.Insert())
+	s.NoError(taskNotKnown.Insert())
+	s.NoError(taskNoAnnotation.Insert())
+	s.NoError(taskWithEmptyIssues.Insert())
 
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
 
-	a_execution_0 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
-	a_execution_1 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 1, SuspectedIssues: []annotations.IssueLink{issue}}
-	a_execution_2 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 2, Issues: []annotations.IssueLink{issue}}
+	annotationExecution0 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	annotationExecution1 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 1, SuspectedIssues: []annotations.IssueLink{issue}}
+	annotationExecution2 := annotations.TaskAnnotation{TaskId: "task_known", TaskExecution: 2, Issues: []annotations.IssueLink{issue}}
 
-	a_with__suspected_issue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
-	a_with_empty_issues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
+	annotationWithSuspectedIssue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
+	annotationWithEmptyIssues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
 
-	s.NoError(a_execution_0.Upsert())
-	s.NoError(a_execution_1.Upsert())
-	s.NoError(a_execution_2.Upsert())
-	s.NoError(a_with__suspected_issue.Upsert())
-	s.NoError(a_with_empty_issues.Upsert())
+	s.NoError(annotationExecution0.Upsert())
+	s.NoError(annotationExecution1.Upsert())
+	s.NoError(annotationExecution2.Upsert())
+	s.NoError(annotationWithSuspectedIssue.Upsert())
+	s.NoError(annotationWithEmptyIssues.Upsert())
 
 	opts := GetTasksByVersionOptions{}
 	t, _, err := GetTasksByVersion("version_known", opts)
@@ -3304,7 +3571,6 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	t, _, err = GetTasksByVersion("version_with_empty_issues", opts)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, t[0].DisplayStatus)
-
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {

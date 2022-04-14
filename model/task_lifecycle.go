@@ -50,9 +50,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			// activate the task's dependencies as well
 			if !t.OverrideDependencies {
 				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
-				if err != nil {
-					catcher.Wrapf(err, "getting dependencies up for task '%s'", t.Id)
-				}
+				catcher.Wrapf(err, "getting dependencies up for task '%s'", t.Id)
 				if t.IsPartOfSingleHostTaskGroup() {
 					for _, dep := range deps {
 						// reset any already finished tasks in the same task group
@@ -68,7 +66,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			}
 
 			// Investigating strange dispatch state as part of EVG-13144
-			if !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
+			if t.IsHostTask() && !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 				catcher.Wrapf(resetTask(t.Id, caller, false), "resetting task '%s'", t.Id)
 			} else {
 				tasksToActivate = append(tasksToActivate, originalTasks...)
@@ -339,10 +337,9 @@ func AbortTask(taskId, caller string) error {
 // tasks for the same build variant + display name + project combination
 // as the task.
 func DeactivatePreviousTasks(t *task.Task, caller string) error {
-	statuses := []string{evergreen.TaskUndispatched, evergreen.TaskContainerUnallocated}
 	filter, sort := task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
-		statuses,
+		[]string{evergreen.TaskUndispatched},
 		t.BuildVariant,
 		t.DisplayName,
 		t.Project,
@@ -1289,6 +1286,8 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 	return nil
 }
 
+// MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
+// resets their parent display tasks.
 func MarkTasksReset(taskIds []string) error {
 	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
@@ -1299,20 +1298,14 @@ func MarkTasksReset(taskIds []string) error {
 		return errors.WithStack(err)
 	}
 
-	for _, t := range tasks {
-		if t.DisplayOnly {
-			taskIds = append(taskIds, t.Id)
-		}
-	}
-
-	if err = task.ResetTasks(taskIds); err != nil {
+	if err = task.ResetTasks(tasks); err != nil {
 		return errors.Wrap(err, "resetting tasks in database")
 	}
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Wrap(UpdateUnblockedDependencies(&t, false, ""), "clearing cached unattainable dependencies")
-		catcher.Wrap(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished")
+		catcher.Wrapf(UpdateUnblockedDependencies(&t, false, ""), "clearing cached unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
 	return catcher.Resolve()
@@ -1548,7 +1541,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 			// Need to consider tasks that have been dispatched since the last exec task finished.
-		} else if (execTask.IsHostDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
+		} else if (execTask.IsDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
 			hasTasksToRun = true
 		}
 

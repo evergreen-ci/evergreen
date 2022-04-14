@@ -132,7 +132,7 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
-		event.LogPodAssignedTask(p.ID, t.Id)
+		event.LogPodAssignedTask(p.ID, t.Id, t.Execution)
 		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
 
 		return t, nil
@@ -197,11 +197,11 @@ func (pd *PodDispatcher) dequeue(ctx context.Context, env evergreen.Environment)
 }
 
 // dequeueUndispatchableTask removes the task from the dispatcher and, if the
-// task status indicates a container has been allocated for it, marks it as
+// task indicates a container has been allocated for it, marks it as
 // unallocated.
 func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
-	if t.Status != evergreen.TaskContainerAllocated {
-		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task")
+	if !t.ContainerAllocated {
+		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task that is already in a non-allocated state")
 	}
 
 	if err := t.MarkAsContainerDeallocated(ctx, env); err != nil {

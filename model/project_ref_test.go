@@ -12,6 +12,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -282,14 +283,12 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 func TestChangeOwnerRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := testutil.TestConfig()
 	settings.GithubOrgs = []string{"evergreen-ci"}
 	settings.GithubOrgs = []string{"newOwner"}
 	assert.NoError(t, evergreen.UpdateConfig(settings))
 
-	evergreen.SetEnvironment(env)
 	pRef := ProjectRef{
 		Id:        "myProject",
 		Owner:     "evergreen-ci",
@@ -327,8 +326,7 @@ func TestChangeOwnerRepo(t *testing.T) {
 func TestAttachToRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	pRef := ProjectRef{
 		Id:     "myProject",
@@ -506,8 +504,7 @@ func TestDetachFromRepo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, ProjectAliasCollection))
-			env := evergreen.GetEnvironment()
-			_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
 				Id:        "myProject",
@@ -863,7 +860,9 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
 		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	doc1 := &ProjectRef{
 		Id:                    "id1",
 		Owner:                 "mongodb",
@@ -1037,8 +1036,9 @@ func TestCreateNewRepoRef(t *testing.T) {
 		}
 	}
 
+	env := testutil.NewEnvironment(ctx, t)
 	// verify that both the project and repo are part of the scope
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 	scope, err := rm.GetScope(context.TODO(), GetRepoAdminScope(repoRef.Id))
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
@@ -1053,8 +1053,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	require := require.New(t) //nolint
 
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(db.CreateCollections(evergreen.ScopeCollection))
 
 	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
 	assert.NoError(err)
@@ -1522,9 +1521,12 @@ func TestFindDownstreamProjects(t *testing.T) {
 }
 
 func TestAddPermissions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	env := testutil.NewEnvironment(ctx, t)
 	u := user.DBUser{
 		Id: "me",
 	}
@@ -1540,7 +1542,7 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
 	assert.NotNil(scope)
@@ -1584,9 +1586,11 @@ func TestAddPermissions(t *testing.T) {
 }
 
 func TestUpdateAdminRoles(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 	adminScope := gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
@@ -1626,9 +1630,11 @@ func TestUpdateAdminRoles(t *testing.T) {
 }
 
 func TestUpdateAdminRolesError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, user.Collection))
-	env := evergreen.GetEnvironment()
-	_ = env.DB().RunCommand(nil, map[string]string{"create": evergreen.ScopeCollection})
+	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
 		SystemRoles: []string{"admin"},
@@ -1674,6 +1680,61 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
+}
+
+func TestGetProjectTasksWithOptions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection))
+	p := ProjectRef{
+		Id:         "my_project",
+		Identifier: "my_ident",
+	}
+	assert.NoError(t, p.Insert())
+
+	// total of 50 tasks eligible to be found
+	for i := 0; i < 100; i++ {
+		myTask := task.Task{
+			Id:                  fmt.Sprintf("t%d", i),
+			RevisionOrderNumber: i,
+			DisplayName:         "t1",
+			Project:             "my_project",
+			Status:              evergreen.TaskSucceeded,
+		}
+		if i%3 == 0 {
+			myTask.BuildVariant = "bv1"
+		}
+		if i%2 == 0 {
+			myTask.Status = evergreen.TaskUndispatched
+		}
+		assert.NoError(t, myTask.Insert())
+	}
+	opts := GetProjectTasksOpts{}
+
+	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, defaultVersionLimit)
+
+	opts.Limit = 5
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 5)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
+	assert.Equal(t, tasks[4].RevisionOrderNumber, 91)
+
+	opts.Limit = 10
+	opts.StartAt = 20
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 10)
+	assert.Equal(t, tasks[0].RevisionOrderNumber, 19)
+	assert.Equal(t, tasks[9].RevisionOrderNumber, 1)
+
+	opts.Limit = defaultVersionLimit
+	opts.StartAt = 90
+	// 1 in every 6 tasks should qualify for this
+	opts.BuildVariant = "bv1"
+	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 15)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {

@@ -119,17 +119,26 @@ func TestHostPostHandler(t *testing.T) {
 
 func TestHostStopHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, event.SubscriptionsCollection))
+	}()
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &hostStopHandler{
-		env: evergreen.GetEnvironment(),
+		env: testutil.NewEnvironment(ctx, t),
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	hosts := []host.Host{
 		host.Host{
 			Id:     "host-stopped",
 			Status: evergreen.HostStopped,
+		},
+		host.Host{
+			Id:     "host-stopping",
+			Status: evergreen.HostStopping,
 		},
 		host.Host{
 			Id:     "host-provisioning",
@@ -144,17 +153,22 @@ func TestHostStopHandler(t *testing.T) {
 		assert.NoError(t, hostToAdd.Insert())
 	}
 
-	h.hostID = "host-stopped"
+	h.hostID = hosts[0].Id
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
-	h.hostID = "host-provisioning"
+	h.hostID = hosts[1].Id
+	resp = h.Run(ctx)
+	require.NotZero(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	h.hostID = hosts[2].Id
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
-	h.hostID = "host-running"
+	h.hostID = hosts[3].Id
 	h.subscriptionType = event.SlackSubscriberType
 	resp = h.Run(ctx)
 	assert.NotNil(t, resp)
@@ -166,13 +180,18 @@ func TestHostStopHandler(t *testing.T) {
 }
 
 func TestHostStartHandler(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))
+	}()
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &hostStartHandler{
-		env: evergreen.GetEnvironment(),
+		env: testutil.NewEnvironment(ctx, t),
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	hosts := []host.Host{
 		host.Host{
@@ -192,27 +211,29 @@ func TestHostStartHandler(t *testing.T) {
 
 	h.hostID = "host-running"
 	resp := h.Run(ctx)
-	assert.NotNil(t, resp)
+	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 	h.hostID = "host-stopped"
 	h.subscriptionType = event.SlackSubscriberType
 	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
+	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
 	subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
 	assert.NoError(t, err)
-	assert.Len(t, subscriptions, 2)
+	assert.Len(t, subscriptions, 1)
 }
 
 func TestCreateVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &createVolumeHandler{
-		env:      evergreen.GetEnvironment(),
+		env:      testutil.NewEnvironment(ctx, t),
 		provider: evergreen.ProviderNameMock,
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	v := host.Volume{ID: "volume1", Size: 15, CreatedBy: "user"}
 	assert.NoError(t, v.Insert())
 	v = host.Volume{ID: "volume2", Size: 35, CreatedBy: "user"}
@@ -239,11 +260,13 @@ func TestCreateVolumeHandler(t *testing.T) {
 
 func TestDeleteVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &deleteVolumeHandler{
-		env:      evergreen.GetEnvironment(),
+		env:      testutil.NewEnvironment(ctx, t),
 		provider: evergreen.ProviderNameMock,
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	volumes := []host.Volume{
 		host.Volume{
@@ -280,10 +303,12 @@ func TestDeleteVolumeHandler(t *testing.T) {
 
 func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &attachVolumeHandler{
-		env: evergreen.GetEnvironment(),
+		env: testutil.NewEnvironment(ctx, t),
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	hosts := []host.Host{
 		host.Host{
 			Id:        "my-host",
@@ -339,10 +364,12 @@ func TestAttachVolumeHandler(t *testing.T) {
 
 func TestDetachVolumeHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &detachVolumeHandler{
-		env: evergreen.GetEnvironment(),
+		env: testutil.NewEnvironment(ctx, t),
 	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	hosts := []host.Host{
 		host.Host{
 			Id:        "my-host",
@@ -376,8 +403,10 @@ func TestDetachVolumeHandler(t *testing.T) {
 }
 
 func TestModifyVolumeHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	h := &modifyVolumeHandler{
-		env:  evergreen.GetEnvironment(),
+		env:  testutil.NewEnvironment(ctx, t),
 		opts: &model.VolumeModifyOptions{},
 	}
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 200
@@ -406,7 +435,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 	h.provider = evergreen.ProviderNameMock
 	h.opts = &model.VolumeModifyOptions{}
 	// another user
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "different-user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "different-user"})
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusUnauthorized, resp.Status())
@@ -449,9 +478,11 @@ func TestModifyVolumeHandler(t *testing.T) {
 }
 
 func TestGetVolumesHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumesHandler{}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	h1 := host.Host{
 		Id:        "has-a-volume",
@@ -511,9 +542,11 @@ func TestGetVolumesHandler(t *testing.T) {
 }
 
 func TestGetVolumeByIDHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection))
 	h := &getVolumeByIDHandler{}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	h1 := host.Host{
 		Id:        "has-a-volume",

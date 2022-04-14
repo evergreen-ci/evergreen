@@ -9,9 +9,13 @@ import (
 )
 
 func TestLDAPRoleMapAddAndRemove(t *testing.T) {
+	originalEnv := GetEnvironment()
 	env, err := NewEnvironment(context.Background(), filepath.Join("testdata", "smoke_config.yml"), nil)
 	require.NoError(t, err)
 	SetEnvironment(env)
+	defer func() {
+		SetEnvironment(originalEnv)
+	}()
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

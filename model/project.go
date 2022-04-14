@@ -36,6 +36,12 @@ const (
 	waterfallTasksQueryMaxTime = 90 * time.Second
 )
 
+type GetProjectTasksOpts struct {
+	Limit        int    `json:"num_versions"`
+	BuildVariant string `json:"build_variant"`
+	StartAt      int    `json:"start_at"`
+}
+
 type Project struct {
 	Enabled             bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback            bool                       `yaml:"stepback,omitempty" bson:"stepback"`
@@ -297,12 +303,12 @@ type ParameterInfo struct {
 // Container holds all properties that are configurable when defining a container
 // for tasks and build variants to run on in a project YAML file.
 type Container struct {
-	Name       string             `yaml:"name" bson:"name"`
-	WorkingDir string             `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string             `yaml:"image" bson:"image"`
-	Size       string             `yaml:"size,omitempty" bson:"size"`
-	Resources  ContainerResources `yaml:"resources,omitempty" bson:"resources"`
-	System     ContainerSystem    `yaml:"system,omitempty" bson:"system"`
+	Name       string              `yaml:"name" bson:"name"`
+	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
+	Image      string              `yaml:"image" bson:"image"`
+	Size       string              `yaml:"size,omitempty" bson:"size"`
+	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
+	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
 }
 
 // ContainerSystem specifies the architecture and OS for the running container to use.

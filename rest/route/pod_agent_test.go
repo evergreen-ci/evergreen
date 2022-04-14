@@ -164,8 +164,8 @@ func TestPodAgentCedarConfig(t *testing.T) {
 }
 
 func TestPodAgentNextTask(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment){
-		"ParseSetsPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment){
+		"ParseSetsPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			r, err := http.NewRequest(http.MethodGet, "/url", nil)
 			require.NoError(t, err)
 			podID := "some_pod_id"
@@ -173,13 +173,13 @@ func TestPodAgentNextTask(t *testing.T) {
 			require.NoError(t, rh.Parse(ctx, r))
 			assert.Equal(t, podID, rh.podID)
 		},
-		"ParseFailsWithoutPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment) {
+		"ParseFailsWithoutPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			r, err := http.NewRequest(http.MethodGet, "/url", nil)
 			require.NoError(t, err)
 			assert.Error(t, rh.Parse(ctx, r))
 			assert.Zero(t, rh.podID)
 		},
-		"RunEnqueuesTerminationJob": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env *mock.Environment) {
+		"RunEnqueuesTerminationJob": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			rh.podID = "some_pod_id"
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())

@@ -548,3 +548,49 @@ func TestGetPreviousPageCommit(t *testing.T) {
 	assert.NotNil(t, orderNumber)
 	assert.Equal(t, 0, utility.FromIntPtr(orderNumber))
 }
+
+func TestVersionSetNotActivated(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+	}()
+	checkInactive := func(t *testing.T, versionID string) {
+		dbVersion, err := VersionFindOneId(versionID)
+		require.NoError(t, err)
+		require.NotZero(t, dbVersion)
+		assert.False(t, utility.FromBoolPtr(dbVersion.Activated))
+	}
+	for tName, tCase := range map[string]func(t *testing.T, v Version){
+		"DoesNotModifyDefaultInactiveVersion": func(t *testing.T, v Version) {
+			require.NoError(t, v.Insert())
+
+			require.NoError(t, v.SetNotActivated())
+
+			checkInactive(t, v.Id)
+		},
+		"DeactivatesActiveVersion": func(t *testing.T, v Version) {
+			v.Activated = utility.TruePtr()
+			require.NoError(t, v.Insert())
+
+			require.NoError(t, v.SetNotActivated())
+
+			checkInactive(t, v.Id)
+		},
+		"PreservesAlreadyInactiveVersion": func(t *testing.T, v Version) {
+			v.Activated = utility.FalsePtr()
+			require.NoError(t, v.Insert())
+
+			require.NoError(t, v.SetNotActivated())
+
+			checkInactive(t, v.Id)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection))
+			v := Version{
+				Id: "versionID",
+			}
+			tCase(t, v)
+		})
+	}
+
+}
