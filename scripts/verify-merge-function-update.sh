@@ -13,8 +13,8 @@ PROJECT_PARSER_FILE_PATH=model/project_parser.go
 # Find the common ancestor between the current set of changes and the upstream branch,
 # then figure out which lines (if any) in the ParserProject struct have been modified since the base revision.
 common_ancestor=$(git merge-base ${BRANCH_NAME}@{upstream} HEAD);
-project_parser_start_line_num=$(git grep -n -e "type ParserProject struct" "${PROJECT_PARSER_FILE_PATH}" | cut -d ':' -f 2);
-project_parser_end_line_num=$(git grep -n -e "End of ParserProject struct" "${PROJECT_PARSER_FILE_PATH}" | cut -d ':' -f 2);
+project_parser_start_line_num=$(git grep -n -e "Beginning of ParserProject mergeable fields" "${PROJECT_PARSER_FILE_PATH}" | cut -d ':' -f 2);
+project_parser_end_line_num=$(git grep -n -e "End of ParserProject mergeable fields" "${PROJECT_PARSER_FILE_PATH}" | cut -d ':' -f 2);
 project_parser_base_revisions=$(git blame -l -L ${project_parser_start_line_num},${project_parser_end_line_num} "${common_ancestor}" -- "${PROJECT_PARSER_FILE_PATH}" | cut -d ' ' -f 1);
 project_parser_updated_revisions=$(git blame -l -L ${project_parser_start_line_num},${project_parser_end_line_num} "${PROJECT_PARSER_FILE_PATH}" | cut -d ' ' -f 1);
 
