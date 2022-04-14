@@ -214,16 +214,6 @@
       }
     },
     {
-      "query_file": "taskDuration.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "taskDuration": 12345
-          }
-        }
-      }
-    },
-    {
       "query_file": "canAbort.graphql",
       "result": {
         "data": {

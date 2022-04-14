@@ -66,8 +66,6 @@ models:
         resolver: true
       baseTask:
         resolver: true
-      taskDuration:
-        resolver: true
       baseStatus:
         resolver: true
       buildVariantDisplayName:

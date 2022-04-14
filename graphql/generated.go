@@ -927,7 +927,6 @@ type ComplexityRoot struct {
 		SpawnHostLink           func(childComplexity int) int
 		StartTime               func(childComplexity int) int
 		Status                  func(childComplexity int) int
-		TaskDuration            func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TimeTaken               func(childComplexity int) int
@@ -1090,8 +1089,11 @@ type ComplexityRoot struct {
 	TriggerAlias struct {
 		Alias             func(childComplexity int) int
 		BuildVariantRegex func(childComplexity int) int
+		Command           func(childComplexity int) int
 		ConfigFile        func(childComplexity int) int
 		DateCutoff        func(childComplexity int) int
+		DefinitionID      func(childComplexity int) int
+		GenerateFile      func(childComplexity int) int
 		Level             func(childComplexity int) int
 		Project           func(childComplexity int) int
 		Status            func(childComplexity int) int
@@ -1434,7 +1436,6 @@ type TaskResolver interface {
 
 	Status(ctx context.Context, obj *model.APITask) (string, error)
 
-	TaskDuration(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
 	VersionMetadata(ctx context.Context, obj *model.APITask) (*model.APIVersion, error)
 }
@@ -6008,13 +6009,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.Status(childComplexity), true
 
-	case "Task.taskDuration":
-		if e.complexity.Task.TaskDuration == nil {
-			break
-		}
-
-		return e.complexity.Task.TaskDuration(childComplexity), true
-
 	case "Task.taskGroup":
 		if e.complexity.Task.TaskGroup == nil {
 			break
@@ -6750,6 +6744,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TriggerAlias.BuildVariantRegex(childComplexity), true
 
+	case "TriggerAlias.command":
+		if e.complexity.TriggerAlias.Command == nil {
+			break
+		}
+
+		return e.complexity.TriggerAlias.Command(childComplexity), true
+
 	case "TriggerAlias.configFile":
 		if e.complexity.TriggerAlias.ConfigFile == nil {
 			break
@@ -6763,6 +6764,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TriggerAlias.DateCutoff(childComplexity), true
+
+	case "TriggerAlias.definitionID":
+		if e.complexity.TriggerAlias.DefinitionID == nil {
+			break
+		}
+
+		return e.complexity.TriggerAlias.DefinitionID(childComplexity), true
+
+	case "TriggerAlias.generateFile":
+		if e.complexity.TriggerAlias.GenerateFile == nil {
+			break
+		}
+
+		return e.complexity.TriggerAlias.GenerateFile(childComplexity), true
 
 	case "TriggerAlias.level":
 		if e.complexity.TriggerAlias.Level == nil {
@@ -8052,6 +8067,9 @@ input TriggerAliasInput {
   dateCutoff: Int!
   configFile: String!
   alias: String!
+  definitionID: String!
+  generateFile: String!
+  command: String!
 }
 
 input PeriodicBuildInput {
@@ -8593,7 +8611,6 @@ type Task {
   taskGroup: String
   taskGroupMaxHosts: Int
   timeTaken: Duration
-  taskDuration: Duration
   totalTestCount: Int!
   versionMetadata: Version!
   order: Int!
@@ -8861,6 +8878,9 @@ type TriggerAlias {
   dateCutoff: Int!
   configFile: String!
   alias: String!
+  definitionID: String!
+  generateFile: String!
+  command: String!
 }
 
 
@@ -31856,38 +31876,6 @@ func (ec *executionContext) _Task_timeTaken(ctx context.Context, field graphql.C
 	return ec.marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Task_taskDuration(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().TaskDuration(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIDuration)
-	fc.Result = res
-	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Task_totalTestCount(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -35567,6 +35555,111 @@ func (ec *executionContext) _TriggerAlias_alias(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Alias, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TriggerAlias_definitionID(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TriggerAlias",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefinitionID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TriggerAlias_generateFile(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TriggerAlias",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GenerateFile, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TriggerAlias_command(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TriggerAlias",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Command, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -42189,6 +42282,30 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
+		case "definitionID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("definitionID"))
+			it.DefinitionID, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "generateFile":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generateFile"))
+			it.GenerateFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "command":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("command"))
+			it.Command, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -47694,17 +47811,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
 		case "timeTaken":
 			out.Values[i] = ec._Task_timeTaken(ctx, field, obj)
-		case "taskDuration":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_taskDuration(ctx, field, obj)
-				return res
-			})
 		case "totalTestCount":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -48644,6 +48750,21 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 			}
 		case "alias":
 			out.Values[i] = ec._TriggerAlias_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "definitionID":
+			out.Values[i] = ec._TriggerAlias_definitionID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "generateFile":
+			out.Values[i] = ec._TriggerAlias_generateFile(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "command":
+			out.Values[i] = ec._TriggerAlias_command(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

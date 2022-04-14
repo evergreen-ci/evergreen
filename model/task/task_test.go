@@ -2964,7 +2964,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 	// Sort by duration, asc
 	opts = GetTasksByVersionOptions{
 		Sorts: []TasksSortOrder{
-			{Key: TaskDurationKey, Order: 1},
+			{Key: TimeTakenKey, Order: 1},
 		},
 	}
 	tasks, count, err = GetTasksByVersion("v1", opts)

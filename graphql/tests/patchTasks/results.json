@@ -446,27 +446,27 @@
             "tasks": [
               {
                 "id": "2",
-                "taskDuration": 71999
+                "timeTaken": 71999
               },
               {
                 "id": "4.5",
-                "taskDuration": 43598
+                "timeTaken": 43598
               },
               {
                 "id": "1",
-                "taskDuration": 42167
+                "timeTaken": 42167
               },
               {
                 "id": "4",
-                "taskDuration": 21789
+                "timeTaken": 21789
               },
               {
                 "id": "3",
-                "taskDuration": 10003
+                "timeTaken": 10003
               },
               {
                 "id": "1.5",
-                "taskDuration": 8519
+                "timeTaken": 8519
               }
             ],
             "count": 6
