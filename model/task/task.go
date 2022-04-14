@@ -2258,7 +2258,7 @@ func (t *Task) Insert() error {
 	return db.Insert(Collection, t)
 }
 
-// Archive modifies the currente execution of the task so that it is no longer
+// Archive modifies the current execution of the task so that it is no longer
 // considered the latest execution. This task execution is inserted
 // into the old_tasks collection. If this is a display task, its execution tasks
 // are also archived.

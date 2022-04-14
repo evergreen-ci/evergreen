@@ -55,7 +55,7 @@ const (
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
 	TaskUnscheduled  = "unscheduled"
-	// TaskWillRun is a subset of undispatched tasks and is only used in the UI
+	// TaskWillRun is a subset of undispatched tasks and is only used in the UI.
 	TaskWillRun = "will-run"
 
 	// TaskDispatched indicates that an agent has received the task, but
