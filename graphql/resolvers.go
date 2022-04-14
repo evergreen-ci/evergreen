@@ -251,13 +251,8 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 }
 
 func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	if utility.FromStringPtr(obj.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(obj.ProjectId))
-		if err == nil {
-			return utility.ToStringPtr(identifier), nil
-		}
-	}
-	return nil, nil
+	obj.GetProjectIdentifier()
+	return obj.ProjectIdentifier, nil
 }
 
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
@@ -4095,17 +4090,11 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
 func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	if obj.HostId != nil {
-		host, err := host.FindOneId(utility.FromStringPtr(obj.HostId))
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host %s: '%s'", *obj.HostId, err.Error()))
-		}
-		if host != nil {
-			ami := host.GetAMI()
-			return utility.ToStringPtr(ami), nil
-		}
+	err := obj.GetAMI()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	return nil, nil
+	return obj.Ami, nil
 }
 
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {

@@ -6,7 +6,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -306,6 +308,31 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	}
 
 	return nil
+}
+
+func (at *APITask) GetAMI() error {
+	if at.HostId != nil {
+		h, err := host.FindOneId(utility.FromStringPtr(at.HostId))
+		if err != nil {
+			return errors.Wrapf(err, "error finding host '%s' for task", utility.FromStringPtr(at.HostId))
+		}
+		if h != nil {
+			ami := h.GetAMI()
+			if ami != "" {
+				at.Ami = utility.ToStringPtr(ami)
+			}
+		}
+	}
+	return nil
+}
+
+func (at *APITask) GetProjectIdentifier() {
+	if utility.FromStringPtr(at.ProjectId) != "" {
+		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(at.ProjectId))
+		if err == nil {
+			at.ProjectIdentifier = utility.ToStringPtr(identifier)
+		}
+	}
 }
 
 // ToService returns a service layer task using the data from the APITask.

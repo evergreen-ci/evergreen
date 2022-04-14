@@ -111,12 +111,11 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 	}
-	if foundTask.Project != "" {
-		identifier, err := dbModel.GetIdentifierForProject(foundTask.Project)
-		if err == nil {
-			taskModel.ProjectIdentifier = utility.ToStringPtr(identifier)
-		}
+	err = taskModel.GetAMI()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
+	taskModel.GetProjectIdentifier()
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
