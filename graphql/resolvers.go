@@ -4084,6 +4084,20 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
 
+func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	if obj.HostId != nil {
+		host, err := host.FindOneId(utility.FromStringPtr(obj.HostId))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host %s: '%s'", *obj.HostId, err.Error()))
+		}
+		if host != nil {
+			ami := host.GetAMI()
+			return utility.ToStringPtr(ami), nil
+		}
+	}
+	return nil, nil
+}
+
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -273,20 +272,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {
 			return errors.Wrap(err, "can't build TaskEndDetail from service")
-		}
-
-		if v.HostId != "" {
-			h, err := host.FindOneId(v.HostId)
-			if err != nil {
-				return errors.Wrapf(err, "error finding host '%s' for task", v.HostId)
-			}
-			if h != nil {
-				ami := h.GetAMI()
-				if ami != "" {
-					at.Ami = utility.ToStringPtr(ami)
-
-				}
-			}
 		}
 
 		if len(v.ExecutionTasks) > 0 {

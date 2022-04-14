@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -94,10 +95,21 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-
 	err = taskModel.BuildFromService(tgh.url)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+	}
+	if foundTask.HostId != "" {
+		host, err := host.FindOneId(foundTask.HostId)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		}
+		if host != nil {
+			ami := host.GetAMI()
+			if ami != "" {
+				taskModel.Ami = utility.ToStringPtr(ami)
+			}
+		}
 	}
 
 	if tgh.fetchAllExecutions {
