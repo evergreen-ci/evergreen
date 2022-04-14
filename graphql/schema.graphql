@@ -201,6 +201,7 @@ type MainlineCommitVersion {
 }
 
 type Version {
+  aborted: Boolean!
   id: String!
   createTime: Time!
   startTime: Time
