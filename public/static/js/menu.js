@@ -46,4 +46,5 @@ mciModule.controller("NavBarController", function (
 ) {
   $scope.newUILink = $window.NewUILink;
   $scope.showNewUILink = $window.user && $window.NewUILink;
+  console.log( $window.user, $window.NewUILink)
 });
