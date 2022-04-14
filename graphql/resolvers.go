@@ -250,6 +250,16 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 	return &apiProjectRef, nil
 }
 
+func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	if utility.FromStringPtr(obj.ProjectId) != "" {
+		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(obj.ProjectId))
+		if err == nil {
+			return utility.ToStringPtr(identifier), nil
+		}
+	}
+	return nil, nil
+}
+
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
 	if !at.Aborted {
 		return nil, nil

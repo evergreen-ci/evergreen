@@ -111,6 +111,12 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 	}
+	if foundTask.Project != "" {
+		identifier, err := dbModel.GetIdentifierForProject(foundTask.Project)
+		if err == nil {
+			taskModel.ProjectIdentifier = utility.ToStringPtr(identifier)
+		}
+	}
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task

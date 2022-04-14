@@ -80,6 +80,8 @@ models:
         resolver: true
       patchMetadata:
         resolver: true
+      projectIdentifier:
+        resolver: true
       reliesOn:
         resolver: true
       spawnHostLink:

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -291,12 +289,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 			at.DependsOn = dependsOn
 		}
-		if v.Project != "" {
-			identifier, err := model.GetIdentifierForProject(v.Project)
-			if err == nil {
-				at.ProjectIdentifier = utility.ToStringPtr(identifier)
-			}
-		}
+
 		at.OverrideDependencies = v.OverrideDependencies
 		at.Archived = v.Archived
 	case string:
