@@ -1170,6 +1170,26 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
+func FindContainerConfigurationForTask(t task.Task) (*Container, error) {
+	v, err := VersionFindOneId(t.Version)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding version %s", t.Version)
+	}
+	if v == nil {
+		return nil, errors.Errorf("unable to find version %s", t.Version)
+	}
+	projectInfo, err := LoadProjectForVersion(v, t.Project, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting project for version %s", t.Version)
+	}
+	for _, container := range projectInfo.Project.Containers {
+		if container.Name == t.Container {
+			return &container, nil
+		}
+	}
+	return nil, errors.Errorf("no such container '%s' defined on project '%s'", t.Container, t.Project)
+}
+
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {

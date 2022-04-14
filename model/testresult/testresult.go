@@ -48,6 +48,7 @@ type TestResult struct {
 	Project              string    `bson:"branch" json:"branch"`
 	BuildVariant         string    `bson:"build_variant" json:"build_variant"`
 	DistroId             string    `bson:"distro" json:"distro"`
+	Container            string    `bson:"container" json:"container"`
 	Requester            string    `bson:"r" json:"r"`
 	DisplayName          string    `bson:"display_name" json:"display_name"`
 	ExecutionDisplayName string    `bson:"execution_display_name,omitempty" json:"execution_display_name,omitempty"`

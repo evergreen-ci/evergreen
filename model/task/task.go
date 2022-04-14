@@ -2091,6 +2091,7 @@ func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResul
 		Project:              task.Project,
 		BuildVariant:         task.BuildVariant,
 		DistroId:             task.DistroId,
+		Container:            task.Container,
 		Requester:            task.Requester,
 		DisplayName:          task.DisplayName,
 		TaskCreateTime:       task.CreateTime,
