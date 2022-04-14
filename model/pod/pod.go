@@ -371,9 +371,19 @@ func (s Secret) IsZero() bool {
 	return s.Name == "" && s.ExternalID == "" && s.Value == "" && s.Exists == nil && s.Owned == nil
 }
 
-// Insert inserts a new pod into the collection.
+// Insert inserts a new pod into the collection. This relies on the global Anser
+// DB session.
 func (p *Pod) Insert() error {
 	return db.Insert(Collection, p)
+}
+
+// InsertWithSession is the same as Insert, but it respects the given context by
+// avoiding the global Anser DB session.
+func (p *Pod) InsertWithSession(ctx context.Context, env evergreen.Environment) error {
+	if _, err := env.DB().Collection(Collection).InsertOne(ctx, p); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Remove removes the pod from the collection.
