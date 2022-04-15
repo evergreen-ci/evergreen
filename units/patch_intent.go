@@ -322,20 +322,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	for _, task := range patchDoc.Tasks {
-		if task == "all" || task == "" {
-			continue
-		}
-		tRegex, err := regexp.Compile(task)
-		if err != nil {
-			return errors.Wrapf(err, "compiling task regex %s", task)
-		}
-		tasks := project.FindMatchingProjectTasks(tRegex)
-		if len(tasks) == 0 {
-			return errors.Errorf("no such task matching '%s'", task)
-		}
-	}
-
 	if len(patchDoc.VariantsTasks) == 0 {
 		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 	}

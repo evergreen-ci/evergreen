@@ -1517,6 +1517,9 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 				continue
 			}
 			tSearch = p.FindMatchingProjectTasks(tRegex)
+			if len(tSearch) == 0 {
+				tasks = append(tasks, t)
+			}
 		}
 		for _, t := range tSearch {
 			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
