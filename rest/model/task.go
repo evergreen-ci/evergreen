@@ -181,6 +181,10 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 		if err := at.PreviousExecutions[i].GetArtifacts(); err != nil {
 			return errors.Wrap(err, "failed to fetch artifacts for previous executions")
 		}
+		if err := at.GetAMI(); err != nil {
+			return errors.Wrap(err, "failed to fetch AMI for previous executions")
+		}
+		at.GetProjectIdentifier()
 	}
 
 	return nil
