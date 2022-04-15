@@ -104,7 +104,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		}
 		pd.ModificationCount++
 
-		if err := p.InsertWithSession(sessCtx, env); err != nil {
+		if err := p.InsertWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrap(err, "inserting new intent pod")
 		}
 
