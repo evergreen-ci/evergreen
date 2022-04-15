@@ -377,9 +377,9 @@ func (p *Pod) Insert() error {
 	return db.Insert(Collection, p)
 }
 
-// InsertWithSession is the same as Insert, but it respects the given context by
+// InsertWithContext is the same as Insert, but it respects the given context by
 // avoiding the global Anser DB session.
-func (p *Pod) InsertWithSession(ctx context.Context, env evergreen.Environment) error {
+func (p *Pod) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
 	if _, err := env.DB().Collection(Collection).InsertOne(ctx, p); err != nil {
 		return err
 	}
