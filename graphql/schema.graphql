@@ -558,9 +558,6 @@ input TriggerAliasInput {
   dateCutoff: Int!
   configFile: String!
   alias: String!
-  definitionID: String!
-  generateFile: String!
-  command: String!
 }
 
 input PeriodicBuildInput {
@@ -1369,9 +1366,6 @@ type TriggerAlias {
   dateCutoff: Int!
   configFile: String!
   alias: String!
-  definitionID: String!
-  generateFile: String!
-  command: String!
 }
 
 
