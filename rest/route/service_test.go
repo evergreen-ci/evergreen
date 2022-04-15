@@ -352,6 +352,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -395,6 +396,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -438,6 +440,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -482,6 +485,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -559,6 +563,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -601,6 +606,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -643,6 +649,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -684,6 +691,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = nextModelTask.BuildFromService("http://evergreen.example.net")
 					So(err, ShouldBeNil)
+					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -719,6 +727,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				So(err, ShouldBeNil)
 				err = nextModelTask.BuildFromService("http://evergreen.example.net")
 				So(err, ShouldBeNil)
+				nextModelTask.GetProjectIdentifier()
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{

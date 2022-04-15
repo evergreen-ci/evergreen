@@ -75,7 +75,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
-
+	taskModel.GetProjectIdentifier()
 	return gimlet.NewJSONResponse(taskModel)
 }
 
