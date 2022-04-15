@@ -59,6 +59,7 @@ type patchParams struct {
 	Alias             string
 	Variants          []string
 	Tasks             []string
+	RegexTasks        []string
 	SyncBuildVariants []string
 	SyncTasks         []string
 	SyncStatuses      []string
@@ -373,7 +374,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				p.Tasks, p.Project), false) {
 			conf.SetDefaultTasks(p.Project, p.Tasks...)
 			if err := conf.Write(""); err != nil {
-				return errors.Wrap(err, "error setting default tasks")
+				return errors.Wrap(err, "setting default tasks")
 			}
 		}
 	} else if p.Alias == "" {

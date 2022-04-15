@@ -1294,6 +1294,19 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	return nil
 }
 
+func (p *Project) FindMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
+	var res []string
+	if bvRegex.String() == "all" || bvRegex.String() == "" {
+		return append(res, bvRegex.String())
+	}
+	for _, b := range p.BuildVariants {
+		if bvRegex.MatchString(b.Name) {
+			res = append(res, b.Name)
+		}
+	}
+	return res
+}
+
 // GetTaskNameAndTags checks the project for a task or task group matching the
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
@@ -1319,6 +1332,19 @@ func (p *Project) FindProjectTask(name string) *ProjectTask {
 		}
 	}
 	return nil
+}
+
+func (p *Project) FindMatchingProjectTasks(tRegex *regexp.Regexp) []string {
+	var res []string
+	if tRegex.String() == "all" || tRegex.String() == "" {
+		return append(res, tRegex.String())
+	}
+	for _, t := range p.Tasks {
+		if tRegex.MatchString(t.Name) {
+			res = append(res, t.Name)
+		}
+	}
+	return res
 }
 
 func (p *Project) GetModuleByName(name string) (*Module, error) {
@@ -1450,8 +1476,15 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
-	bvs := patchDoc.BuildVariants
-	tasks := patchDoc.Tasks
+	var bvs, tasks []string
+	for _, bv := range patchDoc.BuildVariants {
+		bvRegex, _ := regexp.Compile(bv)
+		bvs = append(bvs, p.FindMatchingBuildVariants(bvRegex)...)
+	}
+	for _, t := range patchDoc.Tasks {
+		tRegex, _ := regexp.Compile(t)
+		tasks = append(tasks, p.FindMatchingProjectTasks(tRegex)...)
+	}
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {

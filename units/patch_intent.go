@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -311,9 +312,28 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if buildVariant == "all" || buildVariant == "" {
 			continue
 		}
-		bv := project.FindBuildVariant(buildVariant)
-		if bv == nil {
-			return errors.Errorf("No such buildvariant: '%s'", buildVariant)
+		bvRegex, err := regexp.Compile(buildVariant)
+		if err != nil {
+			return errors.Wrapf(err, "unable to compile regex %s", buildVariant)
+		}
+		bvs := project.FindMatchingBuildVariants(bvRegex)
+		if len(bvs) == 0 {
+			return errors.Errorf("No such buildvariant matching '%s'", buildVariant)
+		}
+	}
+
+	// verify that all tasks exists
+	for _, task := range patchDoc.Tasks {
+		if task == "all" || task == "" {
+			continue
+		}
+		tRegex, err := regexp.Compile(task)
+		if err != nil {
+			return errors.Wrapf(err, "unable to compile regex %s", task)
+		}
+		tasks := project.FindMatchingProjectTasks(tRegex)
+		if len(tasks) == 0 {
+			return errors.Errorf("No such task matching '%s'", task)
 		}
 	}
 

@@ -21,6 +21,7 @@ const (
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"
 	tasksFlagName             = "tasks"
+	regexTasksFlagName        = "regex_tasks"
 	parameterFlagName         = "param"
 	patchAliasFlagName        = "alias"
 	patchFinalizeFlagName     = "finalize"
