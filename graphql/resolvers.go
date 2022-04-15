@@ -4094,7 +4094,7 @@ func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	return obj.Ami, nil
+	return obj.AMI, nil
 }
 
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {

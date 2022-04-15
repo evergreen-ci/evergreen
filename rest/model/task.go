@@ -72,7 +72,7 @@ type APITask struct {
 	AbortInfo               APIAbortInfo        `json:"abort_info,omitempty"`
 	CanSync                 bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts           APISyncAtEndOptions `json:"sync_at_end_opts"`
-	Ami                     *string             `json:"ami"`
+	AMI                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 	// These fields are used by graphql gen, but do not need to be exposed
@@ -319,7 +319,7 @@ func (at *APITask) GetAMI() error {
 		if h != nil {
 			ami := h.GetAMI()
 			if ami != "" {
-				at.Ami = utility.ToStringPtr(ami)
+				at.AMI = utility.ToStringPtr(ami)
 			}
 		}
 	}
