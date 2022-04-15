@@ -3939,37 +3939,16 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 				if err != nil {
 					return "", InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", *cp.Id, err.Error()))
 				}
-				status = *cp.Status
-				if v == nil {
-					grip.Info(message.Fields{
-						"message": "child patch version is nil",
-						"ticket":  "EVG-14586",
-						"cp_id":   *cp.Id,
-					})
-				} else {
-					grip.Info(message.Fields{
-						"message":        "child patch version exists",
-						"ticket":         "EVG-14586",
-						"cp_id":          *cp.Id,
-						"aborted":        v.Aborted,
-						"cp_status":      *cp.Status,
-						"version_status": v.Status,
-					})
+				childStatus := *cp.Status
+				if v != nil && v.Aborted {
+					childStatus = evergreen.PatchAborted
 				}
-				if v != nil && v.Aborted && *cp.Status != evergreen.PatchFailed {
-					status = evergreen.PatchAborted
-				}
-				patchStatuses = append(patchStatuses, status)
+				patchStatuses = append(patchStatuses, childStatus)
 			}
-			grip.Info(message.Fields{
-				"message":  "child patch statuses",
-				"ticket":   "EVG-14586",
-				"statuses": patchStatuses,
-			})
 			return patch.GetCollectiveStatus(patchStatuses), nil
 		}
 	}
-	if *obj.Aborted && status != evergreen.PatchFailed {
+	if *obj.Aborted {
 		return evergreen.PatchAborted, nil
 	}
 	return status, nil
