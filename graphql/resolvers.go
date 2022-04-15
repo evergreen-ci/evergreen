@@ -3948,7 +3948,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 			return patch.GetCollectiveStatus(patchStatuses), nil
 		}
 	}
-	if *obj.Aborted {
+	if utility.fromBoolPtr(*obj.Aborted) {
 		return evergreen.PatchAborted, nil
 	}
 	return status, nil
