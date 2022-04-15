@@ -311,10 +311,10 @@ func (at *APITask) BuildFromService(t interface{}) error {
 }
 
 func (at *APITask) GetAMI() error {
-	if at.HostId != nil {
+	if utility.FromStringPtr(at.HostId) != "" {
 		h, err := host.FindOneId(utility.FromStringPtr(at.HostId))
 		if err != nil {
-			return errors.Wrapf(err, "error finding host '%s' for task", utility.FromStringPtr(at.HostId))
+			return errors.Wrapf(err, "finding host '%s' for task", utility.FromStringPtr(at.HostId))
 		}
 		if h != nil {
 			ami := h.GetAMI()
