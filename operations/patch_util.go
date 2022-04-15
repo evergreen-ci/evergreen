@@ -59,7 +59,6 @@ type patchParams struct {
 	Alias             string
 	Variants          []string
 	Tasks             []string
-	RegexTasks        []string
 	SyncBuildVariants []string
 	SyncTasks         []string
 	SyncStatuses      []string

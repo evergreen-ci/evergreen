@@ -321,7 +321,6 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 			return
 		}
 	}
-	grip.Debug(tasks)
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:     project,
 		Default:  true,

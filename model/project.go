@@ -1294,14 +1294,12 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	return nil
 }
 
-func (p *Project) FindMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
-	var res []string
-	if bvRegex.String() == "all" || bvRegex.String() == "" {
-		return append(res, bvRegex.String())
-	}
+// FindMatchingBuildVariants returns a list of build variants in a project that match the given regexp.
+func (p *Project) FindMatchingBuildVariants(bvRegex *regexp.Regexp) []BuildVariant {
+	var res []BuildVariant
 	for _, b := range p.BuildVariants {
 		if bvRegex.MatchString(b.Name) {
-			res = append(res, b.Name)
+			res = append(res, b)
 		}
 	}
 	return res
@@ -1334,14 +1332,12 @@ func (p *Project) FindProjectTask(name string) *ProjectTask {
 	return nil
 }
 
-func (p *Project) FindMatchingProjectTasks(tRegex *regexp.Regexp) []string {
-	var res []string
-	if tRegex.String() == "all" || tRegex.String() == "" {
-		return append(res, tRegex.String())
-	}
+// FindMatchingProjectTasks returns a list of tasks in a project that match the given regexp.
+func (p *Project) FindMatchingProjectTasks(tRegex *regexp.Regexp) []ProjectTask {
+	var res []ProjectTask
 	for _, t := range p.Tasks {
 		if tRegex.MatchString(t.Name) {
-			res = append(res, t.Name)
+			res = append(res, t)
 		}
 	}
 	return res
@@ -1478,25 +1474,51 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, tasks []string
 	for _, bv := range patchDoc.BuildVariants {
-		bvRegex, _ := regexp.Compile(bv)
-		bvs = append(bvs, p.FindMatchingBuildVariants(bvRegex)...)
-	}
-	for _, t := range patchDoc.Tasks {
-		tRegex, _ := regexp.Compile(t)
-		tasks = append(tasks, p.FindMatchingProjectTasks(tRegex)...)
-	}
-	if len(bvs) == 1 && bvs[0] == "all" {
-		bvs = []string{}
-		for _, bv := range p.BuildVariants {
+		var bvSearch []BuildVariant
+		switch bv {
+		case "all":
+			bvSearch = p.BuildVariants
+		case "":
+			continue
+		default:
+			bvRegex, err := regexp.Compile(bv)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "compiling buildvariant regex",
+					"regex":   bv,
+					"project": p.Identifier,
+				}))
+				continue
+			}
+			bvSearch = p.FindMatchingBuildVariants(bvRegex)
+		}
+		for _, bv := range bvSearch {
 			if bv.Disabled {
 				continue
 			}
 			bvs = append(bvs, bv.Name)
 		}
 	}
-	if len(tasks) == 1 && tasks[0] == "all" {
-		tasks = []string{}
-		for _, t := range p.Tasks {
+	for _, t := range patchDoc.Tasks {
+		var tSearch []ProjectTask
+		switch t {
+		case "all":
+			tSearch = p.Tasks
+		case "":
+			continue
+		default:
+			tRegex, err := regexp.Compile(t)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "compiling task regex",
+					"regex":   t,
+					"project": p.Identifier,
+				}))
+				continue
+			}
+			tSearch = p.FindMatchingProjectTasks(tRegex)
+		}
+		for _, t := range tSearch {
 			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
 				continue
 			}

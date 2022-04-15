@@ -314,26 +314,25 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		bvRegex, err := regexp.Compile(buildVariant)
 		if err != nil {
-			return errors.Wrapf(err, "unable to compile regex %s", buildVariant)
+			return errors.Wrapf(err, "compiling buildvariant regex %s", buildVariant)
 		}
 		bvs := project.FindMatchingBuildVariants(bvRegex)
 		if len(bvs) == 0 {
-			return errors.Errorf("No such buildvariant matching '%s'", buildVariant)
+			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
 		}
 	}
 
-	// verify that all tasks exists
 	for _, task := range patchDoc.Tasks {
 		if task == "all" || task == "" {
 			continue
 		}
 		tRegex, err := regexp.Compile(task)
 		if err != nil {
-			return errors.Wrapf(err, "unable to compile regex %s", task)
+			return errors.Wrapf(err, "compiling task regex %s", task)
 		}
 		tasks := project.FindMatchingProjectTasks(tRegex)
 		if len(tasks) == 0 {
-			return errors.Errorf("No such task matching '%s'", task)
+			return errors.Errorf("no such task matching '%s'", task)
 		}
 	}
 
