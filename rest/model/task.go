@@ -267,7 +267,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			at.TimeTaken = NewAPIDuration(v.TimeTaken)
 		} else {
 			if v.Status == evergreen.TaskStarted {
-				at.TimeTaken = NewAPIDuration(time.Duration(time.Since(v.ActivatedTime).Nanoseconds()))
+				at.TimeTaken = NewAPIDuration(time.Duration(time.Since(v.StartTime).Nanoseconds()))
 			} else {
 				at.TimeTaken = 0
 			}
