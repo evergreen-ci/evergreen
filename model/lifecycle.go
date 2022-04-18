@@ -167,6 +167,9 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 	return err
 }
 
+// SetTaskPriority sets the priority for the given task. Any of the task's
+// dependencies that have a lower priority than the one being set for this task
+// will also have their priority increased.
 func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
 	if err != nil {

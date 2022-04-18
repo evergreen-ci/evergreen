@@ -36,7 +36,8 @@ import (
 const (
 	dependencyKey = "dependencies"
 
-	// tasks should be unscheduled after ~a week
+	// UnschedulableThreshold is the threshold after which a task waiting to
+	// dispatch should be tasks should be unscheduled due to staleness.
 	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
@@ -1269,7 +1270,7 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 
 	update := bson.M{
 		"$set": bson.M{
-			PriorityKey:  -1,
+			PriorityKey:  evergreen.DisabledTaskPriority,
 			ActivatedKey: false,
 		},
 	}
@@ -1282,6 +1283,24 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	}
 
 	return info.Updated, nil
+}
+
+// DisableStaleContainerTasks disables all container tasks that have been stuck
+// waiting for dispatch for too long.
+func DisableStaleContainerTasks(caller string) error {
+	query := isContainerTaskScheduledQuery()
+	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
+
+	tasks, err := FindAll(db.Query(query))
+	if err != nil {
+		return errors.Wrap(err, "finding tasks that need to be disabled")
+	}
+
+	if err := DisableTasks(tasks, caller); err != nil {
+		return errors.Wrap(err, "disabled stale container tasks")
+	}
+
+	return nil
 }
 
 // DeactivateStepbackTasksForProjects deactivates and aborts any scheduled/running tasks
@@ -1641,7 +1660,6 @@ func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
-	t.ContainerAllocatedTime = utility.ZeroTime
 
 	return DeactivateTasks([]Task{*t}, caller)
 }
@@ -1929,8 +1947,10 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// SetDisabledPriority sets the priority of a task so it will never run.
-// It also deactivates the task and any tasks that depend on it.
+// SetDisabledPriority sets the priority of a task so it will never run. If it's
+// a display task, it will disabled it and all of its execution tasks. If it's
+// an execution task, its parent display task will not be updated. It also
+// deactivates the task and any tasks that depend on it.
 func (t *Task) SetDisabledPriority(user string) error {
 	t.Priority = evergreen.DisabledTaskPriority
 
@@ -1955,6 +1975,68 @@ func (t *Task) SetDisabledPriority(user string) error {
 	}
 
 	return t.DeactivateTask(user)
+}
+
+// DisableTasks is the same as (*Task).SetDisabledPriority but for many tasks.
+func DisableTasks(tasks []Task, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	tasksPresent := map[string]struct{}{}
+	var taskIDs []string
+	var execTaskIDs []string
+	for _, t := range tasks {
+		tasksPresent[t.Id] = struct{}{}
+		taskIDs = append(taskIDs, t.Id)
+		execTaskIDs = append(execTaskIDs, t.ExecutionTasks...)
+	}
+
+	_, err := UpdateAll(
+		ByIds(append(taskIDs, execTaskIDs...)),
+		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating task priorities")
+	}
+
+	execTasks, err := findMissingTasks(execTaskIDs, tasksPresent)
+	if err != nil {
+		return errors.Wrap(err, "finding additional execution tasks")
+	}
+	tasks = append(tasks, execTasks...)
+
+	for _, t := range tasks {
+		t.Priority = evergreen.DisabledTaskPriority
+		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
+	}
+
+	if err := DeactivateTasks(tasks, caller); err != nil {
+		return errors.Wrap(err, "deactivating dependencies")
+	}
+
+	return nil
+}
+
+// findMissingTasks finds all tasks whose IDs are missing from tasksPresent.
+func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]Task, error) {
+	var missingTaskIDs []string
+	for _, id := range taskIDs {
+		if _, ok := tasksPresent[id]; ok {
+			continue
+		}
+		missingTaskIDs = append(missingTaskIDs, id)
+	}
+	if len(missingTaskIDs) == 0 {
+		return nil, nil
+	}
+
+	missingTasks, err := FindAll(db.Query(ByIds(missingTaskIDs)))
+	if err != nil {
+		return nil, err
+	}
+
+	return missingTasks, nil
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon

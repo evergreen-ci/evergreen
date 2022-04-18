@@ -169,6 +169,11 @@ const (
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
+	// StaleContainerTaskMonitor is the special name representing the unit
+	// responsible for monitoring container tasks that have not dispatched but
+	// have waiting for a long time since their activation.
+	StaleContainerTaskMonitor = "stale-container-task-monitor"
+
 	// Restart Types
 	RestartVersions = "versions"
 	RestartTasks    = "tasks"
@@ -505,6 +510,7 @@ const (
 	AdHocRequester              = "ad_hoc"
 )
 
+// Constants for project command names
 const (
 	GenerateTasksCommandName      = "generate.tasks"
 	HostCreateCommandName         = "host.create"
@@ -565,7 +571,8 @@ func (k SenderKey) String() string {
 	}
 }
 
-// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+// Recognized Evergreen agent CPU architectures, which should be in the form
+// ${GOOS}_${GOARCH}.
 const (
 	ArchDarwinAmd64  = "darwin_amd64"
 	ArchDarwinArm64  = "darwin_arm64"

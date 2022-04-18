@@ -774,13 +774,13 @@ func FindNeedsContainerAllocation() ([]Task, error) {
 // currently needs a container to be allocated to run it.
 func needsContainerAllocation() bson.M {
 	q := isContainerTaskScheduledQuery()
-	q[StatusKey] = evergreen.TaskUndispatched
 	q[ContainerAllocatedKey] = false
 	return q
 }
 
 func isContainerTaskScheduledQuery() bson.M {
 	return bson.M{
+		StatusKey:            evergreen.TaskUndispatched,
 		ActivatedKey:         true,
 		ExecutionPlatformKey: ExecutionPlatformContainer,
 		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
