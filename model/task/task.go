@@ -3750,8 +3750,8 @@ func recalculateTimeTaken() bson.M {
 					"if": bson.M{
 						"$eq": []string{"$" + StatusKey, evergreen.TaskStarted},
 					},
-					// Time taken for a task is in nanoseconds. Since subtracting two dates yields milliseconds, we have to multiply
-					// by time.Millisecond (1000000) to keep time taken consistently in nanoseconds.
+					// Time taken for a task is in nanoseconds. Since subtracting two dates in MongoDB yields milliseconds, we have
+					// to multiply by time.Millisecond (1000000) to keep time taken consistently in nanoseconds.
 					"then": bson.M{"$multiply": []interface{}{time.Millisecond, bson.M{"$subtract": []interface{}{"$$NOW", "$" + StartTimeKey}}}},
 					"else": "$" + TimeTakenKey,
 				},
