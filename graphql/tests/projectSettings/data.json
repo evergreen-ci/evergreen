@@ -71,7 +71,6 @@
         "git_clone" : false
       },
       "hidden" : false,
-      "use_repo_settings" : true,
       "repo_ref_id" : "my_repo"
     },
     {

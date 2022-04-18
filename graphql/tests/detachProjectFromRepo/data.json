@@ -9,7 +9,6 @@
       "repo_name" : "commit-queue-sandbox",
       "branch_name" : "main",
       "admins": ["me"],
-      "use_repo_settings" : true,
       "repo_ref_id": "repo_id"
     }
   ],
