@@ -186,6 +186,8 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 	return nil
 }
 
+// Deprecated: use BuildFromArgs instead
+//
 // BuildFromService converts from a service level task by loading the data
 // into the appropriate fields of the APITask.
 func (at *APITask) BuildFromService(t interface{}) error {
@@ -305,6 +307,34 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		at.Logs = ll
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling task", t))
+	}
+
+	return nil
+}
+
+type APITaskArgs struct {
+	includeProjectIdentifier bool
+	includeAMI               bool
+	includeArtifacts         bool
+}
+
+func (at *APITask) BuildFromArgs(t interface{}, args APITaskArgs) error {
+	err := at.BuildFromService(&t)
+	if err != nil {
+		return err
+	}
+	if args.includeAMI {
+		if err := at.GetAMI(); err != nil {
+			return err
+		}
+	}
+	if args.includeProjectIdentifier {
+		at.GetProjectIdentifier()
+	}
+	if args.includeArtifacts {
+		if err := at.GetArtifacts(); err != nil {
+			return err
+		}
 	}
 
 	return nil
