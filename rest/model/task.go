@@ -316,7 +316,7 @@ type APITaskArgs struct {
 }
 
 func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
-	err := at.BuildFromService(&t)
+	err := at.BuildFromService(t)
 	if err != nil {
 		return err
 	}

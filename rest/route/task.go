@@ -90,21 +90,14 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(foundTask)
+	err = taskModel.BuildFromArgs(foundTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-	taskModel.GetProjectIdentifier()
-	err = taskModel.BuildFromService(tgh.url)
+	err = taskModel.BuildFromArgs(tgh.url, nil)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-
-	err = taskModel.GetAMI()
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
-	taskModel.GetProjectIdentifier()
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
@@ -123,11 +116,6 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
 	}
 	taskModel.EstimatedStart = model.NewAPIDuration(start)
-
-	err = taskModel.GetArtifacts()
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving artifacts"))
-	}
 
 	return gimlet.NewJSONResponse(taskModel)
 }
@@ -207,11 +195,10 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, task := range tasks {
 		taskModel := &model.APITask{}
-		err = taskModel.BuildFromService(&task)
+		err = taskModel.BuildFromArgs(&task, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
-		taskModel.GetProjectIdentifier()
 		if err = resp.AddData(taskModel); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -349,7 +336,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(refreshedTask)
+	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

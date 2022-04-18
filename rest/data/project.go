@@ -117,7 +117,7 @@ func GetProjectTasksWithOptions(projectName string, taskName string, opts model.
 	res := []restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromService(&t); err != nil {
+		if err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true}); err != nil {
 			return nil, errors.Wrap(err, "error building API tasks")
 		}
 		res = append(res, apiTask)

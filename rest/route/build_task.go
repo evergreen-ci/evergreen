@@ -99,16 +99,12 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	for i := range tasks {
 		taskModel := &model.APITask{}
 
-		if err = taskModel.BuildFromService(&tasks[i]); err != nil {
+		if err = taskModel.BuildFromArgs(&tasks[i], &model.APITaskArgs{
+			IncludeAMI: true, IncludeArtifacts: true, IncludeProjectIdentifier: true,
+		}); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		taskModel.GetProjectIdentifier()
-
-		if err = taskModel.GetArtifacts(); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-
-		if err = taskModel.BuildFromService(tbh.url); err != nil {
+		if err = taskModel.BuildFromArgs(tbh.url, nil); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 

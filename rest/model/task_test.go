@@ -156,5 +156,51 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
 			}
 		})
+		Convey("running BuildFromArgs(), should produce an equivalent model", func() {
+			for _, tc := range modelPairs {
+				apiTask := &APITask{}
+				err := apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(true, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.PatchVersionRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.GithubPRRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.TriggerRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.AdHocRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.DependsOn = []task.Dependency{
+					{Unattainable: false},
+					{Unattainable: true},
+				}
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(apiTask.Blocked, ShouldBeTrue)
+
+				err = apiTask.BuildFromArgs("url", nil)
+				So(err, ShouldBeNil)
+				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
+				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
+			}
+		})
 	})
 }
