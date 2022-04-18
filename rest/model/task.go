@@ -172,14 +172,11 @@ func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
-		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
+		if err := at.PreviousExecutions[i].BuildFromArgs(&tasks[i], &APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true}); err != nil {
 			return errors.Wrap(err, "error marshalling previous execution")
 		}
 		if err := at.PreviousExecutions[i].BuildFromService(url); err != nil {
 			return errors.Wrap(err, "failed to build logs for previous execution")
-		}
-		if err := at.PreviousExecutions[i].GetArtifacts(); err != nil {
-			return errors.Wrap(err, "failed to fetch artifacts for previous executions")
 		}
 	}
 
@@ -313,27 +310,29 @@ func (at *APITask) BuildFromService(t interface{}) error {
 }
 
 type APITaskArgs struct {
-	includeProjectIdentifier bool
-	includeAMI               bool
-	includeArtifacts         bool
+	IncludeProjectIdentifier bool
+	IncludeAMI               bool
+	IncludeArtifacts         bool
 }
 
-func (at *APITask) BuildFromArgs(t interface{}, args APITaskArgs) error {
+func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
 	err := at.BuildFromService(&t)
 	if err != nil {
 		return err
 	}
-	if args.includeAMI {
-		if err := at.GetAMI(); err != nil {
-			return err
+	if args != nil {
+		if args.IncludeAMI {
+			if err := at.GetAMI(); err != nil {
+				return err
+			}
 		}
-	}
-	if args.includeProjectIdentifier {
-		at.GetProjectIdentifier()
-	}
-	if args.includeArtifacts {
-		if err := at.GetArtifacts(); err != nil {
-			return err
+		if args.IncludeArtifacts {
+			if err := at.GetArtifacts(); err != nil {
+				return err
+			}
+		}
+		if args.IncludeProjectIdentifier {
+			at.GetProjectIdentifier()
 		}
 	}
 
