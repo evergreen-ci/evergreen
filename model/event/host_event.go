@@ -230,9 +230,9 @@ func LogVolumeExpirationWarningSent(volumeID string) {
 	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
 }
 
-// UpdateExecutions updates host events to track multiple executions of the same
-// task.
-func UpdateExecutions(hostId, taskId string, execution int) error {
+// UpdateHostTaskExecutions updates host events to track multiple executions of
+// the same host task.
+func UpdateHostTaskExecutions(hostId, taskId string, execution int) error {
 	query := bson.M{
 		ResourceIdKey: hostId,
 		bsonutil.GetDottedKeyName(DataKey, hostDataTaskIDKey): taskId,

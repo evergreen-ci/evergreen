@@ -132,7 +132,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.TaskPid, ShouldEqual, taskPid)
 
 			// test logging multiple executions of the same task
-			err = UpdateExecutions(hostId, taskId, 0)
+			err = UpdateHostTaskExecutions(hostId, taskId, 0)
 			So(err, ShouldBeNil)
 
 			eventsForHost, err = Find(AllLogCollection, MostRecentHostEvents(hostId, "", 50))

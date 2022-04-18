@@ -1089,11 +1089,8 @@ type ComplexityRoot struct {
 	TriggerAlias struct {
 		Alias             func(childComplexity int) int
 		BuildVariantRegex func(childComplexity int) int
-		Command           func(childComplexity int) int
 		ConfigFile        func(childComplexity int) int
 		DateCutoff        func(childComplexity int) int
-		DefinitionID      func(childComplexity int) int
-		GenerateFile      func(childComplexity int) int
 		Level             func(childComplexity int) int
 		Project           func(childComplexity int) int
 		Status            func(childComplexity int) int
@@ -1398,6 +1395,7 @@ type RepoSettingsResolver interface {
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
 
+	Ami(ctx context.Context, obj *model.APITask) (*string, error)
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
@@ -1430,6 +1428,7 @@ type TaskResolver interface {
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
+	ProjectIdentifier(ctx context.Context, obj *model.APITask) (*string, error)
 	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 
@@ -6745,13 +6744,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TriggerAlias.BuildVariantRegex(childComplexity), true
 
-	case "TriggerAlias.command":
-		if e.complexity.TriggerAlias.Command == nil {
-			break
-		}
-
-		return e.complexity.TriggerAlias.Command(childComplexity), true
-
 	case "TriggerAlias.configFile":
 		if e.complexity.TriggerAlias.ConfigFile == nil {
 			break
@@ -6765,20 +6757,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TriggerAlias.DateCutoff(childComplexity), true
-
-	case "TriggerAlias.definitionID":
-		if e.complexity.TriggerAlias.DefinitionID == nil {
-			break
-		}
-
-		return e.complexity.TriggerAlias.DefinitionID(childComplexity), true
-
-	case "TriggerAlias.generateFile":
-		if e.complexity.TriggerAlias.GenerateFile == nil {
-			break
-		}
-
-		return e.complexity.TriggerAlias.GenerateFile(childComplexity), true
 
 	case "TriggerAlias.level":
 		if e.complexity.TriggerAlias.Level == nil {
@@ -8067,16 +8045,13 @@ input RepoRefInput {
 }
 
 input TriggerAliasInput {
-  project: String
+  project: String!
   level: String!
-  definitionID: String!
   buildVariantRegex: String!
   taskRegex: String!
   status: String!
   dateCutoff: Int!
   configFile: String!
-  generateFile: String!
-  command: String!
   alias: String!
 }
 
@@ -8878,16 +8853,13 @@ type RepoRef {
 }
 
 type TriggerAlias {
-  project: String
+  project: String!
   level: String!
-  definitionID: String!
   buildVariantRegex: String!
   taskRegex: String!
   status: String!
   dateCutoff: Int!
   configFile: String!
-  generateFile: String!
-  command: String!
   alias: String!
 }
 
@@ -30002,14 +29974,14 @@ func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.Collect
 		Object:     "Task",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ami, nil
+		return ec.resolvers.Task().Ami(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -31470,14 +31442,14 @@ func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field g
 		Object:     "Task",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectIdentifier, nil
+		return ec.resolvers.Task().ProjectIdentifier(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35324,11 +35296,14 @@ func (ec *executionContext) _TriggerAlias_project(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TriggerAlias_level(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
@@ -35350,41 +35325,6 @@ func (ec *executionContext) _TriggerAlias_level(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Level, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TriggerAlias_definitionID(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DefinitionID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35560,76 +35500,6 @@ func (ec *executionContext) _TriggerAlias_configFile(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ConfigFile, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TriggerAlias_generateFile(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.GenerateFile, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _TriggerAlias_command(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "TriggerAlias",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Command, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -42262,7 +42132,7 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
-			it.Project, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.Project, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42271,14 +42141,6 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("level"))
 			it.Level, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "definitionID":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("definitionID"))
-			it.DefinitionID, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42319,22 +42181,6 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configFile"))
 			it.ConfigFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "generateFile":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generateFile"))
-			it.GenerateFile, err = ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "command":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("command"))
-			it.Command, err = ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -47444,7 +47290,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "activatedTime":
 			out.Values[i] = ec._Task_activatedTime(ctx, field, obj)
 		case "ami":
-			out.Values[i] = ec._Task_ami(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_ami(ctx, field, obj)
+				return res
+			})
 		case "annotation":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -47781,7 +47636,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "projectIdentifier":
-			out.Values[i] = ec._Task_projectIdentifier(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_projectIdentifier(ctx, field, obj)
+				return res
+			})
 		case "dependsOn":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -48755,13 +48619,11 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("TriggerAlias")
 		case "project":
 			out.Values[i] = ec._TriggerAlias_project(ctx, field, obj)
-		case "level":
-			out.Values[i] = ec._TriggerAlias_level(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "definitionID":
-			out.Values[i] = ec._TriggerAlias_definitionID(ctx, field, obj)
+		case "level":
+			out.Values[i] = ec._TriggerAlias_level(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -48787,16 +48649,6 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 			}
 		case "configFile":
 			out.Values[i] = ec._TriggerAlias_configFile(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "generateFile":
-			out.Values[i] = ec._TriggerAlias_generateFile(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "command":
-			out.Values[i] = ec._TriggerAlias_command(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

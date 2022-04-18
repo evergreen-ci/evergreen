@@ -108,6 +108,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 			return nil, errors.Wrap(err, "inserting new intent pod")
 		}
 
+		containerAllocatedAt := utility.BSONTime(time.Now())
 		// Only allow the task to transition state if it's currently in a state
 		// where it needs a pod to be allocated.
 		update, err := env.DB().Collection(task.Collection).UpdateOne(sessCtx, bson.M{
@@ -118,7 +119,8 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 			task.PriorityKey:           bson.M{"$gt": evergreen.DisabledTaskPriority},
 		}, bson.M{
 			"$set": bson.M{
-				task.ContainerAllocatedKey: true,
+				task.ContainerAllocatedKey:     true,
+				task.ContainerAllocatedTimeKey: containerAllocatedAt,
 			},
 		})
 		if err != nil {
@@ -128,6 +130,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 			return nil, errors.New("task status was not updated")
 		}
 		t.ContainerAllocated = true
+		t.ContainerAllocatedTime = containerAllocatedAt
 
 		return nil, nil
 	}

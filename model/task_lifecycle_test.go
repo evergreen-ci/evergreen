@@ -772,6 +772,42 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.Equal(t, evergreen.VersionStarted, data.Status)
 }
 
+func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	b1 := build.Build{
+		Id:                "b1",
+		Status:            evergreen.BuildStarted,
+		Version:           "v1",
+		Activated:         true,
+		IsGithubCheck:     true,
+		GithubCheckStatus: evergreen.BuildSucceeded,
+	}
+
+	b2 := build.Build{
+		Id:        "b2",
+		Status:    evergreen.BuildFailed,
+		Version:   "v1",
+		Activated: true,
+	}
+
+	assert.NoError(t, b1.Insert())
+	assert.NoError(t, b2.Insert())
+	v1 := Version{
+		Id:     "v1",
+		Status: evergreen.VersionStarted,
+	}
+	assert.NoError(t, v1.Insert())
+	versionStatus, err := UpdateVersionStatus(&v1)
+	assert.NoError(t, err)
+	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
+
+	events, err := event.FindAllByResourceID("v1")
+	assert.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, events[0].EventType, event.VersionGithubCheckFinished)
+
+}
+
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.AllLogCollection))
 	displayName := "testName"
