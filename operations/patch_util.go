@@ -59,6 +59,8 @@ type patchParams struct {
 	Alias             string
 	Variants          []string
 	Tasks             []string
+	RegexVariants     []string
+	RegexTasks        []string
 	SyncBuildVariants []string
 	SyncTasks         []string
 	SyncStatuses      []string
@@ -89,6 +91,8 @@ type patchSubmission struct {
 	path              string
 	variants          []string
 	tasks             []string
+	regexVariants     []string
+	regexTasks        []string
 	syncBuildVariants []string
 	syncTasks         []string
 	syncStatuses      []string
@@ -111,6 +115,8 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		base:              diffData.base,
 		variants:          p.Variants,
 		tasks:             p.Tasks,
+		regexVariants:     p.RegexVariants,
+		regexTasks:        p.RegexTasks,
 		alias:             p.Alias,
 		syncBuildVariants: p.SyncBuildVariants,
 		syncTasks:         p.SyncTasks,

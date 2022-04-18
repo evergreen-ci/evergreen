@@ -1294,12 +1294,12 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	return nil
 }
 
-// FindMatchingBuildVariants returns a list of build variants in a project that match the given regexp.
-func (p *Project) FindMatchingBuildVariants(bvRegex *regexp.Regexp) []BuildVariant {
-	var res []BuildVariant
+// findMatchingBuildVariants returns a list of build variant names in a project that match the given regexp.
+func (p *Project) findMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
+	var res []string
 	for _, b := range p.BuildVariants {
 		if bvRegex.MatchString(b.Name) {
-			res = append(res, b)
+			res = append(res, b.Name)
 		}
 	}
 	return res
@@ -1332,12 +1332,12 @@ func (p *Project) FindProjectTask(name string) *ProjectTask {
 	return nil
 }
 
-// FindMatchingProjectTasks returns a list of tasks in a project that match the given regexp.
-func (p *Project) FindMatchingProjectTasks(tRegex *regexp.Regexp) []ProjectTask {
-	var res []ProjectTask
+// findMatchingProjectTasks returns a list of tasks in a project that match the given regexp.
+func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
+	var res []string
 	for _, t := range p.Tasks {
 		if tRegex.MatchString(t.Name) {
-			res = append(res, t)
+			res = append(res, t.Name)
 		}
 	}
 	return res
@@ -1472,15 +1472,18 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
-	var bvs, tasks []string
-	for _, bv := range patchDoc.BuildVariants {
-		var bvSearch []BuildVariant
-		switch bv {
-		case "all":
-			bvSearch = p.BuildVariants
-		case "":
-			continue
-		default:
+	bvs := patchDoc.BuildVariants
+	tasks := patchDoc.Tasks
+	if len(bvs) == 1 && bvs[0] == "all" {
+		bvs = []string{}
+		for _, bv := range p.BuildVariants {
+			if bv.Disabled {
+				continue
+			}
+			bvs = append(bvs, bv.Name)
+		}
+	} else {
+		for _, bv := range patchDoc.RegexBuildVariants {
 			bvRegex, err := regexp.Compile(bv)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -1490,23 +1493,19 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 				}))
 				continue
 			}
-			bvSearch = p.FindMatchingBuildVariants(bvRegex)
-		}
-		for _, bv := range bvSearch {
-			if bv.Disabled {
-				continue
-			}
-			bvs = append(bvs, bv.Name)
+			bvs = append(bvs, p.findMatchingBuildVariants(bvRegex)...)
 		}
 	}
-	for _, t := range patchDoc.Tasks {
-		var tSearch []ProjectTask
-		switch t {
-		case "all":
-			tSearch = p.Tasks
-		case "":
-			continue
-		default:
+	if len(tasks) == 1 && tasks[0] == "all" {
+		tasks = []string{}
+		for _, t := range p.Tasks {
+			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
+				continue
+			}
+			tasks = append(tasks, t.Name)
+		}
+	} else {
+		for _, t := range patchDoc.RegexTasks {
 			tRegex, err := regexp.Compile(t)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -1516,19 +1515,9 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 				}))
 				continue
 			}
-			tSearch = p.FindMatchingProjectTasks(tRegex)
-			if len(tSearch) == 0 {
-				tasks = append(tasks, t)
-			}
-		}
-		for _, t := range tSearch {
-			if !utility.FromBoolTPtr(t.Patchable) || utility.FromBoolPtr(t.GitTagOnly) {
-				continue
-			}
-			tasks = append(tasks, t.Name)
+			tasks = append(bvs, p.findMatchingProjectTasks(tRegex)...)
 		}
 	}
-
 	var pairs TaskVariantPairs
 	for _, v := range bvs {
 		for _, t := range tasks {

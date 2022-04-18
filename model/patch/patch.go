@@ -138,25 +138,27 @@ type GitMetadata struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id            mgobson.ObjectId `bson:"_id,omitempty"`
-	Description   string           `bson:"desc"`
-	Path          string           `bson:"path,omitempty"`
-	Project       string           `bson:"branch"`
-	Githash       string           `bson:"githash"`
-	PatchNumber   int              `bson:"patch_number"`
-	Author        string           `bson:"author"`
-	Version       string           `bson:"version"`
-	Status        string           `bson:"status"`
-	CreateTime    time.Time        `bson:"create_time"`
-	StartTime     time.Time        `bson:"start_time"`
-	FinishTime    time.Time        `bson:"finish_time"`
-	BuildVariants []string         `bson:"build_variants"`
-	Tasks         []string         `bson:"tasks"`
-	VariantsTasks []VariantTasks   `bson:"variants_tasks"`
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
-	Patches       []ModulePatch    `bson:"patches"`
-	Parameters    []Parameter      `bson:"parameters,omitempty"`
-	Activated     bool             `bson:"activated"`
+	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
+	Description        string           `bson:"desc"`
+	Path               string           `bson:"path,omitempty"`
+	Project            string           `bson:"branch"`
+	Githash            string           `bson:"githash"`
+	PatchNumber        int              `bson:"patch_number"`
+	Author             string           `bson:"author"`
+	Version            string           `bson:"version"`
+	Status             string           `bson:"status"`
+	CreateTime         time.Time        `bson:"create_time"`
+	StartTime          time.Time        `bson:"start_time"`
+	FinishTime         time.Time        `bson:"finish_time"`
+	BuildVariants      []string         `bson:"build_variants"`
+	RegexBuildVariants []string         `bson:"regex_build_variants"`
+	Tasks              []string         `bson:"tasks"`
+	RegexTasks         []string         `bson:"regex_tasks"`
+	VariantsTasks      []VariantTasks   `bson:"variants_tasks"`
+	SyncAtEndOpts      SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
+	Patches            []ModulePatch    `bson:"patches"`
+	Parameters         []Parameter      `bson:"parameters,omitempty"`
+	Activated          bool             `bson:"activated"`
 	// PatchedParserProject is mismatched with its BSON tag since the tag already exists in the DB.
 	// Struct property has been renamed to convey that only parser project configs are stored in it.
 	PatchedParserProject string                 `bson:"patched_config"`

@@ -51,6 +51,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Parameters        []patch.Parameter  `json:"parameters"`
 		Variants          []string           `json:"buildvariants_new"`
 		Tasks             []string           `json:"tasks"`
+		RegexVariants     []string           `json:"regex_buildvariants"`
+		RegexTasks        []string           `json:"regex_tasks"`
 		SyncBuildVariants []string           `json:"sync_build_variants"`
 		SyncTasks         []string           `json:"sync_tasks"`
 		SyncStatuses      []string           `json:"sync_statuses"`
@@ -159,6 +161,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Parameters:       data.Parameters,
 		Variants:         data.Variants,
 		Tasks:            data.Tasks,
+		RegexVariants:    data.RegexVariants,
+		RegexTasks:       data.RegexTasks,
 		Alias:            data.Alias,
 		TriggerAliases:   data.TriggerAliases,
 		BackportOf:       data.BackportInfo,

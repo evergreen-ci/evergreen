@@ -804,6 +804,31 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.Len(patchDoc.Tasks, 6)
 }
 
+func (s *projectSuite) TestResolvePatchVTs() {
+	patchDoc := patch.Patch{
+		RegexBuildVariants: []string{".*"},
+		RegexTasks:         []string{"_1$"},
+	}
+
+	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 2)
+	s.Contains(bvs, "bv_1")
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 2)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 2)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Empty(vt.DisplayTasks)
+		if vt.Variant != "bv_1" && vt.Variant != "bv_2" {
+			s.T().Fail()
+		}
+	}
+}
+
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 	patchDoc := patch.Patch{}
 

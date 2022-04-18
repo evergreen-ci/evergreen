@@ -20,6 +20,7 @@ const (
 	skipConfirmFlagName       = "skip_confirm"
 	yesFlagName               = "yes"
 	variantsFlagName          = "variants"
+	regexVariantsFlagName     = "regex_variants"
 	tasksFlagName             = "tasks"
 	regexTasksFlagName        = "regex_tasks"
 	parameterFlagName         = "param"

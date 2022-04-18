@@ -36,6 +36,12 @@ type cliIntent struct {
 	// Tasks is a list of tasks associated with the patch
 	Tasks []string `bson:"tasks"`
 
+	// RegexBuildVariants is a list of regular expressions to match build variants associated with the patch
+	RegexBuildVariants []string `bson:"regex_variants,omitempty"`
+
+	// Tasks is a list of regular expressions to match tasks associated with the patch
+	RegexTasks []string `bson:"regex_tasks,omitempty"`
+
 	// Parameters is a list of parameters to use with the task
 	Parameters []Parameter `bson:"parameters,omitempty"`
 
@@ -183,21 +189,23 @@ func (g *cliIntent) GetCalledBy() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:   c.Description,
-		Author:        c.User,
-		Project:       c.ProjectID,
-		Githash:       c.BaseHash,
-		Path:          c.Path,
-		Status:        evergreen.PatchCreated,
-		BuildVariants: c.BuildVariants,
-		Parameters:    c.Parameters,
-		Alias:         c.Alias,
-		Triggers:      TriggerInfo{Aliases: c.TriggerAliases},
-		Tasks:         c.Tasks,
-		SyncAtEndOpts: c.SyncAtEndOpts,
-		BackportOf:    c.BackportOf,
-		Patches:       []ModulePatch{},
-		GitInfo:       c.GitInfo,
+		Description:        c.Description,
+		Author:             c.User,
+		Project:            c.ProjectID,
+		Githash:            c.BaseHash,
+		Path:               c.Path,
+		Status:             evergreen.PatchCreated,
+		BuildVariants:      c.BuildVariants,
+		RegexBuildVariants: c.RegexBuildVariants,
+		Parameters:         c.Parameters,
+		Alias:              c.Alias,
+		Triggers:           TriggerInfo{Aliases: c.TriggerAliases},
+		Tasks:              c.Tasks,
+		RegexTasks:         c.RegexTasks,
+		SyncAtEndOpts:      c.SyncAtEndOpts,
+		BackportOf:         c.BackportOf,
+		Patches:            []ModulePatch{},
+		GitInfo:            c.GitInfo,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -226,6 +234,8 @@ type CLIIntentParams struct {
 	Parameters       []Parameter
 	Variants         []string
 	Tasks            []string
+	RegexVariants    []string
+	RegexTasks       []string
 	Alias            string
 	TriggerAliases   []string
 	RepeatDefinition bool
@@ -270,26 +280,28 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:       mgobson.NewObjectId().Hex(),
-		IntentType:       CliIntentType,
-		PatchContent:     params.PatchContent,
-		Path:             params.Path,
-		Description:      params.Description,
-		BuildVariants:    params.Variants,
-		Tasks:            params.Tasks,
-		Parameters:       params.Parameters,
-		SyncAtEndOpts:    params.SyncParams,
-		User:             params.User,
-		ProjectID:        params.Project,
-		BaseHash:         params.BaseGitHash,
-		Finalize:         params.Finalize,
-		Module:           params.Module,
-		Alias:            params.Alias,
-		TriggerAliases:   params.TriggerAliases,
-		BackportOf:       params.BackportOf,
-		GitInfo:          params.GitInfo,
-		RepeatDefinition: params.RepeatDefinition,
-		RepeatFailed:     params.RepeatFailed,
+		DocumentID:         mgobson.NewObjectId().Hex(),
+		IntentType:         CliIntentType,
+		PatchContent:       params.PatchContent,
+		Path:               params.Path,
+		Description:        params.Description,
+		BuildVariants:      params.Variants,
+		Tasks:              params.Tasks,
+		RegexBuildVariants: params.RegexVariants,
+		RegexTasks:         params.RegexTasks,
+		Parameters:         params.Parameters,
+		SyncAtEndOpts:      params.SyncParams,
+		User:               params.User,
+		ProjectID:          params.Project,
+		BaseHash:           params.BaseGitHash,
+		Finalize:           params.Finalize,
+		Module:             params.Module,
+		Alias:              params.Alias,
+		TriggerAliases:     params.TriggerAliases,
+		BackportOf:         params.BackportOf,
+		GitInfo:            params.GitInfo,
+		RepeatDefinition:   params.RepeatDefinition,
+		RepeatFailed:       params.RepeatFailed,
 	}, nil
 }
 
