@@ -1701,7 +1701,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	var apiTasks []*restModel.APITask
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t)
+		err := apiTask.BuildFromArgs(&t, restModel.APITaskArgs{})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task item db model to api model: %v", err.Error()))
 		}
@@ -3111,7 +3111,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	if err = apiTask.BuildFromService(dt); err != nil {
+	if err = apiTask.BuildFromArgs(dt, restModel.APITaskArgs{}); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
 	}
 	return apiTask, nil
@@ -3348,7 +3348,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	err = apiTask.BuildFromService(baseTask)
+	err = apiTask.BuildFromArgs(baseTask, restModel.APITaskArgs{})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
@@ -3366,7 +3366,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
-		err = apiTask.BuildFromService(&t)
+		err = apiTask.BuildFromArgs(&t, restModel.APITaskArgs{})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
 		}
@@ -3998,7 +3998,7 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 		}
 
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromService(upstreamTask); err != nil {
+		if err = apiTask.BuildFromArgs(upstreamTask, restModel.APITaskArgs{}); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
 		}
 
