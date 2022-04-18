@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -72,7 +73,7 @@ type APITask struct {
 	AbortInfo               APIAbortInfo        `json:"abort_info,omitempty"`
 	CanSync                 bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts           APISyncAtEndOptions `json:"sync_at_end_opts"`
-	AMI                     *string             `json:"ami"`
+	Ami                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 	// These fields are used by graphql gen, but do not need to be exposed
@@ -274,6 +275,20 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			return errors.Wrap(err, "can't build TaskEndDetail from service")
 		}
 
+		if v.HostId != "" {
+			h, err := host.FindOneId(v.HostId)
+			if err != nil {
+				return errors.Wrapf(err, "error finding host '%s' for task", v.HostId)
+			}
+			if h != nil {
+				ami := h.GetAMI()
+				if ami != "" {
+					at.Ami = utility.ToStringPtr(ami)
+
+				}
+			}
+		}
+
 		if len(v.ExecutionTasks) > 0 {
 			ets := []*string{}
 			for _, t := range v.ExecutionTasks {
@@ -291,7 +306,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 			at.DependsOn = dependsOn
 		}
-
+		if v.Project != "" {
+			identifier, err := model.GetIdentifierForProject(v.Project)
+			if err == nil {
+				at.ProjectIdentifier = utility.ToStringPtr(identifier)
+			}
+		}
 		at.OverrideDependencies = v.OverrideDependencies
 		at.Archived = v.Archived
 	case string:
@@ -308,31 +328,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	}
 
 	return nil
-}
-
-func (at *APITask) GetAMI() error {
-	if utility.FromStringPtr(at.HostId) != "" {
-		h, err := host.FindOneId(utility.FromStringPtr(at.HostId))
-		if err != nil {
-			return errors.Wrapf(err, "finding host '%s' for task", utility.FromStringPtr(at.HostId))
-		}
-		if h != nil {
-			ami := h.GetAMI()
-			if ami != "" {
-				at.AMI = utility.ToStringPtr(ami)
-			}
-		}
-	}
-	return nil
-}
-
-func (at *APITask) GetProjectIdentifier() {
-	if utility.FromStringPtr(at.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(at.ProjectId))
-		if err == nil {
-			at.ProjectIdentifier = utility.ToStringPtr(identifier)
-		}
-	}
 }
 
 // ToService returns a service layer task using the data from the APITask.

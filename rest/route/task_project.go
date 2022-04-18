@@ -104,7 +104,6 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		taskModel.GetProjectIdentifier()
 		err = taskModel.BuildFromService(tph.url)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

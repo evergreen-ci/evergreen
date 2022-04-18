@@ -102,7 +102,6 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = taskModel.BuildFromService(&tasks[i]); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		taskModel.GetProjectIdentifier()
 
 		if err = taskModel.GetArtifacts(); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

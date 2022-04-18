@@ -94,17 +94,11 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-	taskModel.GetProjectIdentifier()
+
 	err = taskModel.BuildFromService(tgh.url)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-
-	err = taskModel.GetAMI()
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
-	taskModel.GetProjectIdentifier()
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
@@ -211,7 +205,7 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
-		taskModel.GetProjectIdentifier()
+
 		if err = resp.AddData(taskModel); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}

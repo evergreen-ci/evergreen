@@ -60,8 +60,6 @@ models:
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
-      ami:
-        resolver: true
       annotation:
         resolver: true
       baseTaskMetadata:
@@ -79,8 +77,6 @@ models:
       executionTasksFull:
         resolver: true
       patchMetadata:
-        resolver: true
-      projectIdentifier:
         resolver: true
       reliesOn:
         resolver: true

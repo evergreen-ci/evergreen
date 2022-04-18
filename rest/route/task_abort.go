@@ -50,6 +50,6 @@ func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = taskModel.BuildFromService(foundTask); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-	taskModel.GetProjectIdentifier()
+
 	return gimlet.NewJSONResponse(taskModel)
 }
