@@ -170,10 +170,8 @@ type TriggerDefinition struct {
 	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff,omitempty"`
 
 	// definitions for tasks to run for this trigger
-	ConfigFile   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
-	Command      string `bson:"command,omitempty" json:"command,omitempty"`
-	GenerateFile string `bson:"generate_file,omitempty" json:"generate_file,omitempty"`
-	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
+	ConfigFile string `bson:"config_file,omitempty" json:"config_file,omitempty"`
+	Alias      string `bson:"alias,omitempty" json:"alias,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -2440,8 +2438,8 @@ func (t *TriggerDefinition) Validate(parentProject string) error {
 	if regexErr != nil {
 		return errors.Wrapf(regexErr, "invalid task regex '%s'", t.TaskRegex)
 	}
-	if t.ConfigFile == "" && t.GenerateFile == "" {
-		return errors.New("must provide a config file or generated tasks file")
+	if t.ConfigFile == "" {
+		return errors.New("must provide a config file")
 	}
 	if t.DefinitionID == "" {
 		t.DefinitionID = utility.RandomString()

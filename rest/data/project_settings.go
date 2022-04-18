@@ -241,6 +241,14 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid periodic build definition")
 		}
+	case model.ProjectPageTriggersSection:
+		for i := range mergedProjectRef.Triggers {
+			err = mergedProjectRef.Triggers[i].Validate(projectId)
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
+		}
 	}
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
 	if err != nil {
