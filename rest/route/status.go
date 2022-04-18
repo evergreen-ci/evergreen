@@ -96,7 +96,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 			if err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 			}
-
+			taskModel.GetProjectIdentifier()
 			response[i] = &taskModel
 
 		}

@@ -250,6 +250,11 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 	return &apiProjectRef, nil
 }
 
+func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	obj.GetProjectIdentifier()
+	return obj.ProjectIdentifier, nil
+}
+
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
 	if !at.Aborted {
 		return nil, nil
@@ -4083,6 +4088,14 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 }
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
+
+func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	err := obj.GetAMI()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return obj.AMI, nil
+}
 
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
