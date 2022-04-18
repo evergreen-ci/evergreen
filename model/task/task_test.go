@@ -2033,7 +2033,7 @@ func TestActivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t3", "t4"}
-	err := ActivateTasks([]Task{tasks[0]}, time.Time{}, "")
+	err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
@@ -2069,7 +2069,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5"}
-	err := DeactivateTasks([]Task{tasks[0]}, "")
+	err := DeactivateTasks([]Task{tasks[0]}, true, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)

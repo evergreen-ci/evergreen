@@ -100,7 +100,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 	}
 
 	if active {
-		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
+		if err := task.ActivateTasks(tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
 		versionIdsToActivate := []string{}
@@ -111,7 +111,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			return errors.Wrap(err, "marking version as activated")
 		}
 	} else {
-		if err := task.DeactivateTasks(tasksToActivate, caller); err != nil {
+		if err := task.DeactivateTasks(tasksToActivate, true, caller); err != nil {
 			return errors.Wrap(err, "deactivating task")
 		}
 	}

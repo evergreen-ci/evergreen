@@ -113,7 +113,7 @@ func ActivateElapsedBuildsAndTasks(v *Version) (bool, error) {
 			v.BuildVariants[i].Activated = true
 			v.BuildVariants[i].ActivateAt = now
 
-			if err := setTaskActivationForBuilds([]string{bv.BuildId}, true, ignoreTasks, evergreen.DefaultTaskActivator); err != nil {
+			if err := setTaskActivationForBuilds([]string{bv.BuildId}, true, true, ignoreTasks, evergreen.DefaultTaskActivator); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"operation": "project-activation",
 					"message":   "problem activating tasks for build",
