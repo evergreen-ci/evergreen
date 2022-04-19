@@ -4022,8 +4022,8 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 		}
 
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(&upstreamVersion); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamBuild.Id, err.Error()))
+		if err = apiVersion.BuildFromService(upstreamVersion); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamVersion.Id, err.Error()))
 		}
 
 		projectID = upstreamVersion.Identifier
