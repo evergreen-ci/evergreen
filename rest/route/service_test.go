@@ -348,7 +348,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -389,7 +389,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -430,7 +430,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -472,7 +472,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
