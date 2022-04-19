@@ -345,6 +345,17 @@ func TestSetStatusAndFields(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status, "terminated host should remain terminated")
 		},
+		"FailsDecommissionIfHostIsNowRunningTaskGroup": func(t *testing.T, h *Host) {
+			h.RunningTaskGroup = "my_task_group"
+			require.NoError(t, h.Insert())
+
+			assert.Error(t, h.SetStatusAndFields(evergreen.HostDecommissioned, bson.M{}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))

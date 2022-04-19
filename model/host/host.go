@@ -460,11 +460,18 @@ func (h *Host) SetStatus(newStatus, user, logs string) error {
 	return h.SetStatusAndFields(newStatus, bson.M{}, user, logs)
 }
 
-// SetStatusAndFields is the same as SetStatus but also sets any of the other
-// given fields.
+// SetStatusAndFields sets the status as well as any of the other given fields.
+// It also validates running tasks if needed.
 func (h *Host) SetStatusAndFields(newStatus string, setFields bson.M, user, logs string) error {
 	if h.Status == newStatus {
 		return nil
+	}
+	query := bson.M{
+		IdKey: h.Id,
+	}
+	if user == evergreen.User && newStatus == evergreen.HostDecommissioned {
+		// Evergreen should only decommission hosts that aren't currently running task groups.
+		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
 	}
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
@@ -478,9 +485,7 @@ func (h *Host) SetStatusAndFields(newStatus string, setFields bson.M, user, logs
 
 	setFields[StatusKey] = newStatus
 	if err := UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
+		query,
 		bson.M{
 			"$set": setFields,
 		},
