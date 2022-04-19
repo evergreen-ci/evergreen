@@ -100,11 +100,11 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		taskModel := &model.APITask{}
 
 		if err = taskModel.BuildFromArgs(&tasks[i], &model.APITaskArgs{
-			IncludeAMI: true, IncludeArtifacts: true, IncludeProjectIdentifier: true,
+			IncludeAMI:               true,
+			IncludeArtifacts:         true,
+			IncludeProjectIdentifier: true,
+			LogURL:                   tbh.url,
 		}); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-		if err = taskModel.BuildFromArgs(tbh.url, nil); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 

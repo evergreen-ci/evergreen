@@ -100,12 +100,11 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, t := range tasks {
 		taskModel := &model.APITask{}
-		err = taskModel.BuildFromArgs(&t, &model.APITaskArgs{IncludeAMI: true, IncludeProjectIdentifier: true})
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-		taskModel.GetProjectIdentifier()
-		err = taskModel.BuildFromArgs(tph.url, nil)
+		err = taskModel.BuildFromArgs(&t, &model.APITaskArgs{
+			IncludeAMI:               true,
+			IncludeProjectIdentifier: true,
+			LogURL:                   tph.url,
+		})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}

@@ -172,18 +172,21 @@ func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
-		if err := at.PreviousExecutions[i].BuildFromArgs(&tasks[i], &APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true}); err != nil {
+		if err := at.PreviousExecutions[i].BuildFromArgs(&tasks[i], &APITaskArgs{
+			IncludeProjectIdentifier: true,
+			IncludeAMI:               true,
+			IncludeArtifacts:         true,
+			LogURL:                   url,
+		}); err != nil {
 			return errors.Wrap(err, "error marshalling previous execution")
 		}
-		if err := at.PreviousExecutions[i].BuildFromService(url); err != nil {
-			return errors.Wrap(err, "failed to build logs for previous execution")
-		}
+
 	}
 
 	return nil
 }
 
-// Deprecated: use BuildFromArgs instead
+// Deprecated: BuildFromArgs should be used instead to add fields that aren't from the task collection
 //
 // BuildFromService converts from a service level task by loading the data
 // into the appropriate fields of the APITask.
@@ -313,33 +316,51 @@ type APITaskArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeAMI               bool
 	IncludeArtifacts         bool
+	LogURL                   string
 }
 
+// BuildFromArgs converts from a service level task by loading the data
+// into the appropriate fields of the APITask. It takes optional arguments to populate
+// additional fields.
 func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
 	err := at.BuildFromService(t)
 	if err != nil {
 		return err
 	}
-	if args != nil {
-		if args.IncludeAMI {
-			if err := at.GetAMI(); err != nil {
-				return err
-			}
+	if args == nil {
+		return nil
+	}
+	if args.LogURL != "" {
+		ll := LogLinks{
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "T")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "E")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "S")),
+			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id))),
 		}
-		if args.IncludeArtifacts {
-			if err := at.GetArtifacts(); err != nil {
-				return err
-			}
+		at.Logs = ll
+	}
+	if args.IncludeAMI {
+		if err := at.GetAMI(); err != nil {
+			return err
 		}
-		if args.IncludeProjectIdentifier {
-			at.GetProjectIdentifier()
+	}
+	if args.IncludeArtifacts {
+		if err := at.GetArtifacts(); err != nil {
+			return err
 		}
+	}
+	if args.IncludeProjectIdentifier {
+		at.GetProjectIdentifier()
 	}
 
 	return nil
 }
 
 func (at *APITask) GetAMI() error {
+	if at.AMI != nil {
+		return nil
+	}
 	if utility.FromStringPtr(at.HostId) != "" {
 		h, err := host.FindOneId(utility.FromStringPtr(at.HostId))
 		if err != nil {
@@ -356,6 +377,9 @@ func (at *APITask) GetAMI() error {
 }
 
 func (at *APITask) GetProjectIdentifier() {
+	if at.ProjectIdentifier != nil {
+		return
+	}
 	if utility.FromStringPtr(at.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(at.ProjectId))
 		if err == nil {

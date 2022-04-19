@@ -104,14 +104,13 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromArgs(&t, nil)
+		err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{
+			LogURL: url,
+		})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		err = apiTask.BuildFromArgs(url, nil)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
-		}
+
 		apiTasks = append(apiTasks, &apiTask)
 	}
 	return apiTasks, nil
@@ -251,13 +250,11 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromArgs(&task, nil)
+	err := apiTask.BuildFromArgs(&task, &restModel.APITaskArgs{
+		LogURL: url,
+	})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
-	}
-	err = apiTask.BuildFromArgs(url, nil)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", task.Id, err.Error()))
 	}
 	return &apiTask, nil
 }

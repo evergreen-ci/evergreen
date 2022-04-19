@@ -90,11 +90,12 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromArgs(foundTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true})
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
-	err = taskModel.BuildFromArgs(tgh.url, nil)
+	err = taskModel.BuildFromArgs(foundTask, &model.APITaskArgs{
+		IncludeProjectIdentifier: true,
+		IncludeAMI:               true,
+		IncludeArtifacts:         true,
+		LogURL:                   tgh.url,
+	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
@@ -336,7 +337,10 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
+	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{
+		IncludeProjectIdentifier: true,
+		IncludeAMI:               true,
+	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
