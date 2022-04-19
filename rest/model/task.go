@@ -296,15 +296,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 
 		at.OverrideDependencies = v.OverrideDependencies
 		at.Archived = v.Archived
-	case string:
-		ll := LogLinks{
-			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
-			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "T")),
-			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "E")),
-			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "S")),
-			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, v, utility.FromStringPtr(at.Id))),
-		}
-		at.Logs = ll
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling task", t))
 	}
