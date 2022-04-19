@@ -90,8 +90,6 @@ type ProcessorArgs struct {
 	SourceVersion     *model.Version
 	DownstreamProject model.ProjectRef
 	ConfigFile        string
-	Command           string
-	GenerateFile      string
 	TriggerID         string
 	TriggerType       string
 	EventID           string
@@ -195,8 +193,6 @@ projectLoop:
 				SourceVersion:     sourceVersion,
 				DownstreamProject: ref,
 				ConfigFile:        trigger.ConfigFile,
-				Command:           trigger.Command,
-				GenerateFile:      trigger.GenerateFile,
 				TriggerType:       model.ProjectTriggerLevelTask,
 				TriggerID:         t.Id,
 				EventID:           e.ID,
@@ -260,7 +256,6 @@ projectLoop:
 				SourceVersion:     sourceVersion,
 				DownstreamProject: ref,
 				ConfigFile:        trigger.ConfigFile,
-				Command:           trigger.Command,
 				TriggerType:       model.ProjectTriggerLevelBuild,
 				TriggerID:         b.Id,
 				EventID:           e.ID,

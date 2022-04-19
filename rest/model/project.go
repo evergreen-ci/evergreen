@@ -34,8 +34,6 @@ type APITriggerDefinition struct {
 	Status            *string `json:"status"`
 	DateCutoff        *int    `json:"date_cutoff"`
 	ConfigFile        *string `json:"config_file"`
-	GenerateFile      *string `json:"generate_file"`
-	Command           *string `json:"command"`
 	Alias             *string `json:"alias"`
 }
 
@@ -48,8 +46,6 @@ func (t *APITriggerDefinition) ToService() (interface{}, error) {
 		TaskRegex:         utility.FromStringPtr(t.TaskRegex),
 		Status:            utility.FromStringPtr(t.Status),
 		ConfigFile:        utility.FromStringPtr(t.ConfigFile),
-		GenerateFile:      utility.FromStringPtr(t.GenerateFile),
-		Command:           utility.FromStringPtr(t.Command),
 		Alias:             utility.FromStringPtr(t.Alias),
 		DateCutoff:        t.DateCutoff,
 	}, nil
@@ -72,8 +68,6 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 	t.TaskRegex = utility.ToStringPtr(triggerDef.TaskRegex)
 	t.Status = utility.ToStringPtr(triggerDef.Status)
 	t.ConfigFile = utility.ToStringPtr(triggerDef.ConfigFile)
-	t.GenerateFile = utility.ToStringPtr(triggerDef.GenerateFile)
-	t.Command = utility.ToStringPtr(triggerDef.Command)
 	t.Alias = utility.ToStringPtr(triggerDef.Alias)
 	t.DateCutoff = triggerDef.DateCutoff
 	return nil
