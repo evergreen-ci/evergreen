@@ -845,6 +845,7 @@ type ComplexityRoot struct {
 	SpruceConfig struct {
 		Banner      func(childComplexity int) int
 		BannerTheme func(childComplexity int) int
+		GithubOrgs  func(childComplexity int) int
 		Jira        func(childComplexity int) int
 		Providers   func(childComplexity int) int
 		Spawnhost   func(childComplexity int) int
@@ -5497,6 +5498,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SpruceConfig.BannerTheme(childComplexity), true
 
+	case "SpruceConfig.githubOrgs":
+		if e.complexity.SpruceConfig.GithubOrgs == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.GithubOrgs(childComplexity), true
+
 	case "SpruceConfig.jira":
 		if e.complexity.SpruceConfig.Jira == nil {
 			break
@@ -9082,6 +9090,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  githubOrgs: [String!]!
   providers: CloudProviderConfig
   spawnHost: SpawnHostConfig!
 }
@@ -29429,6 +29438,41 @@ func (ec *executionContext) _SpruceConfig_bannerTheme(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _SpruceConfig_githubOrgs(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubOrgs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _SpruceConfig_providers(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -47133,6 +47177,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
+		case "githubOrgs":
+			out.Values[i] = ec._SpruceConfig_githubOrgs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "providers":
 			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
 		case "spawnHost":
