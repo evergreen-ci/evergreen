@@ -348,11 +348,8 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -392,11 +389,8 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -436,11 +430,8 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -481,11 +472,8 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net"})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -559,11 +547,8 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -602,11 +587,8 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -645,11 +627,8 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -687,11 +666,8 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
-					So(err, ShouldBeNil)
-					nextModelTask.GetProjectIdentifier()
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
 				prefix := int(math.Log10(float64(taskToStartAt + limit)))
@@ -721,13 +697,10 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: "0build0",
 				}
 				nextModelTask := &model.APITask{}
-				err := nextModelTask.BuildFromService(serviceModel)
+				err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 				So(err, ShouldBeNil)
 				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, "http://evergreen.example.net")
 				So(err, ShouldBeNil)
-				err = nextModelTask.BuildFromService("http://evergreen.example.net")
-				So(err, ShouldBeNil)
-				nextModelTask.GetProjectIdentifier()
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
