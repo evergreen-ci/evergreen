@@ -23,6 +23,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Valid key types.
+const (
+	rsa     = "ssh-rsa"
+	dss     = "ssh-dss"
+	ed25519 = "ssh-ed25519"
+	ecdsa   = "ecdsa-sha2-nistp256"
+)
+
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
 	DistroId              string
@@ -69,14 +77,8 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	}
 
 	// validate public key
-	rsa := "ssh-rsa"
-	dss := "ssh-dss"
-	isRSA := strings.HasPrefix(so.PublicKey, rsa)
-	isDSS := strings.HasPrefix(so.PublicKey, dss)
-	if !isRSA && !isDSS {
-		return errors.Errorf("Invalid spawn options: "+
-			"either an invalid Evergreen-managed key name has been provided,"+
-			"or the key value does not start with %s or %s", rsa, dss)
+	if err = ValidateSSHKey(so.PublicKey); err != nil {
+		return errors.Wrap(err, "Invalid spawn options: ")
 	}
 
 	sections := strings.Split(so.PublicKey, " ")
@@ -94,6 +96,18 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	}
 
 	return nil
+}
+
+// ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
+func ValidateSSHKey(key string) error {
+	validKeys := []string{rsa, dss, ed25519, ecdsa}
+	for _, prefix := range validKeys {
+		if strings.HasPrefix(key, prefix) {
+			return nil
+		}
+	}
+	return errors.Errorf("either an invalid Evergreen-managed key name has been provided,"+
+		"or the key value does not start with one of these options: '%s'", validKeys)
 }
 
 func checkSpawnHostLimitExceeded(numCurrentHosts int, settings *evergreen.Settings) error {
