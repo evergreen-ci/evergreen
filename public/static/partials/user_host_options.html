@@ -70,7 +70,7 @@
       Please enter a unique key name for your new key<br />
     </span>
     <span class="semi-muted invalid" ng-show="spawnHostForm.pubkey.$dirty && (spawnHostForm.pubkey.$error.required || spawnHostForm.pubkey.$error.keyBaseValid)">
-      Key is invalid. It must begin with 'ssh-rsa' or 'ssh-dss' or 'ssh-ed25519' or 'ecdsa-sha2-nistp256'. Ensure you have copied the public half of the key.<br />
+      Key is invalid. It must begin with 'ssh-rsa', or 'ssh-dss', or 'ssh-ed25519', or 'ecdsa-sha2-nistp256'. Ensure you have copied the public half of the key.<br />
     </span>
     <span class="semi-muted invalid" ng-show="!spawnableDistros || spawnableDistros.length === 0">
       You cannot spawn a host because there are no spawnable distros.<br />

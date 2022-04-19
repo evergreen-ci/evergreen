@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/utility"
@@ -1138,4 +1139,30 @@ func (w WindowsVersion) Validate() error {
 	default:
 		return errors.Errorf("unrecognized windows version '%s'", w)
 	}
+}
+
+const (
+	// Valid public key types.
+	publicKeyRSA     = "ssh-rsa"
+	publicKeyDSS     = "ssh-dss"
+	publicKeyED25519 = "ssh-ed25519"
+	publicKeyECDSA   = "ecdsa-sha2-nistp256"
+)
+
+var validKeyTypes = []string{
+	publicKeyRSA,
+	publicKeyDSS,
+	publicKeyED25519,
+	publicKeyECDSA,
+}
+
+// ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
+func ValidateSSHKey(key string) error {
+	for _, prefix := range validKeyTypes {
+		if strings.HasPrefix(key, prefix) {
+			return nil
+		}
+	}
+	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
+		"or the key value is not one of the valid types: %s", validKeyTypes)
 }

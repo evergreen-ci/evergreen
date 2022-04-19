@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -115,7 +115,7 @@ func validateKeyName(keyName string) error {
 }
 
 func validateKeyValue(keyValue string) error {
-	if err := cloud.ValidateSSHKey(keyValue); err != nil {
+	if err := evergreen.ValidateSSHKey(keyValue); err != nil {
 		return errors.Wrapf(err, "invalid public key")
 	}
 

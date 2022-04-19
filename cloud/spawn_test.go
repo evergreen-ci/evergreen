@@ -96,9 +96,9 @@ func TestValidateSSHKey(t *testing.T) {
 	ecdsaKey := "ecdsa-sha2-nistp256 randomKeyname"
 	invalidKey := "notThat randomKeyname"
 
-	require.NoError(t, ValidateSSHKey(rsaKey))
-	require.NoError(t, ValidateSSHKey(dssKey))
-	require.NoError(t, ValidateSSHKey(ed25519Key))
-	require.NoError(t, ValidateSSHKey(ecdsaKey))
-	require.Error(t, ValidateSSHKey(invalidKey))
+	require.NoError(t, evergreen.ValidateSSHKey(rsaKey))
+	require.NoError(t, evergreen.ValidateSSHKey(dssKey))
+	require.NoError(t, evergreen.ValidateSSHKey(ed25519Key))
+	require.NoError(t, evergreen.ValidateSSHKey(ecdsaKey))
+	require.Error(t, evergreen.ValidateSSHKey(invalidKey))
 }
