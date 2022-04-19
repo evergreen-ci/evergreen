@@ -693,39 +693,12 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "problem getting tasks that need generators run")
 		}
 
-		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if flags.GenerateTasksExperimentDisabled {
-			versions := map[string]amboy.Queue{}
-			group := env.RemoteQueueGroup()
-
-			for _, t := range tasks {
-				var (
-					q   amboy.Queue
-					ok  bool
-					err error
-				)
-				if q, ok = versions[t.Version]; !ok {
-					q, err = group.Get(ctx, t.Version)
-					if err != nil {
-						return errors.Wrapf(err, "getting queue for version '%s'", t.Version)
-					}
-					versions[t.Version] = q
-				}
-				catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Version, t.Id, ts, false)))
-			}
-			return catcher.Resolve()
-		}
-
 		queue, err := env.RemoteQueueGroup().Get(ctx, "service.generate.tasks")
 		if err != nil {
 			return errors.Wrap(err, "getting generate tasks queue")
 		}
 
+		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts, true)), "task '%s'", t.Id)
 		}
