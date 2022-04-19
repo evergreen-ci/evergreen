@@ -1261,6 +1261,81 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	assert.EqualValues(-1, dbTask.Priority)
 }
 
+func TestDisableStaleContainerTasks(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
+		"DisablesStaleUnallocatedContainerTask": func(t *testing.T, tsk Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			checkDisabled(t, dbTask)
+		},
+		"DisablesStaleAllocatedContainerTask": func(t *testing.T, tsk Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			tsk.ContainerAllocated = true
+			tsk.ContainerAllocatedTime = time.Now().Add(-5000 * 24 * time.Hour)
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			checkDisabled(t, dbTask)
+		},
+		"IgnoresFreshContainerTask": func(t *testing.T, tsk Task) {
+			tsk.ActivatedTime = time.Now()
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Activated)
+			assert.Zero(t, dbTask.Priority)
+		},
+		"IgnoresContainerTaskWithStatusOtherThanUndispatched": func(t *testing.T, tsk Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			tsk.Status = evergreen.TaskSucceeded
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Activated)
+			assert.Zero(t, dbTask.Priority)
+		},
+		"IgnoresHostTasks": func(t *testing.T, tsk Task) {
+			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
+			tsk.ExecutionPlatform = ExecutionPlatformHost
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+
+			dbTask, err := FindOneId(tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.True(t, dbTask.Activated)
+			assert.Zero(t, dbTask.Priority)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
+			tCase(t, getTaskThatNeedsContainerAllocation())
+		})
+	}
+}
+
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, event.AllLogCollection))
 
@@ -2525,14 +2600,17 @@ func TestShouldAllocateContainer(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			taskThatNeedsContainerAllocation := Task{
-				Id:                "task-id",
-				Status:            evergreen.TaskUndispatched,
-				Activated:         true,
-				ExecutionPlatform: ExecutionPlatformContainer,
-			}
-			tCase(t, taskThatNeedsContainerAllocation)
+			tCase(t, getTaskThatNeedsContainerAllocation())
 		})
+	}
+}
+
+func getTaskThatNeedsContainerAllocation() Task {
+	return Task{
+		Id:                "task-id",
+		Status:            evergreen.TaskUndispatched,
+		Activated:         true,
+		ExecutionPlatform: ExecutionPlatformContainer,
 	}
 }
 

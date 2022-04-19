@@ -1285,8 +1285,8 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	return info.Updated, nil
 }
 
-// DisableStaleContainerTasks disables all container tasks that have been stuck
-// waiting for dispatch for too long.
+// DisableStaleContainerTasks disables all container tasks that have been
+// scheduled to run for a long time without actually dispatching the task.
 func DisableStaleContainerTasks(caller string) error {
 	query := isContainerTaskScheduledQuery()
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
@@ -1295,6 +1295,12 @@ func DisableStaleContainerTasks(caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "finding tasks that need to be disabled")
 	}
+
+	grip.Info(message.Fields{
+		"message":   "disabling container tasks that are still scheduled to run but are stale",
+		"num_tasks": len(tasks),
+		"caller":    caller,
+	})
 
 	if err := DisableTasks(tasks, caller); err != nil {
 		return errors.Wrap(err, "disabled stale container tasks")
