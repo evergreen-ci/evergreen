@@ -2950,6 +2950,127 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	assert.Equal(t, t1.Status, tasks[0].BaseTask.Status)
 }
 
+func TestGetTasksByVersionSorting(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv_foo",
+		DisplayName:  "displayName_foo",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
+		BaseTask:     BaseTaskInfo{Id: "t1_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    time.Minute,
+	}
+	t2 := Task{
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv_bar",
+		DisplayName:  "displayName_bar",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
+		BaseTask:     BaseTaskInfo{Id: "t2_base", Status: evergreen.TaskFailed},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    25 * time.Minute,
+	}
+	t3 := Task{
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv_qux",
+		DisplayName:  "displayName_qux",
+		Execution:    0,
+		Status:       evergreen.TaskStarted,
+		BaseTask:     BaseTaskInfo{Id: "t3_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2021, time.November, 10, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    0,
+	}
+	t4 := Task{
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv_baz",
+		DisplayName:  "displayName_baz",
+		Execution:    0,
+		Status:       evergreen.TaskSetupFailed,
+		BaseTask:     BaseTaskInfo{Id: "t4_base", Status: evergreen.TaskSucceeded},
+		StartTime:    time.Date(2022, time.April, 7, 23, 0, 0, 0, time.UTC),
+		TimeTaken:    2 * time.Hour,
+	}
+
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+
+	// Sort by display name, asc
+	opts := GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: DisplayNameKey, Order: 1},
+		},
+	}
+	tasks, count, err := GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t4", tasks[1].Id)
+	assert.Equal(t, "t1", tasks[2].Id)
+	assert.Equal(t, "t3", tasks[3].Id)
+
+	// Sort by build variant name, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: BuildVariantKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t4", tasks[1].Id)
+	assert.Equal(t, "t1", tasks[2].Id)
+	assert.Equal(t, "t3", tasks[3].Id)
+
+	// Sort by display status, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: DisplayStatusKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t4", tasks[1].Id)
+	assert.Equal(t, "t3", tasks[2].Id)
+	assert.Equal(t, "t1", tasks[3].Id)
+
+	// Sort by base task status, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: BaseTaskStatusKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t2", tasks[0].Id)
+	assert.Equal(t, "t1", tasks[1].Id)
+	assert.Equal(t, "t3", tasks[2].Id)
+	assert.Equal(t, "t4", tasks[3].Id)
+
+	// Sort by duration, asc
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: TimeTakenKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, count)
+	assert.Equal(t, "t1", tasks[0].Id)
+	assert.Equal(t, "t2", tasks[1].Id)
+	assert.Equal(t, "t4", tasks[2].Id)
+	assert.Equal(t, "t3", tasks[3].Id)
+}
+
 func TestAbortVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{

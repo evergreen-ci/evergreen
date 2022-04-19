@@ -1657,6 +1657,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 				key = task.BaseTaskStatusKey
 			case TaskSortCategoryVariant:
 				key = task.BuildVariantKey
+			case TaskSortCategoryDuration:
+				key = task.TimeTakenKey
 			default:
 				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: %s", singleSort.Key))
 			}

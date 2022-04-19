@@ -229,7 +229,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Order:                   v.RevisionOrderNumber,
 			Status:                  utility.ToStringPtr(v.Status),
 			DisplayStatus:           utility.ToStringPtr(v.GetDisplayStatus()),
-			TimeTaken:               NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:        NewAPIDuration(v.ExpectedDuration),
 			GenerateTask:            v.GenerateTask,
 			GeneratedBy:             v.GeneratedBy,
@@ -262,6 +261,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				Id:     utility.ToStringPtr(v.BaseTask.Id),
 				Status: utility.ToStringPtr(v.BaseTask.Status),
 			}
+		}
+
+		if v.TimeTaken != 0 {
+			at.TimeTaken = NewAPIDuration(v.TimeTaken)
+		} else if v.Status == evergreen.TaskStarted {
+			at.TimeTaken = NewAPIDuration(time.Since(v.StartTime))
 		}
 
 		if v.ParentPatchID != "" {

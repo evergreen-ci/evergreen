@@ -715,6 +715,7 @@ const (
 	TaskSortCategoryStatus     TaskSortCategory = "STATUS"
 	TaskSortCategoryBaseStatus TaskSortCategory = "BASE_STATUS"
 	TaskSortCategoryVariant    TaskSortCategory = "VARIANT"
+	TaskSortCategoryDuration   TaskSortCategory = "DURATION"
 )
 
 var AllTaskSortCategory = []TaskSortCategory{
@@ -722,11 +723,12 @@ var AllTaskSortCategory = []TaskSortCategory{
 	TaskSortCategoryStatus,
 	TaskSortCategoryBaseStatus,
 	TaskSortCategoryVariant,
+	TaskSortCategoryDuration,
 }
 
 func (e TaskSortCategory) IsValid() bool {
 	switch e {
-	case TaskSortCategoryName, TaskSortCategoryStatus, TaskSortCategoryBaseStatus, TaskSortCategoryVariant:
+	case TaskSortCategoryName, TaskSortCategoryStatus, TaskSortCategoryBaseStatus, TaskSortCategoryVariant, TaskSortCategoryDuration:
 		return true
 	}
 	return false

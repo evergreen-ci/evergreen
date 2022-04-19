@@ -172,7 +172,7 @@ type Task struct {
 	// It may be added via aggregation
 	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
 
-	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
+	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
@@ -3288,6 +3288,9 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+			} else if singleSort.Key == TimeTakenKey {
+				sortPipeline = append(sortPipeline, recalculateTimeTaken())
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
@@ -3766,6 +3769,24 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	return pipeline
+}
+
+func recalculateTimeTaken() bson.M {
+	return bson.M{
+		"$set": bson.M{
+			TimeTakenKey: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskStarted},
+					},
+					// Time taken for a task is in nanoseconds. Since subtracting two dates in MongoDB yields milliseconds, we have
+					// to multiply by time.Millisecond (1000000) to keep time taken consistently in nanoseconds.
+					"then": bson.M{"$multiply": []interface{}{time.Millisecond, bson.M{"$subtract": []interface{}{"$$NOW", "$" + StartTimeKey}}}},
+					"else": "$" + TimeTakenKey,
+				},
+			},
+		},
+	}
 }
 
 // addStatusColorSort adds a stage which takes a task display status and returns an integer

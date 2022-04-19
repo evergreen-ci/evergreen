@@ -7790,6 +7790,7 @@ enum TaskSortCategory {
   STATUS
   BASE_STATUS
   VARIANT
+  DURATION
 }
 
 enum TestSortCategory {
