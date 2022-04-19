@@ -90,12 +90,12 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(foundTask)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
-
-	err = taskModel.BuildFromService(tgh.url)
+	err = taskModel.BuildFromArgs(foundTask, &model.APITaskArgs{
+		IncludeProjectIdentifier: true,
+		IncludeAMI:               true,
+		IncludeArtifacts:         true,
+		LogURL:                   tgh.url,
+	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
@@ -117,11 +117,6 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
 	}
 	taskModel.EstimatedStart = model.NewAPIDuration(start)
-
-	err = taskModel.GetArtifacts()
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving artifacts"))
-	}
 
 	return gimlet.NewJSONResponse(taskModel)
 }
@@ -201,11 +196,10 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, task := range tasks {
 		taskModel := &model.APITask{}
-		err = taskModel.BuildFromService(&task)
+		err = taskModel.BuildFromArgs(&task, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
-
 		if err = resp.AddData(taskModel); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -343,7 +337,10 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(refreshedTask)
+	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{
+		IncludeProjectIdentifier: true,
+		IncludeAMI:               true,
+	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
