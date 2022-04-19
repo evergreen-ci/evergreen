@@ -8,7 +8,6 @@
       "owner_name" : "evergreen-ci",
       "repo_name" : "commit-queue-sandbox",
       "branch_name" : "main",
-      "use_repo_settings" : false,
       "admins": ["me"]
     }
   ],

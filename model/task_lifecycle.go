@@ -1021,13 +1021,18 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func UpdateVersionStatus(v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey, build.IsGithubCheckKey, build.AbortedKey))
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
+		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
 
-	versionStatus := getVersionStatus(builds)
+	// Regardless of whether the overall version status has changed, the Github status subset may have changed.
+	if err = updateVersionGithubStatus(v, builds); err != nil {
+		return "", errors.Wrap(err, "updating version GitHub status")
+	}
 
+	versionStatus := getVersionStatus(builds)
 	if versionStatus == v.Status {
 		return versionStatus, nil
 	}
@@ -1056,10 +1061,6 @@ func UpdateVersionStatus(v *Version) (string, error) {
 		if err = v.UpdateStatus(versionStatus); err != nil {
 			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 		}
-	}
-
-	if err = updateVersionGithubStatus(v, builds); err != nil {
-		return "", errors.Wrap(err, "updating version GitHub status")
 	}
 
 	return versionStatus, nil

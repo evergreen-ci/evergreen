@@ -2173,6 +2173,101 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 	}
 }
 
+func TestMarkAsContainerAllocated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	checkTaskAllocated := func(t *testing.T, taskID string) {
+		dbTask, err := FindOneId(taskID)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask)
+		assert.True(t, dbTask.ContainerAllocated)
+		assert.False(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
+		assert.Zero(t, dbTask.AgentVersion)
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			require.NoError(t, tsk.Insert())
+
+			require.NoError(t, tsk.MarkAsContainerAllocated(ctx, env))
+			checkTaskAllocated(t, tsk.Id)
+		},
+		"FailsWithAllocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = true
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsWithAllocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ContainerAllocated = true
+			require.NoError(t, tsk.Insert())
+			tsk.ContainerAllocated = false
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsWithInactiveTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Activated = false
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsForTaskWithStatusOtherThanUndispatched": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.Status = evergreen.TaskSucceeded
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsForTaskWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.DependsOn = []Dependency{
+				{
+					TaskId:   "dependency",
+					Finished: false,
+				},
+			}
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsForHostTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			tsk.ExecutionPlatform = ExecutionPlatformHost
+			require.NoError(t, tsk.Insert())
+
+			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+		},
+		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
+			require.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
+
+			dbTask, err := FindOneId(tsk.Id)
+			assert.NoError(t, err)
+			assert.Zero(t, dbTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			require.NoError(t, db.Clear(Collection))
+			tsk := Task{
+				Id:                utility.RandomString(),
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				Status:            evergreen.TaskUndispatched,
+				ExecutionPlatform: ExecutionPlatformContainer,
+			}
+
+			tCase(tctx, t, env, tsk)
+		})
+	}
+}
+
 func TestMarkAsContainerDeallocated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -2191,8 +2286,8 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		assert.False(t, dbTask.ContainerAllocated)
 		assert.True(t, utility.IsZeroTime(dbTask.DispatchTime))
 		assert.True(t, utility.IsZeroTime(dbTask.LastHeartbeat))
+		assert.True(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
 		assert.Zero(t, dbTask.AgentVersion)
-		assert.Zero(t, dbTask.ContainerAllocatedTime)
 	}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){

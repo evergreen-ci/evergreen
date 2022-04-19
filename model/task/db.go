@@ -767,10 +767,16 @@ func schedulableHostTasksQuery() bson.M {
 // FindNeedsContainerAllocation returns all container tasks that are waiting for
 // a container to be allocated to them sorted by activation time.
 func FindNeedsContainerAllocation() ([]Task, error) {
+	return FindAll(db.Query(needsContainerAllocation()).Sort([]string{ActivatedTimeKey}))
+}
+
+// needsContainerAllocation returns the query that filters for a task that
+// currently needs a container to be allocated to run it.
+func needsContainerAllocation() bson.M {
 	q := isContainerTaskScheduledQuery()
 	q[StatusKey] = evergreen.TaskUndispatched
 	q[ContainerAllocatedKey] = false
-	return FindAll(db.Query(q).Sort([]string{ActivatedTimeKey}))
+	return q
 }
 
 func isContainerTaskScheduledQuery() bson.M {
