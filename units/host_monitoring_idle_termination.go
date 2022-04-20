@@ -123,40 +123,52 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		d := distrosFound[i]
 		distrosMap[d.Id] = d
 	}
-
 	for _, info := range distroHosts {
-		totalRunningHosts := info.RunningHostsCount
 		minimumHosts := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
-		nIdleHosts := len(info.IdleHosts)
+		nHostsToEvaluateForTermination := getNumHostsToEvaluate(info, minimumHosts)
 
-		maxHostsToTerminate := totalRunningHosts - minimumHosts
-		if maxHostsToTerminate <= 0 {
-			continue
-		}
-		nHostsToEvaluateForTermination := nIdleHosts
-		if nIdleHosts > maxHostsToTerminate {
-			nHostsToEvaluateForTermination = maxHostsToTerminate
-		}
-
+		currentDistro := distrosMap[info.DistroID]
 		hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
-		for i := 0; i < nHostsToEvaluateForTermination; i++ {
+		for i := 0; i < len(info.IdleHosts); i++ {
+			if len(hostsToEvaluateForTermination) >= nHostsToEvaluateForTermination {
+				// If we've reached the number that we need to terminate, only terminate outdated hosts.
+				if !hostHasOutdatedAMI(info.IdleHosts[i], currentDistro) {
+					continue
+				}
+			}
 			hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[i])
-			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i], distrosMap[info.IdleHosts[i].Distro.Id]))
+			j.AddError(j.checkAndTerminateHost(ctx, &info.IdleHosts[i], currentDistro))
 		}
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
-			"id":                         j.ID(),
-			"job_type":                   idleHostJobName,
-			"runner":                     "monitor",
-			"op":                         "dispatcher",
-			"distro_id":                  info.DistroID,
-			"minimum_hosts":              minimumHosts,
-			"num_running_hosts":          totalRunningHosts,
-			"num_idle_hosts":             nIdleHosts,
-			"num_idle_hosts_to_evaluate": nHostsToEvaluateForTermination,
-			"idle_hosts_to_evaluate":     hostsToEvaluateForTermination,
+			"id":                             j.ID(),
+			"job_type":                       idleHostJobName,
+			"runner":                         "monitor",
+			"op":                             "dispatcher",
+			"distro_id":                      info.DistroID,
+			"minimum_hosts":                  minimumHosts,
+			"num_running_hosts":              info.RunningHostsCount,
+			"num_idle_hosts":                 len(info.IdleHosts),
+			"min_num_idle_hosts_to_evaluate": nHostsToEvaluateForTermination,
+			"num_idle_hosts_to_evaluate":     len(hostsToEvaluateForTermination),
+			"idle_hosts_to_evaluate":         hostsToEvaluateForTermination,
 		})
 	}
+}
+
+func getNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) int {
+	totalRunningHosts := info.RunningHostsCount
+	nIdleHosts := len(info.IdleHosts)
+
+	maxHostsToTerminate := totalRunningHosts - minimumHosts
+	if maxHostsToTerminate <= 0 {
+		// Even if we're at or below minimum hosts, should still continue to check outdated hosts.
+		return 0
+	}
+	if nIdleHosts > maxHostsToTerminate {
+		return maxHostsToTerminate
+	}
+	return nIdleHosts
 }
 
 func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d distro.Distro) error {
@@ -172,7 +184,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d
 	idleThreshold := idleTimeCutoff
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleTaskGroupHostCutoff
-	} else if h.GetAMI() != d.GetDefaultAMI() {
+	} else if hostHasOutdatedAMI(*h, d) {
 		idleThreshold = outdatedIdleTimeCutoff
 	}
 
@@ -246,4 +258,8 @@ func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen
 	}
 
 	return false, nil
+}
+
+func hostHasOutdatedAMI(h host.Host, d distro.Distro) bool {
+	return h.GetAMI() != d.GetDefaultAMI()
 }

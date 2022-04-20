@@ -712,3 +712,25 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	}
 	assert.Equal(2, nHostsToEvaluateForTermination)
 }
+
+func TestGetNumHostsToEvaluate(t *testing.T) {
+	info := host.IdleHostsByDistroID{
+		DistroID: "d1",
+		IdleHosts: []host.Host{
+			{Id: "h1"},
+			{Id: "h2"},
+			{Id: "h3"},
+		},
+		RunningHostsCount: 5,
+	}
+	// If minimum hosts is 0, then we attempt to terminate all idle hosts.
+	numHosts := getNumHostsToEvaluate(info, 0)
+	assert.Equal(t, numHosts, 3)
+	// If minimum hosts is 4, then we attempt to terminate just one.
+	numHosts = getNumHostsToEvaluate(info, 4)
+	assert.Equal(t, numHosts, 1)
+	// If minimum hosts is 5, then we don't attempt to terminate.
+	numHosts = getNumHostsToEvaluate(info, 5)
+	assert.Equal(t, numHosts, 0)
+
+}
