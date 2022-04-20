@@ -255,16 +255,6 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 				}
 			}
 		}
-
-		//catcher := grip.NewBasicCatcher()
-		//catcher.Add(restModel.ValidateIssues(update.Annotation.Issues))
-		//catcher.Add(restModel.ValidateIssues(update.Annotation.SuspectedIssues))
-		//if catcher.HasErrors() {
-		//	return gimlet.ErrorResponse{
-		//		Message:    catcher.Resolve().Error(),
-		//		StatusCode: http.StatusBadRequest,
-		//	}
-		//}
 	}
 	u := MustHaveUser(ctx)
 	h.user = u

@@ -180,32 +180,7 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 }
 
 func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
-	source := &Source{
-		Author:    userDisplayName,
-		Time:      time.Now(),
-		Requester: APIRequester,
-	}
-	update := bson.M{}
-
-	if a.Metadata != nil {
-		update[MetadataKey] = a.Metadata
-	}
-	if a.Note != nil {
-		a.Note.Source = source
-		update[NoteKey] = a.Note
-	}
-	if a.Issues != nil {
-		for i := range a.Issues {
-			a.Issues[i].Source = source
-		}
-		update[IssuesKey] = a.Issues
-	}
-	if a.SuspectedIssues != nil {
-		for i := range a.SuspectedIssues {
-			a.SuspectedIssues[i].Source = source
-		}
-		update[SuspectedIssuesKey] = a.SuspectedIssues
-	}
+	update := createAnnotationUpdate(a, userDisplayName)
 	if len(update) == 0 {
 		return nil
 	}
@@ -225,20 +200,7 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	for _, u := range updates {
-		update := bson.M{}
-		if u.Annotation.Metadata != nil {
-			update[MetadataKey] = u.Annotation.Metadata
-		}
-		if u.Annotation.Note != nil {
-			update[NoteKey] = u.Annotation.Note
-		}
-		if u.Annotation.Issues != nil {
-			update[IssuesKey] = u.Annotation.Issues
-		}
-		if u.Annotation.SuspectedIssues != nil {
-			update[SuspectedIssuesKey] = u.Annotation.SuspectedIssues
-		}
-
+		update := createAnnotationUpdate(&u.Annotation, "")
 		ops := make([]mongo.WriteModel, len(u.Tasks))
 		for idx := 0; idx < len(u.Tasks); idx++ {
 			ops[idx] = mongo.NewUpdateOneModel().
@@ -253,6 +215,35 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 		}
 	}
 	return nil
+}
+
+func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) bson.M {
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	update := bson.M{}
+	if annotation.Metadata != nil {
+		update[MetadataKey] = annotation.Metadata
+	}
+	if annotation.Note != nil {
+		annotation.Note.Source = source
+		update[NoteKey] = annotation.Note
+	}
+	if annotation.Issues != nil {
+		for i := range annotation.Issues {
+			annotation.Issues[i].Source = source
+		}
+		update[IssuesKey] = annotation.Issues
+	}
+	if annotation.SuspectedIssues != nil {
+		for i := range annotation.SuspectedIssues {
+			annotation.SuspectedIssues[i].Source = source
+		}
+		update[SuspectedIssuesKey] = annotation.SuspectedIssues
+	}
+	return update
 }
 
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
