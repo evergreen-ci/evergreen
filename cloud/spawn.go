@@ -70,7 +70,7 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 
 	// validate public key
 	if err = evergreen.ValidateSSHKey(so.PublicKey); err != nil {
-		return errors.Wrap(err, "Invalid spawn options: ")
+		return errors.Wrap(err, "Invalid spawn options")
 	}
 
 	sections := strings.Split(so.PublicKey, " ")
