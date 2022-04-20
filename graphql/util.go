@@ -260,18 +260,18 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(statuses),
-		Variants:                       searchVariants,
-		TaskNames:                      searchTasks,
+		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
+		Variants:                       buildVariantOpts.Variants,
+		TaskNames:                      buildVariantOpts.Tasks,
 		Sorts:                          defaultSort,
-		IncludeBaseTasks:               true,
+		IncludeBaseTasks:               !utility.FromBoolPtr(buildVariantOpts.ExcludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()

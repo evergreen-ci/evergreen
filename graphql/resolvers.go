@@ -3742,7 +3742,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		}
 		opts := task.GetTasksByVersionOptions{
 			Sorts:                          defaultSort,
-			IncludeBaseTasks:               true,
+			IncludeBaseTasks:               false,
 			IsMainlineCommit:               evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)),
 			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
 		}
@@ -3771,7 +3771,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	if !utility.FromBoolPtr(v.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(*v.Id, options.Variants, options.Tasks, options.Statuses)
+	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(v.Id), *options)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *v.Id, err.Error()))
 	}
