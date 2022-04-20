@@ -3909,50 +3909,60 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-	opts := task.GetTasksByVersionOptions{
-		Statuses:                       failedAndAbortedStatuses,
-		FieldsToProject:                []string{task.DisplayStatusKey},
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
-	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s", err.Error()))
-	}
 	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
 	}
-	if evergreen.IsPatchRequester(*obj.Requester) {
-		p, err := data.FindPatchById(*obj.Id)
-		if err != nil {
-			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
-		}
-		if len(p.ChildPatches) > 0 {
-			patchStatuses := []string{*p.Status}
-			for _, cp := range p.ChildPatches {
-				patchStatuses = append(patchStatuses, *cp.Status)
-				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := task.GetTasksByVersion(*cp.Id, opts)
-				if err != nil {
-					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
-				}
-				tasks = append(tasks, childPatchTasks...)
-			}
-			status = patch.GetCollectiveStatus(patchStatuses)
-		}
+	if utility.FromBoolPtr(obj.Aborted) && !utility.StringSliceContains(evergreen.TaskFailureStatuses, status) {
+		return evergreen.PatchAborted, nil
+	} else {
+		return status, nil
 	}
 
-	taskStatuses := getAllTaskStatuses(tasks)
+	// failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
+	// opts := task.GetTasksByVersionOptions{
+	// 	Statuses:                       failedAndAbortedStatuses,
+	// 	FieldsToProject:                []string{task.DisplayStatusKey},
+	// 	IncludeBaseTasks:               false,
+	// 	IncludeBuildVariantDisplayName: false,
+	// }
+	// tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
+	// if err != nil {
+	// 	return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s", err.Error()))
+	// }
+	// status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
+	// if err != nil {
+	// 	return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
+	// }
+	// if evergreen.IsPatchRequester(*obj.Requester) {
+	// 	p, err := data.FindPatchById(*obj.Id)
+	// 	if err != nil {
+	// 		return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
+	// 	}
+	// 	if len(p.ChildPatches) > 0 {
+	// 		patchStatuses := []string{*p.Status}
+	// 		for _, cp := range p.ChildPatches {
+	// 			patchStatuses = append(patchStatuses, *cp.Status)
+	// 			// add the child patch tasks to tasks so that we can consider their status
+	// 			childPatchTasks, _, err := task.GetTasksByVersion(*cp.Id, opts)
+	// 			if err != nil {
+	// 				return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+	// 			}
+	// 			tasks = append(tasks, childPatchTasks...)
+	// 		}
+	// 		status = patch.GetCollectiveStatus(patchStatuses)
+	// 	}
+	// }
 
-	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if utility.StringSliceContains(taskStatuses, evergreen.TaskAborted) {
-		if len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 {
-			status = evergreen.PatchAborted
-		}
-	}
-	return status, nil
+	// taskStatuses := getAllTaskStatuses(tasks)
+
+	// // If theres an aborted task we should set the patch status to aborted if there are no other failures
+	// if utility.StringSliceContains(taskStatuses, evergreen.TaskAborted) {
+	// 	if len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 {
+	// 		status = evergreen.PatchAborted
+	// 	}
+	// }
+	// return status, nil
 }
 
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
