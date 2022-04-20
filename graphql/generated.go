@@ -1163,6 +1163,7 @@ type ComplexityRoot struct {
 		BuildVariants     func(childComplexity int, options *BuildVariantOptions) int
 		ChildVersions     func(childComplexity int) int
 		CreateTime        func(childComplexity int) int
+		DispatchedTaskEta func(childComplexity int) int
 		FinishTime        func(childComplexity int) int
 		Id                func(childComplexity int) int
 		IsPatch           func(childComplexity int) int
@@ -1474,6 +1475,7 @@ type VersionResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
+	DispatchedTaskEta(ctx context.Context, obj *model.APIVersion) (*model.APIDuration, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -7085,6 +7087,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.CreateTime(childComplexity), true
 
+	case "Version.dispatchedTaskETA":
+		if e.complexity.Version.DispatchedTaskEta == nil {
+			break
+		}
+
+		return e.complexity.Version.DispatchedTaskEta(childComplexity), true
+
 	case "Version.finishTime":
 		if e.complexity.Version.FinishTime == nil {
 			break
@@ -7716,6 +7725,7 @@ type Version {
   baseTaskStatuses: [String!]!
   manifest: Manifest
   upstreamProject: UpstreamProject
+  dispatchedTaskETA: Duration
 }
 
 type UpstreamProject {
@@ -37664,6 +37674,38 @@ func (ec *executionContext) _Version_upstreamProject(ctx context.Context, field 
 	return ec.marshalOUpstreamProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpstreamProject(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_dispatchedTaskETA(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().DispatchedTaskEta(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIDuration)
+	fc.Result = res
+	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _VersionTiming_makespan(ctx context.Context, field graphql.CollectedField, obj *VersionTiming) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -49178,6 +49220,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_upstreamProject(ctx, field, obj)
+				return res
+			})
+		case "dispatchedTaskETA":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_dispatchedTaskETA(ctx, field, obj)
 				return res
 			})
 		default:

@@ -3970,7 +3970,21 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	}
 	return status, nil
 }
-
+func (*versionResolver) DispatchedTaskEta(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDuration, error) {
+	opts := task.GetTasksByVersionOptions{
+		Statuses:                       getValidTaskStatusesFilter(statuses),
+		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
+		Variants:                       []string{variantParam},
+		TaskNames:                      []string{taskNameParam},
+		Page:                           pageParam,
+		Limit:                          limitParam,
+		Sorts:                          taskSorts,
+		IncludeBaseTasks:               true,
+		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
+		IncludeBuildVariantDisplayName: true,
+		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
+	}
+}
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {

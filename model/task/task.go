@@ -3383,10 +3383,43 @@ type StatusCount struct {
 	Status string `bson:"status"`
 	Count  int    `bson:"count"`
 }
+type MaxEtaType struct {
+	max_eta time.Time
+}
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*StatusCount, error) {
-	StatusCount := []*StatusCount{}
+type TaskStats struct {
+	Counts []StatusCount `bson:"status_counts"`
+	MaxEta []MaxEtaType  `bson: "max_eta"`
+}
+
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]interface{}, error) {
+	StatusCount := []interface{}{}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
+	maxEtaPipeline := []bson.M{
+		{
+			"$match": bson.M{
+				ExpectedDurationKey: bson.M{"$exists": true},
+				StartTimeKey:        bson.M{"$exists": true},
+				DisplayStatusKey:    bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+			},
+		},
+		{
+			"$project": bson.M{
+				"eta": bson.M{
+					"$add": []interface{}{
+						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, 100000}},
+						"$" + StartTimeKey,
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":     nil,
+				"max_eta": bson.M{"$max": "$eta"},
+			},
+		},
+	}
 	groupPipeline := []bson.M{
 		{"$group": bson.M{
 			"_id":   "$" + DisplayStatusKey,
@@ -3398,7 +3431,11 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 			"count":  1,
 		}},
 	}
-	pipeline = append(pipeline, groupPipeline...)
+	facet := bson.M{"$facet": bson.M{
+		"counts": groupPipeline,
+		"eta":    maxEtaPipeline,
+	}}
+	pipeline = append(pipeline, facet)
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -3407,6 +3444,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 		return nil, errors.Wrap(err, "getting task stats")
 	}
 	err = cursor.All(ctx, &StatusCount)
+	fmt.Printf("%v+", StatusCount)
 	if err != nil {
 		return nil, errors.Wrap(err, "iterating and decoding task stats")
 	}

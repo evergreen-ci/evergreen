@@ -3205,16 +3205,20 @@ func TestArchive(t *testing.T) {
 func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
-		Id:        "t1",
-		Version:   "v1",
-		Execution: 0,
-		Status:    evergreen.TaskSucceeded,
+		Id:               "t1",
+		Version:          "v1",
+		Execution:        0,
+		Status:           evergreen.TaskStarted,
+		ExpectedDuration: 1000000,
+		StartTime:        utility.ZeroTime,
 	}
 	t2 := Task{
-		Id:        "t2",
-		Version:   "v1",
-		Execution: 0,
-		Status:    evergreen.TaskFailed,
+		Id:               "t2",
+		Version:          "v1",
+		Execution:        0,
+		Status:           evergreen.TaskStarted,
+		ExpectedDuration: 9000000,
+		StartTime:        utility.ZeroTime,
 	}
 	t3 := Task{
 		Id:        "t3",
@@ -3242,9 +3246,8 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 	opts := GetTasksByVersionOptions{}
-	stats, err := GetTaskStatsByVersion("v1", opts)
+	_, err := GetTaskStatsByVersion("v1", opts)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(stats))
 
 }
 

@@ -231,6 +231,7 @@ type Version {
   baseTaskStatuses: [String!]!
   manifest: Manifest
   upstreamProject: UpstreamProject
+  dispatchedTaskETA: Duration
 }
 
 type UpstreamProject {
