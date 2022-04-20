@@ -216,7 +216,7 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): TaskStats
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
   isPatch: Boolean!
@@ -231,7 +231,6 @@ type Version {
   baseTaskStatuses: [String!]!
   manifest: Manifest
   upstreamProject: UpstreamProject
-  dispatchedTaskETA: Duration
 }
 
 type UpstreamProject {
@@ -259,6 +258,11 @@ type Manifest {
 type VersionTiming {
   makespan: Duration
   timeTaken: Duration
+}
+
+type TaskStats {
+  counts: [StatusCount!]
+  eta: Duration
 }
 
 type StatusCount {

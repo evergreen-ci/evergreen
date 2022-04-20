@@ -3248,14 +3248,14 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	opts := GetTasksByVersionOptions{}
 	stats, err := GetTaskStatsByVersion("v1", opts)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(stats[0].Counts))
-	assert.True(t, stats[0].ETA[0].MaxETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
+	assert.Equal(t, 4, len(stats.Counts))
+	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
 	stats, err = GetTaskStatsByVersion("v1", opts)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(stats[0].ETA))
+	assert.Nil(t, stats.ETA)
 }
 
 func TestGetGroupedTaskStatsByVersion(t *testing.T) {

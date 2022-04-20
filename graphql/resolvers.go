@@ -3714,7 +3714,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
-func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error) {
+func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
 	opts := task.GetTasksByVersionOptions{
 		IncludeBaseTasks:      false,
 		IncludeExecutionTasks: false,
@@ -3975,21 +3975,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	}
 	return status, nil
 }
-func (*versionResolver) DispatchedTaskEta(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDuration, error) {
-	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(statuses),
-		BaseStatuses:                   getValidTaskStatusesFilter(baseStatuses),
-		Variants:                       []string{variantParam},
-		TaskNames:                      []string{taskNameParam},
-		Page:                           pageParam,
-		Limit:                          limitParam,
-		Sorts:                          taskSorts,
-		IncludeBaseTasks:               true,
-		IncludeEmptyActivation:         utility.FromBoolPtr(includeEmptyActivation),
-		IncludeBuildVariantDisplayName: true,
-		IsMainlineCommit:               !evergreen.IsPatchRequester(v.Requester),
-	}
-}
+
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
