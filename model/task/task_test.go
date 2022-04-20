@@ -3210,15 +3210,15 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Execution:        0,
 		Status:           evergreen.TaskStarted,
 		ExpectedDuration: 1000000,
-		StartTime:        utility.ZeroTime,
+		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
 	}
 	t2 := Task{
 		Id:               "t2",
 		Version:          "v1",
 		Execution:        0,
 		Status:           evergreen.TaskStarted,
-		ExpectedDuration: 9000000,
-		StartTime:        utility.ZeroTime,
+		ExpectedDuration: 9000000000000,
+		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
 	}
 	t3 := Task{
 		Id:        "t3",
@@ -3246,9 +3246,16 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 	opts := GetTasksByVersionOptions{}
-	_, err := GetTaskStatsByVersion("v1", opts)
+	stats, err := GetTaskStatsByVersion("v1", opts)
 	assert.NoError(t, err)
+	assert.Equal(t, 4, len(stats[0].Counts))
+	assert.True(t, stats[0].ETA[0].MaxETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
+	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
+	stats, err = GetTaskStatsByVersion("v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(stats[0].ETA))
 }
 
 func TestGetGroupedTaskStatsByVersion(t *testing.T) {

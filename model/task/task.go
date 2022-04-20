@@ -3383,17 +3383,18 @@ type StatusCount struct {
 	Status string `bson:"status"`
 	Count  int    `bson:"count"`
 }
-type MaxEtaType struct {
-	max_eta time.Time
+
+type MaxETA struct {
+	MaxETA time.Time `bson:"max_eta"`
 }
 
 type TaskStats struct {
-	Counts []StatusCount `bson:"status_counts"`
-	MaxEta []MaxEtaType  `bson: "max_eta"`
+	Counts []StatusCount `bson:"counts"`
+	ETA    []MaxETA      `bson: "eta"`
 }
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]interface{}, error) {
-	StatusCount := []interface{}{}
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]TaskStats, error) {
+	TaskStats := []TaskStats{}
 	pipeline := getTasksByVersionPipeline(versionID, opts)
 	maxEtaPipeline := []bson.M{
 		{
@@ -3407,7 +3408,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]i
 			"$project": bson.M{
 				"eta": bson.M{
 					"$add": []interface{}{
-						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, 1000000}},
+						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, time.Millisecond}},
 						"$" + StartTimeKey,
 					},
 				},
@@ -3417,6 +3418,12 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]i
 			"$group": bson.M{
 				"_id":     nil,
 				"max_eta": bson.M{"$max": "$eta"},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":     0,
+				"max_eta": 1,
 			},
 		},
 	}
@@ -3436,20 +3443,11 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]i
 		"eta":    maxEtaPipeline,
 	}}
 	pipeline = append(pipeline, facet)
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting task stats")
-	}
-	err = cursor.All(ctx, &StatusCount)
-	fmt.Printf("%v+", StatusCount)
-	if err != nil {
-		return nil, errors.Wrap(err, "iterating and decoding task stats")
+	if err := Aggregate(pipeline, &TaskStats); err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
 
-	return StatusCount, nil
+	return TaskStats, nil
 }
 
 type GroupedTaskStatusCount struct {
