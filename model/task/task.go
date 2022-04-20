@@ -1096,7 +1096,8 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 
 // MarkAsContainerDispatched marks that the container task has been dispatched
 // to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string, dispatchedAt time.Time) error {
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+	dispatchedAt := time.Now()
 	query := isContainerTaskScheduledQuery()
 	query[StatusKey] = evergreen.TaskUndispatched
 	query[ContainerAllocatedKey] = true
