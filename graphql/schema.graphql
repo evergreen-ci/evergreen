@@ -275,6 +275,7 @@ input BuildVariantOptions {
   variants: [String!]
   tasks: [String!]
   statuses: [String!]
+  includeBaseTasks: Boolean
 }
 input MainlineCommitsOptions {
   projectID: String!
