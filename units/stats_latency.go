@@ -53,7 +53,7 @@ func makeLatencyStatsCollector() *latencyStatsCollector {
 func (j *latencyStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
-	latencies, err := model.AverageTaskLatency(j.Duration)
+	latencies, err := model.AverageHostTaskLatency(j.Duration)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding task latencies"))
 		return

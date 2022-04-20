@@ -548,17 +548,6 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
-// ByTimeRunOnHost returns all host tasks that are running in between the start
-// and end time.
-// kim: TODO: test
-func ByTimeRunOnHost(startTime, endTime time.Time) bson.M {
-	q := ByExecutionPlatform(ExecutionPlatformHost)
-	q[StartTimeKey] = bson.M{"$lte": endTime}
-	q[FinishTimeKey] = bson.M{"$gte": startTime}
-	q[StatusKey] = bson.M{"$in": evergreen.TaskCompletedStatuses}
-	return q
-}
-
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
 // If task not started (but is failed), returns if finished within the time range
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {

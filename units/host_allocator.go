@@ -270,7 +270,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"max_hosts":                    distro.HostAllocatorSettings.MaximumHosts,
 		"num_new_hosts":                len(hostsSpawned),
 		"pool_info":                    existingHosts.Stats(),
-		"queue":                        eventInfo,
 		"overdue_tasks":                distroQueueInfo.CountWaitOverThreshold,
 		"overdue_tasks_in_groups":      totalOverdueInTaskGroups,
 		"total_runtime":                distroQueueInfo.ExpectedDuration.String(),
