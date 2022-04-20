@@ -37,7 +37,7 @@ const (
 	dependencyKey = "dependencies"
 
 	// UnschedulableThreshold is the threshold after which a task waiting to
-	// dispatch should be tasks should be unscheduled due to staleness.
+	// dispatch should be unscheduled due to staleness.
 	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
@@ -1954,10 +1954,10 @@ func (t *Task) UpdateHeartbeat() error {
 }
 
 // SetDisabledPriority sets the priority of a task so it will never run. If it's
-// a display task, it will disabled it and all of its execution tasks. If it's
-// an execution task, its parent display task will not be updated. It also
-// deactivates the task and any tasks that depend on it.
-func (t *Task) SetDisabledPriority(user string) error {
+// a display task, it will disable the display task and all of its child
+// execution tasks. If it's an execution task, its parent display task will not
+// be updated. It also deactivates the task and any tasks that depend on it.
+func (t *Task) SetDisabledPriority(caller string) error {
 	t.Priority = evergreen.DisabledTaskPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
@@ -1977,10 +1977,10 @@ func (t *Task) SetDisabledPriority(user string) error {
 		return errors.Wrap(err, "finding matching tasks")
 	}
 	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.DisabledTaskPriority)
+		event.LogTaskPriority(task.Id, task.Execution, caller, evergreen.DisabledTaskPriority)
 	}
 
-	return t.DeactivateTask(user)
+	return t.DeactivateTask(caller)
 }
 
 // DisableTasks is the same as (*Task).SetDisabledPriority but for many tasks.

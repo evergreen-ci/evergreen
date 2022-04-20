@@ -384,7 +384,7 @@ const (
 	AbortAction       ModificationAction = "abort"
 )
 
-// evergreen package names
+// Constants for Evergreen package names (including legacy ones).
 const (
 	UIPackage      = "EVERGREEN_UI"
 	RESTV2Package  = "EVERGREEN_REST_V2"
@@ -414,7 +414,7 @@ const (
 	CAName = "evergreen"
 )
 
-// cloud provider related constants
+// Constants related to cloud providers and provider-specific settings.
 const (
 	ProviderNameEc2Auto     = "ec2-auto"
 	ProviderNameEc2OnDemand = "ec2-ondemand"
@@ -428,16 +428,19 @@ const (
 	ProviderNameVsphere     = "vsphere"
 	ProviderNameMock        = "mock"
 
-	// Default EC2 region where hosts should be spawned
+	// DefaultEC2Region is the default region where hosts should be spawned.
 	DefaultEC2Region = "us-east-1"
-	// This is Amazon's EBS type default
+	// DefaultEBSType is Amazon's default EBS type.
 	DefaultEBSType = "gp2"
-	// This may be a temporary default
+	// DefaultEBSAvailabilityZone is the default availability zone for EBS
+	// volumes. This may be a temporary default.
 	DefaultEBSAvailabilityZone = "us-east-1a"
 )
 
 var (
-	// Providers where hosts can be created and terminated automatically.
+	// ProviderSpawnable includes all cloud provider types where hosts can be
+	// dynamically created and terminated according to need. This has no
+	// relation to spawn hosts.
 	ProviderSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
@@ -450,7 +453,9 @@ var (
 		ProviderNameDocker,
 	}
 
-	// Providers that are spawnable by users
+	// ProviderUserSpawnable includes all cloud provider types where a user can
+	// request a dynamically created host for purposes such as host.create and
+	// spawn hosts.
 	ProviderUserSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
@@ -481,12 +486,6 @@ var (
 		ProviderNameEc2Fleet,
 		ProviderNameEc2OnDemand,
 	}
-
-	SystemVersionRequesterTypes = []string{
-		RepotrackerVersionRequester,
-		TriggerRequester,
-		GitTagRequester,
-	}
 )
 
 const (
@@ -510,7 +509,16 @@ const (
 	AdHocRequester              = "ad_hoc"
 )
 
-// Constants for project command names
+// Constants related to requester types.
+var (
+	SystemVersionRequesterTypes = []string{
+		RepotrackerVersionRequester,
+		TriggerRequester,
+		GitTagRequester,
+	}
+)
+
+// Constants for project command names.
 const (
 	GenerateTasksCommandName      = "generate.tasks"
 	HostCreateCommandName         = "host.create"
@@ -786,11 +794,11 @@ func ShouldConsiderBatchtime(requester string) bool {
 	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
-// Permissions-related constants
 func PermissionsDisabledForTests() bool {
 	return PermissionSystemDisabled
 }
 
+// Constants for permission scopes and resource types.
 const (
 	SuperUserResourceType = "super_user"
 	ProjectResourceType   = "project"
@@ -831,7 +839,7 @@ var (
 	PermissionHosts          = "distro_hosts"
 )
 
-// permission levels
+// Constants related to permission levels.
 var (
 	AdminSettingsEdit = PermissionLevel{
 		Description: "Edit admin settings",
@@ -1060,7 +1068,7 @@ var BasicAccessRoles = []string{
 	BasicDistroAccessRole,
 }
 
-// Evergreen log types.
+// Constants for Evergreen log types.
 const (
 	LogTypeAgent  = "agent_log"
 	LogTypeTask   = "task_log"
@@ -1110,7 +1118,7 @@ func (c ContainerOS) Validate() error {
 	}
 }
 
-// CPUArchitecture represents the architecture necessary to run the container.
+// CPUArchitecture represents the architecture necessary to run a container.
 type CPUArchitecture string
 
 const (
