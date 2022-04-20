@@ -889,3 +889,121 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 		})
 	}
 }
+
+func TestFindByTimeRunOnHost(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	for tName, tCase := range map[string]func(t *testing.T){
+		"MatchesFailedTasksWithinTimeRange": func(t *testing.T) {
+			tsk := Task{
+				Id:         "task-id",
+				Status:     evergreen.TaskFailed,
+				StartTime:  time.Now().Add(-2 * time.Hour),
+				FinishTime: time.Now().Add(-time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByTimeRunOnHost(time.Now().Add(-10*time.Hour), time.Now()))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, tsk.Id, found[0].Id)
+		},
+		"MatchesSuccessfulTasksWithinTimeRange": func(t *testing.T) {
+			tsk := Task{
+				Id:         "task-id",
+				Status:     evergreen.TaskSucceeded,
+				StartTime:  time.Now().Add(-2 * time.Hour),
+				FinishTime: time.Now().Add(-time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByTimeRunOnHost(time.Now().Add(-10*time.Hour), time.Now()))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, tsk.Id, found[0].Id)
+		},
+		"MatchesMultipleFinishedTasksInTimeRange": func(t *testing.T) {
+			t0 := Task{
+				Id:         "finished-task0",
+				Status:     evergreen.TaskFailed,
+				StartTime:  time.Now().Add(-2 * time.Hour),
+				FinishTime: time.Now().Add(-time.Hour),
+			}
+			t1 := Task{
+				Id:         "finished-task1",
+				Status:     evergreen.TaskSucceeded,
+				StartTime:  time.Now().Add(-3 * time.Hour),
+				FinishTime: time.Now().Add(-2 * time.Hour),
+			}
+			t2 := Task{
+				Id:        "unfinished-task",
+				Status:    evergreen.TaskStarted,
+				StartTime: time.Now().Add(-time.Hour),
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			found, err := Find(ByTimeRunOnHost(time.Now().Add(-5*time.Hour), time.Now().Add(-30*time.Minute)))
+			require.NoError(t, err)
+			assert.Len(t, found, 2)
+
+			var t0Found, t1Found bool
+			for _, tsk := range found {
+				switch tsk.Id {
+				case t0.Id:
+					t0Found = true
+				case t1.Id:
+					t1Found = true
+				}
+			}
+			assert.True(t, t0Found, "t0 should be within the time range")
+			assert.True(t, t1Found, "t1 should be within the time range")
+		},
+		"IgnoresIncompleteTasks": func(t *testing.T) {
+			tsk := Task{
+				Id:        "task-id",
+				Status:    evergreen.TaskStarted,
+				StartTime: time.Now().Add(-2 * time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByTimeRunOnHost(time.Now().Add(-10*time.Hour), time.Now()))
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+		"MatchesTasksPartlyWithinTimeRange": func(t *testing.T) {
+			tsk := Task{
+				Id:         "task-id",
+				Status:     evergreen.TaskSucceeded,
+				StartTime:  time.Now().Add(-4 * time.Hour),
+				FinishTime: time.Now().Add(-2 * time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByTimeRunOnHost(time.Now().Add(-5*time.Hour), time.Now().Add(-3*time.Hour)))
+			require.NoError(t, err)
+			require.Len(t, found, 1)
+			assert.Equal(t, tsk.Id, found[0].Id)
+		},
+		"IgnoresTasksOutsideOfTimeRange": func(t *testing.T) {
+			tsk := Task{
+				Id:         "task-id",
+				Status:     evergreen.TaskSucceeded,
+				StartTime:  time.Now().Add(-2 * time.Hour),
+				FinishTime: time.Now().Add(-time.Hour),
+			}
+			require.NoError(t, tsk.Insert())
+
+			found, err := Find(ByTimeRunOnHost(time.Now().Add(-1000*time.Hour), time.Now().Add(-900*time.Hour)))
+			assert.NoError(t, err)
+			assert.Empty(t, found)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			tCase(t)
+		})
+	}
+}

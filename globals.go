@@ -100,7 +100,8 @@ const (
 	TaskDescriptionNoResults = "expected test results, but none attached"
 
 	// Task Statuses that are currently used only by the UI, and in tests
-	// (these may be used in old tasks)
+	// (these may be used in old tasks as actual task statuses rather than just
+	// task display statuses).
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTimedOut         = "task-timed-out"
@@ -302,7 +303,8 @@ var InternalAliases = []string{
 	GitTagAlias,
 }
 
-// TaskNonGenericFailureStatuses represents some kind of specific abnormal failure mode.
+// TaskNonGenericFailureStatuses represents some kind of specific abnormal
+// failure mode. These are display statuses used in the UI.
 var TaskNonGenericFailureStatuses = []string{
 	TaskTimedOut,
 	TaskSystemFailed,
@@ -312,8 +314,8 @@ var TaskNonGenericFailureStatuses = []string{
 	TaskSystemTimedOut,
 }
 
-// TaskFailureStatuses represents all the ways that a task can fail, inclusive of system failures
-// and task failures.
+// TaskFailureStatuses represent all the ways that a completed task can fail,
+// inclusive of display statuses such as system failures.
 var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
 
 var TaskUnstartedStatuses = []string{
@@ -712,11 +714,11 @@ var (
 		HostsOverallocatedTerminate,
 	}
 
-	// constant arrays for db update logic
-	// TaskAbortableStatuses have been picked up by an agent but may or may not have started.
+	// TaskAbortableStatuses have been picked up by an agent but have not
+	// finished running.
 	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
-	// TaskCompletedStatuses have not experienced some sort of system failure and
-	// are in a finished state.
+	// TaskCompletedStatuses are statuses for tasks that have finished running.
+	// This does not include task display statuses.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
 	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
 	TaskUncompletedStatuses = []string{

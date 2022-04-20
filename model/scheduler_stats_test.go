@@ -227,7 +227,7 @@ func TestCreateTaskBuckets(t *testing.T) {
 			BucketSize:    bucketSize,
 		}
 		Convey("for four buckets of 10 seconds", func() {
-			tasks, err := task.Find(task.ByTimeRun(now, endTime))
+			tasks, err := task.Find(task.ByTimeRunOnHost(now, endTime))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 4)
 
