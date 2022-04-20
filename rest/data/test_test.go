@@ -1,11 +1,17 @@
 package data
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"sort"
+	"strconv"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -310,4 +316,159 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 	foundTests, err = serviceContext.FindTestsByTaskId(FindTestsByTaskIdOpts{TaskID: "without_tasks"})
 	assert.Error(err)
 	assert.Len(foundTests, 0)
+}
+
+func TestTestCountByTaskID(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, testresult.Collection))
+	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	/*
+		for i := 0; i < 2; i++ {
+			id := fmt.Sprintf("evg_task_%d", i)
+			testTask := &task.Task{
+				Id: id,
+			}
+			tests := make([]testresult.TestResult, numTests)
+			for j := 0; j < numTests; j++ {
+				tests[j] = testresult.TestResult{
+					TaskID:    id,
+					Execution: 0,
+				}
+			}
+			assert.NoError(testTask.Insert())
+			for _, test := range tests {
+				assert.NoError(test.Insert())
+			}
+		}
+	*/
+
+	t.Run("CedarTestResults", func(t *testing.T) {
+		regularTask := &task.Task{
+			Id:              "cedar",
+			HasCedarResults: true,
+		}
+		require.NoError(t, regularTask.Insert())
+		displayTask := &task.Task{
+			Id:              "cedar_display",
+			Execution:       1,
+			HasCedarResults: true,
+			DisplayOnly:     true,
+		}
+		require.NoError(t, displayTask.Insert())
+		handler := &mockCedarHandler{}
+		srv := httptest.NewServer(handler)
+		defer srv.Close()
+		evergreen.GetEnvironment().Settings().Cedar.BaseURL = srv.URL
+
+		for _, test := range []struct {
+			name       string
+			task       *task.Task
+			response   apimodels.CedarTestResultsStats
+			statusCode int
+			hasErr     bool
+		}{
+			{
+				name: "TaskDNE",
+				task: &task.Task{
+					Id:              "DNE",
+					HasCedarResults: true,
+				},
+				statusCode: http.StatusOK,
+				hasErr:     true,
+			},
+			{
+				name:       "CedarError",
+				task:       regularTask,
+				statusCode: http.StatusInternalServerError,
+				hasErr:     true,
+			},
+			{
+				name:       "TaskWithoutResults",
+				task:       regularTask,
+				statusCode: http.StatusNotFound,
+			},
+			{
+				name:       "TaskWithResults",
+				task:       regularTask,
+				response:   apimodels.CedarTestResultsStats{TotalCount: 100},
+				statusCode: http.StatusOK,
+			},
+			{
+				name:       "DisplayTask",
+				task:       displayTask,
+				response:   apimodels.CedarTestResultsStats{TotalCount: 100},
+				statusCode: http.StatusOK,
+			},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				responseData, err := json.Marshal(&test.response)
+				require.NoError(t, err)
+				handler.Response = responseData
+				handler.StatusCode = test.statusCode
+
+				count, err := TestCountByTaskID(ctx, test.task.Id, test.task.Execution)
+				if test.hasErr {
+					assert.Error(t, err)
+				} else {
+					require.NoError(t, err)
+
+					vals := handler.LastRequest.URL.Query()
+					var displayStr string
+					if test.task.DisplayOnly {
+						displayStr = "true"
+					}
+					assert.Equal(t, strconv.Itoa(test.task.Execution), vals.Get("execution"))
+					assert.Equal(t, displayStr, vals.Get("display_task"))
+					assert.Equal(t, test.response.TotalCount, count)
+				}
+			})
+		}
+	})
+	t.Run("DBTestResults", func(t *testing.T) {
+		t0 := &task.Task{Id: "t0"}
+		require.NoError(t, t0.Insert())
+		t1 := &task.Task{Id: "t1"}
+		require.NoError(t, t1.Insert())
+		t2 := &task.Task{
+			Id:             "t2",
+			DisplayOnly:    true,
+			ExecutionTasks: []string{t0.Id, t1.Id},
+		}
+		require.NoError(t, t2.Insert())
+
+		numTests := 10
+		for i := 0; i < numTests; i++ {
+			tr := &testresult.TestResult{TaskID: t0.Id}
+			require.NoError(t, tr.Insert())
+			tr = &testresult.TestResult{TaskID: t1.Id}
+			require.NoError(t, tr.Insert())
+		}
+
+		t.Run("ExecutionTask", func(t *testing.T) {
+			count, err := TestCountByTaskID(ctx, t0.Id, 0)
+			require.NoError(t, err)
+			assert.Equal(t, numTests, count)
+		})
+		t.Run("DisplayTask", func(t *testing.T) {
+			count, err := TestCountByTaskID(ctx, t2.Id, 0)
+			require.NoError(t, err)
+			assert.Equal(t, len(t2.ExecutionTasks)*numTests, count)
+		})
+	})
+}
+
+type mockCedarHandler struct {
+	Response    []byte
+	StatusCode  int
+	LastRequest *http.Request
+}
+
+func (h *mockCedarHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.LastRequest = r
+	w.WriteHeader(h.StatusCode)
+	_, _ = w.Write(h.Response)
 }

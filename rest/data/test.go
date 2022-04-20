@@ -82,8 +82,8 @@ func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]test
 	return res, nil
 }
 
-func (*DBTestConnector) TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, error) {
-	t, err := task.FindOneIdNewOrOld(taskID)
+func TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, error) {
+	t, err := task.FindOneIdOldOrNew(taskID, execution)
 	if err != nil {
 		return 0, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -114,7 +114,7 @@ func (*DBTestConnector) TestCountByTaskID(ctx context.Context, taskID string, ex
 		if status != http.StatusOK && status != http.StatusNotFound {
 			return 0, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrapf(err, "getting test results stats from Cedar for task '%s' return status '%d'", taskID, status).Error(),
+				Message:    fmt.Sprintf("getting test results stats from Cedar for task '%s' returned status %d", taskID, status),
 			}
 		}
 

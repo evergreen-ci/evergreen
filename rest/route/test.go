@@ -225,19 +225,14 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult i
 type testCountGetHandler struct {
 	taskID    string
 	execution int
-	sc        data.Connector
 }
 
-func makeFetchTestCountForTask(sc data.Connector) gimlet.RouteHandler {
-	return &testCountGetHandler{
-		sc: sc,
-	}
+func makeFetchTestCountForTask() gimlet.RouteHandler {
+	return &testCountGetHandler{}
 }
 
 func (h *testCountGetHandler) Factory() gimlet.RouteHandler {
-	return &testCountGetHandler{
-		sc: h.sc,
-	}
+	return &testCountGetHandler{}
 }
 
 func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -268,7 +263,7 @@ func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
-	count, err := h.sc.TestCountByTaskID(ctx, h.taskID, h.execution)
+	count, err := TestCountByTaskID(ctx, h.taskID, h.execution)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
