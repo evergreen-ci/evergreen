@@ -3407,7 +3407,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]i
 			"$project": bson.M{
 				"eta": bson.M{
 					"$add": []interface{}{
-						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, 100000}},
+						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, 1000000}},
 						"$" + StartTimeKey,
 					},
 				},
