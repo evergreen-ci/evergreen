@@ -124,13 +124,13 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		distrosMap[d.Id] = d
 	}
 	for _, info := range distroHosts {
-		minimumHosts := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
-		nHostsToEvaluateForTermination := getMinNumHostsToEvaluate(info, minimumHosts)
+		minimumHostsForDistro := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
+		minNumHostsToEvaluate := getMinNumHostsToEvaluate(info, minimumHostsForDistro)
 
 		currentDistro := distrosMap[info.DistroID]
-		hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
+		hostsToEvaluateForTermination := make([]host.Host, 0, minNumHostsToEvaluate)
 		for i := 0; i < len(info.IdleHosts); i++ {
-			if len(hostsToEvaluateForTermination) >= nHostsToEvaluateForTermination {
+			if len(hostsToEvaluateForTermination) >= minNumHostsToEvaluate {
 				// If we've reached the number that we need to terminate, only terminate hosts with outdated AMIs.
 				if !hostHasOutdatedAMI(info.IdleHosts[i], currentDistro) {
 					continue
@@ -146,10 +146,10 @@ func (j *idleHostJob) Run(ctx context.Context) {
 			"runner":                         "monitor",
 			"op":                             "dispatcher",
 			"distro_id":                      info.DistroID,
-			"minimum_hosts":                  minimumHosts,
+			"minimum_hosts":                  minimumHostsForDistro,
 			"num_running_hosts":              info.RunningHostsCount,
 			"num_idle_hosts":                 len(info.IdleHosts),
-			"min_num_idle_hosts_to_evaluate": nHostsToEvaluateForTermination,
+			"min_num_idle_hosts_to_evaluate": minNumHostsToEvaluate,
 			"num_idle_hosts_to_evaluate":     len(hostsToEvaluateForTermination),
 			"idle_hosts_to_evaluate":         hostsToEvaluateForTermination,
 		})
@@ -158,17 +158,17 @@ func (j *idleHostJob) Run(ctx context.Context) {
 
 func getMinNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) int {
 	totalRunningHosts := info.RunningHostsCount
-	nIdleHosts := len(info.IdleHosts)
+	numIdleHosts := len(info.IdleHosts)
 
 	maxHostsToTerminate := totalRunningHosts - minimumHosts
 	if maxHostsToTerminate <= 0 {
 		// Even if we're at or below minimum hosts, we should still continue to check outdated hosts.
 		return 0
 	}
-	if nIdleHosts > maxHostsToTerminate {
+	if numIdleHosts > maxHostsToTerminate {
 		return maxHostsToTerminate
 	}
-	return nIdleHosts
+	return numIdleHosts
 }
 
 func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, h *host.Host, d distro.Distro) error {
