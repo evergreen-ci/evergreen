@@ -125,13 +125,13 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	}
 	for _, info := range distroHosts {
 		minimumHosts := distrosMap[info.DistroID].HostAllocatorSettings.MinimumHosts
-		nHostsToEvaluateForTermination := getNumHostsToEvaluate(info, minimumHosts)
+		nHostsToEvaluateForTermination := getMinNumHostsToEvaluate(info, minimumHosts)
 
 		currentDistro := distrosMap[info.DistroID]
 		hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
 		for i := 0; i < len(info.IdleHosts); i++ {
 			if len(hostsToEvaluateForTermination) >= nHostsToEvaluateForTermination {
-				// If we've reached the number that we need to terminate, only terminate outdated hosts.
+				// If we've reached the number that we need to terminate, only terminate hosts with outdated AMIs.
 				if !hostHasOutdatedAMI(info.IdleHosts[i], currentDistro) {
 					continue
 				}
@@ -156,13 +156,13 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	}
 }
 
-func getNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) int {
+func getMinNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) int {
 	totalRunningHosts := info.RunningHostsCount
 	nIdleHosts := len(info.IdleHosts)
 
 	maxHostsToTerminate := totalRunningHosts - minimumHosts
 	if maxHostsToTerminate <= 0 {
-		// Even if we're at or below minimum hosts, should still continue to check outdated hosts.
+		// Even if we're at or below minimum hosts, we should still continue to check outdated hosts.
 		return 0
 	}
 	if nIdleHosts > maxHostsToTerminate {
