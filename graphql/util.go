@@ -266,12 +266,15 @@ func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOption
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
+	if buildVariantOpts.IncludeBaseTasks == nil {
+		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
+	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
 		Variants:                       buildVariantOpts.Variants,
 		TaskNames:                      buildVariantOpts.Tasks,
 		Sorts:                          defaultSort,
-		IncludeBaseTasks:               !utility.FromBoolPtr(buildVariantOpts.ExcludeBaseTasks),
+		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()

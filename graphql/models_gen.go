@@ -38,7 +38,7 @@ type BuildVariantOptions struct {
 	Variants         []string `json:"variants"`
 	Tasks            []string `json:"tasks"`
 	Statuses         []string `json:"statuses"`
-	ExcludeBaseTasks *bool    `json:"excludeBaseTasks"`
+	IncludeBaseTasks *bool    `json:"includeBaseTasks"`
 }
 
 type Dependency struct {

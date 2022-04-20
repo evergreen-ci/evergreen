@@ -7762,7 +7762,7 @@ input BuildVariantOptions {
   variants: [String!]
   tasks: [String!]
   statuses: [String!]
-  excludeBaseTasks: Boolean
+  includeBaseTasks: Boolean
 }
 input MainlineCommitsOptions {
   projectID: String!
@@ -39779,11 +39779,11 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 			if err != nil {
 				return it, err
 			}
-		case "excludeBaseTasks":
+		case "includeBaseTasks":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludeBaseTasks"))
-			it.ExcludeBaseTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeBaseTasks"))
+			it.IncludeBaseTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}

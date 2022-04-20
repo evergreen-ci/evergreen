@@ -3741,8 +3741,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching version: %s : %s", *v.Id, err.Error()))
 		}
-		err = setVersionActivationStatus(version)
-		if err != nil {
+		if err = setVersionActivationStatus(version); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 		}
 		v.Activated = version.Activated
