@@ -580,10 +580,10 @@ func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) 
 	err := h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, user, logs)
 	// Shouldn't consider it an error if the host isn't found when checking task group,
 	// because a task group may have been set for the host.
-	if err != nil && checkTaskGroup && !adb.ResultsNotFound(err) {
-		return err
+	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
+		return nil
 	}
-	return nil
+	return err
 }
 
 func (h *Host) SetRunning(user string) error {
