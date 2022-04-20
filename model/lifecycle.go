@@ -333,6 +333,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		Build     string
 		TaskGroup string
 	}
+	// Mark aborted tasks to reset when finished if not all tasks are finished.
 	if abortInProgress && len(finishedTasks) < len(taskIds) {
 		if err = task.SetAbortedTasksResetWhenFinished(taskIds); err != nil {
 			return err
