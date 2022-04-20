@@ -1395,6 +1395,7 @@ type RepoSettingsResolver interface {
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
 
+	Ami(ctx context.Context, obj *model.APITask) (*string, error)
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
@@ -1427,6 +1428,7 @@ type TaskResolver interface {
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
+	ProjectIdentifier(ctx context.Context, obj *model.APITask) (*string, error)
 	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 
@@ -29974,14 +29976,14 @@ func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.Collect
 		Object:     "Task",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ami, nil
+		return ec.resolvers.Task().Ami(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -31442,14 +31444,14 @@ func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field g
 		Object:     "Task",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectIdentifier, nil
+		return ec.resolvers.Task().ProjectIdentifier(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -47287,7 +47289,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "activatedTime":
 			out.Values[i] = ec._Task_activatedTime(ctx, field, obj)
 		case "ami":
-			out.Values[i] = ec._Task_ami(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_ami(ctx, field, obj)
+				return res
+			})
 		case "annotation":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -47624,7 +47635,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "projectIdentifier":
-			out.Values[i] = ec._Task_projectIdentifier(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_projectIdentifier(ctx, field, obj)
+				return res
+			})
 		case "dependsOn":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

@@ -214,7 +214,7 @@ func (t *taskTriggers) Attributes() event.Attributes {
 
 func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
 	api := restModel.APITask{}
-	if err := api.BuildFromService(t.task); err != nil {
+	if err := api.BuildFromArgs(t.task, &restModel.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true}); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
 

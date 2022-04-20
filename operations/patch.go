@@ -69,6 +69,14 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Name:  pathFlagName,
 				Usage: "path to an evergreen project configuration file",
 			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(regexVariantsFlagName, "rv"),
+				Usage: "regex variant names",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(regexTasksFlagName, "rt"),
+				Usage: "regex task names",
+			},
 		))
 }
 
@@ -101,6 +109,8 @@ func Patch() cli.Command {
 				Path:              c.String(pathFlagName),
 				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				RegexVariants:     utility.SplitCommas(c.StringSlice(regexVariantsFlagName)),
+				RegexTasks:        utility.SplitCommas(c.StringSlice(regexTasksFlagName)),
 				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
 				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
