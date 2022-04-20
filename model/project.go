@@ -1294,6 +1294,17 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	return nil
 }
 
+// findMatchingBuildVariants returns a list of build variant names in a project that match the given regexp.
+func (p *Project) findMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
+	var res []string
+	for _, b := range p.BuildVariants {
+		if bvRegex.MatchString(b.Name) {
+			res = append(res, b.Name)
+		}
+	}
+	return res
+}
+
 // GetTaskNameAndTags checks the project for a task or task group matching the
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
@@ -1319,6 +1330,17 @@ func (p *Project) FindProjectTask(name string) *ProjectTask {
 		}
 	}
 	return nil
+}
+
+// findMatchingProjectTasks returns a list of tasks in a project that match the given regexp.
+func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
+	var res []string
+	for _, t := range p.Tasks {
+		if tRegex.MatchString(t.Name) {
+			res = append(res, t.Name)
+		}
+	}
+	return res
 }
 
 func (p *Project) GetModuleByName(name string) (*Module, error) {
@@ -1460,6 +1482,20 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			}
 			bvs = append(bvs, bv.Name)
 		}
+	} else {
+		for _, bv := range patchDoc.RegexBuildVariants {
+			bvRegex, err := regexp.Compile(bv)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "compiling buildvariant regex",
+					"regex":     bv,
+					"project":   p.Identifier,
+					"patch_doc": patchDoc.Id,
+				}))
+				continue
+			}
+			bvs = append(bvs, p.findMatchingBuildVariants(bvRegex)...)
+		}
 	}
 	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
@@ -1469,8 +1505,21 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			}
 			tasks = append(tasks, t.Name)
 		}
+	} else {
+		for _, t := range patchDoc.RegexTasks {
+			tRegex, err := regexp.Compile(t)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "compiling task regex",
+					"regex":     t,
+					"project":   p.Identifier,
+					"patch_doc": patchDoc.Id,
+				}))
+				continue
+			}
+			tasks = append(tasks, p.findMatchingProjectTasks(tRegex)...)
+		}
 	}
-
 	var pairs TaskVariantPairs
 	for _, v := range bvs {
 		for _, t := range tasks {

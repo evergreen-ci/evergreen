@@ -530,6 +530,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Alias             string             `json:"alias"`
 		Variants          []string           `json:"buildvariants_new"`
 		Tasks             []string           `json:"tasks"`
+		RegexVariants     []string           `json:"regex_buildvariants"`
+		RegexTasks        []string           `json:"regex_tasks"`
 		SyncTasks         []string           `json:"sync_tasks"`
 		SyncBuildVariants []string           `json:"sync_build_variants"`
 		SyncStatuses      []string           `json:"sync_statuses"`
@@ -551,6 +553,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Alias:             incomingPatch.alias,
 		Variants:          incomingPatch.variants,
 		Tasks:             incomingPatch.tasks,
+		RegexVariants:     incomingPatch.regexVariants,
+		RegexTasks:        incomingPatch.regexTasks,
 		SyncBuildVariants: incomingPatch.syncBuildVariants,
 		SyncTasks:         incomingPatch.syncTasks,
 		SyncStatuses:      incomingPatch.syncStatuses,
