@@ -1,14 +1,19 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 )
 
 // DBTestConnector is a struct that implements the Test related methods
@@ -75,4 +80,62 @@ func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]test
 	}
 
 	return res, nil
+}
+
+func (*DBTestConnector) TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, error) {
+	t, err := task.FindOneIdNewOrOld(taskID)
+	if err != nil {
+		return 0, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "finding task '%s'", taskID).Error(),
+		}
+	}
+	if t == nil {
+		return 0, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", taskID),
+		}
+	}
+
+	var count int
+	if t.HasCedarResults {
+		stats, status, err := apimodels.GetCedarTestResultsStats(ctx, apimodels.GetCedarTestResultsOptions{
+			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+			TaskID:      taskID,
+			Execution:   utility.ToIntPtr(execution),
+			DisplayTask: t.DisplayOnly,
+		})
+		if err != nil {
+			return 0, gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "getting test results stats from Cedar for task '%s'", taskID).Error(),
+			}
+		}
+		if status != http.StatusOK && status != http.StatusNotFound {
+			return 0, gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "getting test results stats from Cedar for task '%s' return status '%d'", taskID, status).Error(),
+			}
+		}
+
+		count = stats.TotalCount
+	} else {
+		var taskIDs []string
+		if t.DisplayOnly {
+			taskIDs = t.ExecutionTasks
+		} else {
+			taskIDs = []string{taskID}
+		}
+
+		var err error
+		count, err = testresult.TestResultCount(taskIDs, "", nil, execution)
+		if err != nil {
+			return 0, gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "getting test count for task '%s'", taskID).Error(),
+			}
+		}
+	}
+
+	return count, nil
 }
