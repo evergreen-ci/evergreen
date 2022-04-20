@@ -81,7 +81,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			continue
 		}
 		if idle {
-			err = h.SetDecommissioned(evergreen.User, "host only contains decommissioned containers and there is excess capacity")
+			err = h.SetDecommissioned(evergreen.User, false, "host only contains decommissioned containers and there is excess capacity")
 			if err != nil {
 				j.AddError(err)
 				continue
