@@ -208,31 +208,23 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/tasks/annotations
 
 type bulkCreateAnnotationsOpts struct {
-	TaskUpdates []TaskUpdate `bson:"task_updates" json:"task_updates"`
-}
-type TaskUpdate struct {
-	Tasks      []TaskData                  `bson:"tasks" json:"tasks"`
-	Annotation restModel.APITaskAnnotation `bson:"annotation" json:"annotation"`
-}
-type TaskData struct {
-	TaskId    string `bson:"task_id" json:"task_id"`
-	Execution int    `bson:"execution" json:"execution"`
+	TaskUpdates []annotations.TaskUpdate `bson:"task_updates" json:"task_updates"`
 }
 
-type bulkCreateAnnotationHandler struct {
+type bulkPatchAnnotationHandler struct {
 	user gimlet.User
 	opts bulkCreateAnnotationsOpts
 }
 
-func makeBulkCreateAnnotations() gimlet.RouteHandler {
-	return &bulkCreateAnnotationHandler{}
+func makeBulkPatchAnnotations() gimlet.RouteHandler {
+	return &bulkPatchAnnotationHandler{}
 }
 
-func (h *bulkCreateAnnotationHandler) Factory() gimlet.RouteHandler {
-	return &bulkCreateAnnotationHandler{}
+func (h *bulkPatchAnnotationHandler) Factory() gimlet.RouteHandler {
+	return &bulkPatchAnnotationHandler{}
 }
 
-func (h *bulkCreateAnnotationHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	body := utility.NewRequestReader(r)
 	defer body.Close()
@@ -264,32 +256,23 @@ func (h *bulkCreateAnnotationHandler) Parse(ctx context.Context, r *http.Request
 			}
 		}
 
-		catcher := grip.NewBasicCatcher()
-		catcher.Add(restModel.ValidateIssues(update.Annotation.Issues))
-		catcher.Add(restModel.ValidateIssues(update.Annotation.SuspectedIssues))
-		if catcher.HasErrors() {
-			return gimlet.ErrorResponse{
-				Message:    catcher.Resolve().Error(),
-				StatusCode: http.StatusBadRequest,
-			}
-		}
+		//catcher := grip.NewBasicCatcher()
+		//catcher.Add(restModel.ValidateIssues(update.Annotation.Issues))
+		//catcher.Add(restModel.ValidateIssues(update.Annotation.SuspectedIssues))
+		//if catcher.HasErrors() {
+		//	return gimlet.ErrorResponse{
+		//		Message:    catcher.Resolve().Error(),
+		//		StatusCode: http.StatusBadRequest,
+		//	}
+		//}
 	}
 	u := MustHaveUser(ctx)
 	h.user = u
 	return nil
 }
 
-func (h *bulkCreateAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
-	taskAnnotations := []annotations.TaskAnnotation{}
-	for _, update := range h.opts.TaskUpdates {
-		for _, t := range update.Tasks {
-			ann := update.Annotation
-			ann.TaskId = &t.TaskId
-			ann.TaskExecution = &t.Execution
-			taskAnnotations = append(taskAnnotations, *restModel.APITaskAnnotationToService(ann))
-		}
-	}
-	err := annotations.InsertManyAnnotations(taskAnnotations, h.user.DisplayName())
+func (h *bulkPatchAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
+	err := annotations.InsertManyAnnotations(h.opts.TaskUpdates)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

@@ -729,28 +729,28 @@ func TestBulkCreateAnnotationHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection))
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
-	h := &bulkCreateAnnotationHandler{
+	h := &bulkPatchAnnotationHandler{
 		opts: bulkCreateAnnotationsOpts{
-			TaskUpdates: []TaskUpdate{
+			TaskUpdates: []annotations.TaskUpdate{
 				{
-					Annotation: restModel.APITaskAnnotation{
-						Issues: []restModel.APIIssueLink{
+					Annotation: annotations.TaskAnnotation{
+						Issues: []annotations.IssueLink{
 							{
-								URL:             utility.ToStringPtr("issuelink.com"),
-								ConfidenceScore: utility.ToFloat32Ptr(-12.000000),
+								URL:             "issuelink.com",
+								ConfidenceScore: -12.000000,
 							},
 							{
-								URL:             utility.ToStringPtr("https://issuelink.com/ticket"),
-								ConfidenceScore: utility.ToFloat32Ptr(112.000000),
+								URL:             "https://issuelink.com/ticket",
+								ConfidenceScore: 112.000000,
 							},
 						},
-						SuspectedIssues: []restModel.APIIssueLink{
+						SuspectedIssues: []annotations.IssueLink{
 							{
-								URL: utility.ToStringPtr("https://issuelinkcom"),
+								URL: "https://issuelinkcom",
 							},
 						},
 					},
-					Tasks: []TaskData{
+					Tasks: []annotations.TaskData{
 						{
 							TaskId:    "t1",
 							Execution: 0,
@@ -766,24 +766,24 @@ func TestBulkCreateAnnotationHandler(t *testing.T) {
 					},
 				},
 				{
-					Annotation: restModel.APITaskAnnotation{
-						Issues: []restModel.APIIssueLink{
+					Annotation: annotations.TaskAnnotation{
+						Issues: []annotations.IssueLink{
 							{
-								URL:             utility.ToStringPtr("anotherissuelink.com"),
-								ConfidenceScore: utility.ToFloat32Ptr(-15.000000),
+								URL:             "anotherissuelink.com",
+								ConfidenceScore: -15.000000,
 							},
 							{
-								URL:             utility.ToStringPtr("https://anotherissuelink.com/ticket"),
-								ConfidenceScore: utility.ToFloat32Ptr(103.000000),
+								URL:             "https://anotherissuelink.com/ticket",
+								ConfidenceScore: 103.000000,
 							},
 						},
-						SuspectedIssues: []restModel.APIIssueLink{
+						SuspectedIssues: []annotations.IssueLink{
 							{
-								URL: utility.ToStringPtr("https://anotherissuelinkcom"),
+								URL: "https://anotherissuelinkcom",
 							},
 						},
 					},
-					Tasks: []TaskData{
+					Tasks: []annotations.TaskData{
 						{
 							TaskId:    "t1",
 							Execution: 1,

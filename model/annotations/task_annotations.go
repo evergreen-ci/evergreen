@@ -4,10 +4,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type TaskAnnotation struct {
@@ -42,6 +45,15 @@ type Source struct {
 type Note struct {
 	Message string  `bson:"message,omitempty" json:"message,omitempty"`
 	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
+}
+
+type TaskUpdate struct {
+	Tasks      []TaskData     `bson:"tasks" json:"tasks"`
+	Annotation TaskAnnotation `bson:"annotation" json:"annotation"`
+}
+type TaskData struct {
+	TaskId    string `bson:"task_id" json:"task_id"`
+	Execution int    `bson:"execution" json:"execution"`
 }
 
 // GetLatestExecutions returns only the latest execution for each task, and filters out earlier executions
@@ -208,41 +220,34 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 }
 
 // InsertManyAnnotations updates the source for a list of task annotations and their issues and then inserts them into the DB.
-func InsertManyAnnotations(annotations []TaskAnnotation, userDisplayName string) error {
-	source := &Source{
-		Author:    userDisplayName,
-		Time:      time.Now(),
-		Requester: APIRequester,
-	}
-	for i, _ := range annotations {
+func InsertManyAnnotations(updates []TaskUpdate) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	for _, u := range updates {
 		update := bson.M{}
-		if annotations[i].Metadata != nil {
-			update[MetadataKey] = annotations[i].Metadata
+		if u.Annotation.Metadata != nil {
+			update[MetadataKey] = u.Annotation.Metadata
 		}
-		if annotations[i].Note != nil {
-			annotations[i].Note.Source = source
-			update[NoteKey] = annotations[i].Note
+		if u.Annotation.Note != nil {
+			update[NoteKey] = u.Annotation.Note
 		}
-		if annotations[i].Issues != nil {
-			for i := range annotations[i].Issues {
-				annotations[i].Issues[i].Source = source
-			}
-			update[IssuesKey] = annotations[i].Issues
+		if u.Annotation.Issues != nil {
+			update[IssuesKey] = u.Annotation.Issues
 		}
-		if annotations[i].SuspectedIssues != nil {
-			for i := range annotations[i].SuspectedIssues {
-				annotations[i].SuspectedIssues[i].Source = source
-			}
-			update[SuspectedIssuesKey] = annotations[i].SuspectedIssues
+		if u.Annotation.SuspectedIssues != nil {
+			update[SuspectedIssuesKey] = u.Annotation.SuspectedIssues
 		}
 
-		_, err := db.Upsert(
-			Collection,
-			ByTaskIdAndExecution(annotations[i].TaskId, annotations[i].TaskExecution),
-			bson.M{
-				"$set": update,
-			},
-		)
+		ops := make([]mongo.WriteModel, len(u.Tasks))
+		for idx := 0; idx < len(u.Tasks); idx++ {
+			ops[idx] = mongo.NewUpdateOneModel().
+				SetUpsert(true).
+				SetFilter(ByTaskIdAndExecution(u.Tasks[idx].TaskId, u.Tasks[idx].Execution)).
+				SetUpdate(bson.M{"$set": update})
+		}
+		_, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, nil)
+
 		if err != nil {
 			return errors.Wrap(err, "bulk inserting annotations")
 		}
@@ -260,8 +265,8 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	_, err := db.Upsert(
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
-		bson.M{
-			"$push": bson.M{CreatedIssuesKey: ticket},
+		mgobson.M{
+			"$push": mgobson.M{CreatedIssuesKey: ticket},
 		},
 	)
 	return errors.Wrapf(err, "adding ticket to task '%s'", taskId)
