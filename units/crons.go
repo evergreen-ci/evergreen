@@ -1274,13 +1274,15 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 }
 
 // PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
-// allocate pods to tasks.
+// allocate pods to tasks and disable container tasks that exceed the stale
+// undispatched threshold.
 func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
 		}
+
 		if flags.PodAllocatorDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "pod allocation disabled",
@@ -1288,6 +1290,13 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 				"mode":    "degraded",
 			})
 			return nil
+		}
+
+		if err := task.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not disable stale container tasks",
+				"context": "pod allocation",
+			}))
 		}
 
 		numInitializing, err := pod.CountByInitializing()
@@ -1324,6 +1333,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
 			"message":             "reached max parallel pod request limit, not allocating any more",
+			"context":             "pod allocation",
 			"num_remaining_tasks": ctq.Len(),
 		})
 
