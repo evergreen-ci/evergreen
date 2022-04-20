@@ -2125,26 +2125,26 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			require.NoError(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
 			checkTaskDispatched(t, tsk.Id)
 		},
 		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = false
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
 		},
 		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Activated = false
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
 		},
 		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Priority = evergreen.DisabledTaskPriority
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
 		},
 		"FailsWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.DependsOn = []Dependency{
@@ -2152,10 +2152,10 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 			}
 			require.NoError(t, tsk.Insert())
 
-			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			assert.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion, time.Now()))
+			require.Error(t, tsk.MarkAsContainerDispatched(ctx, env, evergreen.AgentVersion))
 
 			dbTask, err := FindOneId(tsk.Id)
 			assert.NoError(t, err)
