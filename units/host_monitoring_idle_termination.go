@@ -162,7 +162,7 @@ func getMinNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) i
 
 	maxHostsToTerminate := totalRunningHosts - minimumHosts
 	if maxHostsToTerminate <= 0 {
-		// Even if we're at or below minimum hosts, we should still continue to check outdated hosts.
+		// Even if we're at or below minimum hosts, we should still continue to check hosts with outdated AMIs.
 		return 0
 	}
 	if numIdleHosts > maxHostsToTerminate {
