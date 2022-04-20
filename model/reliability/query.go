@@ -37,25 +37,25 @@ func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher.Add(f.ValidateCommon())
 
 	if !f.AfterDate.Equal(utility.GetUTCDay(f.AfterDate)) {
-		catcher.New("Invalid AfterDate value")
+		catcher.New("invalid 'after' date")
 	}
 	if !f.BeforeDate.Equal(utility.GetUTCDay(f.BeforeDate)) {
-		catcher.New("Invalid BeforeDate value")
+		catcher.New("invalid 'before' date")
 	}
 	if f.BeforeDate.Before(f.AfterDate) {
-		catcher.New("Invalid AfterDate/BeforeDate values")
+		catcher.New("'after' date restriction must be earlier than 'before' date restriction")
 	}
 
 	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.New("Invalid Limit value")
+		catcher.New("invalid limit")
 	}
 
 	if f.Significance > MaxSignificanceLimit || f.Significance < MinSignificanceLimit {
-		catcher.New("Invalid Significance value")
+		catcher.New("invalid significance")
 	}
 
 	if len(f.Tasks) == 0 {
-		catcher.New("Missing Tasks values")
+		catcher.New("missing tasks")
 	}
 	return catcher.Resolve()
 }
@@ -104,15 +104,15 @@ func (s *TaskReliability) calculateSuccessRate() {
 	}
 	s.SuccessRate = (math.Ceil(low*100) / 100)
 	grip.Info(message.Fields{
-		"message":     "calculated task success rate",
-		"NumSuccess":  s.NumSuccess,
-		"NumFailed":   s.NumFailed,
-		"NumTotal":    s.NumTotal,
-		"Z":           s.Z,
-		"SuccessRate": s.SuccessRate,
-		"low":         low,
-		"p":           p,
-		"high":        high,
+		"message":      "calculated task success rate",
+		"num_success":  s.NumSuccess,
+		"num_failed":   s.NumFailed,
+		"num_total":    s.NumTotal,
+		"z":            s.Z,
+		"success_rate": s.SuccessRate,
+		"low":          low,
+		"p":            p,
+		"high":         high,
 	})
 }
 
@@ -155,11 +155,11 @@ func significanceToZ(significance float64) float64 {
 func GetTaskReliabilityScores(filter TaskReliabilityFilter) ([]TaskReliability, error) {
 	err := filter.ValidateForTaskReliability()
 	if err != nil {
-		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
+		return nil, errors.Wrap(err, "invalid stats filter")
 	}
 	taskStats, err := filter.GetTaskStats()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
+		return nil, errors.Wrap(err, "aggregating task statistics")
 	}
 
 	apiReliabilityResult := make([]TaskReliability, len(taskStats))

@@ -138,25 +138,27 @@ type GitMetadata struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id            mgobson.ObjectId `bson:"_id,omitempty"`
-	Description   string           `bson:"desc"`
-	Path          string           `bson:"path,omitempty"`
-	Project       string           `bson:"branch"`
-	Githash       string           `bson:"githash"`
-	PatchNumber   int              `bson:"patch_number"`
-	Author        string           `bson:"author"`
-	Version       string           `bson:"version"`
-	Status        string           `bson:"status"`
-	CreateTime    time.Time        `bson:"create_time"`
-	StartTime     time.Time        `bson:"start_time"`
-	FinishTime    time.Time        `bson:"finish_time"`
-	BuildVariants []string         `bson:"build_variants"`
-	Tasks         []string         `bson:"tasks"`
-	VariantsTasks []VariantTasks   `bson:"variants_tasks"`
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
-	Patches       []ModulePatch    `bson:"patches"`
-	Parameters    []Parameter      `bson:"parameters,omitempty"`
-	Activated     bool             `bson:"activated"`
+	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
+	Description        string           `bson:"desc"`
+	Path               string           `bson:"path,omitempty"`
+	Project            string           `bson:"branch"`
+	Githash            string           `bson:"githash"`
+	PatchNumber        int              `bson:"patch_number"`
+	Author             string           `bson:"author"`
+	Version            string           `bson:"version"`
+	Status             string           `bson:"status"`
+	CreateTime         time.Time        `bson:"create_time"`
+	StartTime          time.Time        `bson:"start_time"`
+	FinishTime         time.Time        `bson:"finish_time"`
+	BuildVariants      []string         `bson:"build_variants"`
+	RegexBuildVariants []string         `bson:"regex_build_variants"`
+	Tasks              []string         `bson:"tasks"`
+	RegexTasks         []string         `bson:"regex_tasks"`
+	VariantsTasks      []VariantTasks   `bson:"variants_tasks"`
+	SyncAtEndOpts      SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
+	Patches            []ModulePatch    `bson:"patches"`
+	Parameters         []Parameter      `bson:"parameters,omitempty"`
+	Activated          bool             `bson:"activated"`
 	// PatchedParserProject is mismatched with its BSON tag since the tag already exists in the DB.
 	// Struct property has been renamed to convey that only parser project configs are stored in it.
 	PatchedParserProject string                 `bson:"patched_config"`
@@ -283,7 +285,7 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 
 		rawStr, err := FetchPatchContents(patchPart.PatchSet.PatchFileId)
 		if err != nil {
-			return errors.Wrapf(err, "can't get patch contents for patchfile '%s'", patchPart.PatchSet.PatchFileId)
+			return errors.Wrapf(err, "getting patch contents for patchfile '%s'", patchPart.PatchSet.PatchFileId)
 		}
 		if useRaw || !IsMailboxDiff(rawStr) {
 			p.Patches[i].PatchSet.Patch = rawStr
@@ -292,7 +294,7 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 
 		diffs, err := thirdparty.GetDiffsFromMboxPatch(rawStr)
 		if err != nil {
-			return errors.Wrapf(err, "error getting patch diffs for formatted patch")
+			return errors.Wrap(err, "getting patch diffs for formatted patch")
 		}
 		p.Patches[i].PatchSet.Patch = diffs
 	}
@@ -302,12 +304,12 @@ func (p *Patch) FetchPatchFiles(useRaw bool) error {
 func FetchPatchContents(patchfileID string) (string, error) {
 	fileReader, err := db.GetGridFile(GridFSPrefix, patchfileID)
 	if err != nil {
-		return "", errors.Wrap(err, "can't get grid file from the db")
+		return "", errors.Wrap(err, "getting grid file")
 	}
 	defer fileReader.Close()
 	patchContents, err := ioutil.ReadAll(fileReader)
 	if err != nil {
-		return "", errors.Wrap(err, "problem reading patch contents")
+		return "", errors.Wrap(err, "reading patch contents")
 	}
 
 	return string(patchContents), nil
@@ -740,7 +742,7 @@ func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
 		return -1, nil
 	}
 	if parentPatch == nil {
-		return -1, errors.New(fmt.Sprintf("parent patch does not exist"))
+		return -1, errors.New("parent patch does not exist")
 	}
 	siblings := parentPatch.Triggers.ChildPatches
 
@@ -763,7 +765,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 		parentPatchId := p.Triggers.ParentPatch
 		parentPatch, err = FindOneId(parentPatchId)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "can't get parent patch")
+			return nil, nil, errors.Wrap(err, "getting parent patch")
 		}
 		if parentPatch == nil {
 			return nil, nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
@@ -777,7 +779,7 @@ func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get parent patch")
+		return nil, errors.Wrap(err, "getting parent patch")
 	}
 	if parentPatch == nil {
 		return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
@@ -786,7 +788,7 @@ func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
 		err = p.SetParameters(downstreamParams)
 		if err != nil {
-			return nil, errors.Wrap(err, "error setting parameters")
+			return nil, errors.Wrap(err, "setting downstream parameters")
 		}
 	}
 	return parentPatch, nil
@@ -811,7 +813,7 @@ func (p *Patch) MakeBackportDescription() (string, error) {
 	if len(p.BackportOf.PatchID) > 0 {
 		commitQueuePatch, err := FindOneId(p.BackportOf.PatchID)
 		if err != nil {
-			return "", errors.Wrap(err, "can't get patch being backported")
+			return "", errors.Wrap(err, "getting patch being backported")
 		}
 		if commitQueuePatch == nil {
 			return "", errors.Errorf("patch '%s' being backported doesn't exist", p.BackportOf.PatchID)
@@ -828,14 +830,14 @@ func (p *Patch) MakeBackportDescription() (string, error) {
 func IsMailbox(patchFile string) (bool, error) {
 	file, err := os.Open(patchFile)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to read patch file")
+		return false, errors.Wrap(err, "opening patch file")
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {
 		if err = scanner.Err(); err != nil {
-			return false, errors.Wrap(err, "failed to read patch file")
+			return false, errors.Wrap(err, "reading patch file")
 		}
 
 		// otherwise, it's EOF. Empty patches are not errors!
@@ -851,20 +853,20 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return patchSet, errors.Wrap(err, "can't get github auth token")
+		return patchSet, errors.Wrap(err, "getting GitHub auth token")
 	}
 
 	diff, err := thirdparty.GetCommitDiff(ctx, githubToken, owner, repo, sha)
 	if err != nil {
-		return patchSet, errors.Wrapf(err, "problem getting commit diff for '%s/%s:%s'", owner, repo, sha)
+		return patchSet, errors.Wrapf(err, "getting commit diff for '%s/%s:%s'", owner, repo, sha)
 	}
 
 	commitInfo, err := thirdparty.GetCommitEvent(ctx, githubToken, owner, repo, sha)
 	if err != nil {
-		return patchSet, errors.Wrapf(err, "problem getting commit info for '%s/%s:%s'", owner, repo, sha)
+		return patchSet, errors.Wrapf(err, "getting commit info for '%s/%s:%s'", owner, repo, sha)
 	}
 	if commitInfo == nil || commitInfo.Commit == nil || commitInfo.Commit.Author == nil {
-		return patchSet, errors.New("Github returned a malformed commit")
+		return patchSet, errors.New("GitHub returned a malformed commit")
 	}
 	authorName := commitInfo.Commit.Author.GetName()
 	authorEmail := commitInfo.Commit.Author.GetEmail()
@@ -872,12 +874,12 @@ func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, own
 
 	mboxPatch, err := addMetadataToDiff(diff, message, time.Now(), GitMetadata{Username: authorName, Email: authorEmail})
 	if err != nil {
-		return patchSet, errors.Wrap(err, "can't convert diff to mbox format")
+		return patchSet, errors.Wrap(err, "converting diff to mbox format")
 	}
 
 	patchFileID := mgobson.NewObjectId()
 	if err = db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
-		return patchSet, errors.Wrap(err, "can't write patch to db")
+		return patchSet, errors.Wrap(err, "write patch to DB")
 	}
 
 	summaries := []thirdparty.Summary{}
@@ -911,14 +913,14 @@ func IsPatchEmpty(id string) (bool, error) {
 
 func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]ModulePatch, error) {
 	if !existingPatch.HasValidGitInfo() {
-		return nil, errors.New("can't make merge patches without GitInfo")
+		return nil, errors.New("can't make merge patches without git info")
 	}
 
 	newModulePatches := make([]ModulePatch, 0, len(existingPatch.Patches))
 	for _, modulePatch := range existingPatch.Patches {
 		diff, err := FetchPatchContents(modulePatch.PatchSet.PatchFileId)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't fetch patch contents")
+			return nil, errors.Wrap(err, "fetching patch contents")
 		}
 		if IsMailboxDiff(diff) {
 			newModulePatches = append(newModulePatches, modulePatch)
@@ -926,11 +928,11 @@ func MakeMergePatchPatches(existingPatch *Patch, commitMessage string) ([]Module
 		}
 		mboxPatch, err := addMetadataToDiff(diff, commitMessage, time.Now(), *existingPatch.GitInfo)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't convert diff to mbox format")
+			return nil, errors.Wrap(err, "converting diff to mbox format")
 		}
 		patchFileID := mgobson.NewObjectId()
 		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(mboxPatch)); err != nil {
-			return nil, errors.Wrap(err, "can't write new patch to db")
+			return nil, errors.Wrap(err, "writing new patch to DB")
 		}
 		newModulePatches = append(newModulePatches, ModulePatch{
 			ModuleName: modulePatch.ModuleName,
@@ -973,7 +975,7 @@ Subject: {{.Subject}}
 		Diff:        diff,
 	})
 	if err != nil {
-		return "", errors.Wrap(err, "problem executing mbox template")
+		return "", errors.Wrap(err, "executing mbox template")
 	}
 
 	return out.String(), nil
@@ -985,21 +987,21 @@ func IsMailboxDiff(patchDiff string) bool {
 
 func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle, commitMessage string) (*Patch, error) {
 	if pr.User == nil {
-		return nil, errors.New("pr contains no user")
+		return nil, errors.New("PR contains no user")
 	}
 	u, err := user.GetPatchUser(int(pr.User.GetID()))
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get user for patch")
+		return nil, errors.Wrap(err, "getting user for patch")
 	}
 	patchNumber, err := u.IncPatchNumber()
 	if err != nil {
-		return nil, errors.Wrap(err, "error computing patch num")
+		return nil, errors.Wrap(err, "computing patch num")
 	}
 
 	id := mgobson.NewObjectId()
 
 	if pr.Base == nil {
-		return nil, errors.New("pr contains no base branch data")
+		return nil, errors.New("PR contains no base branch data")
 	}
 
 	patchDoc := &Patch{

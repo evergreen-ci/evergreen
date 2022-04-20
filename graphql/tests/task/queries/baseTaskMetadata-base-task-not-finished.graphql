@@ -1,8 +1,0 @@
-{
-  task(taskId: "2") {
-    baseTaskMetadata {
-      baseTaskDuration
-      baseTaskLink
-    }
-  }
-}

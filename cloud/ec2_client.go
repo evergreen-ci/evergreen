@@ -203,10 +203,11 @@ func (c *awsClientImpl) Close() {
 func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	var output *ec2.Reservation
 	var err error
-	msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -230,10 +231,10 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	var output *ec2.DescribeInstancesOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -253,10 +254,10 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.ModifyInstanceAttributeInput) (*ec2.ModifyInstanceAttributeOutput, error) {
 	var output *ec2.ModifyInstanceAttributeOutput
 	var err error
-	msg := makeAWSLogMessage("ModifyInstanceAttribute", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("ModifyInstanceAttribute", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.ModifyInstanceAttributeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -276,10 +277,10 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input *ec2.DescribeInstanceTypeOfferingsInput) (*ec2.DescribeInstanceTypeOfferingsOutput, error) {
 	var output *ec2.DescribeInstanceTypeOfferingsOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeInstanceTypeOfferings", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeInstanceTypeOfferingsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -300,10 +301,10 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	var output *ec2.CreateTagsOutput
 	var err error
-	msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -324,10 +325,10 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInput) (*ec2.DeleteTagsOutput, error) {
 	var output *ec2.DeleteTagsOutput
 	var err error
-	msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DeleteTags", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DeleteTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -348,10 +349,10 @@ func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	var output *ec2.TerminateInstancesOutput
 	var err error
-	msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.TerminateInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -383,10 +384,10 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstancesInput) (*ec2.StopInstancesOutput, error) {
 	var output *ec2.StopInstancesOutput
 	var err error
-	msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("StopInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.StopInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -407,10 +408,10 @@ func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstan
 func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error) {
 	var output *ec2.StartInstancesOutput
 	var err error
-	msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.StartInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -431,10 +432,11 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
-	msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -455,10 +457,10 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -532,10 +534,10 @@ func (c *awsClientImpl) GetSpotInstanceId(ctx context.Context, h *host.Host) (st
 func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	var output *ec2.CancelSpotInstanceRequestsOutput
 	var err error
-	msg := makeAWSLogMessage("CancelSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("CancelSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.CancelSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -559,10 +561,11 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolumeInput) (*ec2.Volume, error) {
 	var output *ec2.Volume
 	var err error
-	msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("CreateVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.CreateVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -587,10 +590,10 @@ func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolumeInput) (*ec2.DeleteVolumeOutput, error) {
 	var output *ec2.DeleteVolumeOutput
 	var err error
-	msg := makeAWSLogMessage("DeleteVolume", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DeleteVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DeleteVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -615,10 +618,10 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolumeInput) (*ec2.ModifyVolumeOutput, error) {
 	var output *ec2.ModifyVolumeOutput
 	var err error
-	msg := makeAWSLogMessage("ModifyVolume", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("ModifyVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.ModifyVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -643,10 +646,10 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolumeInput, opts generateDeviceNameOptions) (*ec2.VolumeAttachment, error) {
 	var output *ec2.VolumeAttachment
 	var err error
-	msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("AttachVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.AttachVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -671,10 +674,10 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolumeInput) (*ec2.VolumeAttachment, error) {
 	var output *ec2.VolumeAttachment
 	var err error
-	msg := makeAWSLogMessage("DetachVolume", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DetachVolume", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DetachVolumeWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -697,10 +700,10 @@ func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolum
 func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	var output *ec2.DescribeVolumesOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -721,10 +724,10 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	var output *ec2.DescribeSpotPriceHistoryOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeSpotPriceHistory", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeSpotPriceHistory", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -745,10 +748,10 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	var output *ec2.DescribeSubnetsOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -769,10 +772,10 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
 	var output *ec2.DescribeVpcsOutput
 	var err error
-	msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -821,10 +824,10 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error) {
 	var output *ec2.CreateKeyPairOutput
 	var err error
-	msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.CreateKeyPairWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -844,9 +847,9 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyPairInput) (*ec2.ImportKeyPairOutput, error) {
 	var output *ec2.ImportKeyPairOutput
 	var err error
-	msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx, func() (bool, error) {
+			msg := makeAWSLogMessage("ImportKeyPair", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.ImportKeyPairWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -872,10 +875,10 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error) {
 	var output *ec2.DeleteKeyPairOutput
 	var err error
-	msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DeleteKeyPairWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -896,10 +899,10 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProductsInput) (*pricing.GetProductsOutput, error) {
 	var output *pricing.GetProductsOutput
 	var err error
-	msg := makeAWSLogMessage("GetProducts", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("GetProducts", fmt.Sprintf("%T", c), input)
 			output, err = c.pricing.GetProductsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -920,10 +923,11 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
 	var output *ec2.CreateLaunchTemplateOutput
 	var err error
-	msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.CreateLaunchTemplateWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -948,10 +952,10 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.DescribeLaunchTemplatesInput) ([]*ec2.LaunchTemplate, error) {
 	var templates []*ec2.LaunchTemplate
 	var err error
-	msg := makeAWSLogMessage("DescribeLaunchTemplates", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeLaunchTemplates", fmt.Sprintf("%T", c), input)
 			templates = []*ec2.LaunchTemplate{}
 			err = c.EC2.DescribeLaunchTemplatesPagesWithContext(ctx, input, func(output *ec2.DescribeLaunchTemplatesOutput, _ bool) bool {
 				templates = append(templates, output.LaunchTemplates...)
@@ -977,10 +981,10 @@ func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.Descr
 func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
 	var output *ec2.DeleteLaunchTemplateOutput
 	var err error
-	msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.DeleteLaunchTemplateWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
@@ -1001,10 +1005,11 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
 	var output *ec2.CreateFleetOutput
 	var err error
-	msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
+	input.SetClientToken(utility.RandomString())
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
 			output, err = c.EC2.CreateFleetWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {

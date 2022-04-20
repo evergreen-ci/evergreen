@@ -86,12 +86,10 @@ func TestBaseSNSRoute(t *testing.T) {
 func TestHandleEC2SNSNotification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.Clear(host.Collection))
 	rh := ec2SNS{}
-	rh.queue = evergreen.GetEnvironment().LocalQueue()
-	rh.env = evergreen.GetEnvironment()
+	rh.env = testutil.NewEnvironment(ctx, t)
+	rh.queue = rh.env.LocalQueue()
 	rh.payload = sns.Payload{Message: `{"version":"0","id":"qwertyuiop","detail-type":"EC2 Instance State-change Notification","source":"sns.ec2","time":"2020-07-23T14:48:37Z","region":"us-east-1","resources":["arn:aws:ec2:us-east-1:1234567890:instance/i-0123456789"],"detail":{"instance-id":"i-0123456789","state":"terminated"}}`}
 
 	// unknown host
@@ -109,8 +107,6 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 func TestEC2SNSNotificationHandlers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.Clear(host.Collection))
 	agentHost := host.Host{
 		Id:        "agent_host",
@@ -130,11 +126,6 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 	assert.NoError(t, spawnHost.Insert())
 
 	for name, test := range map[string]func(*testing.T){
-		"InstanceInterruptionWarningInitiatesTermination": func(t *testing.T) {
-			rh.payload = sns.Payload{MessageId: messageID}
-			require.NoError(t, rh.handleInstanceInterruptionWarning(ctx, agentHost.Id))
-			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
-		},
 		"InstanceTerminatedInitiatesInstanceStatusCheck": func(t *testing.T) {
 			require.NoError(t, rh.handleInstanceTerminated(ctx, agentHost.Id))
 			require.Equal(t, 1, rh.queue.Stats(ctx).Total)
@@ -158,8 +149,6 @@ func TestEC2SNSNotificationHandlers(t *testing.T) {
 func TestECSSNSHandleNotification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS){
 		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS) {

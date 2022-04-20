@@ -34,8 +34,12 @@ func TestCommitQueueSuite(t *testing.T) {
 	s := new(CommitQueueSuite)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
 	env := testutil.NewEnvironment(ctx, t)
 	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
 	suite.Run(t, s)
 }
 

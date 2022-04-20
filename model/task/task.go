@@ -36,7 +36,8 @@ import (
 const (
 	dependencyKey = "dependencies"
 
-	// tasks should be unscheduled after ~a week
+	// UnschedulableThreshold is the threshold after which a task waiting to
+	// dispatch should be unscheduled due to staleness.
 	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
@@ -98,17 +99,21 @@ type Task struct {
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
-	// used to indicate whether task should be scheduled to run
-	Activated                bool         `bson:"activated" json:"activated"`
-	ActivatedBy              string       `bson:"activated_by" json:"activated_by"`
-	DeactivatedForDependency bool         `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
-	BuildId                  string       `bson:"build_id" json:"build_id"`
-	DistroId                 string       `bson:"distro" json:"distro"`
-	BuildVariant             string       `bson:"build_variant" json:"build_variant"`
-	BuildVariantDisplayName  string       `bson:"build_variant_display_name" json:"-"`
-	DependsOn                []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents            int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
-	OverrideDependencies     bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	// Activated indicates whether the task should be scheduled to run or not.
+	Activated                bool   `bson:"activated" json:"activated"`
+	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
+	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
+	// ContainerAllocated indicates whether this task has been allocated a
+	// container to run it. It only applies to tasks running in containers.
+	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
+
+	BuildId                 string       `bson:"build_id" json:"build_id"`
+	DistroId                string       `bson:"distro" json:"distro"`
+	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
+	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents           int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies    bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// DistroAliases refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
@@ -124,8 +129,8 @@ type Task struct {
 	// Tags that describe the task
 	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
-	// The host the task was run on. This value is empty for display tasks
-	HostId string `bson:"host_id" json:"host_id"`
+	// The host the task was run on. This value is only set for host tasks.
+	HostId string `bson:"host_id,omitempty" json:"host_id"`
 
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
@@ -168,7 +173,7 @@ type Task struct {
 	// It may be added via aggregation
 	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
 
-	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
+	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
@@ -336,7 +341,7 @@ type TestResult struct {
 }
 
 // GetLogTestName returns the name of the test in the logging backend. This is
-// used for test logs in cedar where the name of the test in the logging
+// used for test logs in Cedar where the name of the test in the logging
 // service may differ from that in the test results service.
 func (tr TestResult) GetLogTestName() string {
 	if tr.LogTestName != "" {
@@ -363,13 +368,13 @@ func (tr TestResult) GetDisplayTestName() string {
 // generation for other log viewers.
 func (tr TestResult) GetLogURL(viewer evergreen.LogViewer) string {
 	root := evergreen.GetEnvironment().Settings().ApiUrl
-	deprecatedLobsterURL := "https://logkeeper.mongodb.org/lobster"
+	deprecatedLobsterURL := "https://logkeeper.mongodb.org"
 
 	switch viewer {
 	case evergreen.LogViewerHTML:
 		if tr.URL != "" {
-			if strings.Contains(tr.URL+"/lobster", deprecatedLobsterURL) {
-				return strings.Replace(tr.URL, deprecatedLobsterURL, root, 1)
+			if strings.Contains(tr.URL, deprecatedLobsterURL) {
+				return strings.Replace(tr.URL, deprecatedLobsterURL, root+"/lobster", 1)
 			}
 
 			// Some test results may have internal URLs that are
@@ -490,22 +495,73 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
+// IsDispatchable returns true if the task should make progress towards
+// dispatching to run.
+func (t *Task) IsDispatchable() bool {
+	return t.IsHostDispatchable() || t.ShouldAllocateContainer() || t.IsContainerDispatchable()
+}
+
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
-	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && t.Status == evergreen.TaskUndispatched && t.Activated
+	return t.IsHostTask() && t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
-// IsContainerDispatchable returns true if the task should run in a container
-// and can be dispatched.
-func (t *Task) IsContainerDispatchable() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerAllocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+// IsHostTask returns true if it's a task that runs on hosts.
+func (t *Task) IsHostTask() bool {
+	return (t.ExecutionPlatform == "" || t.ExecutionPlatform == ExecutionPlatformHost) && !t.DisplayOnly
+}
+
+// IsContainerTask returns true if it's a task that runs on containers.
+func (t *Task) IsContainerTask() bool {
+	return t.ExecutionPlatform == ExecutionPlatformContainer
 }
 
 // ShouldAllocateContainer indicates whether a task should be allocated a
 // container or not.
 func (t *Task) ShouldAllocateContainer() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer && t.Status == evergreen.TaskContainerUnallocated && t.Activated && t.Priority != evergreen.DisabledTaskPriority
+	if t.ContainerAllocated {
+		return false
+	}
+
+	return t.isContainerScheduled()
+}
+
+// IsContainerDispatchable returns true if the task should run in a container
+// and can be dispatched.
+func (t *Task) IsContainerDispatchable() bool {
+	if !t.ContainerAllocated {
+		return false
+	}
+	return t.isContainerScheduled()
+}
+
+// isContainerTaskScheduled returns whether or not the task is in a state
+// where it should eventually dispatch to run on a container.
+func (t *Task) isContainerScheduled() bool {
+	if !t.IsContainerTask() {
+		return false
+	}
+	if t.Status != evergreen.TaskUndispatched {
+		return false
+	}
+	if !t.Activated {
+		return false
+	}
+	if t.Priority <= evergreen.DisabledTaskPriority {
+		return false
+	}
+
+	for _, dep := range t.DependsOn {
+		if dep.Unattainable {
+			return false
+		}
+		if !dep.Finished {
+			return false
+		}
+	}
+
+	return true
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -567,7 +623,7 @@ func (t *Task) AddDependency(d Dependency) error {
 				return nil // nothing to be done
 			}
 			return errors.Wrapf(t.MarkUnattainableDependency(existingDependency.TaskId, d.Unattainable),
-				"error updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
+				"updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -627,7 +683,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if !exists {
 			foundTask, err := FindOneId(dependency.TaskId)
 			if err != nil {
-				return false, errors.Wrap(err, "error finding dependency")
+				return false, errors.Wrap(err, "finding dependency")
 			}
 			if foundTask == nil {
 				return false, errors.Errorf("dependency '%s' not found", depTask.Id)
@@ -726,7 +782,7 @@ func (t *Task) BlockedOnDeactivatedDependency(depCache map[string]Task) ([]strin
 		if !exists {
 			foundTask, err := FindOneId(dep.TaskId)
 			if err != nil {
-				return nil, errors.Wrap(err, "error finding dependency")
+				return nil, errors.Wrap(err, "finding dependency")
 			}
 			if foundTask == nil {
 				return nil, errors.Errorf("dependency '%s' not found", depTask.Id)
@@ -760,7 +816,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 		if !ok {
 			foundTask, err := FindOneId(dep.TaskId)
 			if err != nil {
-				return false, errors.Wrap(err, "error finding dependency")
+				return false, errors.Wrap(err, "finding dependency")
 			}
 			if foundTask == nil {
 				return false, errors.Errorf("dependency '%s' not found", dep.TaskId)
@@ -819,7 +875,7 @@ func (t *Task) MarkDependenciesFinished(finished bool) error {
 
 // HasFailedTests returns true if the task had any failed tests.
 func (t *Task) HasFailedTests() (bool, error) {
-	// Check cedar flags before populating test results to avoid
+	// Check Cedar flags before populating test results to avoid
 	// unnecessarily fetching test results.
 	if t.HasCedarResults {
 		if t.CedarResultsFailed {
@@ -933,43 +989,13 @@ func (t *Task) MarkAsHostDispatched(hostId, distroId, agentRevision string,
 		},
 	)
 	if err != nil {
-		return errors.Wrapf(err, "error marking task %s as dispatched", t.Id)
+		return errors.Wrapf(err, "marking task '%s' as dispatched", t.Id)
 	}
 
 	//when dispatching an execution task, mark its parent as dispatched
 	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
 		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
 	}
-	return nil
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod. If the task is part of a display task, the display task is also
-// marked as dispatched to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string, dispatchedAt time.Time) error {
-	query := shouldContainerTaskDispatchQuery()
-	query[StatusKey] = evergreen.TaskContainerAllocated
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskDispatched,
-			DispatchTimeKey:  dispatchedAt,
-			LastHeartbeatKey: dispatchedAt,
-			AgentVersionKey:  agentVersion,
-		},
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.AgentVersion = agentVersion
-
 	return nil
 }
 
@@ -1001,23 +1027,55 @@ func (t *Task) MarkAsHostUndispatched() error {
 	)
 }
 
-// MarkAsContainerDeallocated marks a container task that was allocated as no
-// longer allocated.
-func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
-	if t.Status != evergreen.TaskContainerAllocated {
-		return errors.Errorf("cannot deallocate a container task if it's not currently allocated - current status is '%s'", t.Status)
+// MarkAsContainerAllocated marks a container task as allocated a container.
+// This will fail if the task is not in a state where it needs a container to be
+// allocated to it.
+func (t *Task) MarkAsContainerAllocated(ctx context.Context, env evergreen.Environment) error {
+	if t.ContainerAllocated {
+		return errors.New("cannot allocate a container task if it's currently allocated")
 	}
+	q := needsContainerAllocation()
+	q[IdKey] = t.Id
+
+	allocatedAt := time.Now()
+	update, err := env.DB().Collection(Collection).UpdateOne(ctx, q, bson.M{
+		"$set": bson.M{
+			ContainerAllocatedKey:     true,
+			ContainerAllocatedTimeKey: allocatedAt,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if update.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.ContainerAllocated = true
+	t.ContainerAllocatedTime = allocatedAt
+
+	return nil
+}
+
+// MarkAsContainerDeallocated marks a container task that was allocated as no
+// longer allocated a container.
+func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
+	if !t.ContainerAllocated {
+		return errors.New("cannot deallocate a container task if it's not currently allocated")
+	}
+
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
-		IdKey:     t.Id,
-		StatusKey: evergreen.TaskContainerAllocated,
+		IdKey:                 t.Id,
+		ContainerAllocatedKey: true,
 	}, bson.M{
 		"$set": bson.M{
-			StatusKey:        evergreen.TaskContainerUnallocated,
-			DispatchTimeKey:  utility.ZeroTime,
-			LastHeartbeatKey: utility.ZeroTime,
+			ContainerAllocatedKey: false,
+			DispatchTimeKey:       utility.ZeroTime,
+			LastHeartbeatKey:      utility.ZeroTime,
 		},
 		"$unset": bson.M{
-			AgentVersionKey: 1,
+			AgentVersionKey:           1,
+			ContainerAllocatedTimeKey: 1,
 		},
 	})
 	if err != nil {
@@ -1027,9 +1085,42 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 		return errors.New("task was not updated")
 	}
 
-	t.Status = evergreen.TaskContainerUnallocated
+	t.ContainerAllocated = false
 	t.DispatchTime = utility.ZeroTime
 	t.LastHeartbeat = utility.ZeroTime
+	t.ContainerAllocatedTime = time.Time{}
+	t.AgentVersion = ""
+
+	return nil
+}
+
+// MarkAsContainerDispatched marks that the container task has been dispatched
+// to a pod.
+func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, agentVersion string) error {
+	dispatchedAt := time.Now()
+	query := isContainerTaskScheduledQuery()
+	query[StatusKey] = evergreen.TaskUndispatched
+	query[ContainerAllocatedKey] = true
+	update := bson.M{
+		"$set": bson.M{
+			StatusKey:        evergreen.TaskDispatched,
+			DispatchTimeKey:  dispatchedAt,
+			LastHeartbeatKey: dispatchedAt,
+			AgentVersionKey:  agentVersion,
+		},
+	}
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating task")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("task was not updated")
+	}
+
+	t.Status = evergreen.TaskDispatched
+	t.DispatchTime = dispatchedAt
+	t.LastHeartbeat = dispatchedAt
+	t.AgentVersion = agentVersion
 
 	return nil
 }
@@ -1052,7 +1143,7 @@ func MarkGeneratedTasks(taskID string) error {
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
-	return errors.Wrap(err, "problem marking generate.tasks complete")
+	return errors.Wrap(err, "marking generate.tasks complete")
 }
 
 // MarkGeneratedTasksErr marks that the task hit errors generating tasks.
@@ -1073,7 +1164,7 @@ func MarkGeneratedTasksErr(taskID string, errorToSet error) error {
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
-	return errors.Wrap(err, "problem setting generate.tasks error")
+	return errors.Wrap(err, "setting generate.tasks error")
 }
 
 func GenerateNotRun() ([]Task, error) {
@@ -1180,7 +1271,7 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 
 	update := bson.M{
 		"$set": bson.M{
-			PriorityKey:  -1,
+			PriorityKey:  evergreen.DisabledTaskPriority,
 			ActivatedKey: false,
 		},
 	}
@@ -1189,10 +1280,34 @@ func UnscheduleStaleUnderwaterHostTasks(distroID string) (int, error) {
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
 	info, err := UpdateAllWithHint(query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
-		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
+		return 0, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}
 
 	return info.Updated, nil
+}
+
+// DisableStaleContainerTasks disables all container tasks that have been
+// scheduled to run for a long time without actually dispatching the task.
+func DisableStaleContainerTasks(caller string) error {
+	query := isContainerTaskScheduledQuery()
+	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
+
+	tasks, err := FindAll(db.Query(query))
+	if err != nil {
+		return errors.Wrap(err, "finding tasks that need to be disabled")
+	}
+
+	grip.Info(message.Fields{
+		"message":   "disabling container tasks that are still scheduled to run but are stale",
+		"num_tasks": len(tasks),
+		"caller":    caller,
+	})
+
+	if err := DisableTasks(tasks, caller); err != nil {
+		return errors.Wrap(err, "disabled stale container tasks")
+	}
+
+	return nil
 }
 
 // DeactivateStepbackTasksForProjects deactivates and aborts any scheduled/running tasks
@@ -1307,7 +1422,7 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 // for the CedarResultsFailed to be set to true.
 func (t *Task) SetHasCedarResults(hasCedarResults, failedResults bool) error {
 	if !hasCedarResults && failedResults {
-		return errors.New("cannot set CedarResultsFailed to true when HasCedarResults is false")
+		return errors.New("cannot set Cedar results as failed when task does not have Cedar results")
 	}
 
 	t.HasCedarResults = hasCedarResults
@@ -1382,7 +1497,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error 
 			},
 		})
 	if err != nil {
-		return errors.Wrap(err, "can't activate tasks")
+		return errors.Wrap(err, "activating tasks")
 	}
 	for _, t := range tasks {
 		event.LogTaskActivated(t.Id, t.Execution, caller)
@@ -1399,15 +1514,15 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 
 	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey))
 	if err != nil {
-		return errors.Wrap(err, "can't get tasks to deactivate")
+		return errors.Wrap(err, "getting tasks for activation")
 	}
 	dependOn, err := GetRecursiveDependenciesUp(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "can't get recursive dependencies")
+		return errors.Wrap(err, "getting recursive dependencies")
 	}
 
 	if err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
-		return errors.Wrap(err, "problem updating tasks for activation")
+		return errors.Wrap(err, "updating tasks for activation")
 	}
 	return nil
 }
@@ -1422,7 +1537,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "can't get recursive dependencies down")
+		return errors.Wrap(err, "getting recursive dependencies down")
 	}
 
 	// do a topological sort so we've dealt with
@@ -1454,7 +1569,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		var missingTasks []Task
 		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
 		if err != nil {
-			return errors.Wrap(err, "can't get missing tasks")
+			return errors.Wrap(err, "getting missing tasks")
 		}
 		for _, t := range missingTasks {
 			missingTaskMap[t.Id] = t
@@ -1501,7 +1616,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't update activation for dependencies")
+		return errors.Wrap(err, "updating activation for dependencies")
 	}
 
 	for _, t := range tasksToActivate {
@@ -1537,7 +1652,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 
 	sorted, err := topo.Sort(depGraph)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem with topological sort")
+		return nil, errors.Wrap(err, "topologically sorting dependency graph")
 	}
 	sortedTasks := make([]Task, 0, len(tasks))
 	for _, node := range sorted {
@@ -1552,7 +1667,6 @@ func (t *Task) DeactivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
-	t.ContainerAllocatedTime = utility.ZeroTime
 
 	return DeactivateTasks([]Task{*t}, caller)
 }
@@ -1569,15 +1683,14 @@ func DeactivateTasks(tasks []Task, caller string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:              false,
-				ActivatedByKey:            caller,
-				ScheduledTimeKey:          utility.ZeroTime,
-				ContainerAllocatedTimeKey: utility.ZeroTime,
+				ActivatedKey:     false,
+				ActivatedByKey:   caller,
+				ScheduledTimeKey: utility.ZeroTime,
 			},
 		},
 	)
 	if err != nil {
-		return errors.Wrap(err, "problem deactivating tasks")
+		return errors.Wrap(err, "deactivating tasks")
 	}
 	for _, t := range tasks {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
@@ -1589,7 +1702,7 @@ func DeactivateTasks(tasks []Task, caller string) error {
 func DeactivateDependencies(tasks []string, caller string) error {
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "can't get recursive dependencies down")
+		return errors.Wrap(err, "getting recursive dependencies down")
 	}
 
 	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
@@ -1613,11 +1726,10 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			ActivatedKey:                false,
 			DeactivatedForDependencyKey: true,
 			ScheduledTimeKey:            utility.ZeroTime,
-			ContainerAllocatedTimeKey:   utility.ZeroTime,
 		}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "problem deactivating dependencies")
+		return errors.Wrap(err, "deactivating dependencies")
 	}
 	for _, t := range tasksToUpdate {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
@@ -1718,57 +1830,62 @@ func (t *Task) GetDisplayStatus() string {
 // in these statuses, which overall status would a user expect to see?"
 // for example, if there are both successful and failed tasks, one would expect to see "failed"
 func (t *Task) displayTaskPriority() int {
-	switch t.ResultStatus() {
+	switch t.GetDisplayStatus() {
 	case evergreen.TaskStarted:
 		return 10
 	case evergreen.TaskFailed:
 		return 20
 	case evergreen.TaskTestTimedOut:
 		return 30
-	case evergreen.TaskSystemFailed:
+	case evergreen.TaskTimedOut:
 		return 40
-	case evergreen.TaskSystemTimedOut:
+	case evergreen.TaskSystemFailed:
 		return 50
-	case evergreen.TaskSystemUnresponse:
+	case evergreen.TaskSystemTimedOut:
 		return 60
-	case evergreen.TaskSetupFailed:
+	case evergreen.TaskSystemUnresponse:
 		return 70
+	case evergreen.TaskSetupFailed:
+		return 80
 	case evergreen.TaskUndispatched:
-		return 80
-	case evergreen.TaskContainerUnallocated:
-		return 80
-	case evergreen.TaskInactive:
 		return 90
-	case evergreen.TaskSucceeded:
+	case evergreen.TaskInactive:
 		return 100
+	case evergreen.TaskSucceeded:
+		return 110
 	}
 	return 1000
 }
 
-// Reset sets the task state to be activated, with a new secret,
-// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
+// Reset sets the task state to a state in which it is scheduled to re-run.
 func (t *Task) Reset() error {
-	reset := resetTaskUpdate(t)
-
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
-		reset,
+		resetTaskUpdate(t),
 	)
 }
 
-// Reset sets the task state to be activated, with a new secret,
-// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
-func ResetTasks(taskIds []string) error {
-	_, err := UpdateAll(
-		bson.M{
-			IdKey: bson.M{"$in": taskIds},
-		},
-		resetTaskUpdate(nil),
-	)
+// ResetTasks performs the same DB updates as (*Task).Reset, but resets many
+// tasks instead of a single one.
+func ResetTasks(tasks []Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+	var taskIDs []string
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+	}
 
-	return err
+	if _, err := UpdateAll(
+		bson.M{IdKey: bson.M{"$in": taskIDs}},
+		resetTaskUpdate(nil),
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func resetTaskUpdate(t *Task) bson.M {
@@ -1783,7 +1900,6 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
 		t.ScheduledTime = utility.ZeroTime
-		t.ContainerAllocatedTime = utility.ZeroTime
 		t.FinishTime = utility.ZeroTime
 		t.DependenciesMetTime = utility.ZeroTime
 		t.TimeTaken = 0
@@ -1791,26 +1907,23 @@ func resetTaskUpdate(t *Task) bson.M {
 		t.Details = apimodels.TaskEndDetail{}
 		t.HasCedarResults = false
 		t.ResetWhenFinished = false
-		t.HostId = ""
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
 	}
 	update := bson.M{
 		"$set": bson.M{
-			ActivatedKey:              true,
-			ActivatedTimeKey:          now,
-			SecretKey:                 newSecret,
-			HostIdKey:                 "",
-			StatusKey:                 evergreen.TaskUndispatched,
-			DispatchTimeKey:           utility.ZeroTime,
-			StartTimeKey:              utility.ZeroTime,
-			ScheduledTimeKey:          utility.ZeroTime,
-			ContainerAllocatedTimeKey: utility.ZeroTime,
-			FinishTimeKey:             utility.ZeroTime,
-			DependenciesMetTimeKey:    utility.ZeroTime,
-			TimeTakenKey:              0,
-			LastHeartbeatKey:          utility.ZeroTime,
+			ActivatedKey:           true,
+			ActivatedTimeKey:       now,
+			SecretKey:              newSecret,
+			StatusKey:              evergreen.TaskUndispatched,
+			DispatchTimeKey:        utility.ZeroTime,
+			StartTimeKey:           utility.ZeroTime,
+			ScheduledTimeKey:       utility.ZeroTime,
+			FinishTimeKey:          utility.ZeroTime,
+			DependenciesMetTimeKey: utility.ZeroTime,
+			TimeTakenKey:           0,
+			LastHeartbeatKey:       utility.ZeroTime,
 		},
 		"$unset": bson.M{
 			DetailsKey:              "",
@@ -1818,6 +1931,7 @@ func resetTaskUpdate(t *Task) bson.M {
 			CedarResultsFailedKey:   "",
 			ResetWhenFinishedKey:    "",
 			AgentVersionKey:         "",
+			HostIdKey:               "",
 			HostCreateDetailsKey:    "",
 			OverrideDependenciesKey: "",
 		},
@@ -1840,9 +1954,11 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-// SetDisabledPriority sets the priority of a task so it will never run.
-// It also deactivates the task and any tasks that depend on it.
-func (t *Task) SetDisabledPriority(user string) error {
+// SetDisabledPriority sets the priority of a task so it will never run. If it's
+// a display task, it will disable the display task and all of its child
+// execution tasks. If it's an execution task, its parent display task will not
+// be updated. It also deactivates the task and any tasks that depend on it.
+func (t *Task) SetDisabledPriority(caller string) error {
 	t.Priority = evergreen.DisabledTaskPriority
 
 	ids := append([]string{t.Id}, t.ExecutionTasks...)
@@ -1851,7 +1967,7 @@ func (t *Task) SetDisabledPriority(user string) error {
 		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't update priority")
+		return errors.Wrap(err, "updating priority")
 	}
 
 	query := db.Query(bson.M{
@@ -1859,13 +1975,75 @@ func (t *Task) SetDisabledPriority(user string) error {
 	}).WithFields(ExecutionKey)
 	tasks, err := FindAll(query)
 	if err != nil {
-		return errors.Wrap(err, "can't find matching tasks")
+		return errors.Wrap(err, "finding matching tasks")
 	}
 	for _, task := range tasks {
-		event.LogTaskPriority(task.Id, task.Execution, user, evergreen.DisabledTaskPriority)
+		event.LogTaskPriority(task.Id, task.Execution, caller, evergreen.DisabledTaskPriority)
 	}
 
-	return t.DeactivateTask(user)
+	return t.DeactivateTask(caller)
+}
+
+// DisableTasks is the same as (*Task).SetDisabledPriority but for many tasks.
+func DisableTasks(tasks []Task, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	tasksPresent := map[string]struct{}{}
+	var taskIDs []string
+	var execTaskIDs []string
+	for _, t := range tasks {
+		tasksPresent[t.Id] = struct{}{}
+		taskIDs = append(taskIDs, t.Id)
+		execTaskIDs = append(execTaskIDs, t.ExecutionTasks...)
+	}
+
+	_, err := UpdateAll(
+		ByIds(append(taskIDs, execTaskIDs...)),
+		bson.M{"$set": bson.M{PriorityKey: evergreen.DisabledTaskPriority}},
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating task priorities")
+	}
+
+	execTasks, err := findMissingTasks(execTaskIDs, tasksPresent)
+	if err != nil {
+		return errors.Wrap(err, "finding additional execution tasks")
+	}
+	tasks = append(tasks, execTasks...)
+
+	for _, t := range tasks {
+		t.Priority = evergreen.DisabledTaskPriority
+		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
+	}
+
+	if err := DeactivateTasks(tasks, caller); err != nil {
+		return errors.Wrap(err, "deactivating dependencies")
+	}
+
+	return nil
+}
+
+// findMissingTasks finds all tasks whose IDs are missing from tasksPresent.
+func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]Task, error) {
+	var missingTaskIDs []string
+	for _, id := range taskIDs {
+		if _, ok := tasksPresent[id]; ok {
+			continue
+		}
+		missingTaskIDs = append(missingTaskIDs, id)
+	}
+	if len(missingTaskIDs) == 0 {
+		return nil, nil
+	}
+
+	missingTasks, err := FindAll(db.Query(ByIds(missingTaskIDs)))
+	if err != nil {
+		return nil, err
+	}
+
+	return missingTasks, nil
 }
 
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
@@ -1889,7 +2067,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		if t.IsPartOfSingleHostTaskGroup() {
 			tasksInGroup, err := FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error finding task group '%s'", t.TaskGroup)
+				return nil, errors.Wrapf(err, "finding task group '%s'", t.TaskGroup)
 			}
 			for _, taskInGroup := range tasksInGroup {
 				if taskInGroup.TaskGroupOrder < t.TaskGroupOrder {
@@ -1908,12 +2086,12 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 
 	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get dependencies")
+		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
 	recursiveDeps, err := GetRecursiveDependenciesUp(deps, depCache)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get recursive deps")
+		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
 
 	return append(deps, recursiveDeps...), nil
@@ -1958,7 +2136,7 @@ func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Ta
 	}
 	recurseTasks, err := getRecursiveDependenciesDown(newDepIDs, taskMap)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get recursive dependencies")
+		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
 
 	return append(newDeps, recurseTasks...), nil
@@ -2001,7 +2179,7 @@ func (t *Task) SetResults(results []TestResult) error {
 		"results_length": len(results),
 	})
 
-	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
+	return errors.Wrap(testresult.InsertMany(docs), "inserting test results")
 }
 
 func (t TestResult) convertToNewStyleTestResult(task *Task) testresult.TestResult {
@@ -2108,7 +2286,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 	}
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
-		return errors.Wrapf(err, "error finding tasks to abort from build '%s'", buildId)
+		return errors.Wrapf(err, "finding tasks to abort from build '%s'", buildId)
 	}
 	if len(ids) == 0 {
 		grip.Info(message.Fields{
@@ -2126,7 +2304,7 @@ func AbortBuild(buildId string, reason AbortInfo) error {
 		}},
 	)
 	if err != nil {
-		return errors.Wrapf(err, "error setting aborted statuses for tasks in build '%s'", buildId)
+		return errors.Wrapf(err, "setting aborted statuses for tasks in build '%s'", buildId)
 	}
 
 	event.LogManyTaskAbortRequests(ids, reason.User)
@@ -2148,7 +2326,7 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 	}
 	ids, err := findAllTaskIDs(db.Query(q))
 	if err != nil {
-		return errors.Wrap(err, "error finding updated tasks")
+		return errors.Wrap(err, "finding updated tasks")
 	}
 
 	if len(ids) == 0 {
@@ -2167,7 +2345,7 @@ func AbortVersion(versionId string, reason AbortInfo) error {
 		}},
 	)
 	if err != nil {
-		return errors.Wrap(err, "error setting aborted statuses")
+		return errors.Wrap(err, "setting aborted statuses")
 	}
 
 	event.LogManyTaskAbortRequests(ids, reason.User)
@@ -2198,15 +2376,18 @@ func (t *Task) Insert() error {
 	return db.Insert(Collection, t)
 }
 
-// Inserts the task into the old_tasks collection
+// Archive modifies the current execution of the task so that it is no longer
+// considered the latest execution. This task execution is inserted
+// into the old_tasks collection. If this is a display task, its execution tasks
+// are also archived.
 func (t *Task) Archive() error {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		execTasks, err := FindAll(db.Query(ByIds(t.ExecutionTasks)))
 		if err != nil {
-			return errors.Wrap(err, "error retrieving execution tasks")
+			return errors.Wrap(err, "retrieving execution tasks")
 		}
 		if err = ArchiveMany(execTasks); err != nil {
-			return errors.Wrap(err, "error archiving execution tasks")
+			return errors.Wrap(err, "archiving execution tasks")
 		}
 	}
 
@@ -2219,7 +2400,7 @@ func (t *Task) Archive() error {
 			"execution":       t.Execution,
 			"display_only":    t.DisplayOnly,
 		}))
-		return errors.Wrap(err, "task.Archive() failed to insert new old task")
+		return errors.Wrap(err, "inserting archived task into old tasks")
 	}
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
@@ -2232,13 +2413,21 @@ func (t *Task) Archive() error {
 			"$inc": bson.M{ExecutionKey: 1},
 		})
 	if err != nil {
-		return errors.Wrap(err, "task.Archive() failed to update task")
+		return errors.Wrap(err, "updating task")
 	}
 	t.Aborted = false
 
-	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
-	if err != nil {
-		return errors.Wrap(err, "unable to update host event logs")
+	if t.IsHostTask() {
+		// Host event logs involving running a host task don't include the
+		// execution number but need it to distinguish which task execution it
+		// ran once the task is no longer the latest execution. This
+		// retroactively sets the task execution for event logs involving the
+		// host running this task so that it correctly identifies this archived
+		// execution.
+		err = event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution)
+		if err != nil {
+			return errors.Wrap(err, "updating host event logs")
+		}
 	}
 	return nil
 }
@@ -2265,7 +2454,7 @@ func ArchiveMany(tasks []Task) error {
 	if len(additionalTasks) > 0 {
 		toAdd, err := FindAll(db.Query(ByIds((additionalTasks))))
 		if err != nil {
-			return errors.Wrap(err, "unable to find execution tasks")
+			return errors.Wrap(err, "finding execution tasks")
 		}
 		tasks = append(tasks, toAdd...)
 	}
@@ -2282,7 +2471,7 @@ func ArchiveMany(tasks []Task) error {
 	defer cancel()
 	session, err := mongoClient.StartSession()
 	if err != nil {
-		return errors.Wrap(err, "unable to start session")
+		return errors.Wrap(err, "starting DB session")
 	}
 	defer session.EndSession(ctx)
 
@@ -2316,12 +2505,20 @@ func ArchiveMany(tasks []Task) error {
 
 	_, err = session.WithTransaction(ctx, txFunc)
 	if err != nil {
-		return errors.Wrap(err, "unable to archive tasks")
+		return errors.Wrap(err, "archiving tasks")
 	}
 
 	eventLogErrs := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		eventLogErrs.Add(event.UpdateExecutions(t.HostId, t.Id, t.Execution))
+		if t.IsHostTask() {
+			// Host event logs involving running a host task don't include the
+			// execution number but need it to distinguish which task execution
+			// it ran once the task is no longer the latest execution. This
+			// retroactively sets the task execution for event logs involving
+			// the host running this task so that it correctly identifies this
+			// archived execution.
+			eventLogErrs.Wrapf(event.UpdateHostTaskExecutions(t.HostId, t.Id, t.Execution), "updating execution %d of task '%s' for host '%s'", t.Execution, t.Id, t.HostId)
+		}
 	}
 
 	return eventLogErrs.Resolve()
@@ -2397,7 +2594,7 @@ func (t *Task) populateNewTestResults() error {
 // tasks of a display task.
 func (t *Task) populateTestResultsForDisplayTask() error {
 	if !t.DisplayOnly {
-		return errors.Errorf("%s is not a display task", t.Id)
+		return errors.Errorf("'%s' is not a display task", t.Id)
 	}
 
 	out, err := MergeTestResultsBulk([]Task{*t}, nil)
@@ -2510,8 +2707,8 @@ func FindHostSchedulableForAlias(id string) ([]Task, error) {
 	return FindAll(db.Query(q))
 }
 
-// FindHostRunnable finds all hosts that can be scheduled for a distro with an
-// additional consideration for whether the task's dependencies are met. If
+// FindHostRunnable finds all host tasks that can be scheduled for a distro with
+// an additional consideration for whether the task's dependencies are met. If
 // removeDeps is true, tasks with unmet dependencies are excluded.
 func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	match := schedulableHostTasksQuery()
@@ -2520,7 +2717,7 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	if distroID != "" {
 		foundDistro, err := distro.FindOne(distro.ById(distroID).WithFields(distro.ValidProjectsKey))
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
 		if foundDistro != nil {
 			d = *foundDistro
@@ -2686,7 +2883,7 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 
 	runnableTasks := []Task{}
 	if err := Aggregate(pipeline, &runnableTasks); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
+		return nil, errors.Wrap(err, "fetching runnable host tasks")
 	}
 
 	return runnableTasks, nil
@@ -2695,10 +2892,10 @@ func FindHostRunnable(distroID string, removeDeps bool) ([]Task, error) {
 func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, execution int) (int, error) {
 	t, err := FindOneIdNewOrOld(taskId)
 	if err != nil {
-		return 0, errors.Wrapf(err, fmt.Sprintf("error finding task %s", taskId))
+		return 0, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
 	if t == nil {
-		return 0, errors.New(fmt.Sprintf("task not found %s", taskId))
+		return 0, errors.Errorf("task '%s' not found", taskId)
 	}
 	var taskIds []string
 	if t.DisplayOnly {
@@ -2708,7 +2905,7 @@ func GetTestCountByTaskIdAndFilters(taskId, testName string, statuses []string, 
 	}
 	count, err := testresult.TestResultCount(taskIds, testName, statuses, execution)
 	if err != nil {
-		return 0, errors.Wrapf(err, fmt.Sprintf("Error counting test results for task %s", taskId))
+		return 0, errors.Wrapf(err, "counting test results for task '%s'", taskId)
 	}
 	return count, nil
 }
@@ -2736,7 +2933,7 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 	docs := []map[string]string{}
 	err := Aggregate(pipeline, &docs)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding variants with task %s", taskName)
+		return nil, errors.Wrapf(err, "finding variants with task named '%s'", taskName)
 	}
 	variants := []string{}
 	for _, doc := range docs {
@@ -2827,7 +3024,7 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	if len(tasksToFetch) > 0 {
 		missingTasks, err := FindAll(db.Query(ByIds(tasksToFetch)).WithFields(DependsOnKey))
 		if err != nil {
-			return nil, errors.Wrap(err, "can't get tasks missing from map")
+			return nil, errors.Wrap(err, "getting tasks missing from map")
 		}
 		if missingTasks == nil {
 			return nil, errors.New("no missing tasks found")
@@ -2867,7 +3064,7 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	}
 
 	if len(runtimes) != 1 {
-		return 0, errors.Errorf("got unexpected task runtimes data points (%d)", len(runtimes))
+		return 0, errors.Errorf("expected exactly one task runtime data point, but actually got %d", len(runtimes))
 	}
 
 	return time.Duration(runtimes[0].ExpectedDuration), nil
@@ -2947,15 +3144,13 @@ func (t *Task) FetchExpectedDuration() util.DurationStats {
 
 // TaskStatusCount holds counts for task statuses
 type TaskStatusCount struct {
-	Succeeded            int `json:"succeeded"`
-	Failed               int `json:"failed"`
-	Started              int `json:"started"`
-	Undispatched         int `json:"undispatched"`
-	Inactive             int `json:"inactive"`
-	Dispatched           int `json:"dispatched"`
-	ContainerUnallocated int `json:"container_unallocated"`
-	ContainerAllocated   int `json:"container_allocated"`
-	TimedOut             int `json:"timed_out"`
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
 }
 
 func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
@@ -2974,10 +3169,6 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 		tsc.Undispatched++
 	case evergreen.TaskInactive:
 		tsc.Inactive++
-	case evergreen.TaskContainerUnallocated:
-		tsc.ContainerUnallocated++
-	case evergreen.TaskContainerAllocated:
-		tsc.ContainerAllocated++
 	}
 }
 
@@ -3041,7 +3232,7 @@ func (t *Task) CircularDependencies() error {
 	var err error
 	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
 	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
+		return errors.Wrap(err, "finding tasks with dependencies")
 	}
 	if len(tasksWithDeps) == 0 {
 		return nil
@@ -3056,7 +3247,7 @@ func (t *Task) CircularDependencies() error {
 	cycles := tarjan.Connections(dependencyMap)
 	for _, cycle := range cycles {
 		if len(cycle) > 1 {
-			catcher.Add(errors.Errorf("Dependency cycle detected: %s", strings.Join(cycle, ",")))
+			catcher.Errorf("dependency cycle detected: %s", strings.Join(cycle, ","))
 		}
 	}
 	return catcher.Resolve()
@@ -3117,11 +3308,11 @@ func GetLatestExecution(taskId string) (int, error) {
 		taskId = strings.Join(pieces, "_")
 		t, err = FindOneId(taskId)
 		if err != nil {
-			return -1, errors.Wrap(err, "error getting task")
+			return -1, errors.Wrap(err, "getting task")
 		}
 	}
 	if t == nil {
-		return -1, errors.New("task not found")
+		return -1, errors.Errorf("task '%s' not found", taskId)
 	}
 	return t.Execution, nil
 }
@@ -3186,6 +3377,9 @@ func GetTasksByVersion(versionID string, opts GetTasksByVersionOptions) ([]Task,
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				sortPipeline = append(sortPipeline, addStatusColorSort((singleSort.Key)))
 				sortFields = append(sortFields, bson.E{Key: "__" + singleSort.Key, Value: singleSort.Order})
+			} else if singleSort.Key == TimeTakenKey {
+				sortPipeline = append(sortPipeline, recalculateTimeTaken())
+				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
@@ -3299,11 +3493,11 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 	defer cancel()
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting task stats")
+		return nil, errors.Wrap(err, "getting task stats")
 	}
 	err = cursor.All(ctx, &StatusCount)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting task stats")
+		return nil, errors.Wrap(err, "iterating and decoding task stats")
 	}
 
 	return StatusCount, nil
@@ -3398,7 +3592,7 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 	result := []*GroupedTaskStatusCount{}
 
 	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "can't get stats list")
+		return nil, errors.Wrap(err, "aggregating task stats")
 	}
 	return result, nil
 
@@ -3666,6 +3860,24 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	return pipeline
 }
 
+func recalculateTimeTaken() bson.M {
+	return bson.M{
+		"$set": bson.M{
+			TimeTakenKey: bson.M{
+				"$cond": bson.M{
+					"if": bson.M{
+						"$eq": []string{"$" + StatusKey, evergreen.TaskStarted},
+					},
+					// Time taken for a task is in nanoseconds. Since subtracting two dates in MongoDB yields milliseconds, we have
+					// to multiply by time.Millisecond (1000000) to keep time taken consistently in nanoseconds.
+					"then": bson.M{"$multiply": []interface{}{time.Millisecond, bson.M{"$subtract": []interface{}{"$$NOW", "$" + StartTimeKey}}}},
+					"else": "$" + TimeTakenKey,
+				},
+			},
+		},
+	}
+}
+
 // addStatusColorSort adds a stage which takes a task display status and returns an integer
 // for the rank at which it should be sorted. the return value groups all statuses with the
 // same color together. this should be kept consistent with the badge status colors in spruce
@@ -3730,7 +3942,7 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 	}
 	parents, err := FindAll(db.Query(ByExecutionTasks(taskIDs)))
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding parent tasks")
+		return nil, errors.Wrap(err, "finding parent display tasks")
 	}
 	childrenToParents := map[string]*Task{}
 	for i, dt := range parents {
@@ -3767,7 +3979,7 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
 	)
 
-	return errors.Wrap(err, "can't update dependencies")
+	return errors.Wrap(err, "updating dependencies")
 }
 
 func (t *Task) SetTaskGroupInfo() error {
@@ -3828,7 +4040,7 @@ func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, display
 		// verify that the display task isn't already activated
 		dt, err := FindOneId(displayTaskId)
 		if err != nil {
-			return errors.Wrap(err, "error getting display task")
+			return errors.Wrap(err, "getting display task")
 		}
 		if dt == nil {
 			return errors.Errorf("display task not found")

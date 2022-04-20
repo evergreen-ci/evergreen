@@ -74,11 +74,11 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 		n.Payload = &model.EnqueuePatch{}
 
 	default:
-		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)
+		return errors.Errorf("unknown payload type '%s'", temp.Subscriber.Type)
 	}
 
 	if err := temp.Payload.Unmarshal(n.Payload); err != nil {
-		return errors.Wrap(err, "error unmarshalling payload")
+		return errors.Wrap(err, "unmarshalling payload")
 	}
 
 	n.ID = temp.ID
@@ -131,7 +131,7 @@ func FindUnprocessed() ([]Notification, error) {
 	notifications := []Notification{}
 	err := db.FindAllQ(Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
 
-	return notifications, errors.Wrap(err, "can't query for unprocessed notifications")
+	return notifications, errors.Wrap(err, "finding unprocessed notifications")
 }
 
 func byID(id string) db.Q {

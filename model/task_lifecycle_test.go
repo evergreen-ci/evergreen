@@ -35,8 +35,7 @@ var (
 
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection))
 		var err error
 
 		displayName := "testName"
@@ -146,8 +145,7 @@ func TestSetActiveState(t *testing.T) {
 		})
 	})
 	Convey("With one task has tasks it depends on", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		displayName := "testName"
 		userName := "testUser"
 		testTime := time.Now()
@@ -236,8 +234,7 @@ func TestSetActiveState(t *testing.T) {
 	})
 
 	Convey("with a task that is part of a display task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
 		b := &build.Build{
 			Id:      "displayBuild",
 			Version: "version",
@@ -283,8 +280,7 @@ func TestSetActiveState(t *testing.T) {
 		})
 	})
 	Convey("with a task that is part of a task group", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
 		b := &build.Build{
 			Id:      "build",
 			Version: "version",
@@ -337,8 +333,7 @@ func TestSetActiveState(t *testing.T) {
 		}
 	})
 	Convey("deactivating an early task group task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection))
 		b := &build.Build{
 			Id:      "build",
 			Version: "version",
@@ -387,8 +382,7 @@ func TestSetActiveState(t *testing.T) {
 
 func TestActivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
 		// create two tasks
 		displayName := "testTask"
 		b := &build.Build{
@@ -431,8 +425,7 @@ func TestActivatePreviousTask(t *testing.T) {
 
 func TestDeactivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		// create two tasks
 		displayName := "testTask"
 		userName := "user"
@@ -480,8 +473,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		})
 	})
 	Convey("With a display task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection))
 		userName := "user"
 		b1 := &build.Build{
 			Id: "testBuild1",
@@ -681,8 +673,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection),
-				"Error clearing task and build collections")
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection))
 
 			b := &build.Build{
 				Id:        "buildtest",
@@ -730,8 +721,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 }
 
 func TestUpdateBuildStatusForTaskReset(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection),
-		"Error clearing task and build collections")
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
 	displayName := "testName"
 	b := &build.Build{
 		Id:        "buildtest",
@@ -782,9 +772,44 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.Equal(t, evergreen.VersionStarted, data.Status)
 }
 
+func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
+	b1 := build.Build{
+		Id:                "b1",
+		Status:            evergreen.BuildStarted,
+		Version:           "v1",
+		Activated:         true,
+		IsGithubCheck:     true,
+		GithubCheckStatus: evergreen.BuildSucceeded,
+	}
+
+	b2 := build.Build{
+		Id:        "b2",
+		Status:    evergreen.BuildFailed,
+		Version:   "v1",
+		Activated: true,
+	}
+
+	assert.NoError(t, b1.Insert())
+	assert.NoError(t, b2.Insert())
+	v1 := Version{
+		Id:     "v1",
+		Status: evergreen.VersionStarted,
+	}
+	assert.NoError(t, v1.Insert())
+	versionStatus, err := UpdateVersionStatus(&v1)
+	assert.NoError(t, err)
+	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
+
+	events, err := event.FindAllByResourceID("v1")
+	assert.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, events[0].EventType, event.VersionGithubCheckFinished)
+
+}
+
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.AllLogCollection),
-		"Error clearing task and build collections")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.AllLogCollection))
 	displayName := "testName"
 	b1 := &build.Build{
 		Id:        "buildtest1",
@@ -1005,8 +1030,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-				"Error clearing collections")
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
@@ -1179,7 +1203,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 func TestMarkEnd(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection), "clearing collections")
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection))
 
 	displayName := "testName"
 	userName := "testUser"
@@ -1339,7 +1363,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, task.OldCollection,
-				build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection), t, "error clearing collection")
+				build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
 			assert := assert.New(t)
 			runningTask.ResetWhenFinished = false
 			runningTask.Status = evergreen.TaskStarted
@@ -1379,13 +1403,12 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 
 func TestTryResetTask(t *testing.T) {
 	Convey("With a task that does not exist", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection), "Error clearing task collection")
+		require.NoError(t, db.ClearCollections(task.Collection))
 		So(TryResetTask("id", "username", "", nil), ShouldNotBeNil)
 	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
-				"Error clearing task and build collections")
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 
 			displayName := "testName"
 			userName := "testUser"
@@ -1473,8 +1496,7 @@ func TestTryResetTask(t *testing.T) {
 
 		})
 		Convey("resetting a task with a max number of excutions", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-				"Error clearing task and build collections")
+			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 			displayName := "testName"
 			userName := "testUser"
 			b := &build.Build{
@@ -1583,8 +1605,7 @@ func TestTryResetTask(t *testing.T) {
 }
 
 func TestTryResetTaskWithTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection,
-		build.Collection, VersionCollection, distro.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, build.Collection, VersionCollection, distro.Collection))
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -1674,8 +1695,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 
 func TestAbortTask(t *testing.T) {
 	Convey("With a task and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-			"Error clearing task, build, and version collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		displayName := "testName"
 		userName := "testUser"
 		b := &build.Build{
@@ -2036,8 +2056,7 @@ func TestDequeueAndRestart(t *testing.T) {
 
 func TestMarkStart(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		displayName := "testName"
 		b := &build.Build{
 			Id:      "buildtest",
@@ -2124,8 +2143,7 @@ func TestMarkStart(t *testing.T) {
 
 func TestMarkUndispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		displayName := "testName"
 		b := &build.Build{
 			Id:      "buildtest",
@@ -2162,8 +2180,7 @@ func TestMarkUndispatched(t *testing.T) {
 
 func TestMarkDispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
-			"Error clearing task and build collections")
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		displayName := "testName"
 		b := &build.Build{
 			Id:      "buildtest",
@@ -2204,8 +2221,7 @@ func TestMarkDispatched(t *testing.T) {
 
 func TestGetStepback(t *testing.T) {
 	Convey("When the project has a stepback policy set to true", t, func() {
-		require.NoError(t, db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection),
-			"Error clearing collections")
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection))
 
 		config := `
 stepback: true
@@ -2297,8 +2313,7 @@ buildvariants:
 
 func TestFailedTaskRestart(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
-		"Error clearing task and build collections")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	userName := "testUser"
 	b := &build.Build{
 		Id:      "buildtest",
@@ -2425,8 +2440,7 @@ func TestFailedTaskRestart(t *testing.T) {
 
 func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
-		"Error clearing task and build collections")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	userName := "testUser"
 	b := &build.Build{
 		Id:      "buildtest",
@@ -2541,8 +2555,7 @@ func TestFailedTaskRestartWithDisplayTasksAndTaskGroup(t *testing.T) {
 
 func TestStepback(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
-		"Error clearing task and build collections")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 
 	v1 := &Version{
 		Id: "v1",
@@ -3191,7 +3204,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 }
 
 func TestClearAndResetStrandedTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -3285,7 +3298,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 }
 
 func TestClearAndResetStaleStrandedTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection))
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -3364,7 +3377,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection))
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -3527,7 +3540,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 }
 
 func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection))
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -3572,7 +3585,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 }
 
 func TestDisplayTaskDelayedRestart(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -3633,7 +3646,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 }
 
 func TestAbortedTaskDelayedRestart(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	task1 := task.Task{
 		Id:                "task1",
 		BuildId:           "b",

@@ -29,7 +29,7 @@ func mockTriggerVersion(args ProcessorArgs) (*model.Version, error) {
 	v := model.Version{
 		Branch:      args.DownstreamProject.Id,
 		Config:      args.ConfigFile,
-		Message:     args.Command,
+		Message:     args.Alias,
 		TriggerID:   args.TriggerID,
 		TriggerType: args.TriggerType,
 	}
@@ -93,29 +93,6 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 	s.Equal("configFile", versions[0].Config)
 }
 
-func (s *projectTriggerSuite) TestSimpleTaskCommand() {
-	simpleTaskCommand := model.ProjectRef{
-		Id:      "simpleTaskCommand",
-		Enabled: utility.TruePtr(),
-		Triggers: []model.TriggerDefinition{
-			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
-			{Project: "notTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
-			{Project: "somethingElse", Level: model.ProjectTriggerLevelTask, Command: "command"},
-		},
-	}
-	s.NoError(simpleTaskCommand.Insert())
-
-	e := event.EventLogEntry{
-		EventType:  event.TaskFinished,
-		ResourceId: "task",
-	}
-	versions, err := EvalProjectTriggers(&e, s.processor)
-	s.NoError(err)
-	s.Require().Len(versions, 1)
-	s.Equal("simpleTaskCommand", versions[0].Branch)
-	s.Equal("command", versions[0].Message)
-}
-
 func (s *projectTriggerSuite) TestMultipleProjects() {
 	proj1 := model.ProjectRef{
 		Id:      "proj1",
@@ -129,7 +106,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 		Id:      "proj2",
 		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
-			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
+			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
 	s.NoError(proj2.Insert())
@@ -137,7 +114,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 		Id:      "proj3",
 		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
-			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
+			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
 	s.NoError(proj3.Insert())
@@ -172,14 +149,14 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 }
 
 func (s *projectTriggerSuite) TestWrongEvent() {
-	simpleTaskCommand := model.ProjectRef{
-		Id:      "simpleTaskCommand",
+	simpleTaskFile := model.ProjectRef{
+		Id:      "simpleTaskFile",
 		Enabled: utility.TruePtr(),
 		Triggers: []model.TriggerDefinition{
-			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, Command: "command"},
+			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(simpleTaskCommand.Insert())
+	s.NoError(simpleTaskFile.Insert())
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskStarted,

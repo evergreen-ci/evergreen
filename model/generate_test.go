@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -121,6 +120,48 @@ var (
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "task_that_has_dependencies",
+					},
+				},
+			},
+		},
+	}
+
+	partiallyGeneratedProject = GeneratedProject{
+		Tasks: []parserTask{
+			{
+				Name: "new_task",
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+				},
+			},
+			{
+				Name: "another_new_task",
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+				},
+			},
+		},
+		BuildVariants: []parserBV{
+			{
+				Name: "new_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "new_task",
+					},
+					parserBVTaskUnit{
+						Name: "another_new_task",
+					},
+				},
+			},
+			{
+				Name: "another_new_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "another_new_task",
 					},
 				},
 			},
@@ -361,82 +402,62 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 
 func (s *GenerateSuite) TestValidateMaxVariants() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	for i := 0; i < maxGeneratedBuildVariants; i++ {
 		g.BuildVariants = append(g.BuildVariants, parserBV{})
 	}
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	g.BuildVariants = append(g.BuildVariants, parserBV{})
-	g.validateMaxTasksAndVariants(c)
-	s.Error(c.Resolve())
+	s.Error(g.validateMaxTasksAndVariants())
 }
 
 func (s *GenerateSuite) TestValidateMaxTasks() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	for i := 0; i < maxGeneratedTasks; i++ {
 		g.Tasks = append(g.Tasks, parserTask{})
 	}
-	g.validateMaxTasksAndVariants(c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateMaxTasksAndVariants())
 	g.Tasks = append(g.Tasks, parserTask{})
-	g.validateMaxTasksAndVariants(c)
-	s.Error(c.Resolve())
+	s.Error(g.validateMaxTasksAndVariants())
 }
 
 func (s *GenerateSuite) TestValidateNoRedefine() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
-	g.validateNoRedefine(projectMaps{}, c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateNoRedefine(projectMaps{}))
 
 	g.BuildVariants = []parserBV{parserBV{Name: "buildvariant_name", DisplayName: "I am a buildvariant"}}
 	g.Tasks = []parserTask{parserTask{Name: "task_name"}}
 	g.Functions = map[string]*YAMLCommandSet{"function_name": nil}
-	g.validateNoRedefine(projectMaps{}, c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateNoRedefine(projectMaps{}))
 
 	cachedProject := projectMaps{
 		buildVariants: map[string]struct{}{
 			"buildvariant_name": struct{}{},
 		},
 	}
-	g.validateNoRedefine(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRedefine(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
 			"task_name": &ProjectTask{},
 		},
 	}
-	g.validateNoRedefine(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRedefine(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		functions: map[string]*YAMLCommandSet{
 			"function_name": &YAMLCommandSet{},
 		},
 	}
-	g.validateNoRedefine(cachedProject, c)
-	s.Error(c.Resolve())
-
+	s.Error(g.validateNoRedefine(cachedProject))
 }
 
 func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 	g := GeneratedProject{}
-	c := grip.NewBasicCatcher()
 	cachedProject := projectMaps{}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.NoError(c.Resolve())
+	s.NoError(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{}
 	g = GeneratedProject{
 		Tasks: []parserTask{
@@ -449,10 +470,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{}
 	g = GeneratedProject{
 		Functions: map[string]*YAMLCommandSet{
@@ -465,10 +484,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
 			"task_name": &ProjectTask{
@@ -491,10 +508,8 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 
-	c = grip.NewBasicCatcher()
 	cachedProject = projectMaps{
 		tasks: map[string]*ProjectTask{
 			"task_name": &ProjectTask{
@@ -526,8 +541,7 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 			},
 		},
 	}
-	g.validateNoRecursiveGenerateTasks(cachedProject, c)
-	s.Error(c.Resolve())
+	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 }
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
@@ -699,6 +713,73 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 				fmt.Sprintf("task '%s' for '%s' failed", task.DisplayName, task.BuildVariant))
 		}
 	}
+}
+
+func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
+	generatorTask := task.Task{
+		Id:      "generator",
+		BuildId: "generate_build",
+		Version: "version_that_called_generate_task",
+	}
+	alreadyExistingTask := task.Task{
+		Id:          "new_task",
+		DisplayName: "new_task",
+		BuildId:     "new_variant",
+		Version:     "version_that_called_generate_task",
+		GeneratedBy: "generator",
+		CreateTime:  time.Now(),
+	}
+	alreadyGeneratedVariant := build.Build{
+		Id:           "new_variant",
+		BuildVariant: "new_variant",
+		Version:      "version_that_called_generate_task",
+		CreateTime:   time.Now(),
+	}
+	s.NoError(generatorTask.Insert())
+	s.NoError(alreadyExistingTask.Insert())
+	s.NoError(alreadyGeneratedVariant.Insert())
+
+	v := &Version{
+		Id:       "version_that_called_generate_task",
+		BuildIds: []string{"new_variant"},
+		Config:   sampleProjYmlTaskGroups,
+	}
+	s.NoError(v.Insert())
+	// Setup parser project to be partially generated.
+	projectInfo, err := LoadProjectForVersion(v, "", false)
+	s.NoError(err)
+
+	g := partiallyGeneratedProject
+	g.TaskID = generatorTask.Id
+	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
+	s.NoError(err)
+	pp.UpdatedByGenerators = []string{generatorTask.Id}
+	s.NoError(pp.Insert())
+
+	// Shouldn't error trying to add the same generated project.
+	p, pp, v, err = g.NewVersion(p, pp, v)
+	s.NoError(err)
+	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
+
+	s.NoError(g.Save(context.Background(), p, pp, v, &generatorTask))
+
+	tasks := []task.Task{}
+	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
+	err = db.FindAllQ(task.Collection, taskQuery, &tasks)
+	s.NoError(err)
+	s.Require().Len(tasks, 3)
+	// New task is added both to previously generated variant, and new variant.
+	s.Equal(tasks[0].DisplayName, "another_new_task")
+	s.Equal(tasks[1].DisplayName, "another_new_task")
+	s.Equal(tasks[2].DisplayName, "new_task")
+
+	// New build is added.
+	builds, err := build.FindBuildsByVersions([]string{v.Id})
+	s.NoError(err)
+	s.Require().Len(builds, 2)
+	s.Equal(builds[0].BuildVariant, "new_variant")
+	s.Equal(builds[1].BuildVariant, "another_new_variant")
+
 }
 
 func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
@@ -920,6 +1001,9 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 }
 
 func TestUpdateParserProject(t *testing.T) {
+	alreadyUpdatedTestName := "TaskAlreadyUpdatedParserProject"
+	withZeroTestName := "WithZero"
+	taskId := "tId"
 	for testName, setupTest := range map[string]func(t *testing.T, v *Version, pp *ParserProject){
 		"noParserProject": func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 5
@@ -937,8 +1021,14 @@ func TestUpdateParserProject(t *testing.T) {
 			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
-		"WithZero": func(t *testing.T, v *Version, pp *ParserProject) {
+		withZeroTestName: func(t *testing.T, v *Version, pp *ParserProject) {
 			v.ConfigUpdateNumber = 0
+			assert.NoError(t, v.Insert())
+			assert.NoError(t, pp.Insert())
+		},
+		alreadyUpdatedTestName: func(t *testing.T, v *Version, pp *ParserProject) {
+			pp.UpdatedByGenerators = []string{taskId}
+			pp.ConfigUpdateNumber = 1
 			assert.NoError(t, v.Insert())
 			assert.NoError(t, pp.Insert())
 		},
@@ -948,15 +1038,21 @@ func TestUpdateParserProject(t *testing.T) {
 			v := &Version{Id: "my-version"}
 			pp := &ParserProject{Id: "my-version"}
 			setupTest(t, v, pp)
-			assert.NoError(t, updateParserProject(v, pp))
+			assert.NoError(t, updateParserProject(v, pp, taskId))
 			v, err := VersionFindOneId(v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, v)
 			pp, err = ParserProjectFindOneById(v.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pp)
-			if testName == "WithZero" {
+			assert.Len(t, pp.UpdatedByGenerators, 1)
+			assert.Contains(t, pp.UpdatedByGenerators, taskId)
+			if testName == withZeroTestName {
 				assert.Equal(t, 0, v.ConfigUpdateNumber)
+				assert.Equal(t, 1, pp.ConfigUpdateNumber)
+				return
+			} else if testName == alreadyUpdatedTestName {
+				// Not changed because we've already updated.
 				assert.Equal(t, 1, pp.ConfigUpdateNumber)
 				return
 			}

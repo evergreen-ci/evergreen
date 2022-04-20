@@ -8,16 +8,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version
 func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
-	if args.ConfigFile != "" && args.Command != "" {
-		return nil, errors.New("cannot specify both a file and command")
-	}
 	if args.SourceVersion == nil {
 		return nil, errors.Errorf("unable to find source version in project %s", args.DownstreamProject.Id)
 	}
@@ -40,13 +36,8 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-	} else if args.Command != "" {
-		projectInfo, err = makeDownstreamProjectFromCommand(args.DownstreamProject.Id, args.Command, args.GenerateFile)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
 	} else {
-		return nil, errors.New("must specify a file or command to define downstream project config")
+		return nil, errors.New("must specify a file to define downstream project config")
 	}
 
 	// create version
@@ -140,62 +131,4 @@ func makeDownstreamProjectFromFile(ref model.ProjectRef, file string) (model.Pro
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 	return model.GetProjectFromFile(ctx, opts)
-}
-
-func makeDownstreamProjectFromCommand(identifier, command, generateFile string) (model.ProjectInfo, error) {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return model.ProjectInfo{}, errors.Wrap(err, "error retrieving config")
-	}
-	bvtName := "generate-config"
-	fullProject := &model.Project{
-		Identifier: identifier,
-		Tasks: []model.ProjectTask{
-			{
-				Name: "generate-config",
-				Commands: []model.PluginCommandConf{
-					{
-						Command: "git.get_project",
-						Type:    evergreen.CommandTypeSetup,
-						Params: map[string]interface{}{
-							"directory": "${workdir}/src",
-						},
-					},
-					{
-						Command: "subprocess.exec",
-						Params: map[string]interface{}{
-							"working_dir": "src",
-							"command":     command,
-						},
-					},
-					{
-						Command: "generate.tasks",
-						Params: map[string]interface{}{
-							"files": []string{generateFile},
-						},
-					},
-				},
-			},
-		},
-		BuildVariants: model.BuildVariants{
-			{
-				Name:        "generate",
-				DisplayName: "generate",
-				RunOn:       []string{settings.Triggers.GenerateTaskDistro},
-				Tasks: []model.BuildVariantTaskUnit{
-					{Name: bvtName},
-				},
-			},
-		},
-	}
-	pp := &model.ParserProject{
-		Identifier: utility.ToStringPtr(identifier),
-	}
-
-	pp.AddTask(fullProject.Tasks[0].Name, fullProject.Tasks[0].Commands)
-	pp.AddBuildVariant(fullProject.BuildVariants[0].Name, fullProject.BuildVariants[0].DisplayName, settings.Triggers.GenerateTaskDistro, nil, []string{bvtName})
-	return model.ProjectInfo{
-		Project:             fullProject,
-		IntermediateProject: pp,
-	}, nil
 }

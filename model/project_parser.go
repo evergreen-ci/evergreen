@@ -53,9 +53,15 @@ const EmptyConfigurationError = "received empty configuration file"
 // to allow for flexible handling.
 type ParserProject struct {
 	// Id and ConfigdUpdateNumber are not pointers because they are only used internally
-	Id                 string                     `yaml:"_id" bson:"_id"` // should be the same as the version's ID
-	ConfigUpdateNumber int                        `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
-	Enabled            *bool                      `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Id                 string `yaml:"_id" bson:"_id"` // should be the same as the version's ID
+	ConfigUpdateNumber int    `yaml:"config_number,omitempty" bson:"config_number,omitempty"`
+	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
+	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
+	// List of yamls to merge
+	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
+	Enabled *bool     `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+
+	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
@@ -84,13 +90,10 @@ type ParserProject struct {
 	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
-	// List of yamls to merge
-	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
-} // End of ParserProject struct
-// Comment above is used by the linter to detect the end of the struct.
+} // End of ParserProject mergeable fields (this comment is used by the linter).
 
 type parserTaskGroup struct {
 	Name                    string             `yaml:"name,omitempty" bson:"name,omitempty"`
@@ -149,7 +152,7 @@ func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 	for i, pt := range pp.Tasks {
 		for j := range pt.Commands {
 			if err := pp.Tasks[i].Commands[j].resolveParams(); err != nil {
-				return nil, errors.Wrapf(err, "error marshalling commands for task")
+				return nil, errors.Wrapf(err, "marshalling command '%s' for task", pp.Tasks[i].Commands[j].GetDisplayName())
 			}
 		}
 	}
@@ -372,7 +375,7 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if m.Id != "" {
 			return errors.Wrap(merr, "parsing matrix")
 		}
-		return errors.New("buildvariant missing name")
+		return errors.New("build variant missing name")
 	}
 	*pbv = parserBV(bv)
 	return nil
@@ -446,7 +449,7 @@ func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) e
 		return err
 	}
 	if copy.Name == "" {
-		return errors.New("buildvariant task selector must have a name")
+		return errors.New("build variant task selector must have a name")
 	}
 	// logic for aliasing the "distros" field to "run_on"
 	if len(copy.Distros) > 0 {
@@ -507,17 +510,17 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 
 	pRef, err := FindMergedProjectRef(id, "", false)
 	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "error finding project ref")
+		return ProjectInfo{}, errors.Wrap(err, "finding project ref")
 	}
 	pp, err = ParserProjectFindOneById(v.Id)
 	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "error finding parser project")
+		return ProjectInfo{}, errors.Wrap(err, "finding parser project")
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
 		pc, err = FindProjectConfigForProjectOrVersion(v.Identifier, v.Id)
 		if err != nil {
-			return ProjectInfo{}, errors.Wrap(err, "error finding project config")
+			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
 	}
 	// if parser project config number is old then we should default to legacy
@@ -543,7 +546,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 	ctx := context.Background()
 	pp, err = LoadProjectInto(ctx, []byte(v.Config), nil, id, p)
 	if err != nil {
-		return ProjectInfo{}, errors.Wrap(err, "error loading project")
+		return ProjectInfo{}, errors.Wrap(err, "loading project")
 	}
 	pp.Id = v.Id
 	pp.Identifier = utility.ToStringPtr(id)
@@ -557,7 +560,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 				"version": v.Id,
 				"message": "error inserting parser project for version",
 			}))
-			return ProjectInfo{}, errors.Wrap(err, "error updating version with project")
+			return ProjectInfo{}, errors.Wrap(err, "updating version with project")
 		}
 	}
 	return ProjectInfo{
@@ -569,7 +572,7 @@ func LoadProjectForVersion(v *Version, id string, shouldSave bool) (ProjectInfo,
 func GetProjectFromBSON(data []byte) (*Project, error) {
 	pp := &ParserProject{}
 	if err := bson.Unmarshal(data, pp); err != nil {
-		return nil, errors.Wrap(err, "error unmarshalling bson into parser project")
+		return nil, errors.Wrap(err, "unmarshalling BSON into parser project")
 	}
 	return TranslateProject(pp)
 }
@@ -591,7 +594,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	// return intermediateProject even if we run into issues to show merge progress
 	for _, path := range intermediateProject.Include {
 		if opts == nil {
-			err = errors.New("Trying to open include files with empty opts")
+			err = errors.New("trying to open include files with empty options")
 			return nil, errors.Wrapf(err, LoadProjectError)
 		}
 		opts.UpdateForFile(path.FileName)
@@ -600,7 +603,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		opts.Identifier = identifier
 		opts.RemotePath = path.FileName
 		grip.Debug(message.Fields{
-			"message":     "retrieving included yaml file",
+			"message":     "retrieving included YAML file",
 			"remote_path": opts.RemotePath,
 			"read_from":   opts.ReadFileFrom,
 			"module":      path.Module,
@@ -611,15 +614,15 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			yaml, err = retrieveFile(ctx, *opts)
 		}
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: failed to retrieve file '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: retrieving file '%s'", LoadProjectError, path.FileName)
 		}
 		add, err := createIntermediateProject(yaml, opts.UnmarshalStrict)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: failed to load '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
 		}
 		err = intermediateProject.mergeMultipleParserProjects(add)
 		if err != nil {
-			return intermediateProject, errors.Wrapf(err, "%s: failed to merge '%s'", LoadProjectError, path.FileName)
+			return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
 		}
 	}
 	intermediateProject.Include = nil
@@ -678,44 +681,44 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	case ReadFromLocal:
 		fileContents, err := ioutil.ReadFile(opts.RemotePath)
 		if err != nil {
-			return nil, errors.Wrap(err, "error reading project config")
+			return nil, errors.Wrap(err, "reading project config")
 		}
 		return fileContents, nil
 	case ReadFromPatch:
 		fileContents, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
+			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
 		return fileContents, nil
 	case ReadFromPatchDiff:
 		originalConfig, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not fetch remote configuration file")
+			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
 		fileContents, err := MakePatchedConfig(ctx, opts.PatchOpts.env, opts.PatchOpts.patch, opts.RemotePath, string(originalConfig))
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not patch remote configuration file")
+			return nil, errors.Wrap(err, "patching remote configuration file")
 		}
 		return fileContents, nil
 	default:
 		if opts.Token == "" {
 			conf, err := evergreen.GetConfig()
 			if err != nil {
-				return nil, errors.Wrap(err, "can't get evergreen configuration")
+				return nil, errors.Wrap(err, "getting evergreen configuration")
 			}
 			ghToken, err := conf.GetGithubOauthToken()
 			if err != nil {
-				return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
+				return nil, errors.Wrap(err, "getting GitHub OAuth token from configuration")
 			}
 			opts.Token = ghToken
 		}
 		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error fetching project file for '%s' at '%s'", opts.Identifier, opts.Revision)
+			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
 		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to decode config file for '%s'", opts.Identifier)
+			return nil, errors.Wrapf(err, "decoding config file for project '%s'", opts.Identifier)
 		}
 		return fileContents, nil
 	}
@@ -735,7 +738,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	// Retrieve from github
 	module, err := GetModuleByName(modules, moduleName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get module for module name '%s'", moduleName)
+		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
 	}
 	repoOwner, repoName := module.GetRepoOwnerAndName()
 	moduleOpts := GetProjectOpts{
@@ -767,14 +770,14 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		// we try to apply the diff and proceed.
 		if !(opts.PatchOpts.patch.ConfigChanged(opts.RemotePath) && thirdparty.IsFileNotFound(err)) {
 			// return an error if the github error is network/auth-related or we aren't patching the config
-			return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", opts.Ref.Owner,
+			return nil, errors.Wrapf(err, "getting GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,
 				opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		}
 	} else {
 		// we successfully got the project file in base64, so we decode it
 		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", opts.Ref.Owner,
+			return nil, errors.Wrapf(err, "decoding GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,
 				opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		}
 	}
@@ -790,13 +793,13 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	config := Project{}
 	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
-		return ProjectInfo{}, errors.Wrapf(err, "error parsing config file for '%s'", opts.Ref.Id)
+		return ProjectInfo{}, errors.Wrapf(err, "parsing config file for '%s'", opts.Ref.Id)
 	}
 	var pc *ProjectConfig
 	if opts.Ref.IsVersionControlEnabled() {
 		pc, err = CreateProjectConfig(fileContents, opts.Ref.Id)
 		if err != nil {
-			return ProjectInfo{}, errors.Wrapf(err, "error parsing project config for '%s'", opts.Ref.Id)
+			return ProjectInfo{}, errors.Wrapf(err, "parsing project config for '%s'", opts.Ref.Id)
 		}
 	}
 	return ProjectInfo{
@@ -828,7 +831,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	} else {
 		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
 			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-			return nil, errors.Wrap(yamlErr, "error unmarshalling into parser project")
+			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 		}
 	}
 
@@ -945,7 +948,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			MustHaveResults: pt.MustHaveResults,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
-			evalErrs = append(evalErrs, errors.Errorf("spaces are unauthorized in task names ('%s')", pt.Name))
+			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
@@ -1046,7 +1049,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					if old, ok := existing[t.Name]; ok {
 						if !reflect.DeepEqual(t, *old) {
 							evalErrs = append(evalErrs, errors.Errorf(
-								"conflicting definitions of added tasks '%v': %v != %v", t.Name, t, old))
+								"conflicting definitions of added tasks '%s': %v != %v", t.Name, t, old))
 						}
 					} else {
 						bv.Tasks = append(bv.Tasks, t)
@@ -1079,7 +1082,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		for _, dt := range pbv.DisplayTasks {
 			projectDt := patch.DisplayTask{Name: dt.Name}
 			if _, exists := bvTasks[dt.Name]; exists {
-				errs = append(errs, fmt.Errorf("display task %s cannot have the same name as an execution task", dt.Name))
+				errs = append(errs, errors.Errorf("display task '%s' cannot have the same name as an execution task", dt.Name))
 				continue
 			}
 
@@ -1095,7 +1098,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 			for _, et := range tasks {
 				if _, exists := bvTasks[et]; !exists {
-					errs = append(errs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
+					errs = append(errs, errors.Errorf("display task '%s' contains execution task '%s' which does not exist in build variant", dt.Name, et))
 				} else {
 					projectDt.ExecTasks = append(projectDt.ExecTasks, et)
 					displayTaskContents[et]++
@@ -1107,7 +1110,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		}
 		for taskId, count := range displayTaskContents {
 			if count > 1 {
-				errs = append(errs, fmt.Errorf("execution task %s is listed in more than 1 display task", taskId))
+				errs = append(errs, errors.Errorf("execution task '%s' is listed in more than 1 display task", taskId))
 				bv.DisplayTasks = nil
 			}
 		}
@@ -1181,7 +1184,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
 					evalErrs = append(evalErrs, errors.Errorf(
-						"conflicting definitions of build variant tasks '%v': %v != %v", name, t, old))
+						"conflicting definitions of build variant tasks '%s': %v != %v", name, t, old))
 					continue
 				}
 			}
@@ -1306,7 +1309,7 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 					// it's already in the new list, so we check to make sure the status definitions match.
 					if !reflect.DeepEqual(newDep, oldDep) {
 						evalErrs = append(evalErrs, errors.Errorf(
-							"conflicting definitions of dependency '%v': %v != %v", name, newDep, oldDep))
+							"conflicting definitions of dependency '%s': %v != %v", name, newDep, oldDep))
 						continue
 					}
 				}

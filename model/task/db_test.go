@@ -622,23 +622,33 @@ func TestDisplayStatus(t *testing.T) {
 			},
 		},
 	}
+	// No CheckStatuses for t12 to avoid paradox
 	assert.NoError(t, t12.Insert())
 	checkStatuses(t, evergreen.TaskWillRun, t11)
 	t13 := Task{
-		Id:        "t13",
-		Status:    evergreen.TaskContainerUnallocated,
-		Activated: true,
+		Id:                 "t13",
+		Status:             evergreen.TaskUndispatched,
+		Activated:          true,
+		ContainerAllocated: false,
 	}
-	assert.NoError(t, t13.Insert())
-	// No CheckStatuses for t12 to avoid paradox
+	require.NoError(t, t13.Insert())
+	checkStatuses(t, evergreen.TaskWillRun, t13)
 	t14 := Task{
-		Id:        "t14",
-		Status:    evergreen.TaskContainerAllocated,
-		Activated: true,
+		Id:                 "t14",
+		Status:             evergreen.TaskUndispatched,
+		Activated:          true,
+		ContainerAllocated: true,
 	}
-	assert.NoError(t, t14.Insert())
-	checkStatuses(t, evergreen.TaskContainerUnallocated, t13)
-	checkStatuses(t, evergreen.TaskContainerAllocated, t14)
+	require.NoError(t, t14.Insert())
+	checkStatuses(t, evergreen.TaskWillRun, t14)
+	t15 := Task{
+		Id:                 "t15",
+		Status:             evergreen.TaskUndispatched,
+		Activated:          false,
+		ContainerAllocated: false,
+	}
+	require.NoError(t, t15.Insert())
+	checkStatuses(t, evergreen.TaskUnscheduled, t15)
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
@@ -744,11 +754,12 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 	}()
 	getTaskThatNeedsContainerAllocation := func() Task {
 		return Task{
-			Id:                utility.RandomString(),
-			Activated:         true,
-			ActivatedTime:     time.Now(),
-			Status:            evergreen.TaskContainerUnallocated,
-			ExecutionPlatform: ExecutionPlatformContainer,
+			Id:                 utility.RandomString(),
+			Activated:          true,
+			ActivatedTime:      time.Now(),
+			Status:             evergreen.TaskUndispatched,
+			ContainerAllocated: false,
+			ExecutionPlatform:  ExecutionPlatformContainer,
 		}
 	}
 	for tName, tCase := range map[string]func(t *testing.T){
@@ -768,7 +779,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			needsAllocation1.ActivatedTime = time.Now().Add(-time.Hour)
 			require.NoError(t, needsAllocation1.Insert())
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Status = evergreen.TaskContainerAllocated
+			doesNotNeedAllocation.Activated = false
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
 			found, err := FindNeedsContainerAllocation()
@@ -853,9 +864,9 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
-		"IgnoresTasksWithStatusesOtherThanContainerUnallocated": func(t *testing.T) {
+		"IgnoresTasksWithContainerAlreadyAllocated": func(t *testing.T) {
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Status = evergreen.TaskContainerAllocated
+			doesNotNeedAllocation.ContainerAllocated = true
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
 			found, err := FindNeedsContainerAllocation()

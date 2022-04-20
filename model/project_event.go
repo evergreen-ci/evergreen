@@ -63,13 +63,13 @@ func (e *ProjectChangeEventEntry) MarshalBSON() ([]byte, error) {
 func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	temp := event.UnmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
-		return errors.Wrap(err, "can't unmarshal event container type")
+		return errors.Wrap(err, "unmarshalling event log entry")
 	}
 
 	e.Data = &ProjectChangeEvent{}
 
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
-		return errors.Wrap(err, "failed to unmarshal data")
+		return errors.Wrap(err, "unmarshalling event data")
 	}
 
 	// IDs for events were ObjectIDs previously, so we need to do this
@@ -81,7 +81,7 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	case primitive.ObjectID:
 		e.ID = v.Hex()
 	default:
-		return errors.Errorf("unrecognized ID format for event %v", v)
+		return errors.Errorf("unrecognized ID format for event %T", v)
 	}
 	e.Timestamp = temp.Timestamp
 	e.ResourceId = temp.ResourceId
@@ -135,7 +135,7 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 			"source":        "event-log-fail",
 			"projectId":     projectId,
 		}))
-		return errors.Wrap(err, "Error logging project event")
+		return errors.Wrap(err, "logging project event")
 	}
 
 	return nil
@@ -148,9 +148,9 @@ func LogProjectAdded(projectId, username string) error {
 func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
 	after, err := GetProjectSettingsById(id, isRepo)
 	if err != nil {
-		return errors.Wrap(err, "error getting after project settings event")
+		return errors.Wrap(err, "getting after project settings event")
 	}
-	return errors.Wrapf(LogProjectModified(id, userId, before, after), "error logging project modified")
+	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
 }
 
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {

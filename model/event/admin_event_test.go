@@ -204,7 +204,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 }
 
 func TestAdminEventsBeforeQuery(t *testing.T) {
-	require.NoError(t, db.Clear(AllLogCollection), "error clearing collection")
+	require.NoError(t, db.Clear(AllLogCollection))
 	assert := assert.New(t)
 	before := &evergreen.ServiceFlags{}
 	after := &evergreen.ServiceFlags{HostInitDisabled: true}

@@ -71,11 +71,10 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	taskModel := &model.APITask{}
-	err = taskModel.BuildFromService(refreshedTask)
+	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
-
 	return gimlet.NewJSONResponse(taskModel)
 }
 

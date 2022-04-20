@@ -53,6 +53,7 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	s.NotNil(s.env.Settings())
 	s.NotNil(s.env.Settings().Api)
 	s.NotEmpty(s.env.Settings().Api.GithubWebhookSecret)
+	s.Require().NoError(db.DropDatabases(s.env.Settings().Amboy.DB))
 
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
@@ -104,6 +105,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 func TestGithubWebhookRouteSuite(t *testing.T) {
 	s := new(GithubWebhookRouteSuite)
+
 	suite.Run(t, s)
 }
 
@@ -127,6 +129,7 @@ func (s *GithubWebhookRouteSuite) TestIsItemOnCommitQueue() {
 
 func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.IntentCollection))
+
 	doc := &model.ProjectRef{
 		Owner:            "baxterthehacker",
 		Repo:             "public-repo",

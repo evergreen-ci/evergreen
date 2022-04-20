@@ -38,7 +38,7 @@ func init() {
 	testutil.Setup()
 	config := evergreen.NaiveAuthConfig{}
 	um, err := auth.NewNaiveUserManager(&config)
-	grip.Error(err)
+	grip.EmergencyFatal(err)
 	evergreen.GetEnvironment().SetUserManager(um)
 }
 
@@ -66,10 +66,6 @@ func TestHostParseAndValidate(t *testing.T) {
 }
 
 func TestHostPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
 		So(db.Clear(host.Collection), ShouldBeNil)
@@ -308,10 +304,6 @@ func TestHostPaginator(t *testing.T) {
 }
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	numTasks := 300
 	projectName := "project_1"
 	commit := "commit_1"
@@ -356,9 +348,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -399,9 +389,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -442,9 +430,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -486,9 +472,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 						Project:  projectName,
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -519,10 +503,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 }
 
 func TestTaskByBuildPaginator(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	numTasks := 300
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
@@ -567,9 +547,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -609,9 +587,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -651,9 +627,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -692,9 +666,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 						Id: fmt.Sprintf("%dbuild%d", prefix, i),
 					}
 					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceModel)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService("http://evergreen.example.net")
+					err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -725,11 +697,9 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: "0build0",
 				}
 				nextModelTask := &model.APITask{}
-				err := nextModelTask.BuildFromService(serviceModel)
+				err := nextModelTask.BuildFromArgs(serviceModel, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
 				So(err, ShouldBeNil)
 				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks, "http://evergreen.example.net")
-				So(err, ShouldBeNil)
-				err = nextModelTask.BuildFromService("http://evergreen.example.net")
 				So(err, ShouldBeNil)
 				expectedTasks = append(expectedTasks, nextModelTask)
 				expectedPages := &gimlet.ResponsePages{
@@ -901,10 +871,6 @@ func TestTestPaginator(t *testing.T) {
 }
 
 func TestTaskExecutionPatchPrepare(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		tep := &taskExecutionPatchHandler{}
 
@@ -1008,10 +974,6 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	Convey("With a task in the DB and a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
 		version := serviceModel.Version{
@@ -1057,10 +1019,6 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 }
 
 func TestTaskResetPrepare(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	Convey("With handler and a project context and user", t, func() {
 		trh := &taskRestartHandler{}
 
@@ -1105,10 +1063,6 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		rm := makeGetTaskRoute("https://example.net/test")
@@ -1183,10 +1137,6 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	Convey("With a task returned by the Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, serviceModel.VersionCollection, build.Collection))
 		timeNow := time.Now()
@@ -1251,8 +1201,6 @@ func TestTaskResetExecute(t *testing.T) {
 func TestParentTaskInfo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	buildID := "test"
 	dtID := "displayTask"
@@ -1308,8 +1256,6 @@ func TestParentTaskInfo(t *testing.T) {
 func TestOptionsRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	route := "/rest/v2/tasks/test/restart"

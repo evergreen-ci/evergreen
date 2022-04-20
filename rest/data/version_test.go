@@ -12,9 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,10 +28,6 @@ type VersionConnectorSuite struct {
 
 func TestDBVersionConnectorSuite(t *testing.T) {
 	s := new(VersionConnectorSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -264,12 +260,8 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 
 func TestCreateVersionFromConfig(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ParserProjectCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
+	require.NoError(t, db.CreateCollections(model.ParserProjectCollection))
 
 	ref := model.ProjectRef{
 		Id: "mci",
@@ -300,7 +292,8 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	p := &model.Project{}
-	ctx = context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	pp, err := model.LoadProjectInto(ctx, []byte(config1), nil, ref.Id, p)
 	assert.NoError(err)
 	projectInfo := &model.ProjectInfo{

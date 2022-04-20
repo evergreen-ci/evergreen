@@ -16,7 +16,7 @@ func TestFindPushLogAfter(t *testing.T) {
 
 	Convey("When checking for duplicate pushes", t, func() {
 
-		require.NoError(t, db.Clear(PushlogCollection), "Error clearing '%v' collection", PushlogCollection)
+		require.NoError(t, db.Clear(PushlogCollection))
 
 		fileLoc := "s3://test/location"
 

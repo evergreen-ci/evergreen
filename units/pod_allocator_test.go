@@ -63,7 +63,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskContainerAllocated, dbTask.Status)
+			assert.True(t, dbTask.ContainerAllocated)
 
 			dbPod, err := pod.FindOne(db.Query(bson.M{}))
 			require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+			assert.False(t, dbTask.ContainerAllocated)
 
 			dbPod, err := pod.FindOne(db.Query(bson.M{}))
 			assert.NoError(t, err)
@@ -122,8 +122,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.False(t, dbTask.Activated)
-			assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+			assert.False(t, dbTask.ContainerAllocated)
 
 			dbPod, err := pod.FindOne(db.Query(bson.M{}))
 			assert.NoError(t, err)
@@ -154,7 +153,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+			assert.False(t, dbTask.ContainerAllocated)
 		},
 		"RunNoopsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, j *podAllocatorJob, tsk task.Task) {
 			originalPodInit := env.EvergreenSettings.PodInit
@@ -176,7 +175,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status, "container task should not have been allocated because of max parallel pod request limit")
+			assert.False(t, dbTask.ContainerAllocated)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -230,7 +229,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			ref := getProjectRef()
 			require.NoError(t, ref.Insert())
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Status = evergreen.TaskContainerAllocated
+			doesNotNeedAllocation.ContainerAllocated = true
 			doesNotNeedAllocation.Project = ref.Id
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
@@ -255,7 +254,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			dbTask, err := task.FindOneId(needsAllocation.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-			assert.Equal(t, evergreen.TaskContainerAllocated, dbTask.Status)
+			assert.True(t, dbTask.ContainerAllocated)
 
 			pd, err := dispatcher.FindOneByGroupID(needsAllocation.Id)
 			require.NoError(t, err)
@@ -267,6 +266,22 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			p, err := pod.FindOneByID(pd.PodIDs[0])
 			require.NoError(t, err)
 			require.NotZero(t, p, "intent pod should have been allocated for task")
+		},
+		"MarksStaleContainerTasksAsNoLongerNeedingAllocation": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+			ref := getProjectRef()
+			require.NoError(t, ref.Insert())
+			staleNeedsAllocation := getTaskThatNeedsContainerAllocation()
+			staleNeedsAllocation.ActivatedTime = time.Now().Add(-1000 * 24 * time.Hour)
+			staleNeedsAllocation.Project = ref.Id
+			require.NoError(t, staleNeedsAllocation.Insert())
+
+			require.NoError(t, PopulatePodAllocatorJobs(env)(ctx, env.Remote))
+			assert.Zero(t, env.Remote.Stats(ctx))
+
+			dbTask, err := task.FindOneId(staleNeedsAllocation.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.ShouldAllocateContainer())
 		},
 		"StopsEnqueueingJobsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			originalPodInit := env.EvergreenSettings.PodInit
@@ -329,11 +344,12 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 
 func getTaskThatNeedsContainerAllocation() task.Task {
 	return task.Task{
-		Id:                utility.RandomString(),
-		Activated:         true,
-		ActivatedTime:     time.Now(),
-		Status:            evergreen.TaskContainerUnallocated,
-		ExecutionPlatform: task.ExecutionPlatformContainer,
+		Id:                 utility.RandomString(),
+		Activated:          true,
+		ActivatedTime:      time.Now(),
+		Status:             evergreen.TaskUndispatched,
+		ContainerAllocated: false,
+		ExecutionPlatform:  task.ExecutionPlatformContainer,
 	}
 }
 

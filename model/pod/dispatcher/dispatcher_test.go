@@ -134,12 +134,13 @@ func TestAssignNextTask(t *testing.T) {
 
 	getDispatchableTask := func() task.Task {
 		return task.Task{
-			Id:                utility.RandomString(),
-			Activated:         true,
-			ActivatedTime:     time.Now(),
-			Status:            evergreen.TaskContainerAllocated,
-			ExecutionPlatform: task.ExecutionPlatformContainer,
-			DisplayTaskId:     utility.ToStringPtr(""),
+			Id:                 utility.RandomString(),
+			Activated:          true,
+			ActivatedTime:      time.Now(),
+			Status:             evergreen.TaskUndispatched,
+			ContainerAllocated: true,
+			ExecutionPlatform:  task.ExecutionPlatformContainer,
+			DisplayTaskId:      utility.ToStringPtr(""),
 		}
 	}
 	getProjectRef := func() model.ProjectRef {
@@ -187,7 +188,7 @@ func TestAssignNextTask(t *testing.T) {
 		dbTask, err := task.FindOneId(tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskContainerUnallocated, dbTask.Status)
+		assert.False(t, dbTask.ContainerAllocated)
 	}
 
 	checkDispatcherTasks := func(t *testing.T, pd PodDispatcher, taskIDs []string) {
@@ -215,6 +216,34 @@ func TestAssignNextTask(t *testing.T) {
 
 			checkTaskDispatchedToPod(t, params.task, params.pod)
 			checkDispatcherTasks(t, params.dispatcher, nil)
+		},
+		"DispatchesExecutionTaskAndUpdatesDisplayTask": func(ctx context.Context, t *testing.T, params testCaseParams) {
+			dt := task.Task{
+				Id:             "display-task",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{params.task.Id},
+				Status:         evergreen.TaskUndispatched,
+			}
+			params.task.DisplayTaskId = utility.ToStringPtr(dt.Id)
+			require.NoError(t, dt.Insert())
+			require.NoError(t, params.task.Insert())
+			require.NoError(t, params.dispatcher.Insert())
+			require.NoError(t, params.pod.Insert())
+			require.NoError(t, params.ref.Insert())
+
+			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
+			require.NoError(t, err)
+			require.NotZero(t, nextTask)
+			assert.Equal(t, params.task.Id, nextTask.Id)
+
+			checkTaskDispatchedToPod(t, params.task, params.pod)
+			checkDispatcherTasks(t, params.dispatcher, nil)
+
+			dbDisplayTask, err := task.FindOneId(dt.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+
+			assert.Equal(t, evergreen.TaskDispatched, dbDisplayTask.Status, "display task should be updated when container execution task dispatches")
 		},
 		"DispatchesTaskInDisabledHiddenProject": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.task.Requester = evergreen.GithubPRRequester
@@ -296,9 +325,10 @@ func TestAssignNextTask(t *testing.T) {
 			checkTaskDispatchedToPod(t, dispatchableTask0, params.pod)
 			checkDispatcherTasks(t, params.dispatcher, []string{dispatchableTask1.Id})
 		},
-		"DequeuesTaskWithUndispatchableStatusAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
+		"DequeuesTaskWithoutContainerAllocatedAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			require.NoError(t, params.pod.Insert())
-			params.task.Status = evergreen.TaskContainerUnallocated
+			params.task.Status = evergreen.TaskUndispatched
+			params.task.ContainerAllocated = false
 			require.NoError(t, params.task.Insert())
 			require.NoError(t, params.ref.Insert())
 			require.NoError(t, params.dispatcher.Insert())
@@ -364,6 +394,17 @@ func TestAssignNextTask(t *testing.T) {
 			assert.Zero(t, nextTask)
 
 			checkDispatcherTasks(t, params.dispatcher, []string{params.task.Id})
+		},
+		"FailsWithPodAlreadyAssignedTask": func(ctx context.Context, t *testing.T, params testCaseParams) {
+			params.pod.RunningTask = "running-task"
+			require.NoError(t, params.pod.Insert())
+			require.NoError(t, params.task.Insert())
+			require.NoError(t, params.ref.Insert())
+			require.NoError(t, params.dispatcher.Insert())
+
+			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
+			assert.Error(t, err)
+			assert.Zero(t, nextTask)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

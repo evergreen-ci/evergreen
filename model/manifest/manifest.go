@@ -41,14 +41,14 @@ type Module struct {
 func GetManifestByTask(taskId string) (*Manifest, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding task '%s'", t)
+		return nil, errors.Wrapf(err, "finding task '%s'", t)
 	}
 	if t == nil {
 		return nil, errors.Errorf("task '%s' not found", t.Id)
 	}
 	mfest, err := FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding manifest from version '%s'", t.Version)
+		return nil, errors.Wrapf(err, "finding manifest from version '%s'", t.Version)
 	}
 	if mfest == nil {
 		return nil, errors.Errorf("no manifest found for version '%s'", t.Version)

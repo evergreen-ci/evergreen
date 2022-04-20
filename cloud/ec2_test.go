@@ -743,31 +743,45 @@ func (s *EC2Suite) TestStopInstance() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
-	hosts := []*host.Host{
-		&host.Host{
+	unstoppableHosts := []*host.Host{
+		{
 			Id:     "host-stopped",
 			Status: evergreen.HostStopped,
 		},
-		&host.Host{
+		{
 			Id:     "host-provisioning",
 			Status: evergreen.HostProvisioning,
 		},
-		&host.Host{
+	}
+	for _, h := range unstoppableHosts {
+		h.Distro = s.distro
+		s.Require().NoError(h.Insert())
+	}
+	for _, h := range unstoppableHosts {
+		s.Error(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
+	}
+
+	stoppableHosts := []*host.Host{
+		{
+			Id:     "host-stopping",
+			Status: evergreen.HostStopping,
+		},
+		{
 			Id:     "host-running",
 			Status: evergreen.HostRunning,
 		},
 	}
-	for _, h := range hosts {
+	for _, h := range stoppableHosts {
 		h.Distro = s.distro
-		s.NoError(h.Insert())
+		s.Require().NoError(h.Insert())
 	}
 
-	s.Error(s.onDemandManager.StopInstance(ctx, hosts[0], evergreen.User))
-	s.Error(s.onDemandManager.StopInstance(ctx, hosts[1], evergreen.User))
-	s.NoError(s.onDemandManager.StopInstance(ctx, hosts[2], evergreen.User))
-	found, err := host.FindOne(host.ById("host-running"))
-	s.NoError(err)
-	s.Equal(evergreen.HostStopped, found.Status)
+	for _, h := range stoppableHosts {
+		s.NoError(s.onDemandManager.StopInstance(ctx, h, evergreen.User))
+		found, err := host.FindOne(host.ById(h.Id))
+		s.NoError(err)
+		s.Equal(evergreen.HostStopped, found.Status)
+	}
 }
 
 func (s *EC2Suite) TestStartInstance() {

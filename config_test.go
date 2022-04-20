@@ -105,9 +105,13 @@ func TestAdminSuite(t *testing.T) {
 	if configFile == "" {
 		configFile = testConfigFile()
 	}
+	originalEnv := GetEnvironment()
 	env, err := NewEnvironment(ctx, configFile, nil)
 	require.NoError(t, err)
 	SetEnvironment(env)
+	defer func() {
+		SetEnvironment(originalEnv)
+	}()
 
 	s := new(AdminSuite)
 	s.env = env
@@ -116,7 +120,6 @@ func TestAdminSuite(t *testing.T) {
 
 func (s *AdminSuite) SetupTest() {
 	s.NoError(resetRegistry())
-
 }
 
 func (s *AdminSuite) TestBanner() {

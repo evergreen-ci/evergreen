@@ -1,6 +1,0 @@
-mutation {
-  scheduleTask(taskId: "wuzzup") {
-    activated
-    activatedBy
-  }
-}

@@ -142,7 +142,8 @@ func TestAllocate(t *testing.T) {
 		dbTask, err := task.FindOneId(tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskContainerAllocated, dbTask.Status)
+		assert.True(t, dbTask.ContainerAllocated)
+		assert.NotZero(t, dbTask.ContainerAllocatedTime)
 
 		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
 		require.NoError(t, err)
@@ -215,7 +216,6 @@ func TestAllocate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, dbEvents)
 		},
-		// "": func(ctx context.Context, t *testing.T, tsk *task.Task, p *pod.Pod) { },
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
@@ -234,9 +234,11 @@ func TestAllocate(t *testing.T) {
 			})
 			require.NoError(t, err)
 			tCase(tctx, t, env, &task.Task{
-				Id:        "task",
-				Status:    evergreen.TaskContainerUnallocated,
-				Activated: true,
+				Id:                 "task",
+				Status:             evergreen.TaskUndispatched,
+				ExecutionPlatform:  task.ExecutionPlatformContainer,
+				ContainerAllocated: false,
+				Activated:          true,
 			}, p)
 		})
 	}

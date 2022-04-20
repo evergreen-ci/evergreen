@@ -195,7 +195,8 @@
           "unattainable": true
         }
       ],
-      "build_id": "ubuntu_build"
+      "build_id": "ubuntu_build",
+      "time_taken": 42167575851
     },
     {
       "_id": "2",
@@ -207,7 +208,8 @@
       "r": "github_pull_request",
       "branch": "myProject",
       "status": "failed",
-      "build_id": "ubuntu_build"
+      "build_id": "ubuntu_build",
+      "time_taken": 71999882894
     },
     {
       "_id": "3",
@@ -218,7 +220,8 @@
       "display_name": "lint",
       "r": "github_pull_request",
       "status": "success",
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "time_taken": 10003174082
     },
     {
       "_id": "4",
@@ -234,7 +237,8 @@
         "timed_out": true,
         "type": "test"
       },
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "time_taken": 21789175592
     },
     {
       "_id": "4.5",
@@ -249,7 +253,8 @@
         "status": "failed",
         "type": "system"
       },
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "time_taken": 43598100357
     },
     {
       "_id": "1.5",
@@ -268,7 +273,8 @@
         "status": "failed",
         "type": "system"
       },
-      "build_id": "windows_build"
+      "build_id": "windows_build",
+      "time_taken": 8519029001
     },
     {
       "_id": "et1",
@@ -279,7 +285,8 @@
       "display_name": "this is an execution task",
       "r": "github_pull_request",
       "status": "failed",
-      "build_id": "bv_build"
+      "build_id": "bv_build",
+      "time_taken": 31120678285
     },
     {
       "_id": "base-task-1",

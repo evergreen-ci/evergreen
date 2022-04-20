@@ -1906,110 +1906,6 @@
   },
   "tests": [
     {
-      "query_file": "patch.graphql",
-      "result": {
-        "data": {
-          "patch": {
-            "id": "5e1f8ab8834b87d7b5d251a5",
-            "description": "mydesc",
-            "projectID": "mci",
-            "githash": "7ad0c6bb0d5b8586f3a0442f365e259d40f5a7f1",
-            "patchNumber": 1,
-            "author": "testuser",
-            "version": "",
-            "status": "created",
-            "tasks": [
-              "test-auth"
-            ],
-            "activated": false,
-            "alias": "",
-            "variants": [
-              "rhel62"
-            ],
-            "variantsTasks": [
-              {
-                "name": "rhel62",
-                "tasks": [
-                  "test-model-host"
-                ]
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "patch-does-not-exist.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "400 (Bad Request): id 'i-dont-exist' is not a valid patch id",
-            "path": [
-              "patch"
-            ],
-            "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
-      "query_file": "task1.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "logs": {
-              "allLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=ALL",
-              "taskLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=T",
-              "agentLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=E",
-              "systemLogLink": "https://localhost:8443/task_log_raw/wuzzup/0?type=S",
-              "eventLogLink": "https://localhost:8443/event_log/task/wuzzup"
-            },
-            "id": "wuzzup",
-            "createTime": "2018-01-10T19:01:36-05:00",
-            "ingestTime": "2018-01-10T19:01:36-05:00",
-            "dispatchTime": "2018-01-10T19:01:36-05:00",
-            "scheduledTime": "2018-01-10T19:01:36-05:00",
-            "startTime": "2018-01-10T19:01:36-05:00",
-            "finishTime": "2018-01-10T19:01:36-05:00",
-            "activatedTime": "2018-01-10T19:01:36-05:00",
-            "version": "version",
-            "projectId": "mci",
-            "revision": "revise",
-            "priority": 5,
-            "taskGroup": "grp",
-            "taskGroupMaxHosts": 100,
-            "activated": false,
-            "activatedBy": "someone",
-            "buildId": "some_thang",
-            "distroId": "distro",
-            "buildVariant": "variant",
-            "displayName": "exec1 display name",
-            "hostId": "host",
-
-            "execution": 0,
-            "patchNumber": 5,
-            "requester": "patch_request",
-            "status": "started",
-            "details": {
-              "status": "status",
-              "type": "type",
-              "description": "description",
-              "timedOut": false
-            },
-            "displayOnly": true,
-            "executionTasks": [
-              "exec1"
-            ],
-            "generateTask": false,
-            "generatedBy": "something"
-          }
-        }
-      }
-    },
-    {
       "query_file": "taskTestStatusAsc.graphql",
       "result": {
         "data": {
@@ -2301,17 +2197,6 @@
             "repo": "buildhost-configuration",
             "owner": "annie.black",
             "displayName": "buildhost-test"
-          }
-        }
-      }
-    },
-    {
-      "query_file": "schedule-task-mutation.graphql",
-      "result": {
-        "data": {
-          "scheduleTask": {
-            "activated": true,
-            "activatedBy": "testuser"
           }
         }
       }
@@ -2638,7 +2523,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task exec2: no commit queue found for 'logkeeper'",
+            "message": "Error aborting task exec2: dequeueing and restarting task 'exec2': commit queue for project 'logkeeper' not found",
             "path": [
               "abortTask"
             ],
@@ -2655,7 +2540,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task exec1: Task 'exec1' is currently 'pass' - cannot abort task in this status",
+            "message": "Error aborting task exec1: task 'exec1' currently has status 'pass' - cannot abort task in this status",
             "path": [
               "abortTask"
             ],

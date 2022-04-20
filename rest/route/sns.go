@@ -230,24 +230,6 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 		"host_id":            h.Id,
 	})
 
-	if h.Status == evergreen.HostTerminated {
-		return nil
-	}
-
-	if sns.skipEarlyTermination(h) {
-		return nil
-	}
-
-	// return success on duplicate job errors so AWS won't keep retrying
-	terminationJob := units.NewHostTerminationJob(sns.env, h, true, "got interruption warning")
-	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, terminationJob); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":          "could not enqueue host termination job",
-			"host_id":          h.Id,
-			"enqueue_job_type": terminationJob.Type(),
-		}))
-	}
-
 	return nil
 }
 

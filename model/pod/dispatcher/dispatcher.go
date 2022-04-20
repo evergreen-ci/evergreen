@@ -2,7 +2,6 @@ package dispatcher
 
 import (
 	"context"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -88,8 +87,13 @@ func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
 }
 
 // AssignNextTask assigns the pod the next available task to run. Returns nil if
-// there's no task available to run.
+// there's no task available to run. If the pod is already running a task, this
+// will return an error.
 func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Environment, p *pod.Pod) (*task.Task, error) {
+	if p.RunningTask != "" {
+		return nil, errors.Errorf("cannot assign a new task to a pod that is already running task '%s'", p.RunningTask)
+	}
+
 	grip.WarningWhen(len(pd.TaskIDs) > 1, message.Fields{
 		"message":    "programmatic error: task groups are not supported yet, so dispatcher should have at most 1 container task to dispatch",
 		"pod":        p.ID,
@@ -132,8 +136,14 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
-		event.LogPodAssignedTask(p.ID, t.Id)
+		event.LogPodAssignedTask(p.ID, t.Id, t.Execution)
 		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
+
+		if t.IsPartOfDisplay() {
+			if err := model.UpdateDisplayTaskForTask(t); err != nil {
+				return nil, errors.Wrap(err, "updating parent display task")
+			}
+		}
 
 		return t, nil
 	}
@@ -162,7 +172,7 @@ func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}
 
-		if err := t.MarkAsContainerDispatched(sessCtx, env, p.AgentVersion, time.Now()); err != nil {
+		if err := t.MarkAsContainerDispatched(sessCtx, env, p.AgentVersion); err != nil {
 			return nil, errors.Wrapf(err, "marking task as dispatched")
 		}
 
@@ -197,11 +207,11 @@ func (pd *PodDispatcher) dequeue(ctx context.Context, env evergreen.Environment)
 }
 
 // dequeueUndispatchableTask removes the task from the dispatcher and, if the
-// task status indicates a container has been allocated for it, marks it as
+// task indicates a container has been allocated for it, marks it as
 // unallocated.
 func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
-	if t.Status != evergreen.TaskContainerAllocated {
-		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task")
+	if !t.ContainerAllocated {
+		return errors.Wrap(pd.dequeue(ctx, env), "dequeueing task that is already in a non-allocated state")
 	}
 
 	if err := t.MarkAsContainerDeallocated(ctx, env); err != nil {

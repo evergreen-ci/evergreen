@@ -39,7 +39,7 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, int, error) {
+func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEntry, error) {
 	query := MostRecentHostEvents(hostID, hostTag, limit)
 	events := []EventLogEntry{}
 	skip := page * limit
@@ -49,15 +49,10 @@ func FindPaginated(hostID, hostTag, coll string, limit, page int) ([]EventLogEnt
 
 	err := db.FindAllQ(coll, query, &events)
 	if err != nil || adb.ResultsNotFound(err) {
-		return nil, 0, errors.WithStack(err)
-	}
-	count, err := db.CountQ(coll, query)
-
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "failed to fetch number of host events")
+		return nil, errors.WithStack(err)
 	}
 
-	return events, count, nil
+	return events, nil
 }
 
 // FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
@@ -70,7 +65,7 @@ func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 	}
 	err := db.FindAllQ(AllLogCollection, query, &out)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch unprocessed events")
+		return nil, errors.Wrap(err, "fetching unprocessed events")
 	}
 
 	return out, nil
@@ -104,7 +99,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrap(err, "failed to fetch most recently processed event")
+		return nil, errors.Wrap(err, "fetching most recently processed event")
 	}
 
 	return &e, nil
@@ -115,7 +110,7 @@ func CountUnprocessedEvents() (int, error) {
 
 	n, err := db.CountQ(AllLogCollection, q)
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to fetch number of unprocessed events")
+		return 0, errors.Wrap(err, "fetching number of unprocessed events")
 	}
 
 	return n, nil

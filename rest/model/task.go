@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -73,7 +72,7 @@ type APITask struct {
 	AbortInfo               APIAbortInfo        `json:"abort_info,omitempty"`
 	CanSync                 bool                `json:"can_sync,omitempty"`
 	SyncAtEndOpts           APISyncAtEndOptions `json:"sync_at_end_opts"`
-	Ami                     *string             `json:"ami"`
+	AMI                     *string             `json:"ami"`
 	MustHaveResults         bool                `json:"must_have_test_results"`
 	BaseTask                APIBaseTaskInfo     `json:"base_task"`
 	// These fields are used by graphql gen, but do not need to be exposed
@@ -173,20 +172,22 @@ func (ad *APIOomTrackerInfo) ToService() (interface{}, error) {
 func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
-		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
+		if err := at.PreviousExecutions[i].BuildFromArgs(&tasks[i], &APITaskArgs{
+			IncludeProjectIdentifier: true,
+			IncludeAMI:               true,
+			IncludeArtifacts:         true,
+			LogURL:                   url,
+		}); err != nil {
 			return errors.Wrap(err, "error marshalling previous execution")
 		}
-		if err := at.PreviousExecutions[i].BuildFromService(url); err != nil {
-			return errors.Wrap(err, "failed to build logs for previous execution")
-		}
-		if err := at.PreviousExecutions[i].GetArtifacts(); err != nil {
-			return errors.Wrap(err, "failed to fetch artifacts for previous executions")
-		}
+
 	}
 
 	return nil
 }
 
+// Deprecated: BuildFromArgs should be used instead to add fields that aren't from the task collection
+//
 // BuildFromService converts from a service level task by loading the data
 // into the appropriate fields of the APITask.
 func (at *APITask) BuildFromService(t interface{}) error {
@@ -229,7 +230,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Order:                   v.RevisionOrderNumber,
 			Status:                  utility.ToStringPtr(v.Status),
 			DisplayStatus:           utility.ToStringPtr(v.GetDisplayStatus()),
-			TimeTaken:               NewAPIDuration(v.TimeTaken),
 			ExpectedDuration:        NewAPIDuration(v.ExpectedDuration),
 			GenerateTask:            v.GenerateTask,
 			GeneratedBy:             v.GeneratedBy,
@@ -264,6 +264,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 		}
 
+		if v.TimeTaken != 0 {
+			at.TimeTaken = NewAPIDuration(v.TimeTaken)
+		} else if v.Status == evergreen.TaskStarted {
+			at.TimeTaken = NewAPIDuration(time.Since(v.StartTime))
+		}
+
 		if v.ParentPatchID != "" {
 			at.Version = utility.ToStringPtr(v.ParentPatchID)
 			if v.ParentPatchNumber != 0 {
@@ -273,20 +279,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {
 			return errors.Wrap(err, "can't build TaskEndDetail from service")
-		}
-
-		if v.HostId != "" {
-			h, err := host.FindOneId(v.HostId)
-			if err != nil {
-				return errors.Wrapf(err, "error finding host '%s' for task", v.HostId)
-			}
-			if h != nil {
-				ami := h.GetAMI()
-				if ami != "" {
-					at.Ami = utility.ToStringPtr(ami)
-
-				}
-			}
 		}
 
 		if len(v.ExecutionTasks) > 0 {
@@ -306,28 +298,90 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 			at.DependsOn = dependsOn
 		}
-		if v.Project != "" {
-			identifier, err := model.GetIdentifierForProject(v.Project)
-			if err == nil {
-				at.ProjectIdentifier = utility.ToStringPtr(identifier)
-			}
-		}
+
 		at.OverrideDependencies = v.OverrideDependencies
 		at.Archived = v.Archived
-	case string:
-		ll := LogLinks{
-			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
-			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "T")),
-			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "E")),
-			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, v, utility.FromStringPtr(at.Id), at.Execution, "S")),
-			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, v, utility.FromStringPtr(at.Id))),
-		}
-		at.Logs = ll
 	default:
 		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling task", t))
 	}
 
 	return nil
+}
+
+type APITaskArgs struct {
+	IncludeProjectIdentifier bool
+	IncludeAMI               bool
+	IncludeArtifacts         bool
+	LogURL                   string
+}
+
+// BuildFromArgs converts from a service level task by loading the data
+// into the appropriate fields of the APITask. It takes optional arguments to populate
+// additional fields.
+func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
+	err := at.BuildFromService(t)
+	if err != nil {
+		return err
+	}
+	if args == nil {
+		return nil
+	}
+	if args.LogURL != "" {
+		ll := LogLinks{
+			AllLogLink:    utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "ALL")),
+			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "T")),
+			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "E")),
+			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id), at.Execution, "S")),
+			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, utility.FromStringPtr(at.Id))),
+		}
+		at.Logs = ll
+	}
+	if args.IncludeAMI {
+		if err := at.GetAMI(); err != nil {
+			return err
+		}
+	}
+	if args.IncludeArtifacts {
+		if err := at.GetArtifacts(); err != nil {
+			return err
+		}
+	}
+	if args.IncludeProjectIdentifier {
+		at.GetProjectIdentifier()
+	}
+
+	return nil
+}
+
+func (at *APITask) GetAMI() error {
+	if at.AMI != nil {
+		return nil
+	}
+	if utility.FromStringPtr(at.HostId) != "" {
+		h, err := host.FindOneId(utility.FromStringPtr(at.HostId))
+		if err != nil {
+			return errors.Wrapf(err, "finding host '%s' for task", utility.FromStringPtr(at.HostId))
+		}
+		if h != nil {
+			ami := h.GetAMI()
+			if ami != "" {
+				at.AMI = utility.ToStringPtr(ami)
+			}
+		}
+	}
+	return nil
+}
+
+func (at *APITask) GetProjectIdentifier() {
+	if at.ProjectIdentifier != nil {
+		return
+	}
+	if utility.FromStringPtr(at.ProjectId) != "" {
+		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(at.ProjectId))
+		if err == nil {
+			at.ProjectIdentifier = utility.ToStringPtr(identifier)
+		}
+	}
 }
 
 // ToService returns a service layer task using the data from the APITask.

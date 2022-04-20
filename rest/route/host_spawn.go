@@ -262,30 +262,17 @@ func (h *hostStopHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	// Find host to be stopped
 	host, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by host id '%s'", h.hostID))
 	}
 
-	// Error if host is not able to be stopped
-	if host.Status == evergreen.HostStopped || host.Status == evergreen.HostStopping {
+	statusCode, err := data.StopSpawnHost(ctx, h.env, user, host)
+	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host '%s' is already stopping or stopped", host.Id),
+			StatusCode: statusCode,
+			Message:    errors.Wrap(err, "stopping spawn host").Error(),
 		})
-	} else if host.Status != evergreen.HostRunning {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host %s is not running", host.Id),
-		})
-	}
-
-	// Stop the host
-	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	stopJob := units.NewSpawnhostStopJob(host, user.Id, ts)
-	if err = h.env.RemoteQueue().Put(ctx, stopJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost stop job"))
 	}
 
 	if h.subscriptionType != "" {
@@ -345,25 +332,17 @@ func (h *hostStartHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	// Find host to be started
 	host, err := data.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
 
-	// Error if host is not able to be started
-	if host.Status != evergreen.HostStopped {
+	statusCode, err := data.StartSpawnHost(ctx, h.env, user, host)
+	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host %s is not stopped", host.Id),
+			StatusCode: statusCode,
+			Message:    errors.Wrap(err, "stopping spawn host").Error(),
 		})
-	}
-
-	// Start the host
-	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	startJob := units.NewSpawnhostStartJob(host, user.Id, ts)
-	if err = h.env.RemoteQueue().Put(ctx, startJob); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error creating spawnhost start job"))
 	}
 
 	if h.subscriptionType != "" {

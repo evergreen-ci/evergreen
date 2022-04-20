@@ -64,9 +64,13 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	originalEnv := GetEnvironment()
 	// first test loading config from a file
 	env, err := NewEnvironment(ctx, s.path, nil)
 	SetEnvironment(env)
+	defer func() {
+		SetEnvironment(originalEnv)
+	}()
 
 	s.Require().NoError(err)
 	s.env = env.(*envState)

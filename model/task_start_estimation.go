@@ -99,7 +99,7 @@ func (s *estimatedTimeSimulator) dispatchNextTask() {
 func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
 	queue, err := LoadTaskQueue(t.DistroId)
 	if err != nil {
-		return -1, errors.Wrap(err, "error retrieving task queue")
+		return -1, errors.Wrap(err, "retrieving task queue")
 	}
 	if queue == nil {
 		return -1, nil
@@ -116,7 +116,7 @@ func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
 	}
 	hosts, err := host.Find(db.Query(host.ByDistroIDs(t.DistroId)))
 	if err != nil {
-		return -1, errors.Wrap(err, "error retrieving hosts")
+		return -1, errors.Wrapf(err, "retrieving hosts from distro '%s'", t.DistroId)
 	}
 	return createSimulatorModel(*queue, hosts).simulate(queuePos), nil
 }

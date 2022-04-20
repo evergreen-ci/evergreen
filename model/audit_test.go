@@ -51,10 +51,7 @@ func TestHostTaskAuditing(t *testing.T) {
 	})
 
 	Convey("With tasks and hosts stored in the db", t, func() {
-		require.NoError(t, db.Clear(host.Collection),
-			"Error clearing '%v' collection", host.Collection)
-		require.NoError(t, db.Clear(task.Collection),
-			"Error clearing '%v' collection", task.Collection)
+		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 		Convey("no mappings should load with an empty db", func() {
 			h2t, t2h, err := loadHostTaskMapping()
 			So(err, ShouldBeNil)
@@ -101,10 +98,7 @@ func TestHostTaskAuditing(t *testing.T) {
 			})
 		})
 		Convey("with a task that has a host but a host that does not have a task", func() {
-			require.NoError(t, db.Clear(host.Collection),
-				"Error clearing '%v' collection", host.Collection)
-			require.NoError(t, db.Clear(task.Collection),
-				"Error clearing '%v' collection", task.Collection)
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 			h := host.Host{
 				Id:     "host1",
 				Status: evergreen.HostRunning,
@@ -124,10 +118,7 @@ func TestHostTaskAuditing(t *testing.T) {
 
 		})
 		Convey("with a host that has a task but a task that does not have a host", func() {
-			require.NoError(t, db.Clear(host.Collection),
-				"Error clearing '%v' collection", host.Collection)
-			require.NoError(t, db.Clear(task.Collection),
-				"Error clearing '%v' collection", task.Collection)
+			require.NoError(t, db.Clear(task.Collection))
 			h := host.Host{
 				Id:          "host1",
 				Status:      evergreen.HostRunning,
@@ -152,10 +143,7 @@ func TestHostTaskAuditing(t *testing.T) {
 
 func TestStuckHostAuditing(t *testing.T) {
 	Convey("With tasks and hosts inserted into the db", t, func() {
-		require.NoError(t, db.Clear(host.Collection),
-			"Error clearing '%v' collection", host.Collection)
-		require.NoError(t, db.Clear(task.Collection),
-			"Error clearing '%v' collection", task.Collection)
+		require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
 		h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
 		h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}
 		h3 := host.Host{Id: "h3", Status: evergreen.HostRunning}
@@ -177,7 +165,7 @@ func TestStuckHostAuditing(t *testing.T) {
 			So(stuckHosts[0].RunningTask, ShouldEqual, t2.Id)
 			So(stuckHosts[0].TaskStatus, ShouldEqual, evergreen.TaskFailed)
 			So(stuckHosts[0].Error(), ShouldEqual,
-				fmt.Sprintf("host h2 has a running task t2 with complete status %s", evergreen.TaskFailed))
+				fmt.Sprintf("host 'h2' has a running task 't2' with complete status '%s'", evergreen.TaskFailed))
 		})
 
 	})

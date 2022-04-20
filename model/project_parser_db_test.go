@@ -68,5 +68,4 @@ func TestFindExpansionsForVariant(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expansions["VERSION"], "latest")
 	assert.Equal(t, expansions["OS"], "windows-64")
-
 }

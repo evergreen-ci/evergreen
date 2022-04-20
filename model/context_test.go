@@ -10,7 +10,7 @@ import (
 )
 
 func TestLoadContext(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, ProjectRefCollection), "problem clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, ProjectRefCollection))
 
 	assert := assert.New(t)
 	myProject := ProjectRef{

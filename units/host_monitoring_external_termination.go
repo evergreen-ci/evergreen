@@ -146,7 +146,11 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 		event.LogHostTerminatedExternally(h.Id, h.Status)
 
-		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, true, fmt.Sprintf("host was found in %s state", cloudStatus.String())))
+		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, HostTerminationOptions{
+			TerminateIfBusy:          true,
+			TerminationReason:        fmt.Sprintf("host was found in %s state", cloudStatus.String()),
+			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated,
+		}))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "could not enqueue job to terminate externally-modified host",
 			"cloud_status": cloudStatus.String(),

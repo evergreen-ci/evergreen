@@ -1971,7 +1971,7 @@ type APIServiceFlags struct {
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
-	GenerateTasksExperimentDisabled bool `json:"generate_tasks_experiment_disabled"`
+	ContainerConfigurationsDisabled bool `json:"container_configurations_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2237,7 +2237,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
-		as.GenerateTasksExperimentDisabled = v.GenerateTasksExperimentDisabled
+		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -2276,7 +2276,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
-		GenerateTasksExperimentDisabled: as.GenerateTasksExperimentDisabled,
+		ContainerConfigurationsDisabled: as.ContainerConfigurationsDisabled,
 	}, nil
 }
 

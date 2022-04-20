@@ -20,54 +20,60 @@ type cliIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
 	DocumentID string `bson:"_id"`
 
-	// PatchFileID is the object id of the patch file created in gridfs
+	// PatchFileID is the object id of the patch file created in gridfs.
 	PatchFileID mgobson.ObjectId `bson:"patch_file_id,omitempty"`
 
 	// PatchContent is the patch as supplied by the client. It is saved
-	// separately from the patch intent
+	// separately from the patch intent.
 	PatchContent string
 
-	// Description is the optional description of the patch
+	// Description is the optional description of the patch.
 	Description string `bson:"description,omitempty"`
 
-	// BuildVariants is a list of build variants associated with the patch
+	// BuildVariants is a list of build variants associated with the patch.
 	BuildVariants []string `bson:"variants,omitempty"`
 
-	// Tasks is a list of tasks associated with the patch
+	// Tasks is a list of tasks associated with the patch.
 	Tasks []string `bson:"tasks"`
 
-	// Parameters is a list of parameters to use with the task
+	// RegexBuildVariants is a list of regular expressions to match build variants associated with the patch.
+	RegexBuildVariants []string `bson:"regex_variants,omitempty"`
+
+	// RegexTasks is a list of regular expressions to match tasks associated with the patch.
+	RegexTasks []string `bson:"regex_tasks,omitempty"`
+
+	// Parameters is a list of parameters to use with the task.
 	Parameters []Parameter `bson:"parameters,omitempty"`
 
 	// SyncAtEndOpts describe behavior for task sync at the end of the task.
 	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 
-	// Finalize is whether or not the patch should finalized
+	// Finalize is whether or not the patch should finalized.
 	Finalize bool `bson:"finalize"`
 
 	// Module is the name of the module id as represented in the project's
-	// YAML configuration
+	// YAML configuration.
 	Module string `bson:"module"`
 
-	// User is the username of the patch creator
+	// User is the username of the patch creator.
 	User string `bson:"user"`
 
-	// ProjectID is the identifier of project this patch is associated with
+	// ProjectID is the identifier of project this patch is associated with.
 	ProjectID string `bson:"project"`
 
 	// BaseHash is the base hash of the patch.
 	BaseHash string `bson:"base_hash"`
 
-	// CreatedAt is the time that this intent was stored in the database
+	// CreatedAt is the time that this intent was stored in the database.
 	CreatedAt time.Time `bson:"created_at"`
 
 	// Processed indicates whether a patch intent has been processed by the amboy queue.
 	Processed bool `bson:"processed"`
 
-	// ProcessedAt is the time that this intent was processed
+	// ProcessedAt is the time that this intent was processed.
 	ProcessedAt time.Time `bson:"processed_at"`
 
-	// IntentType indicates the type of the patch intent, i.e., GithubIntentType
+	// IntentType indicates the type of the patch intent, i.e., GithubIntentType.
 	IntentType string `bson:"intent_type"`
 
 	// alias defines the variants and tasks to run this patch on.
@@ -76,13 +82,13 @@ type cliIntent struct {
 	// path defines the path to an evergreen project configuration file.
 	Path string `bson:"path"`
 
-	// TriggerAliases alias sets of tasks to include in child patches
+	// TriggerAliases alias sets of tasks to include in child patches.
 	TriggerAliases []string `bson:"trigger_aliases"`
 
-	// BackportOf specifies what to backport
+	// BackportOf specifies what to backport.
 	BackportOf BackportInfo `bson:"backport_of,omitempty"`
 
-	// GitInfo contains information about the author's git environment
+	// GitInfo contains information about the author's git environment.
 	GitInfo *GitMetadata `bson:"git_info,omitempty"`
 
 	RepeatDefinition bool `bson:"reuse_definition"`
@@ -183,21 +189,23 @@ func (g *cliIntent) GetCalledBy() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:   c.Description,
-		Author:        c.User,
-		Project:       c.ProjectID,
-		Githash:       c.BaseHash,
-		Path:          c.Path,
-		Status:        evergreen.PatchCreated,
-		BuildVariants: c.BuildVariants,
-		Parameters:    c.Parameters,
-		Alias:         c.Alias,
-		Triggers:      TriggerInfo{Aliases: c.TriggerAliases},
-		Tasks:         c.Tasks,
-		SyncAtEndOpts: c.SyncAtEndOpts,
-		BackportOf:    c.BackportOf,
-		Patches:       []ModulePatch{},
-		GitInfo:       c.GitInfo,
+		Description:        c.Description,
+		Author:             c.User,
+		Project:            c.ProjectID,
+		Githash:            c.BaseHash,
+		Path:               c.Path,
+		Status:             evergreen.PatchCreated,
+		BuildVariants:      c.BuildVariants,
+		RegexBuildVariants: c.RegexBuildVariants,
+		Parameters:         c.Parameters,
+		Alias:              c.Alias,
+		Triggers:           TriggerInfo{Aliases: c.TriggerAliases},
+		Tasks:              c.Tasks,
+		RegexTasks:         c.RegexTasks,
+		SyncAtEndOpts:      c.SyncAtEndOpts,
+		BackportOf:         c.BackportOf,
+		Patches:            []ModulePatch{},
+		GitInfo:            c.GitInfo,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -226,6 +234,8 @@ type CLIIntentParams struct {
 	Parameters       []Parameter
 	Variants         []string
 	Tasks            []string
+	RegexVariants    []string
+	RegexTasks       []string
 	Alias            string
 	TriggerAliases   []string
 	RepeatDefinition bool
@@ -270,26 +280,28 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:       mgobson.NewObjectId().Hex(),
-		IntentType:       CliIntentType,
-		PatchContent:     params.PatchContent,
-		Path:             params.Path,
-		Description:      params.Description,
-		BuildVariants:    params.Variants,
-		Tasks:            params.Tasks,
-		Parameters:       params.Parameters,
-		SyncAtEndOpts:    params.SyncParams,
-		User:             params.User,
-		ProjectID:        params.Project,
-		BaseHash:         params.BaseGitHash,
-		Finalize:         params.Finalize,
-		Module:           params.Module,
-		Alias:            params.Alias,
-		TriggerAliases:   params.TriggerAliases,
-		BackportOf:       params.BackportOf,
-		GitInfo:          params.GitInfo,
-		RepeatDefinition: params.RepeatDefinition,
-		RepeatFailed:     params.RepeatFailed,
+		DocumentID:         mgobson.NewObjectId().Hex(),
+		IntentType:         CliIntentType,
+		PatchContent:       params.PatchContent,
+		Path:               params.Path,
+		Description:        params.Description,
+		BuildVariants:      params.Variants,
+		Tasks:              params.Tasks,
+		RegexBuildVariants: params.RegexVariants,
+		RegexTasks:         params.RegexTasks,
+		Parameters:         params.Parameters,
+		SyncAtEndOpts:      params.SyncParams,
+		User:               params.User,
+		ProjectID:          params.Project,
+		BaseHash:           params.BaseGitHash,
+		Finalize:           params.Finalize,
+		Module:             params.Module,
+		Alias:              params.Alias,
+		TriggerAliases:     params.TriggerAliases,
+		BackportOf:         params.BackportOf,
+		GitInfo:            params.GitInfo,
+		RepeatDefinition:   params.RepeatDefinition,
+		RepeatFailed:       params.RepeatFailed,
 	}, nil
 }
 

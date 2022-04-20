@@ -30,7 +30,8 @@ func TestPodEvents(t *testing.T) {
 		"LogPodAssignedTask": func(t *testing.T) {
 			podID := "pod_id"
 			taskID := "task_id"
-			LogPodAssignedTask(podID, taskID)
+			execution := 5
+			LogPodAssignedTask(podID, taskID, 5)
 
 			events, err := Find(AllLogCollection, MostRecentPodEvents(podID, 10))
 			require.NoError(t, err)
@@ -41,6 +42,7 @@ func TestPodEvents(t *testing.T) {
 			data, ok := events[0].Data.(*podData)
 			require.True(t, ok)
 			assert.Equal(t, taskID, data.TaskID)
+			assert.Equal(t, execution, data.TaskExecution)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

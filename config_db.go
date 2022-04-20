@@ -91,7 +91,7 @@ var (
 	backgroundReauthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
-	generateTasksExperimentDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "GenerateTasksExperimentDisabled")
+	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

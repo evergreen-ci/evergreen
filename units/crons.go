@@ -211,7 +211,10 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 				})
 				continue
 			}
-			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, true, "host is expired, decommissioned, or failed to provision")))
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: "host is expired, decommissioned, or failed to provision",
+			})))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -223,7 +226,10 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, true, "host spawned by task has gone out of scope")))
+			catcher.Add(amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, &h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: "host spawned by task has gone out of scope",
+			})))
 		}
 
 		return catcher.Resolve()
@@ -687,39 +693,12 @@ func PopulateGenerateTasksJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "problem getting tasks that need generators run")
 		}
 
-		ts := utility.RoundPartOfHour(1).Format(TSFormat)
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if flags.GenerateTasksExperimentDisabled {
-			versions := map[string]amboy.Queue{}
-			group := env.RemoteQueueGroup()
-
-			for _, t := range tasks {
-				var (
-					q   amboy.Queue
-					ok  bool
-					err error
-				)
-				if q, ok = versions[t.Version]; !ok {
-					q, err = group.Get(ctx, t.Version)
-					if err != nil {
-						return errors.Wrapf(err, "getting queue for version '%s'", t.Version)
-					}
-					versions[t.Version] = q
-				}
-				catcher.Add(q.Put(ctx, NewGenerateTasksJob(t.Version, t.Id, ts, false)))
-			}
-			return catcher.Resolve()
-		}
-
 		queue, err := env.RemoteQueueGroup().Get(ctx, "service.generate.tasks")
 		if err != nil {
 			return errors.Wrap(err, "getting generate tasks queue")
 		}
 
+		ts := utility.RoundPartOfHour(1).Format(TSFormat)
 		for _, t := range tasks {
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewGenerateTasksJob(t.Version, t.Id, ts, true)), "task '%s'", t.Id)
 		}
@@ -1295,13 +1274,15 @@ func PopulateDataCleanupJobs(env evergreen.Environment) amboy.QueueOperation {
 }
 
 // PopulatePodAllocatorJobs returns the queue operation to enqueue jobs to
-// allocate pods to tasks.
+// allocate pods to tasks and disable container tasks that exceed the stale
+// undispatched threshold.
 func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
 		}
+
 		if flags.PodAllocatorDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "pod allocation disabled",
@@ -1309,6 +1290,13 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 				"mode":    "degraded",
 			})
 			return nil
+		}
+
+		if err := task.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not disable stale container tasks",
+				"context": "pod allocation",
+			}))
 		}
 
 		numInitializing, err := pod.CountByInitializing()
@@ -1345,6 +1333,7 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
 			"message":             "reached max parallel pod request limit, not allocating any more",
+			"context":             "pod allocation",
 			"num_remaining_tasks": ctq.Len(),
 		})
 

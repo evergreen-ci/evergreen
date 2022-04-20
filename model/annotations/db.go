@@ -46,7 +46,7 @@ func Find(query db.Q) ([]TaskAnnotation, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "problem finding task annotations")
+		return nil, errors.Wrap(err, "finding task annotations")
 	}
 
 	return annotations, err

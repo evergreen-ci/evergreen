@@ -110,7 +110,7 @@ clientsLoop:
 				"duration_secs": time.Since(startAt).Seconds(),
 			})
 			if err != nil {
-				if strings.Contains(err.Error(), "InvalidInstanceID.NotFound") {
+				if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
 					j.AddError(j.terminateUnknownHosts(ctx, err.Error()))
 					continue clientsLoop
 				}
@@ -166,7 +166,11 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 		if h == nil {
 			continue
 		}
-		catcher.Add(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, h, true, "instance ID not found")))
+		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{
+			TerminateIfBusy:   true,
+			TerminationReason: "instance ID not found",
+		})
+		catcher.Add(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob))
 	}
 	return catcher.Resolve()
 }
@@ -185,7 +189,12 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Mana
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(handleTerminatedHostSpawnedByTask(&h), "handling task host that was terminating before it was running")
 		catcher.Wrap(h.SetUnprovisioned(), "marking host as failed provisioning")
-		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostTerminationJob(j.env, &h, true, "instance was found in stopped state")), "enqueueing job to terminate host")
+		terminationJob := NewHostTerminationJob(j.env, &h, HostTerminationOptions{
+			TerminateIfBusy:          true,
+			TerminationReason:        "instance was found in stopped state",
+			SkipCloudHostTermination: cloudStatus == cloud.StatusTerminated,
+		})
+		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob), "enqueueing job to terminate host")
 
 		return catcher.Resolve()
 	case cloud.StatusRunning:

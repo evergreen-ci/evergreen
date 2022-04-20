@@ -148,7 +148,7 @@ func (s *eventSuite) TestEventWithNilData() {
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
 	s.Nil(event.Data)
-	s.Errorf(logger.LogEvent(&event), "event log entry cannot have nil Data")
+	s.Errorf(logger.LogEvent(&event), "event log entry cannot have nil data")
 
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
@@ -279,7 +279,7 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	s.EqualError(logger.MarkProcessed(event), "event has no ID")
 	event.ID = mgobson.NewObjectId().Hex()
-	s.EqualError(logger.MarkProcessed(event), "failed to update 'processed at' time: document not found")
+	s.EqualError(logger.MarkProcessed(event), "updating 'processed at' time: document not found")
 	s.NoError(logger.LogEvent(event))
 
 	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{

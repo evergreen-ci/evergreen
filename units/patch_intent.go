@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -313,7 +314,20 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		bv := project.FindBuildVariant(buildVariant)
 		if bv == nil {
-			return errors.Errorf("No such buildvariant: '%s'", buildVariant)
+			return errors.Errorf("no such buildvariant matching '%s'", buildVariant)
+		}
+	}
+
+	for _, bv := range patchDoc.RegexBuildVariants {
+		_, err := regexp.Compile(bv)
+		if err != nil {
+			return errors.Wrapf(err, "compiling buildvariant regex '%s'", bv)
+		}
+	}
+	for _, t := range patchDoc.RegexTasks {
+		_, err := regexp.Compile(t)
+		if err != nil {
+			return errors.Wrapf(err, "compiling task regex '%s'", t)
 		}
 	}
 

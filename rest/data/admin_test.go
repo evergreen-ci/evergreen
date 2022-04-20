@@ -28,10 +28,6 @@ type AdminDataSuite struct {
 
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	evergreen.SetEnvironment(env)
 	suite.Run(t, s)
 }
 
@@ -160,7 +156,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.GenerateTasksExperimentDisabled, settingsFromConnector.ServiceFlags.GenerateTasksExperimentDisabled)
+	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
@@ -281,7 +277,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.GenerateTasksExperimentDisabled, settingsFromConnector.ServiceFlags.GenerateTasksExperimentDisabled)
+	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
