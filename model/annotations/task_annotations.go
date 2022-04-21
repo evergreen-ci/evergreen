@@ -211,7 +211,7 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) error {
 	existingAnnotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	if err != nil {
-		return errors.Wrapf(err, "finding task annotation")
+		return errors.Wrapf(err, "finding annotation for task '%s' and execution %d", a.TaskId, a.TaskExecution)
 	}
 	if existingAnnotation == nil {
 		if !upsert {
