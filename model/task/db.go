@@ -710,7 +710,7 @@ func ByExecutionTasks(ids []string) bson.M {
 	}
 }
 
-func BySubsetAborted(ids []string) bson.M {
+func bySubsetAborted(ids []string) bson.M {
 	return bson.M{
 		IdKey:      bson.M{"$in": ids},
 		AbortedKey: true,
@@ -774,13 +774,13 @@ func FindNeedsContainerAllocation() ([]Task, error) {
 // currently needs a container to be allocated to run it.
 func needsContainerAllocation() bson.M {
 	q := isContainerTaskScheduledQuery()
-	q[StatusKey] = evergreen.TaskUndispatched
 	q[ContainerAllocatedKey] = false
 	return q
 }
 
 func isContainerTaskScheduledQuery() bson.M {
 	return bson.M{
+		StatusKey:            evergreen.TaskUndispatched,
 		ActivatedKey:         true,
 		ExecutionPlatformKey: ExecutionPlatformContainer,
 		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
@@ -1578,13 +1578,6 @@ func Remove(id string) error {
 		Collection,
 		bson.M{IdKey: id},
 	)
-}
-
-// Remove all deletes all tasks with a given buildId
-func RemoveAllWithBuild(buildId string) error {
-	return db.RemoveAll(
-		Collection,
-		bson.M{BuildIdKey: buildId})
 }
 
 func Aggregate(pipeline []bson.M, results interface{}) error {

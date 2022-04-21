@@ -158,7 +158,7 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 		(*drawdownTarget)--
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		if err = h.SetDecommissioned(evergreen.User, "host decommissioned due to overallocation"); err != nil {
+		if err = h.SetDecommissioned(evergreen.User, true, "host decommissioned due to overallocation"); err != nil {
 			return errors.Wrapf(err, "problem decommissioning host %s", h.Id)
 		}
 		return nil

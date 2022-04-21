@@ -267,6 +267,22 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, p, "intent pod should have been allocated for task")
 		},
+		"MarksStaleContainerTasksAsNoLongerNeedingAllocation": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+			ref := getProjectRef()
+			require.NoError(t, ref.Insert())
+			staleNeedsAllocation := getTaskThatNeedsContainerAllocation()
+			staleNeedsAllocation.ActivatedTime = time.Now().Add(-1000 * 24 * time.Hour)
+			staleNeedsAllocation.Project = ref.Id
+			require.NoError(t, staleNeedsAllocation.Insert())
+
+			require.NoError(t, PopulatePodAllocatorJobs(env)(ctx, env.Remote))
+			assert.Zero(t, env.Remote.Stats(ctx))
+
+			dbTask, err := task.FindOneId(staleNeedsAllocation.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.False(t, dbTask.ShouldAllocateContainer())
+		},
 		"StopsEnqueueingJobsWhenMaxParallelPodRequestLimitIsReached": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			originalPodInit := env.EvergreenSettings.PodInit
 			defer func() {

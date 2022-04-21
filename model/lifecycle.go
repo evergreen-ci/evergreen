@@ -74,7 +74,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		return errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
 	}
 
-	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, nil, caller),
+	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, false, nil, caller),
 		"setting activation for tasks in version '%s'", versionId)
 }
 
@@ -85,14 +85,15 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 		return errors.Wrapf(err, "setting build activation to %t for build '%s'", active, buildId)
 	}
 
-	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, nil, caller),
+	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, true, nil, caller),
 		"setting task activation for build '%s'", buildId)
 }
 
 // setTaskActivationForBuilds updates the "active" state of all tasks in buildIds.
 // It also updates the task cache for the build document.
+// If withDependencies is true, also set dependencies. Don't need to do this when the entire version is affected.
 // If tasks are given to ignore, then we don't activate those tasks.
-func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []string, caller string) error {
+func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool, ignoreTasks []string, caller string) error {
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
 		q := bson.M{
@@ -102,18 +103,22 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
-		tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
+		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		dependOn, err := task.GetRecursiveDependenciesUp(tasks, nil)
-		if err != nil {
-			return errors.Wrap(err, "getting recursive dependencies")
-		}
+		if withDependencies {
+			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
+			if err != nil {
+				return errors.Wrap(err, "getting recursive dependencies")
+			}
+			tasksToActivate = append(tasksToActivate, dependOn...)
 
-		if err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+		}
+		if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
+
 	} else {
 		query := bson.M{
 			task.BuildIdKey: bson.M{"$in": buildIds},
@@ -128,7 +133,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(tasks, caller); err != nil {
+		if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
@@ -167,6 +172,9 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 	return err
 }
 
+// SetTaskPriority sets the priority for the given task. Any of the task's
+// dependencies that have a lower priority than the one being set for this task
+// will also have their priority increased.
 func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
 	if err != nil {
@@ -234,7 +242,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
 		}
-		if err = task.DeactivateTasks(tasks, caller); err != nil {
+		if err = task.DeactivateTasks(tasks, true, caller); err != nil {
 			return errors.Wrapf(err, "deactivating tasks for build '%s'", buildId)
 		}
 	}
@@ -259,7 +267,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 		}
-		err = task.DeactivateTasks(tasks, caller)
+		err = task.DeactivateTasks(tasks, false, caller)
 		if err != nil {
 			return errors.Wrapf(err, "deactivating tasks for version '%s'", versionId)
 		}
@@ -300,22 +308,22 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	finishedTasks, err = task.AddParentDisplayTasks(finishedTasks)
+	allFinishedTasks, err := task.AddParentDisplayTasks(finishedTasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	// remove execution tasks in case the caller passed both display and execution tasks
 	// the functions below are expected to work if just the display task is passed
-	for i := len(finishedTasks) - 1; i >= 0; i-- {
-		t := finishedTasks[i]
+	for i := len(allFinishedTasks) - 1; i >= 0; i-- {
+		t := allFinishedTasks[i]
 		if t.DisplayTask != nil {
-			finishedTasks = append(finishedTasks[:i], finishedTasks[i+1:]...)
+			allFinishedTasks = append(allFinishedTasks[:i], allFinishedTasks[i+1:]...)
 		}
 	}
 
 	// archive all the finished tasks
 	toArchive := []task.Task{}
-	for _, t := range finishedTasks {
+	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
 			toArchive = append(toArchive, t)
 		}
@@ -328,22 +336,16 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		Build     string
 		TaskGroup string
 	}
-	// only need to check one task per task group / build combination
-	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
-	tasksToRestart := finishedTasks
-	if abortInProgress {
-		aborted, err := task.Find(task.BySubsetAborted(taskIds))
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		catcher := grip.NewBasicCatcher()
-		for _, t := range aborted {
-			catcher.Add(t.SetResetWhenFinished())
-		}
-		if catcher.HasErrors() {
-			return catcher.Resolve()
+	// Mark aborted tasks to reset when finished if not all tasks are finished.
+	if abortInProgress && len(finishedTasks) < len(taskIds) {
+		if err = task.SetAbortedTasksResetWhenFinished(taskIds); err != nil {
+			return err
 		}
 	}
+
+	// only need to check one task per task group / build combination
+	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
+	tasksToRestart := allFinishedTasks
 
 	restartIds := []string{}
 	for _, t := range tasksToRestart {
