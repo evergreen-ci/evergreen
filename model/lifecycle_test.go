@@ -2256,7 +2256,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	}
 
 	// t0 should still be activated because it's a dependency of a task that is being activated
-	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t0"}, ""))
+	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, true, []string{"t0"}, ""))
 
 	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
@@ -2287,7 +2287,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, []string{"t3"}, ""))
+	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, true, true, []string{"t3"}, ""))
 
 	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)
@@ -2322,7 +2322,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	}
 
 	// ignore tasks is ignored for deactivating
-	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, false, []string{"t0", "t1", "t2"}, ""))
+	assert.NoError(t, setTaskActivationForBuilds([]string{"b0"}, false, true, []string{"t0", "t1", "t2"}, ""))
 
 	dbTasks, err := task.FindAll(task.All)
 	require.NoError(t, err)

@@ -91,7 +91,7 @@ func (j *taskStrandedCleanupJob) Run(ctx context.Context) {
 		}
 	}
 	if len(tasksToDeactivate) > 0 {
-		err = task.DeactivateTasks(tasksToDeactivate, j.ID())
+		err = task.DeactivateTasks(tasksToDeactivate, true, j.ID())
 		j.AddError(err)
 	}
 
