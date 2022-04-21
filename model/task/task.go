@@ -3495,13 +3495,13 @@ type StatusCount struct {
 	Count  int    `bson:"count"`
 }
 
-type MaxETAForQuery struct {
+type maxETAForQuery struct {
 	MaxETA time.Time `bson:"max_eta"`
 }
 
-type TaskStatsForQueryResult struct {
+type taskStatsForQueryResult struct {
 	Counts []StatusCount    `bson:"counts"`
-	ETA    []MaxETAForQuery `bson: "eta"`
+	ETA    []maxETAForQuery `bson: "eta"`
 }
 
 type TaskStats struct {
@@ -3558,7 +3558,7 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*Ta
 		"eta":    maxEtaPipeline,
 	}}
 	pipeline = append(pipeline, facet)
-	taskStats := []TaskStatsForQueryResult{}
+	taskStats := []taskStatsForQueryResult{}
 	if err := Aggregate(pipeline, &taskStats); err != nil {
 		return nil, errors.Wrap(err, "aggregating task stats for version")
 	}
