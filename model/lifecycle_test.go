@@ -695,6 +695,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar2 := parserBV{
 			Name:        "buildVar2",
 			DisplayName: "Build Variant 2",
+			RunOn:       []string{"arch"},
 			Tasks: parserBVTaskUnits{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
@@ -702,6 +703,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar3 := parserBV{
 			Name:        "buildVar3",
 			DisplayName: "Build Variant 3",
+			RunOn:       []string{"arch"},
 			Tasks: parserBVTaskUnits{
 				{
 					// wait for the first BV's taskA to complete
@@ -712,6 +714,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 						},
 					},
 				},
+			},
+		}
+		buildVar4 := parserBV{
+			Name:        "buildVar4",
+			DisplayName: "Build Variant 4",
+			RunOn:       []string{"container1"},
+			Tasks: parserBVTaskUnits{
+				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
 
@@ -769,7 +779,12 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					},
 				},
 			},
-			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3},
+			Containers: []Container{
+				{
+					Name: "container1",
+				},
+			},
+			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3, buildVar4},
 		}
 
 		// the mock version we'll be using
@@ -790,6 +805,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				},
 				{
 					BuildVariant:     buildVar3.Name,
+					ActivationStatus: ActivationStatus{Activated: true},
+				},
+				{
+					BuildVariant:     buildVar4.Name,
 					ActivationStatus: ActivationStatus{Activated: true},
 				},
 			},
@@ -993,6 +1012,27 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(build.Tasks[3].Id, ShouldContainSubstring, "taskE")
 		})
 
+		Convey("execution platform should be set to containers when run_on contains a container name", func() {
+			args := BuildCreateArgs{
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       table,
+				BuildName:     buildVar4.Name,
+				ActivateBuild: false,
+				TaskNames:     []string{},
+			}
+			build, tasks, err := CreateBuildFromVersionNoInsert(args)
+			So(err, ShouldBeNil)
+			So(build.Id, ShouldNotEqual, "")
+			So(len(build.Tasks), ShouldEqual, 4)
+
+			// make sure the task execution platforms are correct
+			So(tasks[0].ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
+			So(tasks[1].ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
+			So(tasks[2].ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
+			So(tasks[3].ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
+		})
+
 		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
 			args := BuildCreateArgs{
 				Project:       *project,
@@ -1083,7 +1123,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(dbTasks[7].DependsOn, ShouldContain, task.Dependency{TaskId: dbTasks[5].Id, Status: evergreen.TaskSucceeded})
 
 			So(dbTasks[8].DisplayName, ShouldEqual, "taskE")
-			So(len(dbTasks[8].DependsOn), ShouldEqual, 8)
+			So(len(dbTasks[8].DependsOn), ShouldEqual, 12)
 		})
 
 		Convey("all of the build's essential fields should be set correctly", func() {

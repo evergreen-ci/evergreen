@@ -702,7 +702,8 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						Level: Warning,
 					})
 			}
-
+			runOnHasDistro := false
+			runOnHasContainer := false
 			for _, name := range task.RunOn {
 				if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) && !containerNameMap[name] {
 					errs = append(errs,
@@ -723,7 +724,14 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						},
 					)
 				}
+				if utility.StringSliceContains(distroIDs, name) {
+					runOnHasDistro = true
+				}
+				if containerNameMap[name] {
+					runOnHasContainer = true
+				}
 			}
+			errs = append(errs, addRunOnError(runOnHasDistro, runOnHasContainer, task.RunOn)...)
 		}
 		runOnHasDistro := false
 		runOnHasContainer := false
@@ -754,16 +762,25 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				runOnHasContainer = true
 			}
 		}
-		if runOnHasContainer && runOnHasDistro {
-			errs = append(errs,
-				ValidationError{
-					Message: "run_on cannot contain a mixture of containers and distros",
-					Level:   Error,
-				},
-			)
-		}
+		errs = append(errs, addRunOnError(runOnHasDistro, runOnHasContainer, buildVariant.RunOn)...)
 	}
 	return errs
+}
+
+func addRunOnError(runOnHasDistro, runOnHasContainer bool, runOn []string) []ValidationError {
+	if runOnHasContainer && runOnHasDistro {
+		return []ValidationError{{
+			Message: "run_on cannot contain a mixture of containers and distros",
+			Level:   Error,
+		}}
+
+	} else if runOnHasContainer && len(runOn) > 1 {
+		return []ValidationError{{
+			Message: fmt.Sprint("only one container can be used from run_on; the first container in the list will be used"),
+			Level:   Warning,
+		}}
+	}
+	return nil
 }
 
 // validateTaskNames ensures the task names do not contain unauthorized characters.

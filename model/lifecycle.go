@@ -1265,7 +1265,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
 	}
 	// is running in a host or container.
-	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, project.Containers)
+	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, buildVariant.RunOn, project.Containers)
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -1326,10 +1326,16 @@ func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVari
 	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
 }
 
-func shouldRunOnContainer(runOn []string, containers []Container) task.ExecutionPlatform {
+func shouldRunOnContainer(taskRunOn, buildVariantRunOn []string, containers []Container) task.ExecutionPlatform {
 	containerNameMap := map[string]bool{}
 	for _, container := range containers {
 		containerNameMap[container.Name] = true
+	}
+	runOn := []string{}
+	if len(taskRunOn) > 0 {
+		runOn = taskRunOn
+	} else {
+		runOn = buildVariantRunOn
 	}
 	for _, r := range runOn {
 		if containerNameMap[r] {
