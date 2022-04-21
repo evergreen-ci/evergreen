@@ -105,7 +105,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
-		return errors.New(", note is out of syncplease try again")
+		return errors.New("note is out of sync, please try again")
 	}
 	_, err = db.Upsert(
 		Collection,
@@ -213,7 +213,7 @@ func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) err
 	if err != nil {
 		return errors.Wrapf(err, "finding task annotation")
 	}
-	if existingAnnotation == nil && upsert {
+	if existingAnnotation == nil {
 		if !upsert {
 			return errors.Errorf("annotation for task '%s' and execution %d not found", a.TaskId, a.TaskExecution)
 		} else {
