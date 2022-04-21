@@ -3603,10 +3603,10 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 				statusCountsKey: 1,
 			},
 		},
-		// Sort build variants in alphabetical order for final return
+		// Sort build variants in alphanumeric order for final return
 		{
 			"$sort": bson.M{
-				"variant": 1,
+				"display_name": 1,
 			},
 		},
 	}
