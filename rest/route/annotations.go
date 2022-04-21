@@ -219,7 +219,7 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 
 	body := utility.NewRequestReader(r)
 	defer body.Close()
-	err = json.NewDecoder(body).Decode(annotation)
+	err = json.NewDecoder(body).Decode(&annotation)
 	if err != nil {
 		return "", nil, gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
