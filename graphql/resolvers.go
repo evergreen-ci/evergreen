@@ -3731,7 +3731,8 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 	}
 	result := []*task.StatusCount{}
 	for _, c := range stats.Counts {
-		result = append(result, &c)
+		count := c
+		result = append(result, &count)
 	}
 	return result, nil
 }
