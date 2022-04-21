@@ -59,7 +59,6 @@ type ResolverRoot interface {
 	Task() TaskResolver
 	TaskLogs() TaskLogsResolver
 	TaskQueueItem() TaskQueueItemResolver
-	TaskStats() TaskStatsResolver
 	TicketFields() TicketFieldsResolver
 	User() UserResolver
 	Version() VersionResolver
@@ -1039,7 +1038,7 @@ type ComplexityRoot struct {
 
 	TaskStats struct {
 		Counts func(childComplexity int) int
-		Eta    func(childComplexity int) int
+		ETA    func(childComplexity int) int
 	}
 
 	TaskSyncOptions struct {
@@ -1187,6 +1186,7 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 		TaskCount         func(childComplexity int) int
 		TaskStatusCounts  func(childComplexity int, options *BuildVariantOptions) int
+		TaskStatusStats   func(childComplexity int, options *BuildVariantOptions) int
 		TaskStatuses      func(childComplexity int) int
 		UpstreamProject   func(childComplexity int) int
 		VersionTiming     func(childComplexity int) int
@@ -1454,9 +1454,6 @@ type TaskLogsResolver interface {
 type TaskQueueItemResolver interface {
 	Requester(ctx context.Context, obj *model.APITaskQueueItem) (TaskQueueItemType, error)
 }
-type TaskStatsResolver interface {
-	Eta(ctx context.Context, obj *task.TaskStats) (*model.APIDuration, error)
-}
 type TicketFieldsResolver interface {
 	AssigneeDisplayName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
@@ -1470,7 +1467,8 @@ type UserResolver interface {
 type VersionResolver interface {
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 
-	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error)
+	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error)
+	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error)
 	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	BuildVariantStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
@@ -6522,11 +6520,11 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		return e.complexity.TaskStats.Counts(childComplexity), true
 
 	case "TaskStats.eta":
-		if e.complexity.TaskStats.Eta == nil {
+		if e.complexity.TaskStats.ETA == nil {
 			break
 		}
 
-		return e.complexity.TaskStats.Eta(childComplexity), true
+		return e.complexity.TaskStats.ETA(childComplexity), true
 
 	case "TaskSyncOptions.configEnabled":
 		if e.complexity.TaskSyncOptions.ConfigEnabled == nil {
@@ -7241,6 +7239,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.TaskStatusCounts(childComplexity, args["options"].(*BuildVariantOptions)), true
 
+	case "Version.taskStatusStats":
+		if e.complexity.Version.TaskStatusStats == nil {
+			break
+		}
+
+		args, err := ec.field_Version_taskStatusStats_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.TaskStatusStats(childComplexity, args["options"].(*BuildVariantOptions)), true
+
 	case "Version.taskStatuses":
 		if e.complexity.Version.TaskStatuses == nil {
 			break
@@ -7726,7 +7736,8 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts(options: BuildVariantOptions): TaskStats
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
+  taskStatusStats(options: BuildVariantOptions): TaskStats
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
   isPatch: Boolean!
@@ -7772,13 +7783,14 @@ type VersionTiming {
 
 type TaskStats {
   counts: [StatusCount!]
-  eta: Duration
+  eta: Time
 }
 
 type StatusCount {
   status: String!
   count: Int!
 }
+
 # Returns task counts grouped by status for a build variant
 type GroupedTaskStatusCount {
   variant: String!
@@ -11150,6 +11162,21 @@ func (ec *executionContext) field_Version_buildVariants_args(ctx context.Context
 }
 
 func (ec *executionContext) field_Version_taskStatusCounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *BuildVariantOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_taskStatusStats_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *BuildVariantOptions
@@ -34265,14 +34292,14 @@ func (ec *executionContext) _TaskStats_eta(ctx context.Context, field graphql.Co
 		Object:     "TaskStats",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.TaskStats().Eta(rctx, obj)
+		return obj.ETA, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34281,9 +34308,9 @@ func (ec *executionContext) _TaskStats_eta(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIDuration)
+	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TaskSyncOptions_configEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
@@ -37271,6 +37298,45 @@ func (ec *executionContext) _Version_taskStatusCounts(ctx context.Context, field
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Version().TaskStatusCounts(rctx, obj, args["options"].(*BuildVariantOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*task.StatusCount)
+	fc.Result = res
+	return ec.marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_taskStatusStats(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Version_taskStatusStats_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().TaskStatusStats(rctx, obj, args["options"].(*BuildVariantOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -48401,16 +48467,7 @@ func (ec *executionContext) _TaskStats(ctx context.Context, sel ast.SelectionSet
 		case "counts":
 			out.Values[i] = ec._TaskStats_counts(ctx, field, obj)
 		case "eta":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._TaskStats_eta(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._TaskStats_eta(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -49168,6 +49225,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_taskStatusCounts(ctx, field, obj)
+				return res
+			})
+		case "taskStatusStats":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_taskStatusStats(ctx, field, obj)
 				return res
 			})
 		case "buildVariants":
@@ -54460,6 +54528,53 @@ func (ec *executionContext) marshalOStatusCount2ᚕgithubᚗcomᚋevergreenᚑci
 				defer wg.Done()
 			}
 			ret[i] = ec.marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*task.StatusCount) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStatusCount2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
