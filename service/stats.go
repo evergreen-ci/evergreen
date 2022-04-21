@@ -52,7 +52,7 @@ type UITask struct {
 	Status                 string    `json:"status"`
 	Host                   string    `json:"host"`
 	Distro                 string    `json:"distro"`
-	Container              string    `json:"container"`
+	Container              string    `json:"container,omitempty"`
 	IsDisplay              bool      `json:"is_display"`
 }
 

@@ -108,13 +108,12 @@ type Task struct {
 
 	BuildId                 string       `bson:"build_id" json:"build_id"`
 	DistroId                string       `bson:"distro" json:"distro"`
-	Container               string       `bson:"container" json:"container"`
+	Container               string       `bson:"container,omitempty" json:"container,omitempty"`
 	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
 	NumDependents           int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies    bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
-	RunOnContainer          bool         `bson:"run_on_container,omitempty" json:"run_on_container"`
 
 	// DistroAliases refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are

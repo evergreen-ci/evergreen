@@ -37,7 +37,7 @@ type uiTaskData struct {
 	Revision             string                  `json:"gitspec"`
 	BuildVariant         string                  `json:"build_variant"`
 	Distro               string                  `json:"distro"`
-	Container            string                  `json:"container"`
+	Container            string                  `json:"container,omitempty"`
 	BuildId              string                  `json:"build_id"`
 	Status               string                  `json:"status"`
 	TaskWaiting          string                  `json:"task_waiting"`

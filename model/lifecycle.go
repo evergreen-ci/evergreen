@@ -774,7 +774,6 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 			Stepback:         in.Stepback,
 			Activate:         in.Activate,
 			CommitQueueMerge: in.CommitQueueMerge,
-			RunOnContainer:   in.RunOnContainer,
 		}
 		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t])
@@ -1264,19 +1263,24 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 		IsGithubCheck:       isGithubCheck,
 		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
-		// TODO (EVG-16169): set ExecutionPlatform based on whether or not the task
-		// is running in a host or container.
-		ExecutionPlatform: task.ExecutionPlatformHost,
-		RunOnContainer:    utility.FromBoolPtr(buildVarTask.RunOnContainer),
 	}
+	// is running in a host or container.
+	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, project.Containers)
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
 	}
-	if !flags.ContainerConfigurationsDisabled && utility.FromBoolPtr(buildVarTask.RunOnContainer) {
-		t.Container = generateContainer(id, buildVarTask, buildVariant, project, v)
+	if t.ExecutionPlatform == task.ExecutionPlatformContainer {
+		if flags.ContainerConfigurationsDisabled {
+			return nil, errors.Errorf("container configurations are disabled; task '%s' cannot run", t.DisplayName)
+		} else {
+			t.Container = getContainerFromRunOn(id, buildVarTask, buildVariant, project, v)
+		}
 	} else {
-		distroID, distroAliases := generateDistros(id, buildVarTask, buildVariant, project, v)
+		distroID, distroAliases, err := getDistrosFromRunOn(id, buildVarTask, buildVariant, project, v)
+		if err != nil {
+			return nil, err
+		}
 		t.DistroId = distroID
 		t.DistroAliases = distroAliases
 	}
@@ -1296,39 +1300,46 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	return t, nil
 }
 
-func generateDistros(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) (string, []string) {
-	var (
-		distroID      string
-		distroAliases []string
-	)
-
+func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) (string, []string, error) {
+	distroAliases := []string{}
 	if len(buildVarTask.RunOn) > 0 {
-		distroID = buildVarTask.RunOn[0]
-
+		distroID := buildVarTask.RunOn[0]
 		if len(buildVarTask.RunOn) > 1 {
-			distroAliases = append(distroAliases, buildVarTask.RunOn[1:]...)
+			distroAliases = buildVarTask.RunOn[1:]
 		}
-
+		return distroID, distroAliases, nil
 	} else if len(buildVariant.RunOn) > 0 {
-		distroID = buildVariant.RunOn[0]
-
+		distroID := buildVariant.RunOn[0]
 		if len(buildVariant.RunOn) > 1 {
-			distroAliases = append(distroAliases, buildVariant.RunOn[1:]...)
+			distroAliases = buildVariant.RunOn[1:]
 		}
-	} else {
-		grip.Warning(message.Fields{
-			"task_id":   id,
-			"message":   "task is not runnable as there is no distro specified",
-			"variant":   buildVariant.Name,
-			"project":   project.Identifier,
-			"version":   v.Revision,
-			"requester": v.Requester,
-		})
+		return distroID, distroAliases, nil
 	}
-	return distroID, distroAliases
+	grip.Error(message.Fields{
+		"task_id":   id,
+		"message":   "task is not runnable as there is no distro specified",
+		"variant":   buildVariant.Name,
+		"project":   project.Identifier,
+		"version":   v.Revision,
+		"requester": v.Requester,
+	})
+	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
 }
 
-func generateContainer(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) string {
+func shouldRunOnContainer(runOn []string, containers []Container) task.ExecutionPlatform {
+	containerNameMap := map[string]bool{}
+	for _, container := range containers {
+		containerNameMap[container.Name] = true
+	}
+	for _, r := range runOn {
+		if containerNameMap[r] {
+			return task.ExecutionPlatformContainer
+		}
+	}
+	return task.ExecutionPlatformHost
+}
+
+func getContainerFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) string {
 	var container string
 
 	if len(buildVarTask.RunOn) > 0 {

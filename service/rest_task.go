@@ -36,7 +36,7 @@ type RestTask struct {
 	Activated           bool                  `json:"activated"`
 	BuildId             string                `json:"build_id"`
 	DistroId            string                `json:"distro"`
-	Container           string                `json:"container"`
+	Container           string                `json:"container,omitempty"`
 	BuildVariant        string                `json:"build_variant"`
 	DependsOn           []task.Dependency     `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`

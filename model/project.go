@@ -136,8 +136,7 @@ type BuildVariantTaskUnit struct {
 	// with BatchTime and CronBatchTime being mutually exclusive.
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
-	Activate       *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	RunOnContainer *bool `yaml:"run_on_container,omitempty" bson:"run_on_container"`
+	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -208,9 +207,6 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
-	}
-	if bvt.RunOnContainer == nil {
-		bvt.RunOnContainer = pt.RunOnContainer
 	}
 
 }
@@ -593,7 +589,6 @@ type ProjectTask struct {
 	GitTagOnly      *bool `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults *bool `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
-	RunOnContainer  *bool `yaml:"run_on_container,omitempty" bson:"run_on_container"`
 }
 
 type LoggerConfig struct {
@@ -1170,17 +1165,18 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
-func FindContainerConfigurationForTask(t task.Task) (*Container, error) {
+// FindContainerFromProject finds the container configuration associated with a given task's Container field.
+func FindContainerFromProject(t task.Task) (*Container, error) {
 	v, err := VersionFindOneId(t.Version)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding version %s", t.Version)
+		return nil, errors.Wrapf(err, "finding version %s", t.Version)
 	}
 	if v == nil {
-		return nil, errors.Errorf("unable to find version %s", t.Version)
+		return nil, errors.Errorf("version '%s' not found", t.Version)
 	}
 	projectInfo, err := LoadProjectForVersion(v, t.Project, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting project for version %s", t.Version)
+		return nil, errors.Wrapf(err, "getting project for version %s", t.Version)
 	}
 	for _, container := range projectInfo.Project.Containers {
 		if container.Name == t.Container {
