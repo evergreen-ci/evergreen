@@ -88,3 +88,17 @@ func TestModifySpawnHostProviderSettings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "new_id", settingsList[0].LookupElement("subnet_id").Value().StringValue())
 }
+
+func TestValidateSSHKey(t *testing.T) {
+	rsaKey := "ssh-rsa randomKeyname"
+	dssKey := "ssh-dss randomKeyname"
+	ed25519Key := "ssh-ed25519 randomKeyname"
+	ecdsaKey := "ecdsa-sha2-nistp256 randomKeyname"
+	invalidKey := "notThat randomKeyname"
+
+	require.NoError(t, evergreen.ValidateSSHKey(rsaKey))
+	require.NoError(t, evergreen.ValidateSSHKey(dssKey))
+	require.NoError(t, evergreen.ValidateSSHKey(ed25519Key))
+	require.NoError(t, evergreen.ValidateSSHKey(ecdsaKey))
+	require.Error(t, evergreen.ValidateSSHKey(invalidKey))
+}

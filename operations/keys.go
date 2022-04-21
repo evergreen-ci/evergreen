@@ -3,8 +3,8 @@ package operations
 import (
 	"context"
 	"io/ioutil"
-	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -76,8 +76,8 @@ func keysAdd() cli.Command {
 
 			pubKey := string(keyFileContents)
 			// verify that this isn't a private key
-			if !strings.HasPrefix(strings.TrimSpace(pubKey), "ssh-") {
-				return errors.Errorf("'%s' does not appear to be an ssh public key", keyFile)
+			if err := evergreen.ValidateSSHKey(pubKey); err != nil {
+				return errors.Errorf("'%s' does not appear to be a valid ssh public key", keyFile)
 			}
 
 			if err := client.AddPublicKey(ctx, keyName, pubKey); err != nil {

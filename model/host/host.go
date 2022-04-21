@@ -457,15 +457,16 @@ func IsIntentHostId(id string) bool {
 
 // SetStatus updates a host's status on behalf of the given user.
 func (h *Host) SetStatus(newStatus, user, logs string) error {
-	return h.SetStatusAndFields(newStatus, bson.M{}, user, logs)
+	return h.setStatusAndFields(newStatus, nil, nil, user, logs)
 }
 
-// SetStatusAndFields is the same as SetStatus but also sets any of the other
-// given fields.
-func (h *Host) SetStatusAndFields(newStatus string, setFields bson.M, user, logs string) error {
+// setStatusAndFields sets the status as well as any of the other given fields.
+// Accepts fields to query in addition to host status.
+func (h *Host) setStatusAndFields(newStatus string, query, setFields bson.M, user, logs string) error {
 	if h.Status == newStatus {
 		return nil
 	}
+
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
 		grip.Warning(message.Fields{
@@ -476,11 +477,16 @@ func (h *Host) SetStatusAndFields(newStatus string, setFields bson.M, user, logs
 		return errors.New(msg)
 	}
 
+	if query == nil {
+		query = bson.M{}
+	}
+	if setFields == nil {
+		setFields = bson.M{}
+	}
+	query[IdKey] = h.Id
 	setFields[StatusKey] = newStatus
 	if err := UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
+		query,
 		bson.M{
 			"$set": setFields,
 		},
@@ -544,24 +550,40 @@ func (h *Host) SetProvisioning() error {
 	)
 }
 
-func (h *Host) SetDecommissioned(user string, logs string) error {
+// SetDecommissioned sets the host as decommissioned. If checkTaskGroup is set,
+// we only update the host if it hasn't started running a task group.
+func (h *Host) SetDecommissioned(user string, checkTaskGroup bool, logs string) error {
+	query := bson.M{}
+	if checkTaskGroup {
+		query[RunningTaskGroupKey] = bson.M{"$eq": ""}
+	}
 	if h.HasContainers {
 		containers, err := h.GetContainers()
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting containers",
 			"host_id": h.Id,
 		}))
+		catcher := grip.NewBasicCatcher()
+		failedContainerIds := []string{}
 		for _, c := range containers {
-			err = c.SetStatus(evergreen.HostDecommissioned, user, "parent is being decommissioned")
+			err = c.setStatusAndFields(evergreen.HostDecommissioned, query, nil, user, "parent is being decommissioned")
 			if err != nil && err.Error() != ErrorHostAlreadyTerminated {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"message": "error decommissioning container",
-					"host_id": c.Id,
-				}))
+				catcher.Add(err)
+				failedContainerIds = append(failedContainerIds, c.Id)
 			}
 		}
+		grip.Warning(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":  "error decommissioning containers",
+			"host_ids": failedContainerIds,
+		}))
 	}
-	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
+	err := h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, user, logs)
+	// Shouldn't consider it an error if the host isn't found when checking task group,
+	// because a task group may have been set for the host.
+	if err != nil && checkTaskGroup && adb.ResultsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 func (h *Host) SetRunning(user string) error {
@@ -799,7 +821,7 @@ func (h *Host) ResetLastCommunicated() error {
 // the host volumes.
 func (h *Host) Terminate(user, reason string) error {
 	terminatedAt := time.Now()
-	if err := h.SetStatusAndFields(evergreen.HostTerminated, bson.M{
+	if err := h.setStatusAndFields(evergreen.HostTerminated, nil, bson.M{
 		TerminationTimeKey: terminatedAt,
 		VolumesKey:         nil,
 	}, user, reason); err != nil {
@@ -1577,7 +1599,7 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(evergreen.User, logs))
+	return errors.WithStack(h.SetDecommissioned(evergreen.User, false, logs))
 }
 
 func (h *Host) SetExtId() error {

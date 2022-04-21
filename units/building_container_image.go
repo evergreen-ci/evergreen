@@ -117,7 +117,8 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}()
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
-		j.AddError(errors.Wrapf(j.parent.SetDecommissioned(evergreen.User, fmt.Sprintf("exceeded max container build retries (%d)", containerBuildRetries)), "failed to set parent '%s' to decommissioned", j.parent.Id))
+		err = j.parent.SetDecommissioned(evergreen.User, false, fmt.Sprintf("exceeded max container build retries (%d)", containerBuildRetries))
+		j.AddError(errors.Wrapf(err, "failed to set parent '%s' to decommissioned", j.parent.Id))
 		err = errors.Errorf("failed %d times to build and download image '%s' on parent '%s'", containerBuildRetries, j.DockerOptions.Image, j.parent.Id)
 		j.AddError(err)
 		grip.Warning(message.WrapError(err, message.Fields{

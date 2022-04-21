@@ -116,6 +116,8 @@ directives.spawn.directive('keyNameUnique', function() {
 // match
 var RSA = 'ssh-rsa';
 var DSS = 'ssh-dss';
+var ED25519 = "ssh-ed25519";
+var ECDSA   = "ecdsa-sha2-nistp256";
 var BASE64REGEX = new RegExp("^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$");
 
 directives.spawn.directive('keyBaseValid', function() {
@@ -126,7 +128,9 @@ directives.spawn.directive('keyBaseValid', function() {
         // validate the public key
         var isRSA = viewValue.substring(0, RSA.length) === RSA;
         var isDSS = viewValue.substring(0, DSS.length) === DSS;
-        if (!isRSA && !isDSS) {
+        var isED25519 = viewValue.substring(0, ED25519.length) === ED25519;
+        var isECDSA = viewValue.substring(0, ECDSA.length) === ECDSA;
+        if (!isRSA && !isDSS && !isED25519 && !isECDSA) {
           ctrl.$setValidity('keyBaseValid', false);
           return viewValue;
         }

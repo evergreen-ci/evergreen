@@ -1318,7 +1318,7 @@ func DeactivateStepbackTasksForProject(projectId, caller string) error {
 		return errors.Wrap(err, "finding activated stepback tasks")
 	}
 
-	if err = DeactivateTasks(tasks, caller); err != nil {
+	if err = DeactivateTasks(tasks, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating active stepback tasks")
 	}
 
@@ -1470,16 +1470,18 @@ func (t *Task) SetHasLegacyResults(hasLegacyResults bool) error {
 	)
 }
 
-// ActivateTask will set the ActivatedBy field to the caller and set the active state to be true
+// ActivateTask will set the ActivatedBy field to the caller and set the active state to be true.
+// Also activates dependencies of the task.
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
 	t.ActivatedTime = time.Now()
 
-	return ActivateTasks([]Task{*t}, t.ActivatedTime, caller)
+	return ActivateTasks([]Task{*t}, t.ActivatedTime, true, caller)
 }
 
-func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error {
+// ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
+func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -1503,9 +1505,13 @@ func ActivateTasks(tasks []Task, activationTime time.Time, caller string) error 
 		event.LogTaskActivated(t.Id, t.Execution, caller)
 	}
 
-	return ActivateDeactivatedDependencies(taskIDs, caller)
+	if updateDependencies {
+		return ActivateDeactivatedDependencies(taskIDs, caller)
+	}
+	return nil
 }
 
+// ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
 func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 	q := db.Query(bson.M{
 		IdKey:     bson.M{"$in": ids},
@@ -1521,7 +1527,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 		return errors.Wrap(err, "getting recursive dependencies")
 	}
 
-	if err = ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+	if err = ActivateTasks(append(tasks, dependOn...), time.Now(), true, caller); err != nil {
 		return errors.Wrap(err, "updating tasks for activation")
 	}
 	return nil
@@ -1668,10 +1674,10 @@ func (t *Task) DeactivateTask(caller string) error {
 	t.Activated = false
 	t.ScheduledTime = utility.ZeroTime
 
-	return DeactivateTasks([]Task{*t}, caller)
+	return DeactivateTasks([]Task{*t}, true, caller)
 }
 
-func DeactivateTasks(tasks []Task, caller string) error {
+func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -1696,7 +1702,10 @@ func DeactivateTasks(tasks []Task, caller string) error {
 		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 	}
 
-	return DeactivateDependencies(taskIDs, caller)
+	if updateDependencies {
+		return DeactivateDependencies(taskIDs, caller)
+	}
+	return nil
 }
 
 func DeactivateDependencies(tasks []string, caller string) error {
@@ -2018,7 +2027,7 @@ func DisableTasks(tasks []Task, caller string) error {
 		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
 	}
 
-	if err := DeactivateTasks(tasks, caller); err != nil {
+	if err := DeactivateTasks(tasks, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
 	}
 
@@ -2621,6 +2630,19 @@ func (t *Task) SetResetWhenFinished() error {
 			},
 		},
 	)
+}
+
+// SetAbortedTasksResetWhenFinished sets all matching aborted tasks as ResetWhenFinished.
+func SetAbortedTasksResetWhenFinished(taskIds []string) error {
+	_, err := UpdateAll(
+		bySubsetAborted(taskIds),
+		bson.M{
+			"$set": bson.M{
+				ResetWhenFinishedKey: true,
+			},
+		},
+	)
+	return err
 }
 
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
