@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
@@ -197,4 +198,9 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "insert", annotation.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
 
+	badInsert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Note: &Note{Message: "shouldn't work"}}
+	assert.Error(t, PatchAnnotation(&badInsert, "error out ", true))
+
+	badInsert2 := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Metadata: &birch.Document{}}
+	assert.Error(t, PatchAnnotation(&badInsert2, "error out ", false))
 }
