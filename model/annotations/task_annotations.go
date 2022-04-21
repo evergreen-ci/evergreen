@@ -105,7 +105,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	}
 
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
-		return errors.New("note is out of sync, please try again")
+		return errors.New(", note is out of syncplease try again")
 	}
 	_, err = db.Upsert(
 		Collection,
@@ -211,15 +211,23 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) error {
 	existingAnnotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	if err != nil {
-		return errors.Wrapf(err, "finding task annotation for task id '%s'", a.TaskId)
+		return errors.Wrapf(err, "finding task annotation")
 	}
-	if existingAnnotation == nil {
+	if existingAnnotation == nil && upsert {
 		if !upsert {
-			return nil
+			return errors.Errorf("annotation for task '%s' and execution %d not found", a.TaskId, a.TaskExecution)
 		} else {
 			return UpdateAnnotation(a, userDisplayName)
 		}
 	}
+
+	if a.Note != nil {
+		return errors.New("note should be empty")
+	}
+	if a.Metadata != nil {
+		return errors.New("metadata should be empty")
+	}
+
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
@@ -230,28 +238,26 @@ func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) err
 	if a.Issues != nil {
 		for i := range a.Issues {
 			a.Issues[i].Source = source
-			existingAnnotation.Issues = append(existingAnnotation.Issues, a.Issues[i])
 		}
-		update[IssuesKey] = existingAnnotation.Issues
+		update[IssuesKey] = bson.M{"$each": a.Issues}
 	}
 
 	if a.SuspectedIssues != nil {
 		for i := range a.SuspectedIssues {
 			a.SuspectedIssues[i].Source = source
-			existingAnnotation.SuspectedIssues = append(existingAnnotation.SuspectedIssues, a.SuspectedIssues[i])
 		}
-		update[SuspectedIssuesKey] = existingAnnotation.SuspectedIssues
+		update[SuspectedIssuesKey] = bson.M{"$each": a.SuspectedIssues}
 	}
 
 	if len(update) == 0 {
 		return nil
 	}
 
-	_, err = db.Upsert(
+	err = db.Update(
 		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
-			"$set": update,
+			"$push": update,
 		},
 	)
 	return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
