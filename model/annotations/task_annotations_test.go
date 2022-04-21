@@ -198,6 +198,20 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "insert", annotation.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
 
+	upsert := TaskAnnotation{TaskId: "t1", TaskExecution: 2, Note: &Note{Message: "should work"}, SuspectedIssues: []IssueLink{issue3}}
+	assert.NoError(t, PatchAnnotation(&upsert, "upsert", true))
+	annotation, err = FindOneByTaskIdAndExecution(upsert.TaskId, upsert.TaskExecution)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Len(t, annotation.SuspectedIssues, 1)
+	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
+	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)
+	assert.Equal(t, "upsert", annotation.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
+	assert.NotNil(t, annotation.Note)
+	assert.Equal(t, "should work", annotation.Note.Message)
+
 	badInsert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Note: &Note{Message: "shouldn't work"}}
 	assert.Error(t, PatchAnnotation(&badInsert, "error out ", true))
 
