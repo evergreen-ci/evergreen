@@ -2027,7 +2027,7 @@ func DisableTasks(tasks []Task, caller string) error {
 		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
 	}
 
-	if err := DeactivateTasks(tasks, caller); err != nil {
+	if err := DeactivateTasks(tasks, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
 	}
 
