@@ -3588,46 +3588,52 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 
 	t1 := Task{
-		Id:           "t1",
-		Version:      "v1",
-		Execution:    0,
-		Status:       evergreen.TaskSucceeded,
-		BuildVariant: "bv1",
+		Id:                      "t1",
+		Version:                 "v1",
+		Execution:               0,
+		Status:                  evergreen.TaskSucceeded,
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
 	}
 	t2 := Task{
-		Id:           "t2",
-		Version:      "v1",
-		Execution:    0,
-		Status:       evergreen.TaskFailed,
-		BuildVariant: "bv1",
+		Id:                      "t2",
+		Version:                 "v1",
+		Execution:               0,
+		Status:                  evergreen.TaskFailed,
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
 	}
 	t3 := Task{
-		Id:           "t3",
-		Version:      "v1",
-		Execution:    1,
-		Status:       evergreen.TaskSucceeded,
-		BuildVariant: "bv1",
+		Id:                      "t3",
+		Version:                 "v1",
+		Execution:               1,
+		Status:                  evergreen.TaskSucceeded,
+		BuildVariant:            "bv1",
+		BuildVariantDisplayName: "Build Variant 1",
 	}
 	t4 := Task{
-		Id:           "t4",
-		Version:      "v1",
-		Execution:    1,
-		Status:       evergreen.TaskFailed,
-		BuildVariant: "bv2",
+		Id:                      "t4",
+		Version:                 "v1",
+		Execution:               1,
+		Status:                  evergreen.TaskFailed,
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
 	}
 	t5 := Task{
-		Id:           "t5",
-		Version:      "v1",
-		Execution:    2,
-		Status:       evergreen.TaskStatusPending,
-		BuildVariant: "bv2",
+		Id:                      "t5",
+		Version:                 "v1",
+		Execution:               2,
+		Status:                  evergreen.TaskStatusPending,
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
 	}
 	t6 := Task{
-		Id:           "t6",
-		Version:      "v1",
-		Execution:    2,
-		Status:       evergreen.TaskFailed,
-		BuildVariant: "bv2",
+		Id:                      "t6",
+		Version:                 "v1",
+		Execution:               2,
+		Status:                  evergreen.TaskFailed,
+		BuildVariant:            "bv2",
+		BuildVariantDisplayName: "Build Variant 2",
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 
@@ -3640,7 +3646,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		expectedValues := []*GroupedTaskStatusCount{
 			{
 				Variant:     "bv1",
-				DisplayName: "",
+				DisplayName: "Build Variant 1",
 				StatusCounts: []*StatusCount{
 					{
 						Status: evergreen.TaskFailed,
@@ -3654,7 +3660,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 			},
 			{
 				Variant:     "bv2",
-				DisplayName: "",
+				DisplayName: "Build Variant 2",
 				StatusCounts: []*StatusCount{
 					{
 						Status: evergreen.TaskFailed,
@@ -3682,7 +3688,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		expectedValues := []*GroupedTaskStatusCount{
 			{
 				Variant:     "bv1",
-				DisplayName: "",
+				DisplayName: "Build Variant 1",
 				StatusCounts: []*StatusCount{
 					{
 						Status: evergreen.TaskFailed,
