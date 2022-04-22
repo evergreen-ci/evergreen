@@ -1393,6 +1393,8 @@ func TestCreateTaskGroup(t *testing.T) {
     - example_task_2
   buildvariants:
   - name: "bv"
+    run_on:
+    - "arch"
     tasks:
     - name: example_task_group
     - name: example_task_3
