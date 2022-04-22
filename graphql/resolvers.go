@@ -3940,7 +3940,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	}
 
 	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if isAborted && len(utility.StringSliceIntersection(evergreen.TaskFailureStatuses, nonAbortedStatuses)) == 0 {
+	if isAborted && !utility.StringSliceContains(nonAbortedStatuses, evergreen.PatchFailed) {
 		status = evergreen.PatchAborted
 	}
 	return status, nil
