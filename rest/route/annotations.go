@@ -236,7 +236,7 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 		}
 	}
 	for _, update := range h.opts.TaskUpdates {
-		for _, t := range update.Tasks {
+		for _, t := range update.TaskData {
 			// check if the task exists
 			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
 			if err != nil {

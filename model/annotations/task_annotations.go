@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -48,7 +47,7 @@ type Note struct {
 }
 
 type TaskUpdate struct {
-	Tasks      []TaskData     `bson:"tasks" json:"tasks"`
+	TaskData   []TaskData     `bson:"task_data" json:"task_data"`
 	Annotation TaskAnnotation `bson:"annotation" json:"annotation"`
 }
 type TaskData struct {
@@ -180,7 +179,7 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 }
 
 func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
-	update := createAnnotationUpdate(a, userDisplayName)
+	update := createAnnotationUpdate(a, userDisplayName, true)
 	if len(update) == 0 {
 		return nil
 	}
@@ -200,12 +199,12 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	for _, u := range updates {
-		update := createAnnotationUpdate(&u.Annotation, "")
-		ops := make([]mongo.WriteModel, len(u.Tasks))
-		for idx := 0; idx < len(u.Tasks); idx++ {
+		update := createAnnotationUpdate(&u.Annotation, "", false)
+		ops := make([]mongo.WriteModel, len(u.TaskData))
+		for idx := 0; idx < len(u.TaskData); idx++ {
 			ops[idx] = mongo.NewUpdateOneModel().
 				SetUpsert(true).
-				SetFilter(ByTaskIdAndExecution(u.Tasks[idx].TaskId, u.Tasks[idx].Execution)).
+				SetFilter(ByTaskIdAndExecution(u.TaskData[idx].TaskId, u.TaskData[idx].Execution)).
 				SetUpdate(bson.M{"$set": update})
 		}
 		_, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, nil)
@@ -217,31 +216,33 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 	return nil
 }
 
-func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) bson.M {
+func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string, fullOverwrite bool) bson.M {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
 		Requester: APIRequester,
 	}
 	update := bson.M{}
-	if annotation.Metadata != nil {
-		update[MetadataKey] = annotation.Metadata
-	}
-	if annotation.Note != nil {
-		annotation.Note.Source = source
-		update[NoteKey] = annotation.Note
+	if fullOverwrite {
+		if annotation.Metadata != nil {
+			update[MetadataKey] = annotation.Metadata
+		}
+		if annotation.Note != nil {
+			annotation.Note.Source = source
+			update[NoteKey] = annotation.Note
+		}
 	}
 	if annotation.Issues != nil {
 		for i := range annotation.Issues {
 			annotation.Issues[i].Source = source
 		}
-		update[IssuesKey] = annotation.Issues
+		update[IssuesKey] = bson.M{"$each": annotation.Issues}
 	}
 	if annotation.SuspectedIssues != nil {
 		for i := range annotation.SuspectedIssues {
 			annotation.SuspectedIssues[i].Source = source
 		}
-		update[SuspectedIssuesKey] = annotation.SuspectedIssues
+		update[SuspectedIssuesKey] = bson.M{"$each": annotation.SuspectedIssues}
 	}
 	return update
 }
@@ -267,26 +268,7 @@ func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) err
 		return errors.New("metadata should be empty")
 	}
 
-	source := &Source{
-		Author:    userDisplayName,
-		Time:      time.Now(),
-		Requester: APIRequester,
-	}
-	update := bson.M{}
-
-	if a.Issues != nil {
-		for i := range a.Issues {
-			a.Issues[i].Source = source
-		}
-		update[IssuesKey] = bson.M{"$each": a.Issues}
-	}
-
-	if a.SuspectedIssues != nil {
-		for i := range a.SuspectedIssues {
-			a.SuspectedIssues[i].Source = source
-		}
-		update[SuspectedIssuesKey] = bson.M{"$each": a.SuspectedIssues}
-	}
+	update := createAnnotationUpdate(a, userDisplayName, false)
 
 	if len(update) == 0 {
 		return nil
@@ -312,8 +294,8 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	_, err := db.Upsert(
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
-		mgobson.M{
-			"$push": mgobson.M{CreatedIssuesKey: ticket},
+		bson.M{
+			"$push": bson.M{CreatedIssuesKey: ticket},
 		},
 	)
 	return errors.Wrapf(err, "adding ticket to task '%s'", taskId)
