@@ -286,7 +286,7 @@
         },
         {  
           "id": "evergreen_ubuntu1604_test_agent_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-           "d": "silver",
+           "d": "test-db",
            "s": "setup-failed",
            "ed": { "status": "setup-failed", "type": "test", "desc": "'subprocess.exec' in \"run-make\" (#1)" },
            "st": { "$date": { "$numberLong": "1582298075192" } },
@@ -295,7 +295,7 @@
         },
         {
           "id": "evergreen_ubuntu1604_test_auth_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-          "d": "gold",
+          "d": "test-agent",
           "s": "undispatched",
           "ed": { "status": "undispatched", "type": "test", "desc": "'subprocess.exec' in \"run-make\" (#1)" },
           "st": { "$date": { "$numberLong": "1582298129465" } },
@@ -345,7 +345,7 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
-      "display_name": "silver",
+      "display_name": "test-db",
       "r": "github_pull_request",
       "status": "setup-failed",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
@@ -355,7 +355,7 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "build_variant": "ubuntu1604",
-      "display_name": "gold",
+      "display_name": "test-agent",
       "r": "github_pull_request",
       "status": "undispatched",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
