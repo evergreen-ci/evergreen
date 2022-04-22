@@ -6,7 +6,7 @@
         "data": {
           "attachProjectToNewRepo": {
             "id": "sandbox_project_id",
-            "owner": "sand",
+            "owner": "newOwner",
             "repo": "box",
             "repoRefId": "different"
           }
