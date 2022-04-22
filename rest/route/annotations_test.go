@@ -750,7 +750,7 @@ func TestBulkCreateAnnotationHandler(t *testing.T) {
 							},
 						},
 					},
-					Tasks: []annotations.TaskData{
+					TaskData: []annotations.TaskData{
 						{
 							TaskId:    "t1",
 							Execution: 0,
@@ -783,7 +783,7 @@ func TestBulkCreateAnnotationHandler(t *testing.T) {
 							},
 						},
 					},
-					Tasks: []annotations.TaskData{
+					TaskData: []annotations.TaskData{
 						{
 							TaskId:    "t1",
 							Execution: 1,
