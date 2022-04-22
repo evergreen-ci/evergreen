@@ -207,6 +207,62 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 	return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 }
 
+// PatchAnnotation adds issues onto existing annotations.
+func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) error {
+	existingAnnotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	if err != nil {
+		return errors.Wrapf(err, "finding annotation for task '%s' and execution %d", a.TaskId, a.TaskExecution)
+	}
+	if existingAnnotation == nil {
+		if !upsert {
+			return errors.Errorf("annotation for task '%s' and execution %d not found", a.TaskId, a.TaskExecution)
+		} else {
+			return UpdateAnnotation(a, userDisplayName)
+		}
+	}
+
+	if a.Note != nil {
+		return errors.New("note should be empty")
+	}
+	if a.Metadata != nil {
+		return errors.New("metadata should be empty")
+	}
+
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	update := bson.M{}
+
+	if a.Issues != nil {
+		for i := range a.Issues {
+			a.Issues[i].Source = source
+		}
+		update[IssuesKey] = bson.M{"$each": a.Issues}
+	}
+
+	if a.SuspectedIssues != nil {
+		for i := range a.SuspectedIssues {
+			a.SuspectedIssues[i].Source = source
+		}
+		update[SuspectedIssuesKey] = bson.M{"$each": a.SuspectedIssues}
+	}
+
+	if len(update) == 0 {
+		return nil
+	}
+
+	err = db.Update(
+		Collection,
+		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
+		bson.M{
+			"$push": update,
+		},
+	)
+	return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
+}
+
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
