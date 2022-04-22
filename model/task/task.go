@@ -3501,12 +3501,12 @@ type maxETAForQuery struct {
 
 type taskStatsForQueryResult struct {
 	Counts []StatusCount    `bson:"counts"`
-	ETA    []maxETAForQuery `bson: "eta"`
+	ETA    []maxETAForQuery `bson:"eta"`
 }
 
 type TaskStats struct {
 	Counts []StatusCount `bson:"counts"`
-	ETA    *time.Time    `bson: "eta"`
+	ETA    *time.Time    `bson:"eta"`
 }
 
 func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
