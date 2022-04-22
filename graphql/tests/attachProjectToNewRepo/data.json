@@ -20,7 +20,7 @@
     },
     {
       "_id": "different",
-      "owner_name": "sand",
+      "owner_name": "newOwner",
       "repo_name": "box"
     }
   ],

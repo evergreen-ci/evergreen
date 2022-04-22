@@ -284,10 +284,6 @@ func TestChangeOwnerRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
-	settings := testutil.TestConfig()
-	settings.GithubOrgs = []string{"evergreen-ci"}
-	settings.GithubOrgs = []string{"newOwner"}
-	assert.NoError(t, evergreen.UpdateConfig(settings))
 
 	pRef := ProjectRef{
 		Id:        "myProject",

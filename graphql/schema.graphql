@@ -1595,6 +1595,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  githubOrgs: [String!]!
   providers: CloudProviderConfig
   spawnHost: SpawnHostConfig!
 }
