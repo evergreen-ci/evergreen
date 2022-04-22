@@ -179,7 +179,32 @@ func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue Issu
 }
 
 func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
-	update := createAnnotationUpdate(a, userDisplayName, true)
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	update := bson.M{}
+
+	if a.Metadata != nil {
+		update[MetadataKey] = a.Metadata
+	}
+	if a.Note != nil {
+		a.Note.Source = source
+		update[NoteKey] = a.Note
+	}
+	if a.Issues != nil {
+		for i := range a.Issues {
+			a.Issues[i].Source = source
+		}
+		update[IssuesKey] = a.Issues
+	}
+	if a.SuspectedIssues != nil {
+		for i := range a.SuspectedIssues {
+			a.SuspectedIssues[i].Source = source
+		}
+		update[SuspectedIssuesKey] = a.SuspectedIssues
+	}
 	if len(update) == 0 {
 		return nil
 	}
@@ -199,13 +224,13 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	for _, u := range updates {
-		update := createAnnotationUpdate(&u.Annotation, "", false)
+		update := createAnnotationUpdate(&u.Annotation, "")
 		ops := make([]mongo.WriteModel, len(u.TaskData))
 		for idx := 0; idx < len(u.TaskData); idx++ {
 			ops[idx] = mongo.NewUpdateOneModel().
 				SetUpsert(true).
 				SetFilter(ByTaskIdAndExecution(u.TaskData[idx].TaskId, u.TaskData[idx].Execution)).
-				SetUpdate(bson.M{"$set": update})
+				SetUpdate(bson.M{"$push": update})
 		}
 		_, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, nil)
 
@@ -216,22 +241,13 @@ func InsertManyAnnotations(updates []TaskUpdate) error {
 	return nil
 }
 
-func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string, fullOverwrite bool) bson.M {
+func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) bson.M {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
 		Requester: APIRequester,
 	}
 	update := bson.M{}
-	if fullOverwrite {
-		if annotation.Metadata != nil {
-			update[MetadataKey] = annotation.Metadata
-		}
-		if annotation.Note != nil {
-			annotation.Note.Source = source
-			update[NoteKey] = annotation.Note
-		}
-	}
 	if annotation.Issues != nil {
 		for i := range annotation.Issues {
 			annotation.Issues[i].Source = source
@@ -268,7 +284,7 @@ func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) err
 		return errors.New("metadata should be empty")
 	}
 
-	update := createAnnotationUpdate(a, userDisplayName, false)
+	update := createAnnotationUpdate(a, userDisplayName)
 
 	if len(update) == 0 {
 		return nil
