@@ -731,7 +731,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					runOnHasContainer = true
 				}
 			}
-			errs = append(errs, addRunOnError(runOnHasDistro, runOnHasContainer, task.RunOn)...)
+			errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, task.RunOn)...)
 		}
 		runOnHasDistro := false
 		runOnHasContainer := false
@@ -762,12 +762,12 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				runOnHasContainer = true
 			}
 		}
-		errs = append(errs, addRunOnError(runOnHasDistro, runOnHasContainer, buildVariant.RunOn)...)
+		errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, buildVariant.RunOn)...)
 	}
 	return errs
 }
 
-func addRunOnError(runOnHasDistro, runOnHasContainer bool, runOn []string) []ValidationError {
+func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []ValidationError {
 	if runOnHasContainer && runOnHasDistro {
 		return []ValidationError{{
 			Message: "run_on cannot contain a mixture of containers and distros",
@@ -776,7 +776,7 @@ func addRunOnError(runOnHasDistro, runOnHasContainer bool, runOn []string) []Val
 
 	} else if runOnHasContainer && len(runOn) > 1 {
 		return []ValidationError{{
-			Message: fmt.Sprint("only one container can be used from run_on; the first container in the list will be used"),
+			Message: "only one container can be used from run_on; the first container in the list will be used",
 			Level:   Warning,
 		}}
 	}
