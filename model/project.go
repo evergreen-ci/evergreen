@@ -1165,6 +1165,27 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
+// FindContainerFromProject finds the container configuration associated with a given task's Container field.
+func FindContainerFromProject(t task.Task) (*Container, error) {
+	v, err := VersionFindOneId(t.Version)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding version '%s'", t.Version)
+	}
+	if v == nil {
+		return nil, errors.Errorf("version '%s' not found", t.Version)
+	}
+	projectInfo, err := LoadProjectForVersion(v, t.Project, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project for version '%s'", t.Version)
+	}
+	for _, container := range projectInfo.Project.Containers {
+		if container.Name == t.Container {
+			return &container, nil
+		}
+	}
+	return nil, errors.Errorf("no such container '%s' defined on project '%s'", t.Container, t.Project)
+}
+
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {

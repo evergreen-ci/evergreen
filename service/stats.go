@@ -52,6 +52,7 @@ type UITask struct {
 	Status                 string    `json:"status"`
 	Host                   string    `json:"host"`
 	Distro                 string    `json:"distro"`
+	Container              string    `json:"container,omitempty"`
 	IsDisplay              bool      `json:"is_display"`
 }
 
@@ -262,6 +263,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				Status:                 t.Status,
 				Host:                   t.HostId,
 				Distro:                 t.DistroId,
+				Container:              t.Container,
 				IsDisplay:              t.DisplayOnly,
 			}
 			uiTasks = append(uiTasks, uiTask)
