@@ -347,6 +347,7 @@ func TestCountTestsByTaskID(t *testing.T) {
 		for _, test := range []struct {
 			name       string
 			task       *task.Task
+			execution  int
 			response   apimodels.CedarTestResultsStats
 			statusCode int
 			hasErr     bool
@@ -361,25 +362,36 @@ func TestCountTestsByTaskID(t *testing.T) {
 				hasErr:     true,
 			},
 			{
+				name:       "TaskExecutionDNE",
+				task:       regularTask,
+				execution:  100,
+				statusCode: http.StatusOK,
+				hasErr:     true,
+			},
+			{
 				name:       "CedarError",
 				task:       regularTask,
+				execution:  regularTask.Execution,
 				statusCode: http.StatusInternalServerError,
 				hasErr:     true,
 			},
 			{
 				name:       "TaskWithoutResults",
 				task:       regularTask,
+				execution:  regularTask.Execution,
 				statusCode: http.StatusNotFound,
 			},
 			{
 				name:       "TaskWithResults",
 				task:       regularTask,
+				execution:  regularTask.Execution,
 				response:   apimodels.CedarTestResultsStats{TotalCount: 100},
 				statusCode: http.StatusOK,
 			},
 			{
 				name:       "DisplayTask",
 				task:       displayTask,
+				execution:  displayTask.Execution,
 				response:   apimodels.CedarTestResultsStats{TotalCount: 100},
 				statusCode: http.StatusOK,
 			},
@@ -390,7 +402,7 @@ func TestCountTestsByTaskID(t *testing.T) {
 				handler.Response = responseData
 				handler.StatusCode = test.statusCode
 
-				count, err := CountTestsByTaskID(ctx, test.task.Id, test.task.Execution)
+				count, err := CountTestsByTaskID(ctx, test.task.Id, test.execution)
 				if test.hasErr {
 					assert.Error(t, err)
 				} else {

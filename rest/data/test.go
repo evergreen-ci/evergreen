@@ -92,10 +92,10 @@ func CountTestsByTaskID(ctx context.Context, taskID string, execution int) (int,
 			Message:    errors.Wrapf(err, "finding task '%s'", taskID).Error(),
 		}
 	}
-	if t == nil {
+	if t == nil || t.Execution != execution {
 		return 0, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", taskID),
+			Message:    fmt.Sprintf("task '%s' with execution %d not found", taskID, execution),
 		}
 	}
 
