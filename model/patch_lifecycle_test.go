@@ -750,6 +750,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 						ExecTasks: []string{"task1", "task2"},
 					},
 				},
+				RunOn: []string{"arch"},
 			},
 		},
 		Tasks: []ProjectTask{
