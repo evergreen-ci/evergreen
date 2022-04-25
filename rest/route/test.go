@@ -263,7 +263,7 @@ func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
-	count, err := TestCountByTaskID(ctx, h.taskID, h.execution)
+	count, err := data.TestCountByTaskID(ctx, h.taskID, h.execution)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
