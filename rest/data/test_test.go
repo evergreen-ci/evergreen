@@ -326,26 +326,6 @@ func TestTestCountByTaskID(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	/*
-		for i := 0; i < 2; i++ {
-			id := fmt.Sprintf("evg_task_%d", i)
-			testTask := &task.Task{
-				Id: id,
-			}
-			tests := make([]testresult.TestResult, numTests)
-			for j := 0; j < numTests; j++ {
-				tests[j] = testresult.TestResult{
-					TaskID:    id,
-					Execution: 0,
-				}
-			}
-			assert.NoError(testTask.Insert())
-			for _, test := range tests {
-				assert.NoError(test.Insert())
-			}
-		}
-	*/
-
 	t.Run("CedarTestResults", func(t *testing.T) {
 		regularTask := &task.Task{
 			Id:              "cedar",
