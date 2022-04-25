@@ -18,7 +18,7 @@ import (
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// GET  /tasks/{task_id}/tests
+// GET /tasks/{task_id}/tests
 
 type testGetHandler struct {
 	taskID        string
@@ -220,7 +220,7 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult i
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// GET  /tasks/{task_id}/tests/count
+// GET /tasks/{task_id}/tests/count
 
 type testCountGetHandler struct {
 	taskID    string
@@ -248,14 +248,10 @@ func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error 
 	var err error
 	vals := r.URL.Query()
 	execution := vals.Get("execution")
-
 	if execution != "" {
 		h.execution, err = strconv.Atoi(execution)
 		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "invalid execution",
-				StatusCode: http.StatusBadRequest,
-			}
+			return errors.Wrap(err, "invalid execution")
 		}
 	}
 
@@ -263,9 +259,9 @@ func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
-	count, err := data.TestCountByTaskID(ctx, h.taskID, h.execution)
+	count, err := data.CountTestsByTaskID(ctx, h.taskID, h.execution)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	return gimlet.NewTextResponse(count)

@@ -82,7 +82,9 @@ func (tc *DBTestConnector) FindTestsByTaskId(opts FindTestsByTaskIdOpts) ([]test
 	return res, nil
 }
 
-func TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, error) {
+// CountTestsByTaskID returns the number of tests for a given task ID and
+// execution.
+func CountTestsByTaskID(ctx context.Context, taskID string, execution int) (int, error) {
 	t, err := task.FindOneIdOldOrNew(taskID, execution)
 	if err != nil {
 		return 0, gimlet.ErrorResponse{
@@ -97,7 +99,6 @@ func TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, 
 		}
 	}
 
-	var count int
 	if t.HasCedarResults {
 		stats, status, err := apimodels.GetCedarTestResultsStats(ctx, apimodels.GetCedarTestResultsOptions{
 			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
@@ -118,7 +119,7 @@ func TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, 
 			}
 		}
 
-		count = stats.TotalCount
+		return stats.TotalCount, nil
 	} else {
 		var taskIDs []string
 		if t.DisplayOnly {
@@ -127,15 +128,14 @@ func TestCountByTaskID(ctx context.Context, taskID string, execution int) (int, 
 			taskIDs = []string{taskID}
 		}
 
-		var err error
-		count, err = testresult.TestResultCount(taskIDs, "", nil, execution)
+		count, err := testresult.TestResultCount(taskIDs, "", nil, execution)
 		if err != nil {
 			return 0, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "getting test count for task '%s'", taskID).Error(),
 			}
 		}
-	}
 
-	return count, nil
+		return count, nil
+	}
 }

@@ -318,7 +318,7 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 	assert.Len(foundTests, 0)
 }
 
-func TestTestCountByTaskID(t *testing.T) {
+func TestCountTestsByTaskID(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, testresult.Collection))
@@ -390,7 +390,7 @@ func TestTestCountByTaskID(t *testing.T) {
 				handler.Response = responseData
 				handler.StatusCode = test.statusCode
 
-				count, err := TestCountByTaskID(ctx, test.task.Id, test.task.Execution)
+				count, err := CountTestsByTaskID(ctx, test.task.Id, test.task.Execution)
 				if test.hasErr {
 					assert.Error(t, err)
 				} else {
@@ -429,12 +429,12 @@ func TestTestCountByTaskID(t *testing.T) {
 		}
 
 		t.Run("ExecutionTask", func(t *testing.T) {
-			count, err := TestCountByTaskID(ctx, t0.Id, 0)
+			count, err := CountTestsByTaskID(ctx, t0.Id, 0)
 			require.NoError(t, err)
 			assert.Equal(t, numTests, count)
 		})
 		t.Run("DisplayTask", func(t *testing.T) {
-			count, err := TestCountByTaskID(ctx, t2.Id, 0)
+			count, err := CountTestsByTaskID(ctx, t2.Id, 0)
 			require.NoError(t, err)
 			assert.Equal(t, len(t2.ExecutionTasks)*numTests, count)
 		})
