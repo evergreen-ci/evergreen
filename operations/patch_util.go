@@ -531,7 +531,8 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 
 	mergeBase, err := gitMergeBase(branch+"@{upstream}", ref, commits)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error getting merge base")
+		return nil, errors.Wrapf(err, "Error getting merge base, "+
+			"may need to create local branch '%s' and have it track upstream", branch)
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {
