@@ -377,7 +377,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 			a.NamedQueues = append(a.NamedQueues, apiNamedQueue)
 		}
 	default:
-		return errors.Errorf("programmatic error: expected Amboy config but got type", h)
+		return errors.Errorf("programmatic error: expected Amboy config but got type %T", h)
 	}
 	return nil
 }

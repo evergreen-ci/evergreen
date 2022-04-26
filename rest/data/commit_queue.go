@@ -305,7 +305,7 @@ func CreatePatchForMerge(ctx context.Context, existingPatchID, commitMessage str
 
 	newPatch, err := model.MakeMergePatchFromExisting(ctx, existingPatch, commitMessage)
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating new patch from existing patch '%s'", existingPatch)
+		return nil, errors.Wrapf(err, "creating new patch from existing patch '%s'", existingPatchID)
 	}
 
 	apiPatch := &restModel.APIPatch{}

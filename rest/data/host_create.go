@@ -97,7 +97,7 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 
 	projectTask := proj.FindProjectTask(t.DisplayName)
 	if projectTask == nil {
-		return errors.Errorf("project config task for task '%s' not found", t.Id)
+		return errors.Errorf("project config for task '%s' not found", t.Id)
 	}
 
 	createHostCmds := []apimodels.CreateHost{}
@@ -305,7 +305,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Wrap(err, "generating container and parent intent hosts")
 	}
 	if len(containerIntents) != 1 {
-		return nil, errors.Errorf("programmer error: should have created one new container, not %d", len(containerIntents))
+		return nil, errors.Errorf("programmatic error: should have created one new container, not %d", len(containerIntents))
 	}
 	if err = host.InsertMany(containerIntents); err != nil {
 		return nil, errors.Wrap(err, "inserting container intents")
@@ -347,10 +347,10 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		if foundDistro == nil {
 			return nil, errors.Wrapf(err, "distro '%s' not found", distroID)
 		}
+		d = *foundDistro
 		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "getting EC2 provider settings from distro '%s' in region '%s'", distroID, createHost.Region)
 		}
-		d = *foundDistro
 	}
 
 	// Do not provision task-spawned hosts.

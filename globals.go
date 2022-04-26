@@ -665,7 +665,7 @@ var (
 	}
 
 	// Set of host status values that can be user set via the API
-	ValidUserSetHostStatus = []string{
+	ValidUserSetStatus = []string{
 		HostRunning,
 		HostTerminated,
 		HostQuarantined,
