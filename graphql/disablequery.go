@@ -29,7 +29,7 @@ func (DisableQuery) MutateOperationContext(ctx context.Context, rc *graphql.Oper
 	if err != nil {
 		grip.Error(errors.Wrap(err, "getting Evergreen admin settings"))
 	}
-	if utility.StringSliceContains(settings.DisabledGQLQueries, rc.OperationName) {
+	if utility.StringSliceContains(settings.DisabledGQLQueries, rc.Operation.Name) {
 		return &gqlerror.Error{
 			Message: "Query is disabled by admin",
 			Extensions: map[string]interface{}{
