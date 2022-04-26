@@ -508,7 +508,12 @@
                         "id": "evergreen_version1",
                         "taskStatusStats": {
                         "eta": null,
-                        "counts": []
+                        "counts": [
+                           {
+                              "status": "success",
+                              "count": 1
+                           }
+                        ]
                         }
                      },
                      "rolledUpVersions": null
@@ -520,82 +525,82 @@
       },
       {
          "query_file": "taskStatusStats-no-filter.graphql",
-         "result": {
-            "data": {
-               "mainlineCommits": {
-                  "versions": [
-                  {
-                     "version": {
-                        "id": "evergreen_version5",
-                        "taskStatusStats": {
-                        "eta": null,
-                        "counts": [
-                           {
-                              "status": "success",
-                              "count": 1
-                           }
-                        ]
-                        }
-                     },
-                     "rolledUpVersions": null
-                  },
-                  {
-                     "version": null,
-                     "rolledUpVersions": [
+               "result": {
+                  "data": {
+                     "mainlineCommits": {
+                        "versions": [
                         {
-                        "id": "evergreen_version4",
-                        "taskStatusStats": {
-                           "eta": null,
-                           "counts": []
-                        }
+                           "version": {
+                              "id": "evergreen_version5",
+                              "taskStatusStats": {
+                              "eta": null,
+                              "counts": [
+                                 {
+                                    "status": "success",
+                                    "count": 1
+                                 }
+                              ]
+                              }
+                           },
+                           "rolledUpVersions": null
                         },
                         {
-                        "id": "evergreen_version3",
-                        "taskStatusStats": {
-                           "eta": null,
-                           "counts": []
-                        }
-                        }
-                     ]
-                  },
-                  {
-                     "version": {
-                        "id": "evergreen_version2",
-                        "taskStatusStats": {
-                        "eta": null,
-                        "counts": [
-                           {
-                              "status": "failed",
-                              "count": 1
+                           "version": null,
+                           "rolledUpVersions": [
+                              {
+                              "id": "evergreen_version4",
+                              "taskStatusStats": {
+                                 "eta": null,
+                                 "counts": []
+                              }
+                              },
+                              {
+                              "id": "evergreen_version3",
+                              "taskStatusStats": {
+                                 "eta": null,
+                                 "counts": []
+                              }
+                              }
+                           ]
+                        },
+                        {
+                           "version": {
+                              "id": "evergreen_version2",
+                              "taskStatusStats": {
+                              "eta": null,
+                              "counts": [
+                                 {
+                                    "status": "failed",
+                                    "count": 1
+                                 },
+                                 {
+                                    "status": "success",
+                                    "count": 1
+                                 }
+                              ]
+                              }
                            },
-                           {
-                              "status": "success",
-                              "count": 1
-                           }
-                        ]
+                           "rolledUpVersions": null
+                        },
+                        {
+                           "version": {
+                              "id": "evergreen_version1",
+                              "taskStatusStats": {
+                              "eta": null,
+                              "counts": [
+                                 {
+                                    "status": "success",
+                                    "count": 2
+                                 }
+                              ]
+                              }
+                           },
+                           "rolledUpVersions": null
                         }
-                     },
-                     "rolledUpVersions": null
-                  },
-                  {
-                     "version": {
-                        "id": "evergreen_version1",
-                        "taskStatusStats": {
-                        "eta": "2020-07-21T00:39:42Z",
-                        "counts": [
-                           {
-                              "status": "started",
-                              "count": 2
-                           }
                         ]
-                        }
-                     },
-                     "rolledUpVersions": null
+                     }
                   }
-                  ]
-               }
-            }
-         }
+      }
       }
    ]
 }
