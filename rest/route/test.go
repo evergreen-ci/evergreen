@@ -16,7 +16,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// testGetHandler is the MethodHandler for the GET /tasks/{task_id}/tests route.
+///////////////////////////////////////////////////////////////////////////////
+//
+// GET /tasks/{task_id}/tests
+
 type testGetHandler struct {
 	taskID        string
 	displayTask   bool
@@ -42,8 +45,6 @@ func (hgh *testGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// ParseAndValidate fetches the task Id and 'status' from the url and
-// sets them as part of the args.
 func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
@@ -96,7 +97,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 
-		opts := apimodels.GetCedarTestResultsOptions{
+		cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, apimodels.GetCedarTestResultsOptions{
 			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 			TaskID:      tgh.taskID,
 			Execution:   utility.ToIntPtr(tgh.testExecution),
@@ -105,8 +106,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 			Statuses:    tgh.testStatus,
 			Limit:       tgh.limit,
 			Page:        page,
-		}
-		cedarTestResults, status, err := apimodels.GetCedarTestResults(ctx, opts)
+		})
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 		}
@@ -216,4 +216,53 @@ func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, testResult i
 	}
 
 	return nil
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// GET /tasks/{task_id}/tests/count
+
+type testCountGetHandler struct {
+	taskID    string
+	execution int
+}
+
+func makeFetchTestCountForTask() gimlet.RouteHandler {
+	return &testCountGetHandler{}
+}
+
+func (h *testCountGetHandler) Factory() gimlet.RouteHandler {
+	return &testCountGetHandler{}
+}
+
+func (h *testCountGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	projCtx := MustHaveProjectContext(ctx)
+	if projCtx.Task == nil {
+		return gimlet.ErrorResponse{
+			Message:    "task not found",
+			StatusCode: http.StatusNotFound,
+		}
+	}
+	h.taskID = projCtx.Task.Id
+
+	var err error
+	vals := r.URL.Query()
+	execution := vals.Get("execution")
+	if execution != "" {
+		h.execution, err = strconv.Atoi(execution)
+		if err != nil {
+			return errors.Wrap(err, "invalid execution")
+		}
+	}
+
+	return nil
+}
+
+func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
+	count, err := data.CountTestsByTaskID(ctx, h.taskID, h.execution)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+
+	return gimlet.NewTextResponse(count)
 }
