@@ -1,11 +1,14 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -59,11 +62,11 @@ type HostAPIEventData struct {
 	Duration           APIDuration `bson:"duration,omitempty" json:"duration"`
 }
 
-func (el *TaskEventData) BuildFromService(v *event.TaskEventData) error {
+func (el *TaskEventData) BuildFromService(v *event.TaskEventData) {
 	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "error getting settings",
+	}))
 	jiraHost := settings.Jira.GetHostURL()
 	jiraLink := ""
 	if len(v.JiraIssue) != 0 {
@@ -77,7 +80,6 @@ func (el *TaskEventData) BuildFromService(v *event.TaskEventData) error {
 	el.Status = utility.ToStringPtr(v.Status)
 	el.Timestamp = ToTimePtr(v.Timestamp)
 	el.Priority = v.Priority
-	return nil
 }
 
 // ToService is not implemented for TaskEventData.
@@ -89,13 +91,11 @@ func (el *TaskAPIEventLogEntry) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *event.EventLogEntry:
 		d, ok := v.Data.(*event.TaskEventData)
-		if !ok {
-			return errors.Errorf("programmatic error: expected task event data but got type %T", v.Data)
+		if ok == false {
+			return errors.New(fmt.Sprintf("Incorrect type for data field when unmarshalling EventLogEntry"))
 		}
 		taskEventData := TaskEventData{}
-		if err := taskEventData.BuildFromService(d); err != nil {
-			return errors.Wrap(err, "converting task event data to API model")
-		}
+		taskEventData.BuildFromService(d)
 		el.ID = utility.ToStringPtr(v.ID)
 		el.ResourceType = utility.ToStringPtr(v.ResourceType)
 		el.ProcessedAt = ToTimePtr(v.ProcessedAt)
@@ -104,7 +104,7 @@ func (el *TaskAPIEventLogEntry) BuildFromService(t interface{}) error {
 		el.EventType = utility.ToStringPtr(v.EventType)
 		el.Data = &taskEventData
 	default:
-		return errors.Errorf("programmatic error: expected event log entry but got type %T", t)
+		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))
 	}
 	return nil
 }
@@ -145,8 +145,8 @@ func (el *HostAPIEventLogEntry) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *event.EventLogEntry:
 		d, ok := v.Data.(*event.HostEventData)
-		if !ok {
-			return errors.Errorf("programmatic error: expected host event data but got type %T", v.Data)
+		if ok == false {
+			return errors.New(fmt.Sprintf("Incorrect type for data field when unmarshalling EventLogEntry"))
 		}
 		hostAPIEventData := HostAPIEventData{}
 		hostAPIEventData.BuildFromService(d)
@@ -158,7 +158,7 @@ func (el *HostAPIEventLogEntry) BuildFromService(t interface{}) error {
 		el.EventType = utility.ToStringPtr(v.EventType)
 		el.Data = &hostAPIEventData
 	default:
-		return errors.Errorf("programmatic error: expected event log entry but got type %T", t)
+		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling EventLogEntry", t))
 	}
 	return nil
 }

@@ -92,7 +92,7 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	case task.Task:
 		apiHost.RunningTask = getTaskInfo(&v)
 	default:
-		return errors.Errorf("programmatic error: expected host or task but got type %T", h)
+		return errors.New("incorrect type when fetching converting host type")
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	case *host.Host:
 		v = h.(*host.Host)
 	default:
-		return errors.Errorf("programmatic error: expected host but got type %T", h)
+		return errors.New("incorrect type when fetching converting host type")
 	}
 	apiHost.Id = utility.ToStringPtr(v.Id)
 	apiHost.HostURL = utility.ToStringPtr(v.Host)
@@ -220,7 +220,7 @@ func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
 	case host.Volume, *host.Volume:
 		return apiVolume.buildFromVolumeStruct(volume)
 	default:
-		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
+		return errors.Errorf("%T is not a supported type", volume)
 	}
 }
 
@@ -233,7 +233,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	case *host.Volume:
 		v = volume.(*host.Volume)
 	default:
-		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
+		return errors.New("incorrect type when converting volume type")
 	}
 	apiVolume.ID = utility.ToStringPtr(v.ID)
 	apiVolume.DisplayName = utility.ToStringPtr(v.DisplayName)
@@ -252,7 +252,7 @@ func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 func (apiVolume *APIVolume) ToService() (interface{}, error) {
 	expiration, err := FromTimePtr(apiVolume.Expiration)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting expiration time")
+		return nil, errors.Wrap(err, "can't get expiration time")
 	}
 
 	return host.Volume{

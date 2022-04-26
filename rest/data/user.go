@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -109,7 +108,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	spawnHostOutcomeSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnHostOutcome,
 		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
 	if err != nil {
-		return errors.Wrap(err, "creating spawn host outcome subscription")
+		return errors.Wrap(err, "failed to create spawn host outcome subscription")
 	}
 	if spawnHostOutcomeSubscription != nil {
 		settings.Notifications.SpawnHostOutcomeID = spawnHostOutcomeSubscription.ID
@@ -127,7 +126,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	commitQueueSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionCommitQueue,
 		dbUser.Settings.Notifications.CommitQueueID, commitQueueSubscriber, dbUser.Id)
 	if err != nil {
-		return errors.Wrap(err, "creating commit queue subscription")
+		return errors.Wrap(err, "failed to create commit queue subscription")
 	}
 	if commitQueueSubscription != nil {
 		settings.Notifications.CommitQueueID = commitQueueSubscription.ID
@@ -142,7 +141,7 @@ func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
 	f, _ := in.ToService()
 	feedback, isValid := f.(model.FeedbackSubmission)
 	if !isValid {
-		return errors.Errorf("unknown feedback submission type %T", feedback)
+		return errors.Errorf("unknown type of feedback submission: %T", feedback)
 	}
 
 	return errors.Wrap(feedback.Insert(), "error saving feedback")
@@ -151,7 +150,7 @@ func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
 func GetServiceUsers() ([]restModel.APIDBUser, error) {
 	users, err := user.FindServiceUsers()
 	if err != nil {
-		return nil, errors.Wrap(err, "finding service users")
+		return nil, errors.Wrap(err, "unable to get service users")
 	}
 	apiUsers := []restModel.APIDBUser{}
 	for _, u := range users {
@@ -161,15 +160,14 @@ func GetServiceUsers() ([]restModel.APIDBUser, error) {
 }
 
 func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
-	userID := utility.FromStringPtr(toUpdate.UserID)
-	existingUser, err := user.FindOneById(userID)
+	existingUser, err := user.FindOneById(*toUpdate.UserID)
 	if err != nil {
-		return errors.Wrapf(err, "finding user '%s'", userID)
+		return errors.Wrap(err, "unable to query for user")
 	}
 	if existingUser != nil && !existingUser.OnlyAPI {
 		return errors.New("cannot update an existing non-service user")
 	}
 	toUpdate.OnlyApi = true
 	dbUser := restModel.APIDBUserToService(toUpdate)
-	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "updating service user")
+	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "unable to update service user")
 }

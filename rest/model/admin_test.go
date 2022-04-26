@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 		configFieldName := apiConfigRef.Field(i).Name
 		v, ok := matched[configFieldName]
 		assert.True(v)
-		assert.True(ok, "%s is missing from evergreen.Settings", configFieldName)
+		assert.True(ok, fmt.Sprintf("%s is missing from evergreen.Settings", configFieldName))
 		if ok {
 			matched[configFieldName] = false
 		}
@@ -40,7 +41,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
 	for k, v := range matched {
 		if !utility.StringSliceContains(exclude, k) {
-			assert.False(v, "%s is missing from APIAdminSettings", k)
+			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
 		}
 	}
 }
@@ -333,7 +334,7 @@ func TestAPIServiceFlagsModelInterface(t *testing.T) {
 				assert.True(f.Bool())
 			}
 		}
-	})
+	}, "error setting all fields to true")
 
 	apiFlags := APIServiceFlags{}
 	assert.NoError(apiFlags.BuildFromService(flags))

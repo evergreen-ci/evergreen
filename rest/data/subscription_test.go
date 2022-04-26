@@ -21,7 +21,7 @@ func TestGetSubscriptions(t *testing.T) {
 			ID:           mgobson.NewObjectId().Hex(),
 			Owner:        "someone",
 			OwnerType:    event.OwnerTypePerson,
-			ResourceType: event.ResourceTypePatch,
+			ResourceType: "PATCH",
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
@@ -38,7 +38,7 @@ func TestGetSubscriptions(t *testing.T) {
 			ID:           mgobson.NewObjectId().Hex(),
 			Owner:        "someoneelse",
 			OwnerType:    event.OwnerTypePerson,
-			ResourceType: event.ResourceTypePatch,
+			ResourceType: "PATCH",
 			Trigger:      "outcomeelse",
 			Selectors: []event.Selector{
 				{
@@ -104,7 +104,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					ID:           mgobson.NewObjectId().Hex(),
 					Owner:        "my-project",
 					OwnerType:    event.OwnerTypeProject,
-					ResourceType: event.ResourceTypePatch,
+					ResourceType: "PATCH",
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
@@ -121,7 +121,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					ID:           mgobson.NewObjectId().Hex(),
 					Owner:        "not-my-project",
 					OwnerType:    event.OwnerTypeProject,
-					ResourceType: event.ResourceTypePatch,
+					ResourceType: "PATCH",
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
@@ -196,7 +196,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 					ID:           mgobson.NewObjectId().Hex(),
 					Owner:        "my-project",
 					OwnerType:    event.OwnerTypeProject,
-					ResourceType: event.ResourceTypePatch,
+					ResourceType: "PATCH",
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{
@@ -213,7 +213,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 					ID:           mgobson.NewObjectId().Hex(),
 					Owner:        "not-my-project",
 					OwnerType:    event.OwnerTypeProject,
-					ResourceType: event.ResourceTypePatch,
+					ResourceType: "PATCH",
 					Trigger:      "outcome",
 					Selectors: []event.Selector{
 						{

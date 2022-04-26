@@ -25,7 +25,7 @@ func ValidatePatchID(patchId string) error {
 	if !mgobson.IsObjectIdHex(patchId) {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("patch ID '%s' is invalid because it is not an ObjectId", patchId),
+			Message:    fmt.Sprintf("id '%s' is not a valid patch id", patchId),
 		}
 	}
 
@@ -38,17 +38,17 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 	apiPatches := []restModel.APIPatch{}
 	id, err := model.GetIdForProject(projectId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "fetching project '%s'", projectId)
+		return nil, errors.Wrapf(err, "problem fetching project with id %s", projectId)
 	}
 	patches, err := patch.Find(patch.PatchesByProject(id, ts, limit))
 	if err != nil {
-		return nil, errors.Wrapf(err, "fetching patches for project '%s'", id)
+		return nil, errors.Wrapf(err, "problem fetching patches for project %s", id)
 	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
+			return nil, errors.Wrap(err, "problem converting patch")
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
@@ -69,14 +69,14 @@ func FindPatchById(patchId string) (*restModel.APIPatch, error) {
 	if p == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch '%s' not found", patchId),
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
 		}
 	}
 
 	apiPatch := restModel.APIPatch{}
 	err = apiPatch.BuildFromService(*p)
 	if err != nil {
-		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
+		return nil, errors.Wrap(err, "problem converting patch")
 	}
 
 	return &apiPatch, nil
@@ -96,7 +96,7 @@ func AbortPatch(patchId string, user string) error {
 	if p == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch '%s' not found", patchId),
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
 		}
 	}
 	return model.CancelPatch(p, task.AbortInfo{User: user})
@@ -117,10 +117,10 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 
 		token, err := settings.GetGithubOauthToken()
 		if err != nil {
-			return errors.Wrap(err, "getting GitHub OAuth token from settings")
+			return errors.Wrap(err, "error getting github token from settings")
 		}
 		if _, err = model.FinalizePatch(ctx, p, requester, token); err != nil {
-			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
+			return errors.Wrapf(err, "error finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {
 			grip.Info(message.Fields{
@@ -138,7 +138,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 			job := units.NewGithubStatusUpdateJobForNewPatch(p.Id.Hex())
 			q := evergreen.GetEnvironment().LocalQueue()
 			if err := q.Put(ctx, job); err != nil {
-				return errors.Wrap(err, "adding GitHub status update job to queue")
+				return errors.Wrap(err, "Error adding github status update job to queue")
 			}
 		}
 	}
@@ -150,14 +150,14 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
-		return nil, errors.Wrapf(err, "fetching patches for user '%s'", user)
+		return nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
 	}
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrap(err, "converting patch to API model")
+			return nil, errors.Wrap(err, "problem converting patch")
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}
@@ -178,7 +178,7 @@ func AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "aborting patches").Error(),
+			Message:    "error aborting patches",
 		}
 	}
 
@@ -191,13 +191,13 @@ func GetPatchRawPatches(patchID string) (map[string]string, error) {
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding patch '%s'", patchID).Error(),
+			Message:    errors.Wrap(err, "can't get patch").Error(),
 		}
 	}
 	if patchDoc == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch '%s' not found", patchID),
+			Message:    fmt.Sprintf("no patch '%s' found", patchID),
 		}
 	}
 
@@ -209,13 +209,13 @@ func GetPatchRawPatches(patchID string) (map[string]string, error) {
 			if err != nil {
 				return nil, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrapf(err, "finding child patch '%s'", childPatchId).Error(),
+					Message:    errors.Wrap(err, "can't get child patch").Error(),
 				}
 			}
 			if cp == nil {
 				return nil, gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
-					Message:    fmt.Sprintf("child patch '%s' not found", childPatchId),
+					Message:    fmt.Sprintf("child patch with id %s not found", childPatchId),
 				}
 			}
 			allStatuses = append(allStatuses, cp.Status)
@@ -227,7 +227,7 @@ func GetPatchRawPatches(patchID string) (map[string]string, error) {
 	if err = patchDoc.FetchPatchFiles(false); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "getting patch contents").Error(),
+			Message:    errors.Wrap(err, "can't get patch contents").Error(),
 		}
 	}
 

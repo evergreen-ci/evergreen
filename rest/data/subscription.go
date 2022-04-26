@@ -21,14 +21,14 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "converting subscription to service model").Error(),
+				Message:    "Error parsing request body: " + err.Error(),
 			}
 		}
 		dbSubscription, ok := subscriptionInterface.(event.Subscription)
 		if !ok {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("programmatic error: expected subscription model type but actually got type %T", subscriptionInterface),
+				Message:    "Error parsing subscription interface",
 			}
 		}
 		if isProjectOwner {
@@ -50,7 +50,7 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner != owner {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "cannot change subscriptions for anyone other than yourself",
+				Message:    "Cannot change subscriptions for anyone other than yourself",
 			}
 		}
 
@@ -65,13 +65,15 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    errors.Wrap(err, "invalid subscription").Error(),
+				Message:    "Error validating subscription: " + err.Error(),
 			}
 		}
 
 		dbSubscriptions = append(dbSubscriptions, dbSubscription)
 
 		if dbSubscription.ResourceType == event.ResourceTypeVersion && isEndTrigger(dbSubscription.Trigger) {
+
+			//find all children, iterate through them
 			var versionId string
 			for _, selector := range dbSubscription.Selectors {
 				if selector.Type == event.SelectorID {
@@ -82,7 +84,7 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 			if err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrapf(err, "retrieving child versions for version '%s'", versionId).Error(),
+					Message:    "Error retrieving child versions: " + err.Error(),
 				}
 			}
 
@@ -118,10 +120,10 @@ func isEndTrigger(trigger string) bool {
 func getVersionChildren(versionId string) ([]string, error) {
 	patchDoc, err := patch.FindOne(patch.ByVersion(versionId))
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch for version '%s'", versionId)
+		return nil, errors.Wrap(err, "error getting patch")
 	}
 	if patchDoc == nil {
-		return nil, errors.Wrapf(err, "patch for version '%s' not found", versionId)
+		return nil, errors.Wrap(err, "patch not found")
 	}
 	return patchDoc.Triggers.ChildPatches, nil
 
@@ -138,7 +140,7 @@ func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APIS
 
 	subs, err := event.FindSubscriptionsByOwner(owner, ownerType)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding subscriptions for user '%s'", owner)
+		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 
 	apiSubs := make([]restModel.APISubscription, len(subs))
@@ -146,7 +148,7 @@ func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APIS
 	for i := range subs {
 		err = apiSubs[i].BuildFromService(subs[i])
 		if err != nil {
-			return nil, errors.Wrapf(err, "converting subscription '%s' to API model", subs[i].ID)
+			return nil, errors.Wrap(err, "failed to marshal subscriptions")
 		}
 	}
 
@@ -165,20 +167,20 @@ func DeleteSubscriptions(owner string, ids []string) error {
 		if subscription == nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    "subscription not found",
+				Message:    "Subscription not found",
 			}
 		}
 		if subscription.Owner != owner {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "cannot delete subscriptions for someone other than yourself",
+				Message:    "Cannot delete subscriptions for someone other than yourself",
 			}
 		}
 	}
 
 	catcher := grip.NewBasicCatcher()
 	for _, id := range ids {
-		catcher.Wrapf(event.RemoveSubscription(id), "removing subscription '%s'", id)
+		catcher.Add(event.RemoveSubscription(id))
 	}
 	return catcher.Resolve()
 }

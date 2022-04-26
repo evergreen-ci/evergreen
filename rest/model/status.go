@@ -24,28 +24,28 @@ type APIRecentTaskStats struct {
 }
 
 // BuildFromService converts from service level structs to an APIRecentTaskStats.
-func (ts *APIRecentTaskStats) BuildFromService(h interface{}) error {
+func (apiStatus *APIRecentTaskStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.ResultCounts:
-		ts.Total = v.Total
-		ts.Inactive = v.Inactive
-		ts.Unstarted = v.Unstarted
-		ts.Started = v.Started
-		ts.Succeeded = v.Succeeded
-		ts.SetupFailed = v.SetupFailed
-		ts.Failed = v.Failed
-		ts.SystemFailed = v.SystemFailed
-		ts.SystemUnresponsive = v.SystemUnresponsive
-		ts.SystemTimedOut = v.SystemTimedOut
-		ts.TestTimedOut = v.TestTimedOut
+		apiStatus.Total = v.Total
+		apiStatus.Inactive = v.Inactive
+		apiStatus.Unstarted = v.Unstarted
+		apiStatus.Started = v.Started
+		apiStatus.Succeeded = v.Succeeded
+		apiStatus.SetupFailed = v.SetupFailed
+		apiStatus.Failed = v.Failed
+		apiStatus.SystemFailed = v.SystemFailed
+		apiStatus.SystemUnresponsive = v.SystemUnresponsive
+		apiStatus.SystemTimedOut = v.SystemTimedOut
+		apiStatus.TestTimedOut = v.TestTimedOut
 	default:
-		return errors.Errorf("programmatic error: expected task result counts but got type %T", h)
+		return errors.Errorf("incorrect type when converting result counts (%T)", v)
 	}
 	return nil
 }
 
 // ToService returns a service layer distro using the data from APIRecentTaskStats.
-func (ts *APIRecentTaskStats) ToService() (interface{}, error) {
+func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStats")
 }
 
@@ -63,7 +63,7 @@ func (s *APIStatList) BuildFromService(h interface{}) error {
 			*s = append(*s, APIStat{Name: utility.ToStringPtr(stat.Name), Count: stat.Count})
 		}
 	default:
-		return errors.Errorf("programmatic error: expected slice of task stats but got type %T", h)
+		return errors.Errorf("incorrect type when converting API stat list (%T)", v)
 	}
 
 	return nil
@@ -81,7 +81,7 @@ func (s *APIRecentTaskStatsList) BuildFromService(h interface{}) error {
 			(*s)[status] = list
 		}
 	default:
-		return errors.Errorf("programmatic error: expected map of task stats but got type %T", h)
+		return errors.Errorf("incorrect type when converting APIRecentTaskStatsList (%T)", v)
 	}
 
 	return catcher.Resolve()
@@ -122,7 +122,7 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 			s.Distros = append(s.Distros, d)
 		}
 	default:
-		return errors.Errorf("programmatic error: expected distro host stats but got type %T", h)
+		return errors.Errorf("incorrect type when converting host stats by distro (%T)", v)
 	}
 	return nil
 }

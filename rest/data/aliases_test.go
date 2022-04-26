@@ -22,7 +22,7 @@ func TestAliasSuite(t *testing.T) {
 
 func (a *AliasSuite) SetupTest() {
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase())
+	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
 	aliases := []model.ProjectAlias{
 		{

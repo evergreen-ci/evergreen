@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -15,13 +17,13 @@ type APICLIUpdate struct {
 func (a *APICLIUpdate) BuildFromService(h interface{}) error {
 	c, ok := h.(evergreen.ClientConfig)
 	if !ok {
-		return errors.Errorf("programmatic error: expected CLI client config but got type %T", h)
+		return fmt.Errorf("incorrect type when fetching converting client config")
 	}
 	return a.ClientConfig.BuildFromService(c)
 }
 
 func (a *APICLIUpdate) ToService() (interface{}, error) {
-	return nil, errors.New("(*APICLIUpdate).ToService not implemented for read-only route")
+	return nil, errors.New("(*APICLIUpdate) not implemented for read-only route")
 }
 
 type APIClientConfig struct {
@@ -33,17 +35,17 @@ type APIClientConfig struct {
 func (a *APIClientConfig) BuildFromService(h interface{}) error {
 	c, ok := h.(evergreen.ClientConfig)
 	if !ok {
-		return errors.Errorf("programmatic error: expected CLI client config but got type %T", h)
+		return fmt.Errorf("incorrect type when fetching converting client config")
 	}
 
 	catcher := grip.NewBasicCatcher()
 	a.ClientBinaries = make([]APIClientBinary, len(c.ClientBinaries))
 	for i := range a.ClientBinaries {
-		catcher.Wrapf(a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i]), "converting client binary '%s' to API model", c.ClientBinaries[i].DisplayName)
+		catcher.Add(a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i]))
 	}
 	a.S3ClientBinaries = make([]APIClientBinary, len(c.S3ClientBinaries))
 	for i := range a.S3ClientBinaries {
-		catcher.Wrapf(a.S3ClientBinaries[i].BuildFromService(c.S3ClientBinaries[i]), "converting S3 client binary '%s' to API model", c.S3ClientBinaries[i].DisplayName)
+		catcher.Add(a.S3ClientBinaries[i].BuildFromService(c.S3ClientBinaries[i]))
 	}
 
 	a.LatestRevision = utility.ToStringPtr(c.LatestRevision)
@@ -67,7 +69,7 @@ func (a *APIClientConfig) ToService() (interface{}, error) {
 		var ok bool
 		c.ClientBinaries[i], ok = bin.(evergreen.ClientBinary)
 		if !ok {
-			catcher.Errorf("programmatic error: expected client binary config but got type %T", bin)
+			catcher.Errorf("programmatic error: incorrect type %T returned from service-level conversion", bin)
 		}
 	}
 
@@ -82,7 +84,7 @@ func (a *APIClientConfig) ToService() (interface{}, error) {
 		var ok bool
 		c.S3ClientBinaries[i], ok = bin.(evergreen.ClientBinary)
 		if !ok {
-			catcher.Errorf("programmatic error: expected client binary config but got type %T", bin)
+			catcher.Errorf("programmatic error: incorrect type %T returned from service-level conversion", bin)
 		}
 	}
 
@@ -99,7 +101,7 @@ type APIClientBinary struct {
 func (a *APIClientBinary) BuildFromService(h interface{}) error {
 	b, ok := h.(evergreen.ClientBinary)
 	if !ok {
-		return errors.Errorf("programmatic error: expected client binary config but got type %T", h)
+		return fmt.Errorf("incorrect type when fetching converting client binary")
 	}
 	a.Arch = utility.ToStringPtr(b.Arch)
 	a.OS = utility.ToStringPtr(b.OS)

@@ -40,13 +40,13 @@ func FindRecentTaskListAgentVersion(minutes int) (*model.APIRecentTaskStatsList,
 func FindRecentTaskList(minutes int, key string) (*model.APIRecentTaskStatsList, error) {
 	stats, err := task.GetRecentTaskStats(time.Duration(minutes)*time.Minute, key)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting recent task stats from the last %d minutes", minutes)
+		return nil, errors.Wrap(err, "can't get task stats")
 	}
 	list := task.GetResultCountList(stats)
 
 	apiList := model.APIRecentTaskStatsList{}
 	if err := apiList.BuildFromService(list); err != nil {
-		return nil, errors.Wrap(err, "converting recent task stats to API model")
+		return nil, errors.Wrap(err, "can't convert to API")
 	}
 
 	return &apiList, nil

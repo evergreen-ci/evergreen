@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -34,19 +35,19 @@ func BbFileTicket(context context.Context, taskId string, execution int) (int, e
 		return http.StatusInternalServerError, err
 	}
 	if t == nil {
-		return http.StatusNotFound, errors.Wrapf(err, "task '%s' not found", taskId)
+		return http.StatusNotFound, errors.Wrap(err, fmt.Sprintf("task not found for id %s", taskId))
 	}
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
 	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
 	if !ok {
-		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s'", taskId)
+		return http.StatusInternalServerError, errors.Errorf("error finding build baron plugin for task '%s'", taskId)
 	}
 
 	webHook, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
 	if err != nil {
-		return http.StatusInternalServerError, errors.Wrapf(err, "retrieving webhook config for project '%s'", t.Project)
+		return http.StatusInternalServerError, errors.Wrapf(err, "Error retrieving webhook config for %s", t.Project)
 	}
 	if ok && webHook.Endpoint != "" {
 		var resp *http.Response
@@ -62,7 +63,7 @@ func BbFileTicket(context context.Context, taskId string, execution int) (int, e
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	err = queue.Put(context, units.NewEventSendJob(n.ID, ts))
 	if err != nil {
-		return http.StatusInternalServerError, errors.Wrapf(err, "inserting notification job")
+		return http.StatusInternalServerError, errors.Wrap(err, fmt.Sprintf("error inserting notification job: %s", err.Error()))
 
 	}
 
@@ -76,7 +77,7 @@ func fileTicketCustomHook(context context.Context, taskId string, execution int,
 		Execution: execution,
 	}
 
-	req, err := http.NewRequest(http.MethodPost, webHook.Endpoint, nil)
+	req, err := http.NewRequest("POST", webHook.Endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +121,14 @@ func makeNotification(settings *evergreen.Settings, project string, t *task.Task
 	if err != nil {
 		return nil, err
 	}
+	if n == nil {
+		return nil, errors.New("unexpected error creating notification")
+	}
 	n.SetTaskMetadata(t.Id, t.Execution)
 
 	err = notification.InsertMany(*n)
 	if err != nil {
-		return nil, errors.Wrap(err, "batch inserting notifications")
+		return nil, errors.Wrap(err, "error inserting notification")
 	}
 	return n, nil
 }

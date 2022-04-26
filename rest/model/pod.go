@@ -85,15 +85,15 @@ func (p *APIPod) BuildFromService(dbPod *pod.Pod) error {
 func (p *APIPod) ToService() (*pod.Pod, error) {
 	s, err := p.Status.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting status to service model")
+		return nil, errors.Wrap(err, "converting status to service")
 	}
 	t, err := p.Type.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting pod type to service model")
+		return nil, errors.Wrap(err, "converting pod type to service")
 	}
 	taskCreationOpts, err := p.TaskContainerCreationOpts.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting task container creation options to service model")
+		return nil, errors.Wrap(err, "converting task container creation options to service")
 	}
 	timing := p.TimeInfo.ToService()
 	resources := p.Resources.ToService()

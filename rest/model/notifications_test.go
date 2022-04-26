@@ -19,7 +19,7 @@ func TestEventStats(t *testing.T) {
 		NumUnprocessedEvents: 1234,
 	}
 
-	assert.Error(stats.BuildFromService(nil))
+	assert.EqualError(stats.BuildFromService(nil), "can't convert unknown type to APIEventStats")
 	assert.NoError(stats.BuildFromService(&nstats))
 	assert.NotZero(stats.PendingNotificationsByType)
 
@@ -41,8 +41,8 @@ func TestNotificationStats(t *testing.T) {
 	}
 
 	stats := apiNotificationStats{}
-	assert.Error(stats.BuildFromService(5))
-	assert.Error(stats.BuildFromService(nstats))
+	assert.EqualError(stats.BuildFromService(5), "can't convert unknown type to apiNotificationStats")
+	assert.EqualError(stats.BuildFromService(nstats), "can't convert unknown type to apiNotificationStats")
 	assert.NoError(stats.BuildFromService(&nstats))
 
 	// all fields should be 1
@@ -54,6 +54,6 @@ func TestNotificationStats(t *testing.T) {
 
 	x, err := stats.ToService()
 	assert.Nil(x)
-	assert.Error(err)
+	assert.EqualError(err, "(*apiNotificationsStats) ToService not implemented")
 	assert.Implements((*Model)(nil), &stats)
 }

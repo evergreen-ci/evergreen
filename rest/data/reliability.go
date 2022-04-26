@@ -12,14 +12,14 @@ func GetTaskReliabilityScores(filter reliability.TaskReliabilityFilter) ([]restM
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting project ref ID for identifier '%s'", filter.Project)
+			return nil, errors.Wrapf(err, "getting project id for '%s'", filter.Project)
 		}
 		filter.Project = projectID
 	}
 
 	serviceStatsResult, err := reliability.GetTaskReliabilityScores(filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting task reliability scores")
+		return nil, errors.Wrap(err, "Failed to get task stats from service API")
 	}
 
 	apiStatsResult := make([]restModel.APITaskReliability, len(serviceStatsResult))
@@ -27,7 +27,7 @@ func GetTaskReliabilityScores(filter reliability.TaskReliabilityFilter) ([]restM
 		ats := restModel.APITaskReliability{}
 		err = ats.BuildFromService(&serviceStats)
 		if err != nil {
-			return nil, errors.Wrap(err, "converting task reliability stats to API model")
+			return nil, errors.Wrap(err, "Model error")
 		}
 		apiStatsResult[i] = ats
 	}

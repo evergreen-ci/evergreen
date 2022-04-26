@@ -58,7 +58,7 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 			createHost.InstanceID = utility.ToStringPtr(v.ExternalIdentifier)
 		}
 	default:
-		return errors.Errorf("programmatic error: expected create host options but got type %T", h)
+		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}
 	return nil
 }

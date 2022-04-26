@@ -1,6 +1,7 @@
 package model
 
 import (
+	"log"
 	"net/url"
 	"path"
 	"time"
@@ -170,21 +171,25 @@ func ArrAPIIssueLinkArrtaskannotationsIssueLink(t []APIIssueLink) []annotations.
 	return m
 }
 
-func GetJiraTicketFromURL(jiraURL string) (*thirdparty.JiraTicket, error) {
+func GetJiraTicketFromURL(URL string) (*thirdparty.JiraTicket, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 
-	parsedURL, err := url.Parse(jiraURL)
+	urlObject, err := url.Parse(URL)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing Jira issue URL")
+		return nil, errors.Wrap(err, "problem parsing the issue url")
 	}
 
-	if parsedURL.Host == "jira.mongodb.org" {
-		jiraKey := path.Base(parsedURL.Path)
+	if urlObject != nil && urlObject.Host == "jira.mongodb.org" {
+		myUrl, err := url.Parse(URL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		jiraKey := path.Base(myUrl.Path)
 
 		jiraTicket, err := jiraHandler.GetJIRATicket(jiraKey)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting Jira ticket for key '%s'", jiraKey)
+			return nil, errors.Wrap(err, "error getting Jira ticket")
 		}
 		return jiraTicket, nil
 	}

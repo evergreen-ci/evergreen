@@ -101,7 +101,7 @@ func (p *APIParameter) ToService() patch.Parameter {
 func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	v, ok := h.(patch.Patch)
 	if !ok {
-		return errors.Errorf("programmatic error: expected patch but got type %T", h)
+		return errors.New("incorrect type when fetching converting patch type")
 	}
 	apiPatch.Id = utility.ToStringPtr(v.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(v.Description)
@@ -157,7 +157,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	if v.Project != "" {
 		identifier, err := model.GetIdentifierForProject(v.Project)
 		if err != nil {
-			return errors.Wrapf(err, "getting project '%s'", v.Project)
+			return errors.Wrapf(err, "error getting project '%s'", v.Project)
 		}
 		apiPatch.ProjectIdentifier = utility.ToStringPtr(identifier)
 		projectIdentifier = identifier
@@ -205,7 +205,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 	downstreamTasks, childPatches, err := getChildPatchesData(v)
 	if err != nil {
-		return errors.Wrap(err, "getting downstream tasks")
+		return errors.Wrap(err, "error getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
@@ -266,7 +266,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 		apiPatch := APIPatch{}
 		err = apiPatch.BuildFromService(childPatch)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "converting child patch to API model")
+			return nil, nil, errors.Wrap(err, "error building child patch from service")
 		}
 		downstreamTasks = append(downstreamTasks, dt)
 		apiChildPatches = append(apiChildPatches, apiPatch)
@@ -321,7 +321,7 @@ func (apiPatch *APIPatch) ToService() (interface{}, error) {
 	catcher.Add(err)
 	data, ok := i.(thirdparty.GithubPatch)
 	if !ok {
-		catcher.Errorf("programmatic error: expected GitHub patch but got type %T", i)
+		catcher.Add(errors.New("cannot resolve patch data"))
 	}
 	res.GithubPatchData = data
 	return res, catcher.Resolve()
@@ -341,7 +341,7 @@ type githubPatch struct {
 func (g *githubPatch) BuildFromService(h interface{}) error {
 	v, ok := h.(thirdparty.GithubPatch)
 	if !ok {
-		return errors.Errorf("programmatic error: expected GitHub patch but got type %T", h)
+		return errors.New("incorrect type when fetching converting github patch type")
 	}
 	g.PRNumber = v.PRNumber
 	g.BaseOwner = utility.ToStringPtr(v.BaseOwner)

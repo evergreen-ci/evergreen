@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -54,7 +55,7 @@ type APIBuild struct {
 func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	v, ok := h.(build.Build)
 	if !ok {
-		return errors.Errorf("unexpected type %T", h)
+		return fmt.Errorf("incorrect type when fetching converting build type")
 	}
 	apiBuild.Id = utility.ToStringPtr(v.Id)
 	apiBuild.CreateTime = ToTimePtr(v.CreateTime)

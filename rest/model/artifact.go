@@ -58,7 +58,7 @@ func (e *APIEntry) BuildFromService(h interface{}) error {
 			e.Files = append(e.Files, apiFile)
 		}
 	default:
-		return errors.Errorf("unexpected type %T", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 	return catcher.Resolve()
 }
@@ -74,12 +74,11 @@ func (e *APIEntry) ToService() (interface{}, error) {
 	for _, apiFile := range e.Files {
 		f, err := apiFile.ToService()
 		if err != nil {
-			catcher.Wrapf(err, "converting artifact file entry to service model")
-			continue
+			catcher.Add(err)
 		}
 		file, ok := f.(artifact.File)
 		if !ok {
-			catcher.Errorf("programmatic error: expected artifact file but got type %T", f)
+			catcher.Add(errors.New("unable to convert artifact file"))
 			continue
 		}
 		entry.Files = append(entry.Files, file)

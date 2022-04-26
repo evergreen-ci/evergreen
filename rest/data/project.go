@@ -37,12 +37,12 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 		p, err = model.FindBranchProjectRef(id)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding project '%s'", id)
+		return nil, err
 	}
 	if p == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project '%s' not found", id),
+			Message:    fmt.Sprintf("project with id '%s' not found", id),
 		}
 	}
 	return p, nil
@@ -76,7 +76,7 @@ func CreateProject(projectRef *model.ProjectRef, u *user.DBUser) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "initializing project variables for project '%s'", projectRef.Identifier).Error(),
+			Message:    errors.Wrapf(err, "initializing project variables for '%s'", projectRef.Identifier).Error(),
 		}
 	}
 	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
@@ -95,7 +95,7 @@ func VerifyUniqueProject(name string) error {
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot use existing project name '%s'", name),
+			Message:    fmt.Sprintf("cannot reuse '%s' for project", name),
 		}
 	}
 	apiErr, ok := err.(gimlet.ErrorResponse)
@@ -167,7 +167,7 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 
 	varsModel := restModel.APIProjectVars{}
 	if err := varsModel.BuildFromService(vars); err != nil {
-		return nil, errors.Wrap(err, "converting project variables to API model")
+		return nil, errors.Wrap(err, "error building project variables from service")
 	}
 	return &varsModel, nil
 }
@@ -179,19 +179,19 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	}
 	v, err := varsModel.ToService()
 	if err != nil {
-		return errors.Wrap(err, "converting project variables to service model")
+		return errors.Wrap(err, "problem converting to project variable model")
 	}
 	vars := v.(*model.ProjectVars)
 	vars.Id = projectId
 
 	if overwrite {
 		if _, err = vars.Upsert(); err != nil {
-			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
+			return errors.Wrapf(err, "problem overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
 		_, err = vars.FindAndModify(varsModel.VarsToDelete)
 		if err != nil {
-			return errors.Wrapf(err, "updating variables for project '%s'", vars.Id)
+			return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
 		}
 	}
 
@@ -233,7 +233,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 		apiEvent := restModel.APIProjectEvent{}
 		err = apiEvent.BuildFromService(evt)
 		if err != nil {
-			catcher.Wrapf(err, "converting event '%s' to API model", evt.ID)
+			catcher.Add(err)
 			continue
 		}
 		out = append(out, apiEvent)

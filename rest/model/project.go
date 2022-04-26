@@ -59,7 +59,7 @@ func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 	case *model.TriggerDefinition:
 		triggerDef = *h.(*model.TriggerDefinition)
 	default:
-		return errors.Errorf("programmatic error: expected downstream trigger definition but got type %T", h)
+		return errors.Errorf("Invalid trigger definition of type '%T'", h)
 	}
 	t.Project = utility.ToStringPtr(triggerDef.Project)
 	t.Level = utility.ToStringPtr(triggerDef.Level)
@@ -91,12 +91,12 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 	case *patch.PatchTriggerDefinition:
 		def = *h.(*patch.PatchTriggerDefinition)
 	default:
-		return errors.Errorf("programmatic error: expected patch trigger definition but got %T", h)
+		return errors.Errorf("Invalid patch trigger definition of type '%T'", h)
 	}
 	t.ChildProjectId = utility.ToStringPtr(def.ChildProject) // we store the real ID in the child project field
 	identifier, err := model.GetIdentifierForProject(def.ChildProject)
 	if err != nil {
-		return errors.Wrapf(err, "getting identifier for child project '%s'", def.ChildProject)
+		return errors.Wrap(err, "error getting identifier for child project ID")
 	}
 	t.ChildProjectIdentifier = utility.ToStringPtr(identifier)
 	// not sure in which direction this should go
@@ -107,7 +107,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 	for _, ts := range def.TaskSpecifiers {
 		specifier := APITaskSpecifier{}
 		if err := specifier.BuildFromService(ts); err != nil {
-			return errors.Wrap(err, "converting task specifier to API model")
+			return errors.Wrap(err, "cannot convert task specifier")
 		}
 		specifiers = append(specifiers, specifier)
 	}
@@ -125,12 +125,12 @@ func (t *APIPatchTriggerDefinition) ToService() (interface{}, error) {
 	var specifiers []patch.TaskSpecifier
 	for _, ts := range t.TaskSpecifiers {
 		i, err := ts.ToService()
-		if err != nil {
-			return nil, errors.Wrapf(err, "converting task specifier to service model")
-		}
 		specifier, ok := i.(patch.TaskSpecifier)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot convert API task specifier")
+		}
 		if !ok {
-			return nil, errors.Errorf("programmatic error: expected task specifier but got type %T", i)
+			return nil, errors.Errorf("expected patch trigger definition but was actually '%T'", i)
 		}
 		specifiers = append(specifiers, specifier)
 	}
@@ -152,7 +152,7 @@ func (ts *APITaskSpecifier) BuildFromService(h interface{}) error {
 	case *patch.TaskSpecifier:
 		def = *h.(*patch.TaskSpecifier)
 	default:
-		return errors.Errorf("programmatic error: expected patch task specifier but got type %T", h)
+		return errors.Errorf("Invalid task specifier of type '%T'", h)
 	}
 	ts.PatchAlias = utility.ToStringPtr(def.PatchAlias)
 	ts.TaskRegex = utility.ToStringPtr(def.TaskRegex)
@@ -204,7 +204,7 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(h interface{}) error {
 	case *model.PeriodicBuildDefinition:
 		params = *h.(*model.PeriodicBuildDefinition)
 	default:
-		return errors.Errorf("programmatic error: expected periodic build definition but got type %T", h)
+		return errors.Errorf("Invalid commit queue params of type '%T'", h)
 	}
 	bd.ID = utility.ToStringPtr(params.ID)
 	bd.ConfigFile = utility.ToStringPtr(params.ConfigFile)
@@ -223,7 +223,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 	case *model.CommitQueueParams:
 		params = *h.(*model.CommitQueueParams)
 	default:
-		return errors.Errorf("programmatic error: expected commit queue params but got type %T", h)
+		return errors.Errorf("Invalid commit queue params of type '%T'", h)
 	}
 
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
@@ -262,7 +262,7 @@ func (bb *APIBuildBaronSettings) BuildFromService(h interface{}) error {
 	case *evergreen.BuildBaronSettings:
 		def = *h.(*evergreen.BuildBaronSettings)
 	default:
-		return errors.Errorf("programmatic error: expected build baron config but got type %T", h)
+		return errors.Errorf("Invalid build baron config of type '%T'", h)
 	}
 	bb.TicketCreateProject = utility.ToStringPtr(def.TicketCreateProject)
 	bb.TicketSearchProjects = utility.ToStringPtrSlice(def.TicketSearchProjects)
@@ -351,7 +351,7 @@ func (opts *APITaskSyncOptions) BuildFromService(h interface{}) error {
 		opts.PatchEnabled = utility.BoolPtrCopy(v.PatchEnabled)
 		return nil
 	default:
-		return errors.Errorf("programmatic error: expected task sync options but got type %T", v)
+		return errors.Errorf("invalid type '%T' for API S3 task sync options", v)
 	}
 }
 
@@ -516,43 +516,43 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 
 	commitQueue, err := p.CommitQueue.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting commit queue params to service model")
+		return nil, errors.Wrap(err, "can't convert commit queue params")
 	}
 
 	i, err := p.TaskSync.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting task sync options to service model")
+		return nil, errors.Wrap(err, "cannot convert API task sync options to service representation")
 	}
 	taskSync, ok := i.(model.TaskSyncOptions)
 	if !ok {
-		return nil, errors.Errorf("programmatic error: expected task sync options but got type %T", i)
+		return nil, errors.Errorf("expected task sync options but was actually '%T'", i)
 	}
 
 	i, err = p.WorkstationConfig.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting workstation config to service model")
+		return nil, errors.Wrap(err, "cannot convert API workstation config")
 	}
 	workstationConfig, ok := i.(model.WorkstationConfig)
 	if !ok {
-		return nil, errors.Errorf("programmatic error: expected workstation config but got type %T", i)
+		return nil, errors.Errorf("expected workstation config but was actually '%T'", i)
 	}
 
 	i, err = p.BuildBaronSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting build baron settings to service model")
+		return nil, errors.Wrap(err, "cannot convert API buildbaron config")
 	}
 	buildBaronConfig, ok := i.(evergreen.BuildBaronSettings)
 	if !ok {
-		return nil, errors.Errorf("programmatic error: expected buildbaron config but was actually '%T'", i)
+		return nil, errors.Errorf("expected buildbaron config but was actually '%T'", i)
 	}
 
 	i, err = p.TaskAnnotationSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting task annotation settings to service model")
+		return nil, errors.Wrap(err, "cannot convert API task annotations config")
 	}
 	taskAnnotationConfig, ok := i.(evergreen.AnnotationsSettings)
 	if !ok {
-		return nil, errors.Errorf("programmatic error: expected task annotation settings but got type %T", i)
+		return nil, errors.Errorf("expected task annotations config but was actually '%T'", i)
 	}
 
 	projectRef := model.ProjectRef{
@@ -600,14 +600,14 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	// Copy triggers
 	if p.Triggers != nil {
 		triggers := []model.TriggerDefinition{}
-		for idx, t := range p.Triggers {
+		for _, t := range p.Triggers {
 			i, err = t.ToService()
 			if err != nil {
-				return nil, errors.Wrapf(err, "converting trigger definition at index %d to service model", idx)
+				return nil, errors.Wrap(err, "cannot convert API trigger definition")
 			}
 			newTrigger, ok := i.(model.TriggerDefinition)
 			if !ok {
-				return nil, errors.Errorf("programmatic error: expected trigger definition but got type %T", i)
+				return nil, errors.Errorf("expected trigger definition but was actually '%T'", i)
 			}
 			triggers = append(triggers, newTrigger)
 		}
@@ -617,14 +617,14 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	// Copy periodic builds
 	if p.PeriodicBuilds != nil {
 		builds := []model.PeriodicBuildDefinition{}
-		for idx, t := range p.PeriodicBuilds {
+		for _, t := range p.PeriodicBuilds {
 			i, err = t.ToService()
 			if err != nil {
-				return nil, errors.Wrapf(err, "converting periodic build definition at index %d to service model", idx)
+				return nil, errors.Wrap(err, "cannot convert API periodic build")
 			}
 			newBuild, ok := i.(model.PeriodicBuildDefinition)
 			if !ok {
-				return nil, errors.Errorf("programmatic error: expected periodic build definition but got type %T", i)
+				return nil, errors.Errorf("expected periodic build definition but was actually '%T'", i)
 			}
 			builds = append(builds, newBuild)
 		}
@@ -633,14 +633,14 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 
 	if p.PatchTriggerAliases != nil {
 		patchTriggers := []patch.PatchTriggerDefinition{}
-		for idx, t := range p.PatchTriggerAliases {
+		for _, t := range p.PatchTriggerAliases {
 			i, err = t.ToService()
 			if err != nil {
-				return nil, errors.Wrapf(err, "converting patch trigger alias at index %d to service model", idx)
+				return nil, errors.Wrap(err, "cannot convert API patch trigger definition")
 			}
 			trigger, ok := i.(patch.PatchTriggerDefinition)
 			if !ok {
-				return nil, errors.Errorf("programmatic error: expected patch trigger definition but got type %T", i)
+				return nil, errors.Errorf("expected patch trigger definition but was actually '%T'", i)
 			}
 			patchTriggers = append(patchTriggers, trigger)
 		}
@@ -658,7 +658,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	case *model.ProjectRef:
 		projectRef = *v.(*model.ProjectRef)
 	default:
-		return errors.Errorf("programmatic error: expected project ref but got type %T", v)
+		return errors.New("Invalid type of the argument")
 	}
 
 	p.Owner = utility.ToStringPtr(projectRef.Owner)
@@ -699,31 +699,31 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 
 	cq := APICommitQueueParams{}
 	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
-		return errors.Wrap(err, "converting commit queue settings to API model")
+		return errors.Wrap(err, "can't convert commit queue parameters")
 	}
 	p.CommitQueue = cq
 
 	var taskSync APITaskSyncOptions
 	if err := taskSync.BuildFromService(projectRef.TaskSync); err != nil {
-		return errors.Wrap(err, "converting task sync options to API model")
+		return errors.Wrap(err, "cannot convert task sync options to API representation")
 	}
 	p.TaskSync = taskSync
 
 	workstationConfig := APIWorkstationConfig{}
 	if err := workstationConfig.BuildFromService(projectRef.WorkstationConfig); err != nil {
-		return errors.Wrap(err, "converting workstation config to API model")
+		return errors.Wrap(err, "cannot convert workstation config")
 	}
 	p.WorkstationConfig = workstationConfig
 
 	buildbaronConfig := APIBuildBaronSettings{}
 	if err := buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings); err != nil {
-		return errors.Wrap(err, "converting build baron settings to API model")
+		return errors.Wrap(err, "cannot convert build baron config")
 	}
 	p.BuildBaronSettings = buildbaronConfig
 
 	taskannotationConfig := APITaskAnnotationSettings{}
 	if err := taskannotationConfig.BuildFromService(projectRef.TaskAnnotationSettings); err != nil {
-		return errors.Wrap(err, "converting task annotation settings to API model")
+		return errors.Wrap(err, "cannot convert task annotations config")
 	}
 	p.TaskAnnotationSettings = taskannotationConfig
 
@@ -743,10 +743,10 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	// copy periodic builds
 	if projectRef.PeriodicBuilds != nil {
 		periodicBuilds := []APIPeriodicBuildDefinition{}
-		for idx, pb := range projectRef.PeriodicBuilds {
+		for _, pb := range projectRef.PeriodicBuilds {
 			periodicBuild := APIPeriodicBuildDefinition{}
 			if err := periodicBuild.BuildFromService(pb); err != nil {
-				return errors.Wrapf(err, "converting periodic build definition at index %d to service model", idx)
+				return err
 			}
 			periodicBuilds = append(periodicBuilds, periodicBuild)
 		}
@@ -755,10 +755,10 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 
 	if projectRef.PatchTriggerAliases != nil {
 		patchTriggers := []APIPatchTriggerDefinition{}
-		for idx, t := range projectRef.PatchTriggerAliases {
+		for _, t := range projectRef.PatchTriggerAliases {
 			trigger := APIPatchTriggerDefinition{}
 			if err := trigger.BuildFromService(t); err != nil {
-				return errors.Wrapf(err, "converting patch trigger alias at index %d to service model", idx)
+				return errors.Wrap(err, "cannot convert trigger definition")
 			}
 			patchTriggers = append(patchTriggers, trigger)
 		}
@@ -778,7 +778,7 @@ func recursivelyDefaultBooleans(structToSet reflect.Value) {
 	var err error
 	var i int
 	defer func() {
-		grip.Error(recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked while recursively defaulting booleans for field number %d", i)))
+		grip.Error(recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked for field '%d'", i)))
 	}()
 	falseType := reflect.TypeOf(false)
 	// Iterate through each field of the struct.

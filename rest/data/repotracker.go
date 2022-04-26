@@ -27,7 +27,7 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 	branch, err := validatePushEvent(event)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"source": "GitHub hook",
+			"source": "github hook",
 			"msg_id": msgID,
 			"event":  "push",
 		}))
@@ -39,11 +39,11 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "retrieving admin settings")
+		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if settings.ServiceFlags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"source":  "GitHub hook",
+			"source":  "github hook",
 			"msg_id":  msgID,
 			"event":   "push",
 			"owner":   *event.Repo.Owner.Name,
@@ -55,7 +55,7 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 	}
 	if len(settings.GithubOrgs) > 0 && !utility.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
 		grip.Error(message.Fields{
-			"source":  "GitHub hook",
+			"source":  "github hook",
 			"msg_id":  msgID,
 			"event":   "push",
 			"owner":   *event.Repo.Owner.Name,
@@ -69,7 +69,7 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 	refs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "GitHub hook",
+			"source":  "github hook",
 			"msg_id":  msgID,
 			"event":   "push",
 			"owner":   *event.Repo.Owner.Name,
@@ -108,7 +108,7 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 		job.SetPriority(1)
 
 		if err := q.Put(context.TODO(), job); err != nil {
-			catcher.Wrap(err, "enqueueing repotracker job for GitHub push events")
+			catcher.Add(errors.Errorf("failed to add repotracker job to queue for project: '%s'", refs[i].Id))
 			failed = append(failed, refs[i].Id)
 
 		} else {
@@ -117,7 +117,7 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 	}
 
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
-		"source":  "GitHub hook",
+		"source":  "github hook",
 		"msg_id":  msgID,
 		"event":   "push",
 		"owner":   *event.Repo.Owner.Name,
@@ -132,13 +132,13 @@ func TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) er
 	}))
 
 	grip.Info(message.Fields{
-		"source":  "GitHub hook",
+		"source":  "github hook",
 		"msg_id":  msgID,
 		"event":   "push",
 		"owner":   *event.Repo.Owner.Name,
 		"repo":    *event.Repo.Name,
 		"ref":     *event.Ref,
-		"message": "done processing push event",
+		"message": "done processing PushEvent",
 		"project_refs": message.Fields{
 			"failed":       failed,
 			"succeeded":    succeeded,
@@ -162,7 +162,7 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 		event.Repo.Owner.Name == nil || event.Repo.FullName == nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "invalid push event from GitHub",
+			Message:    "invalid PushEvent from github",
 		}
 	}
 
@@ -175,7 +175,7 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	if len(refs) < 3 {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("unexpected Git ref format: %s", *event.Ref),
+			Message:    fmt.Sprintf("Unexpected Git ref format: %s", *event.Ref),
 		}
 	}
 	return strings.Join(refs[2:], "/"), nil

@@ -18,7 +18,7 @@ func (c *APIJiraComment) BuildFromService(h interface{}) error {
 	case *message.JIRAComment:
 		comment = *v
 	default:
-		return errors.Errorf("programmatic error: expected Jira comment but got type %T", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	c.IssueID = utility.ToStringPtr(comment.IssueID)
@@ -58,7 +58,7 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 	case *message.JiraIssue:
 		issue = *v
 	default:
-		return errors.Errorf("programmatic error: expected Jira issue but got type %T", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	i.IssueKey = utility.ToStringPtr(issue.IssueKey)
@@ -111,7 +111,7 @@ func (n *APISlack) BuildFromService(h interface{}) error {
 	case *message.Slack:
 		slack = *v
 	default:
-		return errors.Errorf("programmatic error: expected Slack message but got type %T", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	n.Target = utility.ToStringPtr(slack.Target)
@@ -121,7 +121,7 @@ func (n *APISlack) BuildFromService(h interface{}) error {
 		for _, a := range slack.Attachments {
 			attachment := &APISlackAttachment{}
 			if err := attachment.BuildFromService(a); err != nil {
-				return errors.Wrap(err, "converting Slack attachment to API model")
+				return errors.Wrap(err, "Error converting from message.Slack to model.APISlack")
 			}
 			n.Attachments = append(n.Attachments, *attachment)
 		}
@@ -173,7 +173,7 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 		for _, f := range attachment.Fields {
 			field := &APISlackAttachmentField{}
 			if err := field.BuildFromService(f); err != nil {
-				return errors.Wrap(err, "converting Slack attachment field to API model")
+				return errors.Wrap(err, "Error converting from slack.Attachment to model.APISlackAttachment")
 			}
 			a.Fields = append(a.Fields, *field)
 		}
@@ -199,7 +199,7 @@ func (a *APISlackAttachment) ToService() (interface{}, error) {
 	for _, f := range a.Fields {
 		i, err := f.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "converting Slack attachment field to service model")
+			return nil, errors.Wrap(err, "Error converting from model.APISlackAttachment to message.SlackAttachment")
 		}
 		attachment.Fields = append(attachment.Fields, i.(*message.SlackAttachmentField))
 	}
@@ -223,7 +223,7 @@ func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
 	case *message.SlackAttachmentField:
 		field = *v
 	default:
-		return errors.Errorf("programmatic error: expected Slack attachment field but got type %T", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	f.Title = utility.ToStringPtr(field.Title)
@@ -261,7 +261,7 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 	case *message.Email:
 		email = *v
 	default:
-		return errors.Errorf("programmatic error: expected email message but got type %T", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	n.From = utility.ToStringPtr(email.From)

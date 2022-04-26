@@ -34,7 +34,7 @@ func FindProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIPr
 	if len(aliases) == 0 && repoId != "" {
 		aliases, err = model.FindAliasesForRepo(repoId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding project aliases for repo '%s'", repoId)
+			return nil, errors.Wrapf(err, "error finding aliases for repo '%s'", repoId)
 		}
 	}
 	if projectId != "" && includeProjectConfig {
@@ -70,12 +70,11 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 			aliasesToDelete = append(aliasesToDelete, utility.FromStringPtr(aliasModel.ID))
 		} else {
 			v, err := aliasModel.ToService()
-			catcher.Wrap(err, "converting API project alias to DB model")
+			catcher.Add(errors.Wrap(err, "problem converting to project variable model"))
 
 			alias, ok := v.(model.ProjectAlias)
 			if !ok {
-				catcher.Errorf("programmatic error: expected DB project alias but actual type is %T", v)
-				continue
+				catcher.Add(errors.New("problem converting to project alias"))
 			}
 			alias.ProjectID = projectId
 			aliasesToUpsert = append(aliasesToUpsert, alias)
@@ -83,16 +82,16 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 	}
 	errStrs := model.ValidateProjectAliases(aliasesToUpsert, "All Aliases")
 	for _, err := range errStrs {
-		catcher.Wrap(errors.New(err), "invalid project alias")
+		catcher.Add(errors.Errorf("error validating project alias: %s", err))
 	}
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
 	if err := model.UpsertAliasesForProject(aliasesToUpsert, projectId); err != nil {
-		return errors.Wrap(err, "upserting project aliases")
+		return errors.Wrap(err, "problem upserting aliases")
 	}
 	for _, aliasId := range aliasesToDelete {
-		catcher.Wrapf(model.RemoveProjectAlias(aliasId), "deleting project alias '%s'", aliasId)
+		catcher.Add(model.RemoveProjectAlias(aliasId))
 	}
 	return catcher.Resolve()
 }
@@ -113,7 +112,7 @@ func UpdateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		aliasesIdMap[utility.FromStringPtr(a.ID)] = true
 	}
 	if err := UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
-		return false, errors.Wrap(err, "updating project aliases")
+		return false, errors.Wrap(err, "error updating project aliases")
 	}
 	modified := len(aliasesToUpdate) > 0
 	catcher := grip.NewBasicCatcher()
