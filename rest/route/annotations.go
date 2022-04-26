@@ -203,6 +203,80 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(res)
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/tasks/annotations
+
+type bulkCreateAnnotationsOpts struct {
+	TaskUpdates []annotations.TaskUpdate `bson:"task_updates" json:"task_updates"`
+}
+
+type bulkPatchAnnotationHandler struct {
+	user gimlet.User
+	opts bulkCreateAnnotationsOpts
+}
+
+func makeBulkPatchAnnotations() gimlet.RouteHandler {
+	return &bulkPatchAnnotationHandler{}
+}
+
+func (h *bulkPatchAnnotationHandler) Factory() gimlet.RouteHandler {
+	return &bulkPatchAnnotationHandler{}
+}
+
+func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request) error {
+	var err error
+	body := utility.NewRequestReader(r)
+	defer body.Close()
+	err = json.NewDecoder(body).Decode(&h.opts)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("API error while unmarshalling JSON: '%s'", err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	for _, update := range h.opts.TaskUpdates {
+		for _, t := range update.TaskData {
+			// check if the task exists
+			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
+			if err != nil {
+				return errors.Wrapf(err, "finding task with id '%s' and execution '%d'", t.TaskId, t.Execution)
+			}
+			if foundTask == nil {
+				return gimlet.ErrorResponse{
+					Message:    fmt.Sprintf("the task '%s' execution '%d' does not exist", t.TaskId, t.Execution),
+					StatusCode: http.StatusBadRequest,
+				}
+			}
+			if !evergreen.IsFailedTaskStatus(foundTask.Status) {
+				return gimlet.ErrorResponse{
+					Message:    fmt.Sprintf("cannot create annotation when task status is '%s'", foundTask.Status),
+					StatusCode: http.StatusBadRequest,
+				}
+			}
+		}
+	}
+	u := MustHaveUser(ctx)
+	h.user = u
+	return nil
+}
+
+func (h *bulkPatchAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := annotations.InsertManyAnnotations(h.opts.TaskUpdates); err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err := responder.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
+	}
+	return responder
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// PUT /rest/v2/tasks/{task_id}/annotation
+
 // Parsing logic for task annotation put and patch routes.
 func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
 	var taskId string
