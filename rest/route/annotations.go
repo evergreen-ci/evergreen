@@ -240,11 +240,11 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 			// check if the task exists
 			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
 			if err != nil {
-				return errors.Wrap(err, "error finding task")
+				return errors.Wrapf(err, "finding task with id '%s' and execution '%d'", t.TaskId, t.Execution)
 			}
 			if foundTask == nil {
 				return gimlet.ErrorResponse{
-					Message:    fmt.Sprintf("the task '%s' does not exist", t.TaskId),
+					Message:    fmt.Sprintf("the task '%s' execution '%d' does not exist", t.TaskId, t.Execution),
 					StatusCode: http.StatusBadRequest,
 				}
 			}
@@ -262,13 +262,12 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *bulkPatchAnnotationHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.InsertManyAnnotations(h.opts.TaskUpdates)
-	if err != nil {
+	if err := annotations.InsertManyAnnotations(h.opts.TaskUpdates); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
 	responder := gimlet.NewJSONResponse(struct{}{})
-	if err = responder.SetStatus(http.StatusOK); err != nil {
+	if err := responder.SetStatus(http.StatusOK); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
 	}
 	return responder
