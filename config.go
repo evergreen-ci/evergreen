@@ -76,6 +76,7 @@ type Settings struct {
 	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GithubOrgs          []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	DisabledGQLQueries  []string                  `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
 	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper          HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
 	Jira                JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
@@ -150,6 +151,7 @@ func (c *Settings) Set() error {
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			githubOrgsKey:         c.GithubOrgs,
+			disabledGQLQueriesKey: c.DisabledGQLQueries,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
 			ldapRoleMapKey:        c.LDAPRoleMap,

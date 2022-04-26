@@ -24,6 +24,8 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	// Log graphql requests to splunk
 	srv.Use(SplunkTracing{})
 
+	// Disable queries for service degradation
+	srv.Use(DisableQuery{})
 	// Handler to log graphql panics to splunk
 	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
