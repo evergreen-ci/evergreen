@@ -737,6 +737,18 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
     delete $scope.jiraMapping.newProject;
   }
+  $scope.addDisabledGQLQuery = function () {
+    var value = $scope.queryMapping.newQuery
+    if (!value) {
+      return;
+    }
+    $scope.Settings.disabled_gql_queries = [...($scope.Settings.disabled_gql_queries || []), value]
+    delete $scope.queryMapping.newQuery;
+  }
+  $scope.removeDisabledGQLQuery = function (queryName) {
+    console.log(queryName)
+    $scope.Settings.disabled_gql_queries = $scope.Settings.disabled_gql_queries?.filter(v => v !== queryName)
+  }
   $scope.addJIRAFieldToProject = function (project) {
     var field = $scope.jiraMapping.newField[project];
 
@@ -779,6 +791,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
 
   $scope.jiraMapping = {};
+  $scope.queryMapping = {}
 
   $scope.load();
 }]);
