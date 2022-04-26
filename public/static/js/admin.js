@@ -747,7 +747,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   }
   $scope.removeDisabledGQLQuery = function (queryName) {
     console.log(queryName)
-    $scope.Settings.disabled_gql_queries = $scope.Settings.disabled_gql_queries?.filter(v => v !== queryName)
+    $scope.Settings.disabled_gql_queries = ($scope.Settings.disabled_gql_queries || []).filter(v => v !== queryName)
   }
   $scope.addJIRAFieldToProject = function (project) {
     var field = $scope.jiraMapping.newField[project];
