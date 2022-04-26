@@ -62,7 +62,7 @@ func (s *ProjectCopySuite) SetupTest() {
 
 func (s *ProjectCopySuite) TestParse() {
 	ctx := context.Background()
-	request, err := http.NewRequest(http.MethodPost, "/projects/projectA/copy?new_project=projectB", nil)
+	request, err := http.NewRequest("POST", "/projects/projectA/copy?new_project=projectB", nil)
 	options := map[string]string{"project_id": "projectA"}
 	request = gimlet.SetURLVars(request, options)
 	s.NoError(err)
@@ -170,7 +170,7 @@ func (s *copyVariablesSuite) TestParse() {
 	jsonBytes, err := json.Marshal(opts)
 	s.NoError(err)
 	body := bytes.NewReader(jsonBytes)
-	request, err := http.NewRequest(http.MethodPost, "/projects/projectA/copy/variables", body)
+	request, err := http.NewRequest("POST", "/projects/projectA/copy/variables", body)
 	options := map[string]string{"project_id": "projectA"}
 	request = gimlet.SetURLVars(request, options)
 	s.NoError(err)

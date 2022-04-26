@@ -886,7 +886,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 		}
 		ctx := context.Background()
 		Convey("then should error on empty body", func() {
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", &bytes.Buffer{})
+			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -909,7 +909,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
 
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", buf)
+			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -931,7 +931,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
 
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", buf)
+			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -955,7 +955,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			buf := bytes.NewBuffer(res)
 
-			req, err := http.NewRequest(http.MethodPatch, "task/testTaskId", buf)
+			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1035,7 +1035,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("should error on empty project", func() {
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1046,7 +1046,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		})
 		Convey("then should error on empty task", func() {
 			projCtx.Task = nil
-			req, err := http.NewRequest(http.MethodPost, "task/testTaskId/restart", &bytes.Buffer{})
+			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
@@ -1089,7 +1089,7 @@ func TestTaskGetHandler(t *testing.T) {
 
 			Convey("a request with a user should then return no error and a task should"+
 				" should be returned", func() {
-				req, err := http.NewRequest(http.MethodGet, "/rest/v2/tasks/testTaskId", nil)
+				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
 				So(err, ShouldBeNil)
 
 				rr := httptest.NewRecorder()
@@ -1105,7 +1105,7 @@ func TestTaskGetHandler(t *testing.T) {
 			})
 			Convey("and old tasks are available", func() {
 				Convey("a test that requests old executions should receive them", func() {
-					req, err := http.NewRequest(http.MethodGet, "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
+					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
 					So(err, ShouldBeNil)
 
 					rr := httptest.NewRecorder()
@@ -1118,7 +1118,7 @@ func TestTaskGetHandler(t *testing.T) {
 					So(len(res.PreviousExecutions), ShouldEqual, 1)
 				})
 				Convey("a test that doesn't request old executions should not receive them", func() {
-					req, err := http.NewRequest(http.MethodGet, "/rest/v2/tasks/testTaskId", nil)
+					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
 					So(err, ShouldBeNil)
 
 					rr := httptest.NewRecorder()
@@ -1232,7 +1232,7 @@ func TestParentTaskInfo(t *testing.T) {
 		url:   "http://evergreen.example.net",
 	}
 	route := "/rest/v2/builds/test/tasks?fetch_all_executions=false&fetch_parent_ids=true&start_at=execTask0"
-	r, err := http.NewRequest(http.MethodGet, route, nil)
+	r, err := http.NewRequest("GET", route, nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"build_id": "test"})
 

@@ -68,7 +68,7 @@ func TestGeneratePollParse(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
-	r, err := http.NewRequest(http.MethodGet, "/task/1/generate", nil)
+	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
 

@@ -178,7 +178,7 @@ func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments() {
 		"&status=B" +
 		"&started_after=2018-01-01T00%3A00%3A00Z" +
 		"&finished_before=2018-02-02T00%3A00%3A00Z"
-	r, err := http.NewRequest(http.MethodGet, url, &bytes.Buffer{})
+	r, err := http.NewRequest("GET", url, &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -188,7 +188,7 @@ func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments() {
 }
 
 func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/projects/none/versions/tasks", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/none/versions/tasks", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)

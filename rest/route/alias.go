@@ -30,14 +30,14 @@ func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
 	pRef, err := model.FindBranchProjectRef(a.name)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project '%s'", a.name))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error finding project '%s'", a.name))
 	}
 	if pRef == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", a.name))
 	}
 	aliasModels, err := data.FindProjectAliases(pRef.Id, pRef.RepoRefId, nil, false)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project aliases for project '%s'", pRef.Id))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	resp := gimlet.NewResponseBuilder()

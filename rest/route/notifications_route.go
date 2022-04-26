@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 )
 
 func makeFetchNotifcationStatusRoute() gimlet.RouteHandler {
@@ -24,7 +23,7 @@ func (gh *notificationsStatusHandler) Parse(_ context.Context, _ *http.Request) 
 func (gh *notificationsStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	stats, err := data.GetNotificationsStats()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting notification stats"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	return gimlet.NewJSONResponse(stats)

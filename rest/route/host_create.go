@@ -54,14 +54,14 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting number of hosts to create to integer value"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	ids := []string{}
 	for i := 0; i < numHosts; i++ {
 		intentHost, err := data.MakeIntentHost(h.taskID, "", "", h.createHost)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating intent host"))
+			return gimlet.MakeJSONErrorResponder(err)
 		}
 		ids = append(ids, intentHost.Id)
 
@@ -87,7 +87,10 @@ func (h *hostListHandler) Factory() gimlet.RouteHandler { return &hostListHandle
 func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
-		return errors.New("must provide task ID")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must provide task ID",
+		}
 	}
 	h.taskID = taskID
 
@@ -97,16 +100,16 @@ func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts, err := data.ListHostsForTask(ctx, h.taskID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "listing hosts for task '%s'", h.taskID))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if t == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			Message:    fmt.Sprintf("task with id %s not found", h.taskID),
 		})
 	}
 	catcher := grip.NewBasicCatcher()
@@ -117,7 +120,7 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	for i := range hosts {
 		createHost := model.CreateHost{}
 		if err := createHost.BuildFromService(&hosts[i]); err != nil {
-			catcher.Wrapf(err, "converting created host to API model")
+			catcher.Wrapf(err, "error building api host from service")
 		}
 		result.Hosts[i] = createHost
 	}
@@ -125,15 +128,14 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	for i := range t.HostCreateDetails {
 		details := model.APIHostCreateDetail{}
 		if err := details.BuildFromService(t.HostCreateDetails[i]); err != nil {
-			catcher.Wrapf(err, "converting host creation details to API model")
+			catcher.Wrapf(err, "error building api host create details from service")
 		}
 		result.Details[i] = details
 	}
 
 	if catcher.HasErrors() {
-		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
+		return gimlet.MakeJSONErrorResponder(catcher.Resolve())
 	}
-
 	return gimlet.NewJSONResponse(result)
 }
 
@@ -163,29 +165,37 @@ func (h *containerLogsHandler) Factory() gimlet.RouteHandler {
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
 	host, err := host.FindOneId(id)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding host '%s'", id).Error(),
-		}
-	}
 	if host == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("container '%s' not found", id),
+			Message:    fmt.Sprintf("Container _id %s not found", id),
+		}
+	}
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "Error loading host for container _id " + id,
 		}
 	}
 	h.host = host
 
 	if startTime := r.FormValue("start_time"); startTime != "" {
 		if _, err := time.Parse(time.RFC3339, startTime); err != nil {
-			return errors.Wrapf(err, "parsing start time '%s' in RPC3339 format", startTime)
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Format must be RFC339",
+					startTime, err.Error()),
+			}
 		}
 		h.startTime = startTime
 	}
 	if endTime := r.FormValue("end_time"); endTime != "" {
 		if _, err := time.Parse(time.RFC3339, endTime); err != nil {
-			return errors.Wrapf(err, "parsing start time '%s' in RPC3339 format", endTime)
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("problem parsing end time from '%s' (%s). Format must be RFC339",
+					endTime, err.Error()),
+			}
 		}
 		h.endTime = endTime
 	}
@@ -194,7 +204,11 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 		if (err == nil && tail >= 0) || (err != nil && tailStr == "all") {
 			h.tail = tailStr
 		} else {
-			return errors.Errorf("tail '%s' must be non-negative integer or 'all'", tailStr)
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("tail '%s' invalid, must be non-negative integer or 'all'",
+					tailStr),
+			}
 		}
 	}
 
@@ -204,11 +218,11 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	parent, err := h.host.GetParent()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding parent for container '%s'", h.host.Id))
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
 	options := types.ContainerLogsOptions{
 		Timestamps: true,
@@ -223,7 +237,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	logs, err := data.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "getting Docker logs logs"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker logs"))
 	}
 	return gimlet.NewTextResponse(logs)
 }
@@ -247,16 +261,17 @@ func (h *containerStatusHandler) Factory() gimlet.RouteHandler {
 func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
 	host, err := host.FindOneId(id)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding container '%s'", id).Error(),
-		}
-	}
 	if host == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("container '%s' not found", id),
+			Message:    fmt.Sprintf("Container _id %s not found", id),
+		}
+	}
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message: fmt.Sprintf("Error loading host for container _id %s (%s)",
+				id, err.Error()),
 		}
 	}
 	h.host = host
@@ -266,15 +281,15 @@ func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) err
 func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	parent, err := h.host.GetParent()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding parent for container '%s'", h.host.Id))
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
 	status, err := data.GetDockerStatus(ctx, h.host.Id, parent, settings)
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Docker status"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker status"))
 	}
 	return gimlet.NewJSONResponse(status)
 }

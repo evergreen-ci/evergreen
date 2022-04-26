@@ -23,18 +23,18 @@ func (h *flagsPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *flagsPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	return errors.Wrap(gimlet.GetJSON(r.Body, h), "parsing request body")
+	return errors.Wrap(gimlet.GetJSON(r.Body, h), "problem parsing request body")
 }
 
 func (h *flagsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := h.Flags.ToService()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting service flags to service model"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
 	err = evergreen.SetServiceFlags(flags.(evergreen.ServiceFlags))
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting service flags"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	return gimlet.NewJSONResponse(h.Flags)

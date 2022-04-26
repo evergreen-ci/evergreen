@@ -22,7 +22,7 @@ func (s *AuthRouteSuite) TestParse() {
 	h := &authPermissionGetHandler{}
 	urlString := "http://evergreen.mongodb.com/rest/v2/auth"
 	urlString += "?resource=abc&resource_type=project&permission=read&required_level=10"
-	req := &http.Request{Method: http.MethodGet}
+	req := &http.Request{Method: "GET"}
 	req.URL, _ = url.Parse(urlString)
 	err := h.Parse(context.TODO(), req)
 	s.Require().NoError(err)
@@ -36,7 +36,7 @@ func (s *AuthRouteSuite) TestParseFail() {
 	h := &authPermissionGetHandler{}
 	urlString := "http://evergreen.mongodb.com/rest/v2/auth"
 	urlString += "?resource=abc&resource_type=project&permission=read&required_level=notAnumber"
-	req := &http.Request{Method: http.MethodGet}
+	req := &http.Request{Method: "GET"}
 	req.URL, _ = url.Parse(urlString)
 	err := h.Parse(context.TODO(), req)
 	s.Error(err)

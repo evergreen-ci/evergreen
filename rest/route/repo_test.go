@@ -55,7 +55,7 @@ func TestGetRepoIDHandler(t *testing.T) {
 	require.NoError(t, repoAlias.Upsert())
 
 	h := repoIDGetHandler{}
-	r, err := http.NewRequest(http.MethodGet, "/repos/repo_ref", nil)
+	r, err := http.NewRequest("GET", "/repos/repo_ref", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
 	assert.NoError(t, h.Parse(ctx, r))
@@ -156,7 +156,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 		settings: settings,
 	}
 	body := bytes.NewBuffer([]byte(`{"commit_queue": {"enabled": true}}`))
-	r, err := http.NewRequest(http.MethodGet, "/repos/repo_ref", body)
+	r, err := http.NewRequest("GET", "/repos/repo_ref", body)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
 	require.NoError(t, h.Parse(ctx, r))
@@ -172,19 +172,19 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "if repo commit queue enabled, must have aliases")
 
 	body = bytes.NewBuffer([]byte(`{"github_checks_enabled": true}`))
-	r, err = http.NewRequest(http.MethodGet, "/repos/repo_ref", body)
+	r, err = http.NewRequest("GET", "/repos/repo_ref", body)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
 	require.NoError(t, h.Parse(ctx, r))
 	assert.True(t, h.newRepoRef.IsGithubChecksEnabled())
 	resp = h.Run(ctx)
 	require.Equal(t, http.StatusBadRequest, resp.Status())
-	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "if repo GitHub checks enabled, must have aliases")
+	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "if repo github checks enabled, must have aliases")
 
 	body = bytes.NewBuffer([]byte(`{"commit_queue": {"enabled": true}, 
 		"aliases": [{"alias": "__commit_queue", "variant": ".*", "task": ".*"}],
 		"variables": {"vars": {"new": "variable"}, "private_vars": {"a": true}, "vars_to_delete": ["b"]}}`))
-	r, err = http.NewRequest(http.MethodGet, "/repos/repo_ref", body)
+	r, err = http.NewRequest("GET", "/repos/repo_ref", body)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
 	require.NoError(t, h.Parse(ctx, r))
@@ -205,7 +205,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	assert.Len(t, aliases, 2)
 
 	body = bytes.NewBuffer([]byte(`{"owner_name": "10gen"}`))
-	r, err = http.NewRequest(http.MethodGet, "/repos/repo_ref", body)
+	r, err = http.NewRequest("GET", "/repos/repo_ref", body)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"repo_id": "repo_ref"})
 	require.NoError(t, h.Parse(ctx, r))
@@ -217,7 +217,7 @@ func TestPatchRepoIDHandler(t *testing.T) {
 	h.settings.GithubOrgs = append(h.settings.GithubOrgs, "10gen")
 	resp = h.Run(ctx)
 	assert.Equal(t, http.StatusBadRequest, resp.Status())
-	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "must enable GitHub webhooks first")
+	assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "must enable Github webhooks first")
 
 	hook = dbModel.GithubHook{
 		HookID: 2,
@@ -315,7 +315,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	settings.GithubOrgs = []string{branchProject.Owner}
 	attachProjectHandler := attachProjectToRepoHandler{}
 	// test that turning on repo settings doesn't impact existing restricted values
-	req, _ := http.NewRequest(http.MethodPost, "rest/v2/projects/branch2/attach_to_repo", nil)
+	req, _ := http.NewRequest("POST", "rest/v2/projects/branch2/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch2"})
 
 	assert.NoError(t, attachProjectHandler.Parse(ctx, req))
@@ -361,7 +361,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 
 	// test that setting repo to restricted impacts the branch project
 	body := bytes.NewBuffer([]byte(`{"restricted": true}`))
-	req, _ = http.NewRequest(http.MethodPatch, fmt.Sprintf("rest/v2/repos/%s", repoId), body)
+	req, _ = http.NewRequest("PATCH", fmt.Sprintf("rest/v2/repos/%s", repoId), body)
 	req = gimlet.SetURLVars(req, map[string]string{"repo_id": repoId})
 
 	repoHandler := repoIDPatchHandler{
@@ -402,7 +402,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 
 	// test that setting branch explicitly not-restricted impacts that branch, even though it's using repo settings
-	req, _ = http.NewRequest(http.MethodPost, "rest/v2/projects/branch1/attach_to_repo", nil)
+	req, _ = http.NewRequest("POST", "rest/v2/projects/branch1/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
 
 	assert.NoError(t, attachProjectHandler.Parse(ctx, req))
@@ -411,7 +411,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.Equal(t, resp.Status(), http.StatusOK)
 
 	body = bytes.NewBuffer([]byte(`{"restricted": false}`))
-	req, _ = http.NewRequest(http.MethodPatch, "rest/v2/projects/branch1", body)
+	req, _ = http.NewRequest("PATCH", "rest/v2/projects/branch1", body)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
 
 	projectHandler := projectIDPatchHandler{
@@ -453,7 +453,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 
 	// test that setting branch to null uses the repo default (which is restricted)
 	body = bytes.NewBuffer([]byte(`{"restricted": null}`))
-	req, _ = http.NewRequest(http.MethodPatch, "rest/v2/projects/branch1", body)
+	req, _ = http.NewRequest("PATCH", "rest/v2/projects/branch1", body)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "branch1"})
 
 	assert.NoError(t, projectHandler.Parse(ctx, req))
@@ -485,7 +485,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 
 	// test that setting repo back to not restricted gives the branch admins view access again
 	body = bytes.NewBuffer([]byte(`{"restricted": false}`))
-	req, _ = http.NewRequest(http.MethodPatch, fmt.Sprintf("rest/v2/repos/%s", repoId), body)
+	req, _ = http.NewRequest("PATCH", fmt.Sprintf("rest/v2/repos/%s", repoId), body)
 	req = gimlet.SetURLVars(req, map[string]string{"repo_id": repoId})
 
 	assert.NoError(t, repoHandler.Parse(ctx, req))

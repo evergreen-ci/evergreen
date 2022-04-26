@@ -26,7 +26,7 @@ func (h *adminSpawnHostHandler) Parse(ctx context.Context, r *http.Request) erro
 func (h *adminSpawnHostHandler) Run(ctx context.Context) gimlet.Responder {
 	res, err := host.AggregateSpawnhostData()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting spawn host usage data"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error getting spawn host data"))
 	}
 	return gimlet.NewJSONResponse(res)
 }

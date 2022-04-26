@@ -43,10 +43,10 @@ func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
 	if err := evergreen.SetBanner(utility.FromStringPtr(h.Banner)); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting banner text"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner text"))
 	}
 	if err := data.SetBannerTheme(utility.FromStringPtr(h.Theme), u); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting banner theme"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner theme"))
 	}
 
 	return gimlet.NewJSONResponse(h.model)
@@ -70,7 +70,7 @@ func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
 	banner, theme, err := data.GetBanner()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting banner"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	return gimlet.NewJSONResponse(&model.APIBanner{

@@ -42,7 +42,7 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 	if ok && len(k) > 0 {
 		h.Timestamp, err = time.Parse(time.RFC3339, k[0])
 		if err != nil {
-			return errors.Wrap(err, "parsing time in RFC3339 format")
+			return errors.Wrap(err, "problem parsing time as RFC-3339")
 		}
 	}
 
@@ -57,7 +57,7 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	events, err := data.GetProjectEventLog(h.Id, h.Timestamp, h.Limit+1)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project event log"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -77,14 +77,14 @@ func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 		})
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"paginating response"))
+				"problem paginating response"))
 		}
 	}
 
 	events = events[:lastIndex]
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
-		catcher.Wrapf(resp.AddData(restModel.Model(&events[i])), "adding response data for event at index %d", i)
+		catcher.Add(resp.AddData(restModel.Model(&events[i])))
 	}
 
 	if catcher.HasErrors() {

@@ -41,8 +41,8 @@ func (s *JiraCommentNotificationSuite) TestParseValidJSON() {
 	json := []byte(`{
 		"issue_id": "This is the JIRA issue's ID",
 		"body": "This is the JIRA comment's body"
-	}`)
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/notifications/jira_comment", bytes.NewBuffer(json))
+  }`)
+	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/notifications/jira_comment", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 
@@ -87,8 +87,8 @@ func (s *JiraIssueNotificationSuite) TestParseValidJSON() {
 		"components": ["c1", "c2"],
 		"labels": ["l1", "l2"],
 		"fields": {"f1": true, "f2": 12.34, "f3": "string"}
-	}`)
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/notifications/jira_issue", bytes.NewBuffer(json))
+  }`)
+	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/notifications/jira_issue", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 
@@ -174,7 +174,7 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 			}
 		]
 	}`)
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/notifications/slack", bytes.NewBuffer(json))
+	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/notifications/slack", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 
@@ -234,13 +234,13 @@ func (s *EmailNotificationSuite) TestParseValidJSON() {
 	ctx := context.Background()
 	json := []byte(`{
 		"from": "me",
-	"recipients": ["Tom", "Dick", "Harry"],
-	"subject": "This is the email's subject",
-	"body": "This is the email's body",
-	"is_plain_text": true,
+  	"recipients": ["Tom", "Dick", "Harry"],
+  	"subject": "This is the email's subject",
+  	"body": "This is the email's body",
+  	"is_plain_text": true,
 		"headers": {"h1": ["v11", "v12"], "h2": ["v21", "v22"]}
 	}`)
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/notifications/email", bytes.NewBuffer(json))
+	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/notifications/email", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 

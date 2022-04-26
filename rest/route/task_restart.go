@@ -35,13 +35,13 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
 		return gimlet.ErrorResponse{
-			Message:    "task not found",
+			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
 	if projCtx.ProjectRef == nil {
 		return gimlet.ErrorResponse{
-			Message:    "project not found",
+			Message:    "Project not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
@@ -56,24 +56,24 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	err := resetTask(trh.taskId, trh.username)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting task"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	refreshedTask, err := task.FindOneId(trh.taskId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding updated task"))
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if refreshedTask == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", trh.taskId),
+			Message:    fmt.Sprintf("task with id %s not found", trh.taskId),
 		})
 	}
 
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromArgs(refreshedTask, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting task to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
 	return gimlet.NewJSONResponse(taskModel)
 }
@@ -83,10 +83,11 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 func resetTask(taskId, username string) error {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", t)
+		return errors.Wrapf(err, "problem finding task '%s'", t)
 	}
 	if t == nil {
 		return errors.Errorf("task '%s' not found", t.Id)
 	}
-	return errors.Wrap(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil), "resetting task")
+	return errors.Wrap(serviceModel.ResetTaskOrDisplayTask(t, username, evergreen.RESTV2Package, nil),
+		"Reset task error")
 }

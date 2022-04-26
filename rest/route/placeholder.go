@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-func makePlaceHolder() gimlet.RouteHandler {
+func makePlaceHolderManger() gimlet.RouteHandler {
 	return &placeHolderHandler{}
 }
 

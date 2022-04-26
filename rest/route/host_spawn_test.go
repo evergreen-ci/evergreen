@@ -330,7 +330,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
 
-	r, err := http.NewRequest(http.MethodGet, "/hosts/my-host/attach", buffer)
+	r, err := http.NewRequest("GET", "/hosts/my-host/attach", buffer)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
 
@@ -347,7 +347,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
-	r, err = http.NewRequest(http.MethodGet, "/hosts/my-host/attach", buffer)
+	r, err = http.NewRequest("GET", "/hosts/my-host/attach", buffer)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
 
@@ -392,7 +392,7 @@ func TestDetachVolumeHandler(t *testing.T) {
 	assert.NoError(t, err)
 	buffer := bytes.NewBuffer(jsonBody)
 
-	r, err := http.NewRequest(http.MethodGet, "/hosts/my-host/detach", buffer)
+	r, err := http.NewRequest("GET", "/hosts/my-host/detach", buffer)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "my-host"})
 
@@ -566,7 +566,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 	}
 	assert.NoError(t, volume.Insert())
 	assert.NoError(t, h1.Insert())
-	r, err := http.NewRequest(http.MethodGet, "/volumes/volume1", nil)
+	r, err := http.NewRequest("GET", "/volumes/volume1", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"volume_id": "volume1"})
 	assert.NoError(t, h.Parse(ctx, r))

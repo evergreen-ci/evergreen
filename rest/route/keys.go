@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -34,15 +35,23 @@ func (h *keysGetHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
 	resp := gimlet.NewResponseBuilder()
+	if err := resp.SetStatus(http.StatusOK); err != nil {
+		return gimlet.NewJSONErrorResponse(err)
+	}
+
+	if err := resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.NewJSONErrorResponse(err)
+	}
 
 	for _, key := range user.PubKeys {
 		apiKey := &model.APIPubKey{}
 		if err := apiKey.BuildFromService(key); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting public key to API model"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error marshalling public key to api"))
 		}
 		if err := resp.AddData(apiKey); err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding public keys to response"))
+			return gimlet.NewJSONResponse(err)
 		}
+
 	}
 
 	return resp
@@ -71,16 +80,25 @@ func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	key := model.APIPubKey{}
 	if err := utility.ReadJSON(body, &key); err != nil {
-		return errors.Wrap(err, "reading public key from JSON request body")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("failed to unmarshal public key: %s", err),
+		}
 	}
 	h.keyName = utility.FromStringPtr(key.Name)
 	if err := validateKeyName(h.keyName); err != nil {
-		return errors.Wrap(err, "invalid public key name")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("invalid public key name: %s", err),
+		}
 	}
 
 	h.keyValue = utility.FromStringPtr(key.Key)
 	if err := validateKeyValue(h.keyValue); err != nil {
-		return errors.Wrap(err, "invalid public key")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
 	}
 
 	return nil
@@ -110,7 +128,7 @@ func validateKeyValue(keyValue string) error {
 	if err != nil {
 		return errors.Wrap(err, "invalid public key")
 	} else if !matched {
-		return errors.New("public key contents are invalid")
+		return errors.New("invalid public key: key contents invalid")
 	}
 
 	return nil
@@ -119,11 +137,14 @@ func validateKeyValue(keyValue string) error {
 func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("public key '%s' already exists for user", h.keyName))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "a public key with this name already exists for user",
+		})
 	}
 
 	if err := u.AddPublicKey(h.keyName, h.keyValue); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "add public key"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to add key"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -148,7 +169,10 @@ func (h *keysDeleteHandler) Factory() gimlet.RouteHandler {
 func (h *keysDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.keyName = gimlet.GetVars(r)["key_name"]
 	if strings.TrimSpace(h.keyName) == "" {
-		return errors.New("public key name cannot be empty")
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "empty key name",
+		}
 	}
 
 	return nil
@@ -157,11 +181,14 @@ func (h *keysDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	if _, err := user.GetPublicKey(h.keyName); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("public key '%s' not found", h.keyName))
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("key with name '%s' does not exist", h.keyName),
+		})
 	}
 
 	if err := user.DeletePublicKey(h.keyName); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "deleting public key '%s'", h.keyName))
+		return gimlet.MakeJSONErrorResponder(errors.New("couldn't delete key"))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

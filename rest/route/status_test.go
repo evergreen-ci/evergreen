@@ -73,7 +73,7 @@ func (s *StatusSuite) SetupTest() {
 }
 
 func (s *StatusSuite) TestParseAndValidateDefault() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -82,7 +82,7 @@ func (s *StatusSuite) TestParseAndValidateDefault() {
 }
 
 func (s *StatusSuite) TestParseAndValidateMinutes() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=5", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=5", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -91,7 +91,7 @@ func (s *StatusSuite) TestParseAndValidateMinutes() {
 }
 
 func (s *StatusSuite) TestParseAndValidateByDistro() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -99,7 +99,7 @@ func (s *StatusSuite) TestParseAndValidateByDistro() {
 }
 
 func (s *StatusSuite) TestParseAndValidateByProject() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_project=1", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_project=1", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -107,7 +107,7 @@ func (s *StatusSuite) TestParseAndValidateByProject() {
 }
 
 func (s *StatusSuite) TestParseAndValidateByAgentVersion() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_agent_version=1", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_agent_version=1", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -115,14 +115,14 @@ func (s *StatusSuite) TestParseAndValidateByAgentVersion() {
 }
 
 func (s *StatusSuite) TestParseAndValidateByDistroAndProject() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true&by_project=1", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true&by_project=1", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
 }
 
 func (s *StatusSuite) TestParseAndValidateMinutesAndVerbose() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=5&verbose=true", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=5&verbose=true", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -131,7 +131,7 @@ func (s *StatusSuite) TestParseAndValidateMinutesAndVerbose() {
 }
 
 func (s *StatusSuite) TestParseAndValidateVerbose() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?verbose=true", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?verbose=true", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
@@ -140,7 +140,7 @@ func (s *StatusSuite) TestParseAndValidateVerbose() {
 }
 
 func (s *StatusSuite) TestParseAndValidateMaxMinutes() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=1500", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=1500", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
@@ -149,7 +149,7 @@ func (s *StatusSuite) TestParseAndValidateMaxMinutes() {
 }
 
 func (s *StatusSuite) TestParseAndValidateNegativeMinutesAreParsedPositive() {
-	r, err := http.NewRequest(http.MethodGet, "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=-10", &bytes.Buffer{})
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=-10", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
