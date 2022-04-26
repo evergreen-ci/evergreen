@@ -2006,7 +2006,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		a.Level = utility.ToStringPtr(v.Level)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
-			if err := a.Options.BuildFromService(*v.Options); err != nil {
+			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: govet
 				return errors.Wrap(err, "converting Slack options to API model")
 			}
 		}

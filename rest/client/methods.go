@@ -44,7 +44,7 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 
 	spawnHostResp := model.APIHost{}
 	if err = utility.ReadJSON(resp.Body, &spawnHostResp); err != nil {
-		return nil, errors.Wrap(err, "reading respones body")
+		return nil, errors.Wrap(err, "reading response body")
 	}
 	return &spawnHostResp, nil
 }
