@@ -99,28 +99,7 @@ func CountTestsByTaskID(ctx context.Context, taskID string, execution int) (int,
 		}
 	}
 
-	if t.HasCedarResults {
-		stats, status, err := apimodels.GetCedarTestResultsStats(ctx, apimodels.GetCedarTestResultsOptions{
-			BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-			TaskID:      taskID,
-			Execution:   utility.ToIntPtr(execution),
-			DisplayTask: t.DisplayOnly,
-		})
-		if err != nil {
-			return 0, gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrapf(err, "getting test results stats from Cedar for task '%s'", taskID).Error(),
-			}
-		}
-		if status != http.StatusOK && status != http.StatusNotFound {
-			return 0, gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("getting test results stats from Cedar for task '%s' returned status %d", taskID, status),
-			}
-		}
-
-		return stats.TotalCount, nil
-	} else {
+	if !t.HasCedarResults {
 		var taskIDs []string
 		if t.DisplayOnly {
 			taskIDs = t.ExecutionTasks
@@ -138,4 +117,25 @@ func CountTestsByTaskID(ctx context.Context, taskID string, execution int) (int,
 
 		return count, nil
 	}
+
+	stats, status, err := apimodels.GetCedarTestResultsStats(ctx, apimodels.GetCedarTestResultsOptions{
+		BaseURL:     evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		TaskID:      taskID,
+		Execution:   utility.ToIntPtr(execution),
+		DisplayTask: t.DisplayOnly,
+	})
+	if err != nil {
+		return 0, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrapf(err, "getting test results stats from Cedar for task '%s'", taskID).Error(),
+		}
+	}
+	if status != http.StatusOK && status != http.StatusNotFound {
+		return 0, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("getting test results stats from Cedar for task '%s' returned status %d", taskID, status),
+		}
+	}
+
+	return stats.TotalCount, nil
 }
