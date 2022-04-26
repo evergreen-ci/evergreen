@@ -3750,7 +3750,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, v *restModel.APIV
 	}
 	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task status stats: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
 	}
 
 	return stats, nil

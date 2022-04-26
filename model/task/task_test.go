@@ -3545,7 +3545,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Version:          "v1",
 		Execution:        0,
 		Status:           evergreen.TaskStarted,
-		ExpectedDuration: 1000000,
+		ExpectedDuration: time.Minute,
 		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
 	}
 	t2 := Task{
@@ -3553,7 +3553,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Version:          "v1",
 		Execution:        0,
 		Status:           evergreen.TaskStarted,
-		ExpectedDuration: 9000000000000,
+		ExpectedDuration: 150 * time.Minute,
 		StartTime:        time.Date(2009, time.November, 10, 12, 0, 0, 0, time.UTC),
 	}
 	t3 := Task{

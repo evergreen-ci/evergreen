@@ -54,20 +54,24 @@
         {
             "_id": "task_1",
             "version": "evergreen_version1",
-            "status": "success",
+            "status": "started",
             "display_name": "Some Task",
             "activated": true,
             "build_variant" : "enterprise-ubuntu1604-64",
-            "build_id": "evergreen_version1_build"
+            "build_id": "evergreen_version1_build",
+            "expected_duration": 90000000,
+            "start_time": {"$date": "2019-07-21T00:39:42.274Z"}
         },
                 {
             "_id": "task_2",
             "version": "evergreen_version1",
-            "status": "success",
+            "status": "started",
             "display_name": "Some Other Task",
             "activated": true,
             "build_variant" : "enterprise-ubuntu1604-64",
-            "build_id": "evergreen_version1_build"
+            "build_id": "evergreen_version1_build",
+            "expected_duration": 30000000,
+            "start_time": {"$date": "2020-07-21T00:39:42.274Z" }
 
         },
         {
