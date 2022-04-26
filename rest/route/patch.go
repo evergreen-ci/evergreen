@@ -276,7 +276,7 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	patches, err := data.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for project '%s'", p.projectId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding patches for project '%s'", p.projectId))
 	}
 
 	resp := gimlet.NewResponseBuilder()

@@ -92,7 +92,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					assert.Equal(t, "Missing Tasks values", resp.Message)
+					assert.Equal(t, "must specify at least one task", resp.Message)
 				},
 				"invalid: Too Many Tasks": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -107,7 +107,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					assert.Equal(t, "Too many Tasks values", resp.Message)
+					assert.Equal(t, fmt.Sprintf("cannot request more than %d tasks", reliabilityAPIMaxNumTasksLimit), resp.Message)
 				},
 				"valid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -143,7 +143,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(http.StatusBadRequest, resp.StatusCode)
-					assert.Equal("Invalid after_date value", resp.Message)
+					assert.Equal("invalid 'after' date", resp.Message)
 				},
 				"invalid: before_date": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					assert := assert.New(t)
@@ -157,7 +157,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(http.StatusBadRequest, resp.StatusCode)
-					assert.Equal("Invalid before_date value", resp.Message)
+					assert.Equal("invalid 'before' date", resp.Message)
 				},
 				"valid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					values := url.Values{
@@ -192,7 +192,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(http.StatusBadRequest, resp.StatusCode)
-					assert.Equal("Invalid sort value", resp.Message)
+					assert.Equal("invalid sort", resp.Message)
 				},
 				"valid: earliest": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					values := url.Values{
@@ -237,7 +237,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					assert.Equal(t, "Invalid Significance value", resp.Message)
+					assert.Equal(t, "invalid significance value", resp.Message)
 				},
 				"invalid: greater Than one": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -253,7 +253,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					assert.Equal(t, "Invalid Significance value", resp.Message)
+					assert.Equal(t, "invalid significance value", resp.Message)
 				},
 				"valid: 0.05": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -316,7 +316,7 @@ func TestParseParameters(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					require.Equal(t, "Invalid start_at value", resp.Message)
+					require.Equal(t, "invalid 'start' time", resp.Message)
 				},
 				"valid: blank": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -932,7 +932,7 @@ func TestReliability(t *testing.T) {
 
 					resp := err.(gimlet.ErrorResponse)
 					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-					require.Equal(t, "Invalid start_at value", resp.Message)
+					require.Equal(t, "invalid 'start' time", resp.Message)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {

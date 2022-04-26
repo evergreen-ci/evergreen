@@ -75,7 +75,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	for id, status := range h.HostToStatus {
 		foundHost, err := data.FindHostByIdWithOwner(id, user)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
 		if foundHost.Status == evergreen.HostTerminated {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is already terminated so its status cannot be changed", foundHost.Id))
@@ -87,10 +87,10 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 
 		host := &model.APIHost{}
 		if err = host.BuildFromService(foundHost); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from host.Host to model.APIHost"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting host '%s' to API model", foundHost.Id))
 		}
 		if err = resp.AddData(host); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for host '%s'", host.Id))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for host '%s'", utility.FromStringPtr(host.Id)))
 		}
 	}
 
@@ -508,7 +508,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting host '%s' to API model", host.Id))
 		}
 		if err = resp.AddData(apiHost); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for host '%s'", apiHost.Id))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for host '%s'", utility.FromStringPtr(apiHost.Id)))
 		}
 	}
 

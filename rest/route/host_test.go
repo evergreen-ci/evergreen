@@ -74,7 +74,7 @@ func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
 	err := s.route.Parse(ctx, req)
 
 	s.Error(err)
-	s.EqualError(err, fmt.Sprintf("Invalid host status '%s' for host '%s'", s.route.HostToStatus["host1"].Status, "host1"))
+	s.EqualError(err, fmt.Sprintf("invalid host status '%s' for host '%s'", s.route.HostToStatus["host1"].Status, "host1"))
 }
 
 func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
@@ -86,7 +86,7 @@ func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.Error(err)
-	s.EqualError(err, "Argument read error: unexpected end of JSON input")
+	s.EqualError(err, "reading host-status mapping from JSON request body: unexpected end of JSON input")
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {

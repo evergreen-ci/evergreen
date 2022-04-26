@@ -540,8 +540,8 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
+	err := resp.Data().(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
@@ -585,8 +585,8 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID), error.Message)
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -656,8 +656,8 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusNotFound)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("distro with id '%s' not found", h.distroID))
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro '%s' not found", h.distroID), err.Message)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1458,8 +1458,8 @@ func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 
-	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
+	err := resp.Data().(gimlet.ErrorResponse)
+	s.Equal(fmt.Sprintf("distro name 'Updated distro name' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
 
 func getMockDistrosdata() error {

@@ -284,7 +284,7 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 		if annotation.TaskExecution == nil {
 			annotation.TaskExecution = &taskExecution
 		} else if *annotation.TaskExecution != taskExecution {
-			return "", nil, errors.Errorf("task execution number %d from query parameter must equal the task execution number %d specified in the annotation", taskExecution, *annotation.TaskExecution)
+			return "", nil, errors.Errorf("task execution number from query parameter (%d) must equal the task execution number specified in the annotation (%d)", taskExecution, *annotation.TaskExecution)
 		}
 	} else if annotation.TaskExecution == nil {
 		return "", nil, errors.New("task execution must be specified in the request query parameter or the request body's annotation")

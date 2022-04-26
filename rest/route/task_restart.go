@@ -56,7 +56,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	err := resetTask(trh.taskId, trh.username)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting task"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "restarting task"))
 	}
 
 	refreshedTask, err := task.FindOneId(trh.taskId)

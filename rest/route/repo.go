@@ -352,7 +352,7 @@ func (h repoIDPatchHandler) validateBranchesForRepo(ctx context.Context, newRepo
 		if newRepoRef.IsGithubChecksEnabled() || len(info.githubCheckIds) > 0 {
 			if !hasAliasDefined(aliases, evergreen.GithubChecksAlias) {
 				if newRepoRef.IsGithubChecksEnabled() {
-					catcher.Errorf("if repo github checks enabled, must have aliases")
+					catcher.Errorf("if repo GitHub checks enabled, must have aliases")
 				} else if len(info.githubCheckIds) > 0 {
 					for _, branchId := range info.githubCheckIds {
 						// verify that the branch with github checks versions enabled has aliases defined in the branch

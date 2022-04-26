@@ -243,7 +243,7 @@ func TestAnnotationByTaskGetHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, vars)
 	err = h.Parse(ctx, r)
 
-	assert.Contains(t, err.Error(), "fetchAllExecutions=true cannot be combined with execution={execution}")
+	assert.Contains(t, err.Error(), "cannot both fetch all executions and also request a specific execution")
 }
 
 func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
@@ -441,7 +441,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "the task 'non-existent' does not exist")
+	assert.Contains(t, err.Error(), "task 'non-existent' not found")
 
 	//test with a request that mismatches task execution
 	h = &annotationByTaskPutHandler{}
@@ -457,7 +457,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "Task execution must equal the task execution specified in the annotation")
+	assert.Contains(t, err.Error(), "task execution number from query parameter (2) must equal the task execution number specified in the annotation (1)")
 
 	//test with a request that omits task execution
 	h = &annotationByTaskPutHandler{}
@@ -472,7 +472,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "task execution must be specified in the url or request body")
+	assert.Contains(t, err.Error(), "task execution must be specified in the request query parameter or the request body's annotation")
 
 	//test with request that only has execution in the request body
 	h = &annotationByTaskPutHandler{}
@@ -521,7 +521,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "cannot convert execution to integer value")
+	assert.Contains(t, err.Error(), "converting execution to integer value")
 
 	//test with empty taskId
 	h = &annotationByTaskPutHandler{}
@@ -548,7 +548,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSystemFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "TaskID must equal the taskId specified in the annotation")
+	assert.Contains(t, err.Error(), "task ID parameter 'TaskSystemFailedId' must equal the task ID specified in the annotation 'TaskSystemUnresponseId'")
 
 	//test with fail statuses
 	h = &annotationByTaskPutHandler{}
@@ -881,7 +881,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
-	assert.Contains(t, err.Error(), "the task 'non-existent' does not exist")
+	assert.Contains(t, err.Error(), "task 'non-existent' not found")
 }
 
 func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {

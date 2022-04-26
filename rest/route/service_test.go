@@ -892,11 +892,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := gimlet.ErrorResponse{
-				Message:    "No request body sent",
-				StatusCode: http.StatusBadRequest,
-			}
-			So(err, ShouldResemble, expectedErr)
+			So(err.Error(), ShouldContainSubstring, "reading task modification options from JSON request body")
 		})
 		Convey("then should error on body with wrong type", func() {
 			str := "nope"
@@ -915,13 +911,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := gimlet.ErrorResponse{
-				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
-					"but receieved '%s'",
-					"bool", "string"),
-				StatusCode: http.StatusBadRequest,
-			}
-			So(err, ShouldResemble, expectedErr)
+			So(err.Error(), ShouldContainSubstring, "reading task modification options from JSON request body")
 		})
 		Convey("then should error when fields not set", func() {
 			badBod := &struct {
@@ -937,11 +927,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := gimlet.ErrorResponse{
-				Message:    "Must set 'activated' or 'priority'",
-				StatusCode: http.StatusBadRequest,
-			}
-			So(err, ShouldResemble, expectedErr)
+			So(err.Error(), ShouldContainSubstring, "must set activated or priority")
 		})
 		Convey("then should set it's Activated and Priority field when set", func() {
 			goodBod := &struct {
@@ -1041,7 +1027,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := "Project not found"
+			expectedErr := "project not found"
 			So(err.Error(), ShouldContainSubstring, expectedErr)
 		})
 		Convey("then should error on empty task", func() {
@@ -1053,7 +1039,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			err = trh.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := gimlet.ErrorResponse{
-				Message:    "Task not found",
+				Message:    "task not found",
 				StatusCode: http.StatusNotFound,
 			}
 

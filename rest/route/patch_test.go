@@ -557,10 +557,8 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
-			s.Error(err)
-			apiErr, ok := err.(gimlet.ErrorResponse)
-			s.True(ok)
-			s.Contains(apiErr.Message, i)
+			s.Require().Error(err)
+			s.Contains(err.Error(), i)
 		}
 	}
 }

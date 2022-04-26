@@ -111,7 +111,7 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
 	s.Error(err)
-	s.Contains(err.Error(), "A project's id is immutable")
+	s.Contains(err.Error(), "project ID is immutable")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
@@ -123,7 +123,7 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "non-existent"})
 	err := s.rm.Parse(ctx, req)
 	s.Require().Error(err)
-	s.Contains(err.Error(), "error finding original project")
+	s.Contains(err.Error(), "finding original project")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
@@ -164,7 +164,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
+	s.Equal("cannot enable commit queue without first enabling GitHub webhooks", errResp.Message)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
@@ -625,12 +625,16 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	// invalid limit
 	request, err = http.NewRequest(http.MethodGet, "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid limit")
+	err = getVersions.Parse(ctx, request)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid limit")
 
 	// invalid offset
 	request, err = http.NewRequest(http.MethodGet, "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
+	err = getVersions.Parse(ctx, request)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "invalid offset")
 }
 
 func getTestVar() *serviceModel.ProjectVars {

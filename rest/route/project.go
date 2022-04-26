@@ -344,7 +344,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	before, err := dbModel.GetProjectSettings(h.newProjectRef)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings", h.project))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original project settings"))
 	}
 
 	adminsToDelete := utility.FromStringPtrSlice(h.apiNewProjectRef.DeleteAdmins)
