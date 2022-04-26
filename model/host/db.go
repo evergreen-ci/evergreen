@@ -1060,7 +1060,7 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	var query db.Q
 	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding hosts with an ID of '%s' or greater, status '%s', and user '%s'", id, status, user)
+		return nil, errors.Wrapf(err, "finding hosts by ID '%s', status '%s', and user '%s'", id, status, user)
 	}
 	return hosts, nil
 }
