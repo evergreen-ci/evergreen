@@ -401,11 +401,11 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	a.Issues = []restModel.APIIssueLink{
 		{
 			URL:             utility.ToStringPtr("issuelink.com"),
-			ConfidenceScore: utility.ToFloat32Ptr(-12.000000),
+			ConfidenceScore: utility.ToFloat64Ptr(-12.000000),
 		},
 		{
 			URL:             utility.ToStringPtr("https://issuelink.com/ticket"),
-			ConfidenceScore: utility.ToFloat32Ptr(112.000000),
+			ConfidenceScore: utility.ToFloat64Ptr(112.000000),
 		},
 	}
 	a.SuspectedIssues = []restModel.APIIssueLink{
@@ -646,12 +646,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 			{
 				URL:             utility.ToStringPtr("some_url_0"),
 				IssueKey:        utility.ToStringPtr("some key 0"),
-				ConfidenceScore: utility.ToFloat32Ptr(12.34),
+				ConfidenceScore: utility.ToFloat64Ptr(12.34),
 			},
 			{
 				URL:             utility.ToStringPtr("some_url_1"),
 				IssueKey:        utility.ToStringPtr("some key 1"),
-				ConfidenceScore: utility.ToFloat32Ptr(56.78),
+				ConfidenceScore: utility.ToFloat64Ptr(56.78),
 			},
 		},
 	}
@@ -674,8 +674,8 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
 	assert.Equal(t, 2, len(annotation.Issues))
-	assert.Equal(t, float32(12.34), annotation.Issues[0].ConfidenceScore)
-	assert.Equal(t, float32(56.78), annotation.Issues[1].ConfidenceScore)
+	assert.Equal(t, float64(12.34), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(56.78), annotation.Issues[1].ConfidenceScore)
 
 	//test update
 	h.annotation = &restModel.APITaskAnnotation{
@@ -686,12 +686,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 			{
 				URL:             utility.ToStringPtr("some_url_0"),
 				IssueKey:        utility.ToStringPtr("some key 0"),
-				ConfidenceScore: utility.ToFloat32Ptr(87.65),
+				ConfidenceScore: utility.ToFloat64Ptr(87.65),
 			},
 			{
 				URL:             utility.ToStringPtr("some_url_1"),
 				IssueKey:        utility.ToStringPtr("some key 1"),
-				ConfidenceScore: utility.ToFloat32Ptr(43.21),
+				ConfidenceScore: utility.ToFloat64Ptr(43.21),
 			},
 		},
 	}
@@ -707,8 +707,8 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	require.Nil(t, annotation.SuspectedIssues)
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
 	assert.Equal(t, 2, len(annotation.Issues))
-	assert.Equal(t, float32(87.65), annotation.Issues[0].ConfidenceScore)
-	assert.Equal(t, float32(43.21), annotation.Issues[1].ConfidenceScore)
+	assert.Equal(t, float64(87.65), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(43.21), annotation.Issues[1].ConfidenceScore)
 
 	//test that it can update old executions
 	h.annotation = &restModel.APITaskAnnotation{
