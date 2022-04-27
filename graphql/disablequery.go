@@ -11,9 +11,8 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// SplunkTracing is a graphql extension that adds splunk logging to graphql.
-// It is used to log the duration of a query and the user that made the request.
-// It does this by hooking into lifecycle events that gqlgen uses.
+// DisableQuery will return SERVICE_UNAVAILABLE for any query
+// with an operation name listed in config.DisabledGQLQueries
 type DisableQuery struct{}
 
 func (DisableQuery) ExtensionName() string {
@@ -28,14 +27,8 @@ func (DisableQuery) MutateOperationContext(ctx context.Context, rc *graphql.Oper
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		grip.Error(errors.Wrap(err, "getting Evergreen admin settings"))
-	}
-	if utility.StringSliceContains(settings.DisabledGQLQueries, rc.Operation.Name) {
-		return &gqlerror.Error{
-			Message: "Query is disabled by admin",
-			Extensions: map[string]interface{}{
-				"code": ServiceUnavailable,
-			},
-		}
+	} else if utility.StringSliceContains(settings.DisabledGQLQueries, rc.Operation.Name) {
+		return ServiceUnavailable.Send(ctx, "Query is disabled by admin")
 	}
 	return nil
 }
