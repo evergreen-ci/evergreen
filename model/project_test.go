@@ -942,7 +942,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		s.Contains([]string{"bv_2"}, vt.Variant)
 	}
 
-	// Specifying tags, regex, and names.
+	// Specifying tags and names.
 	patchDoc = patch.Patch{
 		BuildVariants: []string{".even", "bv_1"},
 		Tasks:         []string{".a", ".1", "b_task_2"},
@@ -968,10 +968,11 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
 	}
 
-	// Specifying tags and names.
+	// Specifying tags, regex, and names.
 	patchDoc = patch.Patch{
 		BuildVariants: []string{".even", "bv_1"},
-		Tasks:         []string{".a", ".1"},
+		Tasks:         []string{".a"},
+		RegexTasks:    []string{"_1$"},
 	}
 
 	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
