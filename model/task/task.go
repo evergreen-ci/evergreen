@@ -3497,9 +3497,44 @@ type StatusCount struct {
 	Count  int    `bson:"count"`
 }
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*StatusCount, error) {
-	StatusCount := []*StatusCount{}
+type TaskStats struct {
+	Counts []StatusCount `bson:"counts"`
+	ETA    *time.Time    `bson:"eta"`
+}
+
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
 	pipeline := getTasksByVersionPipeline(versionID, opts)
+	maxEtaPipeline := []bson.M{
+		{
+			"$match": bson.M{
+				ExpectedDurationKey: bson.M{"$exists": true},
+				StartTimeKey:        bson.M{"$exists": true},
+				DisplayStatusKey:    bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+			},
+		},
+		{
+			"$project": bson.M{
+				"eta": bson.M{
+					"$add": []interface{}{
+						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, time.Millisecond}},
+						"$" + StartTimeKey,
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":     nil,
+				"max_eta": bson.M{"$max": "$eta"},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":     0,
+				"max_eta": 1,
+			},
+		},
+	}
 	groupPipeline := []bson.M{
 		{"$group": bson.M{
 			"_id":   "$" + DisplayStatusKey,
@@ -3511,20 +3546,32 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 			"count":  1,
 		}},
 	}
-	pipeline = append(pipeline, groupPipeline...)
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting task stats")
-	}
-	err = cursor.All(ctx, &StatusCount)
-	if err != nil {
-		return nil, errors.Wrap(err, "iterating and decoding task stats")
+	facet := bson.M{"$facet": bson.M{
+		"counts": groupPipeline,
+		"eta":    maxEtaPipeline,
+	}}
+	pipeline = append(pipeline, facet)
+
+	type maxETAForQuery struct {
+		MaxETA time.Time `bson:"max_eta"`
 	}
 
-	return StatusCount, nil
+	type taskStatsForQueryResult struct {
+		Counts []StatusCount    `bson:"counts"`
+		ETA    []maxETAForQuery `bson:"eta"`
+	}
+
+	taskStats := []taskStatsForQueryResult{}
+	if err := Aggregate(pipeline, &taskStats); err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	result := TaskStats{}
+	result.Counts = taskStats[0].Counts
+	if len(taskStats[0].ETA) > 0 {
+		result.ETA = &taskStats[0].ETA[0].MaxETA
+	}
+
+	return &result, nil
 }
 
 type GroupedTaskStatusCount struct {

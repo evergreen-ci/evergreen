@@ -3729,6 +3729,29 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
+	result := []*task.StatusCount{}
+	for _, c := range stats.Counts {
+		count := c
+		result = append(result, &count)
+	}
+	return result, nil
+}
+
+func (r *versionResolver) TaskStatusStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+	}
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
+	}
+	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
+	}
 
 	return stats, nil
 }

@@ -1,0 +1,25 @@
+{
+  mainlineCommits(options: { projectID: "evergreen" }) {
+    versions {
+      version {
+        id
+        taskStatusStats(
+          options: {
+            statuses: ["success"]
+            tasks: ["Some Other Task"]
+            variants: ["enterprise-ubuntu1604-64"]
+          }
+        ) {
+          eta
+          counts {
+            status
+            count
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+      }
+    }
+  }
+}
