@@ -1326,6 +1326,16 @@ func (p *Project) findMatchingBuildVariants(bvRegex *regexp.Regexp) []string {
 	return res
 }
 
+func (p *Project) findBuildVariantsWithTag(tags []string) []string {
+	var res []string
+	for _, b := range p.BuildVariants {
+		if len(utility.StringSliceIntersection(b.Tags, tags)) > 0 {
+			res = append(res, b.Name)
+		}
+	}
+	return res
+}
+
 // GetTaskNameAndTags checks the project for a task or task group matching the
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
@@ -1358,6 +1368,16 @@ func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
 	var res []string
 	for _, t := range p.Tasks {
 		if tRegex.MatchString(t.Name) {
+			res = append(res, t.Name)
+		}
+	}
+	return res
+}
+
+func (p *Project) findProjectTasksWithTag(tags []string) []string {
+	var res []string
+	for _, t := range p.Tasks {
+		if len(utility.StringSliceIntersection(t.Tags, tags)) > 0 {
 			res = append(res, t.Name)
 		}
 	}
@@ -1493,8 +1513,22 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // mapping of the build variant to the tasks that will run on that build
 // variant. If includeDeps is set, it will also resolve task dependencies.
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
-	bvs := patchDoc.BuildVariants
-	tasks := patchDoc.Tasks
+	var bvs, bvTags, tasks, taskTags []string
+	for _, bv := range patchDoc.BuildVariants {
+		if strings.HasPrefix(bv, ".") {
+			bvTags = append(bvTags, bv[1:])
+		} else {
+			bvs = append(bvs, bv)
+		}
+	}
+	for _, t := range patchDoc.Tasks {
+		if strings.HasPrefix(t, ".") {
+			taskTags = append(taskTags, t[1:])
+		} else {
+			tasks = append(tasks, t)
+		}
+	}
+
 	if len(bvs) == 1 && bvs[0] == "all" {
 		bvs = []string{}
 		for _, bv := range p.BuildVariants {
@@ -1504,6 +1538,9 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			bvs = append(bvs, bv.Name)
 		}
 	} else {
+		if len(bvTags) > 0 {
+			bvs = append(bvs, p.findBuildVariantsWithTag(bvTags)...)
+		}
 		for _, bv := range patchDoc.RegexBuildVariants {
 			bvRegex, err := regexp.Compile(bv)
 			if err != nil {
@@ -1527,6 +1564,9 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			tasks = append(tasks, t.Name)
 		}
 	} else {
+		if len(taskTags) > 0 {
+			tasks = append(tasks, p.findProjectTasksWithTag(taskTags)...)
+		}
 		for _, t := range patchDoc.RegexTasks {
 			tRegex, err := regexp.Compile(t)
 			if err != nil {
