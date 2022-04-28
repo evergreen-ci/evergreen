@@ -339,10 +339,11 @@ type ComplexityRoot struct {
 	}
 
 	IssueLink struct {
-		IssueKey   func(childComplexity int) int
-		JiraTicket func(childComplexity int) int
-		Source     func(childComplexity int) int
-		URL        func(childComplexity int) int
+		ConfidenceScore func(childComplexity int) int
+		IssueKey        func(childComplexity int) int
+		JiraTicket      func(childComplexity int) int
+		Source          func(childComplexity int) int
+		URL             func(childComplexity int) int
 	}
 
 	JiraConfig struct {
@@ -2637,6 +2638,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InstanceTag.Value(childComplexity), true
+
+	case "IssueLink.confidenceScore":
+		if e.complexity.IssueLink.ConfidenceScore == nil {
+			break
+		}
+
+		return e.complexity.IssueLink.ConfidenceScore(childComplexity), true
 
 	case "IssueLink.issueKey":
 		if e.complexity.IssueLink.IssueKey == nil {
@@ -7744,7 +7752,7 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!] @deprecated(reason: "Use taskStatusStats instead")
   taskStatusStats(options: BuildVariantOptions): TaskStats
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
@@ -8240,6 +8248,7 @@ input UpdateVolumeInput {
 input IssueLinkInput {
   url: String!
   issueKey: String!
+  confidenceScore: Float
 }
 
 input SortOrder {
@@ -9246,6 +9255,7 @@ type IssueLink {
   url: String
   source: Source
   jiraTicket: JiraTicket
+  confidenceScore: Float
 }
 
 type Source {
@@ -16822,6 +16832,38 @@ func (ec *executionContext) _IssueLink_jiraTicket(ctx context.Context, field gra
 	res := resTmp.(*thirdparty.JiraTicket)
 	fc.Result = res
 	return ec.marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IssueLink_confidenceScore(ctx context.Context, field graphql.CollectedField, obj *model.APIIssueLink) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IssueLink",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConfidenceScore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _JiraConfig_host(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
@@ -40349,6 +40391,14 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 			if err != nil {
 				return it, err
 			}
+		case "confidenceScore":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confidenceScore"))
+			it.ConfidenceScore, err = ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -44189,6 +44239,8 @@ func (ec *executionContext) _IssueLink(ctx context.Context, sel ast.SelectionSet
 				res = ec._IssueLink_jiraTicket(ctx, field, obj)
 				return res
 			})
+		case "confidenceScore":
+			out.Values[i] = ec._IssueLink_confidenceScore(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -53445,6 +53497,21 @@ func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v inter
 
 func (ec *executionContext) marshalOFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
 	return graphql.MarshalFloat(v)
+}
+
+func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v interface{}) (*float64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalFloat(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalFloat(*v)
 }
 
 func (ec *executionContext) marshalOGithubCheckSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubCheckSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubCheckSubscriber) graphql.Marshaler {
