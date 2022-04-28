@@ -1515,6 +1515,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
+		// Tags should start with "."
 		if strings.HasPrefix(bv, ".") {
 			bvTags = append(bvTags, bv[1:])
 		} else {
@@ -1522,6 +1523,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 		}
 	}
 	for _, t := range patchDoc.Tasks {
+		// Tags should start with "."
 		if strings.HasPrefix(t, ".") {
 			taskTags = append(taskTags, t[1:])
 		} else {
