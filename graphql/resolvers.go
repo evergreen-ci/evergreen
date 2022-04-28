@@ -3952,6 +3952,9 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 				if err != nil {
 					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch version for patch: %s ", err.Error()))
 				}
+				if cpVersion == nil {
+					continue
+				}
 				if cpVersion.Aborted {
 					isAborted = true
 				} else {
