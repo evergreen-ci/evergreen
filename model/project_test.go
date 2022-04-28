@@ -918,6 +918,81 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		s.Empty(vt.DisplayTasks)
 		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
 	}
+
+	// Specifying tags only.
+	patchDoc = patch.Patch{
+		BuildVariants: []string{".even"},
+		Tasks:         []string{".a", ".1"},
+	}
+
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 1)
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 3)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Contains(tasks, "a_task_2")
+	s.Len(variantTasks, 1)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 3)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Empty(vt.DisplayTasks)
+		s.Contains([]string{"bv_2"}, vt.Variant)
+	}
+
+	// Specifying tags and names.
+	patchDoc = patch.Patch{
+		BuildVariants: []string{".even", "bv_1"},
+		Tasks:         []string{".a", ".1", "b_task_2"},
+	}
+
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 2)
+	s.Contains(bvs, "bv_1")
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 4)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Contains(tasks, "a_task_2")
+	s.Contains(tasks, "b_task_2")
+	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 4)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Contains(vt.Tasks, "b_task_2")
+		s.Empty(vt.DisplayTasks)
+		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
+	}
+
+	// Specifying tags, regex, and names.
+	patchDoc = patch.Patch{
+		BuildVariants: []string{".even", "bv_1"},
+		Tasks:         []string{".a"},
+		RegexTasks:    []string{"_1$"},
+	}
+
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 2)
+	s.Contains(bvs, "bv_1")
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 3)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Contains(tasks, "a_task_2")
+	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 3)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Empty(vt.DisplayTasks)
+		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
+	}
+
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
