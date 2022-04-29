@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- string) {
+func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
@@ -31,6 +31,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 			if signalBeat == evergreen.TaskConflict {
 				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task")
 				heartbeat <- evergreen.TaskFailed
+				cancel()
 				return
 			}
 			if signalBeat != "" {
@@ -39,20 +40,17 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 			}
 			if err != nil {
 				failures++
-				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failures, err)
 			} else {
 				failures = 0
 			}
 			if failures == maxHeartbeats {
-				grip.Error("Hit max heartbeats, aborting task")
 				// Presumably this won't work, but we should try to notify the user anyway
 				tc.logger.Task().Error("Hit max heartbeats, aborting task")
 				heartbeat <- evergreen.TaskFailed
 				return
 			}
 		case <-ctx.Done():
-			tc.logger.Task().Error("Heartbeat ticker canceled")
-			grip.Info("Heartbeat ticker canceled")
+			tc.logger.Task().Error("Heartbeat ticker canceled, aborting task")
 			heartbeat <- evergreen.TaskFailed
 			return
 		}
