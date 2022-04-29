@@ -703,11 +703,12 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"method":  r.Method,
-		"url":     r.URL.String(),
-		"code":    code,
-		"len":     r.ContentLength,
-		"request": gimlet.GetRequestID(r.Context()),
+		"method":     r.Method,
+		"url":        r.URL.String(),
+		"code":       code,
+		"len":        r.ContentLength,
+		"spawn_host": r.Host,
+		"request":    gimlet.GetRequestID(r.Context()),
 	}))
 
 	var resp gimlet.Responder
