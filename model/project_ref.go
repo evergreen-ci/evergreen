@@ -2050,7 +2050,7 @@ func (p *ProjectRef) ValidateOwnerAndRepo(validOrgs []string) error {
 		return errors.New("no owner/repo specified")
 	}
 
-	if len(validOrgs) == 0 || !utility.StringSliceContains(validOrgs, p.Owner) {
+	if len(validOrgs) > 0 && !utility.StringSliceContains(validOrgs, p.Owner) {
 		return errors.New("owner not authorized")
 	}
 	return nil
