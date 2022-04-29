@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
+func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- string) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
@@ -29,7 +29,9 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
 			if signalBeat == evergreen.TaskConflict {
-				cancel()
+				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task")
+				heartbeat <- evergreen.TaskFailed
+				return
 			}
 			if signalBeat != "" {
 				heartbeat <- signalBeat
@@ -49,6 +51,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 				return
 			}
 		case <-ctx.Done():
+			tc.logger.Task().Error("Heartbeat ticker canceled")
 			grip.Info("Heartbeat ticker canceled")
 			heartbeat <- evergreen.TaskFailed
 			return

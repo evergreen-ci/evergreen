@@ -485,7 +485,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (bool, error) {
 	defer tskCancel()
 
 	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(tskCtx, tskCancel, tc, heartbeat)
+	go a.startHeartbeat(tskCtx, tc, heartbeat)
 
 	innerCtx, innerCancel := context.WithCancel(tskCtx)
 
