@@ -1,0 +1,77 @@
+{
+    "admin": [
+        {
+            "_id": "ui",
+            "default_project": "evergreen",
+            "url": "localhost:9090",
+            "http_listen_addr": ":9090",
+            "secret": "this is a secret",
+            "cors_origins": [
+                "http://localhost:3000"
+            ],
+            "userVoice": "https://uservoice.com",
+            "cache_templates": false,
+            "csrf_key": "",
+            "help_url": "",
+            "login_domain": "",
+            "uiv2_url": ""
+        },
+        {
+            "_id": "global",
+            "disabled_gql_queries": ["DisabledQuery", "AnotherDisabledQuery"],
+            "api_url": "localhost:9090",
+            "configdir": "../config",
+            "domain_name": "localhost",
+            "keys": {
+                "fake_ssh_key": "/path/to/key"
+            },
+            "banner": "This is an important notification",
+            "banner_theme": "important",
+            "client_binaries_dir": "clients",
+            "commit_queue": {
+                "merge_task_distro": "",
+                "committer_name": "",
+                "committer_email": ""
+            },
+            "credentials": {},
+            "credentials_new": null,
+            "expansions": {},
+            "expansions_new": null,
+            "github_orgs": null,
+            "github_pr_creator_org": "",
+            "keys_new": null,
+            "ldap_role_map": [],
+            "log_path": "LOCAL",
+            "plugins": {},
+            "plugins_new": null,
+            "pprof_port": "",
+            "spawnhost": {
+                "unexpirable_hosts_per_user": 0,
+                "unexpirable_volumes_per_user": 0,
+                "spawn_hosts_per_user": 0
+            },
+            "splunk": {
+                "url": "",
+                "token": "",
+                "channel": ""
+            },
+            "ssh_key_directory": "",
+            "ssh_key_pairs": []
+        },
+        {
+            "_id": "jira",
+            "basic_auth": {
+                "username": "mohamed.khelif",
+                "password": "password"
+            },
+            "default_project": "",
+            "host": "jira.mongodb.org",
+            "oauth1": {
+                "private_key": "",
+                "access_token": "",
+                "token_secret": "",
+                "consumer_key": ""
+            }
+        }
+    ]
+}
