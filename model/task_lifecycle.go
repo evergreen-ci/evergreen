@@ -934,12 +934,15 @@ func UpdateBuildStatus(b *build.Build) (bool, error) {
 
 	// only need to check aborted if status has changed
 	isAborted := false
+	var taskStatuses []string
 	for _, t := range buildTasks {
 		if t.Aborted {
 			isAborted = true
-			break
+		} else {
+			taskStatuses = append(taskStatuses, t.Status)
 		}
 	}
+	isAborted = len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 && isAborted
 	if isAborted != b.Aborted {
 		if err = b.SetAborted(isAborted); err != nil {
 			return false, errors.Wrapf(err, "setting build '%s' as aborted", b.Id)

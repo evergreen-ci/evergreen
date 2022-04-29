@@ -270,6 +270,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && project.IgnoresAllFiles(patchDoc.FilesChanged()) {
+		grip.Debug(message.Fields{
+			"message":       "not creating patch because all files are being ignored",
+			"files_changed": patchDoc.FilesChanged(),
+			"files_ignored": project.Ignore,
+			"patch_id":      patchDoc.Id,
+			"intent_id":     j.intent.ID(),
+		})
 		return nil
 	}
 

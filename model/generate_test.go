@@ -46,7 +46,8 @@ var (
 		},
 		BuildVariants: []parserBV{
 			parserBV{
-				Name: "new_buildvariant",
+				Name:  "new_buildvariant",
+				RunOn: []string{"arch"},
 			},
 			parserBV{
 				Name: "a_variant",
@@ -75,6 +76,7 @@ var (
 						BatchTime: &taskBatchTime,
 					},
 				},
+				RunOn: []string{"arch"},
 				DisplayTasks: []displayTask{
 					displayTask{
 						Name:           "my_display_task_new_variant",
@@ -147,7 +149,8 @@ var (
 		},
 		BuildVariants: []parserBV{
 			{
-				Name: "new_variant",
+				Name:  "new_variant",
+				RunOn: []string{"arch"},
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "new_task",
@@ -158,7 +161,8 @@ var (
 				},
 			},
 			{
-				Name: "another_new_variant",
+				Name:  "another_new_variant",
+				RunOn: []string{"arch"},
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "another_new_task",
@@ -189,6 +193,8 @@ tasks:
 buildvariants:
   - name: a_variant
     display_name: Variant Number One
+    run_on:
+    - "arch"
     tasks:
     - name: say-hi
     - name: a-depended-on-task
@@ -222,6 +228,8 @@ task_groups:
 buildvariants:
   - name: a_variant
     display_name: Variant Number One
+    run_on:
+    - "arch"
     tasks:
     - name: my_task_group
     - name: say_something_else
@@ -237,6 +245,8 @@ tasks:
 buildvariants:
   - name: my_build_variant
     display_name: Variant Number One
+    run_on:
+    - "arch"
     tasks:
     - name: my_display_task_gen
 `
@@ -255,6 +265,8 @@ tasks:
 buildvariants:
   - name: a_variant
     display_name: Variant Number One
+    run_on:
+    - "arch"
     tasks:
     - name: say-hi
     - name: a-depended-on-task
@@ -881,6 +893,8 @@ func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
 
 buildvariants:
 - name: a_variant
+  run_on:
+  - "arch"
   tasks:
   - name: say_something
   - name: generator
@@ -914,6 +928,7 @@ buildvariants:
 						Name: "task_that_has_dependencies",
 					},
 				},
+				RunOn: []string{"arch"},
 			},
 		},
 	}

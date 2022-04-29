@@ -918,6 +918,81 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		s.Empty(vt.DisplayTasks)
 		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
 	}
+
+	// Specifying tags only.
+	patchDoc = patch.Patch{
+		BuildVariants: []string{".even"},
+		Tasks:         []string{".a", ".1"},
+	}
+
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 1)
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 3)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Contains(tasks, "a_task_2")
+	s.Len(variantTasks, 1)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 3)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Empty(vt.DisplayTasks)
+		s.Contains([]string{"bv_2"}, vt.Variant)
+	}
+
+	// Specifying tags and names.
+	patchDoc = patch.Patch{
+		BuildVariants: []string{".even", "bv_1"},
+		Tasks:         []string{".a", ".1", "b_task_2"},
+	}
+
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 2)
+	s.Contains(bvs, "bv_1")
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 4)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Contains(tasks, "a_task_2")
+	s.Contains(tasks, "b_task_2")
+	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 4)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Contains(vt.Tasks, "b_task_2")
+		s.Empty(vt.DisplayTasks)
+		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
+	}
+
+	// Specifying tags, regex, and names.
+	patchDoc = patch.Patch{
+		BuildVariants: []string{".even", "bv_1"},
+		Tasks:         []string{".a"},
+		RegexTasks:    []string{"_1$"},
+	}
+
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	s.Len(bvs, 2)
+	s.Contains(bvs, "bv_1")
+	s.Contains(bvs, "bv_2")
+	s.Len(tasks, 3)
+	s.Contains(tasks, "a_task_1")
+	s.Contains(tasks, "b_task_1")
+	s.Contains(tasks, "a_task_2")
+	s.Len(variantTasks, 2)
+	for _, vt := range variantTasks {
+		s.Len(vt.Tasks, 3)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "b_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Empty(vt.DisplayTasks)
+		s.Contains([]string{"bv_1", "bv_2"}, vt.Variant)
+	}
+
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
@@ -1550,6 +1625,43 @@ func TestLoggerConfigValidate(t *testing.T) {
 		System: []LogOpts{{Type: SplunkLogSender}},
 	}
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
+}
+
+func TestFindContainerFromProject(t *testing.T) {
+	assert := assert.New(t)
+	require.NoError(t, db.ClearCollections(VersionCollection, ParserProjectCollection, ProjectRefCollection))
+	ref := ProjectRef{
+		Id: "p1",
+	}
+
+	pp := ParserProject{
+		Id:         "v1",
+		Identifier: utility.ToStringPtr("p1"),
+		Containers: []Container{
+			{
+				Name: "container1",
+			},
+		},
+	}
+
+	v := &Version{Id: "v1"}
+	require.NoError(t, pp.TryUpsert())
+	require.NoError(t, v.Insert())
+	require.NoError(t, ref.Insert())
+
+	task := task.Task{
+		Version:   "v1",
+		Project:   "p1",
+		Container: "container1",
+	}
+	container, err := FindContainerFromProject(task)
+	require.NoError(t, err)
+	assert.Equal(container.Name, "container1")
+
+	task.Container = "nonexistent"
+	_, err = FindContainerFromProject(task)
+	require.Error(t, err)
+	assert.Equal(err.Error(), "no such container 'nonexistent' defined on project 'p1'")
 }
 
 func TestLoggerMerge(t *testing.T) {

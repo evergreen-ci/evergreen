@@ -64,6 +64,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	}))
 	settings, err := evergreen.GetConfig()
 	s.NoError(err)
+	settings.GithubOrgs = []string{getTestProjectRef().Owner}
 	s.rm = makePatchProjectByID(settings).(*projectIDPatchHandler)
 	projectAdminRole := gimlet.Role{
 		ID:    "dimoxinil",

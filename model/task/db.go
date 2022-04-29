@@ -548,24 +548,6 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
-// ByTimeRun returns all tasks that are running in between two given times.
-func ByTimeRun(startTime, endTime time.Time) bson.M {
-	return bson.M{
-		"$or": []bson.M{
-			bson.M{
-				StartTimeKey:  bson.M{"$lte": endTime},
-				FinishTimeKey: bson.M{"$gte": startTime},
-				StatusKey:     evergreen.TaskFailed,
-			},
-			bson.M{
-				StartTimeKey:  bson.M{"$lte": endTime},
-				FinishTimeKey: bson.M{"$gte": startTime},
-				StatusKey:     evergreen.TaskSucceeded,
-			},
-		},
-	}
-}
-
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
 // If task not started (but is failed), returns if finished within the time range
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {
@@ -584,7 +566,7 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		StatusKey: evergreen.TaskFailed,
 	}
 	if len(commandTypes) > 0 {
-		query[bsonutil.GetDottedKeyName(DetailsKey, "type")] = bson.M{
+		query[bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType)] = bson.M{
 			"$in": commandTypes,
 		}
 	}

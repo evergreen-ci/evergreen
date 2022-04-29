@@ -383,13 +383,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Task queues
 	app.AddRoute("/task_queue/").Wrap(needsLogin, needsContext).Handler(uis.allTaskQueues).Get() // TODO: ¯\_(ツ)_/¯
 
-	// Scheduler
-	app.AddRoute("/scheduler/distro/{distro_id}").Wrap(needsContext).Handler(uis.getSchedulerPage).Get()
-	app.AddRoute("/scheduler/distro/{distro_id}/logs").Wrap(needsContext).Handler(uis.getSchedulerLogs).Get()
-	app.AddRoute("/scheduler/stats").Wrap(needsContext).Handler(uis.schedulerStatsPage).Get()
-	app.AddRoute("/scheduler/distro/{distro_id}/stats").Wrap(needsContext).Handler(uis.averageSchedulerStats).Get()
-	app.AddRoute("/scheduler/stats/utilization").Wrap(needsContext).Handler(uis.schedulerHostUtilization).Get()
-
 	// Patch pages
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchPage).Get()
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, submitPatches).Handler(uis.schedulePatchUI).Post()

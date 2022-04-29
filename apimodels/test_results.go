@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/timber"
@@ -78,9 +79,12 @@ type GetCedarTestResultsOptions struct {
 }
 
 func (opts GetCedarTestResultsOptions) convert() testresults.GetOptions {
+	if !strings.HasPrefix(opts.BaseURL, "http") {
+		opts.BaseURL = fmt.Sprintf("https://%s", opts.BaseURL)
+	}
 	return testresults.GetOptions{
 		Cedar: timber.GetOptions{
-			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
+			BaseURL: opts.BaseURL,
 		},
 		TaskID:       opts.TaskID,
 		Execution:    opts.Execution,
