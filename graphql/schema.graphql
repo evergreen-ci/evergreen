@@ -423,6 +423,7 @@ input SubscriberInput {
 
 input UseSpruceOptionsInput {
   hasUsedSpruceBefore: Boolean
+  hasUsedMainlineCommitsBefore: Boolean
   spruceV1: Boolean
 }
 
@@ -1542,6 +1543,7 @@ type UserSettings {
 
 type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
+  hasUsedMainlineCommitsBefore: Boolean
   spruceV1: Boolean
 }
 
