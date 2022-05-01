@@ -36120,9 +36120,9 @@ func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
@@ -36152,9 +36152,9 @@ func (ec *executionContext) _UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx c
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
@@ -36184,9 +36184,9 @@ func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
@@ -42468,7 +42468,7 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedSpruceBefore"))
-			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42476,7 +42476,7 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedMainlineCommitsBefore"))
-			it.HasUsedMainlineCommitsBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.HasUsedMainlineCommitsBefore, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42484,7 +42484,7 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spruceV1"))
-			it.SpruceV1, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.SpruceV1, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
