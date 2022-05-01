@@ -5,6 +5,12 @@ import (
 )
 
 func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
+	if structToSet.Kind() == reflect.Ptr {
+		structToSet = structToSet.Elem()
+	}
+	if structToDefaultFrom.Kind() == reflect.Ptr {
+		structToDefaultFrom = structToDefaultFrom.Elem()
+	}
 	// Iterate through each field of the struct.
 	for i := 0; i < structToSet.NumField(); i++ {
 		branchField := structToSet.Field(i)
@@ -19,6 +25,11 @@ func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Valu
 			// If the field is a struct and isn't undefined, then we check each subfield recursively.
 		} else if branchField.Kind() == reflect.Struct {
 			RecursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
+		} else if IsFieldPtr(branchField) {
+			// If the field is a struct and isn't undefined, then we check each subfield recursively.
+			if branchField.Elem().Kind() == reflect.Struct {
+				RecursivelySetUndefinedFields(branchField.Elem(), structToDefaultFrom.Field(i).Elem())
+			}
 		}
 	}
 }

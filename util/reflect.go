@@ -46,3 +46,7 @@ func IsFieldUndefined(v reflect.Value) bool {
 		return false
 	}
 }
+
+func IsFieldPtr(v reflect.Value) bool {
+	return v.Kind() == reflect.Ptr
+}
