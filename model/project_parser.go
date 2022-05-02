@@ -895,7 +895,7 @@ func (pp *ParserProject) AddTask(name string, commands []PluginCommandConf) {
 	}
 	pp.Tasks = append(pp.Tasks, t)
 }
-func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchTime *int, tasks []string) {
+func (pp *ParserProject) AddBuildVariant(name, displayName string, batchTime *int, tasks []string) {
 	bv := parserBV{
 		Name:        name,
 		DisplayName: displayName,
@@ -904,9 +904,6 @@ func (pp *ParserProject) AddBuildVariant(name, displayName, runOn string, batchT
 	}
 	for _, taskName := range tasks {
 		bv.Tasks = append(bv.Tasks, parserBVTaskUnit{Name: taskName})
-	}
-	if runOn != "" {
-		bv.RunOn = []string{runOn}
 	}
 	pp.BuildVariants = append(pp.BuildVariants, bv)
 }

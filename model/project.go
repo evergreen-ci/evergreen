@@ -118,7 +118,7 @@ type BuildVariantTaskUnit struct {
 	Priority       int64                `yaml:"priority,omitempty" bson:"priority"`
 	DependsOn      []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 
-	// the distros that the task can be run on
+	// the distros or containers that the task can be run on
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 	// currently unsupported (TODO EVG-578)
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
@@ -285,7 +285,7 @@ type BuildVariant struct {
 	//   3. false = overriding the project setting with false
 	Stepback *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
-	// the default distros.  will be used to run a task if no distro field is
+	// the default distros or containers.  will be used to run a task if no distro field is
 	// provided for the task
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
@@ -1200,30 +1200,6 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}
 	return projectInfo.Project, nil
-}
-
-func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
-	bv, err := p.BuildVariants.Get(t.BuildVariant)
-	if err != nil {
-		return "", errors.Wrapf(err, "finding build variant for task '%s'", t.Id)
-	}
-
-	bvt, err := bv.Get(t.DisplayName)
-	if err != nil {
-		return "", errors.Wrapf(err, "finding build variant task unit for task '%s'", t.Id)
-	}
-
-	var distro string
-
-	if len(bvt.RunOn) > 0 {
-		distro = bvt.RunOn[0]
-	} else if len(bv.RunOn) > 0 {
-		distro = bv.RunOn[0]
-	} else {
-		return "", errors.Errorf("cannot find the distro for task '%s'", t.Id)
-	}
-
-	return distro, nil
 }
 
 func FindLatestVersionWithValidProject(projectId string) (*Version, *Project, error) {

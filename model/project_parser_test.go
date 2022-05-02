@@ -1510,7 +1510,7 @@ func TestAddBuildVariant(t *testing.T) {
 		Identifier: utility.ToStringPtr("small"),
 	}
 
-	pp.AddBuildVariant("name", "my-name", "", nil, []string{"task"})
+	pp.AddBuildVariant("name", "my-name", nil, []string{"task"})
 	require.Len(t, pp.BuildVariants, 1)
 	assert.Equal(t, pp.BuildVariants[0].Name, "name")
 	assert.Equal(t, pp.BuildVariants[0].DisplayName, "my-name")

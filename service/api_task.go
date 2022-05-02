@@ -736,6 +736,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		}
 
 		if isDisabled {
+
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,

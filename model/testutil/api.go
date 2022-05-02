@@ -75,7 +75,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	project.BuildVariants = append(project.BuildVariants, bv)
 
 	// Marshal the parser project YAML for storage
-	pp.AddBuildVariant(variant, "", "", nil, []string{taskDisplayName})
+	pp.AddBuildVariant(variant, "", nil, []string{taskDisplayName})
 
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{

@@ -1281,7 +1281,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 			return nil, err
 		}
 	} else {
-		distroID, distroAliases, err := getDistrosFromRunOn(id, buildVarTask, buildVariant, project, v)
+		distroID, distroAliases, err := getDistrosFromRunOn(id, buildVarTask, buildVariant)
 		if err != nil {
 			return nil, err
 		}
@@ -1304,7 +1304,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	return t, nil
 }
 
-func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) (string, []string, error) {
+func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, []string, error) {
 	if len(buildVarTask.RunOn) > 0 {
 		distroAliases := []string{}
 		distroID := buildVarTask.RunOn[0]

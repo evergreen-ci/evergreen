@@ -646,10 +646,10 @@ func createTestRevision(revision string,
 
 func createTestProject(override1, override2 *int) *model.ParserProject {
 	pp := &model.ParserProject{}
-	pp.AddBuildVariant("bv1", "bv1", "", override1, []string{"t1"})
+	pp.AddBuildVariant("bv1", "bv1", override1, []string{"t1"})
 	pp.BuildVariants[0].Tasks[0].RunOn = []string{"test-distro-one"}
 
-	pp.AddBuildVariant("bv2", "bv2", "", override2, []string{"t1"})
+	pp.AddBuildVariant("bv2", "bv2", override2, []string{"t1"})
 	pp.BuildVariants[1].Tasks[0].RunOn = []string{"test-distro-one"}
 
 	pp.AddTask("t1", []model.PluginCommandConf{model.PluginCommandConf{

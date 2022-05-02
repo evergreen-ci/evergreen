@@ -120,7 +120,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 	return prioritizedTasks, nil
 }
 
-// Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
+// GetDistroQueueInfo Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration, distroDurationOverThreshold time.Duration
 	var distroCountDurationOverThreshold, distroCountWaitOverThreshold int

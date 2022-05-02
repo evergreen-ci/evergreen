@@ -279,6 +279,7 @@ func BlockTaskGroupTasks(taskID string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, taskToBlock := range tasksToBlock {
 		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded, Unattainable: true}))
+
 		err = dequeue(taskToBlock.Id, taskToBlock.DistroId)
 		catcher.AddWhen(!adb.ResultsNotFound(err), err) // it's not an error if the task already isn't on the queue
 		// this operation is recursive, maybe be refactorable
