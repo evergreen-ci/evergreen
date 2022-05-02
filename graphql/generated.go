@@ -591,6 +591,7 @@ type ComplexityRoot struct {
 		Id                      func(childComplexity int) int
 		Identifier              func(childComplexity int) int
 		IsFavorite              func(childComplexity int) int
+		ManualPRTestingEnabled  func(childComplexity int) int
 		NotifyOnBuildFailure    func(childComplexity int) int
 		Owner                   func(childComplexity int) int
 		PRTestingEnabled        func(childComplexity int) int
@@ -778,6 +779,7 @@ type ComplexityRoot struct {
 		GithubChecksEnabled     func(childComplexity int) int
 		GithubTriggerAliases    func(childComplexity int) int
 		Id                      func(childComplexity int) int
+		ManualPRTestingEnabled  func(childComplexity int) int
 		NotifyOnBuildFailure    func(childComplexity int) int
 		Owner                   func(childComplexity int) int
 		PRTestingEnabled        func(childComplexity int) int
@@ -4086,6 +4088,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.IsFavorite(childComplexity), true
 
+	case "Project.manualPrTestingEnabled":
+		if e.complexity.Project.ManualPRTestingEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.ManualPRTestingEnabled(childComplexity), true
+
 	case "Project.notifyOnBuildFailure":
 		if e.complexity.Project.NotifyOnBuildFailure == nil {
 			break
@@ -5203,6 +5212,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.Id(childComplexity), true
+
+	case "RepoRef.manualPrTestingEnabled":
+		if e.complexity.RepoRef.ManualPRTestingEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.ManualPRTestingEnabled(childComplexity), true
 
 	case "RepoRef.notifyOnBuildFailure":
 		if e.complexity.RepoRef.NotifyOnBuildFailure == nil {
@@ -7744,7 +7760,7 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!] @deprecated(reason: "Use taskStatusStats instead")
   taskStatusStats(options: BuildVariantOptions): TaskStats
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
@@ -8007,6 +8023,7 @@ input ProjectInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -8058,6 +8075,7 @@ input RepoRefInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -8812,6 +8830,7 @@ type Project {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
   deactivatePrevious: Boolean
@@ -8864,6 +8883,7 @@ type RepoRef {
   dispatchingDisabled: Boolean!
   versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
   deactivatePrevious: Boolean!
@@ -22726,6 +22746,38 @@ func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_manualPrTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ManualPRTestingEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_githubChecksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -27772,6 +27824,41 @@ func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.PRTestingEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RepoRef_manualPrTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ManualPRTestingEnabled, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -41052,6 +41139,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "manualPrTestingEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualPrTestingEnabled"))
+			it.ManualPRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "githubChecksEnabled":
 			var err error
 
@@ -41513,6 +41608,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("prTestingEnabled"))
 			it.PRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "manualPrTestingEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualPrTestingEnabled"))
+			it.ManualPRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -45532,6 +45635,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_versionControlEnabled(ctx, field, obj)
 		case "prTestingEnabled":
 			out.Values[i] = ec._Project_prTestingEnabled(ctx, field, obj)
+		case "manualPrTestingEnabled":
+			out.Values[i] = ec._Project_manualPrTestingEnabled(ctx, field, obj)
 		case "githubChecksEnabled":
 			out.Values[i] = ec._Project_githubChecksEnabled(ctx, field, obj)
 		case "batchTime":
@@ -46906,6 +47011,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "prTestingEnabled":
 			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "manualPrTestingEnabled":
+			out.Values[i] = ec._RepoRef_manualPrTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
