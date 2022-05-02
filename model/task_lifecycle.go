@@ -853,7 +853,7 @@ func getBuildStatus(buildTasks []task.Task) string {
 	// not started
 	noStartedTasks := true
 	for _, t := range buildTasks {
-		if !evergreen.IsUnstartedTaskStatus(t.Status) && !t.Blocked() {
+		if !evergreen.IsUnstartedTaskStatus(t.Status) || t.Blocked() {
 			noStartedTasks = false
 			break
 		}

@@ -920,6 +920,22 @@ func TestGetBuildStatus(t *testing.T) {
 		{Status: evergreen.TaskFailed},
 	}
 	assert.Equal(t, evergreen.BuildFailed, getBuildStatus(buildTasks))
+
+	// blocked tasks don't prevent the build from completing
+	buildTasks = []task.Task{
+		{Status: evergreen.TaskUndispatched,
+			DependsOn: []task.Dependency{{Unattainable: true}}},
+		{Status: evergreen.TaskSucceeded},
+	}
+	assert.Equal(t, evergreen.BuildSucceeded, getBuildStatus(buildTasks))
+
+	buildTasks = []task.Task{
+		{Status: evergreen.TaskUndispatched,
+			DependsOn: []task.Dependency{{Unattainable: true}}},
+		{Status: evergreen.TaskFailed},
+	}
+	assert.Equal(t, evergreen.BuildFailed, getBuildStatus(buildTasks))
+
 }
 
 func TestGetVersionStatus(t *testing.T) {
