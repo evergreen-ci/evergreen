@@ -443,7 +443,7 @@ func (as *APIServer) transitionIntentHostToStarting(ctx context.Context, h *host
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStartFinished(h.Id, true)
+	event.LogHostStartSucceeded(h.Id)
 
 	return nil
 }

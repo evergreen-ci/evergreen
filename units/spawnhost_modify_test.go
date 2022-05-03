@@ -8,16 +8,38 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+func checkSpawnHostModificationEvent(t *testing.T, hostID, expectedEvent string, expectedSuccess bool) {
+	events, err := event.FindAllByResourceID(hostID)
+	require.NoError(t, err)
+
+	var foundEvent bool
+	for _, e := range events {
+		if e.EventType == expectedEvent {
+			hostData, ok := e.Data.(*event.HostEventData)
+			require.True(t, ok)
+
+			assert.Equal(t, expectedSuccess, hostData.Successful)
+			if !expectedSuccess {
+				assert.NotEmpty(t, hostData.Logs)
+			}
+
+			foundEvent = true
+
+			break
+		}
+	}
+	assert.True(t, foundEvent, "event '%s' should be logged", expectedEvent)
+}
+
 func TestSpawnhostModifyJob(t *testing.T) {
-	config := testutil.TestConfig()
-	assert.NoError(t, evergreen.UpdateConfig(config))
-	assert.NoError(t, db.ClearCollections(host.Collection))
+	assert.NoError(t, db.ClearCollections(host.Collection, event.AllLogCollection))
 	mock := cloud.GetMockProvider()
 	h := host.Host{
 		Id:       "hostID",
@@ -68,4 +90,6 @@ func TestSpawnhostModifyJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []host.Tag{host.Tag{Key: "key2", Value: "value2", CanBeModified: true}}, modifiedHost.InstanceTags)
 	assert.Equal(t, "instance-type-2", modifiedHost.InstanceType)
+
+	checkSpawnHostModificationEvent(t, h.Id, event.EventHostModified, true)
 }
