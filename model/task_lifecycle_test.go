@@ -4222,17 +4222,21 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.NoError(execTask.Insert())
 	assert.NoError(b.Insert())
 
-	assert.NoError(UpdateBlockedDependencies(&tasks[0]))
+	ids, err := UpdateBlockedDependencies(&tasks[0])
+	assert.NoError(err)
+	assert.Len(ids, 4)
 
 	dbTask1, err := task.FindOneId(tasks[1].Id)
 	assert.NoError(err)
 	assert.Len(dbTask1.DependsOn, 2)
 	assert.True(dbTask1.DependsOn[0].Unattainable)
 	assert.True(dbTask1.DependsOn[1].Unattainable) // this task has duplicates which are also marked
+	assert.Contains(ids, dbTask1.Id)
 
 	dbTask2, err := task.FindOneId(tasks[2].Id)
 	assert.NoError(err)
 	assert.True(dbTask2.DependsOn[0].Unattainable)
+	assert.Contains(ids, dbTask2.Id)
 
 	dbTask3, err := task.FindOneId(tasks[3].Id)
 	assert.NoError(err)
@@ -4247,10 +4251,12 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	dbTask5, err := task.FindOneId(tasks[5].Id)
 	assert.NoError(err)
 	assert.True(dbTask5.DependsOn[0].Unattainable)
+	assert.Contains(ids, dbTask5.Id)
 
 	dbExecTask, err := task.FindOneId(execTask.Id)
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
+	assert.Contains(ids, dbExecTask.Id)
 
 	// one event inserted for every updated task
 	events, err := event.Find(event.AllLogCollection, db.Q{})
@@ -4321,17 +4327,21 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	}
 	assert.NoError(b.Insert())
 
-	assert.NoError(UpdateUnblockedDependencies(&tasks[0], false, ""))
+	ids, err := UpdateUnblockedDependencies(&tasks[0])
+	assert.NoError(err)
+	assert.Len(ids, 2)
 
 	// this task should still be marked blocked because t1 is unattainable
 	dbTask2, err := task.FindOneId(tasks[2].Id)
 	assert.NoError(err)
 	assert.False(dbTask2.DependsOn[0].Unattainable)
 	assert.True(dbTask2.DependsOn[1].Unattainable)
+	assert.Contains(ids, dbTask2.Id)
 
 	dbTask3, err := task.FindOneId(tasks[3].Id)
 	assert.NoError(err)
 	assert.False(dbTask3.DependsOn[0].Unattainable)
+	assert.Contains(ids, dbTask3.Id)
 
 	dbTask4, err := task.FindOneId(tasks[4].Id)
 	assert.NoError(err)
