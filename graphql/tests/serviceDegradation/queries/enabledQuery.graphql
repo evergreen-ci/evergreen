@@ -1,0 +1,13 @@
+query GetProjects {
+  projects {
+      name
+      projects {
+        id
+        identifier
+        repo
+        owner
+        displayName
+        isFavorite
+      }
+  }
+}

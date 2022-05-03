@@ -19,6 +19,7 @@ const (
 	ResourceNotFound GqlError = "RESOURCE_NOT_FOUND"
 	// InputValidationError conveys that the given input is not formatted properly
 	InputValidationError GqlError = "INPUT_VALIDATION_ERROR"
+	ServiceUnavailable   GqlError = "SERVICE_UNAVAILABLE"
 )
 
 // Send sends a gql error to the client formatted with
@@ -32,6 +33,8 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 		return formError(ctx, message, ResourceNotFound)
 	case InputValidationError:
 		return formError(ctx, message, InputValidationError)
+	case ServiceUnavailable:
+		return formError(ctx, message, ServiceUnavailable)
 	default:
 		return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), message)
 	}
