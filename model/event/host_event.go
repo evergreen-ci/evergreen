@@ -116,7 +116,7 @@ func LogHostStartSucceeded(hostID string) {
 	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: true})
 }
 
-// LogHostStartSucceeded logs an event indicating that the host errored while
+// LogHostStartError logs an event indicating that the host errored while
 // starting.
 func LogHostStartError(hostID, logs string) {
 	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: false, Logs: logs})
@@ -140,8 +140,8 @@ func LogHostModifySucceeded(hostID string) {
 	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: true})
 }
 
-// LogHostModifySucceeded logs an event indicating that the host errored while
-// being modified.
+// LogHostModifyError logs an event indicating that the host errored while being
+// modified.
 func LogHostModifyError(hostID, logs string) {
 	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
 }
