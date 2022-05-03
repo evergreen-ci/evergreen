@@ -239,6 +239,6 @@ func (s *shellExecuteCommandSuite) TestFailingShellCommandErrors() {
 	cmd.SetJasperManager(s.jasper)
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
 	s.Require().NotNil(err)
-	s.Contains(err.Error(), "shell command encountered problem: exit code 1")
+	s.Contains(err.Error(), "shell script encountered problem: exit code 1")
 	s.NotContains(err.Error(), "error waiting on process")
 }

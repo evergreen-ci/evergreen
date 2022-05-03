@@ -180,7 +180,7 @@ func (s *execCmdSuite) TestRunCommand() {
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
 }
 
-func (s *execCmdSuite) TestRunCommandPropgatesError() {
+func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	cmd := &subprocessExec{
 		Command: "bash -c 'exit 1'",
 	}
