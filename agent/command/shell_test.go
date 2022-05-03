@@ -229,3 +229,16 @@ func (s *shellExecuteCommandSuite) TestEnvAddsExpansionsAndDefaults() {
 		s.Equal(v, cmd.Env[k])
 	}
 }
+
+func (s *shellExecuteCommandSuite) TestFailingShellCommandErrors() {
+	cmd := &shellExec{
+		Script:     "exit 1",
+		Shell:      "bash",
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	cmd.SetJasperManager(s.jasper)
+	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
+	s.Require().NotNil(err)
+	s.Contains(err.Error(), "shell command encountered problem: exit code 1")
+	s.NotContains(err.Error(), "error waiting on process")
+}

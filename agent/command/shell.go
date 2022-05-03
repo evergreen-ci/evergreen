@@ -231,8 +231,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	err = cmd.Run(ctx)
-
-	err = errors.Wrapf(err, "command encountered problem")
+	if !c.Background && err != nil {
+		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {
+			err = errors.Errorf("shell command encountered problem: exit code %d", exitCode)
+		}
+	}
+	err = errors.Wrapf(err, "shell command encountered problem")
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())
