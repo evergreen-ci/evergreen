@@ -3693,22 +3693,19 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, v *restModel.APIVers
 }
 
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.APIVersion) ([]string, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(*v.Project, *v.Revision).WithFields(model.VersionIdentifierKey))
+	var baseVersion *model.Version
+	var err error
+	if !evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)) {
+		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(v.Project), v.Order-1))
+	} else {
+		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(v.Project), utility.FromStringPtr(v.Revision)))
+	}
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	defaultSort := []task.TasksSortOrder{
-		{Key: task.DisplayNameKey, Order: 1},
-	}
-	opts := task.GetTasksByVersionOptions{
-		Sorts:                          defaultSort,
-		IncludeBaseTasks:               false,
-		FieldsToProject:                []string{task.DisplayStatusKey},
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(baseVersion.Id, opts)
+	tasks, err := task.GetMatchingBaseTasks(*v.Id, baseVersion.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: %s", err.Error()))
 	}
 	return getAllTaskStatuses(tasks), nil
 }

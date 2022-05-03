@@ -3669,6 +3669,58 @@ func GetGroupedTaskStatsByVersion(versionID string, opts GetTasksByVersionOption
 
 }
 
+// GetMatchingBaseTasks returns the corresponding base tasks for tasks on a version.
+// If a task ran on the base version but was not scheduled on the version, then it won't be returned.
+func GetMatchingBaseTasks(versionID string, baseVersionID string) ([]Task, error) {
+	pipeline := []bson.M{}
+
+	pipeline = append(pipeline,
+		bson.M{"$match": bson.M{VersionKey: baseVersionID}},
+	)
+
+	// Look up and filter out tasks that don't exist on version.
+	VersionTasksKey := "VersionTasks"
+	taskMatch := []bson.M{
+		{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
+		{"$eq": []string{"$" + DisplayNameKey, "$$" + DisplayNameKey}},
+	}
+	pipeline = append(pipeline, []bson.M{
+		{"$lookup": bson.M{
+			"from": Collection,
+			"let": bson.M{
+				BuildVariantKey: "$" + BuildVariantKey,
+				DisplayNameKey:  "$" + DisplayNameKey,
+			},
+			"as": VersionTasksKey,
+			"pipeline": []bson.M{
+				{"$match": bson.M{
+					VersionKey:       versionID,
+					ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime},
+					"$expr": bson.M{
+						"$and": taskMatch,
+					},
+				}},
+				{"$project": bson.M{
+					IdKey: 1,
+				}},
+			},
+		}},
+		{
+			"$unwind": bson.M{
+				"path":                       "$" + VersionTasksKey,
+				"preserveNullAndEmptyArrays": false,
+			},
+		},
+	}...,
+	)
+
+	result := []Task{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "aggregating base tasks")
+	}
+	return result, nil
+}
+
 type HasMatchingTasksOptions struct {
 	TaskNames []string
 	Variants  []string
