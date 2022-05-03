@@ -4,6 +4,8 @@ import (
 	"reflect"
 )
 
+// RecursivelySetUndefinedFields sets all fields that are not set in structToSet to the value of the corresponding field in structToDefaultFrom.
+// It takes two reflect.Values, the first is the struct to set the fields on, and the second is the struct to get the default values from.
 func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
 	if structToSet.Kind() == reflect.Ptr {
 		structToSet = structToSet.Elem()
