@@ -2233,6 +2233,198 @@ func TestSkipOnNonGitTagBuild(t *testing.T) {
 	assert.False(t, bvt.SkipOnRequester(r))
 }
 
+func TestDependencyGraph(t *testing.T) {
+	tasks := []BuildVariantTaskUnit{
+		{Name: "compile", Variant: "ubuntu", DependsOn: []TaskUnitDependency{{Name: "setup", Variant: "ubuntu"}}},
+		{Name: "setup", Variant: "ubuntu"},
+		{Name: "compile", Variant: "rhel", DependsOn: []TaskUnitDependency{{Name: "setup", Variant: "rhel"}}},
+		{Name: "setup", Variant: "rhel"},
+	}
+	p := Project{BuildVariants: []BuildVariant{{Tasks: tasks}}}
+	depGraph := p.DependencyGraph()
+	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "ubuntu"}, task.TaskNode{Name: "compile", Variant: "ubuntu"}))
+	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "rhel"}, task.TaskNode{Name: "compile", Variant: "rhel"}))
+}
+
+func TestDependenciesForTaskUnit(t *testing.T) {
+	for testName, testCase := range map[string]struct {
+		expectedStatusesToNodes map[string][]task.TaskNode
+		taskUnit                BuildVariantTaskUnit
+		allNodes                []task.TaskNode
+	}{
+		"WithExplicitVariants": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name:    "setup",
+						Variant: "rhel",
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				"": {{Name: "setup", Variant: "rhel"}},
+			},
+		},
+		"WithDependencyVariantsBasedOnTaskUnit": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name: "setup",
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "compile", Variant: "rhel"},
+				{Name: "setup", Variant: "ubuntu"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				"": {{Name: "setup", Variant: "ubuntu"}},
+			},
+		},
+		"WithOneTaskAndAllVariants": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name:    "setup",
+						Variant: AllVariants,
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "compile", Variant: "rhel"},
+				{Name: "setup", Variant: "ubuntu"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				"": {
+					{Name: "setup", Variant: "rhel"},
+					{Name: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+		"WithAllTasksAndOneVariant": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name:    AllDependencies,
+						Variant: "rhel",
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "compile", Variant: "rhel"},
+				{Name: "setup", Variant: "ubuntu"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				"": {
+					{Name: "setup", Variant: "rhel"},
+					{Name: "compile", Variant: "rhel"},
+				},
+			},
+		},
+		"WithAllTasksAndOneVariantBasedOnTaskUnit": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name: AllDependencies,
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "compile", Variant: "rhel"},
+				{Name: "setup", Variant: "ubuntu"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				"": {
+					{Name: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+		"WithAllTasksAndAllVariants": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name:    AllDependencies,
+						Variant: AllVariants,
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "compile", Variant: "rhel"},
+				{Name: "setup", Variant: "ubuntu"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				"": {
+					{Name: "setup", Variant: "rhel"},
+					{Name: "compile", Variant: "rhel"},
+					{Name: "setup", Variant: "ubuntu"},
+				},
+			},
+		},
+		"ByStatus": {
+			taskUnit: BuildVariantTaskUnit{
+				Name:    "compile",
+				Variant: "ubuntu",
+				DependsOn: []TaskUnitDependency{
+					{
+						Name:    "setup",
+						Variant: "rhel",
+						Status:  evergreen.TaskSucceeded,
+					},
+					{
+						Name:    "setup",
+						Variant: "ubuntu",
+						Status:  task.AllStatuses,
+					},
+				},
+			},
+			allNodes: []task.TaskNode{
+				{Name: "setup", Variant: "rhel"},
+				{Name: "setup", Variant: "ubuntu"},
+				{Name: "compile", Variant: "ubuntu"},
+			},
+			expectedStatusesToNodes: map[string][]task.TaskNode{
+				evergreen.TaskSucceeded: {{Name: "setup", Variant: "rhel"}},
+				task.AllStatuses:        {{Name: "setup", Variant: "ubuntu"}},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			depsToNodes := dependenciesForTaskUnit(testCase.taskUnit, testCase.allNodes)
+			assert.Len(t, depsToNodes, len(testCase.expectedStatusesToNodes))
+			for expectedDep, expectedTVs := range testCase.expectedStatusesToNodes {
+				assert.Contains(t, depsToNodes, expectedDep)
+				assert.Equal(t, expectedTVs, depsToNodes[expectedDep])
+			}
+		})
+	}
+}
+
 func TestGetVariantsAndTasksFromProject(t *testing.T) {
 	ctx := context.Background()
 	patchedConfig := `

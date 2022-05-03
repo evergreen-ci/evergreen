@@ -255,8 +255,27 @@ func (bvt *BuildVariantTaskUnit) SkipOnNonGitTagBuild() bool {
 	return utility.FromBoolPtr(bvt.GitTagOnly)
 }
 
+func (bvt *BuildVariantTaskUnit) RunsOnPatches() bool {
+	return !(bvt.SkipOnPatchBuild() || bvt.SkipOnNonGitTagBuild())
+}
+
+func (bvt *BuildVariantTaskUnit) RunsOnNonPatches() bool {
+	return !(bvt.SkipOnNonPatchBuild() || bvt.SkipOnNonGitTagBuild())
+}
+
+func (bvt *BuildVariantTaskUnit) RunsOnGitTag() bool {
+	return !(bvt.SkipOnNonPatchBuild() || bvt.SkipOnGitTagBuild())
+}
+
 func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
 	return utility.FromBoolPtr(bvt.Disable)
+}
+
+func (bvt *BuildVariantTaskUnit) ToTaskNode() task.TaskNode {
+	return task.TaskNode{
+		Name:    bvt.Name,
+		Variant: bvt.Variant,
+	}
 }
 
 type BuildVariant struct {
@@ -1897,6 +1916,49 @@ func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 	}
 
 	return nil
+}
+
+func (p *Project) DependencyGraph() task.DependencyGraph {
+	tasks := p.FindAllBuildVariantTasks()
+	g := task.NewDependencyGraph()
+	var taskNodes []task.TaskNode
+
+	for _, t := range tasks {
+		g.AddTaskNode(t.ToTaskNode())
+		taskNodes = append(taskNodes, t.ToTaskNode())
+	}
+
+	for _, t := range tasks {
+		for dep, depTasks := range dependenciesForTaskUnit(t, taskNodes) {
+			for _, depNode := range depTasks {
+				g.AddEdge(t.ToTaskNode(), depNode, dep)
+			}
+		}
+	}
+
+	return g
+
+}
+
+// dependenciesForTaskUnit returns a map of status to the task nodes that dependentTaskUnit depends on.
+func dependenciesForTaskUnit(dependentTaskUnit BuildVariantTaskUnit, allNodes []task.TaskNode) map[string][]task.TaskNode {
+	dependencies := make(map[string][]task.TaskNode)
+	for _, dep := range dependentTaskUnit.DependsOn {
+		// Use the current variant if none is specified.
+		if dep.Variant == "" {
+			dep.Variant = dependentTaskUnit.Variant
+		}
+
+		for _, node := range allNodes {
+			if node != dependentTaskUnit.ToTaskNode() &&
+				(dep.Variant == AllVariants || node.Variant == dep.Variant) &&
+				(dep.Name == AllDependencies || node.Name == dep.Name) {
+				dependencies[dep.Status] = append(dependencies[dep.Status], node)
+			}
+		}
+	}
+
+	return dependencies
 }
 
 // FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.
