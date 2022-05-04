@@ -118,7 +118,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	var err error
 	originalScript := c.Script
-	if err := c.doExpansions(conf.Expansions); err != nil {
+	if err = c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
