@@ -45,6 +45,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 		},
 	}
 
+	// Test Deep copy of structs
 	aPtr := &a
 	bPtr := &b
 
@@ -67,6 +68,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	assert.Equal(true, cPtr.C)
 	assert.Equal("foo", cPtr.D.Inner.Foo)
 
+	// Test deep copy with zero and nil default values
 	d := shape{
 		A: "d",
 		D: &deep{
@@ -83,7 +85,6 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	}
 	ePtr := &e
 	reflectedE := reflect.ValueOf(ePtr).Elem()
-	// Test deep copy with zero values
 	RecursivelySetUndefinedFields(reflectedE, reflectedD)
 	assert.Equal("e", ePtr.A)
 	assert.Nil(ePtr.B)
