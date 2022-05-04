@@ -405,7 +405,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 		return
 	}
 
-	// A superuser or project admin is authorized
+	// A superuser or project admin is authorized.
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      opCtx.ProjectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
@@ -413,6 +413,17 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	})
 	if isAdmin {
+		next(rw, r)
+		return
+	}
+	// User may be authorized specifically to patch on behalf of other users.
+	isAuthorizedPatchAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	})
+	if isAuthorizedPatchAdmin {
 		next(rw, r)
 		return
 	}
@@ -440,7 +451,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "Not authorized patch author",
 			}))
 			return
 		}
@@ -463,7 +474,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "Not authorized github user",
 			}))
 			return
 		}
@@ -496,7 +507,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	// A superuser or project admin is authorized
+	// A superuser or project admin is authorized.
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      opCtx.ProjectRef.Id,
 		ResourceType:  evergreen.ProjectResourceType,
@@ -504,6 +515,17 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	})
 	if isAdmin {
+		next(rw, r)
+		return
+	}
+	// User may be authorized specifically to patch on behalf of other users.
+	isAuthorizedPatchAdmin := user.HasPermission(gimlet.PermissionOpts{
+		Resource:      opCtx.ProjectRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
+	})
+	if isAuthorizedPatchAdmin {
 		next(rw, r)
 		return
 	}
@@ -531,7 +553,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "Not authorized  commit queue author",
 			}))
 			return
 		}
@@ -552,7 +574,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized",
+				Message:    "Not authorized github commit queue",
 			}))
 			return
 		}
