@@ -531,14 +531,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
 
-	unblockedAndNotBlockedIds, _ := utility.StringSliceSymmetricDifference(unblockedIds, blockedIds)
-	// The question to determine here is: do we ever unblock more dependencies than we block?
-	grip.DebugWhen(len(unblockedAndNotBlockedIds) > 0, message.Fields{
-		"message":                       "unblocked task group dependent tasks",
-		"ticket":                        "EVG-12923",
-		"unblocked_and_not_blocked_ids": unblockedIds,
-		"task":                          t.Id,
-		"caller":                        caller,
+	permanentlyUnblockedIds, _ := utility.StringSliceSymmetricDifference(unblockedIds, blockedIds)
+	// The question to determine here is: do we ever unblock dependencies that don't immediately get re-blockeds?
+	grip.DebugWhen(len(permanentlyUnblockedIds) > 0, message.Fields{
+		"message":                   "unblocked task group dependent tasks",
+		"ticket":                    "EVG-12923",
+		"permanently_unblocked_ids": permanentlyUnblockedIds,
+		"task":                      t.Id,
+		"caller":                    caller,
 	})
 
 	if err = t.MarkDependenciesFinished(true); err != nil {
@@ -596,19 +596,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets each
 // parent dependency as unattainable in depending tasks.
-// REturns a list of modified task IDs.
+// Returns a list of modified task IDs.
 func UpdateBlockedDependencies(t *task.Task) ([]string, error) {
-	const maxStackTraceSize = 5
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
 	depTaskIds := []string{}
-	for _, depTask := range dependentTasks {
-		depTaskIds = append(depTaskIds, depTask.Id)
-	}
-
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
 			return nil, errors.Wrap(err, "marking dependency unattainable")
@@ -617,6 +612,7 @@ func UpdateBlockedDependencies(t *task.Task) ([]string, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
+		depTaskIds = append(depTaskIds, dependentTask.Id)
 		depTaskIds = append(depTaskIds, innerDepTaskIds...)
 	}
 	return depTaskIds, nil
@@ -632,10 +628,6 @@ func UpdateUnblockedDependencies(t *task.Task) ([]string, error) {
 
 	blockedTaskIds := []string{}
 	for _, blockedTask := range blockedTasks {
-		blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
-	}
-
-	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
 			return nil, errors.Wrap(err, "marking dependency attainable")
 		}
@@ -643,6 +635,7 @@ func UpdateUnblockedDependencies(t *task.Task) ([]string, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
+		blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
 		blockedTaskIds = append(blockedTaskIds, innerBlockedTaskIds...)
 	}
 
