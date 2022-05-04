@@ -117,13 +117,13 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	logger.Execution().Debug("Preparing script...")
 
 	var err error
-	var originalScript string
-	if err = c.doExpansions(conf.Expansions); err != nil {
+	originalScript := c.Script
+	if err := c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
 	if originalScript != c.Script {
-		logger.Task().Info("`${SHELL_EXPANSION}` syntax will only work for Evergreen expansions. See Evergreen FAQ for details.")
+		logger.Task().Info("`${SHELL_EXPANSION}` syntax will only work for Evergreen expansions. For bash expansions, try using 'sed' instead.")
 	}
 
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
