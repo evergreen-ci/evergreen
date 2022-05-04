@@ -234,11 +234,11 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 }
 
 func (bvt *BuildVariantTaskUnit) SkipOnRequester(requester string) bool {
-	return evergreen.IsPatchRequester(requester) && bvt.SkipOnPatchBuild() ||
-		!evergreen.IsPatchRequester(requester) && bvt.SkipOnNonPatchBuild() ||
-		evergreen.IsGitTagRequester(requester) && bvt.SkipOnGitTagBuild() ||
-		!evergreen.IsGitTagRequester(requester) && bvt.SkipOnNonGitTagBuild()
+	return evergreen.IsPatchRequester(requester) && !bvt.RunsOnPatches() ||
+		evergreen.IsNonPatchRequester(requester) && !bvt.RunsOnNonPatches() ||
+		evergreen.IsGitTagRequester(requester) && !bvt.RunsOnGitTag()
 }
+
 func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
 	return !utility.FromBoolTPtr(bvt.Patchable)
 }
@@ -275,6 +275,13 @@ func (bvt *BuildVariantTaskUnit) ToTaskNode() task.TaskNode {
 	return task.TaskNode{
 		Name:    bvt.Name,
 		Variant: bvt.Variant,
+	}
+}
+
+func (bvt *BuildVariantTaskUnit) ToTVPair() TVPair {
+	return TVPair{
+		TaskName: bvt.Name,
+		Variant:  bvt.Variant,
 	}
 }
 
@@ -1476,6 +1483,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	return allBVTs
 }
 
+// TasksFromGroup returns a slice of the task group's tasks. groupTask is merged with each of the tasks in the group.
 func (p *Project) TasksFromGroup(groupTask BuildVariantTaskUnit, tg TaskGroup) []BuildVariantTaskUnit {
 	tasks := []BuildVariantTaskUnit{}
 	taskMap := map[string]ProjectTask{}
@@ -1944,42 +1952,43 @@ func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 	return nil
 }
 
+// DependencyGraph returns a task.DependencyGraph populated with the tasks in the project.
 func (p *Project) DependencyGraph() task.DependencyGraph {
 	tasks := p.FindAllBuildVariantTasks()
 	g := task.NewDependencyGraph()
-	var taskNodes []task.TaskNode
 
 	for _, t := range tasks {
 		g.AddTaskNode(t.ToTaskNode())
-		taskNodes = append(taskNodes, t.ToTaskNode())
 	}
 
-	for _, t := range tasks {
-		for dep, depTasks := range dependenciesForTaskUnit(t, taskNodes) {
-			for _, depNode := range depTasks {
-				g.AddEdge(t.ToTaskNode(), depNode, dep)
-			}
-		}
+	for _, dependencyEdge := range dependenciesForTaskUnit(tasks) {
+		g.AddEdge(dependencyEdge.From, dependencyEdge.To, dependencyEdge.Status)
 	}
 
 	return g
 
 }
 
-// dependenciesForTaskUnit returns a map of status to the task nodes that dependentTaskUnit depends on.
-func dependenciesForTaskUnit(dependentTaskUnit BuildVariantTaskUnit, allNodes []task.TaskNode) map[string][]task.TaskNode {
-	dependencies := make(map[string][]task.TaskNode)
-	for _, dep := range dependentTaskUnit.DependsOn {
-		// Use the current variant if none is specified.
-		if dep.Variant == "" {
-			dep.Variant = dependentTaskUnit.Variant
-		}
+// dependenciesForTaskUnit returns a slice of dependencies between tasks in the project.
+func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.DependencyEdge {
+	var dependencies []task.DependencyEdge
+	for _, dependentTask := range taskUnits {
+		for _, dep := range dependentTask.DependsOn {
+			// Use the current variant if none is specified.
+			if dep.Variant == "" {
+				dep.Variant = dependentTask.Variant
+			}
 
-		for _, node := range allNodes {
-			if node != dependentTaskUnit.ToTaskNode() &&
-				(dep.Variant == AllVariants || node.Variant == dep.Variant) &&
-				(dep.Name == AllDependencies || node.Name == dep.Name) {
-				dependencies[dep.Status] = append(dependencies[dep.Status], node)
+			for _, dependedOnTask := range taskUnits {
+				if dependedOnTask.ToTVPair() != dependentTask.ToTVPair() &&
+					(dep.Variant == AllVariants || dependedOnTask.Variant == dep.Variant) &&
+					(dep.Name == AllDependencies || dependedOnTask.Name == dep.Name) {
+					dependencies = append(dependencies, task.DependencyEdge{
+						Status: dep.Status,
+						From:   dependentTask.ToTaskNode(),
+						To:     dependedOnTask.ToTaskNode(),
+					})
+				}
 			}
 		}
 	}

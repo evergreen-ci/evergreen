@@ -185,7 +185,7 @@ func (dc DependencyCycles) String() string {
 		for _, node := range cycle {
 			cycleStrings = append(cycleStrings, node.String())
 		}
-		cycles = append(cycles, "["+strings.Join(cycleStrings, ", ")+"]")
+		cycles = append(cycles, fmt.Sprintf("[%s]", strings.Join(cycleStrings, ", ")))
 	}
 
 	return strings.Join(cycles, ", ")
@@ -195,8 +195,8 @@ func (dc DependencyCycles) String() string {
 // Self-loops are not included as cycles.
 func (g *DependencyGraph) Cycles() DependencyCycles {
 	var cycles DependencyCycles
-	stronglyConnectedComponenets := topo.TarjanSCC(g.graph)
-	for _, scc := range stronglyConnectedComponenets {
+	stronglyConnectedComponents := topo.TarjanSCC(g.graph)
+	for _, scc := range stronglyConnectedComponents {
 		if len(scc) <= 1 {
 			continue
 		}

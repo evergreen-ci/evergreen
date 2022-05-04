@@ -1820,14 +1820,14 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 		dependentTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: dependent.Name, Variant: dependent.Variant}]
 		dependedOnTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: dependedOn.Name, Variant: dependedOn.Variant}]
 
-		var dep model.TaskUnitDependency
+		var edgeInfo model.TaskUnitDependency
 		for _, dependency := range dependentTaskUnit.DependsOn {
 			if dependency.Name == dependedOn.Name && dependency.Variant == dependedOn.Variant {
-				dep = dependency
+				edgeInfo = dependency
 			}
 		}
 
-		if dependentTaskUnit.RunsOnPatches() && (!dependedOnTaskUnit.RunsOnPatches() || dep.PatchOptional) {
+		if dependentTaskUnit.RunsOnPatches() && (!dependedOnTaskUnit.RunsOnPatches() || edgeInfo.PatchOptional) {
 			return false
 		}
 		if dependentTaskUnit.RunsOnNonPatches() && !dependedOnTaskUnit.RunsOnNonPatches() {
@@ -1837,8 +1837,9 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 			return false
 		}
 
+		// If statuses is specified we need to check the edge's status when the edge points to the target node.
 		if statuses != nil && dependedOn == dependedOnNode {
-			return utility.StringSliceContains(statuses, dep.Status)
+			return utility.StringSliceContains(statuses, edgeInfo.Status)
 		}
 
 		return true
@@ -1860,7 +1861,7 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 		errMsg = fmt.Sprintf(errMsg, dependentTask.TaskName, dependentTask.Variant, dependedOnTask.TaskName, dependedOnTask.Variant)
 
 		if statuses != nil {
-			errMsg = fmt.Sprintf(errMsg+" with status in [%s]", strings.Join(statuses, ", "))
+			errMsg = fmt.Sprintf("%s with status in [%s]", errMsg, strings.Join(statuses, ", "))
 		}
 
 		return errors.New(errMsg)

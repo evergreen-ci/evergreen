@@ -785,6 +785,10 @@ func IsPatchRequester(requester string) bool {
 	return requester == PatchVersionRequester || IsGitHubPatchRequester(requester)
 }
 
+func IsNonPatchRequester(requester string) bool {
+	return utility.StringSliceContains([]string{RepotrackerVersionRequester, TriggerRequester, MergeTestRequester, AdHocRequester}, requester)
+}
+
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester
 }
