@@ -405,7 +405,7 @@ func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r
 		return
 	}
 
-	if canSubmitAlwaysPatchesForProject() {
+	if canAlwaysSubmitPatchesForProject() {
 		next(rw, r)
 		return
 	}
@@ -489,7 +489,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if canSubmitAlwaysPatchesForProject(user, opCtx.ProjectRef.Id) {
+	if canAlwaysSubmitPatchesForProject(user, opCtx.ProjectRef.Id) {
 		next(rw, r)
 		return
 	}
@@ -553,9 +553,9 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	next(rw, r)
 }
 
-// canSubmitAlwaysPatchesForProject returns true if the user is a superuser or project admin,
+// canAlwaysSubmitPatchesForProject returns true if the user is a superuser or project admin,
 // or is authorized specifically to patch on behalf of other users.
-func canSubmitAlwaysPatchesForProject(user *user.DBUser, projectId string) bool {
+func canAlwaysSubmitPatchesForProject(user *user.DBUser, projectId string) bool {
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
