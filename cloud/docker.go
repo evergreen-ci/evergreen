@@ -142,6 +142,9 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 		if client.IsErrConnectionFailed(err) {
 			return StatusTerminated, nil
 		}
+		if client.IsErrNotFound(err) {
+			return StatusNonExistent, nil
+		}
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%s'", h.Id)
 	}
 	return toEvgStatus(container.State), nil
