@@ -77,6 +77,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
 		catcher.Wrapf(err, "updating admin DB for project '%s'", opts.NewProjectIdentifier)
 	}
+	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
 	return apiProjectRef, catcher.Resolve()
 }
 
