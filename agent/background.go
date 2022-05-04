@@ -29,7 +29,10 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
 			if signalBeat == evergreen.TaskConflict {
+				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task")
+				heartbeat <- evergreen.TaskFailed
 				cancel()
+				return
 			}
 			if signalBeat != "" {
 				heartbeat <- signalBeat
@@ -37,19 +40,17 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 			}
 			if err != nil {
 				failures++
-				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failures, err)
 			} else {
 				failures = 0
 			}
 			if failures == maxHeartbeats {
-				grip.Error("Hit max heartbeats, aborting task")
 				// Presumably this won't work, but we should try to notify the user anyway
 				tc.logger.Task().Error("Hit max heartbeats, aborting task")
 				heartbeat <- evergreen.TaskFailed
 				return
 			}
 		case <-ctx.Done():
-			grip.Info("Heartbeat ticker canceled")
+			tc.logger.Task().Error("Heartbeat ticker canceled, aborting task")
 			heartbeat <- evergreen.TaskFailed
 			return
 		}

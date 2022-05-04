@@ -59,11 +59,11 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 
 	startCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
-			event.LogHostStartFinished(h.Id, false)
-			return errors.Wrapf(err, "starting spawn host '%s'", h.Id)
+			event.LogHostStartError(h.Id, err.Error())
+			return errors.Wrap(err, "starting spawn host")
 		}
 
-		event.LogHostStartFinished(h.Id, true)
+		event.LogHostStartSucceeded(h.Id)
 
 		return nil
 	}

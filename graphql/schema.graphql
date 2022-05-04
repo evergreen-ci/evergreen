@@ -480,6 +480,7 @@ input ProjectInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -531,6 +532,7 @@ input RepoRefInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -1285,6 +1287,7 @@ type Project {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
   deactivatePrevious: Boolean
@@ -1337,6 +1340,7 @@ type RepoRef {
   dispatchingDisabled: Boolean!
   versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
   deactivatePrevious: Boolean!

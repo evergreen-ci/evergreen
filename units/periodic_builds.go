@@ -151,32 +151,40 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.PeriodicBuildDefinition) (string, error) {
 	token, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
-		return "", errors.Wrap(err, "error getting github token")
+		return "", errors.Wrap(err, "getting github token")
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, j.project.Branch)
+
+	mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(j.ProjectID))
 	if err != nil {
-		return "", errors.Wrap(err, "error getting config file from github")
+		return "", errors.Wrap(err, "finding most recent version for project")
+	}
+	if mostRecentVersion == nil {
+		return "", errors.New("no recent version found for project")
+	}
+	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, definition.ConfigFile, mostRecentVersion.Revision)
+	if err != nil {
+		return "", errors.Wrap(err, "getting config file from github")
 	}
 	configBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
 	if err != nil {
-		return "", errors.Wrap(err, "error decoding config file")
+		return "", errors.Wrap(err, "decoding config file")
 	}
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:          j.project,
-		Revision:     j.project.Branch,
+		Revision:     mostRecentVersion.Revision,
 		Token:        token,
 		ReadFileFrom: model.ReadfromGithub,
 	}
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)
 	if err != nil {
-		return "", errors.Wrap(err, "error parsing config file")
+		return "", errors.Wrap(err, "parsing config file")
 	}
 	var config *model.ProjectConfig
 	if j.project.IsVersionControlEnabled() {
 		config, err = model.CreateProjectConfig(configBytes, j.project.Id)
 		if err != nil {
-			return "", errors.Wrap(err, "error parsing project config")
+			return "", errors.Wrap(err, "parsing project config")
 		}
 	}
 	metadata := model.VersionMetadata{
@@ -184,7 +192,11 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,
+		Revision: model.Revision{
+			Revision: mostRecentVersion.Revision,
+		},
 	}
+
 	projectInfo := &model.ProjectInfo{
 		Ref:                 j.project,
 		Project:             proj,
@@ -193,7 +205,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	}
 	v, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "error creating version from config")
+		return "", errors.Wrap(err, "creating version from config")
 	}
 	if v == nil {
 		return "", errors.New("no version created")

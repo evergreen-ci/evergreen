@@ -41,12 +41,21 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	j.ProjectID = sampleProject.Id
 	j.DefinitionID = "abc"
 
+	prevVersion := model.Version{
+		Id:         "version",
+		Identifier: sampleProject.Id,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Revision:   "88dcc12106a40cb4917f552deab7574ececd9a3e",
+	}
+	assert.NoError(prevVersion.Insert())
+
 	// test that a version is created when the job runs
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Id, sampleProject.PeriodicBuilds[0].ID)
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
+	assert.Equal(prevVersion.Revision, createdVersion.Revision)
 	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
 	assert.NoError(err)
 	assert.True(tasks[0].Activated)
