@@ -518,24 +518,21 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "marking task finished")
 	}
 
-	unblockedIds := []string{}
-	if t.IsPartOfSingleHostTaskGroup() {
-		unblockedIds, err = UpdateUnblockedDependencies(t)
-		if err != nil {
-			return errors.Wrap(err, "updating unblocked dependencies")
-		}
+	unblockedIds, err := UpdateUnblockedDependencies(t)
+	if err != nil {
+		return errors.Wrap(err, "updating unblocked dependencies")
 	}
-
 	blockedIds, err := UpdateBlockedDependencies(t)
 	if err != nil {
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
 
 	permanentlyUnblockedIds, _ := utility.StringSliceSymmetricDifference(unblockedIds, blockedIds)
-	// The question to determine here is: do we ever unblock dependencies that don't immediately get re-blockeds?
+	// The question to determine here is: do we ever unblock dependencies that don't immediately get re-blocked?
 	grip.DebugWhen(len(permanentlyUnblockedIds) > 0, message.Fields{
-		"message":                   "unblocked task group dependent tasks",
+		"message":                   "unblocked dependent tasks",
 		"ticket":                    "EVG-12923",
+		"is_task_group":             t.IsPartOfSingleHostTaskGroup(),
 		"permanently_unblocked_ids": permanentlyUnblockedIds,
 		"task":                      t.Id,
 		"caller":                    caller,
