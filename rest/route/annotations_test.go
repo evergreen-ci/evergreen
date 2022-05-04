@@ -300,7 +300,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	assert.Equal(t, "task-1", utility.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_1", utility.FromStringPtr(apiAnnotations[0].Note.Message))
 	require.Len(t, apiAnnotations[0].Issues, 1)
-	assert.Equal(t, float32(12.34), utility.FromFloat32Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
+	assert.Equal(t, float64(12.34), utility.FromFloat64Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
 
 	// get the latest execution : 0
 	h.taskId = "task-2"
