@@ -13,8 +13,13 @@ func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Valu
 	if structToDefaultFrom.Kind() == reflect.Ptr {
 		structToDefaultFrom = structToDefaultFrom.Elem()
 	}
+
 	// Iterate through each field of the struct.
 	for i := 0; i < structToSet.NumField(); i++ {
+		// If the field we are defaulting from is undefined we can skip it.
+		if IsFieldUndefined(structToDefaultFrom.Field(i)) {
+			continue
+		}
 		branchField := structToSet.Field(i)
 
 		// If the field isn't set, use the default field.
