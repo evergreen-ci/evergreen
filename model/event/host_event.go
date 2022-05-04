@@ -110,20 +110,46 @@ func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{})
 }
 
-func LogHostStartFinished(hostId string, successful bool) {
-	LogHostEvent(hostId, EventHostStarted, HostEventData{Successful: successful})
+// LogHostStartSucceeded logs an event indicating that the host was successfully
+// started.
+func LogHostStartSucceeded(hostID string) {
+	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: true})
 }
 
+// LogHostStartError logs an event indicating that the host errored while
+// starting.
+func LogHostStartError(hostID, logs string) {
+	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: false, Logs: logs})
+}
+
+// LogHostStopSucceeded logs an event indicating that the host was successfully
+// stopped.
+func LogHostStopSucceeded(hostID string) {
+	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: true})
+}
+
+// LogHostStopError logs an event indicating that the host errored while
+// stopping.
+func LogHostStopError(hostID, logs string) {
+	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: false, Logs: logs})
+}
+
+// LogHostModifySucceeded logs an event indicating that the host was
+// successfully modified.
+func LogHostModifySucceeded(hostID string) {
+	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: true})
+}
+
+// LogHostModifyError logs an event indicating that the host errored while being
+// modified.
+func LogHostModifyError(hostID, logs string) {
+	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
+}
+
+// LogHostFallback logs an event indicating that the host is being created using
+// a backup cloud provider.
 func LogHostFallback(hostId string) {
 	LogHostEvent(hostId, EventHostFallback, HostEventData{})
-}
-
-func LogHostStopFinished(hostId string, successful bool) {
-	LogHostEvent(hostId, EventHostStopped, HostEventData{Successful: successful})
-}
-
-func LogHostModifyFinished(hostId string, successful bool) {
-	LogHostEvent(hostId, EventHostModified, HostEventData{Successful: successful})
 }
 
 func LogHostAgentDeployed(hostId string) {

@@ -180,14 +180,17 @@ func (s *execCmdSuite) TestRunCommand() {
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
 }
 
-func (s *execCmdSuite) TestRunCommandPropgatesError() {
+func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	cmd := &subprocessExec{
 		Command: "bash -c 'exit 1'",
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, "foo", s.logger)
-	s.Error(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	err := cmd.runCommand(s.ctx, "foo", exec, s.logger)
+	s.Require().NotNil(err)
+	s.Contains(err.Error(), "process encountered problem: exit code 1")
+	s.NotContains(err.Error(), "error waiting on process")
 }
 
 func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {

@@ -387,7 +387,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if hostReplaced {
-		event.LogHostStartFinished(j.host.Id, true)
+		event.LogHostStartSucceeded(j.host.Id)
 	}
 
 	grip.Info(message.Fields{

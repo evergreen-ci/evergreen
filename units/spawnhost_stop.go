@@ -59,11 +59,11 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 
 	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StopInstance(ctx, h, user); err != nil {
-			event.LogHostStopFinished(h.Id, false)
-			return errors.Wrapf(err, "stopping spawn host '%s'", h.Id)
+			event.LogHostStopError(h.Id, err.Error())
+			return errors.Wrap(err, "stopping spawn host")
 		}
 
-		event.LogHostStopFinished(h.Id, true)
+		event.LogHostStopSucceeded(h.Id)
 
 		return nil
 	}
