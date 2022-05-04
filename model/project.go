@@ -1460,26 +1460,52 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
-			tasksToPopulate := []ProjectTask{}
+			t.Variant = b.Name
 			if t.IsGroup {
 				group, exists := taskGroups[t.Name]
 				if !exists {
 					continue
 				}
-				for _, groupTask := range group.Tasks {
-					tasksToPopulate = append(tasksToPopulate, tasksByName[groupTask])
-				}
+				allBVTs = append(allBVTs, p.TasksFromGroup(t, group)...)
 			} else {
-				tasksToPopulate = append(tasksToPopulate, tasksByName[t.Name])
-			}
-			for _, pTask := range tasksToPopulate {
-				t.Populate(pTask)
-				t.Variant = b.Name
+				t.Populate(tasksByName[t.Name])
 				allBVTs = append(allBVTs, t)
 			}
 		}
 	}
 	return allBVTs
+}
+
+func (p *Project) TasksFromGroup(groupTask BuildVariantTaskUnit, tg TaskGroup) []BuildVariantTaskUnit {
+	tasks := []BuildVariantTaskUnit{}
+	taskMap := map[string]ProjectTask{}
+	for _, projTask := range p.Tasks {
+		taskMap[projTask.Name] = projTask
+	}
+
+	for _, t := range tg.Tasks {
+		bvt := BuildVariantTaskUnit{
+			Name:             t,
+			IsGroup:          true,
+			Variant:          groupTask.Variant,
+			GroupName:        groupTask.Name,
+			Patchable:        groupTask.Patchable,
+			PatchOnly:        groupTask.PatchOnly,
+			Disable:          groupTask.Disable,
+			AllowForGitTag:   groupTask.AllowForGitTag,
+			GitTagOnly:       groupTask.GitTagOnly,
+			Priority:         groupTask.Priority,
+			DependsOn:        groupTask.DependsOn,
+			RunOn:            groupTask.RunOn,
+			ExecTimeoutSecs:  groupTask.ExecTimeoutSecs,
+			Stepback:         groupTask.Stepback,
+			Activate:         groupTask.Activate,
+			CommitQueueMerge: groupTask.CommitQueueMerge,
+		}
+		bvt.Populate(taskMap[t])
+		tasks = append(tasks, bvt)
+	}
+	return tasks
 }
 
 func (p *Project) FindAllTasksMap() map[string]ProjectTask {

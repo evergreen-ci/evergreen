@@ -2242,8 +2242,32 @@ func TestDependencyGraph(t *testing.T) {
 	}
 	p := Project{BuildVariants: []BuildVariant{{Tasks: tasks}}}
 	depGraph := p.DependencyGraph()
-	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "ubuntu"}, task.TaskNode{Name: "compile", Variant: "ubuntu"}))
-	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "rhel"}, task.TaskNode{Name: "compile", Variant: "rhel"}))
+	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "ubuntu"}, task.TaskNode{Name: "setup", Variant: "ubuntu"}))
+	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "rhel"}, task.TaskNode{Name: "setup", Variant: "rhel"}))
+}
+
+func TestFindAllBuildVariantTasks(t *testing.T) {
+	t.Run("TaskGroup", func(t *testing.T) {
+		tasks := []ProjectTask{
+			{Name: "in_group_0"},
+			{Name: "in_group_1"},
+		}
+		bvTasks := []BuildVariantTaskUnit{{Name: "task_group", IsGroup: true}}
+		groups := []TaskGroup{{Name: bvTasks[0].Name, Tasks: []string{tasks[0].Name, tasks[1].Name}}}
+		p := Project{
+			Tasks:         tasks,
+			BuildVariants: []BuildVariant{{Name: "bv", Tasks: bvTasks}},
+			TaskGroups:    groups,
+		}
+
+		bvts := p.FindAllBuildVariantTasks()
+		require.Len(t, bvts, 2)
+		assert.Equal(t, tasks[0].Name, bvts[0].Name)
+		assert.Equal(t, "bv", bvts[0].Variant)
+
+		assert.Equal(t, tasks[1].Name, bvts[1].Name)
+		assert.Equal(t, "bv", bvts[1].Variant)
+	})
 }
 
 func TestDependenciesForTaskUnit(t *testing.T) {

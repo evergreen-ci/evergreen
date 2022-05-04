@@ -746,44 +746,19 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 }
 
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
-	tasks := []BuildVariantTaskUnit{}
 	tg := proj.FindTaskGroup(in.Name)
 	if tg == nil {
-		return tasks
+		return nil
 	}
+	tasks := proj.TasksFromGroup(in, *tg)
 
-	taskMap := map[string]ProjectTask{}
-	for _, projTask := range proj.Tasks {
-		taskMap[projTask.Name] = projTask
-	}
-
-	for _, t := range tg.Tasks {
-		bvt := BuildVariantTaskUnit{
-			Name: t,
-			// IsGroup is not persisted, and indicates here that the
-			// task is a member of a task group.
-			IsGroup:          true,
-			GroupName:        in.Name,
-			Patchable:        in.Patchable,
-			PatchOnly:        in.PatchOnly,
-			Disable:          in.Disable,
-			AllowForGitTag:   in.AllowForGitTag,
-			GitTagOnly:       in.GitTagOnly,
-			Priority:         in.Priority,
-			DependsOn:        in.DependsOn,
-			RunOn:            in.RunOn,
-			ExecTimeoutSecs:  in.ExecTimeoutSecs,
-			Stepback:         in.Stepback,
-			Activate:         in.Activate,
-			CommitQueueMerge: in.CommitQueueMerge,
-		}
-		// Default to project task settings when unspecified
-		bvt.Populate(taskMap[t])
+	var willRun []BuildVariantTaskUnit
+	for _, bvt := range tasks {
 		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
-			tasks = append(tasks, bvt)
+			willRun = append(willRun, bvt)
 		}
 	}
-	return tasks
+	return willRun
 }
 
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a

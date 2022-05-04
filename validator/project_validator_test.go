@@ -2377,59 +2377,6 @@ buildvariants:
 	assert.Len(warnings, 0)
 }
 
-func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.Clear(distro.Collection))
-	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert())
-	exampleYml := `
-tasks:
-- name: not_in_a_task_group
-  exec_timeout_secs: 100
-  commands:
-  - command: shell.exec
-    params:
-      script: echo test
-- name: task_in_a_task_group
-  exec_timeout_secs: 100
-  commands:
-  - command: shell.exec
-    params:
-      script: echo test
-  depends_on:
-  - name: not_in_a_task_group
-task_groups:
-- name: example_task_group
-  exec_timeout_secs: 100 
-  tasks:
-  - task_in_a_task_group
-buildvariants:
-- name: "bv"
-  display_name: "bv_display"
-  run_on: "example_distro"
-  tasks:
-  - name: example_task_group
-`
-	proj := model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
-	assert.Len(proj.TaskGroups, 1)
-	tg := proj.TaskGroups[0]
-	assert.Equal("example_task_group", tg.Name)
-	assert.Len(tg.Tasks, 1)
-	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
-	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
-	errors := CheckProjectErrors(&proj, false)
-	assert.Len(errors, 1)
-	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", errors[0].Error())
-	warnings := CheckProjectWarnings(&proj)
-	assert.Len(warnings, 0)
-}
-
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
