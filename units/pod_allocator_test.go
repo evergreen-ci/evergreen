@@ -266,6 +266,22 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			p, err := pod.FindOneByID(pd.PodIDs[0])
 			require.NoError(t, err)
 			require.NotZero(t, p, "intent pod should have been allocated for task")
+
+			assert.Equal(t, pod.StatusInitializing, p.Status)
+			assert.Equal(t, pod.TypeAgent, p.Type)
+			assert.Equal(t, p.TaskContainerCreationOpts.Image, needsAllocation.ContainerOpts.Image)
+			assert.Equal(t, p.TaskContainerCreationOpts.CPU, needsAllocation.ContainerOpts.CPU)
+			assert.Equal(t, p.TaskContainerCreationOpts.MemoryMB, needsAllocation.ContainerOpts.MemoryMB)
+			assert.Equal(t, p.TaskContainerCreationOpts.WorkingDir, needsAllocation.ContainerOpts.WorkingDir)
+			os, err := pod.ImportOS(needsAllocation.ContainerOpts.OS)
+			require.NoError(t, err)
+			assert.Equal(t, os, p.TaskContainerCreationOpts.OS)
+			arch, err := pod.ImportArch(needsAllocation.ContainerOpts.Arch)
+			require.NoError(t, err)
+			assert.Equal(t, arch, p.TaskContainerCreationOpts.Arch)
+			winVer, err := pod.ImportWindowsVersion(needsAllocation.ContainerOpts.WindowsVersion)
+			require.NoError(t, err)
+			assert.Equal(t, winVer, p.TaskContainerCreationOpts.WindowsVersion)
 		},
 		"MarksStaleContainerTasksAsNoLongerNeedingAllocation": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			ref := getProjectRef()
@@ -350,17 +366,28 @@ func getTaskThatNeedsContainerAllocation() task.Task {
 		Status:             evergreen.TaskUndispatched,
 		ContainerAllocated: false,
 		ExecutionPlatform:  task.ExecutionPlatformContainer,
+		Container:          "container",
+		ContainerOpts: task.ContainerOptions{
+			Image:          "rhel",
+			CPU:            256,
+			MemoryMB:       1024,
+			OS:             evergreen.WindowsOS,
+			Arch:           evergreen.ArchAMD64,
+			WindowsVersion: evergreen.Windows2022,
+			WorkingDir:     "/data",
+		},
 	}
 }
 
 func getInitializingPod(t *testing.T) pod.Pod {
 	initializing, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
-		CPU:        1024,
-		MemoryMB:   1024,
-		OS:         pod.OSLinux,
-		Arch:       pod.ArchAMD64,
-		Image:      "image",
-		WorkingDir: "/",
+		Image:          "rhel",
+		CPU:            256,
+		MemoryMB:       1024,
+		OS:             pod.OSWindows,
+		Arch:           pod.ArchAMD64,
+		WindowsVersion: pod.WindowsVersionServer2022,
+		WorkingDir:     "/data",
 	})
 	require.NoError(t, err)
 	return *initializing
