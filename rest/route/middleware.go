@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -375,93 +374,15 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 }
 
 func NewCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{}
+	return &CommitQueueItemOwnerMiddleware{
+		sc: &data.DBConnector{},
+	}
 }
 
 func NewMockCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &MockCommitQueueItemOwnerMiddleware{}
-}
-
-type MockCommitQueueItemOwnerMiddleware struct{}
-
-func (m *MockCommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-	user := MustHaveUser(ctx)
-	opCtx := MustHaveProjectContext(ctx)
-	projRef, err := opCtx.GetProjectRef()
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}))
-		return
+	return &CommitQueueItemOwnerMiddleware{
+		sc: &data.MockGitHubConnector{},
 	}
-
-	if !projRef.CommitQueue.IsEnabled() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Commit queue is not enabled for project",
-		}))
-		return
-	}
-
-	if canAlwaysSubmitPatchesForProject() {
-		next(rw, r)
-		return
-	}
-
-	// The owner of the patch can also pass
-	vars := gimlet.GetVars(r)
-	itemId, ok := vars["item"]
-	if !ok {
-		itemId, ok = vars["patch_id"]
-	}
-	if !ok || itemId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "No item provided",
-		}))
-		return
-	}
-
-	if bson.IsObjectIdHex(itemId) {
-		patch, err := data.FindPatchById(itemId)
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't find item")))
-			return
-		}
-		if user.Id != *patch.Author {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized patch author",
-			}))
-			return
-		}
-	} else if _, err := strconv.Atoi(itemId); err == nil {
-		pr := &github.PullRequest{
-			Base: &github.PullRequestBranch{
-				SHA: github.String("abcdef"),
-			},
-			User: &github.User{
-				ID: github.Int64(0),
-			},
-			Number:         github.Int(1),
-			MergeCommitSHA: github.String("abcdef"),
-		}
-
-		var githubUID int
-		if pr.User != nil && pr.User.ID != nil {
-			githubUID = int(*pr.User.ID)
-		}
-		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized Github user",
-			}))
-			return
-		}
-	}
-	next(rw, r)
 }
 
 type CommitQueueItemOwnerMiddleware struct {

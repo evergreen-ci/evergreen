@@ -199,7 +199,7 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		"item":       "aabbccddeeff112233445566",
 	})
 
-	mw := NewMockCommitQueueItemOwnerMiddleware()
+	mw := NewCommitQueueItemOwnerMiddleware()
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
