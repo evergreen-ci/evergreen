@@ -518,13 +518,25 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "marking task finished")
 	}
 
-	if err = UpdateUnblockedDependencies(t, true, "MarkEnd"); err != nil {
+	unblockedIds, err := UpdateUnblockedDependencies(t)
+	if err != nil {
 		return errors.Wrap(err, "updating unblocked dependencies")
 	}
-
-	if err = UpdateBlockedDependencies(t); err != nil {
+	blockedIds, err := UpdateBlockedDependencies(t)
+	if err != nil {
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
+
+	permanentlyUnblockedIds, _ := utility.StringSliceSymmetricDifference(unblockedIds, blockedIds)
+	// The question to determine here is: do we ever unblock dependencies that don't immediately get re-blocked?
+	grip.DebugWhen(len(permanentlyUnblockedIds) > 0, message.Fields{
+		"message":                   "unblocked dependent tasks",
+		"ticket":                    "EVG-12923",
+		"is_task_group":             t.IsPartOfSingleHostTaskGroup(),
+		"permanently_unblocked_ids": permanentlyUnblockedIds,
+		"task":                      t.Id,
+		"caller":                    caller,
+	})
 
 	if err = t.MarkDependenciesFinished(true); err != nil {
 		return errors.Wrap(err, "updating dependency met status")
@@ -581,74 +593,50 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets each
 // parent dependency as unattainable in depending tasks.
-func UpdateBlockedDependencies(t *task.Task) error {
-	const maxStackTraceSize = 5
+// Returns a list of modified task IDs.
+func UpdateBlockedDependencies(t *task.Task) ([]string, error) {
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
-		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
+		return nil, errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
-	if t.IsPartOfSingleHostTaskGroup() && len(dependentTasks) > 0 {
-		depTaskIds := []string{}
-		for _, depTask := range dependentTasks {
-			depTaskIds = append(depTaskIds, depTask.Id)
-		}
-		stack := message.NewStack(2, "").Raw().(message.StackTrace).Frames
-		if len(stack) > maxStackTraceSize {
-			stack = stack[:maxStackTraceSize-1]
-		}
-		grip.Info(message.Fields{
-			"message":                       "blocked task group dependent tasks",
-			"ticket":                        "EVG-12923",
-			"task":                          t.Id,
-			"execution":                     t.Execution,
-			"num_dependent_tasks_to_update": len(dependentTasks),
-			"dependent_task_ids_to_update":  depTaskIds,
-			"stack":                         stack,
-		})
-	}
-
+	depTaskIds := []string{}
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
-			return errors.Wrap(err, "marking dependency unattainable")
+			return nil, errors.Wrap(err, "marking dependency unattainable")
 		}
-		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
-			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
+		innerDepTaskIds, err := UpdateBlockedDependencies(&dependentTask)
+		if err != nil {
+			return nil, errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
+		depTaskIds = append(depTaskIds, dependentTask.Id)
+		depTaskIds = append(depTaskIds, innerDepTaskIds...)
 	}
-	return nil
+	return depTaskIds, nil
 }
 
-func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error {
+// UpdateUnblockedDependencies recursively marks all unattainable dependencies as attainable, and
+// returns a list of modified tasks IDs.
+func UpdateUnblockedDependencies(t *task.Task) ([]string, error) {
 	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
-		return errors.Wrap(err, "getting dependencies marked unattainable")
+		return nil, errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
-	if logIDs && t.IsPartOfSingleHostTaskGroup() && len(blockedTasks) > 0 {
-		blockedTaskIds := []string{}
-		for _, blockedTask := range blockedTasks {
-			blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
-		}
-		grip.Debug(message.Fields{
-			"message":          "unblocked task group dependent tasks",
-			"ticket":           "EVG-12923",
-			"blocked_task_ids": blockedTaskIds,
-			"task":             t.Id,
-			"caller":           caller,
-		})
-	}
-
+	blockedTaskIds := []string{}
 	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
-			return errors.Wrap(err, "marking dependency attainable")
+			return nil, errors.Wrap(err, "marking dependency attainable")
 		}
-		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
-			return errors.WithStack(err)
+		innerBlockedTaskIds, err := UpdateUnblockedDependencies(&blockedTask)
+		if err != nil {
+			return nil, errors.WithStack(err)
 		}
+		blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
+		blockedTaskIds = append(blockedTaskIds, innerBlockedTaskIds...)
 	}
 
-	return nil
+	return blockedTaskIds, nil
 }
 
 func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, caller string) error {
@@ -1279,7 +1267,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
-	if err := UpdateUnblockedDependencies(t, logIDs, "MarkOneTaskReset"); err != nil {
+	if _, err := UpdateUnblockedDependencies(t); err != nil {
 		return errors.Wrap(err, "clearing cached unattainable dependencies")
 	}
 
@@ -1308,7 +1296,8 @@ func MarkTasksReset(taskIds []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Wrapf(UpdateUnblockedDependencies(&t, false, ""), "clearing cached unattainable dependencies for task '%s'", t.Id)
+		_, err = UpdateUnblockedDependencies(&t)
+		catcher.Wrapf(err, "clearing cached unattainable dependencies for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
