@@ -69,6 +69,8 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 				StatusCode: http.StatusBadRequest,
 			}
 		}
+	} else {
+		tgh.testExecution = projCtx.Task.Execution
 	}
 
 	if status := vals.Get("status"); status != "" {
