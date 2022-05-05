@@ -50,7 +50,6 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 				return
 			}
 		case <-ctx.Done():
-			tc.logger.Task().Error("Heartbeat ticker canceled, aborting task")
 			heartbeat <- evergreen.TaskFailed
 			return
 		}
