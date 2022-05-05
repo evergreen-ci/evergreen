@@ -438,7 +438,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if user.Id != *patch.Author {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized patch author",
+				Message:    "Not authorized to patch on behalf of author",
 			}))
 			return
 		}
@@ -459,7 +459,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
-				Message:    "Not authorized Github user",
+				Message:    "Not authorized to patch on behalf of Github user",
 			}))
 			return
 		}
