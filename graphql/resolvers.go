@@ -1142,7 +1142,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, opts)
-	if err != nil {
+	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {
@@ -1153,6 +1153,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 		}
 		return nil, InternalServerError.Send(ctx, err.Error())
 
+	}
+	if err != nil {
+		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
+		// https://github.com/99designs/gqlgen/issues/1191
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 	return projectRef, nil
 }
