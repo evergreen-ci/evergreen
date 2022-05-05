@@ -25,7 +25,7 @@ type requestInfo struct {
 
 // AuthError is a special error when the CLI receives 401 Unauthorized to
 // suggest logging in again as a possible solution to the error.
-var AuthError = errors.New("401 Unauthorized: User credentials are likely expired, try logging in again via the Evergreen web UI.")
+var AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
 
 func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path)
@@ -135,7 +135,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		MaxDelay:    c.timeoutMax,
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, AuthError
+		return resp, utility.RespErrorf(resp, AuthError)
 	} else if err != nil {
 		return resp, err
 	}
