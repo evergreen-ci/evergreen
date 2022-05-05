@@ -356,7 +356,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 		}
 		return catcher.Resolve()
 	}
-	if cloudStatus == cloud.StatusUnknown {
+	if cloudStatus == cloud.StatusNonExistent {
 		return j.host.Terminate(evergreen.User, "cloud host does not exist")
 	}
 

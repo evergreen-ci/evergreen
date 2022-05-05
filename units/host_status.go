@@ -141,7 +141,7 @@ clientsLoop:
 				j.AddError(errors.Wrapf(err, "error checking instance status of host %s", h.Id))
 				continue clientsLoop
 			}
-			if cloudStatus == cloud.StatusUnknown {
+			if cloudStatus == cloud.StatusNonExistent {
 				// Terminate unknown host in the DB.
 				grip.Error(message.WrapError(h.Terminate(evergreen.User, "host does not exist"), message.Fields{
 					"message":       "can't mark instance as terminated",
