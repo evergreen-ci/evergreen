@@ -14,7 +14,7 @@ import (
 // DependencyGraph models task dependency relationships as a directed graph.
 // Use NewDependencyGraph to initialize a new DependencyGraph.
 type DependencyGraph struct {
-	reversed            bool
+	transposed          bool
 	graph               *multi.DirectedGraph
 	tasksToNodes        map[TaskNode]graph.Node
 	nodesToTasks        map[graph.Node]TaskNode
@@ -22,12 +22,12 @@ type DependencyGraph struct {
 }
 
 // NewDependencyGraph returns an initialized DependencyGraph.
-// reversed determines the direction of edges in the graph.
-// If reversed is false, edges point from dependent tasks to the tasks they depend on.
-// If reversed is true, edges point from depended on tasks to the tasks that depend on them.
-func NewDependencyGraph(reversed bool) DependencyGraph {
+// transposed determines the direction of edges in the graph.
+// If transposed is false, edges point from dependent tasks to the tasks they depend on.
+// If transposed is true, edges point from depended on tasks to the tasks that depend on them.
+func NewDependencyGraph(transposed bool) DependencyGraph {
 	return DependencyGraph{
-		reversed:            true,
+		transposed:          true,
 		graph:               multi.NewDirectedGraph(),
 		tasksToNodes:        make(map[TaskNode]graph.Node),
 		nodesToTasks:        make(map[graph.Node]TaskNode),
@@ -70,16 +70,16 @@ func (t TaskNode) String() string {
 }
 
 // VersionDependencyGraph finds all the tasks from the version given by versionID and constructs a DependencyGraph from them.
-func VersionDependencyGraph(versionID string, reversed bool) (DependencyGraph, error) {
+func VersionDependencyGraph(versionID string, transposed bool) (DependencyGraph, error) {
 	tasks, err := FindAllTasksFromVersionWithDependencies(versionID)
 	if err != nil {
 		return DependencyGraph{}, errors.Wrapf(err, "getting tasks for version '%s'", versionID)
 	}
 
-	return taskDependencyGraph(tasks, reversed), nil
+	return taskDependencyGraph(tasks, transposed), nil
 }
 
-func taskDependencyGraph(tasks []Task, reversed bool) DependencyGraph {
+func taskDependencyGraph(tasks []Task, transposed bool) DependencyGraph {
 	g := NewDependencyGraph(false)
 	g.buildFromTasks(tasks)
 	return g
@@ -115,10 +115,10 @@ func (g *DependencyGraph) AddTaskNode(tNode TaskNode) {
 }
 
 // AddEdge adds an edge between tasks in the graph.
-// The edge direction is determined by whether the DependencyGraph is reversed.
+// The edge direction is determined by whether the DependencyGraph is transposed.
 // Noop if one of the nodes doesn't exist in the graph.
 func (g *DependencyGraph) AddEdge(dependentTask, dependedOnTask TaskNode, status string) {
-	if g.reversed {
+	if g.transposed {
 		g.addEdgeToGraph(DependencyEdge{From: dependedOnTask, To: dependentTask, Status: status})
 	} else {
 		g.addEdgeToGraph(DependencyEdge{From: dependentTask, To: dependedOnTask, Status: status})
@@ -139,7 +139,7 @@ func (g *DependencyGraph) addEdgeToGraph(edge DependencyEdge) {
 
 // EdgesIntoTask returns all the edges that point to t.
 // For a regular graph these edges are tasks that directly depend on t.
-// If the graph is reversed these edges are tasks t directly depends on.
+// If the graph is transposed these edges are tasks t directly depends on.
 func (g *DependencyGraph) EdgesIntoTask(t TaskNode) []DependencyEdge {
 	node := g.tasksToNodes[t]
 	if node == nil {
@@ -233,7 +233,7 @@ func (g *DependencyGraph) DepthFirstSearch(start, target TaskNode, traverseEdge 
 // TopologicalStableSort sorts the nodes in the graph topologically. It is stable in the sense that when a topological ordering
 // is ambiguous the order the tasks were added to the graph prevails.
 // To sort with all dependent tasks before the tasks they depend on use the default graph.
-// To sort with all depended on tasks before the tasks that depend on them use a reversed graph.
+// To sort with all depended on tasks before the tasks that depend on them use a transposed graph.
 func (g *DependencyGraph) TopologicalStableSort() ([]TaskNode, error) {
 	sortedNodes, err := topo.SortStabilized(g.graph, nil)
 
@@ -255,7 +255,7 @@ func (g *DependencyGraph) TopologicalStableSort() ([]TaskNode, error) {
 }
 
 // reachableFromNode returns all the dependencies recursively depended on by start.
-// In the case of a reversed graph it returns all the dependencies recursively depending on start.
+// In the case of a transposed graph it returns all the dependencies recursively depending on start.
 // The start node is not included in the result.
 func (g *DependencyGraph) reachableFromNode(start TaskNode) []TaskNode {
 	var reachable []TaskNode
