@@ -111,6 +111,13 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		j.AddRetryableError(errors.Wrap(err, "allocating pod for task dispatch"))
 		return
 	}
+
+	grip.Info(message.Fields{
+		"message":                    "successfully allocated pod for container task",
+		"task":                       j.task.Id,
+		"pod":                        intentPod.ID,
+		"time_since_task_activation": time.Since(j.task.ActivatedTime),
+	})
 }
 
 func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {

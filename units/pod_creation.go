@@ -9,10 +9,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -122,6 +126,9 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(err, "marking pod as starting"))
 		}
 
+		if err := j.logTaskTimingStats(); err != nil {
+			j.AddError(errors.Wrap(err, "logging task timing stats"))
+		}
 	default:
 		j.AddError(errors.Errorf("not starting pod because pod status is '%s'", j.pod.Status))
 	}
@@ -175,6 +182,46 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 		}
 		j.ecsPodCreator = creator
 	}
+
+	return nil
+}
+
+func (j *podCreationJob) logTaskTimingStats() error {
+	if j.pod.Type != pod.TypeAgent {
+		return nil
+	}
+
+	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	if err != nil {
+		return errors.Wrap(err, "finding dispatcher for task")
+	}
+	if disp == nil {
+		return errors.Errorf("dispatcher with pod '%s' not found", j.pod.ID)
+	}
+
+	msg := message.Fields{
+		"message":          "created pod to run container tasks",
+		"pod":              j.pod.ID,
+		"dispatcher_group": disp.GroupID,
+	}
+
+	tsk, err := task.FindOneId(disp.GroupID)
+	if err != nil {
+		return errors.Wrapf(err, "finding tasks associated with dispatcher group '%s'", disp.GroupID)
+	}
+
+	if tsk != nil {
+		msg["is_for_task_group"] = false
+		msg["time_since_task_activation"] = time.Since(tsk.ActivatedTime)
+	} else {
+		// The dispatcher group will not be associated with a single task if
+		// it's a task group. Task groups don't have a single activation time,
+		// so we can't track statistics on the time since activation for a task
+		// group.
+		msg["is_for_task_group"] = true
+	}
+
+	grip.Info(msg)
 
 	return nil
 }
