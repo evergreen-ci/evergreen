@@ -27,7 +27,7 @@ type DependencyGraph struct {
 // If transposed is true, edges point from depended on tasks to the tasks that depend on them.
 func NewDependencyGraph(transposed bool) DependencyGraph {
 	return DependencyGraph{
-		transposed:          true,
+		transposed:          transposed,
 		graph:               multi.NewDirectedGraph(),
 		tasksToNodes:        make(map[TaskNode]graph.Node),
 		nodesToTasks:        make(map[graph.Node]TaskNode),

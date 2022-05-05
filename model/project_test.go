@@ -2199,13 +2199,24 @@ func TestSkipOnRequester(t *testing.T) {
 }
 
 func TestDependencyGraph(t *testing.T) {
-	tasks := []BuildVariantTaskUnit{
-		{Name: "compile", Variant: "ubuntu", DependsOn: []TaskUnitDependency{{Name: "setup", Variant: "ubuntu"}}},
-		{Name: "setup", Variant: "ubuntu"},
-		{Name: "compile", Variant: "rhel", DependsOn: []TaskUnitDependency{{Name: "setup", Variant: "rhel"}}},
-		{Name: "setup", Variant: "rhel"},
+	p := Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name: "ubuntu",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "compile", DependsOn: []TaskUnitDependency{{Name: "setup"}}},
+					{Name: "setup"},
+				},
+			},
+			{
+				Name: "rhel",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "compile", DependsOn: []TaskUnitDependency{{Name: "setup"}}},
+					{Name: "setup"},
+				},
+			},
+		},
 	}
-	p := Project{BuildVariants: []BuildVariant{{Tasks: tasks}}}
 	depGraph := p.DependencyGraph()
 	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "ubuntu"}, task.TaskNode{Name: "setup", Variant: "ubuntu"}))
 	assert.NotNil(t, depGraph.GetDependencyEdge(task.TaskNode{Name: "compile", Variant: "rhel"}, task.TaskNode{Name: "setup", Variant: "rhel"}))
