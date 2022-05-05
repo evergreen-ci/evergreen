@@ -37,8 +37,8 @@ func TestBuildFromTasks(t *testing.T) {
 	}
 
 	t.Run("ForwardEdges", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 
 		for _, task := range tasks {
 			require.Contains(t, g.tasksToNodes, task.ToTaskNode())
@@ -79,8 +79,8 @@ func TestBuildFromTasks(t *testing.T) {
 	})
 
 	t.Run("ReversedEdges", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, true)
+		g := NewDependencyGraph(true)
+		g.buildFromTasks(tasks)
 
 		for _, task := range tasks {
 			require.Contains(t, g.tasksToNodes, task.ToTaskNode())
@@ -127,8 +127,8 @@ func TestAddTaskNode(t *testing.T) {
 	}
 
 	t.Run("NewNode", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 		assert.Len(t, g.nodesToTasks, 1)
 		assert.Len(t, g.tasksToNodes, 1)
 		assert.Equal(t, 1, g.graph.Nodes().Len())
@@ -140,8 +140,8 @@ func TestAddTaskNode(t *testing.T) {
 	})
 
 	t.Run("PreexistingNode", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 		assert.Len(t, g.nodesToTasks, 1)
 		assert.Len(t, g.tasksToNodes, 1)
 		assert.Equal(t, 1, g.graph.Nodes().Len())
@@ -161,8 +161,8 @@ func TestAddEdgeToGraph(t *testing.T) {
 	}
 
 	t.Run("NewEdge", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 		assert.Equal(t, 1, g.graph.Edges().Len())
 		assert.Len(t, g.edgesToDependencies, 1)
 
@@ -173,8 +173,8 @@ func TestAddEdgeToGraph(t *testing.T) {
 	})
 
 	t.Run("PreexistingEdge", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 		assert.Equal(t, 1, g.graph.Edges().Len())
 		assert.Len(t, g.edgesToDependencies, 1)
 
@@ -184,8 +184,8 @@ func TestAddEdgeToGraph(t *testing.T) {
 	})
 
 	t.Run("EdgeToMissingNode", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 		assert.Equal(t, 1, g.graph.Edges().Len())
 		assert.Len(t, g.edgesToDependencies, 1)
 
@@ -195,8 +195,8 @@ func TestAddEdgeToGraph(t *testing.T) {
 	})
 
 	t.Run("Cyclic", func(t *testing.T) {
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 		assert.Equal(t, 1, g.graph.Edges().Len())
 		assert.Len(t, g.edgesToDependencies, 1)
 
@@ -215,8 +215,8 @@ func TestGetDependencyEdge(t *testing.T) {
 		{Id: "t1", DependsOn: []Dependency{{TaskId: "t2", Status: evergreen.TaskSucceeded}}},
 		{Id: "t2"},
 	}
-	g := NewDependencyGraph()
-	g.buildFromTasks(tasks, false)
+	g := NewDependencyGraph(false)
+	g.buildFromTasks(tasks)
 
 	t.Run("ExistingEdgeWithStatus", func(t *testing.T) {
 		edge := g.GetDependencyEdge(tasks[1].ToTaskNode(), tasks[2].ToTaskNode())
@@ -241,8 +241,8 @@ func TestTasksDependingOnTask(t *testing.T) {
 		{Id: "t0", DependsOn: []Dependency{{TaskId: "t1"}}},
 		{Id: "t1"},
 	}
-	g := NewDependencyGraph()
-	g.buildFromTasks(tasks, false)
+	g := NewDependencyGraph(false)
+	g.buildFromTasks(tasks)
 
 	assert.Empty(t, g.EdgesIntoTask(tasks[0].ToTaskNode()))
 	edges := g.EdgesIntoTask(tasks[1].ToTaskNode())
@@ -258,8 +258,8 @@ func TestReachableFromNode(t *testing.T) {
 		{Id: "t3"},
 		{Id: "t4"},
 	}
-	g := NewDependencyGraph()
-	g.buildFromTasks(tasks, false)
+	g := NewDependencyGraph(false)
+	g.buildFromTasks(tasks)
 
 	reachable := g.reachableFromNode(tasks[0].ToTaskNode())
 	assert.Len(t, reachable, 4)
@@ -278,7 +278,7 @@ func TestReachableFromNode(t *testing.T) {
 
 func TestCycles(t *testing.T) {
 	t.Run("EmptyGraph", func(t *testing.T) {
-		g := NewDependencyGraph()
+		g := NewDependencyGraph(false)
 		assert.Empty(t, g.Cycles())
 	})
 
@@ -287,8 +287,8 @@ func TestCycles(t *testing.T) {
 			{Id: "t0", DependsOn: []Dependency{{TaskId: "t1"}}},
 			{Id: "t1"},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 
 		assert.Empty(t, g.Cycles())
 	})
@@ -297,8 +297,8 @@ func TestCycles(t *testing.T) {
 		tasks := []Task{
 			{Id: "t0", DependsOn: []Dependency{{TaskId: "t0"}}},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 
 		assert.Empty(t, g.Cycles())
 	})
@@ -310,8 +310,8 @@ func TestCycles(t *testing.T) {
 			{Id: "t2", DependsOn: []Dependency{{TaskId: "t3"}}},
 			{Id: "t3", DependsOn: []Dependency{{TaskId: "t2"}}},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 
 		cycles := g.Cycles()
 		assert.Len(t, cycles, 2)
@@ -324,8 +324,8 @@ func TestCycles(t *testing.T) {
 			{Id: "t2", DependsOn: []Dependency{{TaskId: "t3"}}},
 			{Id: "t3", DependsOn: []Dependency{{TaskId: "t2"}}},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, false)
+		g := NewDependencyGraph(false)
+		g.buildFromTasks(tasks)
 
 		cycles := g.Cycles()
 		assert.Len(t, cycles, 2)
@@ -363,8 +363,8 @@ func TestDepthFirstSearch(t *testing.T) {
 		{Id: "t2"},
 		{Id: "t3"},
 	}
-	g := NewDependencyGraph()
-	g.buildFromTasks(tasks, false)
+	g := NewDependencyGraph(false)
+	g.buildFromTasks(tasks)
 
 	t.Run("NilTraverseEdge", func(t *testing.T) {
 		assert.True(t, g.DepthFirstSearch(tasks[0].ToTaskNode(), tasks[2].ToTaskNode(), nil))
@@ -406,8 +406,8 @@ func TestTopologicalStableSort(t *testing.T) {
 			{Id: "t1"},
 			{Id: "t2"},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, true)
+		g := NewDependencyGraph(true)
+		g.buildFromTasks(tasks)
 
 		sortedNodes, err := g.TopologicalStableSort()
 		assert.NoError(t, err)
@@ -423,8 +423,8 @@ func TestTopologicalStableSort(t *testing.T) {
 			{Id: "t1"},
 			{Id: "t2"},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, true)
+		g := NewDependencyGraph(true)
+		g.buildFromTasks(tasks)
 
 		sortedNodes, err := g.TopologicalStableSort()
 		assert.NoError(t, err)
@@ -440,8 +440,8 @@ func TestTopologicalStableSort(t *testing.T) {
 			{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}},
 			{Id: "t2"},
 		}
-		g := NewDependencyGraph()
-		g.buildFromTasks(tasks, true)
+		g := NewDependencyGraph(true)
+		g.buildFromTasks(tasks)
 
 		sortedNodes, err := g.TopologicalStableSort()
 		assert.NoError(t, err)
@@ -450,7 +450,7 @@ func TestTopologicalStableSort(t *testing.T) {
 	})
 
 	t.Run("EmptyGraph", func(t *testing.T) {
-		g := NewDependencyGraph()
+		g := NewDependencyGraph(true)
 
 		sortedNodes, err := g.TopologicalStableSort()
 		assert.NoError(t, err)

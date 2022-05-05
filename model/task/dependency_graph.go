@@ -12,8 +12,9 @@ import (
 )
 
 // DependencyGraph models task dependency relationships as a directed graph.
-// Use NewDependencyGraph() to initialize a new DependencyGraph.
+// Use NewDependencyGraph to initialize a new DependencyGraph.
 type DependencyGraph struct {
+	reversed            bool
 	graph               *multi.DirectedGraph
 	tasksToNodes        map[TaskNode]graph.Node
 	nodesToTasks        map[graph.Node]TaskNode
@@ -21,8 +22,12 @@ type DependencyGraph struct {
 }
 
 // NewDependencyGraph returns an initialized DependencyGraph.
-func NewDependencyGraph() DependencyGraph {
+// reversed determines the direction of edges in the graph.
+// If reversed is false, edges point from dependent tasks to the tasks they depend on.
+// If reversed is true, edges point from depended on tasks to the tasks that depend on them.
+func NewDependencyGraph(reversed bool) DependencyGraph {
 	return DependencyGraph{
+		reversed:            true,
 		graph:               multi.NewDirectedGraph(),
 		tasksToNodes:        make(map[TaskNode]graph.Node),
 		nodesToTasks:        make(map[graph.Node]TaskNode),
@@ -65,30 +70,22 @@ func (t TaskNode) String() string {
 }
 
 // VersionDependencyGraph finds all the tasks from the version given by versionID and constructs a DependencyGraph from them.
-func VersionDependencyGraph(versionID string) (DependencyGraph, error) {
+func VersionDependencyGraph(versionID string, reversed bool) (DependencyGraph, error) {
 	tasks, err := FindAllTasksFromVersionWithDependencies(versionID)
 	if err != nil {
 		return DependencyGraph{}, errors.Wrapf(err, "getting tasks for version '%s'", versionID)
 	}
 
-	return taskDependencyGraph(tasks), nil
+	return taskDependencyGraph(tasks, reversed), nil
 }
 
-func taskDependencyGraph(tasks []Task) DependencyGraph {
-	g := NewDependencyGraph()
-	g.buildFromTasks(tasks, false)
+func taskDependencyGraph(tasks []Task, reversed bool) DependencyGraph {
+	g := NewDependencyGraph(false)
+	g.buildFromTasks(tasks)
 	return g
 }
 
-// reversedTaskDependencyGraph constructs a DependencyGraph from tasks.
-// Edges in the graph are reversed so they point from depended on tasks to dependent tasks.
-func reversedTaskDependencyGraph(tasks []Task) DependencyGraph {
-	g := NewDependencyGraph()
-	g.buildFromTasks(tasks, true)
-	return g
-}
-
-func (g *DependencyGraph) buildFromTasks(tasks []Task, reversed bool) {
+func (g *DependencyGraph) buildFromTasks(tasks []Task) {
 	taskIDToNode := make(map[string]TaskNode)
 	for _, task := range tasks {
 		tNode := task.ToTaskNode()
@@ -100,11 +97,7 @@ func (g *DependencyGraph) buildFromTasks(tasks []Task, reversed bool) {
 		dependentTaskNode := task.ToTaskNode()
 		for _, dep := range task.DependsOn {
 			dependedOnTaskNode := taskIDToNode[dep.TaskId]
-			if reversed {
-				g.AddReversedEdge(dependentTaskNode, dependedOnTaskNode, dep.Status)
-			} else {
-				g.AddEdge(dependentTaskNode, dependedOnTaskNode, dep.Status)
-			}
+			g.AddEdge(dependentTaskNode, dependedOnTaskNode, dep.Status)
 		}
 	}
 }
@@ -121,16 +114,15 @@ func (g *DependencyGraph) AddTaskNode(tNode TaskNode) {
 	g.nodesToTasks[node] = tNode
 }
 
-// AddEdge adds an edge from the dependent task to the depended on task.
+// AddEdge adds an edge between tasks in the graph.
+// The edge direction is determined by whether the DependencyGraph is reversed.
 // Noop if one of the nodes doesn't exist in the graph.
 func (g *DependencyGraph) AddEdge(dependentTask, dependedOnTask TaskNode, status string) {
-	g.addEdgeToGraph(DependencyEdge{From: dependentTask, To: dependedOnTask, Status: status})
-}
-
-// AddReversedEdge adds an edge from the depended on task to the dependent task.
-// Noops if one of the nodes doesn't exist in the graph.
-func (g *DependencyGraph) AddReversedEdge(dependentTask, dependedOnTask TaskNode, status string) {
-	g.addEdgeToGraph(DependencyEdge{From: dependedOnTask, To: dependentTask, Status: status})
+	if g.reversed {
+		g.addEdgeToGraph(DependencyEdge{From: dependedOnTask, To: dependentTask, Status: status})
+	} else {
+		g.addEdgeToGraph(DependencyEdge{From: dependentTask, To: dependedOnTask, Status: status})
+	}
 }
 
 func (g *DependencyGraph) addEdgeToGraph(edge DependencyEdge) {

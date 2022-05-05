@@ -1955,7 +1955,7 @@ func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 // DependencyGraph returns a task.DependencyGraph populated with the tasks in the project.
 func (p *Project) DependencyGraph() task.DependencyGraph {
 	tasks := p.FindAllBuildVariantTasks()
-	g := task.NewDependencyGraph()
+	g := task.NewDependencyGraph(false)
 
 	for _, t := range tasks {
 		g.AddTaskNode(t.ToTaskNode())
