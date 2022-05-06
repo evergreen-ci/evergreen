@@ -79,9 +79,8 @@ func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Valu
 			// If the field is a struct and isn't undefined, then we check each subfield recursively.
 		} else if branchField.Kind() == reflect.Struct {
 			RecursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
-		} else if IsFieldPtr(branchField) {
-			// If the field is a pointer to a struct, we check each subfield recursively.
-			if branchField.Elem().Kind() == reflect.Struct {
+                // If the field is a pointer to a struct, we check each subfield recursively.
+		} else if IsFieldPtr(branchField) && branchField.Elem().Kind() == reflect.Struct {
 				RecursivelySetUndefinedFields(branchField.Elem(), structToDefaultFrom.Field(i).Elem())
 			}
 		}
