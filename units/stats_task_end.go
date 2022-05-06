@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/utility"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -130,8 +131,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"version":              j.task.Version,
 	}
 
-	if j.task.DisplayTask != nil {
-		msg["display_task_id"] = j.task.DisplayTask.Id
+	if utility.FromStringPtr(j.task.DisplayTaskId) != "" {
+		msg["display_task_id"] = j.task.DisplayTaskId
 	}
 
 	pRef, err := model.FindBranchProjectRef(j.task.Project)
