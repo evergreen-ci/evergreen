@@ -1367,15 +1367,14 @@ func getContainerOptions(project *Project, pRef *ProjectRef, container string) (
 			return &opts, nil
 		}
 
-		for name, size := range pRef.ContainerSizes {
-			if name == c.Size {
-				opts.CPU = size.CPU
-				opts.MemoryMB = size.MemoryMB
-				return &opts, nil
-			}
+		size, ok := pRef.ContainerSizes[c.Size]
+		if !ok {
+			return nil, errors.Errorf("container size '%s' not found", c.Size)
 		}
 
-		return nil, errors.Errorf("container size '%s' not found", c.Size)
+		opts.CPU = size.CPU
+		opts.MemoryMB = size.MemoryMB
+		return &opts, nil
 	}
 
 	return nil, errors.Errorf("definition for container '%s' not found", container)
