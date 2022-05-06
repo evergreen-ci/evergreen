@@ -313,9 +313,9 @@ type Container struct {
 
 // ContainerSystem specifies the architecture and OS for the running container to use.
 type ContainerSystem struct {
-	CPUArchitecture evergreen.CPUArchitecture `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
-	OperatingSystem evergreen.ContainerOS     `yaml:"operating_system,omitempty" bson:"operating_system"`
-	WindowsVersion  evergreen.WindowsVersion  `yaml:"windows_version,omitempty" bson:"windows_version"`
+	CPUArchitecture evergreen.ContainerArch  `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
+	OperatingSystem evergreen.ContainerOS    `yaml:"operating_system,omitempty" bson:"operating_system"`
+	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 type Module struct {

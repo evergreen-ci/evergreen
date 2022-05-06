@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -17,6 +18,108 @@ import (
 
 func init() {
 	testutil.Setup()
+}
+
+func TestOSValidate(t *testing.T) {
+	t.Run("SucceedsForValidOperatingSystems", func(t *testing.T) {
+		for _, os := range validOperatingSystems {
+			assert.NoError(t, os.Validate())
+		}
+	})
+	t.Run("FailsWithInvalidOperatingSystem", func(t *testing.T) {
+		assert.Error(t, OS("invalid").Validate())
+	})
+	t.Run("FailsWithEmptyOperatingSystem", func(t *testing.T) {
+		assert.Error(t, OS("").Validate())
+	})
+}
+
+func TestImportOS(t *testing.T) {
+	t.Run("SucceedsForValidContainerOperatingSystems", func(t *testing.T) {
+		for _, os := range evergreen.ValidContainerOperatingSystems {
+			imported, err := ImportOS(os)
+			require.NoError(t, err)
+			assert.NotZero(t, imported)
+		}
+	})
+	t.Run("FailsWithInvalidContainerOperatingSystem", func(t *testing.T) {
+		imported, err := ImportOS(evergreen.ContainerOS("invalid"))
+		assert.Error(t, err)
+		assert.Zero(t, imported)
+	})
+	t.Run("FailsWithEmptyOperatingSystem", func(t *testing.T) {
+		imported, err := ImportOS(evergreen.ContainerOS(""))
+		assert.Error(t, err)
+		assert.Zero(t, imported)
+	})
+}
+
+func TestArchValidate(t *testing.T) {
+	t.Run("SucceedsForValidArchitectures", func(t *testing.T) {
+		for _, arch := range validArchitectures {
+			assert.NoError(t, arch.Validate())
+		}
+	})
+	t.Run("FailsWithInvalidArchitecture", func(t *testing.T) {
+		assert.Error(t, Arch("invalid").Validate())
+	})
+	t.Run("FailsWithEmptyArchitecture", func(t *testing.T) {
+		assert.Error(t, Arch("").Validate())
+	})
+}
+
+func TestImportArch(t *testing.T) {
+	t.Run("SucceedsForValidContainerArchitecture", func(t *testing.T) {
+		for _, arch := range evergreen.ValidContainerArchitectures {
+			imported, err := ImportArch(arch)
+			require.NoError(t, err)
+			assert.NotZero(t, imported)
+		}
+	})
+	t.Run("FailsWithInvalidContainerArchitecture", func(t *testing.T) {
+		imported, err := ImportArch(evergreen.ContainerArch("invalid"))
+		assert.Error(t, err)
+		assert.Zero(t, imported)
+	})
+	t.Run("FailsWithEmptyArchitecture", func(t *testing.T) {
+		imported, err := ImportArch(evergreen.ContainerArch(""))
+		assert.Error(t, err)
+		assert.Zero(t, imported)
+	})
+}
+
+func TestWindowsVersionValidate(t *testing.T) {
+	t.Run("SucceedsForValidWindowsVersions", func(t *testing.T) {
+		for _, winVer := range validWindowsVersions {
+			assert.NoError(t, winVer.Validate())
+		}
+	})
+	t.Run("FailsWithInvalidWindowsVersion", func(t *testing.T) {
+		assert.Error(t, WindowsVersion("invalid").Validate())
+	})
+	t.Run("FailsWithEmptyWindowsVersion", func(t *testing.T) {
+		assert.Error(t, WindowsVersion("").Validate())
+	})
+}
+
+func TestImportWindowsVersion(t *testing.T) {
+	t.Run("SucceedsWithValidContainerWindowsVersions", func(t *testing.T) {
+		for _, winVer := range evergreen.ValidWindowsVersions {
+			imported, err := ImportWindowsVersion(winVer)
+			require.NoError(t, err)
+			assert.NotZero(t, imported)
+		}
+	})
+	t.Run("FailsWithInvalidContainerWindowsVersion", func(t *testing.T) {
+		imported, err := ImportWindowsVersion(evergreen.WindowsVersion("invalid"))
+		assert.Error(t, err)
+		assert.Zero(t, imported)
+	})
+	t.Run("FailsWithEmptyArchitecture", func(t *testing.T) {
+		imported, err := ImportWindowsVersion(evergreen.WindowsVersion(""))
+		assert.Error(t, err)
+		assert.Zero(t, imported)
+	})
 }
 
 func TestInsertAndFindOneByID(t *testing.T) {

@@ -481,9 +481,15 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, containerResource := range pc.ContainerSizes {
-		err := containerResource.Validate()
-		if err != nil {
+	for name, containerResource := range pc.ContainerSizes {
+		if name == "" {
+			errs = append(errs, ValidationError{
+				Message: "container size name cannot be empty",
+				Level:   Error,
+			})
+		}
+
+		if err := containerResource.Validate(); err != nil {
 			errs = append(errs,
 				ValidationError{
 					Message: errors.Wrap(err, "error validating container resources").Error(),
