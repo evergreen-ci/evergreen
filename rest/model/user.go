@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/pkg/errors"
@@ -47,8 +48,9 @@ type APIUserSettings struct {
 }
 
 type APIUseSpruceOptions struct {
-	HasUsedSpruceBefore bool `json:"has_used_spruce_before" bson:"has_used_spruce_before,omitempty"`
-	SpruceV1            bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
+	HasUsedSpruceBefore          *bool `json:"has_used_spruce_before" bson:"has_used_spruce_before,omitempty"`
+	HasUsedMainlineCommitsBefore *bool `json:"has_used_mainline_commits_before" bson:"has_used_mainline_commits_before,omitempty"`
+	SpruceV1                     *bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -58,8 +60,9 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 		s.Region = utility.ToStringPtr(v.Region)
 		s.SlackUsername = utility.ToStringPtr(v.SlackUsername)
 		s.UseSpruceOptions = &APIUseSpruceOptions{
-			HasUsedSpruceBefore: v.UseSpruceOptions.HasUsedSpruceBefore,
-			SpruceV1:            v.UseSpruceOptions.SpruceV1,
+			HasUsedSpruceBefore:          utility.ToBoolPtr(v.UseSpruceOptions.HasUsedSpruceBefore),
+			HasUsedMainlineCommitsBefore: utility.ToBoolPtr(v.UseSpruceOptions.HasUsedMainlineCommitsBefore),
+			SpruceV1:                     utility.ToBoolPtr(v.UseSpruceOptions.SpruceV1),
 		}
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
@@ -96,8 +99,9 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	}
 	useSpruceOptions := user.UseSpruceOptions{}
 	if s.UseSpruceOptions != nil {
-		useSpruceOptions.HasUsedSpruceBefore = s.UseSpruceOptions.HasUsedSpruceBefore
-		useSpruceOptions.SpruceV1 = s.UseSpruceOptions.SpruceV1
+		useSpruceOptions.HasUsedSpruceBefore = utility.FromBoolPtr(s.UseSpruceOptions.HasUsedSpruceBefore)
+		useSpruceOptions.SpruceV1 = utility.FromBoolPtr(s.UseSpruceOptions.SpruceV1)
+		useSpruceOptions.HasUsedMainlineCommitsBefore = utility.FromBoolPtr(s.UseSpruceOptions.HasUsedMainlineCommitsBefore)
 	}
 	return user.UserSettings{
 		Timezone:         utility.FromStringPtr(s.Timezone),
@@ -240,18 +244,11 @@ func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUs
 		return oldSettings, errors.Wrap(err, "problem applying update to user settings")
 	}
 
-	reflectOldSettings := reflect.ValueOf(&oldSettings)
-	reflectNewSettings := reflect.ValueOf(changes)
-	for i := 0; i < reflectNewSettings.NumField(); i++ {
-		propName := reflectNewSettings.Type().Field(i).Name
-		changedVal := reflectNewSettings.FieldByName(propName)
-		if changedVal.IsNil() {
-			continue
-		}
-		reflectOldSettings.Elem().FieldByName(propName).Set(changedVal)
-	}
+	reflectOldSettings := reflect.ValueOf(&oldSettings).Elem()
+	reflectNewSettings := reflect.ValueOf(&changes).Elem()
+	util.RecursivelySetUndefinedFields(reflectNewSettings, reflectOldSettings)
 
-	return oldSettings, nil
+	return changes, nil
 }
 
 type APIFeedbackSubmission struct {

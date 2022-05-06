@@ -481,7 +481,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
-		recursivelySetUndefinedFields(reflectedRef, reflectedConfig)
+		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
 	return err
 }
@@ -836,27 +836,8 @@ func mergeBranchAndRepoSettings(pRef *ProjectRef, repoRef *RepoRef) (*ProjectRef
 	reflectedBranch := reflect.ValueOf(pRef).Elem()
 	reflectedRepo := reflect.ValueOf(repoRef).Elem().Field(0) // specifically references the ProjectRef part of RepoRef
 
-	recursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
+	util.RecursivelySetUndefinedFields(reflectedBranch, reflectedRepo)
 	return pRef, err
-}
-
-func recursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
-	// Iterate through each field of the struct.
-	for i := 0; i < structToSet.NumField(); i++ {
-		branchField := structToSet.Field(i)
-
-		// If the field isn't set, use the default field.
-		// Note for pointers and maps, we consider the field undefined if the item is nil or empty length,
-		// and we don't check for subfields. This allows us to group some settings together as defined or undefined.
-		if util.IsFieldUndefined(branchField) {
-			reflectedField := structToDefaultFrom.Field(i)
-			branchField.Set(reflectedField)
-
-			// If the field is a struct and isn't undefined, then we check each subfield recursively.
-		} else if branchField.Kind() == reflect.Struct {
-			recursivelySetUndefinedFields(branchField, structToDefaultFrom.Field(i))
-		}
-	}
 }
 
 func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
