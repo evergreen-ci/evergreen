@@ -212,7 +212,7 @@ func (j *podCreationJob) logTaskTimingStats() error {
 
 	if tsk != nil {
 		msg["is_for_task_group"] = false
-		msg["time_since_task_activation"] = time.Since(tsk.ActivatedTime)
+		msg["secs_since_task_activation"] = time.Since(tsk.ActivatedTime).Seconds()
 	} else {
 		// The dispatcher group will not be associated with a single task if
 		// it's a task group. Task groups don't have a single activation time,

@@ -116,7 +116,7 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		"message":                    "successfully allocated pod for container task",
 		"task":                       j.task.Id,
 		"pod":                        intentPod.ID,
-		"time_since_task_activation": time.Since(j.task.ActivatedTime),
+		"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
 	})
 }
 
