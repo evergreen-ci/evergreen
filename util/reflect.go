@@ -54,7 +54,6 @@ func IsFieldPtr(v reflect.Value) bool {
 
 // RecursivelySetUndefinedFields sets all fields that are not set in structToSet to the value of the corresponding field in structToDefaultFrom.
 func RecursivelySetUndefinedFields(structToSet, structToDefaultFrom reflect.Value) {
-
 	// If either struct is a pointer we need to dereference it to get the actual struct.
 	if structToSet.Kind() == reflect.Ptr {
 		structToSet = structToSet.Elem()
