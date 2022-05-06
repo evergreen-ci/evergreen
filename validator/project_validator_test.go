@@ -1646,6 +1646,55 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 	})
 }
 
+func TestValidateProjectConfigContainers(t *testing.T) {
+	t.Run("SucceedsWithValidContainers", func(t *testing.T) {
+		pc := model.ProjectConfig{
+			ProjectConfigFields: model.ProjectConfigFields{
+				ContainerSizes: map[string]model.ContainerResources{
+					"small": {
+						CPU:      128,
+						MemoryMB: 128,
+					},
+					"large": {
+						CPU:      2048,
+						MemoryMB: 2048,
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigContainers(&pc)
+		assert.Empty(t, errs)
+	})
+	t.Run("FailsWithInvalidContainerResources", func(t *testing.T) {
+		pc := model.ProjectConfig{
+			ProjectConfigFields: model.ProjectConfigFields{
+				ContainerSizes: map[string]model.ContainerResources{
+					"invalid": {
+						CPU:      -10,
+						MemoryMB: -5,
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigContainers(&pc)
+		assert.NotEmpty(t, errs)
+	})
+	t.Run("FailsWithUnnamedContainerSize", func(t *testing.T) {
+		pc := model.ProjectConfig{
+			ProjectConfigFields: model.ProjectConfigFields{
+				ContainerSizes: map[string]model.ContainerResources{
+					"": {
+						CPU:      128,
+						MemoryMB: 128,
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigContainers(&pc)
+		assert.NotEmpty(t, errs)
+	})
+}
+
 func TestValidatePluginCommands(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("an error should be thrown if a referenced plugin for a task does not exist", func() {

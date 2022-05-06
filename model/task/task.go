@@ -107,14 +107,19 @@ type Task struct {
 	// container to run it. It only applies to tasks running in containers.
 	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
 
-	BuildId                 string       `bson:"build_id" json:"build_id"`
-	DistroId                string       `bson:"distro" json:"distro"`
-	Container               string       `bson:"container,omitempty" json:"container,omitempty"`
-	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
-	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
-	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents           int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
-	OverrideDependencies    bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	BuildId  string `bson:"build_id" json:"build_id"`
+	DistroId string `bson:"distro" json:"distro"`
+	// Container is the name of the container configuration for running a
+	// container task.
+	Container string `bson:"container,omitempty" json:"container,omitempty"`
+	// ContainerOpts contains the options to configure the container that will
+	// run the task.
+	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options,omitempty"`
+	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
+	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
+	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies    bool             `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// DistroAliases refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
@@ -241,6 +246,23 @@ const (
 	// ExecutionPlatformContainer indicates that the task runs in a container.
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
+
+// ContainerOptions represent options to create the container to run a task.
+type ContainerOptions struct {
+	CPU            int
+	MemoryMB       int
+	WorkingDir     string
+	Image          string
+	OS             evergreen.ContainerOS
+	Arch           evergreen.ContainerArch
+	WindowsVersion evergreen.WindowsVersion
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (o ContainerOptions) IsZero() bool {
+	return o == ContainerOptions{}
+}
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
 func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }

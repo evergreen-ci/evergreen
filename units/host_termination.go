@@ -134,13 +134,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
-		j.AddError(err)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "problem deleting Jasper credentials",
-			"host_id":  j.host.Id,
-			"provider": j.host.Distro.Provider,
-			"job":      j.ID(),
-		}))
+		j.AddError(errors.Wrapf(err, "deleting Jasper credentials for host '%s'", j.host.Id))
 		return
 	}
 
@@ -161,14 +155,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	switch j.host.Status {
 	case evergreen.HostUninitialized, evergreen.HostBuildingFailed:
 		if err := j.host.Terminate(evergreen.User, j.TerminationReason); err != nil {
-			j.AddError(errors.Wrap(err, "terminating intent host in DB"))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "problem terminating intent host in DB",
-				"host_id":  j.host.Id,
-				"provider": j.host.Distro.Provider,
-				"job_type": j.Type().Name,
-				"job":      j.ID(),
-			}))
+			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 		}
 		return
 	case evergreen.HostTerminated:
@@ -283,14 +270,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 		if parent == nil || parent.Status == evergreen.HostTerminated {
 			if err = j.host.Terminate(evergreen.User, "parent was already terminated"); err != nil {
-				j.AddError(errors.Wrap(err, "problem terminating container in db"))
-				grip.Error(message.WrapError(err, message.Fields{
-					"host_id":  j.host.Id,
-					"provider": j.host.Distro.Provider,
-					"job_type": j.Type().Name,
-					"job":      j.ID(),
-					"message":  "problem terminating container in db",
-				}))
+				j.AddError(errors.Wrapf(err, "terminating container '%s' in db", j.host.Id))
 			}
 			return
 		}
@@ -305,14 +285,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if adb.ResultsNotFound(err) {
 				return
 			}
-			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
-			grip.Error(message.WrapError(err, message.Fields{
-				"host_id":  j.host.Id,
-				"provider": j.host.Distro.Provider,
-				"job_type": j.Type().Name,
-				"job":      j.ID(),
-				"message":  "problem terminating intent host in db",
-			}))
+			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in db", j.host.Id))
 		}
 
 		return
@@ -325,13 +298,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	if err := j.checkAndTerminateCloudHost(ctx, prevStatus); err != nil {
 		j.AddError(err)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "failed to check and terminate cloud host",
-			"host_id":  j.host.Id,
-			"provider": j.host.Distro.Provider,
-			"job_type": j.Type().Name,
-			"job":      j.ID(),
-		}))
 		return
 	}
 
@@ -382,9 +348,6 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 		if utility.IsContextError(errors.Cause(err)) {
 			return errors.Wrap(err, "checking cloud host status")
 		}
-		if err == cloud.ErrInstanceNotFound {
-			return j.host.Terminate(evergreen.User, "corresponding cloud host instance does not exist")
-		}
 
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(errors.Wrap(err, "getting cloud host instance status"))
@@ -392,6 +355,9 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 			catcher.Wrap(j.host.Terminate(evergreen.User, "unable to get cloud status for host"), "marking host as terminated")
 		}
 		return catcher.Resolve()
+	}
+	if cloudStatus == cloud.StatusNonExistent {
+		return j.host.Terminate(evergreen.User, "cloud host does not exist")
 	}
 
 	if cloudStatus == cloud.StatusTerminated {
