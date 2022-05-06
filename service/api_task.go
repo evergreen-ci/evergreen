@@ -180,8 +180,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	// Call before MarkEnd so the version is marked finished when this is the last task in the version
-	// to finish, and before clearing the running host so later tasks in the group aren't picked up by the host.
+	// Call before MarkEnd so the version is marked finished when this is the last task in the version to finish,
+	// and before clearing the running task from the host so later tasks in the group aren't picked up by the host.
 	if t.IsPartOfSingleHostTaskGroup() && details.Status != evergreen.TaskSucceeded {
 		// BlockTaskGroups is a recursive operation, which
 		// includes updating a large number of task
