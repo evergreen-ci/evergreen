@@ -3858,8 +3858,10 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t1, tasks[0], 2)
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
-	t.Run("Fetching older executions with same execution", func(t *testing.T) {
+	t.Run("Fetching old executions when there are even older executions", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, OldCollection))
+
+		// Both tasks have 2 previous executions.
 		t1 := Task{
 			Id:        "t1",
 			Version:   "v1",
@@ -3873,6 +3875,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot1 = *ot1.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot1))
 
+		ot1 = t1
 		ot1.Execution = 0
 		ot1 = *ot1.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot1))
@@ -3881,7 +3884,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Id:        "t2",
 			Version:   "v1",
 			Execution: 2,
-			Status:    evergreen.TaskSucceeded,
+			Status:    evergreen.TaskFailed,
 		}
 		assert.NoError(t, db.Insert(Collection, t2))
 
@@ -3890,6 +3893,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
+		ot2 = t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
@@ -3898,10 +3902,9 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(tasks))
-		assertTasksAreEqual(t, t1, tasks[0], 1)
-		assertTasksAreEqual(t, t2, tasks[1], 1)
+		assert.Equal(t, tasks[0].Execution, 1)
+		assert.Equal(t, tasks[1].Execution, 1)
 	})
-
 }
 
 type TaskConnectorFetchByIdSuite struct {
