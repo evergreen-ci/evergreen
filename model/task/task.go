@@ -108,7 +108,7 @@ type Task struct {
 	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
 
 	BuildId  string `bson:"build_id" json:"build_id"`
-	DistroId string `bson:"distro,omitempty" json:"distro"`
+	DistroId string `bson:"distro" json:"distro"`
 	// Container is the name of the container configuration for running a
 	// container task.
 	Container string `bson:"container,omitempty" json:"container,omitempty"`
