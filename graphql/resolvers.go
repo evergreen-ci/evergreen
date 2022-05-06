@@ -3703,11 +3703,11 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, v *restModel.API
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
-	tasks, err := task.GetMatchingBaseTasks(*v.Id, baseVersion.Id)
+	statuses, err := task.GetMatchingBaseTaskStatuses(*v.Id, baseVersion.Id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base version tasks: %s", err.Error()))
 	}
-	return getAllTaskStatuses(tasks), nil
+	return statuses, nil
 }
 
 // Returns task status counts (a mapping between status and the number of tasks with that status) for a version.
