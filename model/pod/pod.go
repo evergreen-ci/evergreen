@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -189,6 +190,9 @@ type TimeInfo struct {
 	// application server or the application server connected to the pod. This
 	// is used as one indicator of liveliness.
 	LastCommunicated time.Time `bson:"last_communicated,omitempty" json:"last_communicated,omitempty"`
+	// AgentStarted is the time that the agent initiated first contact with the
+	// application server. This only applies to agent pods.
+	AgentStarted time.Time `bson:"agent_started,omitempty" json:"agent_started,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -463,6 +467,22 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	}
 
 	p.RunningTask = taskID
+
+	return nil
+}
+
+// SetAgentStartTime sets the time when the pod's agent started.
+func (p *Pod) SetAgentStartTime() error {
+	ts := utility.BSONTime(time.Now())
+	if err := UpdateOne(ByID(p.ID), bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoAgentStartedKey): ts,
+		},
+	}); err != nil {
+		return err
+	}
+
+	p.TimeInfo.AgentStarted = ts
 
 	return nil
 }
