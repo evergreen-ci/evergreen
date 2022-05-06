@@ -3901,6 +3901,53 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		assertTasksAreEqual(t, t1, tasks[0], 1)
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
+	t.Run("Fetching old executions when there are even older executions", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, OldCollection))
+
+		// Both tasks have two previous executions.
+		t1 := Task{
+			Id:        "t1",
+			Version:   "v1",
+			Execution: 2,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t1))
+
+		ot1_execution1 := t1
+		ot1_execution1.Execution = 1
+		ot1_execution1 = *ot1_execution1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1_execution1))
+
+		ot1_execution0 := t1
+		ot1_execution0.Execution = 0
+		ot1_execution0 = *ot1_execution0.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot1_execution0))
+
+		t2 := Task{
+			Id:        "t2",
+			Version:   "v1",
+			Execution: 2,
+			Status:    evergreen.TaskSucceeded,
+		}
+		assert.NoError(t, db.Insert(Collection, t2))
+
+		ot2_execution1 := t2
+		ot2_execution1.Execution = 1
+		ot2_execution1 = *ot2_execution1.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot2_execution1))
+
+		ot2_execution0 := t2
+		ot2_execution0.Execution = 0
+		ot2_execution0 = *ot2_execution0.makeArchivedTask()
+		assert.NoError(t, db.Insert(OldCollection, ot2_execution0))
+
+		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks = convertOldTasksIntoTasks(tasks)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(tasks))
+		assert.Equal(t, tasks[0].Execution, 1)
+		assert.Equal(t, tasks[1].Execution, 1)
+	})
 
 }
 
