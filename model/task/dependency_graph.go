@@ -72,13 +72,13 @@ func (t TaskNode) String() string {
 func (g *DependencyGraph) buildFromTasks(tasks []Task) {
 	taskIDToNode := make(map[string]TaskNode)
 	for _, task := range tasks {
-		tNode := task.ToTaskNode()
+		tNode := task.toTaskNode()
 		g.AddTaskNode(tNode)
 		taskIDToNode[task.Id] = tNode
 	}
 
 	for _, task := range tasks {
-		dependentTaskNode := task.ToTaskNode()
+		dependentTaskNode := task.toTaskNode()
 		for _, dep := range task.DependsOn {
 			dependedOnTaskNode := taskIDToNode[dep.TaskId]
 			g.AddEdge(dependentTaskNode, dependedOnTaskNode, dep.Status)
