@@ -709,7 +709,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 				return false, errors.Wrap(err, "finding dependency")
 			}
 			if foundTask == nil {
-				return false, errors.Errorf("dependency '%s' not found", depTask.Id)
+				return false, errors.Errorf("dependency '%s' not found", dependency.TaskId)
 			}
 			depTask = *foundTask
 			depCaches[depTask.Id] = depTask
