@@ -1418,20 +1418,8 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
-	if err = h.ClearRunningTask(); err != nil {
-		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
-	}
-
-	if t.IsFinished() {
-		return nil
-	}
-
-	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
-		return errors.Wrap(err, "marking task failed")
-	}
-
 	// For a single-host task group, block and dequeue later tasks in that group.
-	if t.IsPartOfSingleHostTaskGroup() {
+	if t.IsPartOfSingleHostTaskGroup() && t.Status != evergreen.TaskSucceeded {
 		if err = BlockTaskGroupTasks(t.Id); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem blocking task group tasks",
@@ -1443,6 +1431,18 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 			"message": "blocked task group tasks for task",
 			"task_id": t.Id,
 		})
+	}
+
+	if err = h.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
+	}
+
+	if t.IsFinished() {
+		return nil
+	}
+
+	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
+		return errors.Wrap(err, "marking task failed")
 	}
 
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
