@@ -271,7 +271,7 @@ func (bvt *BuildVariantTaskUnit) IsDisabled() bool {
 	return utility.FromBoolPtr(bvt.Disable)
 }
 
-func (bvt *BuildVariantTaskUnit) ToTaskNode() task.TaskNode {
+func (bvt *BuildVariantTaskUnit) toTaskNode() task.TaskNode {
 	return task.TaskNode{
 		Name:    bvt.Name,
 		Variant: bvt.Variant,
@@ -1457,23 +1457,15 @@ func (p *Project) FindAllVariants() []string {
 // for all variants of a project.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	tasksByName := map[string]ProjectTask{}
-	taskGroups := map[string]TaskGroup{}
 	for _, t := range p.Tasks {
 		tasksByName[t.Name] = t
-	}
-	for _, tg := range p.TaskGroups {
-		taskGroups[tg.Name] = tg
 	}
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			t.Variant = b.Name
 			if t.IsGroup {
-				group, exists := taskGroups[t.Name]
-				if !exists {
-					continue
-				}
-				allBVTs = append(allBVTs, p.TasksFromGroup(t, group)...)
+				allBVTs = append(allBVTs, p.tasksFromGroup(t)...)
 			} else {
 				t.Populate(tasksByName[t.Name])
 				allBVTs = append(allBVTs, t)
@@ -1483,8 +1475,14 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	return allBVTs
 }
 
-// TasksFromGroup returns a slice of the task group's tasks. groupTask is merged with each of the tasks in the group.
-func (p *Project) TasksFromGroup(groupTask BuildVariantTaskUnit, tg TaskGroup) []BuildVariantTaskUnit {
+// tasksFromGroup returns a slice of the task group's tasks.
+// Settings missing from the group task are populated from the task definition.
+func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
+	tg := p.FindTaskGroup(bvTaskGroup.Name)
+	if tg == nil {
+		return nil
+	}
+
 	tasks := []BuildVariantTaskUnit{}
 	taskMap := map[string]ProjectTask{}
 	for _, projTask := range p.Tasks {
@@ -1493,23 +1491,26 @@ func (p *Project) TasksFromGroup(groupTask BuildVariantTaskUnit, tg TaskGroup) [
 
 	for _, t := range tg.Tasks {
 		bvt := BuildVariantTaskUnit{
-			Name:             t,
+			Name: t,
+			// IsGroup is not persisted, and indicates here that the
+			// task is a member of a task group.
 			IsGroup:          true,
-			Variant:          groupTask.Variant,
-			GroupName:        groupTask.Name,
-			Patchable:        groupTask.Patchable,
-			PatchOnly:        groupTask.PatchOnly,
-			Disable:          groupTask.Disable,
-			AllowForGitTag:   groupTask.AllowForGitTag,
-			GitTagOnly:       groupTask.GitTagOnly,
-			Priority:         groupTask.Priority,
-			DependsOn:        groupTask.DependsOn,
-			RunOn:            groupTask.RunOn,
-			ExecTimeoutSecs:  groupTask.ExecTimeoutSecs,
-			Stepback:         groupTask.Stepback,
-			Activate:         groupTask.Activate,
-			CommitQueueMerge: groupTask.CommitQueueMerge,
+			Variant:          bvTaskGroup.Variant,
+			GroupName:        bvTaskGroup.Name,
+			Patchable:        bvTaskGroup.Patchable,
+			PatchOnly:        bvTaskGroup.PatchOnly,
+			Disable:          bvTaskGroup.Disable,
+			AllowForGitTag:   bvTaskGroup.AllowForGitTag,
+			GitTagOnly:       bvTaskGroup.GitTagOnly,
+			Priority:         bvTaskGroup.Priority,
+			DependsOn:        bvTaskGroup.DependsOn,
+			RunOn:            bvTaskGroup.RunOn,
+			ExecTimeoutSecs:  bvTaskGroup.ExecTimeoutSecs,
+			Stepback:         bvTaskGroup.Stepback,
+			Activate:         bvTaskGroup.Activate,
+			CommitQueueMerge: bvTaskGroup.CommitQueueMerge,
 		}
+		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t])
 		tasks = append(tasks, bvt)
 	}
@@ -1958,7 +1959,7 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 	g := task.NewDependencyGraph(false)
 
 	for _, t := range tasks {
-		g.AddTaskNode(t.ToTaskNode())
+		g.AddTaskNode(t.toTaskNode())
 	}
 
 	for _, dependencyEdge := range dependenciesForTaskUnit(tasks) {
@@ -1985,8 +1986,8 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 					(dep.Name == AllDependencies || dependedOnTask.Name == dep.Name) {
 					dependencies = append(dependencies, task.DependencyEdge{
 						Status: dep.Status,
-						From:   dependentTask.ToTaskNode(),
-						To:     dependedOnTask.ToTaskNode(),
+						From:   dependentTask.toTaskNode(),
+						To:     dependedOnTask.toTaskNode(),
 					})
 				}
 			}

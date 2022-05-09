@@ -1811,41 +1811,43 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 	g := project.DependencyGraph()
 	tvTaskUnitMap := tvToTaskUnit(project)
 
-	dependentNode := task.TaskNode{Name: dependentTask.TaskName, Variant: dependentTask.Variant}
-	dependedOnNode := task.TaskNode{Name: dependedOnTask.TaskName, Variant: dependedOnTask.Variant}
-	traversal := func(edge task.DependencyEdge) bool {
-		dependent := edge.From
-		dependedOn := edge.To
+	startNode := task.TaskNode{Name: dependentTask.TaskName, Variant: dependentTask.Variant}
+	targetNode := task.TaskNode{Name: dependedOnTask.TaskName, Variant: dependedOnTask.Variant}
 
-		dependentTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: dependent.Name, Variant: dependent.Variant}]
-		dependedOnTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: dependedOn.Name, Variant: dependedOn.Variant}]
+	// The traversal function returns whether the current edge should be traversed by the DFS.
+	traversal := func(edge task.DependencyEdge) bool {
+		from := edge.From
+		to := edge.To
+
+		fromTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: from.Name, Variant: from.Variant}]
+		toTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: to.Name, Variant: to.Variant}]
 
 		var edgeInfo model.TaskUnitDependency
-		for _, dependency := range dependentTaskUnit.DependsOn {
-			if dependency.Name == dependedOn.Name && dependency.Variant == dependedOn.Variant {
+		for _, dependency := range fromTaskUnit.DependsOn {
+			if dependency.Name == to.Name && dependency.Variant == to.Variant {
 				edgeInfo = dependency
 			}
 		}
 
-		if dependentTaskUnit.RunsOnPatches() && (!dependedOnTaskUnit.RunsOnPatches() || edgeInfo.PatchOptional) {
+		if fromTaskUnit.RunsOnPatches() && (!toTaskUnit.RunsOnPatches() || edgeInfo.PatchOptional) {
 			return false
 		}
-		if dependentTaskUnit.RunsOnNonPatches() && !dependedOnTaskUnit.RunsOnNonPatches() {
+		if fromTaskUnit.RunsOnNonPatches() && !toTaskUnit.RunsOnNonPatches() {
 			return false
 		}
-		if dependentTaskUnit.RunsOnGitTag() && !dependedOnTaskUnit.RunsOnGitTag() {
+		if fromTaskUnit.RunsOnGitTag() && !toTaskUnit.RunsOnGitTag() {
 			return false
 		}
 
 		// If statuses is specified we need to check the edge's status when the edge points to the target node.
-		if statuses != nil && dependedOn == dependedOnNode {
+		if statuses != nil && to == targetNode {
 			return utility.StringSliceContains(statuses, edgeInfo.Status)
 		}
 
 		return true
 	}
 
-	if found := g.DepthFirstSearch(dependentNode, dependedOnNode, traversal); !found {
+	if found := g.DepthFirstSearch(startNode, targetNode, traversal); !found {
 		dependentBVTask := tvTaskUnitMap[dependentTask]
 		errMsg := "task '%s' in build variant '%s' must depend on" +
 			" task '%s' in build variant '%s' completing"

@@ -746,14 +746,8 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 }
 
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
-	tg := proj.FindTaskGroup(in.Name)
-	if tg == nil {
-		return nil
-	}
-	tasks := proj.TasksFromGroup(in, *tg)
-
 	var willRun []BuildVariantTaskUnit
-	for _, bvt := range tasks {
+	for _, bvt := range proj.tasksFromGroup(in) {
 		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
 			willRun = append(willRun, bvt)
 		}
