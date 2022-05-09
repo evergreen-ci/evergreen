@@ -43,6 +43,8 @@ var (
 	AbortedKey             = bsonutil.MustHaveTag(Build{}, "Aborted")
 
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
+
+	BlockedKey = "Blocked"
 )
 
 var CompletedStatuses = []string{evergreen.BuildSucceeded, evergreen.BuildFailed}
