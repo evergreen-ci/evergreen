@@ -950,7 +950,7 @@ func (j *patchIntentProcessor) authAndFetchPRMergeBase(ctx context.Context, patc
 
 	isMember := false
 	var err error
-	//
+	// Github Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser {
 		grip.Info(message.Fields{
 			"job":       j.ID(),
