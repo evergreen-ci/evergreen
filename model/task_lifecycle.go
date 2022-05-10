@@ -849,23 +849,21 @@ func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
 }
 
+// getBuildStatus returns a string denoting the status of the build and
+// a boolean denoting if all tasks in the build are blocked.
 func getBuildStatus(buildTasks []task.Task) (string, bool) {
 	// Check if no tasks have started in the build.
 	noStartedTasks := true
+	allTasksBlocked := true
 	for _, t := range buildTasks {
 		if !evergreen.IsUnstartedTaskStatus(t.Status) {
 			noStartedTasks = false
-			break
-		}
-	}
-	// Check if all tasks are blocked in a build.
-	var allTasksBlocked bool
-	for _, t := range buildTasks {
-		if !t.Blocked() {
 			allTasksBlocked = false
 			break
 		}
-		allTasksBlocked = true
+		if !t.Blocked() {
+			allTasksBlocked = false
+		}
 	}
 
 	if noStartedTasks || allTasksBlocked {
@@ -925,15 +923,14 @@ func updateBuildStatus(b *build.Build) (bool, error) {
 	}
 
 	buildStatus, allTasksBlocked := getBuildStatus(buildTasks)
+	blockedChanged := allTasksBlocked != b.AllTasksBlocked
 
-	if allTasksBlocked != b.AllTasksBlocked {
-		if err = b.SetBlocked(allTasksBlocked); err != nil {
-			return false, errors.Wrapf(err, "setting build '%s' as blocked", b.Id)
-		}
+	if err = b.SetAllTasksBlocked(allTasksBlocked); err != nil {
+		return false, errors.Wrapf(err, "setting build '%s' as blocked", b.Id)
 	}
 
 	if buildStatus == b.Status {
-		return allTasksBlocked != b.AllTasksBlocked, nil
+		return blockedChanged, nil
 	}
 
 	// Only check aborted if status has changed.
@@ -990,7 +987,10 @@ func getVersionStatus(builds []build.Build) string {
 
 	// Check if builds are started but not finished.
 	for _, b := range builds {
-		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && b.AllTasksBlocked {
+		if b.AllTasksBlocked {
+			continue
+		}
+		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) {
 			return evergreen.VersionStarted
 		}
 	}

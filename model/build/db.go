@@ -41,10 +41,9 @@ var (
 	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
 	IsGithubCheckKey       = bsonutil.MustHaveTag(Build{}, "IsGithubCheck")
 	AbortedKey             = bsonutil.MustHaveTag(Build{}, "Aborted")
+	BlockedKey             = bsonutil.MustHaveTag(Build{}, "AllTasksBlocked")
 
 	TaskCacheIdKey = bsonutil.MustHaveTag(TaskCache{}, "Id")
-
-	BlockedKey = "Blocked"
 )
 
 var CompletedStatuses = []string{evergreen.BuildSucceeded, evergreen.BuildFailed}

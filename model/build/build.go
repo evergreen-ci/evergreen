@@ -75,7 +75,7 @@ type Build struct {
 
 	// Set to true if all tasks in the build are blocked.
 	// Should not be exposed, only for internal use.
-	AllTasksBlocked bool `bson:"blocked"`
+	AllTasksBlocked bool `bson:"all_tasks_blocked"`
 }
 
 func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
@@ -178,6 +178,7 @@ func (b *Build) UpdateStatus(status string) error {
 	)
 }
 
+// SetAborted sets the build aborted field to the given boolean.
 func (b *Build) SetAborted(aborted bool) error {
 	if b.Aborted == aborted {
 		return nil
@@ -189,7 +190,8 @@ func (b *Build) SetAborted(aborted bool) error {
 	)
 }
 
-func (b *Build) SetBlocked(blocked bool) error {
+// SetAllTasksBlocked sets the build AllTasksBlocked field to the given boolean.
+func (b *Build) SetAllTasksBlocked(blocked bool) error {
 	if b.AllTasksBlocked == blocked {
 		return nil
 	}

@@ -671,6 +671,17 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			expectedVersionStatus: evergreen.VersionSucceeded,
 			expectedPatchStatus:   evergreen.PatchSucceeded,
 		},
+		"all blocked tasks": {
+			tasks: []task.Task{
+				{Status: evergreen.TaskUndispatched,
+					DependsOn: []task.Dependency{{Unattainable: true}}},
+				{Status: evergreen.TaskUndispatched,
+					DependsOn: []task.Dependency{{Unattainable: true}}},
+			},
+			expectedBuildStatus:   evergreen.BuildCreated,
+			expectedVersionStatus: evergreen.VersionCreated,
+			expectedPatchStatus:   evergreen.PatchCreated,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, patch.Collection))
@@ -946,6 +957,7 @@ func TestGetBuildStatus(t *testing.T) {
 	assert.Equal(t, evergreen.BuildFailed, status)
 	assert.Equal(t, false, allTasksBlocked)
 
+	// Builds with only blocked tasks should stay as created.
 	buildTasks = []task.Task{
 		{Status: evergreen.TaskUndispatched,
 			DependsOn: []task.Dependency{{Unattainable: true}}},
