@@ -279,7 +279,7 @@ func (c *hostCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 
 // Heartbeat sends a heartbeat to the API server. The server can respond with
 // an "abort" response. This function returns true if the agent should abort.
-func (c *hostCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
+func (c *hostCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
@@ -292,23 +292,26 @@ func (c *hostCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (bo
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
 		err = errors.Wrapf(err, "error sending heartbeat for task %s", taskData.ID)
-		return false, err
+		return "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusConflict {
-		return false, errors.Errorf("unauthorized - wrong secret")
+		return evergreen.TaskFailed, errors.Errorf("Unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return false, errors.Errorf("unexpected status code doing heartbeat: %v",
+		return "", errors.Errorf("unexpected status code doing heartbeat: %v",
 			resp.StatusCode)
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
 	if err = utility.ReadJSON(resp.Body, heartbeatResponse); err != nil {
 		err = errors.Wrapf(err, "Error unmarshaling heartbeat response for task %s", taskData.ID)
-		return false, err
+		return "", err
 	}
-	return heartbeatResponse.Abort, nil
+	if heartbeatResponse.Abort {
+		return evergreen.TaskFailed, nil
+	}
+	return "", nil
 }
 
 // FetchExpansionVars loads expansions for a communicator's task from the API server.
