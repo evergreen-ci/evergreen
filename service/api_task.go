@@ -749,6 +749,29 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			continue
 		}
 
+		// If the top task on the queue is blocked, the scheduler task queue may be out of date.
+		if nextTask.Blocked() {
+			grip.Debug(message.Fields{
+				"message":            "top task queue task is blocked, dequeuing task",
+				"host_id":            currentHost.Id,
+				"distro_id":          nextTask.DistroId,
+				"task_id":            nextTask.Id,
+				"task_group":         nextTask.TaskGroup,
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Enabled,
+			})
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+				"message":            "top task queue task is blocked, but there was an issue dequeuing the task",
+				"host_id":            currentHost.Id,
+				"distro_id":          nextTask.DistroId,
+				"task_id":            nextTask.Id,
+				"task_group":         nextTask.TaskGroup,
+				"project":            projectRef.Id,
+				"project_identifier": projectRef.Enabled,
+			}))
+			continue
+		}
+
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
 			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
