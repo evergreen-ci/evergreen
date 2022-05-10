@@ -27,7 +27,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
 			if signalBeat == evergreen.TaskFailed {
-				tc.logger.Task().Error("Received termination signal from app server, aborting task")
+				tc.logger.Task().Error("Heartbeat received signal to abort task")
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
 				}
@@ -54,10 +54,10 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 }
 
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
-	taskSignal, err := a.comm.Heartbeat(ctx, tc.task)
-	if taskSignal == evergreen.TaskFailed {
+	abort, err := a.comm.Heartbeat(ctx, tc.task)
+	if abort {
 		grip.Info("Task aborted")
-		return taskSignal, nil
+		return evergreen.TaskFailed, err
 	}
 	if err != nil {
 		return "", err

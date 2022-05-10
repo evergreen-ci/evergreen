@@ -86,6 +86,8 @@ func (s *BackgroundSuite) TestTaskAbort() {
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	beat := <-heartbeat
 	end := time.Now()
+	sender := s.sender.GetMessage()
+	s.Equal("Heartbeat received signal to abort task", sender.Message.String())
 	s.Equal(evergreen.TaskFailed, beat)
 	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
@@ -116,6 +118,24 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
 	s.True(end.Sub(start) >= time.Second) // canceled by context
+}
+
+func (s *BackgroundSuite) TestHeartbeatFailsOnTaskConflict() {
+	s.mockCommunicator.HeartbeatShouldConflict = true
+	s.a.opts.HeartbeatInterval = time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	heartbeat := make(chan string)
+	start := time.Now()
+	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
+	beat := <-heartbeat
+	end := time.Now()
+	sender := s.sender.GetMessage()
+	s.Equal("Heartbeat received signal to abort task", sender.Message.String())
+	sender = s.sender.GetMessage()
+	s.Equal("Unauthorized - wrong secret", sender.Message.String())
+	s.Equal(evergreen.TaskFailed, beat)
+	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {

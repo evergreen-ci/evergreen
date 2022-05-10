@@ -50,6 +50,7 @@ type Mock struct {
 	ShellExecFilename           string
 	TimeoutFilename             string
 	HeartbeatShouldAbort        bool
+	HeartbeatShouldConflict     bool
 	HeartbeatShouldErr          bool
 	HeartbeatShouldSometimesErr bool
 	TaskExecution               int
@@ -200,22 +201,25 @@ func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expan
 }
 
 // Heartbeat returns false, which indicates the heartbeat has succeeded.
-func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
+func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
 	if c.HeartbeatShouldAbort {
-		return evergreen.TaskFailed, nil
+		return true, nil
+	}
+	if c.HeartbeatShouldConflict {
+		return true, errors.Errorf("Unauthorized - wrong secret")
 	}
 	if c.HeartbeatShouldSometimesErr {
 		if c.HeartbeatShouldErr {
 			c.HeartbeatShouldErr = false
-			return "", errors.New("mock heartbeat error")
+			return false, errors.New("mock heartbeat error")
 		}
 		c.HeartbeatShouldErr = true
-		return "", nil
+		return false, nil
 	}
 	if c.HeartbeatShouldErr {
-		return "", errors.New("mock heartbeat error")
+		return false, errors.New("mock heartbeat error")
 	}
-	return "", nil
+	return false, nil
 }
 
 // FetchExpansionVars returns a mock ExpansionVars.
