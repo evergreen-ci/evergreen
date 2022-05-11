@@ -55,6 +55,12 @@ func NewAPIError(resp *http.Response) APIError {
 	return APIError{bodyStr, resp.Status, resp.StatusCode}
 }
 
+func NewAuthError(resp *http.Response) APIError {
+	apiError := NewAPIError(resp)
+	apiError.body = strings.Join([]string{apiError.body, client.AuthError}, "")
+	return apiError
+}
+
 // doReq performs a request of the given method type against path.
 // If body is not nil, also includes it as a request body as url-encoded data with the
 // appropriate header
@@ -132,7 +138,7 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return client.AuthError
+		return NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return NewAPIError(resp)
@@ -169,7 +175,7 @@ func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong bool
 		return errors, nil
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -194,7 +200,7 @@ func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -215,7 +221,7 @@ func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error)
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -236,7 +242,7 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -265,7 +271,7 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -286,7 +292,7 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -312,7 +318,7 @@ func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -334,7 +340,7 @@ func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -361,7 +367,7 @@ func (ac *legacyClient) GetLastGreen(project string, variants []string) (*model.
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -382,7 +388,7 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return client.AuthError
+		return NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return NewAPIError(resp)
@@ -426,7 +432,7 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return client.AuthError
+		return NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return NewAPIError(resp)
@@ -442,7 +448,7 @@ func (ac *legacyClient) ListProjects() ([]model.ProjectRef, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -462,7 +468,7 @@ func (ac *legacyClient) ListTasks(project string) ([]model.ProjectTask, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -482,7 +488,7 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -502,7 +508,7 @@ func (ac *legacyClient) ListDistros() ([]distro.Distro, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Wrap(NewAPIError(resp), "bad status from api server")
@@ -530,6 +536,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Alias             string             `json:"alias"`
 		Variants          []string           `json:"buildvariants_new"`
 		Tasks             []string           `json:"tasks"`
+		RegexVariants     []string           `json:"regex_buildvariants"`
+		RegexTasks        []string           `json:"regex_tasks"`
 		SyncTasks         []string           `json:"sync_tasks"`
 		SyncBuildVariants []string           `json:"sync_build_variants"`
 		SyncStatuses      []string           `json:"sync_statuses"`
@@ -551,6 +559,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Alias:             incomingPatch.alias,
 		Variants:          incomingPatch.variants,
 		Tasks:             incomingPatch.tasks,
+		RegexVariants:     incomingPatch.regexVariants,
+		RegexTasks:        incomingPatch.regexTasks,
 		SyncBuildVariants: incomingPatch.syncBuildVariants,
 		SyncTasks:         incomingPatch.syncTasks,
 		SyncStatuses:      incomingPatch.syncStatuses,
@@ -579,7 +589,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusCreated {
 		return nil, NewAPIError(resp)
@@ -607,7 +617,7 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, nil
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -618,74 +628,6 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, err
 	}
 	return &reply, nil
-}
-
-// GetHostUtilizationStats takes in an integer granularity, which is in seconds, and the number of days back and makes a
-// REST API call to get host utilization statistics.
-func (ac *legacyClient) GetHostUtilizationStats(granularity, daysBack int, csv bool) (io.ReadCloser, error) {
-	resp, err := ac.get(fmt.Sprintf("scheduler/host_utilization?granularity=%v&numberDays=%v&csv=%v",
-		granularity, daysBack, csv), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, errors.New("not found")
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-
-	return resp.Body, nil
-}
-
-// GetAverageSchedulerStats takes in an integer granularity, which is in seconds, the number of days back, and a distro id
-// and makes a REST API call to get host utilization statistics.
-func (ac *legacyClient) GetAverageSchedulerStats(granularity, daysBack int, distroId string, csv bool) (io.ReadCloser, error) {
-	resp, err := ac.get(fmt.Sprintf("scheduler/distro/%v/stats?granularity=%v&numberDays=%v&csv=%v",
-		distroId, granularity, daysBack, csv), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, errors.New("not found")
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-
-	return resp.Body, nil
-}
-
-// GetOptimalMakespan takes in an integer granularity, which is in seconds, and the number of days back and makes a
-// REST API call to get the optimal and actual makespan for builds going back however many days.
-func (ac *legacyClient) GetOptimalMakespans(numberBuilds int, csv bool) (io.ReadCloser, error) {
-	resp, err := ac.get(fmt.Sprintf("scheduler/makespans?number=%v&csv=%v", numberBuilds, csv), nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, errors.New("not found")
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-
-	return resp.Body, nil
 }
 
 // GetPatchModules retrieves a list of modules available for a given patch, along with the project identifier.
@@ -699,7 +641,7 @@ func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, st
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, "", client.AuthError
+		return nil, "", NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return out, "", NewAPIError(resp)
@@ -728,7 +670,7 @@ func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, client.AuthError
+		return nil, NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
@@ -768,7 +710,7 @@ func (ac *legacyClient) UpdateRole(role *gimlet.Role) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return client.AuthError
+		return NewAuthError(resp)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return NewAPIError(resp)

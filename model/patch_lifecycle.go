@@ -100,10 +100,10 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, syncOpts patch.SyncAtEndO
 	}
 	_, err = addNewBuilds(ctx, specificActivationInfo{}, patchVersion, project, pairs, existingBuilds, syncOpts, pRef, "")
 	if err != nil {
-		return errors.Wrap(err, "can't add new builds")
+		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pairs, existingBuilds, syncOpts, pRef.Identifier, "")
-	return errors.Wrap(err, "can't add new tasks")
+	_, err = addNewTasks(ctx, specificActivationInfo{}, patchVersion, project, pRef, pairs, existingBuilds, syncOpts, "")
+	return errors.Wrap(err, "adding new tasks")
 }
 
 type PatchUpdate struct {
@@ -154,7 +154,7 @@ func ConfigurePatch(ctx context.Context, p *patch.Patch, version *Version, proj 
 	if p.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
 		if version == nil {
-			return http.StatusInternalServerError, errors.Errorf("finding patch for version '%v'", p.Version)
+			return http.StatusInternalServerError, errors.Errorf("finding patch for version '%s'", p.Version)
 		}
 
 		if version.Message != patchUpdateReq.Description {
@@ -499,17 +499,17 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:           *project,
-			Version:           *patchVersion,
-			TaskIDs:           taskIds,
-			BuildName:         vt.Variant,
-			ActivateBuild:     true,
-			TaskNames:         taskNames,
-			DisplayNames:      displayNames,
-			DistroAliases:     distroAliases,
-			TaskCreateTime:    createTime,
-			SyncAtEndOpts:     p.SyncAtEndOpts,
-			ProjectIdentifier: projectRef.Identifier,
+			Project:        *project,
+			ProjectRef:     *projectRef,
+			Version:        *patchVersion,
+			TaskIDs:        taskIds,
+			BuildName:      vt.Variant,
+			ActivateBuild:  true,
+			TaskNames:      taskNames,
+			DisplayNames:   displayNames,
+			DistroAliases:  distroAliases,
+			TaskCreateTime: createTime,
+			SyncAtEndOpts:  p.SyncAtEndOpts,
 		}
 		var build *build.Build
 		var tasks task.Tasks

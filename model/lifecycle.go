@@ -74,7 +74,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		return errors.Wrapf(err, "setting activation for builds in version '%s'", versionId)
 	}
 
-	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, nil, caller),
+	return errors.Wrapf(setTaskActivationForBuilds(buildIDs, active, false, nil, caller),
 		"setting activation for tasks in version '%s'", versionId)
 }
 
@@ -85,14 +85,15 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 		return errors.Wrapf(err, "setting build activation to %t for build '%s'", active, buildId)
 	}
 
-	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, nil, caller),
+	return errors.Wrapf(setTaskActivationForBuilds([]string{buildId}, active, true, nil, caller),
 		"setting task activation for build '%s'", buildId)
 }
 
 // setTaskActivationForBuilds updates the "active" state of all tasks in buildIds.
 // It also updates the task cache for the build document.
+// If withDependencies is true, also set dependencies. Don't need to do this when the entire version is affected.
 // If tasks are given to ignore, then we don't activate those tasks.
-func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []string, caller string) error {
+func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool, ignoreTasks []string, caller string) error {
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
 		q := bson.M{
@@ -102,18 +103,22 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
-		tasks, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
+		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		dependOn, err := task.GetRecursiveDependenciesUp(tasks, nil)
-		if err != nil {
-			return errors.Wrap(err, "getting recursive dependencies")
-		}
+		if withDependencies {
+			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
+			if err != nil {
+				return errors.Wrap(err, "getting recursive dependencies")
+			}
+			tasksToActivate = append(tasksToActivate, dependOn...)
 
-		if err = task.ActivateTasks(append(tasks, dependOn...), time.Now(), caller); err != nil {
+		}
+		if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
+
 	} else {
 		query := bson.M{
 			task.BuildIdKey: bson.M{"$in": buildIds},
@@ -128,7 +133,7 @@ func setTaskActivationForBuilds(buildIds []string, active bool, ignoreTasks []st
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(tasks, caller); err != nil {
+		if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
@@ -167,6 +172,9 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 	return err
 }
 
+// SetTaskPriority sets the priority for the given task. Any of the task's
+// dependencies that have a lower priority than the one being set for this task
+// will also have their priority increased.
 func SetTaskPriority(t task.Task, priority int64, caller string) error {
 	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
 	if err != nil {
@@ -234,7 +242,7 @@ func SetBuildPriority(buildId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for build '%s'", buildId)
 		}
-		if err = task.DeactivateTasks(tasks, caller); err != nil {
+		if err = task.DeactivateTasks(tasks, true, caller); err != nil {
 			return errors.Wrapf(err, "deactivating tasks for build '%s'", buildId)
 		}
 	}
@@ -259,7 +267,7 @@ func SetVersionPriority(versionId string, priority int64, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 		}
-		err = task.DeactivateTasks(tasks, caller)
+		err = task.DeactivateTasks(tasks, false, caller)
 		if err != nil {
 			return errors.Wrapf(err, "deactivating tasks for version '%s'", versionId)
 		}
@@ -300,22 +308,22 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	finishedTasks, err = task.AddParentDisplayTasks(finishedTasks)
+	allFinishedTasks, err := task.AddParentDisplayTasks(finishedTasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	// remove execution tasks in case the caller passed both display and execution tasks
 	// the functions below are expected to work if just the display task is passed
-	for i := len(finishedTasks) - 1; i >= 0; i-- {
-		t := finishedTasks[i]
+	for i := len(allFinishedTasks) - 1; i >= 0; i-- {
+		t := allFinishedTasks[i]
 		if t.DisplayTask != nil {
-			finishedTasks = append(finishedTasks[:i], finishedTasks[i+1:]...)
+			allFinishedTasks = append(allFinishedTasks[:i], allFinishedTasks[i+1:]...)
 		}
 	}
 
 	// archive all the finished tasks
 	toArchive := []task.Task{}
-	for _, t := range finishedTasks {
+	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // for single host task groups we don't archive until fully restarting
 			toArchive = append(toArchive, t)
 		}
@@ -328,22 +336,16 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		Build     string
 		TaskGroup string
 	}
-	// only need to check one task per task group / build combination
-	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
-	tasksToRestart := finishedTasks
-	if abortInProgress {
-		aborted, err := task.Find(task.BySubsetAborted(taskIds))
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		catcher := grip.NewBasicCatcher()
-		for _, t := range aborted {
-			catcher.Add(t.SetResetWhenFinished())
-		}
-		if catcher.HasErrors() {
-			return catcher.Resolve()
+	// Mark aborted tasks to reset when finished if not all tasks are finished.
+	if abortInProgress && len(finishedTasks) < len(taskIds) {
+		if err = task.SetAbortedTasksResetWhenFinished(taskIds); err != nil {
+			return err
 		}
 	}
+
+	// only need to check one task per task group / build combination
+	taskGroupsToCheck := map[taskGroupAndBuild]task.Task{}
+	tasksToRestart := allFinishedTasks
 
 	restartIds := []string{}
 	for _, t := range tasksToRestart {
@@ -523,7 +525,7 @@ func RefreshTasksCache(buildId string) error {
 }
 
 // addTasksToBuild creates/activates the tasks for the given build of a project
-func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
+func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, pRef *ProjectRef, v *Version, taskNames []string,
 	displayNames []string, activationInfo specificActivationInfo, generatedBy string, tasksInBuild []task.Task,
 	syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, taskIds TaskIdConfig) (*build.Build, task.Tasks, error) {
 	// find the build variant for this project/build
@@ -539,27 +541,17 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", v.Id)
 	}
 
-	var pRef *ProjectRef
 	var githubCheckAliases ProjectAliases
-	if v.Requester == evergreen.RepotrackerVersionRequester {
-		pRef, err = FindMergedProjectRef(project.Identifier, v.Id, true)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "finding project ref")
-		}
-		if pRef == nil {
-			return nil, nil, errors.Errorf("project '%s' not found", project.Identifier)
-		}
-		if pRef.IsGithubChecksEnabled() {
-			githubCheckAliases, err = FindAliasInProjectRepoOrConfig(v.Identifier, evergreen.GithubChecksAlias)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":            "error getting github check aliases when adding tasks to build",
-				"project":            v.Identifier,
-				"project_identifier": pRef.Identifier,
-				"version":            v.Id,
-			}))
-		}
+	if v.Requester == evergreen.RepotrackerVersionRequester && pRef.IsGithubChecksEnabled() {
+		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(v.Identifier, evergreen.GithubChecksAlias)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":            "error getting github check aliases when adding tasks to build",
+			"project":            v.Identifier,
+			"project_identifier": pRef.Identifier,
+			"version":            v.Id,
+		}))
 	}
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, activationInfo,
+	tasks, err := createTasksForBuild(project, pRef, buildVariant, b, v, taskIds, taskNames, displayNames, activationInfo,
 		generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, createTime, githubCheckAliases)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
@@ -585,15 +577,6 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 	tasksWithActivationTime := activationInfo.getActivationTasks(b.BuildVariant)
-	if len(tasksWithActivationTime) > 0 && pRef == nil {
-		pRef, err = FindMergedProjectRef(project.Identifier, v.Id, true)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "finding project ref")
-		}
-		if pRef == nil {
-			return nil, nil, errors.Errorf("project '%s' not found", project.Identifier)
-		}
-	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
 		if !utility.StringSliceContains(tasksWithActivationTime, t.DisplayName) {
@@ -627,10 +610,10 @@ func addTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	return b, tasks, nil
 }
 
-// BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert
+// BuildCreateArgs is the set of parameters used in CreateBuildFromVersionNoInsert.
 type BuildCreateArgs struct {
 	Project             Project                 // project to create the build for
-	ProjectIdentifier   string                  // the readable project identifier, used to create new IDs
+	ProjectRef          ProjectRef              // project ref associated with the build
 	Version             Version                 // the version the build belong to
 	TaskIDs             TaskIdConfig            // pre-generated IDs for the tasks to be created
 	BuildName           string                  // name of the buildvariant
@@ -675,7 +658,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 
 	// create a new build id
 	buildId := fmt.Sprintf("%s_%s_%s_%s",
-		args.ProjectIdentifier,
+		args.ProjectRef.Identifier,
 		args.BuildName,
 		rev,
 		args.Version.CreateTime.Format(build.IdTimeLayout))
@@ -716,7 +699,7 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs,
+	tasksForBuild, err := createTasksForBuild(&args.Project, &args.ProjectRef, buildVariant, b, &args.Version, args.TaskIDs,
 		args.TaskNames, args.DisplayNames, args.ActivationInfo, args.GeneratedBy,
 		nil, args.SyncAtEndOpts, args.DistroAliases, args.TaskCreateTime, args.GithubChecksAliases)
 	if err != nil {
@@ -789,7 +772,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 // If tasksToActivate is nil, then all tasks will be activated.
-func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
+func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, activationInfo specificActivationInfo, generatedBy string,
 	tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time,
 	githubChecksAliases ProjectAliases) (task.Tasks, error) {
@@ -858,7 +841,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
-		newTask, err := createOneTask(id, t, project, buildVariant, b, v, distroAliases, createTime, activationInfo, githubChecksAliases)
+		newTask, err := createOneTask(id, t, project, pRef, buildVariant, b, v, distroAliases, createTime, activationInfo, githubChecksAliases)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
 		}
@@ -1201,7 +1184,7 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 }
 
 // createOneTask is a helper to create a single task.
-func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project, buildVariant *BuildVariant,
+func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project, pRef *ProjectRef, buildVariant *BuildVariant,
 	b *build.Build, v *Version, dat distro.AliasLookupTable, createTime time.Time, activationInfo specificActivationInfo,
 	githubChecksAliases ProjectAliases) (*task.Task, error) {
 
@@ -1210,35 +1193,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 
 	buildVarTask.RunOn = dat.Expand(buildVarTask.RunOn)
 	buildVariant.RunOn = dat.Expand(buildVariant.RunOn)
-
-	var (
-		distroID      string
-		distroAliases []string
-	)
-
-	if len(buildVarTask.RunOn) > 0 {
-		distroID = buildVarTask.RunOn[0]
-
-		if len(buildVarTask.RunOn) > 1 {
-			distroAliases = append(distroAliases, buildVarTask.RunOn[1:]...)
-		}
-
-	} else if len(buildVariant.RunOn) > 0 {
-		distroID = buildVariant.RunOn[0]
-
-		if len(buildVariant.RunOn) > 1 {
-			distroAliases = append(distroAliases, buildVariant.RunOn[1:]...)
-		}
-	} else {
-		grip.Warning(message.Fields{
-			"task_id":   id,
-			"message":   "task is not runnable as there is no distro specified",
-			"variant":   buildVariant.Name,
-			"project":   project.Identifier,
-			"version":   v.Revision,
-			"requester": v.Requester,
-		})
-	}
 
 	activatedTime := utility.ZeroTime
 	if activateTask {
@@ -1266,8 +1220,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		DisplayName:         buildVarTask.Name,
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
-		DistroId:            distroID,
-		DistroAliases:       distroAliases,
 		CreateTime:          createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       utility.ZeroTime,
@@ -1294,15 +1246,42 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 		IsGithubCheck:       isGithubCheck,
 		DisplayTaskId:       utility.ToStringPtr(""), // this will be overridden if the task is an execution task
-		// TODO (EVG-16169): set ExecutionPlatform based on whether or not the task
-		// is running in a host or container.
-		ExecutionPlatform: task.ExecutionPlatformHost,
 	}
+
+	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, buildVariant.RunOn, project.Containers)
+	if t.IsContainerTask() {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting service flags")
+		}
+		if flags.ContainerConfigurationsDisabled {
+			return nil, errors.Errorf("container configurations are disabled; task '%s' cannot run", t.DisplayName)
+		}
+
+		t.Container, err = getContainerFromRunOn(id, buildVarTask, buildVariant)
+		if err != nil {
+			return nil, err
+		}
+		opts, err := getContainerOptions(project, pRef, t.Container)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting container options")
+		}
+		t.ContainerOpts = *opts
+	} else {
+		distroID, distroAliases, err := getDistrosFromRunOn(id, buildVarTask, buildVariant, project, v)
+		if err != nil {
+			return nil, err
+		}
+		t.DistroId = distroID
+		t.DistroAliases = distroAliases
+	}
+
 	if isStepback {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
 	} else if t.Activated {
 		t.ActivatedBy = v.Author
 	}
+
 	if buildVarTask.IsGroup {
 		tg := project.FindTaskGroup(buildVarTask.GroupName)
 		if tg == nil {
@@ -1311,7 +1290,94 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 
 		tg.InjectInfo(t)
 	}
+
 	return t, nil
+}
+
+func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant, project *Project, v *Version) (string, []string, error) {
+	if len(buildVarTask.RunOn) > 0 {
+		distroAliases := []string{}
+		distroID := buildVarTask.RunOn[0]
+		if len(buildVarTask.RunOn) > 1 {
+			distroAliases = buildVarTask.RunOn[1:]
+		}
+		return distroID, distroAliases, nil
+	} else if len(buildVariant.RunOn) > 0 {
+		distroAliases := []string{}
+		distroID := buildVariant.RunOn[0]
+		if len(buildVariant.RunOn) > 1 {
+			distroAliases = buildVariant.RunOn[1:]
+		}
+		return distroID, distroAliases, nil
+	}
+	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
+}
+
+func shouldRunOnContainer(taskRunOn, buildVariantRunOn []string, containers []Container) task.ExecutionPlatform {
+	containerNameMap := map[string]bool{}
+	for _, container := range containers {
+		containerNameMap[container.Name] = true
+	}
+	var runOn []string
+	if len(taskRunOn) > 0 {
+		runOn = taskRunOn
+	} else {
+		runOn = buildVariantRunOn
+	}
+	for _, r := range runOn {
+		if containerNameMap[r] {
+			return task.ExecutionPlatformContainer
+		}
+	}
+	return task.ExecutionPlatformHost
+}
+
+func getContainerFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, error) {
+	var container string
+
+	if len(buildVarTask.RunOn) > 0 {
+		container = buildVarTask.RunOn[0]
+	} else if len(buildVariant.RunOn) > 0 {
+		container = buildVariant.RunOn[0]
+	} else {
+		return "", errors.Errorf("task '%s' on buildvariant '%s' is not runnable as there is no container specified", id, buildVariant.Name)
+	}
+	return container, nil
+}
+
+// getContainerOptions resolves the task's container configuration based on the
+// task's container name and the container definitions available to the project.
+func getContainerOptions(project *Project, pRef *ProjectRef, container string) (*task.ContainerOptions, error) {
+	for _, c := range project.Containers {
+		if c.Name != container {
+			continue
+		}
+
+		opts := task.ContainerOptions{
+			WorkingDir:     c.WorkingDir,
+			Image:          c.Image,
+			OS:             c.System.OperatingSystem,
+			Arch:           c.System.CPUArchitecture,
+			WindowsVersion: c.System.WindowsVersion,
+		}
+
+		if c.Resources != nil {
+			opts.CPU = c.Resources.CPU
+			opts.MemoryMB = c.Resources.MemoryMB
+			return &opts, nil
+		}
+
+		size, ok := pRef.ContainerSizes[c.Size]
+		if !ok {
+			return nil, errors.Errorf("container size '%s' not found", c.Size)
+		}
+
+		opts.CPU = size.CPU
+		opts.MemoryMB = size.MemoryMB
+		return &opts, nil
+	}
+
+	return nil, errors.Errorf("definition for container '%s' not found", container)
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string, bv *BuildVariant, b *build.Build,
@@ -1522,18 +1588,18 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !activationInfo.variantHasSpecificActivation(pair.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:           *p,
-			Version:           *v,
-			TaskIDs:           taskIdTables,
-			BuildName:         pair.Variant,
-			ActivateBuild:     activateVariant,
-			TaskNames:         taskNames,
-			DisplayNames:      displayNames,
-			ActivationInfo:    activationInfo,
-			GeneratedBy:       generatedBy,
-			TaskCreateTime:    createTime,
-			SyncAtEndOpts:     syncAtEndOpts,
-			ProjectIdentifier: projectRef.Identifier,
+			Project:        *p,
+			ProjectRef:     *projectRef,
+			Version:        *v,
+			TaskIDs:        taskIdTables,
+			BuildName:      pair.Variant,
+			ActivateBuild:  activateVariant,
+			TaskNames:      taskNames,
+			DisplayNames:   displayNames,
+			ActivationInfo: activationInfo,
+			GeneratedBy:    generatedBy,
+			TaskCreateTime: createTime,
+			SyncAtEndOpts:  syncAtEndOpts,
 		}
 
 		grip.Info(message.Fields{
@@ -1623,8 +1689,8 @@ func addNewBuilds(ctx context.Context, activationInfo specificActivationInfo, v 
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns activated task IDs.
-func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project, pairs TaskVariantPairs,
-	existingBuilds []build.Build, syncAtEndOpts patch.SyncAtEndOptions, projectIdentifier string, generatedBy string) ([]string, error) {
+func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *Version, p *Project, pRef *ProjectRef, pairs TaskVariantPairs,
+	existingBuilds []build.Build, syncAtEndOpts patch.SyncAtEndOptions, generatedBy string) ([]string, error) {
 	if v.BuildIds == nil {
 		return nil, nil
 	}
@@ -1634,7 +1700,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		return nil, err
 	}
 
-	taskIdTables, err := getTaskIdTables(v, p, pairs, projectIdentifier)
+	taskIdTables, err := getTaskIdTables(v, p, pairs, pRef.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting table of task IDs")
 	}
@@ -1688,7 +1754,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 			continue
 		}
 		// Add the new set of tasks to the build.
-		_, tasks, err := addTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, activationInfo,
+		_, tasks, err := addTasksToBuild(ctx, &b, p, pRef, v, tasksToAdd, displayTasksToAdd, activationInfo,
 			generatedBy, tasksInBuild, syncAtEndOpts, distroAliases, taskIdTables)
 		if err != nil {
 			return nil, err

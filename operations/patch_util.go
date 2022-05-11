@@ -59,6 +59,8 @@ type patchParams struct {
 	Alias             string
 	Variants          []string
 	Tasks             []string
+	RegexVariants     []string
+	RegexTasks        []string
 	SyncBuildVariants []string
 	SyncTasks         []string
 	SyncStatuses      []string
@@ -89,6 +91,8 @@ type patchSubmission struct {
 	path              string
 	variants          []string
 	tasks             []string
+	regexVariants     []string
+	regexTasks        []string
 	syncBuildVariants []string
 	syncTasks         []string
 	syncStatuses      []string
@@ -111,6 +115,8 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		base:              diffData.base,
 		variants:          p.Variants,
 		tasks:             p.Tasks,
+		regexVariants:     p.RegexVariants,
+		regexTasks:        p.RegexTasks,
 		alias:             p.Alias,
 		syncBuildVariants: p.SyncBuildVariants,
 		syncTasks:         p.SyncTasks,
@@ -373,7 +379,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				p.Tasks, p.Project), false) {
 			conf.SetDefaultTasks(p.Project, p.Tasks...)
 			if err := conf.Write(""); err != nil {
-				return errors.Wrap(err, "error setting default tasks")
+				return errors.Wrap(err, "setting default tasks")
 			}
 		}
 	} else if p.Alias == "" {
@@ -525,7 +531,8 @@ func loadGitData(branch, ref, commits string, format bool, extraArgs ...string) 
 
 	mergeBase, err := gitMergeBase(branch+"@{upstream}", ref, commits)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error getting merge base")
+		return nil, errors.Wrapf(err, "Error getting merge base, "+
+			"may need to create local branch '%s' and have it track upstream", branch)
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {

@@ -250,6 +250,11 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 	return &apiProjectRef, nil
 }
 
+func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	obj.GetProjectIdentifier()
+	return obj.ProjectIdentifier, nil
+}
+
 func (r *taskResolver) AbortInfo(ctx context.Context, at *restModel.APITask) (*AbortInfo, error) {
 	if !at.Aborted {
 		return nil, nil
@@ -1137,7 +1142,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, opts)
-	if err != nil {
+	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {
@@ -1148,6 +1153,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 		}
 		return nil, InternalServerError.Send(ctx, err.Error())
 
+	}
+	if err != nil {
+		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
+		// https://github.com/99designs/gqlgen/issues/1191
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 	return projectRef, nil
 }
@@ -1657,6 +1667,8 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 				key = task.BaseTaskStatusKey
 			case TaskSortCategoryVariant:
 				key = task.BuildVariantKey
+			case TaskSortCategoryDuration:
+				key = task.TimeTakenKey
 			default:
 				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: %s", singleSort.Key))
 			}
@@ -1696,7 +1708,7 @@ func (r *queryResolver) PatchTasks(ctx context.Context, patchID string, sorts []
 	var apiTasks []*restModel.APITask
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t)
+		err := apiTask.BuildFromArgs(&t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error converting task item db model to api model: %v", err.Error()))
 		}
@@ -3106,7 +3118,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	if err = apiTask.BuildFromService(dt); err != nil {
+	if err = apiTask.BuildFromArgs(dt, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert display task: %s to APITask", dt.Id))
 	}
 	return apiTask, nil
@@ -3343,7 +3355,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		return nil, nil
 	}
 	apiTask := &restModel.APITask{}
-	err = apiTask.BuildFromService(baseTask)
+	err = apiTask.BuildFromArgs(baseTask, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
 	}
@@ -3361,7 +3373,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
-		err = apiTask.BuildFromService(&t)
+		err = apiTask.BuildFromArgs(&t, nil)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert task %s to APITask : %s", t.Id, err.Error()))
 		}
@@ -3722,6 +3734,29 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
+	result := []*task.StatusCount{}
+	for _, c := range stats.Counts {
+		count := c
+		result = append(result, &count)
+	}
+	return result, nil
+}
+
+func (r *versionResolver) TaskStatusStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+	}
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
+	}
+	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
+	}
 
 	return stats, nil
 }
@@ -3730,33 +3765,12 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
 	if v.Activated == nil {
-		defaultSort := []task.TasksSortOrder{
-			{Key: task.DisplayNameKey, Order: 1},
-		}
-		opts := task.GetTasksByVersionOptions{
-			Sorts:                          defaultSort,
-			IncludeBaseTasks:               true,
-			IsMainlineCommit:               evergreen.IsPatchRequester(utility.FromStringPtr(v.Requester)),
-			IncludeBuildVariantDisplayName: false, // we don't need to include buildVariantDisplayName here because this is only used to determine if a task has been activated
-		}
-		tasks, _, err := task.GetTasksByVersion(*v.Id, opts)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching tasks for version %s : %s", *v.Id, err.Error()))
-		}
 		version, err := model.VersionFindOne(model.VersionById(*v.Id))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error fetching version: %s : %s", *v.Id, err.Error()))
 		}
-		if !task.AnyActiveTasks(tasks) {
-			err = version.SetNotActivated()
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", *v.Id, err.Error()))
-			}
-		} else {
-			err = version.SetActivated()
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating version activated status for %s, %s", *v.Id, err.Error()))
-			}
+		if err = setVersionActivationStatus(version); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting version activation status: %s", err.Error()))
 		}
 		v.Activated = version.Activated
 	}
@@ -3764,7 +3778,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, v *restModel.APIVer
 	if !utility.FromBoolPtr(v.Activated) {
 		return nil, nil
 	}
-	groupedBuildVariants, err := generateBuildVariants(*v.Id, options.Variants, options.Tasks, options.Statuses)
+	groupedBuildVariants, err := generateBuildVariants(utility.FromStringPtr(v.Id), *options)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error generating build variants for version %s : %s", *v.Id, err.Error()))
 	}
@@ -3923,20 +3937,14 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	failedAndAbortedStatuses := append(evergreen.TaskFailureStatuses, evergreen.TaskAborted)
-	opts := task.GetTasksByVersionOptions{
-		Statuses:                       failedAndAbortedStatuses,
-		FieldsToProject:                []string{task.DisplayStatusKey},
-		IncludeBaseTasks:               false,
-		IncludeBuildVariantDisplayName: false,
-	}
-	tasks, _, err := task.GetTasksByVersion(*obj.Id, opts)
-	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for version: %s", err.Error()))
-	}
 	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
+	}
+	isAborted := utility.FromBoolPtr(obj.Aborted)
+	nonAbortedStatuses := []string{}
+	if !isAborted {
+		nonAbortedStatuses = append(nonAbortedStatuses, status)
 	}
 	if evergreen.IsPatchRequester(*obj.Requester) {
 		p, err := data.FindPatchById(*obj.Id)
@@ -3944,27 +3952,27 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
 		}
 		if len(p.ChildPatches) > 0 {
-			patchStatuses := []string{*p.Status}
 			for _, cp := range p.ChildPatches {
-				patchStatuses = append(patchStatuses, *cp.Status)
-				// add the child patch tasks to tasks so that we can consider their status
-				childPatchTasks, _, err := task.GetTasksByVersion(*cp.Id, opts)
+				cpVersion, err := model.VersionFindOneId(*cp.Version)
 				if err != nil {
-					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch tasks for patch: %s ", err.Error()))
+					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch version for patch: %s ", err.Error()))
 				}
-				tasks = append(tasks, childPatchTasks...)
+				if cpVersion == nil {
+					continue
+				}
+				if cpVersion.Aborted {
+					isAborted = true
+				} else {
+					nonAbortedStatuses = append(nonAbortedStatuses, *cp.Status)
+				}
 			}
-			status = patch.GetCollectiveStatus(patchStatuses)
+			status = patch.GetCollectiveStatus(nonAbortedStatuses)
 		}
 	}
 
-	taskStatuses := getAllTaskStatuses(tasks)
-
 	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if utility.StringSliceContains(taskStatuses, evergreen.TaskAborted) {
-		if len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 {
-			status = evergreen.PatchAborted
-		}
+	if isAborted && !utility.StringSliceContains(nonAbortedStatuses, evergreen.PatchFailed) {
+		status = evergreen.PatchAborted
 	}
 	return status, nil
 }
@@ -3993,7 +4001,7 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 		}
 
 		apiTask := restModel.APITask{}
-		if err = apiTask.BuildFromService(upstreamTask); err != nil {
+		if err = apiTask.BuildFromArgs(upstreamTask, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
 		}
 
@@ -4020,8 +4028,8 @@ func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIV
 		}
 
 		apiVersion := restModel.APIVersion{}
-		if err = apiVersion.BuildFromService(&upstreamVersion); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamBuild.Id, err.Error()))
+		if err = apiVersion.BuildFromService(upstreamVersion); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIVersion from service for `%s`: %s", upstreamVersion.Id, err.Error()))
 		}
 
 		projectID = upstreamVersion.Identifier
@@ -4083,6 +4091,14 @@ func (r *ticketFieldsResolver) ResolutionName(ctx context.Context, obj *thirdpar
 }
 
 func (r *Resolver) TicketFields() TicketFieldsResolver { return &ticketFieldsResolver{r} }
+
+func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string, error) {
+	err := obj.GetAMI()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return obj.AMI, nil
+}
 
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)

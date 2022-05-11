@@ -4,10 +4,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type TaskAnnotation struct {
@@ -30,7 +32,7 @@ type IssueLink struct {
 	// Text to be displayed
 	IssueKey        string  `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	Source          *Source `bson:"source,omitempty" json:"source,omitempty"`
-	ConfidenceScore float32 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	ConfidenceScore float64 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 
 type Source struct {
@@ -42,6 +44,15 @@ type Source struct {
 type Note struct {
 	Message string  `bson:"message,omitempty" json:"message,omitempty"`
 	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
+}
+
+type TaskUpdate struct {
+	TaskData   []TaskData     `bson:"task_data" json:"task_data"`
+	Annotation TaskAnnotation `bson:"annotation" json:"annotation"`
+}
+type TaskData struct {
+	TaskId    string `bson:"task_id" json:"task_id"`
+	Execution int    `bson:"execution" json:"execution"`
 }
 
 // GetLatestExecutions returns only the latest execution for each task, and filters out earlier executions
@@ -205,6 +216,88 @@ func UpdateAnnotation(a *TaskAnnotation, userDisplayName string) error {
 		},
 	)
 	return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
+}
+
+// InsertManyAnnotations updates the source for a list of task annotations and their issues and then inserts them into the DB.
+func InsertManyAnnotations(updates []TaskUpdate) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	for _, u := range updates {
+		update := createAnnotationUpdate(&u.Annotation, "")
+		ops := make([]mongo.WriteModel, len(u.TaskData))
+		for idx := 0; idx < len(u.TaskData); idx++ {
+			ops[idx] = mongo.NewUpdateOneModel().
+				SetUpsert(true).
+				SetFilter(ByTaskIdAndExecution(u.TaskData[idx].TaskId, u.TaskData[idx].Execution)).
+				SetUpdate(bson.M{"$push": update})
+		}
+		_, err := env.DB().Collection(Collection).BulkWrite(ctx, ops, nil)
+
+		if err != nil {
+			return errors.Wrap(err, "bulk inserting annotations")
+		}
+	}
+	return nil
+}
+
+func createAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) bson.M {
+	source := &Source{
+		Author:    userDisplayName,
+		Time:      time.Now(),
+		Requester: APIRequester,
+	}
+	update := bson.M{}
+	if annotation.Issues != nil {
+		for i := range annotation.Issues {
+			annotation.Issues[i].Source = source
+		}
+		update[IssuesKey] = bson.M{"$each": annotation.Issues}
+	}
+	if annotation.SuspectedIssues != nil {
+		for i := range annotation.SuspectedIssues {
+			annotation.SuspectedIssues[i].Source = source
+		}
+		update[SuspectedIssuesKey] = bson.M{"$each": annotation.SuspectedIssues}
+	}
+	return update
+}
+
+// PatchAnnotation adds issues onto existing annotations.
+func PatchAnnotation(a *TaskAnnotation, userDisplayName string, upsert bool) error {
+	existingAnnotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	if err != nil {
+		return errors.Wrapf(err, "finding annotation for task '%s' and execution %d", a.TaskId, a.TaskExecution)
+	}
+	if existingAnnotation == nil {
+		if !upsert {
+			return errors.Errorf("annotation for task '%s' and execution %d not found", a.TaskId, a.TaskExecution)
+		} else {
+			return UpdateAnnotation(a, userDisplayName)
+		}
+	}
+
+	if a.Note != nil {
+		return errors.New("note should be empty")
+	}
+	if a.Metadata != nil {
+		return errors.New("metadata should be empty")
+	}
+
+	update := createAnnotationUpdate(a, userDisplayName)
+
+	if len(update) == 0 {
+		return nil
+	}
+
+	err = db.Update(
+		Collection,
+		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
+		bson.M{
+			"$push": update,
+		},
+	)
+	return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
 }
 
 func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {

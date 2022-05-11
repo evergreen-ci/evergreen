@@ -236,6 +236,7 @@ func TestAllocate(t *testing.T) {
 			tCase(tctx, t, env, &task.Task{
 				Id:                 "task",
 				Status:             evergreen.TaskUndispatched,
+				ExecutionPlatform:  task.ExecutionPlatformContainer,
 				ContainerAllocated: false,
 				Activated:          true,
 			}, p)

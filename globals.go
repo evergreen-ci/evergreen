@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/utility"
@@ -100,7 +101,8 @@ const (
 	TaskDescriptionNoResults = "expected test results, but none attached"
 
 	// Task Statuses that are currently used only by the UI, and in tests
-	// (these may be used in old tasks)
+	// (these may be used in old tasks as actual task statuses rather than just
+	// task display statuses).
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTimedOut         = "task-timed-out"
@@ -168,6 +170,11 @@ const (
 	DefaultTaskActivator   = ""
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
+
+	// StaleContainerTaskMonitor is the special name representing the unit
+	// responsible for monitoring container tasks that have not dispatched but
+	// have waiting for a long time since their activation.
+	StaleContainerTaskMonitor = "stale-container-task-monitor"
 
 	// Restart Types
 	RestartVersions = "versions"
@@ -302,7 +309,8 @@ var InternalAliases = []string{
 	GitTagAlias,
 }
 
-// TaskNonGenericFailureStatuses represents some kind of specific abnormal failure mode.
+// TaskNonGenericFailureStatuses represents some kind of specific abnormal
+// failure mode. These are display statuses used in the UI.
 var TaskNonGenericFailureStatuses = []string{
 	TaskTimedOut,
 	TaskSystemFailed,
@@ -312,8 +320,8 @@ var TaskNonGenericFailureStatuses = []string{
 	TaskSystemTimedOut,
 }
 
-// TaskFailureStatuses represents all the ways that a task can fail, inclusive of system failures
-// and task failures.
+// TaskFailureStatuses represent all the ways that a completed task can fail,
+// inclusive of display statuses such as system failures.
 var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
 
 var TaskUnstartedStatuses = []string{
@@ -379,7 +387,7 @@ const (
 	AbortAction       ModificationAction = "abort"
 )
 
-// evergreen package names
+// Constants for Evergreen package names (including legacy ones).
 const (
 	UIPackage      = "EVERGREEN_UI"
 	RESTV2Package  = "EVERGREEN_REST_V2"
@@ -409,7 +417,7 @@ const (
 	CAName = "evergreen"
 )
 
-// cloud provider related constants
+// Constants related to cloud providers and provider-specific settings.
 const (
 	ProviderNameEc2Auto     = "ec2-auto"
 	ProviderNameEc2OnDemand = "ec2-ondemand"
@@ -423,16 +431,19 @@ const (
 	ProviderNameVsphere     = "vsphere"
 	ProviderNameMock        = "mock"
 
-	// Default EC2 region where hosts should be spawned
+	// DefaultEC2Region is the default region where hosts should be spawned.
 	DefaultEC2Region = "us-east-1"
-	// This is Amazon's EBS type default
+	// DefaultEBSType is Amazon's default EBS type.
 	DefaultEBSType = "gp2"
-	// This may be a temporary default
+	// DefaultEBSAvailabilityZone is the default availability zone for EBS
+	// volumes. This may be a temporary default.
 	DefaultEBSAvailabilityZone = "us-east-1a"
 )
 
 var (
-	// Providers where hosts can be created and terminated automatically.
+	// ProviderSpawnable includes all cloud provider types where hosts can be
+	// dynamically created and terminated according to need. This has no
+	// relation to spawn hosts.
 	ProviderSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
@@ -445,7 +456,9 @@ var (
 		ProviderNameDocker,
 	}
 
-	// Providers that are spawnable by users
+	// ProviderUserSpawnable includes all cloud provider types where a user can
+	// request a dynamically created host for purposes such as host.create and
+	// spawn hosts.
 	ProviderUserSpawnable = []string{
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
@@ -476,12 +489,6 @@ var (
 		ProviderNameEc2Fleet,
 		ProviderNameEc2OnDemand,
 	}
-
-	SystemVersionRequesterTypes = []string{
-		RepotrackerVersionRequester,
-		TriggerRequester,
-		GitTagRequester,
-	}
 )
 
 const (
@@ -505,6 +512,16 @@ const (
 	AdHocRequester              = "ad_hoc"
 )
 
+// Constants related to requester types.
+var (
+	SystemVersionRequesterTypes = []string{
+		RepotrackerVersionRequester,
+		TriggerRequester,
+		GitTagRequester,
+	}
+)
+
+// Constants for project command names.
 const (
 	GenerateTasksCommandName      = "generate.tasks"
 	HostCreateCommandName         = "host.create"
@@ -565,7 +582,8 @@ func (k SenderKey) String() string {
 	}
 }
 
-// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+// Recognized Evergreen agent CPU architectures, which should be in the form
+// ${GOOS}_${GOARCH}.
 const (
 	ArchDarwinAmd64  = "darwin_amd64"
 	ArchDarwinArm64  = "darwin_arm64"
@@ -712,11 +730,11 @@ var (
 		HostsOverallocatedTerminate,
 	}
 
-	// constant arrays for db update logic
-	// TaskAbortableStatuses have been picked up by an agent but may or may not have started.
+	// TaskAbortableStatuses have been picked up by an agent but have not
+	// finished running.
 	TaskAbortableStatuses = []string{TaskStarted, TaskDispatched}
-	// TaskCompletedStatuses have not experienced some sort of system failure and
-	// are in a finished state.
+	// TaskCompletedStatuses are statuses for tasks that have finished running.
+	// This does not include task display statuses.
 	TaskCompletedStatuses = []string{TaskSucceeded, TaskFailed}
 	// TaskUncompletedStatuses are all statuses that do not represent a finished state.
 	TaskUncompletedStatuses = []string{
@@ -779,11 +797,11 @@ func ShouldConsiderBatchtime(requester string) bool {
 	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
-// Permissions-related constants
 func PermissionsDisabledForTests() bool {
 	return PermissionSystemDisabled
 }
 
+// Constants for permission scopes and resource types.
 const (
 	SuperUserResourceType = "super_user"
 	ProjectResourceType   = "project"
@@ -824,7 +842,7 @@ var (
 	PermissionHosts          = "distro_hosts"
 )
 
-// permission levels
+// Constants related to permission levels.
 var (
 	AdminSettingsEdit = PermissionLevel{
 		Description: "Edit admin settings",
@@ -1053,7 +1071,7 @@ var BasicAccessRoles = []string{
 	BasicDistroAccessRole,
 }
 
-// Evergreen log types.
+// Constants for Evergreen log types.
 const (
 	LogTypeAgent  = "agent_log"
 	LogTypeTask   = "task_log"
@@ -1093,6 +1111,10 @@ const (
 	WindowsOS ContainerOS = "windows"
 )
 
+// ValidContainerOperatingSystems contains all recognized container operating
+// systems.
+var ValidContainerOperatingSystems = []ContainerOS{LinuxOS, WindowsOS}
+
 // Validate checks that the container OS is recognized.
 func (c ContainerOS) Validate() error {
 	switch c {
@@ -1103,16 +1125,20 @@ func (c ContainerOS) Validate() error {
 	}
 }
 
-// CPUArchitecture represents the architecture necessary to run the container.
-type CPUArchitecture string
+// ContainerArch represents the CPU architecture necessary to run a container.
+type ContainerArch string
 
 const (
-	ArchARM64 CPUArchitecture = "arm64"
-	ArchAMD64 CPUArchitecture = "x86_64"
+	ArchARM64 ContainerArch = "arm64"
+	ArchAMD64 ContainerArch = "x86_64"
 )
 
+// ValidContainerArchitectures contains all recognized container CPU
+// architectures.
+var ValidContainerArchitectures = []ContainerArch{ArchARM64, ArchAMD64}
+
 // Validate checks that the container CPU architecture is recognized.
-func (c CPUArchitecture) Validate() error {
+func (c ContainerArch) Validate() error {
 	switch c {
 	case ArchARM64, ArchAMD64:
 		return nil
@@ -1130,6 +1156,9 @@ const (
 	Windows2016 WindowsVersion = "2016"
 )
 
+// ValidWindowsVersions contains all recognized container Windows versions.
+var ValidWindowsVersions = []WindowsVersion{Windows2016, Windows2019, Windows2022}
+
 // Validate checks that the container Windows version is recognized.
 func (w WindowsVersion) Validate() error {
 	switch w {
@@ -1138,4 +1167,30 @@ func (w WindowsVersion) Validate() error {
 	default:
 		return errors.Errorf("unrecognized windows version '%s'", w)
 	}
+}
+
+const (
+	// Valid public key types.
+	publicKeyRSA     = "ssh-rsa"
+	publicKeyDSS     = "ssh-dss"
+	publicKeyED25519 = "ssh-ed25519"
+	publicKeyECDSA   = "ecdsa-sha2-nistp256"
+)
+
+var validKeyTypes = []string{
+	publicKeyRSA,
+	publicKeyDSS,
+	publicKeyED25519,
+	publicKeyECDSA,
+}
+
+// ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
+func ValidateSSHKey(key string) error {
+	for _, prefix := range validKeyTypes {
+		if strings.HasPrefix(key, prefix) {
+			return nil
+		}
+	}
+	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
+		"or the key value is not one of the valid types: %s", validKeyTypes)
 }

@@ -1255,7 +1255,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 		},
 		"IgnoresNonStartingHosts": func(t *testing.T, h *Host) {
-			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
+			require.NoError(t, h.SetDecommissioned(evergreen.User, false, ""))
 
 			require.NoError(t, h.SetUserDataHostProvisioned())
 			assert.Equal(t, evergreen.HostDecommissioned, h.Status)

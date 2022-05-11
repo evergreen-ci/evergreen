@@ -104,14 +104,13 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err = apiTask.BuildFromService(&t)
+		err = apiTask.BuildFromArgs(&t, &restModel.APITaskArgs{
+			LogURL: url,
+		})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		err = apiTask.BuildFromService(url)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, err.Error())
-		}
+
 		apiTasks = append(apiTasks, &apiTask)
 	}
 	return apiTasks, nil
@@ -251,30 +250,31 @@ func buildFromGqlInput(r PatchConfigure) model.PatchUpdate {
 // getAPITaskFromTask builds an APITask from the given task
 func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restModel.APITask, error) {
 	apiTask := restModel.APITask{}
-	err := apiTask.BuildFromService(&task)
+	err := apiTask.BuildFromArgs(&task, &restModel.APITaskArgs{
+		LogURL: url,
+	})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
-	}
-	err = apiTask.BuildFromService(url)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting building task from apiTask %s: %s", task.Id, err.Error()))
 	}
 	return &apiTask, nil
 }
 
 // Takes a version id and some filter criteria and returns the matching associated tasks grouped together by their build variant.
-func generateBuildVariants(versionId string, searchVariants []string, searchTasks []string, statuses []string) ([]*GroupedBuildVariant, error) {
+func generateBuildVariants(versionId string, buildVariantOpts BuildVariantOptions) ([]*GroupedBuildVariant, error) {
 	var variantDisplayName map[string]string = map[string]string{}
 	var tasksByVariant map[string][]*restModel.APITask = map[string][]*restModel.APITask{}
 	defaultSort := []task.TasksSortOrder{
 		{Key: task.DisplayNameKey, Order: 1},
 	}
+	if buildVariantOpts.IncludeBaseTasks == nil {
+		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
+	}
 	opts := task.GetTasksByVersionOptions{
-		Statuses:                       getValidTaskStatusesFilter(statuses),
-		Variants:                       searchVariants,
-		TaskNames:                      searchTasks,
+		Statuses:                       getValidTaskStatusesFilter(buildVariantOpts.Statuses),
+		Variants:                       buildVariantOpts.Variants,
+		TaskNames:                      buildVariantOpts.Tasks,
 		Sorts:                          defaultSort,
-		IncludeBaseTasks:               true,
+		IncludeBaseTasks:               utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks),
 		IncludeBuildVariantDisplayName: true,
 	}
 	start := time.Now()
@@ -286,7 +286,7 @@ func generateBuildVariants(versionId string, searchVariants []string, searchTask
 	buildTaskStartTime := time.Now()
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
-		err := apiTask.BuildFromService(&t)
+		err := apiTask.BuildFromArgs(&t, nil)
 		if err != nil {
 			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
 		}

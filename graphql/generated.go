@@ -339,10 +339,11 @@ type ComplexityRoot struct {
 	}
 
 	IssueLink struct {
-		IssueKey   func(childComplexity int) int
-		JiraTicket func(childComplexity int) int
-		Source     func(childComplexity int) int
-		URL        func(childComplexity int) int
+		ConfidenceScore func(childComplexity int) int
+		IssueKey        func(childComplexity int) int
+		JiraTicket      func(childComplexity int) int
+		Source          func(childComplexity int) int
+		URL             func(childComplexity int) int
 	}
 
 	JiraConfig struct {
@@ -591,6 +592,7 @@ type ComplexityRoot struct {
 		Id                      func(childComplexity int) int
 		Identifier              func(childComplexity int) int
 		IsFavorite              func(childComplexity int) int
+		ManualPRTestingEnabled  func(childComplexity int) int
 		NotifyOnBuildFailure    func(childComplexity int) int
 		Owner                   func(childComplexity int) int
 		PRTestingEnabled        func(childComplexity int) int
@@ -778,6 +780,7 @@ type ComplexityRoot struct {
 		GithubChecksEnabled     func(childComplexity int) int
 		GithubTriggerAliases    func(childComplexity int) int
 		Id                      func(childComplexity int) int
+		ManualPRTestingEnabled  func(childComplexity int) int
 		NotifyOnBuildFailure    func(childComplexity int) int
 		Owner                   func(childComplexity int) int
 		PRTestingEnabled        func(childComplexity int) int
@@ -845,6 +848,7 @@ type ComplexityRoot struct {
 	SpruceConfig struct {
 		Banner      func(childComplexity int) int
 		BannerTheme func(childComplexity int) int
+		GithubOrgs  func(childComplexity int) int
 		Jira        func(childComplexity int) int
 		Providers   func(childComplexity int) int
 		Spawnhost   func(childComplexity int) int
@@ -1036,6 +1040,11 @@ type ComplexityRoot struct {
 		VariantRegex func(childComplexity int) int
 	}
 
+	TaskStats struct {
+		Counts func(childComplexity int) int
+		ETA    func(childComplexity int) int
+	}
+
 	TaskSyncOptions struct {
 		ConfigEnabled func(childComplexity int) int
 		PatchEnabled  func(childComplexity int) int
@@ -1115,8 +1124,9 @@ type ComplexityRoot struct {
 	}
 
 	UseSpruceOptions struct {
-		HasUsedSpruceBefore func(childComplexity int) int
-		SpruceV1            func(childComplexity int) int
+		HasUsedMainlineCommitsBefore func(childComplexity int) int
+		HasUsedSpruceBefore          func(childComplexity int) int
+		SpruceV1                     func(childComplexity int) int
 	}
 
 	User struct {
@@ -1181,6 +1191,7 @@ type ComplexityRoot struct {
 		Status            func(childComplexity int) int
 		TaskCount         func(childComplexity int) int
 		TaskStatusCounts  func(childComplexity int, options *BuildVariantOptions) int
+		TaskStatusStats   func(childComplexity int, options *BuildVariantOptions) int
 		TaskStatuses      func(childComplexity int) int
 		UpstreamProject   func(childComplexity int) int
 		VersionTiming     func(childComplexity int) int
@@ -1394,6 +1405,7 @@ type RepoSettingsResolver interface {
 type TaskResolver interface {
 	AbortInfo(ctx context.Context, obj *model.APITask) (*AbortInfo, error)
 
+	Ami(ctx context.Context, obj *model.APITask) (*string, error)
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
@@ -1426,6 +1438,7 @@ type TaskResolver interface {
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
+	ProjectIdentifier(ctx context.Context, obj *model.APITask) (*string, error)
 	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
 	CanOverrideDependencies(ctx context.Context, obj *model.APITask) (bool, error)
 
@@ -1460,6 +1473,7 @@ type VersionResolver interface {
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
 
 	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error)
+	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error)
 	BuildVariants(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*GroupedBuildVariant, error)
 	BuildVariantStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error)
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
@@ -2627,6 +2641,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InstanceTag.Value(childComplexity), true
+
+	case "IssueLink.confidenceScore":
+		if e.complexity.IssueLink.ConfidenceScore == nil {
+			break
+		}
+
+		return e.complexity.IssueLink.ConfidenceScore(childComplexity), true
 
 	case "IssueLink.issueKey":
 		if e.complexity.IssueLink.IssueKey == nil {
@@ -4076,6 +4097,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.IsFavorite(childComplexity), true
 
+	case "Project.manualPrTestingEnabled":
+		if e.complexity.Project.ManualPRTestingEnabled == nil {
+			break
+		}
+
+		return e.complexity.Project.ManualPRTestingEnabled(childComplexity), true
+
 	case "Project.notifyOnBuildFailure":
 		if e.complexity.Project.NotifyOnBuildFailure == nil {
 			break
@@ -5194,6 +5222,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.Id(childComplexity), true
 
+	case "RepoRef.manualPrTestingEnabled":
+		if e.complexity.RepoRef.ManualPRTestingEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.ManualPRTestingEnabled(childComplexity), true
+
 	case "RepoRef.notifyOnBuildFailure":
 		if e.complexity.RepoRef.NotifyOnBuildFailure == nil {
 			break
@@ -5494,6 +5529,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.BannerTheme(childComplexity), true
+
+	case "SpruceConfig.githubOrgs":
+		if e.complexity.SpruceConfig.GithubOrgs == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.GithubOrgs(childComplexity), true
 
 	case "SpruceConfig.jira":
 		if e.complexity.SpruceConfig.Jira == nil {
@@ -6503,6 +6545,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskSpecifier.VariantRegex(childComplexity), true
 
+	case "TaskStats.counts":
+		if e.complexity.TaskStats.Counts == nil {
+			break
+		}
+
+		return e.complexity.TaskStats.Counts(childComplexity), true
+
+	case "TaskStats.eta":
+		if e.complexity.TaskStats.ETA == nil {
+			break
+		}
+
+		return e.complexity.TaskStats.ETA(childComplexity), true
+
 	case "TaskSyncOptions.configEnabled":
 		if e.complexity.TaskSyncOptions.ConfigEnabled == nil {
 			break
@@ -6860,6 +6916,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UpstreamProject.Version(childComplexity), true
 
+	case "UseSpruceOptions.hasUsedMainlineCommitsBefore":
+		if e.complexity.UseSpruceOptions.HasUsedMainlineCommitsBefore == nil {
+			break
+		}
+
+		return e.complexity.UseSpruceOptions.HasUsedMainlineCommitsBefore(childComplexity), true
+
 	case "UseSpruceOptions.hasUsedSpruceBefore":
 		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
 			break
@@ -7215,6 +7278,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.TaskStatusCounts(childComplexity, args["options"].(*BuildVariantOptions)), true
+
+	case "Version.taskStatusStats":
+		if e.complexity.Version.TaskStatusStats == nil {
+			break
+		}
+
+		args, err := ec.field_Version_taskStatusStats_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.TaskStatusStats(childComplexity, args["options"].(*BuildVariantOptions)), true
 
 	case "Version.taskStatuses":
 		if e.complexity.Version.TaskStatuses == nil {
@@ -7701,7 +7776,8 @@ type Version {
   branch: String!
   requester: String!
   activated: Boolean
-  taskStatusCounts(options: BuildVariantOptions): [StatusCount!]
+  taskStatusCounts(options: BuildVariantOptions): [StatusCount!] @deprecated(reason: "Use taskStatusStats instead")
+  taskStatusStats(options: BuildVariantOptions): TaskStats
   buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
   buildVariantStats(options: BuildVariantOptions): [GroupedTaskStatusCount!]
   isPatch: Boolean!
@@ -7745,10 +7821,16 @@ type VersionTiming {
   timeTaken: Duration
 }
 
+type TaskStats {
+  counts: [StatusCount!]
+  eta: Time
+}
+
 type StatusCount {
   status: String!
   count: Int!
 }
+
 # Returns task counts grouped by status for a build variant
 type GroupedTaskStatusCount {
   variant: String!
@@ -7760,6 +7842,7 @@ input BuildVariantOptions {
   variants: [String!]
   tasks: [String!]
   statuses: [String!]
+  includeBaseTasks: Boolean
 }
 input MainlineCommitsOptions {
   projectID: String!
@@ -7790,6 +7873,7 @@ enum TaskSortCategory {
   STATUS
   BASE_STATUS
   VARIANT
+  DURATION
 }
 
 enum TestSortCategory {
@@ -7899,6 +7983,7 @@ input SubscriberInput {
 
 input UseSpruceOptionsInput {
   hasUsedSpruceBefore: Boolean
+  hasUsedMainlineCommitsBefore: Boolean
   spruceV1: Boolean
 }
 
@@ -7955,6 +8040,7 @@ input ProjectInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -8006,6 +8092,7 @@ input RepoRefInput {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int
   deactivatePrevious: Boolean
@@ -8188,6 +8275,7 @@ input UpdateVolumeInput {
 input IssueLinkInput {
   url: String!
   issueKey: String!
+  confidenceScore: Float
 }
 
 input SortOrder {
@@ -8760,6 +8848,7 @@ type Project {
   dispatchingDisabled: Boolean
   versionControlEnabled: Boolean
   prTestingEnabled: Boolean
+  manualPrTestingEnabled: Boolean
   githubChecksEnabled: Boolean
   batchTime: Int!
   deactivatePrevious: Boolean
@@ -8812,6 +8901,7 @@ type RepoRef {
   dispatchingDisabled: Boolean!
   versionControlEnabled: Boolean!
   prTestingEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
   githubChecksEnabled: Boolean!
   batchTime: Int!
   deactivatePrevious: Boolean!
@@ -9018,6 +9108,7 @@ type UserSettings {
 
 type UseSpruceOptions {
   hasUsedSpruceBefore: Boolean
+  hasUsedMainlineCommitsBefore: Boolean
   spruceV1: Boolean
 }
 
@@ -9078,6 +9169,7 @@ type SpruceConfig {
   jira: JiraConfig
   banner: String
   bannerTheme: String
+  githubOrgs: [String!]!
   providers: CloudProviderConfig
   spawnHost: SpawnHostConfig!
 }
@@ -9193,6 +9285,7 @@ type IssueLink {
   url: String
   source: Source
   jiraTicket: JiraTicket
+  confidenceScore: Float
 }
 
 type Source {
@@ -11119,6 +11212,21 @@ func (ec *executionContext) field_Version_buildVariants_args(ctx context.Context
 }
 
 func (ec *executionContext) field_Version_taskStatusCounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *BuildVariantOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalOBuildVariantOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBuildVariantOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Version_taskStatusStats_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 *BuildVariantOptions
@@ -16754,6 +16862,38 @@ func (ec *executionContext) _IssueLink_jiraTicket(ctx context.Context, field gra
 	res := resTmp.(*thirdparty.JiraTicket)
 	fc.Result = res
 	return ec.marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐJiraTicket(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _IssueLink_confidenceScore(ctx context.Context, field graphql.CollectedField, obj *model.APIIssueLink) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "IssueLink",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConfidenceScore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _JiraConfig_host(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
@@ -22658,6 +22798,38 @@ func (ec *executionContext) _Project_prTestingEnabled(ctx context.Context, field
 	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Project_manualPrTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ManualPRTestingEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Project_githubChecksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -27720,6 +27892,41 @@ func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field
 	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _RepoRef_manualPrTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ManualPRTestingEnabled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _RepoRef_githubChecksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -29425,6 +29632,41 @@ func (ec *executionContext) _SpruceConfig_bannerTheme(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _SpruceConfig_githubOrgs(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubOrgs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _SpruceConfig_providers(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -29963,14 +30205,14 @@ func (ec *executionContext) _Task_ami(ctx context.Context, field graphql.Collect
 		Object:     "Task",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ami, nil
+		return ec.resolvers.Task().Ami(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -31431,14 +31673,14 @@ func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field g
 		Object:     "Task",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectIdentifier, nil
+		return ec.resolvers.Task().ProjectIdentifier(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34191,6 +34433,70 @@ func (ec *executionContext) _TaskSpecifier_variantRegex(ctx context.Context, fie
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _TaskStats_counts(ctx context.Context, field graphql.CollectedField, obj *task.TaskStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Counts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]task.StatusCount)
+	fc.Result = res
+	return ec.marshalOStatusCount2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TaskStats_eta(ctx context.Context, field graphql.CollectedField, obj *task.TaskStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TaskStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ETA, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _TaskSyncOptions_configEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -35943,9 +36249,41 @@ func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "UseSpruceOptions",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasUsedMainlineCommitsBefore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
@@ -35975,9 +36313,9 @@ func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(*bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
@@ -37187,6 +37525,45 @@ func (ec *executionContext) _Version_taskStatusCounts(ctx context.Context, field
 	res := resTmp.([]*task.StatusCount)
 	fc.Result = res
 	return ec.marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Version_taskStatusStats(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Version_taskStatusStats_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().TaskStatusStats(rctx, obj, args["options"].(*BuildVariantOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*task.TaskStats)
+	fc.Result = res
+	return ec.marshalOTaskStats2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐTaskStats(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Version_buildVariants(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
@@ -39775,6 +40152,14 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 			if err != nil {
 				return it, err
 			}
+		case "includeBaseTasks":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeBaseTasks"))
+			it.IncludeBaseTasks, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -40132,6 +40517,14 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issueKey"))
 			it.IssueKey, err = ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "confidenceScore":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("confidenceScore"))
+			it.ConfidenceScore, err = ec.unmarshalOFloat2ᚖfloat64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -40838,6 +41231,14 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
+		case "manualPrTestingEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualPrTestingEnabled"))
+			it.ManualPRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "githubChecksEnabled":
 			var err error
 
@@ -41299,6 +41700,14 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("prTestingEnabled"))
 			it.PRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "manualPrTestingEnabled":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualPrTestingEnabled"))
+			it.ManualPRTestingEnabled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42212,7 +42621,15 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedSpruceBefore"))
-			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.HasUsedSpruceBefore, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "hasUsedMainlineCommitsBefore":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedMainlineCommitsBefore"))
+			it.HasUsedMainlineCommitsBefore, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -42220,7 +42637,7 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spruceV1"))
-			it.SpruceV1, err = ec.unmarshalOBoolean2bool(ctx, v)
+			it.SpruceV1, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -43975,6 +44392,8 @@ func (ec *executionContext) _IssueLink(ctx context.Context, sel ast.SelectionSet
 				res = ec._IssueLink_jiraTicket(ctx, field, obj)
 				return res
 			})
+		case "confidenceScore":
+			out.Values[i] = ec._IssueLink_confidenceScore(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -45318,6 +45737,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_versionControlEnabled(ctx, field, obj)
 		case "prTestingEnabled":
 			out.Values[i] = ec._Project_prTestingEnabled(ctx, field, obj)
+		case "manualPrTestingEnabled":
+			out.Values[i] = ec._Project_manualPrTestingEnabled(ctx, field, obj)
 		case "githubChecksEnabled":
 			out.Values[i] = ec._Project_githubChecksEnabled(ctx, field, obj)
 		case "batchTime":
@@ -46695,6 +47116,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "manualPrTestingEnabled":
+			out.Values[i] = ec._RepoRef_manualPrTestingEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "githubChecksEnabled":
 			out.Values[i] = ec._RepoRef_githubChecksEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -47121,6 +47547,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
+		case "githubOrgs":
+			out.Values[i] = ec._SpruceConfig_githubOrgs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "providers":
 			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
 		case "spawnHost":
@@ -47244,7 +47675,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "activatedTime":
 			out.Values[i] = ec._Task_activatedTime(ctx, field, obj)
 		case "ami":
-			out.Values[i] = ec._Task_ami(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_ami(ctx, field, obj)
+				return res
+			})
 		case "annotation":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -47581,7 +48021,16 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&invalids, 1)
 			}
 		case "projectIdentifier":
-			out.Values[i] = ec._Task_projectIdentifier(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_projectIdentifier(ctx, field, obj)
+				return res
+			})
 		case "dependsOn":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -48274,6 +48723,32 @@ func (ec *executionContext) _TaskSpecifier(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var taskStatsImplementors = []string{"TaskStats"}
+
+func (ec *executionContext) _TaskStats(ctx context.Context, sel ast.SelectionSet, obj *task.TaskStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskStats")
+		case "counts":
+			out.Values[i] = ec._TaskStats_counts(ctx, field, obj)
+		case "eta":
+			out.Values[i] = ec._TaskStats_eta(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var taskSyncOptionsImplementors = []string{"TaskSyncOptions"}
 
 func (ec *executionContext) _TaskSyncOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskSyncOptions) graphql.Marshaler {
@@ -48707,6 +49182,8 @@ func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("UseSpruceOptions")
 		case "hasUsedSpruceBefore":
 			out.Values[i] = ec._UseSpruceOptions_hasUsedSpruceBefore(ctx, field, obj)
+		case "hasUsedMainlineCommitsBefore":
+			out.Values[i] = ec._UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field, obj)
 		case "spruceV1":
 			out.Values[i] = ec._UseSpruceOptions_spruceV1(ctx, field, obj)
 		default:
@@ -49020,6 +49497,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_taskStatusCounts(ctx, field, obj)
+				return res
+			})
+		case "taskStatusStats":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_taskStatusStats(ctx, field, obj)
 				return res
 			})
 		case "buildVariants":
@@ -51489,6 +51977,10 @@ func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreen�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v task.StatusCount) graphql.Marshaler {
+	return ec._StatusCount(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*task.StatusCount) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -53169,6 +53661,21 @@ func (ec *executionContext) marshalOFloat2float64(ctx context.Context, sel ast.S
 	return graphql.MarshalFloat(v)
 }
 
+func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v interface{}) (*float64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalFloat(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalFloat(*v)
+}
+
 func (ec *executionContext) marshalOGithubCheckSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubCheckSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubCheckSubscriber) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -54280,6 +54787,53 @@ func (ec *executionContext) marshalOSpruceConfig2ᚖgithubᚗcomᚋevergreenᚑc
 	return ec._SpruceConfig(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOStatusCount2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []task.StatusCount) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOStatusCount2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*task.StatusCount) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -54699,6 +55253,13 @@ func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑ
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOTaskStats2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐTaskStats(ctx context.Context, sel ast.SelectionSet, v *task.TaskStats) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskStats(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, v interface{}) (model.APITaskSyncOptions, error) {

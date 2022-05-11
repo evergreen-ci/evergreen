@@ -35,9 +35,10 @@ type BuildBaron struct {
 }
 
 type BuildVariantOptions struct {
-	Variants []string `json:"variants"`
-	Tasks    []string `json:"tasks"`
-	Statuses []string `json:"statuses"`
+	Variants         []string `json:"variants"`
+	Tasks            []string `json:"tasks"`
+	Statuses         []string `json:"statuses"`
+	IncludeBaseTasks *bool    `json:"includeBaseTasks"`
 }
 
 type Dependency struct {
@@ -715,6 +716,7 @@ const (
 	TaskSortCategoryStatus     TaskSortCategory = "STATUS"
 	TaskSortCategoryBaseStatus TaskSortCategory = "BASE_STATUS"
 	TaskSortCategoryVariant    TaskSortCategory = "VARIANT"
+	TaskSortCategoryDuration   TaskSortCategory = "DURATION"
 )
 
 var AllTaskSortCategory = []TaskSortCategory{
@@ -722,11 +724,12 @@ var AllTaskSortCategory = []TaskSortCategory{
 	TaskSortCategoryStatus,
 	TaskSortCategoryBaseStatus,
 	TaskSortCategoryVariant,
+	TaskSortCategoryDuration,
 }
 
 func (e TaskSortCategory) IsValid() bool {
 	switch e {
-	case TaskSortCategoryName, TaskSortCategoryStatus, TaskSortCategoryBaseStatus, TaskSortCategoryVariant:
+	case TaskSortCategoryName, TaskSortCategoryStatus, TaskSortCategoryBaseStatus, TaskSortCategoryVariant, TaskSortCategoryDuration:
 		return true
 	}
 	return false

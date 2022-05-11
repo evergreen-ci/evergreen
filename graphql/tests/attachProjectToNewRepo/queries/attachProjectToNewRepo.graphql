@@ -1,7 +1,7 @@
 mutation {
     attachProjectToNewRepo(project: {
         projectId: "sandbox_project_id",
-        newOwner: "sand",
+        newOwner: "newOwner",
         newRepo: "box",
     }
     ){

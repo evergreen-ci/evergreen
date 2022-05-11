@@ -274,8 +274,8 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
-	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, newTVPairsForExistingVariants,
-		existingBuilds, syncAtEndOpts, projectRef.Identifier, g.TaskID)
+	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, projectRef, newTVPairsForExistingVariants,
+		existingBuilds, syncAtEndOpts, g.TaskID)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}

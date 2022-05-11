@@ -63,20 +63,22 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	}
 
 	// copy variables, aliases, and subscriptions
+	catcher := grip.NewBasicCatcher()
 	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
-		return nil, errors.Wrapf(err, "error copying project vars from project '%s'", oldIdentifier)
+		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
 	}
 	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
-		return nil, errors.Wrapf(err, "error copying aliases from project '%s'", oldIdentifier)
+		catcher.Wrapf(err, "copying aliases from project '%s'", oldIdentifier)
 	}
 	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
-		return nil, errors.Wrapf(err, "error copying subscriptions from project '%s'", oldIdentifier)
+		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// set the same admin roles from the old project on the newly copied project.
 	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return nil, errors.Wrapf(err, "Database error updating admins for project '%s'", opts.NewProjectIdentifier)
+		catcher.Wrapf(err, "updating admin DB for project '%s'", opts.NewProjectIdentifier)
 	}
-	return apiProjectRef, nil
+	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
+	return apiProjectRef, catcher.Resolve()
 }
 
 // SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
@@ -240,6 +242,14 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid periodic build definition")
+		}
+	case model.ProjectPageTriggersSection:
+		for i := range mergedProjectRef.Triggers {
+			err = mergedProjectRef.Triggers[i].Validate(projectId)
+			catcher.Add(err)
+		}
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
 		}
 	}
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)

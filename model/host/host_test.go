@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func init() {
@@ -292,7 +293,7 @@ func TestSetStatusAndFields(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
-			assert.Error(t, h.SetStatusAndFields(evergreen.HostDecommissioned, bson.M{}, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			assert.NoError(t, err)
@@ -303,7 +304,7 @@ func TestSetStatusAndFields(t *testing.T) {
 
 			currentStatus := h.Status
 			newDisplayName := "new-display-name"
-			require.NoError(t, h.SetStatusAndFields(currentStatus, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(currentStatus, nil, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -314,7 +315,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		"UpdatesOnlyStatus": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 			newStatus := evergreen.HostQuarantined
-			require.NoError(t, h.SetStatusAndFields(newStatus, bson.M{}, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(newStatus, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -326,7 +327,7 @@ func TestSetStatusAndFields(t *testing.T) {
 
 			newStatus := evergreen.HostQuarantined
 			newDisplayName := "new-display-name"
-			require.NoError(t, h.SetStatusAndFields(newStatus, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(newStatus, nil, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -338,12 +339,25 @@ func TestSetStatusAndFields(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.SetStatusAndFields(evergreen.HostRunning, bson.M{}, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(evergreen.HostRunning, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status, "terminated host should remain terminated")
+		},
+		"FailsDecommissionIfHostIsNowRunningTaskGroup": func(t *testing.T, h *Host) {
+			h.RunningTaskGroup = "my_task_group"
+			require.NoError(t, h.Insert())
+			query := bson.M{
+				RunningTaskGroupKey: bson.M{"$eq": ""},
+			}
+			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -355,6 +369,34 @@ func TestSetStatusAndFields(t *testing.T) {
 			tCase(t, &h)
 		})
 	}
+}
+
+func TestDecommissionHost(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	h := Host{
+		Id:               "myHost",
+		RunningTaskGroup: "myTaskGroup",
+		Status:           evergreen.HostRunning,
+	}
+	assert.NoError(t, h.Insert())
+
+	assert.NoError(t, h.SetDecommissioned("user", true, "because I said so"))
+
+	// Updating shouldn't work because we checked task group.
+	hostFromDb, err := FindOneId(h.Id)
+	assert.NoError(t, err)
+	require.NotNil(t, hostFromDb)
+	assert.NotEqual(t, evergreen.HostDecommissioned, hostFromDb.Status)
+	assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
+
+	assert.NoError(t, h.SetDecommissioned("user", false, "counting to three"))
+
+	// Updating should work because we ignored task group.
+	hostFromDb, err = FindOneId(h.Id)
+	assert.NoError(t, err)
+	require.NotNil(t, hostFromDb)
+	assert.Equal(t, evergreen.HostDecommissioned, hostFromDb.Status)
+	assert.Equal(t, evergreen.HostDecommissioned, h.Status)
 }
 
 func TestSetStopped(t *testing.T) {
@@ -5272,4 +5314,207 @@ func (s *FindHostsSuite) TestExtendHostExpiration() {
 	hCheck, err := FindOneId("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
 	s.NoError(err)
+}
+
+func setupHostTerminationQueryIndex(t *testing.T) {
+	require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+		Keys: StatusIndex,
+	}))
+}
+
+func TestFindHostsToTerminate(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.DropCollections(Collection))
+	}()
+	setupHostTerminationQueryIndex(t)
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"IncludesSpawnHostsThatExceedExpirationTime": func(t *testing.T) {
+			h := &Host{
+				Id:             "h1",
+				StartedBy:      "normal-user",
+				Status:         evergreen.HostRunning,
+				Provider:       evergreen.ProviderNameMock,
+				ExpirationTime: time.Now().Add(-10 * time.Minute),
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IncludesSpawnHostsThatHaveNotExceededExpirationTime": func(t *testing.T) {
+			h := &Host{
+				Id:             "h1",
+				StartedBy:      "normal-user",
+				Status:         evergreen.HostRunning,
+				Provider:       evergreen.ProviderNameMock,
+				ExpirationTime: time.Now().Add(time.Hour),
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IncludesDecommissionedHosts": func(t *testing.T) {
+			h := &Host{
+				Provider: evergreen.ProviderNameMock,
+				Id:       "h3",
+				Status:   evergreen.HostDecommissioned,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IgnoresQuarantinedHosts": func(t *testing.T) {
+			h := &Host{
+				Id:       "id",
+				Provider: evergreen.ProviderNameMock,
+				Status:   evergreen.HostQuarantined,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IncludesHostsThatFailedToBuild": func(t *testing.T) {
+			h := &Host{
+				Id:           "id",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-time.Hour),
+				Status:       evergreen.HostBuildingFailed,
+				Provider:     evergreen.ProviderNameMock,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IncludesHostsThatFailedToProvision": func(t *testing.T) {
+			h := &Host{
+				Id:           "id",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-time.Hour),
+				Status:       evergreen.HostProvisionFailed,
+				Provider:     evergreen.ProviderNameMock,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IgnoresAlreadyTerminatedHosts": func(t *testing.T) {
+			h := &Host{
+				Id:           "id",
+				Provider:     evergreen.ProviderNameMock,
+				Status:       evergreen.HostTerminated,
+				CreationTime: time.Now().Add(-time.Minute * 60),
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IgnoresHostsThatAreAlreadyProvisioned": func(t *testing.T) {
+			h := &Host{
+				Id:           "id",
+				StartedBy:    evergreen.User,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-time.Minute * 60),
+				Provisioned:  true,
+				Status:       evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IgnoresHostsThatHaveNotExceededProvisioningDeadline": func(t *testing.T) {
+			h := &Host{
+				Id:           "id",
+				StartedBy:    evergreen.User,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-time.Minute * 10),
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IncludesHostsThatExceedProvisioningDeadline": func(t *testing.T) {
+			h := &Host{
+				Id:           "id",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-time.Hour),
+				Provisioned:  false,
+				Status:       evergreen.HostStarting,
+				Provider:     evergreen.ProviderNameMock,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IgnoresUserDataHostsThatAreNotInRunningStateButAreRunningTasks": func(t *testing.T) {
+			h := &Host{
+				Id:          "id",
+				Status:      evergreen.HostStarting,
+				Provisioned: false,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+				LastCommunicationTime: time.Now(),
+				RunningTask:           "running_task",
+				StartedBy:             evergreen.User,
+			}
+			require.NoError(t, h.Insert())
+
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IncludesUserDataHostsThatHaveRunTasksBeforeButHaveNotCommunicatedRecently": func(t *testing.T) {
+			h := &Host{
+				Id:          "id",
+				Status:      evergreen.HostStarting,
+				Provisioned: false,
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+				LastTask:     "last_task",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-time.Hour),
+				Provider:     evergreen.ProviderNameEc2Fleet,
+			}
+			require.NoError(t, h.Insert())
+			toTerminate, err := FindHostsToTerminate()
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			tCase(t)
+		})
+	}
 }

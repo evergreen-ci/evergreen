@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
-	"github.com/pkg/errors"
 )
 
 func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
@@ -28,28 +26,27 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		select {
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
-			if signalBeat == evergreen.TaskConflict {
+			if signalBeat == evergreen.TaskFailed {
+				tc.logger.Task().Error("Heartbeat received signal to abort task")
+				if err != nil {
+					tc.logger.Task().Error(err.Error())
+				}
+				heartbeat <- evergreen.TaskFailed
 				cancel()
-			}
-			if signalBeat != "" {
-				heartbeat <- signalBeat
 				return
 			}
 			if err != nil {
 				failures++
-				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failures, err)
 			} else {
 				failures = 0
 			}
 			if failures == maxHeartbeats {
-				grip.Error("Hit max heartbeats, aborting task")
 				// Presumably this won't work, but we should try to notify the user anyway
 				tc.logger.Task().Error("Hit max heartbeats, aborting task")
 				heartbeat <- evergreen.TaskFailed
 				return
 			}
 		case <-ctx.Done():
-			grip.Info("Heartbeat ticker canceled")
 			heartbeat <- evergreen.TaskFailed
 			return
 		}
@@ -60,12 +57,9 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error
 	abort, err := a.comm.Heartbeat(ctx, tc.task)
 	if abort {
 		grip.Info("Task aborted")
-		return evergreen.TaskFailed, nil
+		return evergreen.TaskFailed, err
 	}
 	if err != nil {
-		if errors.Cause(err) == client.HTTPConflictError {
-			return evergreen.TaskConflict, err
-		}
 		return "", err
 	}
 	grip.Debug("Sent heartbeat")

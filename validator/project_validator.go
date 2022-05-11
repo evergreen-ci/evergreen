@@ -481,9 +481,15 @@ func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
 
 func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, containerResource := range pc.ContainerSizes {
-		err := containerResource.Validate()
-		if err != nil {
+	for name, containerResource := range pc.ContainerSizes {
+		if name == "" {
+			errs = append(errs, ValidationError{
+				Message: "container size name cannot be empty",
+				Level:   Error,
+			})
+		}
+
+		if err := containerResource.Validate(); err != nil {
 			errs = append(errs,
 				ValidationError{
 					Message: errors.Wrap(err, "error validating container resources").Error(),
@@ -702,7 +708,8 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						Level: Warning,
 					})
 			}
-
+			runOnHasDistro := false
+			runOnHasContainer := false
 			for _, name := range task.RunOn {
 				if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) && !containerNameMap[name] {
 					errs = append(errs,
@@ -723,7 +730,14 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						},
 					)
 				}
+				if utility.StringSliceContains(distroIDs, name) {
+					runOnHasDistro = true
+				}
+				if containerNameMap[name] {
+					runOnHasContainer = true
+				}
 			}
+			errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, task.RunOn)...)
 		}
 		runOnHasDistro := false
 		runOnHasContainer := false
@@ -754,16 +768,25 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				runOnHasContainer = true
 			}
 		}
-		if runOnHasContainer && runOnHasDistro {
-			errs = append(errs,
-				ValidationError{
-					Message: "run_on cannot contain a mixture of containers and distros",
-					Level:   Error,
-				},
-			)
-		}
+		errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, buildVariant.RunOn)...)
 	}
 	return errs
+}
+
+func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []ValidationError {
+	if runOnHasContainer && runOnHasDistro {
+		return []ValidationError{{
+			Message: "run_on cannot contain a mixture of containers and distros",
+			Level:   Error,
+		}}
+
+	} else if runOnHasContainer && len(runOn) > 1 {
+		return []ValidationError{{
+			Message: "only one container can be used from run_on; the first container in the list will be used",
+			Level:   Warning,
+		}}
+	}
+	return nil
 }
 
 // validateTaskNames ensures the task names do not contain unauthorized characters.

@@ -199,7 +199,7 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 		"item":       "aabbccddeeff112233445566",
 	})
 
-	mw := NewMockCommitQueueItemOwnerMiddleware()
+	mw := NewCommitQueueItemOwnerMiddleware()
 	rw := httptest.NewRecorder()
 
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -317,6 +317,77 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		"item":       p.Id.Hex(),
 	})
 	rw = httptest.NewRecorder()
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+}
+
+func TestCommitQueueItemOwnerMiddlewarePatchAdmin(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
+
+	ctx := context.Background()
+	opCtx := model.Context{}
+	opCtx.ProjectRef = &model.ProjectRef{
+		Private: utility.TruePtr(),
+		Id:      "mci",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+	}
+	assert.NoError(opCtx.ProjectRef.Insert())
+
+	r, err := http.NewRequest(http.MethodDelete, "/", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+
+	patchId := bson.NewObjectId()
+	p := &patch.Patch{
+		Id:     patchId,
+		Author: "octocat",
+	}
+	assert.NoError(p.Insert())
+	cq := commitqueue.CommitQueue{
+		ProjectID: opCtx.ProjectRef.Id,
+		Queue: []commitqueue.CommitQueueItem{
+			{Issue: patchId.Hex(), Source: commitqueue.SourceDiff},
+		},
+	}
+	assert.NoError(commitqueue.InsertQueue(&cq))
+
+	p, err = patch.FindOne(patch.ByUserAndCommitQueue("octocat", false))
+	assert.NoError(err)
+	assert.NotNil(p)
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Id:          "me",
+		SystemRoles: []string{"patch_admin"},
+	})
+	rm := evergreen.GetEnvironment().RoleManager()
+	assert.NoError(rm.AddScope(gimlet.Scope{
+		ID:        "projects",
+		Resources: []string{"mci"},
+		Type:      evergreen.ProjectResourceType,
+	}))
+	assert.NoError(rm.UpdateRole(gimlet.Role{
+		ID:    "patch_admin",
+		Scope: "projects",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value,
+		},
+	}))
+
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	r = gimlet.SetURLVars(r, map[string]string{
+		"project_id": "mci",
+		"item":       p.Id.Hex(),
+	})
+	rw := httptest.NewRecorder()
+
+	mw := NewCommitQueueItemOwnerMiddleware()
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
 }

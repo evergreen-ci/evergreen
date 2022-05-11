@@ -194,7 +194,7 @@ type TimeInfo struct {
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (i TimeInfo) IsZero() bool {
-	return i.Initializing.IsZero() && i.Starting.IsZero() && i.LastCommunicated.IsZero()
+	return i == TimeInfo{}
 }
 
 // ResourceInfo represents information about external resources associated with
@@ -284,6 +284,9 @@ const (
 	OSWindows OS = "windows"
 )
 
+// validOperatingSystems contains all the recognized pod operating systems.
+var validOperatingSystems = []OS{OSLinux, OSWindows}
+
 // Validate checks that the pod OS is recognized.
 func (os OS) Validate() error {
 	switch os {
@@ -294,13 +297,28 @@ func (os OS) Validate() error {
 	}
 }
 
+// ImportOS converts the container OS into its equivalent pod OS.
+func ImportOS(os evergreen.ContainerOS) (OS, error) {
+	switch os {
+	case evergreen.LinuxOS:
+		return OSLinux, nil
+	case evergreen.WindowsOS:
+		return OSWindows, nil
+	default:
+		return "", errors.Errorf("unrecognized OS '%s'", os)
+	}
+}
+
 // Arch represents recognized architectures for pods.
 type Arch string
 
 const (
-	ArchAMD64 = "amd64"
-	ArchARM64 = "arm64"
+	ArchAMD64 Arch = "amd64"
+	ArchARM64 Arch = "arm64"
 )
+
+// validArchitectures contains all the recognized pod CPU architectures.
+var validArchitectures = []Arch{ArchAMD64, ArchARM64}
 
 // Validate checks that the pod architecture is recognized.
 func (a Arch) Validate() error {
@@ -312,8 +330,21 @@ func (a Arch) Validate() error {
 	}
 }
 
-// WindowsVersion represents specific version of Windows that a pod is allowed
-// to run on.
+// ImportArch converts the container CPU architecture into its equivalent pod
+// CPU architecture.
+func ImportArch(arch evergreen.ContainerArch) (Arch, error) {
+	switch arch {
+	case evergreen.ArchAMD64:
+		return ArchAMD64, nil
+	case evergreen.ArchARM64:
+		return ArchARM64, nil
+	default:
+		return "", errors.Errorf("unrecognized CPU architecture '%s'", arch)
+	}
+}
+
+// WindowsVersion represents a specific version of Windows that a pod is allowed
+// to run on. This only applies to pods running Windows containers.
 type WindowsVersion string
 
 const (
@@ -328,6 +359,9 @@ const (
 	WindowsVersionServer2022 WindowsVersion = "SERVER_2022"
 )
 
+// validWindowsVersions contains all the recognized pod Windows versions.
+var validWindowsVersions = []WindowsVersion{WindowsVersionServer2016, WindowsVersionServer2019, WindowsVersionServer2022}
+
 // Validate checks that the pod Windows version is recognized.
 func (v WindowsVersion) Validate() error {
 	switch v {
@@ -338,10 +372,25 @@ func (v WindowsVersion) Validate() error {
 	}
 }
 
+// ImportWindowsVersion converts the container Windows version into its
+// equivalent pod Windows version.
+func ImportWindowsVersion(winVer evergreen.WindowsVersion) (WindowsVersion, error) {
+	switch winVer {
+	case evergreen.Windows2016:
+		return WindowsVersionServer2016, nil
+	case evergreen.Windows2019:
+		return WindowsVersionServer2019, nil
+	case evergreen.Windows2022:
+		return WindowsVersionServer2022, nil
+	default:
+		return "", errors.Errorf("unrecognized Windows version '%s'", winVer)
+	}
+}
+
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (o TaskContainerCreationOptions) IsZero() bool {
-	return o.Image == "" && o.MemoryMB == 0 && o.CPU == 0 && o.OS == "" && o.Arch == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
+	return o.MemoryMB == 0 && o.CPU == 0 && o.OS == "" && o.Arch == "" && o.WindowsVersion == "" && o.Image == "" && o.RepoUsername == "" && o.RepoPassword == "" && o.WorkingDir == "" && len(o.EnvVars) == 0 && len(o.EnvSecrets) == 0
 }
 
 // Secret is a sensitive secret that a pod can access. The secret is managed
@@ -368,12 +417,22 @@ type Secret struct {
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
 // zero value for BSON marshalling.
 func (s Secret) IsZero() bool {
-	return s.Name == "" && s.ExternalID == "" && s.Value == "" && s.Exists == nil && s.Owned == nil
+	return s == Secret{}
 }
 
-// Insert inserts a new pod into the collection.
+// Insert inserts a new pod into the collection. This relies on the global Anser
+// DB session.
 func (p *Pod) Insert() error {
 	return db.Insert(Collection, p)
+}
+
+// InsertWithContext is the same as Insert, but it respects the given context by
+// avoiding the global Anser DB session.
+func (p *Pod) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
+	if _, err := env.DB().Collection(Collection).InsertOne(ctx, p); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Remove removes the pod from the collection.

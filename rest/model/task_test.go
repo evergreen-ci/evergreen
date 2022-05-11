@@ -46,8 +46,8 @@ func TestTaskBuildFromService(t *testing.T) {
 					DistroId:               utility.ToStringPtr("testDistroId"),
 					BuildVariant:           utility.ToStringPtr("testBuildVariant"),
 					DependsOn: []APIDependency{
-						APIDependency{TaskId: "testDepends1", Status: "*"},
-						APIDependency{TaskId: "testDepends2", Status: "*"},
+						{TaskId: "testDepends1", Status: "*"},
+						{TaskId: "testDepends2", Status: "*"},
 					},
 					DisplayName: utility.ToStringPtr("testDisplayName"),
 					Logs: LogLinks{
@@ -149,11 +149,56 @@ func TestTaskBuildFromService(t *testing.T) {
 				err = apiTask.BuildFromService(&tc.st)
 				So(err, ShouldBeNil)
 				So(apiTask.Blocked, ShouldBeTrue)
+			}
+		})
+		Convey("running BuildFromArgs(), should produce an equivalent model", func() {
+			for _, tc := range modelPairs {
+				apiTask := &APITask{}
+				err := apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(true, ShouldEqual, apiTask.Mainline)
 
-				err = apiTask.BuildFromService("url")
+				tc.st.Requester = evergreen.PatchVersionRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.GithubPRRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.TriggerRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.AdHocRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.DependsOn = []task.Dependency{
+					{Unattainable: false},
+					{Unattainable: true},
+				}
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(apiTask.Blocked, ShouldBeTrue)
+
+				err = apiTask.BuildFromArgs(&tc.st, &APITaskArgs{LogURL: "url"})
 				So(err, ShouldBeNil)
 				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
 				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
+				So(utility.FromStringPtr(apiTask.Logs.AgentLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.AgentLogLink))
+				So(utility.FromStringPtr(apiTask.Logs.SystemLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.SystemLogLink))
+				So(utility.FromStringPtr(apiTask.Logs.TaskLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.TaskLogLink))
+
 			}
 		})
 	})

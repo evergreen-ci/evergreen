@@ -548,24 +548,6 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
-// ByTimeRun returns all tasks that are running in between two given times.
-func ByTimeRun(startTime, endTime time.Time) bson.M {
-	return bson.M{
-		"$or": []bson.M{
-			bson.M{
-				StartTimeKey:  bson.M{"$lte": endTime},
-				FinishTimeKey: bson.M{"$gte": startTime},
-				StatusKey:     evergreen.TaskFailed,
-			},
-			bson.M{
-				StartTimeKey:  bson.M{"$lte": endTime},
-				FinishTimeKey: bson.M{"$gte": startTime},
-				StatusKey:     evergreen.TaskSucceeded,
-			},
-		},
-	}
-}
-
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
 // If task not started (but is failed), returns if finished within the time range
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {
@@ -584,7 +566,7 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		StatusKey: evergreen.TaskFailed,
 	}
 	if len(commandTypes) > 0 {
-		query[bsonutil.GetDottedKeyName(DetailsKey, "type")] = bson.M{
+		query[bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType)] = bson.M{
 			"$in": commandTypes,
 		}
 	}
@@ -710,7 +692,7 @@ func ByExecutionTasks(ids []string) bson.M {
 	}
 }
 
-func BySubsetAborted(ids []string) bson.M {
+func bySubsetAborted(ids []string) bson.M {
 	return bson.M{
 		IdKey:      bson.M{"$in": ids},
 		AbortedKey: true,
@@ -767,14 +749,20 @@ func schedulableHostTasksQuery() bson.M {
 // FindNeedsContainerAllocation returns all container tasks that are waiting for
 // a container to be allocated to them sorted by activation time.
 func FindNeedsContainerAllocation() ([]Task, error) {
+	return FindAll(db.Query(needsContainerAllocation()).Sort([]string{ActivatedTimeKey}))
+}
+
+// needsContainerAllocation returns the query that filters for a task that
+// currently needs a container to be allocated to run it.
+func needsContainerAllocation() bson.M {
 	q := isContainerTaskScheduledQuery()
-	q[StatusKey] = evergreen.TaskUndispatched
 	q[ContainerAllocatedKey] = false
-	return FindAll(db.Query(q).Sort([]string{ActivatedTimeKey}))
+	return q
 }
 
 func isContainerTaskScheduledQuery() bson.M {
 	return bson.M{
+		StatusKey:            evergreen.TaskUndispatched,
 		ActivatedKey:         true,
 		ExecutionPlatformKey: ExecutionPlatformContainer,
 		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
@@ -960,15 +948,29 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 			},
 		}
 		oldTaskPipeline = append(oldTaskPipeline, match)
+
+		// If there are multiple previous executions, matching on non-zero executions with $lte will return
+		// duplicate tasks. We sort and group to find and return the old task with the most recent execution.
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{
+			"$sort": bson.D{bson.E{Key: ExecutionKey, Value: -1}},
+		})
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{
+			"$group": bson.M{
+				"_id":  "$" + OldTaskIdKey,
+				"root": bson.M{"$first": "$$ROOT"},
+			},
+		})
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}})
+
 		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "finding old tasks")
 		}
-
 		result = append(result, oldTasks...)
 	}
 	if len(result) == 0 {
 		return nil, nil
 	}
+
 	return result, nil
 }
 
@@ -1572,13 +1574,6 @@ func Remove(id string) error {
 		Collection,
 		bson.M{IdKey: id},
 	)
-}
-
-// Remove all deletes all tasks with a given buildId
-func RemoveAllWithBuild(buildId string) error {
-	return db.RemoveAll(
-		Collection,
-		bson.M{BuildIdKey: buildId})
 }
 
 func Aggregate(pipeline []bson.M, results interface{}) error {

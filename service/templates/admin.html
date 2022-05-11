@@ -375,17 +375,6 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Generate tasks experiment</td>
-												<td colspan="2">
-													<md-radio-group
-														data-ng-model="Settings.service_flags.generate_tasks_experiment_disabled"
-														layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
 												<td>Container configurations</td>
 												<td colspan="2">
 													<md-radio-group
@@ -468,6 +457,35 @@ Admin Settings
 										</tbody>
 									</table>
 
+								</md-card-content>
+								<md-card-title>
+									<md-card-title-text>
+										<span>Disabled GQL Queries</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<div>
+										<section style="height: 70px;" layout="row" flex>
+											<md-input-container class="control"  style="width: 200px;">
+												<label>Operation name to disable</label>
+												<input type="text" default="ABC" ng-model="queryMapping.newQuery" />
+											</md-input-container>
+											<div style="margin-top: 1%;">
+												<button class="plus-button btn btn-primary" type="button"
+													 ng-click="addDisabledGQLQuery()">
+													<i class="fa fa-plus"></i>
+												</button>
+											</div>
+										</section>
+										<div id="ec2-list" class="form-group" ng-repeat="(index, queryName) in Settings.disabled_gql_queries">
+											<section layout="row" flex>
+												<span style="width: 200px;">[[queryName]]</span>
+												<button class="btn btn-default btn-danger" type="button" ng-click="removeDisabledGQLQuery(queryName)">
+													<i class="fa fa-trash"></i>
+												</button>
+											</section>
+										</div>
+									</div> 
 								</md-card-content>
 							</md-card>
 
@@ -2356,7 +2374,7 @@ Admin Settings
 					<md-card-title-text>
 						<span>Restart Tasks/Commit Queue Versions</span>
 						<span class="md-subhead">Restart failed tasks or commit queue versions that ran between two
-							times</span>
+							times. Uses Eastern timezone.</span>
 					</md-card-title-text>
 				</md-card-title>
 				<md-card-content>

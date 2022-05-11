@@ -300,7 +300,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	assert.Equal(t, "task-1", utility.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_1", utility.FromStringPtr(apiAnnotations[0].Note.Message))
 	require.Len(t, apiAnnotations[0].Issues, 1)
-	assert.Equal(t, float32(12.34), utility.FromFloat32Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
+	assert.Equal(t, float64(12.34), utility.FromFloat64Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
 
 	// get the latest execution : 0
 	h.taskId = "task-2"
@@ -401,11 +401,11 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	a.Issues = []restModel.APIIssueLink{
 		{
 			URL:             utility.ToStringPtr("issuelink.com"),
-			ConfidenceScore: utility.ToFloat32Ptr(-12.000000),
+			ConfidenceScore: utility.ToFloat64Ptr(-12.000000),
 		},
 		{
 			URL:             utility.ToStringPtr("https://issuelink.com/ticket"),
-			ConfidenceScore: utility.ToFloat32Ptr(112.000000),
+			ConfidenceScore: utility.ToFloat64Ptr(112.000000),
 		},
 	}
 	a.SuspectedIssues = []restModel.APIIssueLink{
@@ -646,12 +646,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 			{
 				URL:             utility.ToStringPtr("some_url_0"),
 				IssueKey:        utility.ToStringPtr("some key 0"),
-				ConfidenceScore: utility.ToFloat32Ptr(12.34),
+				ConfidenceScore: utility.ToFloat64Ptr(12.34),
 			},
 			{
 				URL:             utility.ToStringPtr("some_url_1"),
 				IssueKey:        utility.ToStringPtr("some key 1"),
-				ConfidenceScore: utility.ToFloat32Ptr(56.78),
+				ConfidenceScore: utility.ToFloat64Ptr(56.78),
 			},
 		},
 	}
@@ -674,8 +674,8 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
 	assert.Equal(t, 2, len(annotation.Issues))
-	assert.Equal(t, float32(12.34), annotation.Issues[0].ConfidenceScore)
-	assert.Equal(t, float32(56.78), annotation.Issues[1].ConfidenceScore)
+	assert.Equal(t, float64(12.34), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(56.78), annotation.Issues[1].ConfidenceScore)
 
 	//test update
 	h.annotation = &restModel.APITaskAnnotation{
@@ -686,12 +686,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 			{
 				URL:             utility.ToStringPtr("some_url_0"),
 				IssueKey:        utility.ToStringPtr("some key 0"),
-				ConfidenceScore: utility.ToFloat32Ptr(87.65),
+				ConfidenceScore: utility.ToFloat64Ptr(87.65),
 			},
 			{
 				URL:             utility.ToStringPtr("some_url_1"),
 				IssueKey:        utility.ToStringPtr("some key 1"),
-				ConfidenceScore: utility.ToFloat32Ptr(43.21),
+				ConfidenceScore: utility.ToFloat64Ptr(43.21),
 			},
 		},
 	}
@@ -707,8 +707,8 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	require.Nil(t, annotation.SuspectedIssues)
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
 	assert.Equal(t, 2, len(annotation.Issues))
-	assert.Equal(t, float32(87.65), annotation.Issues[0].ConfidenceScore)
-	assert.Equal(t, float32(43.21), annotation.Issues[1].ConfidenceScore)
+	assert.Equal(t, float64(87.65), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(43.21), annotation.Issues[1].ConfidenceScore)
 
 	//test that it can update old executions
 	h.annotation = &restModel.APITaskAnnotation{
@@ -723,6 +723,99 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 1)
 	require.NoError(t, err)
 	assert.Equal(t, "task-1-note_1_updated", annotation.Note.Message)
+}
+
+func TestBulkCreateAnnotationHandler(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(annotations.Collection))
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
+
+	h := &bulkPatchAnnotationHandler{
+		opts: bulkCreateAnnotationsOpts{
+			TaskUpdates: []annotations.TaskUpdate{
+				{
+					Annotation: annotations.TaskAnnotation{
+						Issues: []annotations.IssueLink{
+							{
+								URL:             "issuelink.com",
+								ConfidenceScore: -12.000000,
+							},
+							{
+								URL:             "https://issuelink.com/ticket",
+								ConfidenceScore: 112.000000,
+							},
+						},
+						SuspectedIssues: []annotations.IssueLink{
+							{
+								URL: "https://issuelinkcom",
+							},
+						},
+					},
+					TaskData: []annotations.TaskData{
+						{
+							TaskId:    "t1",
+							Execution: 0,
+						},
+						{
+							TaskId:    "t2",
+							Execution: 0,
+						},
+						{
+							TaskId:    "t3",
+							Execution: 0,
+						},
+					},
+				},
+				{
+					Annotation: annotations.TaskAnnotation{
+						Issues: []annotations.IssueLink{
+							{
+								URL:             "anotherissuelink.com",
+								ConfidenceScore: -15.000000,
+							},
+							{
+								URL:             "https://anotherissuelink.com/ticket",
+								ConfidenceScore: 103.000000,
+							},
+						},
+						SuspectedIssues: []annotations.IssueLink{
+							{
+								URL: "https://anotherissuelinkcom",
+							},
+						},
+					},
+					TaskData: []annotations.TaskData{
+						{
+							TaskId:    "t1",
+							Execution: 1,
+						},
+						{
+							TaskId:    "t2",
+							Execution: 1,
+						},
+						{
+							TaskId:    "t1",
+							Execution: 2,
+						},
+					},
+				},
+			},
+		},
+		user: &user.DBUser{Id: "test_annotation_user"},
+	}
+	resp := h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	taskAnnotations, err := annotations.FindByTaskIds([]string{"t1", "t2", "t3"})
+	assert.NoError(t, err)
+	assert.Len(t, taskAnnotations, 6)
+
+	// ensure re-running the same annotations does not cause an error
+	resp = h.Run(ctx)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	taskAnnotations, err = annotations.FindByTaskIds([]string{"t1", "t2", "t3"})
+	assert.NoError(t, err)
+	assert.Len(t, taskAnnotations, 6)
 }
 
 // test created tickets route

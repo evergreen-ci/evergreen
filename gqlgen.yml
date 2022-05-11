@@ -60,6 +60,8 @@ models:
   Task:
     model: github.com/evergreen-ci/evergreen/rest/model.APITask
     fields:
+      ami:
+        resolver: true
       annotation:
         resolver: true
       baseTaskMetadata:
@@ -77,6 +79,8 @@ models:
       executionTasksFull:
         resolver: true
       patchMetadata:
+        resolver: true
+      projectIdentifier:
         resolver: true
       reliesOn:
         resolver: true
@@ -327,6 +331,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
+  TaskStats:
+    model: github.com/evergreen-ci/evergreen/model/task.TaskStats
   GroupedTaskStatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
   TaskLogs:

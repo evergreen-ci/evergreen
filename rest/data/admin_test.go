@@ -102,6 +102,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// read the settings and spot check values
 	settingsFromConnector, err := evergreen.GetConfig()
 	s.Require().NoError(err)
+	s.EqualValues(testSettings.DisabledGQLQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
@@ -156,7 +157,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.GenerateTasksExperimentDisabled, settingsFromConnector.ServiceFlags.GenerateTasksExperimentDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
@@ -206,6 +206,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 
 	// test that updating the model with nil values does not change them
 	newBanner := "new banner"
+	newDisabledQueries := []string{"DisabledGQLOperationName"}
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostInit := restModel.APIHostInitConfig{
 		HostThrottle:         64,
@@ -215,9 +216,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		S3BaseURL:            utility.ToStringPtr("new_s3_base_url"),
 	}
 	updatedSettings := restModel.APIAdminSettings{
-		Banner:     &newBanner,
-		Expansions: newExpansions,
-		HostInit:   &newHostInit,
+		Banner:             &newBanner,
+		Expansions:         newExpansions,
+		HostInit:           &newHostInit,
+		DisabledGQLQueries: newDisabledQueries,
 	}
 	oldSettings, err = evergreen.GetConfig()
 	s.NoError(err)
@@ -227,6 +229,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
+	s.EqualValues(newDisabledQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(newExpansions, settingsFromConnector.Expansions)
 	s.EqualValues(newHostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(newHostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
@@ -278,7 +281,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.GenerateTasksExperimentDisabled, settingsFromConnector.ServiceFlags.GenerateTasksExperimentDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ContainerConfigurationsDisabled, settingsFromConnector.ServiceFlags.ContainerConfigurationsDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)

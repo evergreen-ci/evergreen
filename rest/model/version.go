@@ -30,6 +30,7 @@ type APIVersion struct {
 	Requester          *string        `json:"requester"`
 	Errors             []*string      `json:"errors"`
 	Activated          *bool          `json:"activated"`
+	Aborted            *bool          `json:"aborted"`
 }
 
 type buildDetail struct {
@@ -60,6 +61,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	apiVersion.Requester = utility.ToStringPtr(v.Requester)
 	apiVersion.Errors = utility.ToStringPtrSlice(v.Errors)
 	apiVersion.Activated = v.Activated
+	apiVersion.Aborted = utility.ToBoolPtr(v.Aborted)
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {

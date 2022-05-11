@@ -69,23 +69,13 @@ func (so *SpawnOptions) validate(settings *evergreen.Settings) error {
 	}
 
 	// validate public key
-	rsa := "ssh-rsa"
-	dss := "ssh-dss"
-	isRSA := strings.HasPrefix(so.PublicKey, rsa)
-	isDSS := strings.HasPrefix(so.PublicKey, dss)
-	if !isRSA && !isDSS {
-		return errors.Errorf("Invalid spawn options: "+
-			"either an invalid Evergreen-managed key name has been provided,"+
-			"or the key value does not start with %s or %s", rsa, dss)
+	if err = evergreen.ValidateSSHKey(so.PublicKey); err != nil {
+		return errors.Wrap(err, "Invalid spawn options")
 	}
 
 	sections := strings.Split(so.PublicKey, " ")
 	if len(sections) < 2 {
-		keyType := rsa
-		if sections[0] == dss {
-			keyType = dss
-		}
-		return errors.Errorf("Invalid spawn options: missing space after '%s'", keyType)
+		return errors.Errorf("Invalid spawn options: missing space in key")
 	}
 
 	// check for valid base64

@@ -98,11 +98,11 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 
 	modifyCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
-			event.LogHostModifyFinished(h.Id, false)
-			return errors.Wrapf(err, "modifying spawn host '%s'", h.Id)
+			event.LogHostModifyError(h.Id, err.Error())
+			return errors.Wrap(err, "modifying spawn host")
 		}
 
-		event.LogHostModifyFinished(h.Id, true)
+		event.LogHostModifySucceeded(h.Id)
 		return nil
 	}
 	if err := j.CloudHostModification.modifyHost(ctx, modifyCloudHost); err != nil {

@@ -64,7 +64,7 @@ func FindByTaskId(id string) ([]TaskAnnotation, error) {
 	return Find(db.Query(ByTaskId(id)))
 }
 
-// Insert writes the task_annotation to the database.
+// Upsert writes the task_annotation to the database.
 func (a *TaskAnnotation) Upsert() error {
 	set := bson.M{
 		NoteKey:            a.Note,

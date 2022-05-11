@@ -98,7 +98,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 	}
 
 	if active {
-		if err := task.ActivateTasks(tasksToActivate, time.Now(), caller); err != nil {
+		if err := task.ActivateTasks(tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
 		versionIdsToActivate := []string{}
@@ -109,7 +109,7 @@ func SetActiveState(caller string, active bool, tasks ...task.Task) error {
 			return errors.Wrap(err, "marking version as activated")
 		}
 	} else {
-		if err := task.DeactivateTasks(tasksToActivate, caller); err != nil {
+		if err := task.DeactivateTasks(tasksToActivate, true, caller); err != nil {
 			return errors.Wrap(err, "deactivating task")
 		}
 	}
@@ -518,13 +518,25 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "marking task finished")
 	}
 
-	if err = UpdateUnblockedDependencies(t, true, "MarkEnd"); err != nil {
+	unblockedIds, err := UpdateUnblockedDependencies(t)
+	if err != nil {
 		return errors.Wrap(err, "updating unblocked dependencies")
 	}
-
-	if err = UpdateBlockedDependencies(t); err != nil {
+	blockedIds, err := UpdateBlockedDependencies(t)
+	if err != nil {
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
+
+	permanentlyUnblockedIds, _ := utility.StringSliceSymmetricDifference(unblockedIds, blockedIds)
+	// The question to determine here is: do we ever unblock dependencies that don't immediately get re-blocked?
+	grip.DebugWhen(len(permanentlyUnblockedIds) > 0, message.Fields{
+		"message":                   "unblocked dependent tasks",
+		"ticket":                    "EVG-12923",
+		"is_task_group":             t.IsPartOfSingleHostTaskGroup(),
+		"permanently_unblocked_ids": permanentlyUnblockedIds,
+		"task":                      t.Id,
+		"caller":                    caller,
+	})
 
 	if err = t.MarkDependenciesFinished(true); err != nil {
 		return errors.Wrap(err, "updating dependency met status")
@@ -581,74 +593,50 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets each
 // parent dependency as unattainable in depending tasks.
-func UpdateBlockedDependencies(t *task.Task) error {
-	const maxStackTraceSize = 5
+// Returns a list of modified task IDs.
+func UpdateBlockedDependencies(t *task.Task) ([]string, error) {
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
-		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
+		return nil, errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
-	if t.IsPartOfSingleHostTaskGroup() && len(dependentTasks) > 0 {
-		depTaskIds := []string{}
-		for _, depTask := range dependentTasks {
-			depTaskIds = append(depTaskIds, depTask.Id)
-		}
-		stack := message.NewStack(2, "").Raw().(message.StackTrace).Frames
-		if len(stack) > maxStackTraceSize {
-			stack = stack[:maxStackTraceSize-1]
-		}
-		grip.Info(message.Fields{
-			"message":                       "blocked task group dependent tasks",
-			"ticket":                        "EVG-12923",
-			"task":                          t.Id,
-			"execution":                     t.Execution,
-			"num_dependent_tasks_to_update": len(dependentTasks),
-			"dependent_task_ids_to_update":  depTaskIds,
-			"stack":                         stack,
-		})
-	}
-
+	depTaskIds := []string{}
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
-			return errors.Wrap(err, "marking dependency unattainable")
+			return nil, errors.Wrap(err, "marking dependency unattainable")
 		}
-		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
-			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
+		innerDepTaskIds, err := UpdateBlockedDependencies(&dependentTask)
+		if err != nil {
+			return nil, errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
+		depTaskIds = append(depTaskIds, dependentTask.Id)
+		depTaskIds = append(depTaskIds, innerDepTaskIds...)
 	}
-	return nil
+	return depTaskIds, nil
 }
 
-func UpdateUnblockedDependencies(t *task.Task, logIDs bool, caller string) error {
+// UpdateUnblockedDependencies recursively marks all unattainable dependencies as attainable, and
+// returns a list of modified tasks IDs.
+func UpdateUnblockedDependencies(t *task.Task) ([]string, error) {
 	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
-		return errors.Wrap(err, "getting dependencies marked unattainable")
+		return nil, errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
-	if logIDs && t.IsPartOfSingleHostTaskGroup() && len(blockedTasks) > 0 {
-		blockedTaskIds := []string{}
-		for _, blockedTask := range blockedTasks {
-			blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
-		}
-		grip.Debug(message.Fields{
-			"message":          "unblocked task group dependent tasks",
-			"ticket":           "EVG-12923",
-			"blocked_task_ids": blockedTaskIds,
-			"task":             t.Id,
-			"caller":           caller,
-		})
-	}
-
+	blockedTaskIds := []string{}
 	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
-			return errors.Wrap(err, "marking dependency attainable")
+			return nil, errors.Wrap(err, "marking dependency attainable")
 		}
-		if err = UpdateUnblockedDependencies(&blockedTask, logIDs, caller); err != nil {
-			return errors.WithStack(err)
+		innerBlockedTaskIds, err := UpdateUnblockedDependencies(&blockedTask)
+		if err != nil {
+			return nil, errors.WithStack(err)
 		}
+		blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
+		blockedTaskIds = append(blockedTaskIds, innerBlockedTaskIds...)
 	}
 
-	return nil
+	return blockedTaskIds, nil
 }
 
 func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, caller string) error {
@@ -934,12 +922,15 @@ func UpdateBuildStatus(b *build.Build) (bool, error) {
 
 	// only need to check aborted if status has changed
 	isAborted := false
+	var taskStatuses []string
 	for _, t := range buildTasks {
 		if t.Aborted {
 			isAborted = true
-			break
+		} else {
+			taskStatuses = append(taskStatuses, t.Status)
 		}
 	}
+	isAborted = len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 && isAborted
 	if isAborted != b.Aborted {
 		if err = b.SetAborted(isAborted); err != nil {
 			return false, errors.Wrapf(err, "setting build '%s' as aborted", b.Id)
@@ -1021,13 +1012,18 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 
 // Update the status of the version based on its constituent builds
 func UpdateVersionStatus(v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey, build.IsGithubCheckKey, build.AbortedKey))
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.ActivatedKey, build.StatusKey,
+		build.IsGithubCheckKey, build.GithubCheckStatusKey, build.AbortedKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
 
-	versionStatus := getVersionStatus(builds)
+	// Regardless of whether the overall version status has changed, the Github status subset may have changed.
+	if err = updateVersionGithubStatus(v, builds); err != nil {
+		return "", errors.Wrap(err, "updating version GitHub status")
+	}
 
+	versionStatus := getVersionStatus(builds)
 	if versionStatus == v.Status {
 		return versionStatus, nil
 	}
@@ -1056,10 +1052,6 @@ func UpdateVersionStatus(v *Version) (string, error) {
 		if err = v.UpdateStatus(versionStatus); err != nil {
 			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 		}
-	}
-
-	if err = updateVersionGithubStatus(v, builds); err != nil {
-		return "", errors.Wrap(err, "updating version GitHub status")
 	}
 
 	return versionStatus, nil
@@ -1275,7 +1267,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
-	if err := UpdateUnblockedDependencies(t, logIDs, "MarkOneTaskReset"); err != nil {
+	if _, err := UpdateUnblockedDependencies(t); err != nil {
 		return errors.Wrap(err, "clearing cached unattainable dependencies")
 	}
 
@@ -1304,7 +1296,8 @@ func MarkTasksReset(taskIds []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		catcher.Wrapf(UpdateUnblockedDependencies(&t, false, ""), "clearing cached unattainable dependencies for task '%s'", t.Id)
+		_, err = UpdateUnblockedDependencies(&t)
+		catcher.Wrapf(err, "clearing cached unattainable dependencies for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
@@ -1425,20 +1418,8 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return nil
 	}
 
-	if err = h.ClearRunningTask(); err != nil {
-		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
-	}
-
-	if t.IsFinished() {
-		return nil
-	}
-
-	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
-		return errors.Wrap(err, "marking task failed")
-	}
-
 	// For a single-host task group, block and dequeue later tasks in that group.
-	if t.IsPartOfSingleHostTaskGroup() {
+	if t.IsPartOfSingleHostTaskGroup() && t.Status != evergreen.TaskSucceeded {
 		if err = BlockTaskGroupTasks(t.Id); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem blocking task group tasks",
@@ -1450,6 +1431,18 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 			"message": "blocked task group tasks for task",
 			"task_id": t.Id,
 		})
+	}
+
+	if err = h.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
+	}
+
+	if t.IsFinished() {
+		return nil
+	}
+
+	if err = t.MarkSystemFailed(evergreen.TaskDescriptionStranded); err != nil {
+		return errors.Wrap(err, "marking task failed")
 	}
 
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {

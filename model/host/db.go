@@ -643,26 +643,6 @@ func ByRunningTaskId(taskId string) db.Q {
 	return db.Query(bson.D{{Key: RunningTaskKey, Value: taskId}})
 }
 
-// ByDynamicWithinTime is a query that returns all dynamic hosts running between a certain time and another time.
-func ByDynamicWithinTime(startTime, endTime time.Time) db.Q {
-	return db.Query(
-		bson.M{
-			"$or": []bson.M{
-				bson.M{
-					CreateTimeKey:      bson.M{"$lt": endTime},
-					TerminationTimeKey: bson.M{"$gt": startTime},
-					ProviderKey:        bson.M{"$ne": evergreen.HostTypeStatic},
-				},
-				bson.M{
-					CreateTimeKey:      bson.M{"$lt": endTime},
-					TerminationTimeKey: utility.ZeroTime,
-					StatusKey:          evergreen.HostRunning,
-					ProviderKey:        bson.M{"$ne": evergreen.HostTypeStatic},
-				},
-			},
-		})
-}
-
 var AllStatic = db.Query(
 	bson.M{
 		ProviderKey: evergreen.HostTypeStatic,
@@ -983,7 +963,7 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 	}
 
 	for _, id := range ids {
-		event.LogHostStartFinished(id, false)
+		event.LogHostStartError(id, "stale building host took too long to start")
 	}
 
 	return nil

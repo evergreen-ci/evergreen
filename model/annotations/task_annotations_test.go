@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestGetLatestExecutions(t *testing.T) {
 
 func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
-	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float32(91.23)}
+	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "annie.black"))
 
 	annotation, err := FindOneByTaskIdAndExecution("t1", 0)
@@ -55,7 +56,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation.Issues[0].Source)
 	assert.Equal(t, UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
-	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue, "not.annie.black"))
 	annotation, err = FindOneByTaskIdAndExecution("t1", 0)
@@ -63,7 +64,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.Issues, 2)
 	assert.NotNil(t, annotation.Issues[1].Source)
-	assert.Equal(t, float32(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
 }
 
@@ -158,4 +159,62 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	require.Len(t, annotationFromDB.Issues, 2)
 	assert.Equal(t, "different user", annotationFromDB.Issues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
+}
+
+func TestPatchIssue(t *testing.T) {
+	assert.NoError(t, db.Clear(Collection))
+	issue1 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
+	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue1, "bynn.lee"))
+	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
+	a := TaskAnnotation{TaskId: "t1", TaskExecution: 0, SuspectedIssues: []IssueLink{issue2}}
+	assert.NoError(t, PatchAnnotation(&a, "not bynn", true))
+
+	annotation, err := FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Len(t, annotation.Issues, 1)
+	assert.NotNil(t, annotation.Issues[0].Source)
+	assert.Equal(t, UIRequester, annotation.Issues[0].Source.Requester)
+	assert.Equal(t, "bynn.lee", annotation.Issues[0].Source.Author)
+	assert.Equal(t, "EVG-1234", annotation.Issues[0].IssueKey)
+	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
+	assert.Len(t, annotation.SuspectedIssues, 1)
+	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
+	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)
+	assert.Equal(t, "not bynn", annotation.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "EVG-2345", annotation.SuspectedIssues[0].IssueKey)
+
+	issue3 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456"}
+	insert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, SuspectedIssues: []IssueLink{issue3}}
+	assert.NoError(t, PatchAnnotation(&insert, "insert", true))
+	annotation, err = FindOneByTaskIdAndExecution(insert.TaskId, insert.TaskExecution)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Len(t, annotation.SuspectedIssues, 1)
+	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
+	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)
+	assert.Equal(t, "insert", annotation.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
+
+	upsert := TaskAnnotation{TaskId: "t1", TaskExecution: 2, Note: &Note{Message: "should work"}, SuspectedIssues: []IssueLink{issue3}}
+	assert.NoError(t, PatchAnnotation(&upsert, "upsert", true))
+	annotation, err = FindOneByTaskIdAndExecution(upsert.TaskId, upsert.TaskExecution)
+	assert.NoError(t, err)
+	assert.NotNil(t, annotation)
+	assert.NotEqual(t, annotation.Id, "")
+	assert.Len(t, annotation.SuspectedIssues, 1)
+	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
+	assert.Equal(t, APIRequester, annotation.SuspectedIssues[0].Source.Requester)
+	assert.Equal(t, "upsert", annotation.SuspectedIssues[0].Source.Author)
+	assert.Equal(t, "EVG-3456", annotation.SuspectedIssues[0].IssueKey)
+	assert.NotNil(t, annotation.Note)
+	assert.Equal(t, "should work", annotation.Note.Message)
+
+	badInsert := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Note: &Note{Message: "shouldn't work"}}
+	assert.Error(t, PatchAnnotation(&badInsert, "error out ", true))
+
+	badInsert2 := TaskAnnotation{TaskId: "t1", TaskExecution: 1, Metadata: &birch.Document{}}
+	assert.Error(t, PatchAnnotation(&badInsert2, "error out ", false))
 }
