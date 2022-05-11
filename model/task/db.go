@@ -784,13 +784,14 @@ func isContainerTaskScheduledQuery() bson.M {
 }
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
-// associated with a given project and commit hash.
-func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string, limit int) []bson.M {
+// associated with a given project and commit hash. Filtering by task status, task name, and
+// buildvariant name are optionally available.
+func TasksByProjectAndCommitPipeline(projectId, commitHash, startingTask, taskStatus, variant, taskName string, limit int) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:  projectId,
 			RevisionKey: commitHash,
-			IdKey:       bson.M{"$gte": taskId},
+			IdKey:       bson.M{"$gte": startingTask},
 		}},
 	}
 	if taskStatus != "" {
@@ -798,6 +799,18 @@ func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus s
 			"$match": bson.M{StatusKey: taskStatus},
 		}
 		pipeline = append(pipeline, statusMatch)
+	}
+	if variant != "" {
+		variantMatch := bson.M{
+			"$match": bson.M{BuildVariantKey: variant},
+		}
+		pipeline = append(pipeline, variantMatch)
+	}
+	if taskName != "" {
+		taskNameMatch := bson.M{
+			"$match": bson.M{DisplayNameKey: taskName},
+		}
+		pipeline = append(pipeline, taskNameMatch)
 	}
 	if limit > 0 {
 		limitStage := bson.M{

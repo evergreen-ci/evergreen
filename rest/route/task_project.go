@@ -15,6 +15,8 @@ import (
 type tasksByProjectHandler struct {
 	project    string
 	commitHash string
+	taskName   string
+	variant    string
 	status     string
 	limit      int
 	key        string
@@ -31,13 +33,18 @@ func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
 	return &tasksByProjectHandler{url: tph.url}
 }
 
-// ParseAndValidate fetches the project context and task status from the request
+// Parse fetches the project context and task status from the request
 // and loads them into the arguments to be used by the execution.
 func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
+	vals := r.URL.Query()
+
 	tph.project = vars["project_id"]
 	tph.commitHash = vars["commit_hash"]
-	tph.status = r.URL.Query().Get("status")
+	tph.status = vals.Get("status")
+	tph.key = vals.Get("start_at")
+	tph.variant = vals.Get("variant")
+	tph.taskName = vals.Get("task_name")
 
 	if tph.project == "" {
 		return gimlet.ErrorResponse{
@@ -53,10 +60,6 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 		}
 	}
 
-	vals := r.URL.Query()
-
-	tph.key = vals.Get("start_at")
-
 	var err error
 	tph.limit, err = getLimit(vals)
 	if err != nil {
@@ -67,7 +70,7 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, err := data.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.limit+1)
+	tasks, err := data.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.variant, tph.taskName, tph.limit+1)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}

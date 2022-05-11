@@ -44,7 +44,7 @@ func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) 
 // FindTasksByProjectAndCommit is a method to find a set of tasks which ran as part of
 // certain version in a project. It takes the projectId, commit hash, and a taskId
 // for paginating through the results.
-func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, limit int) ([]task.Task, error) {
+func FindTasksByProjectAndCommit(project, commitHash, taskId, status, variant, taskName string, limit int) ([]task.Task, error) {
 	projectId, err := model.GetIdForProject(project)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -53,7 +53,7 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status string, lim
 		}
 	}
 
-	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, limit)
+	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, variant, taskName, limit)
 
 	res := []task.Task{}
 	err = task.Aggregate(pipeline, &res)
