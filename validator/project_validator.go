@@ -1829,12 +1829,12 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 			}
 		}
 
-		// PatchOptional dependencies are skipped when the edge.From task is running on a patch.
+		// PatchOptional dependencies are skipped when the fromTaskUnit task is running on a patch.
 		if edgeInfo.PatchOptional && !(fromTaskUnit.SkipOnPatchBuild() || fromTaskUnit.SkipOnNonGitTagBuild()) {
 			return false
 		}
 
-		// The dependency is skipped if edge.To doesn't run on all the same requester types that edge.From runs on.
+		// The dependency is skipped if toTaskUnit doesn't run on all the same requester types that fromTaskUnit runs on.
 		for _, rType := range evergreen.AllRequesterTypes {
 			if !fromTaskUnit.SkipOnRequester(rType) && toTaskUnit.SkipOnRequester(rType) {
 				return false
