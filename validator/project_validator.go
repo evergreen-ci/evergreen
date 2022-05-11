@@ -1829,14 +1829,16 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 			}
 		}
 
-		if fromTaskUnit.RunsOnPatches() && (!toTaskUnit.RunsOnPatches() || edgeInfo.PatchOptional) {
+		// PatchOptional dependencies are skipped when the edge.From task is running on a patch.
+		if edgeInfo.PatchOptional && !(fromTaskUnit.SkipOnPatchBuild() || fromTaskUnit.SkipOnNonGitTagBuild()) {
 			return false
 		}
-		if fromTaskUnit.RunsOnNonPatches() && !toTaskUnit.RunsOnNonPatches() {
-			return false
-		}
-		if fromTaskUnit.RunsOnGitTag() && !toTaskUnit.RunsOnGitTag() {
-			return false
+
+		// The dependency is skipped if edge.To doesn't run on all the same requester types that edge.From runs on.
+		for _, rType := range evergreen.AllRequesterTypes {
+			if !fromTaskUnit.SkipOnRequester(rType) && toTaskUnit.SkipOnRequester(rType) {
+				return false
+			}
 		}
 
 		// If statuses is specified we need to check the edge's status when the edge points to the target node.
@@ -1849,15 +1851,19 @@ func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses 
 
 	if found := g.DepthFirstSearch(startNode, targetNode, traversal); !found {
 		dependentBVTask := tvTaskUnitMap[dependentTask]
+		runsOnPatches := !(dependentBVTask.SkipOnPatchBuild() || dependentBVTask.SkipOnNonGitTagBuild())
+		runsOnNonPatches := !(dependentBVTask.SkipOnNonPatchBuild() || dependentBVTask.SkipOnNonGitTagBuild())
+		runsOnGitTag := !(dependentBVTask.SkipOnNonPatchBuild() || dependentBVTask.SkipOnGitTagBuild())
+
 		errMsg := "task '%s' in build variant '%s' must depend on" +
 			" task '%s' in build variant '%s' completing"
-		if dependentBVTask.RunsOnPatches() && dependentBVTask.RunsOnNonPatches() {
+		if runsOnPatches && runsOnNonPatches {
 			errMsg += " for both patches and non-patches"
-		} else if dependentBVTask.RunsOnPatches() {
+		} else if runsOnPatches {
 			errMsg += " for patches"
-		} else if dependentBVTask.RunsOnNonPatches() {
+		} else if runsOnNonPatches {
 			errMsg += " for non-patches"
-		} else if dependentBVTask.RunsOnGitTag() {
+		} else if runsOnGitTag {
 			errMsg += " for git-tag builds"
 		}
 		errMsg = fmt.Sprintf(errMsg, dependentTask.TaskName, dependentTask.Variant, dependedOnTask.TaskName, dependedOnTask.Variant)

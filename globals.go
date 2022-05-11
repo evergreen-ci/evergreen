@@ -512,6 +512,16 @@ const (
 	AdHocRequester              = "ad_hoc"
 )
 
+var AllRequesterTypes = []string{
+	PatchVersionRequester,
+	GithubPRRequester,
+	GitTagRequester,
+	RepotrackerVersionRequester,
+	TriggerRequester,
+	MergeTestRequester,
+	AdHocRequester,
+}
+
 // Constants related to requester types.
 var (
 	SystemVersionRequesterTypes = []string{
@@ -783,10 +793,6 @@ func IsSystemActivator(caller string) bool {
 
 func IsPatchRequester(requester string) bool {
 	return requester == PatchVersionRequester || IsGitHubPatchRequester(requester)
-}
-
-func IsNonPatchRequester(requester string) bool {
-	return utility.StringSliceContains([]string{RepotrackerVersionRequester, TriggerRequester, MergeTestRequester, AdHocRequester}, requester)
 }
 
 func IsGitHubPatchRequester(requester string) bool {
