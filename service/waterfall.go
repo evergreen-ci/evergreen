@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -625,11 +626,15 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		uis.ProjectNotFound(w, r)
 		return
 	}
-
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)
+	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		JiraHost string
+		NewUILink string
+		JiraHost  string
 		ViewData
-	}{uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
+	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
 func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {
