@@ -3323,6 +3323,14 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
+func (t *Task) toTaskNode() TaskNode {
+	return TaskNode{
+		Name:    t.DisplayName,
+		Variant: t.BuildVariant,
+		ID:      t.Id,
+	}
+}
+
 func AnyActiveTasks(tasks []Task) bool {
 	for _, t := range tasks {
 		if t.Activated {
