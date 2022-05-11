@@ -82,13 +82,12 @@ func (s *BackgroundSuite) TestTaskAbort() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	heartbeat := make(chan string)
+	start := time.Now()
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
-	select {
-	case beat := <-heartbeat:
-		s.Equal(evergreen.TaskFailed, beat)
-	case <-ctx.Done():
-		s.FailNow("heartbeat context errored before it could send a value back")
-	}
+	beat := <-heartbeat
+	end := time.Now()
+	s.Equal(evergreen.TaskFailed, beat)
+	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
 
 func (s *BackgroundSuite) TestMaxHeartbeats() {
@@ -97,13 +96,12 @@ func (s *BackgroundSuite) TestMaxHeartbeats() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	heartbeat := make(chan string)
+	start := time.Now()
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
-	select {
-	case beat := <-heartbeat:
-		s.Equal(evergreen.TaskFailed, beat)
-	case <-ctx.Done():
-		s.FailNow("heartbeat context errored before it could send a value back")
-	}
+	beat := <-heartbeat
+	end := time.Now()
+	s.Equal(evergreen.TaskFailed, beat)
+	s.True(end.Sub(start) < time.Second) // canceled before context expired
 }
 
 func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
@@ -112,29 +110,12 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	heartbeat := make(chan string)
+	start := time.Now()
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
-	select {
-	case _ = <-heartbeat:
-		s.FailNow("heartbeat should never receive signal when abort value remains false - timeout should have occurred.")
-	case <-ctx.Done():
-		beat := <-heartbeat
-		s.Equal(evergreen.TaskFailed, beat)
-	}
-}
-
-func (s *BackgroundSuite) TestHeartbeatFailsOnTaskConflict() {
-	s.mockCommunicator.HeartbeatShouldConflict = true
-	s.a.opts.HeartbeatInterval = time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	heartbeat := make(chan string)
-	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
-	select {
-	case beat := <-heartbeat:
-		s.Equal(evergreen.TaskFailed, beat)
-	case <-ctx.Done():
-		s.FailNow("heartbeat context errored before it could send a value back")
-	}
+	beat := <-heartbeat
+	end := time.Now()
+	s.Equal(evergreen.TaskFailed, beat)
+	s.True(end.Sub(start) >= time.Second) // canceled by context
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
