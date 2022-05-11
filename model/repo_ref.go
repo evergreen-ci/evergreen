@@ -41,7 +41,7 @@ func (r *RepoRef) Add(creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "upserting repo ref")
 	}
-	return r.AddPermissions(creator)
+	return r.addPermissions(creator)
 }
 
 // Insert is included here so ProjectRef.Insert() isn't mistakenly used.
@@ -92,7 +92,9 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 	}))
 }
 
-func (r *RepoRef) AddPermissions(creator *user.DBUser) error {
+// addPermissions adds the repo ref to the general scope and gives the inputted creator admin permissions
+// for the repo and branches, and gives branch admins permission to view the repo.
+func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 
 	adminScope := gimlet.Scope{
@@ -288,10 +290,12 @@ func GetRepoAdminScope(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
 }
 
+// GetRepoAdminRole returns the repo admin role ID for the given repo.
 func GetRepoAdminRole(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
 }
 
+// GetViewRepoRole returns the role ID to view the given repo.
 func GetViewRepoRole(repoId string) string {
 	return fmt.Sprintf("view_repo_%s", repoId)
 }
