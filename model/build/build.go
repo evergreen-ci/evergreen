@@ -198,7 +198,7 @@ func (b *Build) SetAllTasksBlocked(blocked bool) error {
 	b.AllTasksBlocked = blocked
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
-		bson.M{"$set": bson.M{BlockedKey: blocked}},
+		bson.M{"$set": bson.M{AllTasksBlockedKey: blocked}},
 	)
 }
 

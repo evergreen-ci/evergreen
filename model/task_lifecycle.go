@@ -852,7 +852,7 @@ func updateMakespans(b *build.Build, buildTasks []task.Task) error {
 // getBuildStatus returns a string denoting the status of the build and
 // a boolean denoting if all tasks in the build are blocked.
 func getBuildStatus(buildTasks []task.Task) (string, bool) {
-	// Check if no tasks have started in the build.
+	// Check if no tasks have started and if all tasks are blocked.
 	noStartedTasks := true
 	allTasksBlocked := true
 	for _, t := range buildTasks {
@@ -914,8 +914,8 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 	return b.UpdateGithubCheckStatus(githubBuildStatus)
 }
 
-// updateBuildStatus updates the status of the build based on its tasks' statuses.
-// Returns true if the build's status has changed.
+// updateBuildStatus updates the status of the build based on its tasks' statuses
+// Returns true if the build's status has changed or if all of the build's tasks become blocked.
 func updateBuildStatus(b *build.Build) (bool, error) {
 	buildTasks, err := task.FindWithFields(task.ByBuildId(b.Id), task.StatusKey, task.ActivatedKey, task.DependsOnKey, task.IsGithubCheckKey, task.AbortedKey)
 	if err != nil {
@@ -987,10 +987,7 @@ func getVersionStatus(builds []build.Build) string {
 
 	// Check if builds are started but not finished.
 	for _, b := range builds {
-		if b.AllTasksBlocked {
-			continue
-		}
-		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) {
+		if b.Activated && !evergreen.IsFinishedBuildStatus(b.Status) && !b.AllTasksBlocked {
 			return evergreen.VersionStarted
 		}
 	}
