@@ -76,7 +76,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// PATH /builds/{build_id}
+// PATCH /builds/{build_id}
 
 type buildChangeStatusHandler struct {
 	Activated *bool  `json:"activated"`

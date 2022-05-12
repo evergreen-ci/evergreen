@@ -148,6 +148,20 @@ func Patch() cli.Command {
 				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
 
+			if params.Alias != "" {
+				for _, alias := range conf.LocalAliases {
+					if alias.Alias == params.Alias {
+						if alias.Variant != "" {
+							params.RegexVariants = append(params.RegexVariants, alias.Variant)
+						}
+						if alias.Task != "" {
+							params.RegexTasks = append(params.RegexTasks, alias.Task)
+						}
+						params.Alias = ""
+					}
+				}
+			}
+
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			if !params.SkipConfirm {
 				var keepGoing bool

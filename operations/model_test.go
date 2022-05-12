@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -133,7 +134,12 @@ projects:
   default: true
   tasks: 
     - all
-  alias: some-variants`), 0600)
+  alias: some-variants
+local_aliases: 
+- alias: "bynn"
+  variant: ".*"
+  task: ".*"
+`), 0600)
 	assert.NoError(t, err)
 
 	clientSettings, err := NewClientSettings(globalTestConfigPath)
@@ -150,6 +156,13 @@ projects:
 				Default: true,
 				Tasks:   []string{"all"},
 				Alias:   "some-variants",
+			},
+		},
+		LocalAliases: []model.ProjectAlias{
+			model.ProjectAlias{
+				Alias:   "bynn",
+				Task:    ".*",
+				Variant: ".*",
 			},
 		},
 	}, *clientSettings)
@@ -194,6 +207,13 @@ projects_for_directory:
 		},
 		ProjectsForDirectory: map[string]string{
 			"some/directory": "myProj",
+		},
+		LocalAliases: []model.ProjectAlias{
+			model.ProjectAlias{
+				Alias:   "bynn",
+				Task:    ".*",
+				Variant: ".*",
+			},
 		},
 	}, *localClientSettings)
 }

@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
@@ -77,18 +78,19 @@ func isValidPath(path string) bool {
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
-	APIServerHost         string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	UIServerHost          string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
-	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
-	User                  string              `json:"user" yaml:"user,omitempty"`
-	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
-	AutoUpgradeCLI        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
-	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
-	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
-	Admin                 ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
-	LoadedFrom            string              `json:"-" yaml:"-"`
-	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
-	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
+	APIServerHost         string               `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	UIServerHost          string               `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
+	APIKey                string               `json:"api_key" yaml:"api_key,omitempty"`
+	User                  string               `json:"user" yaml:"user,omitempty"`
+	UncommittedChanges    bool                 `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	AutoUpgradeCLI        bool                 `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
+	PreserveCommits       bool                 `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
+	Projects              []ClientProjectConf  `json:"projects" yaml:"projects,omitempty"`
+	Admin                 ClientAdminConf      `json:"admin" yaml:"admin,omitempty"`
+	LoadedFrom            string               `json:"-" yaml:"-"`
+	DisableAutoDefaulting bool                 `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
+	ProjectsForDirectory  map[string]string    `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
+	LocalAliases          []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
