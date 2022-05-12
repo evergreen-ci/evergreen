@@ -85,10 +85,6 @@ func (c *podCommunicator) GetExpansions(ctx context.Context, taskData TaskData) 
 	return nil, errors.New("TODO: implement")
 }
 
-// Heartbeat sends a heartbeat to the API server. The server can respond with
-// an "abort" response. Returning evergreen.TaskFailed signals the agent to abort the task.
-// Returning evergreen.TaskConflict will cancel the task context, returning control to the agent
-// loop so it can ask for a new task.
 func (c *podCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
 	return "", errors.New("TODO: implement")
 }

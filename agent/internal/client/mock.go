@@ -200,8 +200,6 @@ func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expan
 	return e, nil
 }
 
-// Heartbeat returns an empty string, which indicates the heartbeat has succeeded.
-// Returning evergreen.TaskFailed indicates the agent should abort the task.
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil
