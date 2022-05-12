@@ -599,16 +599,17 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	logger.Task().Infof("applying changes from previous commit queue patch '%s'", patchId)
 	newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
 	if err != nil {
-		return errors.Wrap(err, "unable to get additional patch")
+		return errors.Wrap(err, "getting additional patch")
 	}
 	if newPatch == nil {
 		return errors.New("additional patch not found")
 	}
 	if err = c.getPatchContents(ctx, comm, logger, conf, newPatch); err != nil {
-		return errors.Wrap(err, "Failed to get patch contents")
+		return errors.Wrap(err, "getting patch contents")
 	}
 	if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
-		return errors.Wrapf(err, "error applying patch '%s'", newPatch.Id.Hex())
+		logger.Task().Warning("try rebasing to current HEAD")
+		return errors.Wrapf(err, "applying patch '%s'", newPatch.Id.Hex())
 	}
 	logger.Task().Infof("applied changes from previous commit queue patch '%s'", patchId)
 	return nil
