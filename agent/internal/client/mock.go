@@ -50,6 +50,7 @@ type Mock struct {
 	ShellExecFilename           string
 	TimeoutFilename             string
 	HeartbeatShouldAbort        bool
+	HeartbeatShouldConflict     bool
 	HeartbeatShouldErr          bool
 	HeartbeatShouldSometimesErr bool
 	TaskExecution               int
@@ -204,6 +205,9 @@ func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expan
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	if c.HeartbeatShouldAbort {
 		return evergreen.TaskFailed, nil
+	}
+	if c.HeartbeatShouldConflict {
+		return evergreen.TaskConflict, errors.Errorf("Unauthorized - wrong secret")
 	}
 	if c.HeartbeatShouldSometimesErr {
 		if c.HeartbeatShouldErr {
