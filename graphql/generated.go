@@ -1184,6 +1184,7 @@ type ComplexityRoot struct {
 		PreviousVersion   func(childComplexity int) int
 		Project           func(childComplexity int) int
 		ProjectIdentifier func(childComplexity int) int
+		ProjectMetadata   func(childComplexity int) int
 		Repo              func(childComplexity int) int
 		Requester         func(childComplexity int) int
 		Revision          func(childComplexity int) int
@@ -1471,6 +1472,8 @@ type UserResolver interface {
 }
 type VersionResolver interface {
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
+
+	ProjectMetadata(ctx context.Context, obj *model.APIVersion) (*model.APIProjectRef, error)
 
 	TaskStatusCounts(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) ([]*task.StatusCount, error)
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error)
@@ -7225,6 +7228,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.ProjectIdentifier(childComplexity), true
 
+	case "Version.projectMetadata":
+		if e.complexity.Version.ProjectMetadata == nil {
+			break
+		}
+
+		return e.complexity.Version.ProjectMetadata(childComplexity), true
+
 	case "Version.repo":
 		if e.complexity.Version.Repo == nil {
 			break
@@ -7773,6 +7783,7 @@ type Version {
   repo: String!
   project: String!
   projectIdentifier: String!
+  projectMetadata: Project
   branch: String!
   requester: String!
   activated: Boolean
@@ -37386,6 +37397,38 @@ func (ec *executionContext) _Version_projectIdentifier(ctx context.Context, fiel
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Version_projectMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().ProjectMetadata(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIProjectRef)
+	fc.Result = res
+	return ec.marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Version_branch(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -49476,6 +49519,17 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "projectMetadata":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_projectMetadata(ctx, field, obj)
+				return res
+			})
 		case "branch":
 			out.Values[i] = ec._Version_branch(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
