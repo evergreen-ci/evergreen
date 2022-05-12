@@ -86,9 +86,9 @@ func (c *podCommunicator) GetExpansions(ctx context.Context, taskData TaskData) 
 }
 
 // Heartbeat sends a heartbeat to the API server. The server can respond with
-// an "abort" response. This function returns true if the agent should abort.
-func (c *podCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
-	return false, errors.New("TODO: implement")
+// an "abort" response. Returning evergreen.TaskFailed signals the agent to abort the task.
+func (c *podCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
+	return "", errors.New("TODO: implement")
 }
 
 // FetchExpansionVars loads expansions for a communicator's task from the API server.
