@@ -232,8 +232,16 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit() {
 	for pix := 0; pix < s.numProjects; pix++ {
 		for cix := 0; cix < s.numCommits; cix++ {
-			foundTasks, err := FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
-				fmt.Sprintf("commit_%d", cix), "", "", "", "", 0)
+			opts := task.GetTasksByProjectAndCommitOptions{
+				Project:      fmt.Sprintf("project_%d", pix),
+				CommitHash:   fmt.Sprintf("commit_%d", cix),
+				StartingTask: "",
+				Status:       "",
+				TaskName:     "",
+				Variant:      "",
+				Limit:        0,
+			}
+			foundTasks, err := FindTasksByProjectAndCommit(opts)
 			s.NoError(err)
 			s.Equal(s.numTasks, len(foundTasks))
 			for tix, t := range foundTasks {
@@ -244,7 +252,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit()
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
-	foundTests, err := FindTasksByProjectAndCommit("fake_project", "commit_0", "", "", "", "", 0)
+	opts := task.GetTasksByProjectAndCommitOptions{
+		Project:      "fake_project",
+		CommitHash:   "commit_0",
+		StartingTask: "",
+		Status:       "",
+		TaskName:     "",
+		Variant:      "",
+		Limit:        0,
+	}
+	foundTests, err := FindTasksByProjectAndCommit(opts)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
@@ -255,7 +272,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByCommitFail() {
-	foundTests, err := FindTasksByProjectAndCommit("project_0", "fake_commit", "", "", "", "", 0)
+	opts := task.GetTasksByProjectAndCommitOptions{
+		Project:      "project_0",
+		CommitHash:   "fake_commit",
+		StartingTask: "",
+		Status:       "",
+		TaskName:     "",
+		Variant:      "",
+		Limit:        0,
+	}
+	foundTests, err := FindTasksByProjectAndCommit(opts)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
@@ -269,8 +295,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 	for _, status := range []string{"pass", "fail"} {
 		for pix := 0; pix < s.numProjects; pix++ {
 			for cix := 0; cix < s.numCommits; cix++ {
-				foundTasks, err := FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
-					fmt.Sprintf("commit_%d", cix), "", status, "", "", 0)
+				opts := task.GetTasksByProjectAndCommitOptions{
+					Project:      fmt.Sprintf("project_%d", pix),
+					CommitHash:   fmt.Sprintf("commit_%d", cix),
+					StartingTask: "",
+					Status:       status,
+					TaskName:     "",
+					Variant:      "",
+					Limit:        0,
+				}
+				foundTasks, err := FindTasksByProjectAndCommit(opts)
 				s.Nil(err)
 				s.Equal(s.numTasks/2, len(foundTasks))
 				for _, t := range foundTasks {
@@ -285,8 +319,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 	for _, variant := range []string{"bv1", "bv2"} {
 		for pix := 0; pix < s.numProjects; pix++ {
 			for cix := 0; cix < s.numCommits; cix++ {
-				foundTasks, err := FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
-					fmt.Sprintf("commit_%d", cix), "", "", variant, "", 0)
+				opts := task.GetTasksByProjectAndCommitOptions{
+					Project:      fmt.Sprintf("project_%d", pix),
+					CommitHash:   fmt.Sprintf("commit_%d", cix),
+					StartingTask: "",
+					Status:       "",
+					TaskName:     "",
+					Variant:      variant,
+					Limit:        0,
+				}
+				foundTasks, err := FindTasksByProjectAndCommit(opts)
 				s.Nil(err)
 				s.Equal(s.numTasks/2, len(foundTasks))
 				for _, t := range foundTasks {
@@ -301,8 +343,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 	for pix := 0; pix < s.numProjects; pix++ {
 		for cix := 0; cix < s.numCommits; cix++ {
 			for tix := 0; tix < s.numTasks; tix++ {
-				foundTasks, err := FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
-					fmt.Sprintf("commit_%d", cix), "", "", "", fmt.Sprintf("task_%d", tix), 0)
+				opts := task.GetTasksByProjectAndCommitOptions{
+					Project:      fmt.Sprintf("project_%d", pix),
+					CommitHash:   fmt.Sprintf("commit_%d", cix),
+					StartingTask: "",
+					Status:       "",
+					TaskName:     fmt.Sprintf("task_%d", tix),
+					Variant:      "",
+					Limit:        0,
+				}
+				foundTasks, err := FindTasksByProjectAndCommit(opts)
 				s.Nil(err)
 				s.Equal(1, len(foundTasks))
 				for _, t := range foundTasks {
@@ -318,7 +368,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 	projectId := "project_1"
 	tids := s.taskIds[1][1]
 	for i := 0; i < s.numTasks; i++ {
-		foundTasks, err := FindTasksByProjectAndCommit(projectId, commitId, tids[i], "", "", "", 0)
+		opts := task.GetTasksByProjectAndCommitOptions{
+			Project:      projectId,
+			CommitHash:   commitId,
+			StartingTask: tids[i],
+			Status:       "",
+			TaskName:     "",
+			Variant:      "",
+			Limit:        0,
+		}
+		foundTasks, err := FindTasksByProjectAndCommit(opts)
 		s.NoError(err)
 
 		startAt := 0
@@ -333,7 +392,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddleFail() {
-	foundTests, err := FindTasksByProjectAndCommit("project_0", "commit_0", "fake_task", "", "", "", 0)
+	opts := task.GetTasksByProjectAndCommitOptions{
+		Project:      "project_0",
+		CommitHash:   "commit_0",
+		StartingTask: "fake_task",
+		Status:       "",
+		TaskName:     "",
+		Variant:      "",
+		Limit:        0,
+	}
+	foundTests, err := FindTasksByProjectAndCommit(opts)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
@@ -351,7 +419,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 	for i := 0; i < s.numTasks/limit; i++ {
 		index := i * limit
 		taskName := tids[index]
-		foundTasks, err := FindTasksByProjectAndCommit(projectId, commitId, taskName, "", "", "", limit)
+		opts := task.GetTasksByProjectAndCommitOptions{
+			Project:      projectId,
+			CommitHash:   commitId,
+			StartingTask: taskName,
+			Status:       "",
+			TaskName:     "",
+			Variant:      "",
+			Limit:        limit,
+		}
+		foundTasks, err := FindTasksByProjectAndCommit(opts)
 		s.NoError(err)
 		s.Equal(limit, len(foundTasks))
 		for ix, t := range foundTasks {
@@ -363,7 +440,16 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindEmptyProjectAndCommit() {
 	projectId := "project_0"
 	commitId := "commit_0"
-	foundTasks, err := FindTasksByProjectAndCommit(projectId, commitId, "", "", "", "", 1)
+	opts := task.GetTasksByProjectAndCommitOptions{
+		Project:      projectId,
+		CommitHash:   commitId,
+		StartingTask: "",
+		Status:       "",
+		TaskName:     "",
+		Variant:      "",
+		Limit:        1,
+	}
+	foundTasks, err := FindTasksByProjectAndCommit(opts)
 	s.NoError(err)
 	s.Equal(1, len(foundTasks))
 	task1 := foundTasks[0]

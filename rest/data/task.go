@@ -44,8 +44,8 @@ func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) 
 // FindTasksByProjectAndCommit is a method to find a set of tasks which ran as part of
 // certain version in a project. It takes the projectId, commit hash, and a taskId
 // for paginating through the results.
-func FindTasksByProjectAndCommit(project, commitHash, taskId, status, variant, taskName string, limit int) ([]task.Task, error) {
-	projectId, err := model.GetIdForProject(project)
+func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([]task.Task, error) {
+	projectId, err := model.GetIdForProject(opts.Project)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -53,7 +53,7 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status, variant, t
 		}
 	}
 
-	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, variant, taskName, limit)
+	pipeline := task.TasksByProjectAndCommitPipeline(opts)
 
 	res := []task.Task{}
 	err = task.Aggregate(pipeline, &res)
@@ -62,12 +62,12 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status, variant, t
 	}
 	if len(res) == 0 {
 		var message string
-		if status != "" {
+		if opts.Status != "" {
 			message = fmt.Sprintf("task from project '%s' and commit '%s' with status '%s' "+
-				"not found", projectId, commitHash, status)
+				"not found", projectId, opts.CommitHash, opts.Status)
 		} else {
 			message = fmt.Sprintf("task from project '%s' and commit '%s' not found",
-				projectId, commitHash)
+				projectId, opts.CommitHash)
 		}
 		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -75,10 +75,10 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status, variant, t
 		}
 	}
 
-	if taskId != "" {
+	if opts.StartingTask != "" {
 		found := false
 		for _, t := range res {
-			if t.Id == taskId {
+			if t.Id == opts.StartingTask {
 				found = true
 				break
 			}
@@ -86,7 +86,7 @@ func FindTasksByProjectAndCommit(project, commitHash, taskId, status, variant, t
 		if !found {
 			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+				Message:    fmt.Sprintf("task with id '%s' not found", opts.StartingTask),
 			}
 		}
 	}

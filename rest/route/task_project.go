@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -70,7 +71,16 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, err := data.FindTasksByProjectAndCommit(tph.project, tph.commitHash, tph.key, tph.status, tph.variant, tph.taskName, tph.limit+1)
+	opts := task.GetTasksByProjectAndCommitOptions{
+		Project:      tph.project,
+		CommitHash:   tph.commitHash,
+		StartingTask: tph.key,
+		Status:       tph.status,
+		Variant:      tph.variant,
+		TaskName:     tph.taskName,
+		Limit:        tph.limit,
+	}
+	tasks, err := data.FindTasksByProjectAndCommit(opts)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
