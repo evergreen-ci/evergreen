@@ -28,6 +28,9 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 			signalBeat, err = a.doHeartbeat(ctx, tc)
 			if signalBeat == evergreen.TaskConflict {
 				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task")
+				if err != nil {
+					tc.logger.Task().Error(err.Error())
+				}
 				cancel()
 			}
 			if signalBeat == evergreen.TaskFailed {
@@ -56,7 +59,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
 	resp, err := a.comm.Heartbeat(ctx, tc.task)
 	if resp == evergreen.TaskFailed || resp == evergreen.TaskConflict {
-		return resp, nil
+		return resp, err
 	}
 	return "", err
 }
