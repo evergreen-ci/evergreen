@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"sync"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -27,8 +26,7 @@ type PrestoConfig struct {
 	Schema            string            `bson:"schema" json:"schema" yaml:"schema"`
 	SessionProperties map[string]string `bson:"session_properties" json:"session_properties" yaml:"session_properties"`
 
-	mu sync.Mutex `bson:"mu" json:"mu" yaml:"mu"`
-	db *sql.DB    `bson:"db" json:"db" yaml:"db"`
+	db *sql.DB
 }
 
 var (
@@ -81,12 +79,7 @@ func (c *PrestoConfig) Set() error {
 
 func (*PrestoConfig) ValidateAndDefault() error { return nil }
 
-func (c *PrestoConfig) DB() *sql.DB {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return c.db
-}
+func (c *PrestoConfig) DB() *sql.DB { return c.db }
 
 func (c *PrestoConfig) setupDB() error {
 	dsnConfig := presto.Config{
