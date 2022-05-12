@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"testing"
 	"time"
 
@@ -222,7 +221,6 @@ func TestPrestoTestStatsFilterGenerateQuery(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, expectedQuery.String(), query)
 				assert.Equal(t, expectedArgs, args)
-				fmt.Println(query)
 			}
 		})
 	}
@@ -264,7 +262,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 				Date:            utility.GetUTCDay(now).Add(-5 * 24 * time.Hour),
 				NumPass:         5,
 				NumFail:         1,
-				AvgDurationPass: 5000000,
+				AvgDurationPass: (10 * time.Minute).Seconds(),
 			},
 			{
 				TestFile:        "test2",
@@ -273,7 +271,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 				Date:            utility.GetUTCDay(now).Add(-4 * 24 * time.Hour),
 				NumPass:         10,
 				NumFail:         0,
-				AvgDurationPass: 10000000,
+				AvgDurationPass: (5 * time.Minute).Seconds(),
 			},
 			{
 				TestFile:     "test1",
@@ -294,7 +292,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 		}
 		rows := sqlmock.NewRows([]string{"test_name", "task_name", "date", "num_pass", "num_fail", "average_duration"})
 		for _, row := range expectedResult {
-			rows.AddRow(row.TestFile, row.TaskName, row.Date, row.NumPass, row.NumFail, row.AvgDurationPass)
+			rows.AddRow(row.TestFile, row.TaskName, row.Date, row.NumPass, row.NumFail, row.AvgDurationPass*1e9)
 		}
 		mock.ExpectQuery(query).WithArgs(mockArgs(args)...).WillReturnRows(rows)
 
@@ -323,7 +321,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 				Date:            utility.GetUTCDay(now).Add(-5 * 24 * time.Hour),
 				NumPass:         5,
 				NumFail:         1,
-				AvgDurationPass: 5000000,
+				AvgDurationPass: (10 * time.Second).Seconds(),
 			},
 			{
 				TestFile:        "test2",
@@ -331,7 +329,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 				Date:            utility.GetUTCDay(now).Add(-4 * 24 * time.Hour),
 				NumPass:         10,
 				NumFail:         0,
-				AvgDurationPass: 10000000,
+				AvgDurationPass: (5 * time.Second).Seconds(),
 			},
 			{
 				TestFile:     "test1",
@@ -350,7 +348,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 		}
 		rows := sqlmock.NewRows([]string{"test_name", "date", "num_pass", "num_fail", "average_duration"})
 		for _, row := range expectedResult {
-			rows.AddRow(row.TestFile, row.Date, row.NumPass, row.NumFail, row.AvgDurationPass)
+			rows.AddRow(row.TestFile, row.Date, row.NumPass, row.NumFail, row.AvgDurationPass*1e9)
 		}
 		mock.ExpectQuery(query).WithArgs(mockArgs(args)...).WillReturnRows(rows)
 

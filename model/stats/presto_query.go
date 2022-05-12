@@ -165,6 +165,10 @@ func GetPrestoTestStats(ctx context.Context, filter PrestoTestStatsFilter) ([]Te
 		if err := rows.Scan(dests...); err != nil {
 			return nil, errors.Wrap(err, "scanning test stats row")
 		}
+
+		// Durations from Presto are in nanoseconds, we need to convert
+		// them to seconds.
+		s.AvgDurationPass = time.Duration(s.AvgDurationPass).Seconds()
 		stats = append(stats, s)
 	}
 	if err := rows.Err(); err != nil {
