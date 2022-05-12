@@ -3977,7 +3977,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	return status, nil
 }
 func (*versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindBranchProjectRef(*obj.Project)
+	projectRef, err := model.FindMergedProjectRef(*obj.Project, *obj.Id, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project `%s`: %s", *obj.Project, err.Error()))
 	}
