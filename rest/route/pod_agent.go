@@ -2,14 +2,20 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -115,13 +121,91 @@ func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
-	j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
-	if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+	p, err := h.findPod()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	h.setAgentFirstContactTime(p)
+
+	pd, err := h.findDispatcher()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	nextTask, err := pd.AssignNextTask(ctx, h.env, p)
+	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
+			Message:    errors.Wrap(err, "dispatching next task").Error(),
 		})
+	}
+	if nextTask == nil {
+		j := units.NewPodTerminationJob(h.podID, "reached end of pod lifecycle", utility.RoundPartOfMinute(0))
+		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrap(err, "enqueueing job to terminate pod").Error(),
+			})
+		}
 	}
 
 	return gimlet.NewJSONResponse(apimodels.NextTaskResponse{})
+}
+
+func (h *podAgentNextTask) findPod() (*pod.Pod, error) {
+	p, err := pod.FindOneByID(h.podID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding pod").Error(),
+		}
+	}
+	if p == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("pod '%s' not found", h.podID),
+		}
+	}
+
+	return p, nil
+}
+
+func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
+	if !p.TimeInfo.Initializing.IsZero() {
+		return
+	}
+
+	if err := p.SetAgentStartTime(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "could not update pod's agent first contact time",
+			"pod":     p.ID,
+		}))
+		return
+	}
+
+	grip.Info(message.Fields{
+		"message":                   "pod initiated first contact with application server",
+		"pod":                       p.ID,
+		"secs_since_pod_allocation": time.Since(p.TimeInfo.Initializing).Seconds(),
+		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
+	})
+}
+
+func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
+	pd, err := dispatcher.FindOneByPodID(h.podID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "finding dispatcher").Error(),
+		}
+	}
+	if pd == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("dispatcher for pod '%s' not found", h.podID),
+		}
+	}
+
+	return pd, nil
 }
