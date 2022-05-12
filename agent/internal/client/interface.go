@@ -49,6 +49,8 @@ type Communicator interface {
 	GetExpansions(context.Context, TaskData) (util.Expansions, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with
 	// an "abort" response. Returning evergreen.TaskFailed signals the agent to abort the task.
+	// Returning evergreen.TaskConflict will cancel the task context, returning control to the agent
+	// loop so it can ask for a new task.
 	Heartbeat(context.Context, TaskData) (string, error)
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
