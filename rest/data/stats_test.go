@@ -260,7 +260,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 				for _, row := range expected {
 					date, err := time.Parse("2006-01-02", utility.FromStringPtr(row.Date))
 					require.NoError(t, err)
-					rows.AddRow(row.TestFile, row.TaskName, date, row.NumPass, row.NumFail, row.AvgDurationPass)
+					rows.AddRow(row.TestFile, row.TaskName, date, row.NumPass, row.NumFail, row.AvgDurationPass*1e9)
 				}
 				mock.ExpectQuery(query).WillReturnRows(rows)
 			},
@@ -282,7 +282,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 					Date:            utility.ToStringPtr("2022-01-01"),
 					NumPass:         100,
 					NumFail:         50,
-					AvgDurationPass: 1000,
+					AvgDurationPass: (100 * time.Second).Seconds(),
 				},
 				{
 					TestFile:        utility.ToStringPtr("test2"),
@@ -292,7 +292,7 @@ func TestGetPrestoTestStats(t *testing.T) {
 					Date:            utility.ToStringPtr("2022-01-02"),
 					NumPass:         50,
 					NumFail:         100,
-					AvgDurationPass: 2000,
+					AvgDurationPass: (20 * time.Second).Seconds(),
 				},
 			},
 		},

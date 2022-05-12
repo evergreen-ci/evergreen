@@ -405,10 +405,10 @@ func TestPrestoTestStatsHandlerRun(t *testing.T) {
 				Date:            utility.ToStringPtr(yesterday.Format(statsAPIDateFormat)),
 				NumPass:         rand.Intn(1000),
 				NumFail:         rand.Intn(1000),
-				AvgDurationPass: rand.Float64() * 1000,
+				AvgDurationPass: (time.Duration(rand.Int63n(100)) * time.Second).Seconds(),
 			}
 
-			rows.AddRow(expectedStats[i].TestFile, expectedStats[i].TaskName, yesterday, expectedStats[i].NumPass, expectedStats[i].NumFail, expectedStats[i].AvgDurationPass)
+			rows.AddRow(expectedStats[i].TestFile, expectedStats[i].TaskName, yesterday, expectedStats[i].NumPass, expectedStats[i].NumFail, expectedStats[i].AvgDurationPass*1e9)
 		}
 		mock.ExpectQuery(query).WillReturnRows(rows)
 
