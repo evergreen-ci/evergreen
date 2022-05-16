@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -20,6 +22,8 @@ const (
 	getClientSubcommand  = "get-client"
 	signSubcommand       = "sign"
 	notaryClientFilename = "macnotary"
+
+	maxRetries = 3
 )
 
 func zipFile(inputFilePath, destinationPath string) error {
@@ -143,10 +147,12 @@ func signWithNotaryClient(ctx context.Context, zipToSignPath, destinationPath st
 		args = append(args, "--secret", opts.notarySecret)
 	}
 
-	cmd := exec.CommandContext(ctx, opts.notaryClientPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return errors.Wrap(cmd.Run(), "running notary client")
+	return utility.Retry(ctx, func() (bool, error) {
+		cmd := exec.CommandContext(ctx, opts.notaryClientPath, args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return true, errors.Wrap(cmd.Run(), "running notary client")
+	}, utility.RetryOptions{MaxAttempts: maxRetries})
 }
 
 func downloadClient(ctx context.Context, opts fetchClientOpts) error {
@@ -176,7 +182,8 @@ func signExecutable(ctx context.Context, opts signOpts) error {
 
 	signedZipPath := path.Join(tempDir, "evergreen_signed.zip")
 	if err = signWithNotaryClient(ctx, toSignPath, signedZipPath, opts); err != nil {
-		return errors.Wrap(err, "signing with client")
+		fmt.Fprintf(os.Stderr, "code signing failed: %s", err.Error())
+		return nil
 	}
 
 	signedZip, err := os.ReadFile(signedZipPath)
