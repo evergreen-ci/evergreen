@@ -22,10 +22,10 @@ WITH matched_and_aggregated AS (
 	    SUM(num_pass) AS num_pass,
 	    SUM(num_fail) AS num_fail,
 	    SUM(total_pass_duration_ns) AS total_pass_duration_ns
-    FROM test_stats_daily_temp
+    FROM test_stats_daily
     WHERE project = ?
-    AND   variant = ?
-    {{ if .TaskName }}AND   task_name = ?{{ end }}{{ if .TestName }}
+    AND   variant = ?{{ if .TaskName }}
+    AND   task_name = ?{{ end }}{{ if .TestName }}
     AND   test_name = ?{{ end }}
     AND   request_type IN (?{{ range slice .Requesters 1}}, ?{{end}})
     AND   task_create_iso BETWEEN ? AND ?
@@ -42,7 +42,6 @@ SELECT  test_name,{{ if not .GroupByTest }}
         IF(num_pass <> 0, total_pass_duration_ns/num_pass, 0) AS average_duration
 FROM matched_and_aggregated
 `
-
 	dateFormat = "2006-01-02"
 )
 
