@@ -407,7 +407,6 @@ func TestPrestoTestStatsHandlerRun(t *testing.T) {
 				NumFail:         rand.Intn(1000),
 				AvgDurationPass: (time.Duration(rand.Int63n(100)) * time.Second).Seconds(),
 			}
-
 			rows.AddRow(expectedStats[i].TestFile, expectedStats[i].TaskName, yesterday, expectedStats[i].NumPass, expectedStats[i].NumFail, expectedStats[i].AvgDurationPass*1e9)
 		}
 		mock.ExpectQuery(query).WillReturnRows(rows)

@@ -38,7 +38,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 		}
 	}
 
-	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
+	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew", "Presto"}
 	for k, v := range matched {
 		if !utility.StringSliceContains(exclude, k) {
 			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
