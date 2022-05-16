@@ -2446,6 +2446,92 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	}
 }
 
+func TestAddNewTasks(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	}()
+
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	b := build.Build{
+		Id:           "b0",
+		BuildVariant: "bv0",
+	}
+	assert.NoError(t, b.Insert())
+
+	v := &Version{
+		Id:       "v0",
+		BuildIds: []string{"b0"},
+	}
+	assert.NoError(t, v.Insert())
+
+	existingTask := task.Task{
+		Id:           "t0",
+		DisplayName:  "t0",
+		BuildId:      "b0",
+		BuildVariant: "bv0",
+		Version:      "v0",
+	}
+
+	tasksToAdd := TaskVariantPairs{
+		ExecTasks: []TVPair{
+			{
+				Variant:  "bv0",
+				TaskName: "t1",
+			},
+		},
+	}
+
+	project := Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv0",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t0"},
+					{
+						Name:      "t1",
+						DependsOn: []TaskUnitDependency{{Name: "t0"}},
+						RunOn:     []string{"d0"},
+					},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{Name: "t0"},
+			{Name: "t1"},
+		},
+	}
+
+	for name, testCase := range map[string]struct {
+		activationInfo specificActivationInfo
+		activatedTasks []string
+	}{
+		"ActivatedNewTask": {
+			activationInfo: specificActivationInfo{},
+			activatedTasks: []string{"t0", "t1"},
+		},
+		"DeactivatedNewTask": {
+			activationInfo: specificActivationInfo{activationTasks: map[string][]string{
+				b.BuildVariant: {"t1"},
+			}},
+			activatedTasks: []string{},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection))
+			assert.NoError(t, existingTask.Insert())
+
+			_, err := addNewTasks(context.Background(), testCase.activationInfo, v, &project, &ProjectRef{}, tasksToAdd, []build.Build{b}, patch.SyncAtEndOptions{}, "")
+			assert.NoError(t, err)
+			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
+			assert.NoError(t, err)
+			assert.Equal(t, len(testCase.activatedTasks), len(activatedTasks))
+			for _, task := range activatedTasks {
+				assert.Contains(t, testCase.activatedTasks, task.DisplayName)
+			}
+		})
+	}
+}
+
 func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, db.Clear(task.Collection))
 	t1 := task.Task{
