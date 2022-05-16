@@ -50,7 +50,8 @@ func (c *PrestoConfig) Get(env Environment) error {
 	res := coll.FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err == mongo.ErrNoDocuments {
-			return errors.New("must set Presto config")
+			*c = PrestoConfig{}
+			return nil
 		}
 		return errors.Wrapf(err, "retrieving section '%s'", c.SectionId())
 	}
@@ -64,7 +65,8 @@ func (c *PrestoConfig) Get(env Environment) error {
 			"message": "setting up Presto DB client",
 		}))
 	}
-	return c.setupDB()
+
+	return nil
 }
 
 func (c *PrestoConfig) Set() error {
