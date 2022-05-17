@@ -123,7 +123,7 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 		ProjectRef:            apiProjectRef,
 		GithubWebhooksEnabled: settings.GithubHooksEnabled,
 		Vars:                  apiProjectVars,
-		Aliases:               DbProjectAliasesToRestModel(settings.Aliases),
+		Aliases:               dbProjectAliasesToRestModel(settings.Aliases),
 		Subscriptions:         apiSubscriptions,
 	}, nil
 }
@@ -217,10 +217,11 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {
+func dbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
 		apiAlias := APIProjectAlias{
+			ID:          utility.ToStringPtr(alias.ID.String()),
 			Alias:       utility.ToStringPtr(alias.Alias),
 			Variant:     utility.ToStringPtr(alias.Variant),
 			Task:        utility.ToStringPtr(alias.Task),
