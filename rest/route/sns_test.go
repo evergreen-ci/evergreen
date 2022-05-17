@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/cocoa"
+	cocoaECS "github.com/evergreen-ci/cocoa/ecs"
+	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -15,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -31,7 +35,12 @@ func TestBaseSNSRoute(t *testing.T) {
 			return &ec2SNS{base}
 		},
 		"ECS": func(base baseSNS) gimlet.RouteHandler {
-			return &ecsSNS{base}
+			return &ecsSNS{
+				baseSNS: base,
+				makeECSClient: func(*evergreen.Settings) (cocoa.ECSClient, error) {
+					return &cocoaMock.ECSClient{}, nil
+				},
+			}
 		},
 	} {
 		t.Run(rhName, func(t *testing.T) {
@@ -156,7 +165,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
 					TaskARN:       "external_id",
-					LastStatus:    "STOPPED",
+					LastStatus:    cocoaECS.TaskStatusStopped,
 					StoppedReason: "reason",
 				},
 			}
@@ -166,20 +175,37 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, model.PodStatusDecommissioned, p.Status)
 		},
-		"NoopsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
+		"CleansUpUnrecognizedPodTryingToStart": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
+			// kim: TODO: reset fake global ECS state for setup/teardown.
+			const (
+				clusterID = "ecs-cluster"
+				taskID    = "nonexistent-ecs-task"
+			)
+			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
+				taskID: cocoaMock.ECSTask{
+					ARN:        utility.ToStringPtr(taskID),
+					Cluster:    utility.ToStringPtr(clusterID),
+					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
+					Status:     utility.ToStringPtr(cocoaECS.TaskStatusActivating),
+					GoalStatus: utility.ToStringPtr(cocoaECS.TaskStatusRunning),
+				},
+			}
+
+			rh.makeECSClient = func(*evergreen.Settings) (cocoa.ECSClient, error) {
+				return &cocoaMock.ECSClient{}, nil
+			}
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
-					TaskARN:       "nonexistent",
-					LastStatus:    "STOPPED",
-					StoppedReason: "reason",
+					TaskARN:    taskID,
+					ClusterARN: clusterID,
+					LastStatus: cocoaECS.TaskStatusActivating,
 				},
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			p, err := data.FindPodByID("id")
-			assert.NoError(t, err)
-			assert.Equal(t, model.PodStatusRunning, p.Status)
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterID], 1)
+			assert.Equal(t, cocoaECS.TaskStatusStopped, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "cloud pod should have been cleaned up")
 		},
 		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{

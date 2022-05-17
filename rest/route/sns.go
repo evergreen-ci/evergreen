@@ -8,8 +8,10 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -288,6 +290,8 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 
 type ecsSNS struct {
 	baseSNS
+
+	makeECSClient func(*evergreen.Settings) (cocoa.ECSClient, error)
 }
 
 type ecsEventBridgeNotification struct {
@@ -297,13 +301,15 @@ type ecsEventBridgeNotification struct {
 
 type ecsEventDetail struct {
 	TaskARN       string `json:"taskArn"`
+	ClusterARN    string `json:"clusterArn"`
 	LastStatus    string `json:"lastStatus"`
 	StoppedReason string `json:"stoppedReason"`
 }
 
 func makeECSSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS: makeBaseSNS(env, queue),
+		baseSNS:       makeBaseSNS(env, queue),
+		makeECSClient: cloud.MakeECSClient,
 	}
 }
 
@@ -361,9 +367,14 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 				"task_arn": notification.Detail.TaskARN,
 				"route":    "/hooks/aws/ecs",
 			})
+			if err := sns.handleUnrecognizedPod(ctx, notification.Detail); err != nil {
+				return errors.Wrapf(err, "handling unrecognized pod '%s'", notification.Detail.TaskARN)
+			}
+
 			return nil
 		}
 
+		// kim: TODO: replace with ToCocoaStatus simplification.
 		switch notification.Detail.LastStatus {
 		case ecs.TaskStatusProvisioning, ecs.TaskStatusPending, ecs.TaskStatusActivating, ecs.TaskStatusRunning:
 			// No-op because the pod is not considered running until the agent
@@ -421,6 +432,40 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 			"pod_status": p.Status,
 			"route":      "/hooks/aws/ecs",
 		}))
+	}
+
+	return nil
+}
+
+func (sns *ecsSNS) handleUnrecognizedPod(ctx context.Context, details ecsEventDetail) error {
+	// kim: TODO: if pod status is stopping/stopped, no-op since it'll shut down
+	// on its own.
+
+	c, err := sns.makeECSClient(sns.env.Settings())
+	if err != nil {
+		return errors.Wrap(err, "getting ECS client")
+	}
+	defer c.Close(ctx)
+
+	resources := cocoa.NewECSPodResources().
+		SetCluster(details.ClusterARN).
+		SetTaskID(details.TaskARN)
+
+	// kim: TODO: get ECS status translation function from Cocoa.
+	status := cocoa.NewECSPodStatusInfo().SetStatus("kim: TODO")
+
+	podOpts := ecs.NewBasicECSPodOptions().
+		SetClient(c).
+		SetStatusInfo(*status).
+		SetResources(*resources)
+
+	p, err := ecs.NewBasicECSPod(podOpts)
+	if err != nil {
+		return errors.Wrap(err, "getting pod")
+	}
+
+	if err := p.Delete(ctx); err != nil {
+		return errors.Wrap(err, "cleaning up pod resources")
 	}
 
 	return nil
