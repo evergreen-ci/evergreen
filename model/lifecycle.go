@@ -1675,6 +1675,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	}
 
 	activatedTaskIds := []string{}
+	activatedTasks := []task.Task{}
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build
@@ -1682,15 +1683,10 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		if err != nil {
 			return nil, err
 		}
-		// build an index to keep track of which tasks already exist, and their activation
-		type taskInfo struct {
-			id        string
-			activated bool
-		}
-		existingTasksIndex := map[string]taskInfo{}
+
+		existingTasksIndex := map[string]bool{}
 		for _, t := range tasksInBuild {
-			info := taskInfo{id: t.Id, activated: t.Activated}
-			existingTasksIndex[t.DisplayName] = info
+			existingTasksIndex[t.DisplayName] = true
 		}
 		projectBV := p.FindBuildVariant(b.BuildVariant)
 		if projectBV != nil {
@@ -1701,20 +1697,14 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
 		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if info, ok := existingTasksIndex[taskname]; ok {
-				// if activating build, update task activation for dependencies that already exist, regardless of batchtime
-				if b.Activated && !info.activated {
-					if err = SetActiveStateById(info.id, evergreen.User, true); err != nil {
-						return nil, errors.Wrapf(err, "updating active state for existing task '%s'", info.id)
-					}
-				}
+			if ok := existingTasksIndex[taskname]; ok {
 				continue
 			}
 			tasksToAdd = append(tasksToAdd, taskname)
 		}
 		displayTasksToAdd := []string{}
 		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
+			if ok := existingTasksIndex[taskname]; ok {
 				continue
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskname)
@@ -1732,6 +1722,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		for _, t := range tasks {
 			if t.Activated {
 				activatedTaskIds = append(activatedTaskIds, t.Id)
+				activatedTasks = append(activatedTasks, *t)
 				b.Activated = true
 			}
 			if t.Activated && activationInfo.isStepbackTask(t.BuildVariant, t.DisplayName) {
@@ -1753,6 +1744,14 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	}
 	if err = v.SetActivated(); err != nil {
 		return nil, errors.Wrap(err, "setting version activation to true")
+	}
+
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(activatedTasks, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
+	}
+	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}
 
 	return activatedTaskIds, nil
