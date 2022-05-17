@@ -85,7 +85,6 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 // RepoRef related functions and collection instead of ProjectRef.
 func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
-	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
 	before, err := model.GetProjectSettingsById(projectId, isRepo)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting before project settings event")
@@ -284,6 +283,7 @@ func handleIdentifierConflict(pRef *model.ProjectRef) error {
 	return nil
 }
 
+// handleGithubConflicts returns an error containing any potential Github project conflicts.
 func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 	if !pRef.IsPRTestingEnabled() && !pRef.CommitQueue.IsEnabled() && !pRef.IsGithubChecksEnabled() {
 		return nil // if nothing is toggled on, then there's no reason to look for conflicts
