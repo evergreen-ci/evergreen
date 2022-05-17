@@ -454,11 +454,12 @@ func logGitHubRateLimit(limit github.Rate) {
 		})
 	} else {
 		grip.Info(message.Fields{
-			"message":    "GitHub API rate limit",
-			"remaining":  limit.Remaining,
-			"limit":      limit.Limit,
-			"reset":      limit.Reset,
-			"percentage": float32(limit.Remaining) / float32(limit.Limit),
+			"message":           "GitHub API rate limit",
+			"remaining":         limit.Remaining,
+			"limit":             limit.Limit,
+			"reset":             limit.Reset,
+			"minutes_remaining": time.Until(limit.Reset.Time).Minutes(),
+			"percentage":        float32(limit.Remaining) / float32(limit.Limit),
 		})
 	}
 }
