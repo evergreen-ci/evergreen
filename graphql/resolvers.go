@@ -3937,43 +3937,13 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
+	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
-	}
-	isAborted := utility.FromBoolPtr(obj.Aborted)
-	nonAbortedStatuses := []string{}
-	if !isAborted {
-		nonAbortedStatuses = append(nonAbortedStatuses, status)
-	}
-	if evergreen.IsPatchRequester(*obj.Requester) {
-		p, err := data.FindPatchById(*obj.Id)
-		if err != nil {
-			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
-		}
-		if len(p.ChildPatches) > 0 {
-			for _, cp := range p.ChildPatches {
-				cpVersion, err := model.VersionFindOneId(*cp.Version)
-				if err != nil {
-					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch version for patch: %s ", err.Error()))
-				}
-				if cpVersion == nil {
-					continue
-				}
-				if cpVersion.Aborted {
-					isAborted = true
-				} else {
-					nonAbortedStatuses = append(nonAbortedStatuses, *cp.Status)
-				}
-			}
-			status = patch.GetCollectiveStatus(nonAbortedStatuses)
-		}
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting collective status array: %s", err.Error()))
 	}
 
-	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if isAborted && !utility.StringSliceContains(nonAbortedStatuses, evergreen.PatchFailed) {
-		status = evergreen.PatchAborted
-	}
+	status := patch.GetCollectiveStatus(collectiveStatusArray)
+
 	return status, nil
 }
 func (*versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
