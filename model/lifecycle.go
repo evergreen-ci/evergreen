@@ -1750,7 +1750,9 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User)
+	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
+	}
 
 	return activatedTaskIds, nil
 }
