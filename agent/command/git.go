@@ -608,7 +608,7 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 		return errors.Wrap(err, "getting patch contents")
 	}
 	if err = c.applyPatch(ctx, logger, conf, reorderPatches(newPatch.Patches)); err != nil {
-		logger.Task().Warning("try rebasing to current HEAD")
+		logger.Task().Warning("Failed to apply previous commit queue patch; try rebasing onto HEAD")
 		return errors.Wrapf(err, "applying patch '%s'", newPatch.Id.Hex())
 	}
 	logger.Task().Infof("applied changes from previous commit queue patch '%s'", patchId)
