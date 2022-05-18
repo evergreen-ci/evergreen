@@ -1976,6 +1976,7 @@ type APIServiceFlags struct {
 	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
 	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
+	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`

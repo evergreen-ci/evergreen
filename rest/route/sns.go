@@ -363,11 +363,13 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 		}
 		if p == nil {
 			grip.Info(message.Fields{
-				"message":  "found unexpected ECS task that did not match any known pod",
-				"task_arn": notification.Detail.TaskARN,
-				"route":    "/hooks/aws/ecs",
+				"message":     "found unexpected ECS task that did not match any known pod in Evergreen",
+				"task_arn":    notification.Detail.TaskARN,
+				"cluster_arn": notification.Detail.ClusterARN,
+				"status":      notification.Detail.LastStatus,
+				"route":       "/hooks/aws/ecs",
 			})
-			if err := sns.handleUnrecognizedPod(ctx, notification.Detail); err != nil {
+			if err := sns.cleanupUnrecognizedPod(ctx, notification.Detail); err != nil {
 				return errors.Wrapf(err, "handling unrecognized pod '%s'", notification.Detail.TaskARN)
 			}
 
@@ -437,9 +439,17 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 	return nil
 }
 
-func (sns *ecsSNS) handleUnrecognizedPod(ctx context.Context, details ecsEventDetail) error {
+func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventDetail) error {
 	// kim: TODO: if pod status is stopping/stopped, no-op since it'll shut down
 	// on its own.
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return errors.Wrap(err, "getting service flag for unrecognized pod cleanup")
+	}
+	if flags.UnrecognizedPodCleanupDisabled {
+		return nil
+	}
 
 	c, err := sns.makeECSClient(sns.env.Settings())
 	if err != nil {

@@ -177,6 +177,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		},
 		"CleansUpUnrecognizedPodTryingToStart": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			// kim: TODO: reset fake global ECS state for setup/teardown.
+			// kim: TODO: unset service flag
 			const (
 				clusterID = "ecs-cluster"
 				taskID    = "nonexistent-ecs-task"
