@@ -67,6 +67,9 @@ type githubIntent struct {
 	// commit.
 	HeadHash string `bson:"head_hash"`
 
+	// BaseHash is the base hash of the commit.
+	BaseHash string `bson:"base_hash"`
+
 	// Title is the title of the Github PR
 	Title string `bson:"Title"`
 
@@ -158,6 +161,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 		User:         patchOwner,
 		UID:          int(pr.User.GetID()),
 		HeadHash:     pr.Head.GetSHA(),
+		BaseHash:     pr.Base.GetSHA(),
 		Title:        pr.GetTitle(),
 		IntentType:   GithubIntentType,
 		PushedAt:     pr.Head.Repo.PushedAt.Time.UTC(),
@@ -254,6 +258,7 @@ func (g *githubIntent) NewPatch() *Patch {
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
 		CreateTime:  g.PushedAt,
+		Githash:     g.BaseHash,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:   g.PRNumber,
 			BaseOwner:  baseRepo[0],
