@@ -144,22 +144,16 @@ func Patch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
-				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
-			}
+			params.setDefaultProject(conf)
 
 			if params.Alias != "" {
-				for _, alias := range conf.LocalAliases {
-					if alias.Alias == params.Alias {
-						if alias.Variant != "" {
-							params.RegexVariants = append(params.RegexVariants, alias.Variant)
-						}
-						if alias.Task != "" {
-							params.RegexTasks = append(params.RegexTasks, alias.Task)
-						}
-						params.Alias = ""
-					}
+				if err = params.setLocalAliases(conf); err != nil {
+					return errors.Wrap(err, "setting local aliases")
 				}
+			}
+
+			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
+				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
 			}
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
@@ -206,7 +200,6 @@ func Patch() cli.Command {
 			if err = params.displayPatch(newPatch, conf.UIServerHost, false); err != nil {
 				grip.Error(err)
 			}
-			params.setDefaultProject(conf)
 			return nil
 		},
 	}

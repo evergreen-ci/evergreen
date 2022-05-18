@@ -134,12 +134,11 @@ projects:
   default: true
   tasks: 
     - all
-  alias: some-variants
-local_aliases: 
-- alias: "bynn"
-  variant: ".*"
-  task: ".*"
-`), 0600)
+  local_aliases: 
+    - alias: "bynn"
+      variant: ".*"
+      task: ".*"
+  alias: some-variants`), 0600)
 	assert.NoError(t, err)
 
 	clientSettings, err := NewClientSettings(globalTestConfigPath)
@@ -156,13 +155,13 @@ local_aliases:
 				Default: true,
 				Tasks:   []string{"all"},
 				Alias:   "some-variants",
-			},
-		},
-		LocalAliases: []model.ProjectAlias{
-			model.ProjectAlias{
-				Alias:   "bynn",
-				Task:    ".*",
-				Variant: ".*",
+				LocalAliases: []model.ProjectAlias{
+					model.ProjectAlias{
+						Alias:   "bynn",
+						Task:    ".*",
+						Variant: ".*",
+					},
+				},
 			},
 		},
 	}, *clientSettings)
@@ -177,6 +176,10 @@ projects:
     - all
   variants: 
     - all
+  local_aliases: 
+    - alias: "other one"
+      variant: ".*"
+      task: ".*"
 projects_for_directory:
   some/directory: myProj
 `), 0600)
@@ -203,17 +206,17 @@ projects_for_directory:
 				Default:  true,
 				Tasks:    []string{"all"},
 				Variants: []string{"all"},
+				LocalAliases: []model.ProjectAlias{
+					model.ProjectAlias{
+						Alias:   "other one",
+						Task:    ".*",
+						Variant: ".*",
+					},
+				},
 			},
 		},
 		ProjectsForDirectory: map[string]string{
 			"some/directory": "myProj",
-		},
-		LocalAliases: []model.ProjectAlias{
-			model.ProjectAlias{
-				Alias:   "bynn",
-				Task:    ".*",
-				Variant: ".*",
-			},
 		},
 	}, *localClientSettings)
 }

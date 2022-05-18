@@ -289,13 +289,51 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 	return nil
 }
 
+func (p *patchParams) setLocalAliases(conf *ClientSettings) error {
+	for i := range conf.Projects {
+		if conf.Projects[i].Name == p.Project {
+			for _, alias := range conf.Projects[i].LocalAliases {
+				if alias.Alias == p.Alias {
+					if (alias.Variant != "" || alias.VariantTags != nil) && (alias.Task != "" || alias.TaskTags != nil) {
+						if alias.Variant != "" {
+							p.RegexVariants = append(p.RegexVariants, strings.Split(alias.Variant, ",")...)
+						}
+						if alias.VariantTags != nil {
+							var formattedTags []string
+							for _, tag := range alias.VariantTags {
+								formattedTags = append(formattedTags, fmt.Sprintf(".%s", tag))
+							}
+							p.Variants = append(p.Variants, formattedTags...)
+						}
+						if alias.Task != "" {
+							p.RegexTasks = append(p.RegexTasks, strings.Split(alias.Task, ",")...)
+						}
+						if alias.TaskTags != nil {
+							var formattedTags []string
+							for _, tag := range alias.TaskTags {
+								formattedTags = append(formattedTags, fmt.Sprintf(".%s", tag))
+							}
+							p.Tasks = append(p.Tasks, formattedTags...)
+						}
+						p.Alias = ""
+					} else {
+						return errors.Errorf("both variants and tasks not defined in the alias '%s'", alias.Alias)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 	cwd, err := os.Getwd()
 	grip.Error(errors.Wrap(err, "unable to get current working directory"))
 	cwd, err = filepath.EvalSymlinks(cwd)
 	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
 
-	if conf.FindDefaultProject(cwd, false) == "" {
+	project := conf.FindDefaultProject(cwd, false)
+	if project == "" {
 		conf.SetDefaultProject(cwd, p.Project)
 		if err := conf.Write(""); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -303,6 +341,8 @@ func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 				"project": p.Project,
 			}))
 		}
+	} else {
+		p.Project = project
 	}
 }
 
