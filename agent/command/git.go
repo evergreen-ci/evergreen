@@ -596,7 +596,7 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 	logger client.LoggerProducer,
 	td client.TaskData,
 	patchId string) error {
-	logger.Task().Infof("applying changes from previous commit queue patch '%s'", patchId)
+	logger.Task().Infof("Applying changes from previous commit queue patch '%s'", patchId)
 	newPatch, err := comm.GetTaskPatch(ctx, td, patchId)
 	if err != nil {
 		return errors.Wrap(err, "getting additional patch")
@@ -611,7 +611,7 @@ func (c *gitFetchProject) applyAdditionalPatch(ctx context.Context,
 		logger.Task().Warning("Failed to apply previous commit queue patch; try rebasing onto HEAD")
 		return errors.Wrapf(err, "applying patch '%s'", newPatch.Id.Hex())
 	}
-	logger.Task().Infof("applied changes from previous commit queue patch '%s'", patchId)
+	logger.Task().Infof("Applied changes from previous commit queue patch '%s'", patchId)
 	return nil
 }
 
