@@ -396,7 +396,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if t.data.Status != evergreen.TaskSucceeded && !isFailedTaskStatus(t.data.Status) {
+	if t.data.Status != evergreen.TaskSucceeded && !isValidFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -412,7 +412,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	if !isFailedTaskStatus(t.data.Status) {
+	if !isValidFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -703,8 +703,11 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString), "")
 }
 
-func isFailedTaskStatus(status string) bool {
-	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
+// isValidFailedTaskStatus only matches task statuses that should be triggered for failure.
+// For example, it excludes  setup failures.
+func isValidFailedTaskStatus(status string) bool {
+	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed ||
+		status == evergreen.TaskTimedOut || status == evergreen.TaskTestTimedOut
 }
 
 func isTestStatusRegression(oldStatus, newStatus string) bool {
@@ -792,7 +795,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, errors.Wrap(err, "populating test results for task")
 	}
 
-	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
+	if !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isValidFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
 	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {

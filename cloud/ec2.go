@@ -1027,14 +1027,8 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 
 	instance, err := m.client.GetInstanceInfo(ctx, id)
 	if err != nil {
-		// terminate an unknown host in the db
 		if err == noReservationError {
-			grip.Error(message.WrapError(h.Terminate(evergreen.User, "host is unknown to AWS"), message.Fields{
-				"message":       "can't mark instance as terminated",
-				"host_id":       h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
+			return StatusNonExistent, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",

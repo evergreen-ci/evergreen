@@ -63,6 +63,7 @@ type APIAdminSettings struct {
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
+	DisabledGQLQueries  []string                          `json:"disabled_gql_queries"`
 	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
 	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
@@ -132,6 +133,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
 		as.GithubOrgs = v.GithubOrgs
+		as.DisabledGQLQueries = v.DisabledGQLQueries
 		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
 		for _, pair := range v.SSHKeyPairs {
@@ -175,11 +177,12 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials: map[string]string{},
-		Expansions:  map[string]string{},
-		Keys:        map[string]string{},
-		Plugins:     evergreen.PluginConfig{},
-		GithubOrgs:  as.GithubOrgs,
+		Credentials:        map[string]string{},
+		Expansions:         map[string]string{},
+		Keys:               map[string]string{},
+		Plugins:            evergreen.PluginConfig{},
+		GithubOrgs:         as.GithubOrgs,
+		DisabledGQLQueries: as.DisabledGQLQueries,
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl

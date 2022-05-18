@@ -1666,10 +1666,10 @@ func FindHostsToTerminate() ([]Host, error) {
 			{
 				// Either:
 				// - Host that does not provision with user data is taking too
-				//   long to provision
+				//   long to provision.
 				// - Host that provisions with user data is taking too long to
-				//   provision, but has already started running tasks and not
-				//   checked in recently.
+				//   provision. In addition, it is not currently running a task
+				//   and has not checked in recently.
 				"$and": []bson.M{
 					// Host is not yet done provisioning
 					{"$or": []bson.M{
@@ -1680,8 +1680,11 @@ func FindHostsToTerminate() ([]Host, error) {
 						{
 							// Host is a user data host and either has not run a
 							// task yet or has not started its agent monitor -
-							// both are indicators that the host failed to start
-							// the agent in a reasonable amount of time.
+							// both are indicators that the host's agent is not
+							// up. The host has either 1. failed to start the
+							// agent or 2. failed to prove the agent's
+							// liveliness by continuously pinging the app server
+							// with requests.
 							"$or": []bson.M{
 								{RunningTaskKey: bson.M{"$exists": false}},
 								{LTCTaskKey: ""},

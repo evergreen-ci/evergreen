@@ -553,3 +553,129 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		})
 	}
 }
+
+func TestCopyProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "oldAdmin"})
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+
+	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
+		"Successfully copies project": func(t *testing.T, ref model.ProjectRef) {
+			copyProjectOpts := CopyProjectOpts{
+				ProjectIdToCopy:      ref.Id,
+				NewProjectIdentifier: "myNewProject",
+				NewProjectId:         "12345",
+			}
+			newProject, err := CopyProject(ctx, copyProjectOpts)
+			assert.NoError(t, err)
+			assert.NotNil(t, newProject)
+			assert.Equal(t, *newProject.Identifier, "myNewProject")
+			assert.Equal(t, *newProject.Id, "12345")
+		},
+		"Copies project with partial error": func(t *testing.T, ref model.ProjectRef) {
+			copyProjectOpts := CopyProjectOpts{
+				ProjectIdToCopy:      "myIdTwo",
+				NewProjectIdentifier: "mySecondProject",
+			}
+			newProject, err := CopyProject(ctx, copyProjectOpts)
+			assert.Error(t, err)
+			assert.NotNil(t, newProject)
+			assert.Equal(t, *newProject.Identifier, "mySecondProject")
+		},
+		"Does not copy project with fatal error": func(t *testing.T, ref model.ProjectRef) {
+			copyProjectOpts := CopyProjectOpts{
+				ProjectIdToCopy:      "nonexistentId",
+				NewProjectIdentifier: "myThirdProject",
+			}
+			newProject, err := CopyProject(ctx, copyProjectOpts)
+			assert.Error(t, err)
+			assert.Nil(t, newProject)
+		},
+	} {
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
+			event.SubscriptionsCollection, event.AllLogCollection, evergreen.ScopeCollection, user.Collection))
+		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+		pRef := model.ProjectRef{
+			Id:         "myId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"oldAdmin"},
+		}
+		assert.NoError(t, pRef.Insert())
+
+		pRefInvalidAdmin := model.ProjectRef{
+			Id:         "myIdTwo",
+			Owner:      "evergreen-ci",
+			Repo:       "spruce",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"unknownAdmin"},
+		}
+		assert.NoError(t, pRefInvalidAdmin.Insert())
+
+		pVars := model.ProjectVars{
+			Id:          pRef.Id,
+			Vars:        map[string]string{"hello": "world", "it": "adele", "private": "forever", "change": "inevitable"},
+			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
+		}
+		assert.NoError(t, pVars.Insert())
+		// add scopes
+		allProjectsScope := gimlet.Scope{
+			ID:        evergreen.AllProjectsScope,
+			Resources: []string{},
+		}
+		assert.NoError(t, rm.AddScope(allProjectsScope))
+		unrestrictedScope := gimlet.Scope{
+			ID:          evergreen.UnrestrictedProjectsScope,
+			Resources:   []string{pRef.Id},
+			ParentScope: evergreen.AllProjectsScope,
+		}
+		assert.NoError(t, rm.AddScope(unrestrictedScope))
+		adminScope := gimlet.Scope{
+			ID:        "project_scope",
+			Resources: []string{pRef.Id},
+			Type:      evergreen.ProjectResourceType,
+		}
+		assert.NoError(t, rm.AddScope(adminScope))
+
+		adminRole := gimlet.Role{
+			ID:    "admin",
+			Scope: adminScope.ID,
+			Permissions: gimlet.Permissions{
+				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+				evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+				evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+				evergreen.PermissionLogs:            evergreen.LogsView.Value,
+			},
+		}
+		require.NoError(t, rm.UpdateRole(adminRole))
+		oldAdmin := user.DBUser{
+			Id:          "oldAdmin",
+			SystemRoles: []string{"admin"},
+		}
+		require.NoError(t, oldAdmin.Insert())
+
+		existingSub := event.Subscription{
+			Owner:        pRef.Id,
+			OwnerType:    event.OwnerTypeProject,
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      event.TriggerFailure,
+			Selectors: []event.Selector{
+				{Type: "id", Data: "1234"},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.EmailSubscriberType,
+				Target: "a@gmail.com",
+			},
+		}
+		assert.NoError(t, existingSub.Upsert())
+		t.Run(name, func(t *testing.T) {
+			test(t, pRef)
+		})
+	}
+}

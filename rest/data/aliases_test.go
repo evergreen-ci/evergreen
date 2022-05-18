@@ -1,6 +1,7 @@
 package data
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -103,11 +104,14 @@ func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
 	found, err := FindProjectAliases("project_id", "", nil, true)
 	a.Require().NoError(err)
 	a.Require().Len(found, 5)
+	sort.Slice(found, func(i, j int) bool {
+		return utility.FromStringPtr(found[i].Alias) < utility.FromStringPtr(found[j].Alias)
+	})
 	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
 	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubChecksAlias)
-	a.Equal(utility.FromStringPtr(found[2].Alias), "foo")
+	a.Equal(utility.FromStringPtr(found[2].Alias), "bar")
 	a.Equal(utility.FromStringPtr(found[3].Alias), "foo")
-	a.Equal(utility.FromStringPtr(found[4].Alias), "bar")
+	a.Equal(utility.FromStringPtr(found[4].Alias), "foo")
 }
 
 func (a *AliasSuite) TestFindProjectAliases() {

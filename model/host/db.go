@@ -963,7 +963,7 @@ func MarkStaleBuildingAsFailed(distroID string) error {
 	}
 
 	for _, id := range ids {
-		event.LogHostStartFinished(id, false)
+		event.LogHostStartError(id, "stale building host took too long to start")
 	}
 
 	return nil

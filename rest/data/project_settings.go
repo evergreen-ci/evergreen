@@ -63,27 +63,28 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	}
 
 	// copy variables, aliases, and subscriptions
+	catcher := grip.NewBasicCatcher()
 	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
-		return nil, errors.Wrapf(err, "copying project variables from project '%s'", oldIdentifier)
+		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
 	}
 	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
-		return nil, errors.Wrapf(err, "copying aliases from project '%s'", oldIdentifier)
+		catcher.Wrapf(err, "copying aliases from project '%s'", oldIdentifier)
 	}
 	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
-		return nil, errors.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
+		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// set the same admin roles from the old project on the newly copied project.
 	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
-		return nil, errors.Wrapf(err, "updating admins for new project '%s'", opts.NewProjectIdentifier)
+		catcher.Wrapf(err, "updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
-	return apiProjectRef, nil
+	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
+	return apiProjectRef, catcher.Resolve()
 }
 
 // SaveProjectSettingsForSection saves the given UI page section and logs it for the given user. If isRepo is true, uses
 // RepoRef related functions and collection instead of ProjectRef.
 func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
-	// TODO: this function should only be called after project setting changes have been validated in the resolver or by the front end
 	before, err := model.GetProjectSettingsById(projectId, isRepo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting before project settings event")
@@ -282,6 +283,7 @@ func handleIdentifierConflict(pRef *model.ProjectRef) error {
 	return nil
 }
 
+// handleGithubConflicts returns an error containing any potential Github project conflicts.
 func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
 	if !pRef.IsPRTestingEnabled() && !pRef.CommitQueue.IsEnabled() && !pRef.IsGithubChecksEnabled() {
 		return nil // if nothing is toggled on, then there's no reason to look for conflicts

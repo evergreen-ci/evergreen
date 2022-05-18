@@ -948,15 +948,29 @@ func FindByExecutionTasksAndMaxExecution(taskIds []*string, execution int) ([]Ta
 			},
 		}
 		oldTaskPipeline = append(oldTaskPipeline, match)
+
+		// If there are multiple previous executions, matching on non-zero executions with $lte will return
+		// duplicate tasks. We sort and group to find and return the old task with the most recent execution.
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{
+			"$sort": bson.D{bson.E{Key: ExecutionKey, Value: -1}},
+		})
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{
+			"$group": bson.M{
+				"_id":  "$" + OldTaskIdKey,
+				"root": bson.M{"$first": "$$ROOT"},
+			},
+		})
+		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}})
+
 		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "finding old tasks")
 		}
-
 		result = append(result, oldTasks...)
 	}
 	if len(result) == 0 {
 		return nil, nil
 	}
+
 	return result, nil
 }
 

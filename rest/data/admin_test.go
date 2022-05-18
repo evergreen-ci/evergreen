@@ -102,6 +102,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	// read the settings and spot check values
 	settingsFromConnector, err := evergreen.GetConfig()
 	s.Require().NoError(err)
+	s.EqualValues(testSettings.DisabledGQLQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
@@ -205,6 +206,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 
 	// test that updating the model with nil values does not change them
 	newBanner := "new banner"
+	newDisabledQueries := []string{"DisabledGQLOperationName"}
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostInit := restModel.APIHostInitConfig{
 		HostThrottle:         64,
@@ -214,9 +216,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		S3BaseURL:            utility.ToStringPtr("new_s3_base_url"),
 	}
 	updatedSettings := restModel.APIAdminSettings{
-		Banner:     &newBanner,
-		Expansions: newExpansions,
-		HostInit:   &newHostInit,
+		Banner:             &newBanner,
+		Expansions:         newExpansions,
+		HostInit:           &newHostInit,
+		DisabledGQLQueries: newDisabledQueries,
 	}
 	oldSettings, err = evergreen.GetConfig()
 	s.NoError(err)
@@ -226,6 +229,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Require().NoError(err)
 	// new values should be set
 	s.EqualValues(newBanner, settingsFromConnector.Banner)
+	s.EqualValues(newDisabledQueries, settingsFromConnector.DisabledGQLQueries)
 	s.EqualValues(newExpansions, settingsFromConnector.Expansions)
 	s.EqualValues(newHostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(newHostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)

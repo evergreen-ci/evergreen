@@ -39,7 +39,7 @@ type APIIssueLink struct {
 	URL             *string    `bson:"url" json:"url"`
 	IssueKey        *string    `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
 	Source          *APISource `bson:"source,omitempty" json:"source,omitempty"`
-	ConfidenceScore *float32   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	ConfidenceScore *float64   `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and
@@ -79,7 +79,7 @@ func APIIssueLinkBuildFromService(t annotations.IssueLink) *APIIssueLink {
 	m.URL = StringStringPtr(t.URL)
 	m.IssueKey = StringStringPtr(t.IssueKey)
 	m.Source = APISourceBuildFromService(t.Source)
-	m.ConfidenceScore = utility.ToFloat32Ptr(t.ConfidenceScore)
+	m.ConfidenceScore = utility.ToFloat64Ptr(t.ConfidenceScore)
 	return &m
 }
 
@@ -90,7 +90,7 @@ func APIIssueLinkToService(m APIIssueLink) *annotations.IssueLink {
 	out.URL = StringPtrString(m.URL)
 	out.IssueKey = StringPtrString(m.IssueKey)
 	out.Source = APISourceToService(m.Source)
-	out.ConfidenceScore = utility.FromFloat32Ptr(m.ConfidenceScore)
+	out.ConfidenceScore = utility.FromFloat64Ptr(m.ConfidenceScore)
 	return out
 }
 
@@ -196,7 +196,7 @@ func ValidateIssues(issues []APIIssueLink) error {
 	catcher := grip.NewBasicCatcher()
 	for _, issue := range issues {
 		catcher.Add(util.CheckURL(utility.FromStringPtr(issue.URL)))
-		score := utility.FromFloat32Ptr(issue.ConfidenceScore)
+		score := utility.FromFloat64Ptr(issue.ConfidenceScore)
 		if score < 0 || score > 100 {
 			catcher.Errorf("confidence score '%f' must be between 0 and 100", score)
 		}

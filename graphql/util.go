@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -847,4 +848,42 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	}
 	filteredStatuses = utility.StringSliceIntersection(evergreen.TaskStatuses, statuses)
 	return filteredStatuses
+}
+
+func getCollectiveStatusArray(v restModel.APIVersion) ([]string, error) {
+	status, err := evergreen.VersionStatusToPatchStatus(*v.Status)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting a version status")
+	}
+	isAborted := utility.FromBoolPtr(v.Aborted)
+	allStatuses := []string{}
+	if isAborted {
+		allStatuses = append(allStatuses, evergreen.PatchAborted)
+
+	} else {
+		allStatuses = append(allStatuses, status)
+	}
+	if evergreen.IsPatchRequester(*v.Requester) {
+		p, err := data.FindPatchById(*v.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetching patch '%s'", *v.Id)
+		}
+		if len(p.ChildPatches) > 0 {
+			for _, cp := range p.ChildPatches {
+				cpVersion, err := model.VersionFindOneId(*cp.Version)
+				if err != nil {
+					return nil, errors.Wrapf(err, "fetching version for patch '%s'", *v.Id)
+				}
+				if cpVersion == nil {
+					continue
+				}
+				if cpVersion.Aborted {
+					allStatuses = append(allStatuses, evergreen.PatchAborted)
+				} else {
+					allStatuses = append(allStatuses, *cp.Status)
+				}
+			}
+		}
+	}
+	return allStatuses, nil
 }

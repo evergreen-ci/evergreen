@@ -1142,7 +1142,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, opts)
-	if err != nil {
+	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {
@@ -1153,6 +1153,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 		}
 		return nil, InternalServerError.Send(ctx, err.Error())
 
+	}
+	if err != nil {
+		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
+		// https://github.com/99designs/gqlgen/issues/1191
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 	return projectRef, nil
 }
@@ -3729,6 +3734,29 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
+	result := []*task.StatusCount{}
+	for _, c := range stats.Counts {
+		count := c
+		result = append(result, &count)
+	}
+	return result, nil
+}
+
+func (r *versionResolver) TaskStatusStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+	}
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
+	}
+	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
+	}
 
 	return stats, nil
 }
@@ -3909,41 +3937,28 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
+	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
-	}
-	isAborted := utility.FromBoolPtr(obj.Aborted)
-	nonAbortedStatuses := []string{}
-	if !isAborted {
-		nonAbortedStatuses = append(nonAbortedStatuses, status)
-	}
-	if evergreen.IsPatchRequester(*obj.Requester) {
-		p, err := data.FindPatchById(*obj.Id)
-		if err != nil {
-			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
-		}
-		if len(p.ChildPatches) > 0 {
-			for _, cp := range p.ChildPatches {
-				cpVersion, err := model.VersionFindOneId(*cp.Version)
-				if err != nil {
-					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch version for patch: %s ", err.Error()))
-				}
-				if cpVersion.Aborted {
-					isAborted = true
-				} else {
-					nonAbortedStatuses = append(nonAbortedStatuses, *cp.Status)
-				}
-			}
-			status = patch.GetCollectiveStatus(nonAbortedStatuses)
-		}
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting collective status array: %s", err.Error()))
 	}
 
-	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if isAborted && !utility.StringSliceContains(nonAbortedStatuses, evergreen.PatchFailed) {
-		status = evergreen.PatchAborted
-	}
+	status := patch.GetCollectiveStatus(collectiveStatusArray)
+
 	return status, nil
+}
+func (*versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
+	projectRef, err := model.FindMergedProjectRef(*obj.Project, *obj.Id, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, err.Error()))
+	}
+	if projectRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, "Project not found"))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {

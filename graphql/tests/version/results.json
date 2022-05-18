@@ -145,6 +145,21 @@
           }
         }
       }
+    },
+    {
+      "query_file": "projectMetadata.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "projectMetadata": {
+              "owner": "evergreen-ci",
+              "repo": "evergreen",
+              "identifier": "evergreen"
+            }
+          }
+        }
+      }
     }
   ]
 }

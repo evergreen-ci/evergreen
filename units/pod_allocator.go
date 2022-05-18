@@ -91,17 +91,13 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	intentPod, err := pod.NewTaskIntentPod(pod.TaskIntentPodOptions{
-		// TODO (EVG-16371): These are just placeholder values for now. Fill in
-		// the actual values from the task's container configuration once
-		// they're available.
-		CPU:        1024,
-		MemoryMB:   1024,
-		OS:         pod.OSLinux,
-		Arch:       pod.ArchAMD64,
-		Image:      "ubuntu",
-		WorkingDir: "/",
-	})
+	opts, err := j.getIntentPodOptions(j.task.ContainerOpts)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "getting intent pod options"))
+		return
+	}
+
+	intentPod, err := pod.NewTaskIntentPod(*opts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "creating new task intent pod"))
 		return
@@ -111,6 +107,13 @@ func (j *podAllocatorJob) Run(ctx context.Context) {
 		j.AddRetryableError(errors.Wrap(err, "allocating pod for task dispatch"))
 		return
 	}
+
+	grip.Info(message.Fields{
+		"message":                    "successfully allocated pod for container task",
+		"task":                       j.task.Id,
+		"pod":                        intentPod.ID,
+		"secs_since_task_activation": time.Since(j.task.ActivatedTime).Seconds(),
+	})
 }
 
 func (j *podAllocatorJob) canAllocate() (shouldAllocate bool, err error) {
@@ -154,4 +157,31 @@ func (j *podAllocatorJob) populate() error {
 	}
 
 	return nil
+}
+
+func (j *podAllocatorJob) getIntentPodOptions(containerOpts task.ContainerOptions) (*pod.TaskIntentPodOptions, error) {
+	os, err := pod.ImportOS(containerOpts.OS)
+	if err != nil {
+		return nil, errors.Wrap(err, "importing OS")
+	}
+	arch, err := pod.ImportArch(containerOpts.Arch)
+	if err != nil {
+		return nil, errors.Wrap(err, "importing CPU architecture")
+	}
+	var winVer pod.WindowsVersion
+	if j.task.ContainerOpts.WindowsVersion != "" {
+		winVer, err = pod.ImportWindowsVersion(containerOpts.WindowsVersion)
+		if err != nil {
+			return nil, errors.Wrap(err, "importing Windows version")
+		}
+	}
+	return &pod.TaskIntentPodOptions{
+		CPU:            containerOpts.CPU,
+		MemoryMB:       containerOpts.MemoryMB,
+		OS:             os,
+		Arch:           arch,
+		WindowsVersion: winVer,
+		Image:          containerOpts.Image,
+		WorkingDir:     containerOpts.WorkingDir,
+	}, nil
 }

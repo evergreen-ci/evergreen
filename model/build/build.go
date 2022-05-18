@@ -72,6 +72,10 @@ type Build struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+
+	// Set to true if all tasks in the build are blocked.
+	// Should not be exposed, only for internal use.
+	AllTasksBlocked bool `bson:"all_tasks_blocked"`
 }
 
 func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
@@ -115,8 +119,6 @@ func (b *Build) AllUnblockedTasksFinished(tasks []task.Task) (bool, string, erro
 
 	return allFinished, status, nil
 }
-
-// Find
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
 func (b *Build) FindBuildOnBaseCommit() (*Build, error) {
@@ -176,6 +178,7 @@ func (b *Build) UpdateStatus(status string) error {
 	)
 }
 
+// SetAborted sets the build aborted field to the given boolean.
 func (b *Build) SetAborted(aborted bool) error {
 	if b.Aborted == aborted {
 		return nil
@@ -184,6 +187,18 @@ func (b *Build) SetAborted(aborted bool) error {
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{AbortedKey: aborted}},
+	)
+}
+
+// SetAllTasksBlocked sets the build AllTasksBlocked field to the given boolean.
+func (b *Build) SetAllTasksBlocked(blocked bool) error {
+	if b.AllTasksBlocked == blocked {
+		return nil
+	}
+	b.AllTasksBlocked = blocked
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{AllTasksBlockedKey: blocked}},
 	)
 }
 

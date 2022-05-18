@@ -512,6 +512,16 @@ const (
 	AdHocRequester              = "ad_hoc"
 )
 
+var AllRequesterTypes = []string{
+	PatchVersionRequester,
+	GithubPRRequester,
+	GitTagRequester,
+	RepotrackerVersionRequester,
+	TriggerRequester,
+	MergeTestRequester,
+	AdHocRequester,
+}
+
 // Constants related to requester types.
 var (
 	SystemVersionRequesterTypes = []string{
@@ -1111,6 +1121,10 @@ const (
 	WindowsOS ContainerOS = "windows"
 )
 
+// ValidContainerOperatingSystems contains all recognized container operating
+// systems.
+var ValidContainerOperatingSystems = []ContainerOS{LinuxOS, WindowsOS}
+
 // Validate checks that the container OS is recognized.
 func (c ContainerOS) Validate() error {
 	switch c {
@@ -1121,16 +1135,20 @@ func (c ContainerOS) Validate() error {
 	}
 }
 
-// CPUArchitecture represents the architecture necessary to run a container.
-type CPUArchitecture string
+// ContainerArch represents the CPU architecture necessary to run a container.
+type ContainerArch string
 
 const (
-	ArchARM64 CPUArchitecture = "arm64"
-	ArchAMD64 CPUArchitecture = "x86_64"
+	ArchARM64 ContainerArch = "arm64"
+	ArchAMD64 ContainerArch = "x86_64"
 )
 
+// ValidContainerArchitectures contains all recognized container CPU
+// architectures.
+var ValidContainerArchitectures = []ContainerArch{ArchARM64, ArchAMD64}
+
 // Validate checks that the container CPU architecture is recognized.
-func (c CPUArchitecture) Validate() error {
+func (c ContainerArch) Validate() error {
 	switch c {
 	case ArchARM64, ArchAMD64:
 		return nil
@@ -1147,6 +1165,9 @@ const (
 	Windows2019 WindowsVersion = "2019"
 	Windows2016 WindowsVersion = "2016"
 )
+
+// ValidWindowsVersions contains all recognized container Windows versions.
+var ValidWindowsVersions = []WindowsVersion{Windows2016, Windows2019, Windows2022}
 
 // Validate checks that the container Windows version is recognized.
 func (w WindowsVersion) Validate() error {

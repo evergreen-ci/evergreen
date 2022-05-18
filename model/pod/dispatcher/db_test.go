@@ -117,6 +117,37 @@ func TestFindOneByGroupID(t *testing.T) {
 	}
 }
 
+func TestFindOneByPodID(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	dispatchers := []PodDispatcher{
+		NewPodDispatcher("group", []string{"task0", "task1"}, []string{"pod0", "pod1"}),
+		NewPodDispatcher("group", []string{"task2", "task3"}, []string{"pod2", "pod3"}),
+	}
+	for _, pd := range dispatchers {
+		require.NoError(t, pd.Insert())
+	}
+
+	t.Run("FindsDispatcherWithMatchingPodID", func(t *testing.T) {
+		for _, pd := range dispatchers {
+			for _, podID := range pd.PodIDs {
+				dbDisp, err := FindOneByPodID(podID)
+				require.NoError(t, err)
+				require.NotZero(t, dbDisp)
+				assert.Equal(t, pd.ID, dbDisp.ID)
+			}
+		}
+	})
+	t.Run("DoesNotFindDispatcherWithoutMatchingPodID", func(t *testing.T) {
+		pd, err := FindOneByPodID("foo")
+		assert.NoError(t, err)
+		assert.Zero(t, pd)
+	})
+}
+
 func TestAllocate(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
