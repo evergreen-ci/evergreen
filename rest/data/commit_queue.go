@@ -55,7 +55,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPr(ctx context.Context, projectRef 
 	}
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return "", errors.Wrap(err, "getting GitHub OAuth token from settings")
+		return "", errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
 	pr, err := thirdparty.GetPullRequest(ctx, prNum, githubToken, projectRef.Owner, projectRef.Repo)
 	if err != nil {
@@ -175,7 +175,7 @@ func EnqueueItem(projectID string, item restModel.APICommitQueueItem, enqueueNex
 		return 0, errors.Wrapf(err, "finding commit queue for project '%s'", projectID)
 	}
 	if q == nil {
-		return 0, errors.Errorf("no commit queue found for project '%s'", projectID)
+		return 0, errors.Errorf("commit queue not found for project '%s'", projectID)
 	}
 
 	itemInterface, err := item.ToService()
@@ -211,7 +211,7 @@ func FindCommitQueueForProject(name string) (*restModel.APICommitQueue, error) {
 		return nil, errors.Wrapf(err, "finding commit queue for project '%s'", id)
 	}
 	if cqService == nil {
-		return nil, errors.Errorf("no commit queue found for project '%s'", id)
+		return nil, errors.Errorf("commit queue not found for project '%s'", id)
 	}
 
 	apiCommitQueue := &restModel.APICommitQueue{}
@@ -232,7 +232,7 @@ func CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommit
 		return nil, errors.Wrapf(err, "getting commit queue for project '%s'", identifier)
 	}
 	if cq == nil {
-		return nil, errors.Errorf("no commit queue found for project '%s'", identifier)
+		return nil, errors.Errorf("commit queue not found for project '%s'", identifier)
 	}
 	version, err := model.GetVersionForCommitQueueItem(cq, issue)
 	if err != nil {
@@ -247,7 +247,7 @@ func CommitQueueRemoveItem(identifier, issue, user string) (*restModel.APICommit
 	}
 	apiRemovedItem := restModel.APICommitQueueItem{}
 	if err = apiRemovedItem.BuildFromService(*removed); err != nil {
-		return nil, errors.Wrap(err, "converting commitqueue into API model")
+		return nil, errors.Wrap(err, "converting commit queue into API model")
 	}
 	return &apiRemovedItem, nil
 }
@@ -346,7 +346,7 @@ func ConcludeMerge(patchID, status string) error {
 		return errors.Wrapf(err, "dequeueing item '%s' from commit queue", item)
 	}
 	if found == nil {
-		return errors.Errorf("item '%s' does not exist in the commit queue", item)
+		return errors.Errorf("item '%s' not found in commit queue", item)
 	}
 	githubStatus := message.GithubStateFailure
 	description := "merge test failed"
@@ -381,7 +381,7 @@ func GetAdditionalPatches(patchId string) ([]string, error) {
 		}
 	}
 	if cq == nil {
-		return nil, errors.Errorf("commit queue for project '%s' not found found", p.Project)
+		return nil, errors.Errorf("commit queue for project '%s' not found", p.Project)
 	}
 	additionalPatches := []string{}
 	for _, item := range cq.Queue {

@@ -543,7 +543,7 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	}
 	buildBaronConfig, ok := i.(evergreen.BuildBaronSettings)
 	if !ok {
-		return nil, errors.Errorf("programmatic error: expected buildbaron config but was actually '%T'", i)
+		return nil, errors.Errorf("programmatic error: expected build baron config but was actually %T", i)
 	}
 
 	i, err = p.TaskAnnotationSettings.ToService()

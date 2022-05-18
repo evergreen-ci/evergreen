@@ -482,7 +482,7 @@ func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string,
 		Theme:  string(theme),
 	})
 	if err != nil {
-		return utility.RespErrorf(resp, "%s", errors.Wrap(err, "sending request to set banner message"))
+		return utility.RespErrorf(resp, errors.Wrap(err, "sending request to set banner message").Error())
 	}
 	defer resp.Body.Close()
 
@@ -537,7 +537,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 
 	resp, err := c.retryRequest(ctx, info, f)
 	if err != nil {
-		return utility.RespErrorf(resp, "%s", errors.Wrap(err, "sending request go set service flags"))
+		return utility.RespErrorf(resp, errors.Wrap(err, "sending request to set service flags").Error())
 	}
 	defer resp.Body.Close()
 
@@ -1212,7 +1212,7 @@ func (c *communicatorImpl) GetMessageForPatch(ctx context.Context, patchID strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", utility.RespErrorf(resp, "getting message for patchk '%s'", patchID)
+		return "", utility.RespErrorf(resp, "getting message for patch '%s'", patchID)
 	}
 
 	var message string
@@ -1503,7 +1503,7 @@ func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*res
 
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "%s", errors.Wrapf(err, "getting distro '%s'", id))
+		return nil, utility.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
 	}
 	defer resp.Body.Close()
 
@@ -1523,7 +1523,7 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, utility.RespErrorf(resp, "%s", errors.Wrap(err, "getting client URLs"))
+		return nil, utility.RespErrorf(resp, errors.Wrap(err, "getting client URLs").Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -1613,7 +1613,7 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 		return nil, utility.RespErrorf(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, utility.RespErrorf(resp, "getting hosts by IP address")
+		return nil, utility.RespErrorf(resp, "getting host by IP address")
 	}
 
 	host := &model.APIHost{}

@@ -59,7 +59,7 @@ func CopyProject(ctx context.Context, opts CopyProjectOpts) (*restModel.APIProje
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
 	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
-		return nil, errors.Wrap(err, "converting project to service model")
+		return nil, errors.Wrap(err, "converting project to API model")
 	}
 
 	// copy variables, aliases, and subscriptions
@@ -278,7 +278,7 @@ func handleIdentifierConflict(pRef *model.ProjectRef) error {
 		return errors.Wrapf(err, "checking for conflicting project ref")
 	}
 	if conflictingRef != nil && conflictingRef.Id != pRef.Id {
-		return errors.New("identifier is already being used for another project")
+		return errors.Errorf("identifier '%s' is already being used for another project", conflictingRef.Id)
 	}
 	return nil
 }

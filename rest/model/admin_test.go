@@ -31,7 +31,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 		configFieldName := apiConfigRef.Field(i).Name
 		v, ok := matched[configFieldName]
 		assert.True(v)
-		assert.True(ok, "%s is missing from evergreen.Settings", configFieldName)
+		assert.True(ok, "config field '%s' is missing from evergreen.Settings", configFieldName)
 		if ok {
 			matched[configFieldName] = false
 		}
@@ -40,7 +40,7 @@ func TestConfigModelHasMatchingFieldNames(t *testing.T) {
 	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
 	for k, v := range matched {
 		if !utility.StringSliceContains(exclude, k) {
-			assert.False(v, "%s is missing from APIAdminSettings", k)
+			assert.False(v, "config field '%s' is missing from APIAdminSettings", k)
 		}
 	}
 }

@@ -40,7 +40,7 @@ func CheckPodSecret(id, secret string) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding pod '%s' by ID", id).Error(),
+			Message:    errors.Wrapf(err, "finding pod '%s'", id).Error(),
 		}
 	}
 	if p == nil {

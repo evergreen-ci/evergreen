@@ -33,7 +33,7 @@ func UpdateDistro(old, new *distro.Distro) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "distro '%s' was not updated", new.Id).Error(),
+			Message:    errors.Wrapf(err, "updating distro '%s'", new.Id).Error(),
 		}
 	}
 	return nil

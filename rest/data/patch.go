@@ -117,7 +117,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 
 		token, err := settings.GetGithubOauthToken()
 		if err != nil {
-			return errors.Wrap(err, "getting GitHub OAuth token from settings")
+			return errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 		}
 		if _, err = model.FinalizePatch(ctx, p, requester, token); err != nil {
 			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
@@ -157,7 +157,7 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p)
 		if err != nil {
-			return nil, errors.Wrap(err, "converting patch to API model")
+			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
 		}
 		apiPatches = append(apiPatches, apiPatch)
 	}

@@ -50,7 +50,7 @@ func (tr *APITaskReliability) BuildFromService(h interface{}) error {
 
 // ToService is not implemented for APITaskStats.
 func (tr *APITaskReliability) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APITaskStats")
+	return nil, errors.Errorf("ToService() is not implemented for APITaskReliability")
 }
 
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.

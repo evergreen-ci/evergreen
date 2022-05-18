@@ -12,10 +12,11 @@ serialized to JSON.
 Note that although it's generally recommended to implement some BuildFromService
 and ToService methods to facilitate conversion between the REST and service
 models, it's not necessary to implement the Model interface's exact method
-definition, since the Model is only necessary for a few special cases (e.g.
-reflection in admin settings). For most REST models, it's much preferred to pass
-in the concrete service model type and return the concrete service model type
-rather than pass around interface{} and type cast it into its expected it.
+definition (i.e. passing in interface{} and returning interface{}). The Model
+interface is only necessary for a few special cases (e.g. reflection in admin
+settings); for most REST models, it's much preferred to pass in the concrete
+service model type and return the concrete service model type rather than pass
+around interface{} and then type cast it into its expected type.
 
 Guidelines for Creating Models
 

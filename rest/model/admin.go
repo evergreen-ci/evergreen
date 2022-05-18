@@ -96,7 +96,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *evergreen.Settings:
 		if v == nil {
-			return errors.New("cannot convert nil Evergreen admin settings to API model")
+			return errors.New("cannot convert nil admin settings to API model")
 		}
 		apiModelReflect := reflect.ValueOf(*as)
 		dbModelReflect := reflect.ValueOf(*v)
@@ -566,7 +566,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	if i != nil {
 		ldap, ok = i.(*evergreen.LDAPConfig)
 		if !ok {
-			return nil, errors.Errorf("programmatic error: expected LDAP config but got type %T", i)
+			return nil, errors.Errorf("programmatic error: expected LDAP auth config but got type %T", i)
 		}
 	}
 
@@ -2247,7 +2247,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 	default:
-		return errors.Errorf("programmatic error: expected service flags but got type %T", h)
+		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
 	return nil
 }
@@ -2401,7 +2401,7 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
 	serviceProject, ok := h.(evergreen.JIRANotificationsProject)
 	if !ok {
-		return errors.Errorf("programmatic error: expected Jira project notifications but got type %T", h)
+		return errors.Errorf("programmatic error: expected Jira project notifications config but got type %T", h)
 	}
 
 	apiFields := make(map[string]string)

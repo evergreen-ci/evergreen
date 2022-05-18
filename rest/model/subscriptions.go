@@ -122,7 +122,7 @@ func (s *APISubscription) ToService() (interface{}, error) {
 		}
 		newSelector, ok := selectorInterface.(event.Selector)
 		if !ok {
-			return nil, errors.Errorf("programmatic error: expected event regex selector at index %d but got type %iT", i, selectorInterface)
+			return nil, errors.Errorf("programmatic error: expected regex event selector at index %d but got type %T", i, selectorInterface)
 		}
 		out.RegexSelectors = append(out.RegexSelectors, newSelector)
 	}

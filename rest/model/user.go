@@ -197,32 +197,32 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	if n == nil {
 		return user.NotificationPreferences{}, nil
 	}
-	buildbreak := utility.FromStringPtr(n.BuildBreak)
+	buildBreak := utility.FromStringPtr(n.BuildBreak)
 	patchFinish := utility.FromStringPtr(n.PatchFinish)
 	patchFirstFailure := utility.FromStringPtr(n.PatchFirstFailure)
 	spawnHostExpiration := utility.FromStringPtr(n.SpawnHostExpiration)
 	spawnHostOutcome := utility.FromStringPtr(n.SpawnHostOutcome)
 	commitQueue := utility.FromStringPtr(n.CommitQueue)
-	if !user.IsValidSubscriptionPreference(buildbreak) {
-		return nil, errors.New("invalid subscription type build break")
+	if !user.IsValidSubscriptionPreference(buildBreak) {
+		return nil, errors.Errorf("invalid build break subscription preference '%s'", buildBreak)
 	}
 	if !user.IsValidSubscriptionPreference(patchFinish) {
-		return nil, errors.New("invalid subscription type patch finish")
+		return nil, errors.Errorf("invalid patch finish subscription preference '%s'", patchFinish)
 	}
 	if !user.IsValidSubscriptionPreference(patchFirstFailure) {
-		return nil, errors.New("invalid subscription type patch first failure")
+		return nil, errors.Errorf("invalid patch first failure subscription preference '%s'", patchFirstFailure)
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostExpiration) {
-		return nil, errors.New("invalid subscription type for spawn host expiration")
+		return nil, errors.Errorf("invalid spawn host expiration subscription preference '%s'", spawnHostExpiration)
 	}
 	if !user.IsValidSubscriptionPreference(spawnHostOutcome) {
-		return nil, errors.New("invalid subscription type for spawn host outcome")
+		return nil, errors.Errorf("invalid spawn host outcome subscription preference '%s'", spawnHostOutcome)
 	}
 	if !user.IsValidSubscriptionPreference(commitQueue) {
-		return nil, errors.New("invalid subscription type for commit queue")
+		return nil, errors.Errorf("invalid commit queue subscription preference '%s'", commitQueue)
 	}
 	preferences := user.NotificationPreferences{
-		BuildBreak:          user.UserSubscriptionPreference(buildbreak),
+		BuildBreak:          user.UserSubscriptionPreference(buildBreak),
 		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
 		PatchFirstFailure:   user.UserSubscriptionPreference(patchFirstFailure),
 		SpawnHostOutcome:    user.UserSubscriptionPreference(spawnHostOutcome),
@@ -302,7 +302,7 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIUserSettings) (*user.UserSettings, error) {
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting Evergreen admin settings")
+		return nil, errors.Wrapf(err, "getting admin settings")
 	}
 	changedSettings, err := ApplyUserChanges(usr.Settings, userSettings)
 	if err != nil {

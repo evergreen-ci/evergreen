@@ -31,7 +31,7 @@ func FindTestById(id string) ([]testresult.TestResult, error) {
 	if err != nil {
 		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    errors.Wrap(err, "test result not found").Error(),
+			Message:    errors.Wrapf(err, "test result '%s' not found", id).Error(),
 		}
 	}
 

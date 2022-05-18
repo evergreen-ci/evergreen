@@ -178,11 +178,11 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting Evergreen admin settings")
+		return nil, nil, errors.Wrap(err, "getting admin settings")
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token")
+		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
 	expansions, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
@@ -256,7 +256,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 	}
 	if !cloud.IsDockerProvider(d.Provider) {
-		return nil, errors.Errorf("distro '%s' provider must be docker but actual provider is '%s'", d.Id, d.Provider)
+		return nil, errors.Errorf("distro '%s' provider must be Docker but actual provider is '%s'", d.Id, d.Provider)
 	}
 
 	// Do not provision task-spawned hosts.
@@ -294,7 +294,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 
 	config, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "getting Evergreen admin settings")
+		return nil, errors.Wrap(err, "getting admin settings")
 	}
 	containerPool := config.ContainerPools.GetContainerPool(d.ContainerPool)
 	if containerPool == nil {
@@ -345,7 +345,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
 		if foundDistro == nil {
-			return nil, errors.Wrapf(err, "distro '%s' not found", distroID)
+			return nil, errors.Errorf("distro '%s' not found", distroID)
 		}
 		d = *foundDistro
 		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {

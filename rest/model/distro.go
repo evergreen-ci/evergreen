@@ -415,7 +415,7 @@ type APIIcecreamSettings struct {
 func (s *APIIcecreamSettings) BuildFromService(h interface{}) error {
 	settings, ok := h.(distro.IcecreamSettings)
 	if !ok {
-		return errors.Errorf("programmatic error: expected distro icecream settings but got type %T", h)
+		return errors.Errorf("programmatic error: expected distro Icecream settings but got type %T", h)
 	}
 
 	s.SchedulerHost = utility.ToStringPtr(settings.SchedulerHost)
@@ -543,7 +543,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.HomeVolumeSettings = homeVolumeSettings
 	icecreamSettings := APIIcecreamSettings{}
 	if err := icecreamSettings.BuildFromService(d.IcecreamSettings); err != nil {
-		return errors.Wrap(err, "converting icecream settings to API model")
+		return errors.Wrap(err, "converting Icecream settings to API model")
 	}
 	apiDistro.IcecreamSettings = icecreamSettings
 	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
@@ -647,11 +647,11 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 
 	i, err = apiDistro.IcecreamSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting distro icecream settings to service model")
+		return nil, errors.Wrap(err, "converting distro Icecream settings to service model")
 	}
 	icecreamSettings, ok := i.(distro.IcecreamSettings)
 	if !ok {
-		return nil, errors.Errorf("programmatic error: expected distro icecream setings but got type %T", i)
+		return nil, errors.Errorf("programmatic error: expected distro Icecream setings but got type %T", i)
 	}
 	d.IcecreamSettings = icecreamSettings
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
