@@ -28,7 +28,7 @@ type GeneratedProject struct {
 	Functions     map[string]*YAMLCommandSet `yaml:"functions"`
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
-	TaskID string
+	Task *task.Task
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
@@ -123,7 +123,7 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	cachedProject := cacheProjectData(p)
 
 	// We've updated the parser project in a previous iteration of the generator job, so we don't try to update.
-	if utility.StringSliceContains(pp.UpdatedByGenerators, g.TaskID) {
+	if utility.StringSliceContains(pp.UpdatedByGenerators, g.Task.Id) {
 		return p, pp, v, nil
 	}
 	// Validate generated project against original project.
@@ -144,14 +144,14 @@ func (g *GeneratedProject) NewVersion(p *Project, pp *ParserProject, v *Version)
 	return p, newPP, v, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version, t *task.Task) error {
+func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProject, v *Version) error {
 	// Get task again, to exit early if another generator finished early.
-	t, err := task.FindOneId(g.TaskID)
+	t, err := task.FindOneId(g.Task.Id)
 	if err != nil {
-		return errors.Wrapf(err, "finding task '%s'", g.TaskID)
+		return errors.Wrapf(err, "finding task '%s'", g.Task.Id)
 	}
 	if t == nil {
-		return errors.Errorf("task '%s' not found", g.TaskID)
+		return errors.Errorf("task '%s' not found", g.Task.Id)
 	}
 	if t.GeneratedTasks {
 		grip.Debug(message.Fields{
@@ -224,12 +224,29 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
+
 	var err error
 	newTVPairs.ExecTasks, err = IncludeDependencies(p, newTVPairs.ExecTasks, v.Requester)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
-		"task":    g.TaskID,
+		"task":    g.Task.Id,
 	}))
+
+	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
+	if err != nil {
+		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", p.Identifier)
+	}
+	taskIDs, err := getTaskIdTables(v, p, newTVPairs, projectRef.Identifier)
+	if err != nil {
+		return errors.Wrap(err, "getting task ids")
+	}
+
+	if err := g.simulateNewDependencyGraph(newTVPairs.ExecTasks, p, taskIDs); err != nil {
+		return errors.Wrap(err, "simulating adding dependencies on generated tasks")
+	}
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -266,22 +283,15 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
-	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
-	if err != nil {
-		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
-	}
-	if projectRef == nil {
-		return errors.Errorf("project '%s' not found", p.Identifier)
-	}
 
 	activatedTasksInExistingBuilds, err := addNewTasks(ctx, activationInfo, v, p, projectRef, newTVPairsForExistingVariants,
-		existingBuilds, syncAtEndOpts, g.TaskID)
+		existingBuilds, syncAtEndOpts, g.Task.Id)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
 	activatedTasksInNewBuilds, err := addNewBuilds(ctx, activationInfo, v, p, newTVPairsForNewVariants,
-		existingBuilds, syncAtEndOpts, projectRef, g.TaskID)
+		existingBuilds, syncAtEndOpts, projectRef, g.Task.Id)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
@@ -292,6 +302,63 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	return nil
+}
+
+func (g *GeneratedProject) simulateNewDependencyGraph(newTasks TVPairSet, p *Project, taskIDs TaskIdConfig) error {
+	dependencyGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
+	if err != nil {
+		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
+	}
+	dependencyGraph = addTasksToGraph(newTasks, dependencyGraph, p, taskIDs)
+
+	for _, newTask := range newTasks {
+		for _, edge := range dependencyGraph.EdgesIntoTask(g.Task.ToTaskNode()) {
+			if newTask.Variant == edge.From.Variant && newTask.TaskName == edge.From.Name {
+				return errors.New("new task depends on the generator")
+			}
+
+			dependencyGraph.AddEdge(edge.From, task.TaskNode{
+				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+				Name:    newTask.TaskName,
+				Variant: newTask.Variant,
+			}, edge.Status)
+		}
+	}
+
+	if cycles := dependencyGraph.Cycles(); len(cycles) > 0 {
+		return errors.Errorf("adding dependencies would create dependency cycles: '%s'", cycles)
+	}
+
+	return nil
+}
+
+func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, taskIDs TaskIdConfig) task.DependencyGraph {
+	for _, newTask := range tasks {
+		graph.AddTaskNode(task.TaskNode{
+			ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+			Name:    newTask.TaskName,
+			Variant: newTask.Variant,
+		})
+	}
+
+	for _, newTask := range tasks {
+		newTaskNode := task.TaskNode{
+			ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+			Name:    newTask.TaskName,
+			Variant: newTask.Variant,
+		}
+
+		bvt := p.FindTaskForVariant(newTask.TaskName, newTask.Variant)
+		for _, dep := range bvt.DependsOn {
+			graph.AddEdge(newTaskNode, task.TaskNode{
+				ID:      taskIDs.ExecutionTasks.GetId(dep.Variant, dep.Name),
+				Name:    dep.Name,
+				Variant: dep.Variant,
+			}, dep.Status)
+		}
+	}
+
+	return graph
 }
 
 type specificActivationInfo struct {

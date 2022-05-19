@@ -614,7 +614,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
-	genTask := task.Task{
+	genTask := &task.Task{
 		Id:       "task_that_called_generate_task",
 		Project:  "proj",
 		Version:  "version_that_called_generate_task",
@@ -671,13 +671,13 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(v.Insert())
 
 	g := sampleGeneratedProject
-	g.TaskID = "task_that_called_generate_task"
+	g.Task = genTask
 
 	projectInfo, err := LoadProjectForVersion(v, "proj", false)
 	s.Require().NoError(err)
 	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &genTask))
+	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	// verify we stopped saving versions
 	v, err = VersionFindOneId(v.Id)
@@ -728,7 +728,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 }
 
 func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
-	generatorTask := task.Task{
+	generatorTask := &task.Task{
 		Id:      "generator",
 		BuildId: "generate_build",
 		Version: "version_that_called_generate_task",
@@ -762,7 +762,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 
 	g := partiallyGeneratedProject
-	g.TaskID = generatorTask.Id
+	g.Task = generatorTask
 	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.NoError(err)
 	pp.UpdatedByGenerators = []string{generatorTask.Id}
@@ -773,7 +773,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Len(pp.UpdatedByGenerators, 1) // Not modified again.
 
-	s.NoError(g.Save(context.Background(), p, pp, v, &generatorTask))
+	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	tasks := []task.Task{}
 	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
@@ -838,12 +838,12 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(v.Insert())
 
 	g := sampleGeneratedProjectAddToBVOnly
-	g.TaskID = "task_that_called_generate_task"
+	g.Task = &tasksThatExist[0]
 	projectInfo, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
 	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &tasksThatExist[0]))
+	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -872,7 +872,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 }
 
 func (s *GenerateSuite) TestSaveNewTasksWithCrossVariantDependencies() {
-	t1 := task.Task{
+	t1 := &task.Task{
 		Id:      "generator",
 		BuildId: "b1",
 		Version: "v1",
@@ -904,7 +904,7 @@ buildvariants:
 	s.NoError(v.Insert())
 
 	g := GeneratedProject{
-		TaskID: t1.Id,
+		Task: t1,
 		Tasks: []parserTask{
 			{
 				Name: "task_that_has_dependencies",
@@ -937,7 +937,7 @@ buildvariants:
 	s.Require().NoError(err)
 	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &t1))
+	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	// the depended-on task is created in the existing variant
 	saySomething := task.Task{}
@@ -980,12 +980,12 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.NoError(v.Insert())
 
 	g := smallGeneratedProject
-	g.TaskID = "task_that_called_generate_task"
+	g.Task = &taskThatExists
 	projectInfo, err := LoadProjectForVersion(v, "", false)
 	s.Require().NoError(err)
 	p, pp, v, err := g.NewVersion(projectInfo.Project, projectInfo.IntermediateProject, v)
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, pp, v, &taskThatExists))
+	s.NoError(g.Save(context.Background(), p, pp, v))
 
 	v, err = VersionFindOneId(v.Id)
 	s.NoError(err)
@@ -1004,6 +1004,105 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
 	s.Len(tasks[0].ExecutionTasks, 1)
+}
+
+func TestSimulateNewDependencyGraph(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.Clear(task.Collection))
+	}()
+
+	require.NoError(t, db.Clear(task.Collection))
+	generatorTask := task.Task{Id: "generator_id", BuildVariant: "bv0", DisplayName: "generator"}
+	require.NoError(t, generatorTask.Insert())
+
+	t.Run("CreatesCycle", func(t *testing.T) {
+		newTasks := TVPairSet{
+			{TaskName: "generated", Variant: "bv0"},
+			{TaskName: "dependedOn", Variant: "bv0"},
+		}
+
+		taskIDs := TaskIdConfig{
+			ExecutionTasks: TaskIdTable{
+				newTasks[0]: "generated_id",
+				newTasks[1]: "dependedOn_id",
+				TVPair{TaskName: generatorTask.DisplayName, Variant: generatorTask.BuildVariant}: generatorTask.Id,
+			},
+		}
+
+		project := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
+					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
+					{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+				}},
+			},
+			Tasks: []ProjectTask{
+				{Name: "generated"},
+				{Name: "dependedOn"},
+			},
+		}
+
+		g := GeneratedProject{Task: &generatorTask}
+		assert.Error(t, g.simulateNewDependencyGraph(newTasks, project, taskIDs))
+	})
+
+	t.Run("CreatesLoop", func(t *testing.T) {
+		newTasks := TVPairSet{
+			{TaskName: "generated", Variant: "bv0"},
+		}
+
+		taskIDs := TaskIdConfig{
+			ExecutionTasks: TaskIdTable{
+				newTasks[0]: "generated_id",
+				TVPair{TaskName: generatorTask.DisplayName, Variant: generatorTask.BuildVariant}: generatorTask.Id,
+			},
+		}
+
+		project := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
+					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+				}},
+			},
+			Tasks: []ProjectTask{
+				{Name: "generated"},
+			},
+		}
+
+		g := GeneratedProject{Task: &generatorTask}
+		assert.Error(t, g.simulateNewDependencyGraph(newTasks, project, taskIDs))
+	})
+
+	t.Run("NoCycles", func(t *testing.T) {
+		newTasks := TVPairSet{
+			{TaskName: "generated", Variant: "bv0"},
+			{TaskName: "dependedOn", Variant: "bv0"},
+		}
+
+		taskIDs := TaskIdConfig{
+			ExecutionTasks: TaskIdTable{
+				newTasks[0]: "generated_id",
+				newTasks[1]: "dependedOn_id",
+				TVPair{TaskName: generatorTask.DisplayName, Variant: generatorTask.BuildVariant}: generatorTask.Id,
+			},
+		}
+
+		project := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
+					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
+					{Name: "dependedOn"},
+				}},
+			},
+			Tasks: []ProjectTask{
+				{Name: "generated"},
+				{Name: "dependedOn"},
+			},
+		}
+
+		g := GeneratedProject{Task: &generatorTask}
+		assert.NoError(t, g.simulateNewDependencyGraph(newTasks, project, taskIDs))
+	})
 }
 
 func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {

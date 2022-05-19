@@ -69,16 +69,32 @@ func (t TaskNode) String() string {
 	return fmt.Sprintf("%s/%s", t.Variant, t.Name)
 }
 
+// VersionDependencyGraph finds all the tasks from the version given by versionID and constructs a DependencyGraph from them.
+func VersionDependencyGraph(versionID string, transposed bool) (DependencyGraph, error) {
+	tasks, err := FindWithFields(ByVersion(versionID), DependsOnKey, BuildVariantKey, DisplayNameKey)
+	if err != nil {
+		return DependencyGraph{}, errors.Wrapf(err, "getting tasks for version '%s'", versionID)
+	}
+
+	return taskDependencyGraph(tasks, transposed), nil
+}
+
+func taskDependencyGraph(tasks []Task, transposed bool) DependencyGraph {
+	g := NewDependencyGraph(transposed)
+	g.buildFromTasks(tasks)
+	return g
+}
+
 func (g *DependencyGraph) buildFromTasks(tasks []Task) {
 	taskIDToNode := make(map[string]TaskNode)
 	for _, task := range tasks {
-		tNode := task.toTaskNode()
+		tNode := task.ToTaskNode()
 		g.AddTaskNode(tNode)
 		taskIDToNode[task.Id] = tNode
 	}
 
 	for _, task := range tasks {
-		dependentTaskNode := task.toTaskNode()
+		dependentTaskNode := task.ToTaskNode()
 		for _, dep := range task.DependsOn {
 			dependedOnTaskNode := taskIDToNode[dep.TaskId]
 			g.AddEdge(dependentTaskNode, dependedOnTaskNode, dep.Status)
@@ -121,10 +137,10 @@ func (g *DependencyGraph) addEdgeToGraph(edge DependencyEdge) {
 	g.edgesToDependencies[edgeKey{from: edge.From, to: edge.To}] = edge
 }
 
-// edgesIntoTask returns all the edges that point to t.
+// EdgesIntoTask returns all the edges that point to t.
 // For a regular graph these edges are tasks that directly depend on t.
 // If the graph is transposed these edges are tasks t directly depends on.
-func (g *DependencyGraph) edgesIntoTask(t TaskNode) []DependencyEdge {
+func (g *DependencyGraph) EdgesIntoTask(t TaskNode) []DependencyEdge {
 	node := g.tasksToNodes[t]
 	if node == nil {
 		return nil
