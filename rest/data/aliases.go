@@ -144,7 +144,7 @@ func validateFeaturesHaveAliases(pRef *model.ProjectRef, aliases []restModel.API
 		aliasesMap[utility.FromStringPtr(a.Alias)] = true
 	}
 
-	if pRef.RepoRefId != "" {
+	if pRef.UseRepoSettings() {
 		repoAliases, err := model.FindAliasesForRepo(pRef.RepoRefId)
 		if err != nil {
 			return err
