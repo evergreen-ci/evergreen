@@ -18,6 +18,7 @@ type GithubSuite struct {
 	suite.Suite
 	pr       int
 	hash     string
+	baseHash string
 	url      string
 	baseRepo string
 	headRepo string
@@ -32,6 +33,7 @@ func TestGithubSuite(t *testing.T) {
 func (s *GithubSuite) SetupSuite() {
 	s.pr = 5
 	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
+	s.baseHash = "57da19930b1b18d346477e99a8e18094a672f48a"
 	s.url = "https://www.example.com/1.diff"
 	s.user = "octocat"
 	s.baseRepo = "evergreen-ci/evergreen"
@@ -44,41 +46,45 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent("1", "", "", testutil.NewGithubPR(0, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	intent, err := NewGithubIntent("1", "", "", testutil.NewGithubPR(0, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, "", s.headRepo, s.hash, s.user, s.title))
+	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, "", s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, "", s.hash, s.user, s.title))
+	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, "", s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, "", s.user, s.title))
+	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, "", s.headRepo, s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.title))
+	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, "", s.user, s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, "", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
 	// Creates new intent with callers
-	intent, err = NewGithubIntent("2", "", AutomatedCaller, testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.title))
+	intent, err = NewGithubIntent("2", "", AutomatedCaller, testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, "", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", "", ManualCaller, testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.title))
+	intent, err = NewGithubIntent("2", "", ManualCaller, testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, "", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
 	// PRs can't have an empty title
-	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, ""))
+	intent, err = NewGithubIntent("2", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, ""))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	intent, err = NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
@@ -114,7 +120,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent("1", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	intent, err := NewGithubIntent("1", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -134,7 +140,7 @@ func (s *GithubSuite) TestInsert() {
 }
 
 func (s *GithubSuite) TestFindIntentSpecifically() {
-	intent, err := NewGithubIntent("300", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	intent, err := NewGithubIntent("300", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -153,7 +159,7 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent("1", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	intent, err := NewGithubIntent("1", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -223,7 +229,7 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 }
 
 func (s *GithubSuite) TestNewPatch() {
-	intent, err := NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	intent, err := NewGithubIntent("4", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 
@@ -231,7 +237,6 @@ func (s *GithubSuite) TestNewPatch() {
 	s.NotNil(patchDoc)
 	s.Equal("'evergreen-ci/evergreen' pull request #5 by octocat: Art of Pull Requests (https://github.com/evergreen-ci/evergreen/pull/5)", patchDoc.Description)
 	s.Empty(patchDoc.Project)
-	s.Empty(patchDoc.Githash)
 	s.Zero(patchDoc.PatchNumber)
 	s.Empty(patchDoc.Version)
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
@@ -251,6 +256,7 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Equal("octocat", patchDoc.GithubPatchData.HeadOwner)
 	s.Equal("evergreen", patchDoc.GithubPatchData.HeadRepo)
 	s.Equal("67da19930b1b18d346477e99a8e18094a672f48a", patchDoc.GithubPatchData.HeadHash)
+	s.Equal(s.baseHash, patchDoc.Githash)
 	s.Equal("octocat", patchDoc.GithubPatchData.Author)
 	s.Equal(1234, patchDoc.GithubPatchData.AuthorUID)
 }

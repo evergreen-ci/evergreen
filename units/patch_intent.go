@@ -978,22 +978,25 @@ func (j *patchIntentProcessor) authAndFetchPRMergeBase(ctx context.Context, patc
 		}
 	}
 
-	hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":          j.ID(),
-			"message":      "Failed to authenticate github PR",
-			"source":       "patch intents",
-			"creator":      githubUser,
-			"required_org": requiredOrganization,
-			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number":    patchDoc.GithubPatchData.PRNumber,
-		}))
-		return isMember, err
-	}
+	// Maintain for backwards compatibility; remove after deploy of EVG-16615.
+	if patchDoc.Githash == "" {
+		hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"job":          j.ID(),
+				"message":      "Failed to authenticate github PR",
+				"source":       "patch intents",
+				"creator":      githubUser,
+				"required_org": requiredOrganization,
+				"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+				"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+				"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			}))
+			return isMember, err
+		}
 
-	patchDoc.Githash = hash
+		patchDoc.Githash = hash
+	}
 
 	return isMember, nil
 }
