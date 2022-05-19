@@ -141,6 +141,9 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy string, pr *github.Pull
 	if pr.Head.GetSHA() == "" {
 		return nil, errors.New("head hash must not be empty")
 	}
+	if pr.Base.GetSHA() == "" {
+		return nil, errors.New("base hash must not be empty")
+	}
 	if pr.GetTitle() == "" {
 		return nil, errors.New("PR title must not be empty")
 	}
