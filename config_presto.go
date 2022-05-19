@@ -1,9 +1,11 @@
 package evergreen
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -60,7 +62,7 @@ func (c *PrestoConfig) Get(env Environment) error {
 		return errors.Wrapf(err, "decoding section '%s'", c.SectionId())
 	}
 
-	if err := c.setupDB(); err != nil {
+	if err := c.setupDB(ctx); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
 			"message": "setting up Presto DB client",
 		}))
@@ -83,7 +85,7 @@ func (*PrestoConfig) ValidateAndDefault() error { return nil }
 
 func (c *PrestoConfig) DB() *sql.DB { return c.db }
 
-func (c *PrestoConfig) setupDB() error {
+func (c *PrestoConfig) setupDB(ctx context.Context) error {
 	dsnConfig := presto.Config{
 		PrestoURI:         c.formatURI(),
 		Source:            c.Source,
@@ -97,7 +99,13 @@ func (c *PrestoConfig) setupDB() error {
 	}
 
 	c.db, err = sql.Open("presto", dsn)
-	return errors.Wrap(err, "opening Presto connection")
+	if err != nil {
+		return errors.Wrap(err, "opening Presto connection")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	return c.db.PingContext(ctx)
 }
 
 func (c *PrestoConfig) formatURI() string {
