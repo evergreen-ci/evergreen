@@ -213,6 +213,7 @@ type Version {
   repo: String!
   project: String!
   projectIdentifier: String!
+  projectMetadata: Project
   branch: String!
   requester: String!
   activated: Boolean

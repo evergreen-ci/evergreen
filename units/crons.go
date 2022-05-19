@@ -1303,6 +1303,12 @@ func PopulatePodAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		if err != nil {
 			return errors.Wrap(err, "counting initializing pods")
 		}
+
+		grip.Info(message.Fields{
+			"message":          "tracking statistics for number of parallel pods being requested",
+			"num_initializing": numInitializing,
+		})
+
 		settings, err := evergreen.GetConfig()
 		if err != nil {
 			return errors.Wrap(err, "loading admin settings")

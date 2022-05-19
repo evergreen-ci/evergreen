@@ -3734,41 +3734,64 @@ func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTas
 func TestHasMatchingTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
-		Id:        "t1",
-		Version:   "v1",
-		Execution: 0,
-		Status:    evergreen.TaskSucceeded,
+		Id:           "t1",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Execution:    0,
+		Status:       evergreen.TaskSucceeded,
 	}
 	t2 := Task{
-		Id:        "t2",
-		Version:   "v1",
-		Execution: 0,
-		Status:    evergreen.TaskFailed,
+		Id:           "t2",
+		Version:      "v1",
+		BuildVariant: "bv1",
+		Execution:    0,
+		Status:       evergreen.TaskFailed,
 	}
+	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
+	// bv1 := build.Build{
+	// 	Id:           "bv1",
+	// 	BuildVariant: "bv1",
+	// 	DisplayName:  "Build Variant 1",
+	// }
 	t3 := Task{
-		Id:        "t3",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskSucceeded,
+		Id:           "t3",
+		Version:      "v1",
+		BuildVariant: "bv2",
+		Execution:    1,
+		Status:       evergreen.TaskSucceeded,
 	}
 	t4 := Task{
-		Id:        "t4",
-		Version:   "v1",
-		Execution: 1,
-		Status:    evergreen.TaskFailed,
+		Id:           "t4",
+		Version:      "v1",
+		BuildVariant: "bv2",
+		Execution:    1,
+		Status:       evergreen.TaskFailed,
 	}
+	// bv2 := build.Build{
+	// 	Id:           "bv2",
+	// 	BuildVariant: "bv2",
+	// 	DisplayName:  "Build Variant 2",
+	// }
 	t5 := Task{
-		Id:        "t5",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskStatusPending,
+		Id:           "t5",
+		Version:      "v1",
+		BuildVariant: "bv3",
+		Execution:    2,
+		Status:       evergreen.TaskStatusPending,
 	}
 	t6 := Task{
-		Id:        "t6",
-		Version:   "v1",
-		Execution: 2,
-		Status:    evergreen.TaskFailed,
+		Id:           "t6",
+		Version:      "v1",
+		BuildVariant: "bv3",
+		Execution:    2,
+		Status:       evergreen.TaskFailed,
 	}
+	// bv3 := build.Build{
+	// 	Id:           "bv3",
+	// 	BuildVariant: "bv3",
+	// 	DisplayName:  "Build Variant 3",
+	// }
+	// assert.NoError(t, db.InsertMany("build", bv1, bv2, bv3))
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
@@ -3779,6 +3802,24 @@ func TestHasMatchingTasks(t *testing.T) {
 
 	opts.Statuses = []string{evergreen.TaskWillRun}
 
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.False(t, hasMatchingTasks)
+
+	opts = HasMatchingTasksOptions{
+		Variants: []string{"bv1"},
+	}
+	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	assert.NoError(t, err)
+	assert.True(t, hasMatchingTasks)
+
+	// TODO: Reenable this test once https://jira.mongodb.org/browse/EVG-16918 is complete
+	// opts.Variants = []string{"Build Variant 2"}
+	// hasMatchingTasks, err = HasMatchingTasks("v1", opts)
+	// assert.NoError(t, err)
+	// assert.True(t, hasMatchingTasks)
+
+	opts.Variants = []string{"DNE"}
 	hasMatchingTasks, err = HasMatchingTasks("v1", opts)
 	assert.NoError(t, err)
 	assert.False(t, hasMatchingTasks)
