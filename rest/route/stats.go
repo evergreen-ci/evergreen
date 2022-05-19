@@ -367,14 +367,12 @@ func (tsh *testStatsHandler) parsePrestoStatsFilter(project string, vals url.Val
 	var err error
 
 	tsh.prestoFilter = &stats.PrestoTestStatsFilter{
-		Project:     project,
-		Variant:     vals.Get("variant"),
-		TaskName:    vals.Get("task_name"),
-		TestName:    vals.Get("test_name"),
-		SortDesc:    vals.Get("sort") == statsAPISortLatest,
-		GroupByTest: vals.Get("group_by_test") == "true",
-		GroupDays:   vals.Get("group_days") == "true",
-		DB:          tsh.db,
+		Project:  project,
+		Variant:  vals.Get("variants"),
+		TaskName: vals.Get("tasks"),
+		TestName: vals.Get("tests"),
+		SortDesc: vals.Get("sort") == statsAPISortLatest,
+		DB:       tsh.db,
 	}
 	for _, requester := range vals["requesters"] {
 		switch requester {
@@ -392,6 +390,12 @@ func (tsh *testStatsHandler) parsePrestoStatsFilter(project string, vals url.Val
 			return errors.Errorf("invalid requester value '%s'", requester)
 		}
 	}
+	if groupBy := vals.Get("group_by"); groupBy != "" {
+		if groupBy != statsAPITestGroupByTest {
+			return errors.New("invalid group by value")
+		}
+		tsh.prestoFilter.GroupByTest = true
+	}
 	if afterDate := vals.Get("after_date"); afterDate != "" {
 		tsh.prestoFilter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 		if err != nil {
@@ -404,10 +408,23 @@ func (tsh *testStatsHandler) parsePrestoStatsFilter(project string, vals url.Val
 			return errors.Wrap(err, "invalid before date value")
 		}
 	}
-	if offset := vals.Get("offset"); offset != "" {
+	if groupNumDays := vals.Get("group_num_days"); groupNumDays != "" {
+		numDays, err := strconv.Atoi(groupNumDays)
+		if err != nil {
+			return errors.Wrap(err, "invalid group num days value")
+		}
+
+		totalDays := int(tsh.prestoFilter.BeforeDate.Sub(tsh.prestoFilter.AfterDate).Hours() / 24)
+		if numDays == totalDays {
+			tsh.prestoFilter.GroupDays = true
+		} else if numDays != 1 {
+			return errors.New("invalid group num days value: must be either 1 or number of days in the given date range")
+		}
+	}
+	if offset := vals.Get("start_at"); offset != "" {
 		tsh.prestoFilter.Offset, err = strconv.Atoi(offset)
 		if err != nil {
-			return errors.Wrap(err, "invalid offset")
+			return errors.Wrap(err, "invalid start at value")
 		}
 	}
 	if limit := vals.Get("limit"); limit != "" {
@@ -453,20 +470,18 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	if len(testStatsResult) > requestLimit {
 		lastIndex = requestLimit
 
-		var key, keyQueryParam string
+		var key string
 		if tsh.prestoFilter != nil {
 			key = strconv.Itoa(tsh.prestoFilter.Offset + requestLimit)
-			keyQueryParam = "offset"
 		} else {
 			key = testStatsResult[requestLimit].StartAtKey()
-			keyQueryParam = "start_at"
 		}
 
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
-				KeyQueryParam:   keyQueryParam,
+				KeyQueryParam:   "start_at",
 				BaseURL:         tsh.url,
 				Key:             key,
 				Limit:           requestLimit,

@@ -231,9 +231,9 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 		{
 			name: "InvalidRequestType",
 			vals: url.Values{
-				"variant":     []string{"variant"},
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test_name"},
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
 				"requesters":  []string{"DNE"},
 				"after_date":  []string{time.Now().Add(-24 * time.Hour).Format(statsAPIDateFormat)},
 				"before_date": []string{time.Now().Format(statsAPIDateFormat)},
@@ -243,9 +243,9 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 		{
 			name: "InvalidAfterDate",
 			vals: url.Values{
-				"variant":     []string{"variant"},
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test_name"},
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
 				"after_date":  []string{"NOTADATE"},
 				"before_date": []string{time.Now().Format(statsAPIDateFormat)},
 			},
@@ -254,32 +254,68 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 		{
 			name: "InvalidBeforeDate",
 			vals: url.Values{
-				"variant":     []string{"variant"},
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test_name"},
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
 				"after_date":  []string{time.Now().Add(-24 * time.Hour).Format(statsAPIDateFormat)},
 				"before_date": []string{"NOTADATE"},
 			},
 			hasErr: true,
 		},
 		{
-			name: "InvalidOffset",
+			name: "InvalidGroupBy",
 			vals: url.Values{
-				"variant":     []string{"variant"},
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test_name"},
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
 				"after_date":  []string{time.Now().Add(-24 * time.Hour).Format(statsAPIDateFormat)},
 				"before_date": []string{time.Now().Format(statsAPIDateFormat)},
-				"offset":      []string{"NOTANUM"},
+				"group_by":    []string{statsAPITestGroupByTask},
+			},
+			hasErr: true,
+		},
+		{
+			name: "InvalidGroupNumDays",
+			vals: url.Values{
+				"variants":       []string{"variant"},
+				"tasks":          []string{"task"},
+				"tests":          []string{"test_name"},
+				"after_date":     []string{time.Now().Add(-24 * time.Hour).Format(statsAPIDateFormat)},
+				"before_date":    []string{time.Now().Format(statsAPIDateFormat)},
+				"group_num_days": []string{"NOTANUM"},
+			},
+			hasErr: true,
+		},
+		{
+			name: "GroupNumDaysNotEqualToOneOrNumDaysInDateRange",
+			vals: url.Values{
+				"variants":       []string{"variant"},
+				"tasks":          []string{"task"},
+				"tests":          []string{"test_name"},
+				"after_date":     []string{time.Now().Add(-48 * time.Hour).Format(statsAPIDateFormat)},
+				"before_date":    []string{time.Now().Format(statsAPIDateFormat)},
+				"group_num_days": []string{"3"},
+			},
+			hasErr: true,
+		},
+		{
+			name: "InvalidStartAt",
+			vals: url.Values{
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
+				"after_date":  []string{time.Now().Add(-24 * time.Hour).Format(statsAPIDateFormat)},
+				"before_date": []string{time.Now().Format(statsAPIDateFormat)},
+				"start_at":    []string{"NOTANUM"},
 			},
 			hasErr: true,
 		},
 		{
 			name: "InvalidLimit",
 			vals: url.Values{
-				"variant":     []string{"variant"},
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test_name"},
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
 				"after_date":  []string{time.Now().Add(-24 * time.Hour).Format(statsAPIDateFormat)},
 				"before_date": []string{time.Now().Format(statsAPIDateFormat)},
 				"limit":       []string{"NOTANUM"},
@@ -289,8 +325,8 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 		{
 			name: "InvalidFilter",
 			vals: url.Values{
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test_name"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test_name"},
 				"after_date":  []string{now.Add(-24 * time.Hour).Format(statsAPIDateFormat)},
 				"before_date": []string{now.Format(statsAPIDateFormat)},
 			},
@@ -299,9 +335,9 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 		{
 			name: "DefaultValues",
 			vals: url.Values{
-				"variant":     []string{"variant"},
-				"task_name":   []string{"task"},
-				"test_name":   []string{"test"},
+				"variants":    []string{"variant"},
+				"tasks":       []string{"task"},
+				"tests":       []string{"test"},
 				"after_date":  []string{now.Add(-24 * time.Hour).Format(statsAPIDateFormat)},
 				"before_date": []string{now.Format(statsAPIDateFormat)},
 			},
@@ -314,11 +350,11 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 			},
 		},
 		{
-			name: "CustomValues",
+			name: "CustomValuesNoGroupDays",
 			vals: url.Values{
-				"variant":   []string{"variant"},
-				"task_name": []string{"task"},
-				"test_name": []string{"test"},
+				"variants": []string{"variant"},
+				"tasks":    []string{"task"},
+				"tests":    []string{"test"},
 				"requesters": []string{
 					statsAPIRequesterMainline,
 					statsAPIRequesterTrigger,
@@ -326,13 +362,13 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 					statsAPIRequesterAdhoc,
 					statsAPIRequesterPatch,
 				},
-				"after_date":    []string{now.Add(-24 * time.Hour).Format(statsAPIDateFormat)},
-				"before_date":   []string{now.Format(statsAPIDateFormat)},
-				"offset":        []string{"100"},
-				"limit":         []string{"500"},
-				"sort":          []string{statsAPISortLatest},
-				"group_by_test": []string{"true"},
-				"group_days":    []string{"true"},
+				"after_date":     []string{now.Add(-48 * time.Hour).Format(statsAPIDateFormat)},
+				"before_date":    []string{now.Format(statsAPIDateFormat)},
+				"start_at":       []string{"100"},
+				"limit":          []string{"500"},
+				"sort":           []string{statsAPISortLatest},
+				"group_by":       []string{statsAPITestGroupByTest},
+				"group_num_days": []string{"1"},
 			},
 			expectedFilter: stats.PrestoTestStatsFilter{
 				Variant:  "variant",
@@ -347,7 +383,49 @@ func TestParsePrestoStatsFilter(t *testing.T) {
 					},
 					evergreen.PatchRequesters...,
 				),
-				AfterDate:   now.Add(-24 * time.Hour),
+				AfterDate:   now.Add(-48 * time.Hour),
+				BeforeDate:  now,
+				Offset:      100,
+				Limit:       501,
+				SortDesc:    true,
+				GroupByTest: true,
+			},
+		},
+		{
+			name: "CustomValuesGroupDays",
+			vals: url.Values{
+				"variants": []string{"variant"},
+				"tasks":    []string{"task"},
+				"tests":    []string{"test"},
+				"requesters": []string{
+					statsAPIRequesterMainline,
+					statsAPIRequesterTrigger,
+					statsAPIRequesterGitTag,
+					statsAPIRequesterAdhoc,
+					statsAPIRequesterPatch,
+				},
+				"after_date":     []string{now.Add(-48 * time.Hour).Format(statsAPIDateFormat)},
+				"before_date":    []string{now.Format(statsAPIDateFormat)},
+				"start_at":       []string{"100"},
+				"limit":          []string{"500"},
+				"sort":           []string{statsAPISortLatest},
+				"group_by":       []string{statsAPITestGroupByTest},
+				"group_num_days": []string{"2"},
+			},
+			expectedFilter: stats.PrestoTestStatsFilter{
+				Variant:  "variant",
+				TaskName: "task",
+				TestName: "test",
+				Requesters: append(
+					[]string{
+						evergreen.RepotrackerVersionRequester,
+						evergreen.TriggerRequester,
+						evergreen.GitTagRequester,
+						evergreen.AdHocRequester,
+					},
+					evergreen.PatchRequesters...,
+				),
+				AfterDate:   now.Add(-48 * time.Hour),
 				BeforeDate:  now,
 				Offset:      100,
 				Limit:       501,
@@ -435,7 +513,7 @@ func TestPrestoTestStatsHandlerRun(t *testing.T) {
 		assert.EqualValues(t, expectedStats[:limit], resp.Data())
 		pages := resp.Pages()
 		require.NotNil(t, pages)
-		assert.Equal(t, "offset", pages.Next.KeyQueryParam)
+		assert.Equal(t, "start_at", pages.Next.KeyQueryParam)
 		assert.Equal(t, strconv.Itoa(limit), pages.Next.Key)
 		assert.Equal(t, "limit", pages.Next.LimitQueryParam)
 		assert.Equal(t, limit, pages.Next.Limit)
@@ -463,7 +541,7 @@ func TestPrestoTestStatsHandlerRun(t *testing.T) {
 		assert.EqualValues(t, expectedStats[:limit], resp.Data())
 		pages := resp.Pages()
 		require.NotNil(t, pages)
-		assert.Equal(t, "offset", pages.Next.KeyQueryParam)
+		assert.Equal(t, "start_at", pages.Next.KeyQueryParam)
 		assert.Equal(t, strconv.Itoa(limit+offset), pages.Next.Key)
 		assert.Equal(t, "limit", pages.Next.LimitQueryParam)
 		assert.Equal(t, limit, pages.Next.Limit)
