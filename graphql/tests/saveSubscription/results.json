@@ -56,7 +56,7 @@
       "result": {
         "errors": [
           {
-            "message": "error finding project by id not-real: 404 (Not Found): project with id 'not-real' not found",
+            "message": "error finding project by id not-real: 404 (Not Found): project 'not-real' not found",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
@@ -82,7 +82,7 @@
       "result": {
         "errors": [
           {
-            "message": "error saving subscription: 400 (Bad Request): Error validating subscription: selector has an empty type\nselector '' has no data",
+            "message": "error saving subscription: 400 (Bad Request): invalid subscription: selector has an empty type\nselector '' has no data",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }

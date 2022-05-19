@@ -216,7 +216,7 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	s.Require().Equal(401, resp.Status())
 	respErr, ok := resp.Data().(gimlet.ErrorResponse)
 	s.True(ok)
-	s.Equal("Cannot change subscriptions for anyone other than yourself", respErr.Message)
+	s.Equal("cannot change subscriptions for anyone other than yourself", respErr.Message)
 }
 
 func (s *SubscriptionRouteSuite) TestGet() {
