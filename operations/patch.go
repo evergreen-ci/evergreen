@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -145,6 +146,12 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			params.setDefaultProject(conf)
+
+			for _, project := range conf.Projects {
+				if errStrs := model.ValidateProjectAliases(project.LocalAliases, "Local Aliases"); errStrs != nil {
+					return errors.Errorf("validating local aliases: '%s'", errStrs)
+				}
+			}
 
 			if params.Alias != "" {
 				if err = params.setLocalAliases(conf); err != nil {
