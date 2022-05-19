@@ -256,7 +256,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 	}
 	if !cloud.IsDockerProvider(d.Provider) {
-		return nil, errors.Errorf("distro '%s' provider must be Docker but actual provider is '%s'", d.Id, d.Provider)
+		return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
 	}
 
 	// Do not provision task-spawned hosts.

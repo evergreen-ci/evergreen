@@ -48,7 +48,7 @@ func (tr *APITaskReliability) BuildFromService(h interface{}) error {
 	return nil
 }
 
-// ToService is not implemented for APITaskStats.
+// ToService is not implemented for APITaskReliability.
 func (tr *APITaskReliability) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APITaskReliability")
 }
