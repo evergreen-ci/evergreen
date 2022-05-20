@@ -29,7 +29,7 @@ func (s *APISelector) BuildFromService(h interface{}) error {
 		s.Data = utility.ToStringPtr(v.Data)
 		s.Type = utility.ToStringPtr(v.Type)
 	default:
-		return errors.New("unrecognized type for APISelector")
+		return errors.Errorf("programmatic error: expected event selector but got type %T", h)
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 			s.RegexSelectors = append(s.RegexSelectors, newSelector)
 		}
 	default:
-		return errors.New("unrecognized type for APISubscription")
+		return errors.Errorf("programmatic error: expected event subscription but got type %T", h)
 	}
 
 	return nil
@@ -97,17 +97,17 @@ func (s *APISubscription) ToService() (interface{}, error) {
 	}
 	subscriber, ok := subscriberInterface.(event.Subscriber)
 	if !ok {
-		return nil, errors.New("unable to convert subscriber")
+		return nil, errors.Errorf("programmatic error: expected event subscriber but got type %T", subscriberInterface)
 	}
 	out.Subscriber = subscriber
-	for _, selector := range s.Selectors {
+	for i, selector := range s.Selectors {
 		selectorInterface, err := selector.ToService()
 		if err != nil {
 			return nil, err
 		}
 		newSelector, ok := selectorInterface.(event.Selector)
 		if !ok {
-			return nil, errors.New("unable to convert selector")
+			return nil, errors.Errorf("programmatic error: expected event selector at index %d but got type %T", i, selectorInterface)
 		}
 		out.Selectors = append(out.Selectors, newSelector)
 	}
@@ -115,14 +115,14 @@ func (s *APISubscription) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "setting filter from selectors")
 	}
 
-	for _, selector := range s.RegexSelectors {
+	for i, selector := range s.RegexSelectors {
 		selectorInterface, err := selector.ToService()
 		if err != nil {
 			return nil, err
 		}
 		newSelector, ok := selectorInterface.(event.Selector)
 		if !ok {
-			return nil, errors.New("unable to convert selector")
+			return nil, errors.Errorf("programmatic error: expected regex event selector at index %d but got type %T", i, selectorInterface)
 		}
 		out.RegexSelectors = append(out.RegexSelectors, newSelector)
 	}

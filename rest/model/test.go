@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -97,7 +96,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	case string:
 		at.TaskID = utility.ToStringPtr(v)
 	default:
-		return fmt.Errorf("incorrect type '%v' when creating APITest", v)
+		return errors.Errorf("programmatic error: expected test result but got type %T", st)
 	}
 
 	return nil

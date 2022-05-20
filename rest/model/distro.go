@@ -32,7 +32,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	case *distro.PlannerSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro planner settings but got type %T", h)
 	}
 
 	if settings.Version == "" {
@@ -91,7 +91,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(h interface{}) error {
 	case *distro.HostAllocatorSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro host allocator settings but got type %T", h)
 	}
 
 	if settings.Version == "" {
@@ -143,7 +143,7 @@ func (s *APIFinderSettings) BuildFromService(h interface{}) error {
 	case *distro.FinderSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro finder settings but got type %T", h)
 	}
 
 	if settings.Version == "" {
@@ -183,7 +183,7 @@ func (s *APIDispatcherSettings) BuildFromService(h interface{}) error {
 	case *distro.DispatcherSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro dispatcher settings but got type %T", h)
 	}
 
 	if settings.Version == "" {
@@ -236,7 +236,7 @@ func (e *APIEnvVar) BuildFromService(h interface{}) error {
 		e.Key = utility.ToStringPtr(v.Key)
 		e.Value = utility.ToStringPtr(v.Value)
 	default:
-		return errors.Errorf("%T is not a supported environment variable type", h)
+		return errors.Errorf("programmatic error: expected distro environment variable but got %T", h)
 	}
 	return nil
 }
@@ -274,7 +274,7 @@ func (s *APIPreconditionScript) BuildFromService(h interface{}) error {
 		s.Script = utility.ToStringPtr(v.Script)
 		return nil
 	default:
-		return errors.Errorf("%T is not a supported precondition script type", h)
+		return errors.Errorf("programmatic error: expected distro precondition script but got type %T", h)
 	}
 }
 
@@ -297,7 +297,7 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	case *distro.BootstrapSettings:
 		settings = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro bootstrapping settings but got type %T", h)
 	}
 
 	s.Method = utility.ToStringPtr(settings.Method)
@@ -317,14 +317,14 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	for _, envVar := range settings.Env {
 		apiEnvVar := APIEnvVar{}
 		if err := apiEnvVar.BuildFromService(envVar); err != nil {
-			return errors.Wrap(err, "error building environment variable")
+			return errors.Wrap(err, "converting environment variable to API model")
 		}
 		s.Env = append(s.Env, apiEnvVar)
 	}
 	for _, script := range settings.PreconditionScripts {
 		var apiScript APIPreconditionScript
 		if err := apiScript.BuildFromService(script); err != nil {
-			return errors.Wrap(err, "precondition script")
+			return errors.Wrap(err, "converting precondition script to API model")
 		}
 		s.PreconditionScripts = append(s.PreconditionScripts, apiScript)
 	}
@@ -358,22 +358,22 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 	for _, apiEnvVar := range s.Env {
 		i, err := apiEnvVar.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "error building environment variable")
+			return nil, errors.Wrap(err, "converting environment variable to service model")
 		}
 		envVar, ok := i.(distro.EnvVar)
 		if !ok {
-			return nil, errors.Errorf("programmatic error: unexpected type %T for environment variable", i)
+			return nil, errors.Errorf("programmatic error: expected distro environment variable but got type %T", i)
 		}
 		settings.Env = append(settings.Env, envVar)
 	}
 	for _, apiScript := range s.PreconditionScripts {
 		i, err := apiScript.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "building precondition script")
+			return nil, errors.Wrap(err, "converting precondition script to service model")
 		}
 		script, ok := i.(distro.PreconditionScript)
 		if !ok {
-			return nil, errors.Errorf("programmatic error: unexpected type %T for precondition script", i)
+			return nil, errors.Errorf("programmatic error: expected distro precondition script but got type %T", i)
 		}
 		settings.PreconditionScripts = append(settings.PreconditionScripts, script)
 	}
@@ -393,7 +393,7 @@ type APIHomeVolumeSettings struct {
 func (s *APIHomeVolumeSettings) BuildFromService(h interface{}) error {
 	settings, ok := h.(distro.HomeVolumeSettings)
 	if !ok {
-		return errors.Errorf("Unexpected type '%T' for HomeVolumeSettings", h)
+		return errors.Errorf("programmatic error: expected distro home volume settings but got type %T", h)
 	}
 
 	s.FormatCommand = utility.ToStringPtr(settings.FormatCommand)
@@ -415,7 +415,7 @@ type APIIcecreamSettings struct {
 func (s *APIIcecreamSettings) BuildFromService(h interface{}) error {
 	settings, ok := h.(distro.IcecreamSettings)
 	if !ok {
-		return errors.Errorf("Unexpected type '%T' for IcecreamSettings", h)
+		return errors.Errorf("programmatic error: expected distro Icecream settings but got type %T", h)
 	}
 
 	s.SchedulerHost = utility.ToStringPtr(settings.SchedulerHost)
@@ -476,7 +476,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	case *distro.Distro:
 		d = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro but got type %T", h)
 	}
 
 	apiDistro.Name = utility.ToStringPtr(d.Id)
@@ -491,7 +491,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.User = utility.ToStringPtr(d.User)
 	bootstrapSettings := APIBootstrapSettings{}
 	if err := bootstrapSettings.BuildFromService(d.BootstrapSettings); err != nil {
-		return errors.Wrap(err, "error converting from distro.BootstrapSettings to model.APIBootstrapSettings")
+		return errors.Wrap(err, "converting distro bootstrap settings to API model")
 	}
 	apiDistro.BootstrapSettings = bootstrapSettings
 	if d.CloneMethod == "" {
@@ -508,33 +508,29 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		for _, e := range d.Expansions {
 			expansion := APIExpansion{}
 			if err := expansion.BuildFromService(e); err != nil {
-				return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
+				return errors.Wrap(err, "converting distro expansions to API model")
 			}
 			apiDistro.Expansions = append(apiDistro.Expansions, expansion)
 		}
 	}
-	// FinderSetting
 	findSettings := APIFinderSettings{}
 	if err := findSettings.BuildFromService(d.FinderSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.FinderSettings to model.APIFinderSettings")
+		return errors.Wrap(err, "converting distro finder settings to API model")
 	}
 	apiDistro.FinderSettings = findSettings
-	// PlannerSettings
 	planSettings := APIPlannerSettings{}
 	if err := planSettings.BuildFromService(d.PlannerSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.PlannerSettings to model.APIPlannerSettings")
+		return errors.Wrap(err, "converting distro planner settings to API model")
 	}
 	apiDistro.PlannerSettings = planSettings
-	// HostAllocatorSettings
 	allocatorSettings := APIHostAllocatorSettings{}
 	if err := allocatorSettings.BuildFromService(d.HostAllocatorSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.APIHostAllocatorSettings")
+		return errors.Wrap(err, "converting distro host allocator settings to API model")
 	}
 	apiDistro.HostAllocatorSettings = allocatorSettings
-	// DispatcherSettings
 	dispatchSettings := APIDispatcherSettings{}
 	if err := dispatchSettings.BuildFromService(d.DispatcherSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.HostAllocatorSettings to model.APIHostAllocatorSettings")
+		return errors.Wrap(err, "converting distro dispatcher settings to API model")
 	}
 	apiDistro.DispatcherSettings = dispatchSettings
 	apiDistro.DisableShallowClone = d.DisableShallowClone
@@ -542,12 +538,12 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	homeVolumeSettings := APIHomeVolumeSettings{}
 	if err := homeVolumeSettings.BuildFromService(d.HomeVolumeSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.HomeVolumeSettings to model.APIHomeVolumeSettings")
+		return errors.Wrap(err, "converting home volume settings to API model")
 	}
 	apiDistro.HomeVolumeSettings = homeVolumeSettings
 	icecreamSettings := APIIcecreamSettings{}
 	if err := icecreamSettings.BuildFromService(d.IcecreamSettings); err != nil {
-		return errors.Wrap(err, "Error converting from distro.IcecreamSettings to model.APIIcecreamSettings")
+		return errors.Wrap(err, "converting Icecream settings to API model")
 	}
 	apiDistro.IcecreamSettings = icecreamSettings
 	apiDistro.IsVirtualWorkstation = d.IsVirtualWorkstation
@@ -570,11 +566,11 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.User = utility.FromStringPtr(apiDistro.User)
 	i, err := apiDistro.BootstrapSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "error converting from model.APIBootstrapSettings to distro.BootstrapSettings")
+		return nil, errors.Wrap(err, "converting distro bootstrap settings to service model")
 	}
 	bootstrapSettings, ok := i.(distro.BootstrapSettings)
 	if !ok {
-		return nil, errors.Errorf("unexpected type %T for distro.BootstrapSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro bootstrap settings but got type %T", i)
 	}
 	d.BootstrapSettings = bootstrapSettings
 	d.CloneMethod = utility.FromStringPtr(apiDistro.CloneMethod)
@@ -589,55 +585,51 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	for _, e := range apiDistro.Expansions {
 		i, err = e.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "Error converting from model.APIExpansion to distro.Expansion")
+			return nil, errors.Wrap(err, "converting distro expansions to service model")
 		}
 		var expansion distro.Expansion
 		expansion, ok = i.(distro.Expansion)
 		if !ok {
-			return nil, errors.Errorf("Unexpected type %T for distro.Expansion", i)
+			return nil, errors.Errorf("programmatic error: expected distro expansions but got type %T", i)
 		}
 		d.Expansions = append(d.Expansions, expansion)
 	}
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
-	// FinderSettings
 	i, err = apiDistro.FinderSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIFinderSettings to distro.FinderSettings")
+		return nil, errors.Wrap(err, "converting distro finder settings to service model")
 	}
 	findSettings, ok := i.(distro.FinderSettings)
 	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.FinderSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro finder settings but got type %T", i)
 	}
 	d.FinderSettings = findSettings
-	// PlannerSettings
 	i, err = apiDistro.PlannerSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIPlannerSettings to distro.PlannerSettings")
+		return nil, errors.Wrap(err, "converting distro planner settings to service model")
 	}
 	planSettings, ok := i.(distro.PlannerSettings)
 	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.PlannerSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro planner settings but got type %T", i)
 	}
 	d.PlannerSettings = planSettings
-	// HostAllocatorSettings
 	i, err = apiDistro.HostAllocatorSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIHostAllocatorSettings to distro.HostAllocatorSettings")
+		return nil, errors.Wrap(err, "converting distro host allocator settings to service model")
 	}
 	allocatorSettings, ok := i.(distro.HostAllocatorSettings)
 	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.HostAllocatorSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro host allocator settings but got type %T", i)
 	}
 	d.HostAllocatorSettings = allocatorSettings
-	// DispatcherSettings
 	i, err = apiDistro.DispatcherSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIDispatcherSettings to distro.DispatcherSettings")
+		return nil, errors.Wrap(err, "converting distro dispatcher settings to service model")
 	}
 	dispatchSettings, ok := i.(distro.DispatcherSettings)
 	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.DispatcherSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro dispatcher settings but got type %T", i)
 	}
 	d.DispatcherSettings = dispatchSettings
 	d.DisableShallowClone = apiDistro.DisableShallowClone
@@ -645,21 +637,21 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 	i, err = apiDistro.HomeVolumeSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIHomeVolumeSettings to distro.HomeVolumeSettings")
+		return nil, errors.Wrap(err, "converting distro home volume settings to service model")
 	}
 	homeVolumeSettings, ok := i.(distro.HomeVolumeSettings)
 	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.HomeVolumeSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro home volume settings but got type %T", i)
 	}
 	d.HomeVolumeSettings = homeVolumeSettings
 
 	i, err = apiDistro.IcecreamSettings.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error converting from model.APIIcecreamSettings to distro.IcecreamSettings")
+		return nil, errors.Wrap(err, "converting distro Icecream settings to service model")
 	}
 	icecreamSettings, ok := i.(distro.IcecreamSettings)
 	if !ok {
-		return nil, errors.Errorf("Unexpected type %T for distro.IcecreamSettings", i)
+		return nil, errors.Errorf("programmatic error: expected distro Icecream setings but got type %T", i)
 	}
 	d.IcecreamSettings = icecreamSettings
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
@@ -681,7 +673,7 @@ func (e *APIExpansion) BuildFromService(h interface{}) error {
 		e.Key = utility.ToStringPtr(val.Key)
 		e.Value = utility.ToStringPtr(val.Value)
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("programmatic error: expected distro expansions but got type %T", h)
 	}
 	return nil
 }

@@ -38,8 +38,7 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
-	s.Require().NoError(db.Clear(commitqueue.Collection))
-	s.Require().NoError(db.Clear(model.ProjectRefCollection))
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection, model.ProjectRefCollection))
 	s.projectRef = &model.ProjectRef{
 		Id:               "mci",
 		Owner:            "evergreen-ci",

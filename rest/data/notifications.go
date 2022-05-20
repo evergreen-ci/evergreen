@@ -15,7 +15,7 @@ func GetNotificationsStats() (*restModel.APIEventStats, error) {
 
 	e, err := event.FindLastProcessedEvent()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch most recently processed event")
+		return nil, errors.Wrap(err, "fetching most recently processed event")
 	}
 	if e != nil {
 		stats.LastProcessedAt = &e.ProcessedAt
@@ -23,18 +23,18 @@ func GetNotificationsStats() (*restModel.APIEventStats, error) {
 
 	n, err := event.CountUnprocessedEvents()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to count unprocessed events")
+		return nil, errors.Wrap(err, "counting unprocessed events")
 	}
 	stats.NumUnprocessedEvents = n
 
 	nStats, err := notification.CollectUnsentNotificationStats()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect notification stats")
+		return nil, errors.Wrap(err, "collecting unsent notification stats")
 	}
 
 	if err = stats.BuildFromService(nStats); err != nil {
 		return nil, gimlet.ErrorResponse{
-			Message:    "failed to build stats response",
+			Message:    errors.Wrap(err, "converting notification stats to API model").Error(),
 			StatusCode: http.StatusInternalServerError,
 		}
 	}

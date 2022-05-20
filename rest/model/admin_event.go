@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -23,23 +22,23 @@ func (e *APIAdminEvent) BuildFromService(h interface{}) error {
 		e.Timestamp = ToTimePtr(v.Timestamp)
 		data, ok := v.Data.(*event.AdminEventData)
 		if !ok {
-			return errors.New("unable to convert event type to admin event")
+			return errors.Errorf("programmatic error: expected admin event but got type %T", v.Data)
 		}
 		e.User = data.User
 		e.Section = data.Section
 		e.Guid = data.GUID
 		before, err := AdminDbToRestModel(data.Changes.Before)
 		if err != nil {
-			return errors.Wrap(err, "unable to convert 'before' changes")
+			return errors.Wrap(err, "converting 'before' changes for admin event")
 		}
 		after, err := AdminDbToRestModel(data.Changes.After)
 		if err != nil {
-			return errors.Wrap(err, "unable to convert 'after' changes")
+			return errors.Wrap(err, "converting 'after' changes for admin event")
 		}
 		e.Before = before
 		e.After = after
 	default:
-		return fmt.Errorf("%T is not the correct event type", h)
+		return errors.Errorf("programmatic error: expected event log entry but got type %T", h)
 	}
 
 	return nil
