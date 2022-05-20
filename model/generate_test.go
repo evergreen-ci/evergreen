@@ -1010,25 +1010,13 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(task.Collection))
 	}()
-
 	require.NoError(t, db.Clear(task.Collection))
-	generatorTask := task.Task{Id: "generator_id", BuildVariant: "bv0", DisplayName: "generator"}
+
+	v := &Version{Id: "v0"}
+	generatorTask := task.Task{Id: "mci_bv0_generator__01_01_01_00_00_00", Version: v.Id, BuildVariant: "bv0", DisplayName: "generator"}
 	require.NoError(t, generatorTask.Insert())
 
 	t.Run("CreatesCycle", func(t *testing.T) {
-		newTasks := TVPairSet{
-			{TaskName: "generated", Variant: "bv0"},
-			{TaskName: "dependedOn", Variant: "bv0"},
-		}
-
-		taskIDs := TaskIdConfig{
-			ExecutionTasks: TaskIdTable{
-				newTasks[0]: "generated_id",
-				newTasks[1]: "dependedOn_id",
-				TVPair{TaskName: generatorTask.DisplayName, Variant: generatorTask.BuildVariant}: generatorTask.Id,
-			},
-		}
-
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
@@ -1042,22 +1030,21 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		g := GeneratedProject{Task: &generatorTask}
-		assert.Error(t, g.simulateNewDependencyGraph(newTasks, project, taskIDs))
+		g := GeneratedProject{
+			Task: &generatorTask,
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "generated"},
+					},
+				},
+			},
+		}
+		assert.Error(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("CreatesLoop", func(t *testing.T) {
-		newTasks := TVPairSet{
-			{TaskName: "generated", Variant: "bv0"},
-		}
-
-		taskIDs := TaskIdConfig{
-			ExecutionTasks: TaskIdTable{
-				newTasks[0]: "generated_id",
-				TVPair{TaskName: generatorTask.DisplayName, Variant: generatorTask.BuildVariant}: generatorTask.Id,
-			},
-		}
-
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
@@ -1069,29 +1056,27 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		g := GeneratedProject{Task: &generatorTask}
-		assert.Error(t, g.simulateNewDependencyGraph(newTasks, project, taskIDs))
-	})
-
-	t.Run("NoCycles", func(t *testing.T) {
-		newTasks := TVPairSet{
-			{TaskName: "generated", Variant: "bv0"},
-			{TaskName: "dependedOn", Variant: "bv0"},
-		}
-
-		taskIDs := TaskIdConfig{
-			ExecutionTasks: TaskIdTable{
-				newTasks[0]: "generated_id",
-				newTasks[1]: "dependedOn_id",
-				TVPair{TaskName: generatorTask.DisplayName, Variant: generatorTask.BuildVariant}: generatorTask.Id,
+		g := GeneratedProject{
+			Task: &generatorTask,
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "generated"},
+					},
+				},
 			},
 		}
 
+		assert.Error(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+	})
+
+	t.Run("NoCycles", func(t *testing.T) {
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
-					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
-					{Name: "dependedOn"},
+					{Name: "generated"},
+					{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
 				}},
 			},
 			Tasks: []ProjectTask{
@@ -1100,8 +1085,18 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		g := GeneratedProject{Task: &generatorTask}
-		assert.NoError(t, g.simulateNewDependencyGraph(newTasks, project, taskIDs))
+		g := GeneratedProject{
+			Task: &generatorTask,
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "generated"},
+					},
+				},
+			},
+		}
+		assert.NoError(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
 
