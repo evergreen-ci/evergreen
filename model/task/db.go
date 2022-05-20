@@ -784,26 +784,26 @@ func isContainerTaskScheduledQuery() bson.M {
 }
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
-// associated with a given project and commit hash.
-func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string, limit int) []bson.M {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			ProjectKey:  projectId,
-			RevisionKey: commitHash,
-			IdKey:       bson.M{"$gte": taskId},
-		}},
+// associated with a given project and commit hash. Filtering by task status, task name, and
+// buildvariant name are optionally available.
+func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []bson.M {
+	matchFilter := bson.M{
+		ProjectKey:  opts.Project,
+		RevisionKey: opts.CommitHash,
+		IdKey:       bson.M{"$gte": opts.StartingTaskId},
 	}
-	if taskStatus != "" {
-		statusMatch := bson.M{
-			"$match": bson.M{StatusKey: taskStatus},
-		}
-		pipeline = append(pipeline, statusMatch)
+	if opts.Status != "" {
+		matchFilter[StatusKey] = opts.Status
 	}
-	if limit > 0 {
-		limitStage := bson.M{
-			"$limit": limit,
-		}
-		pipeline = append(pipeline, limitStage)
+	if opts.VariantName != "" {
+		matchFilter[BuildVariantKey] = opts.VariantName
+	}
+	if opts.TaskName != "" {
+		matchFilter[DisplayNameKey] = opts.TaskName
+	}
+	pipeline := []bson.M{{"$match": matchFilter}}
+	if opts.Limit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
 	return pipeline
 }

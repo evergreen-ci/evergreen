@@ -3401,6 +3401,16 @@ type TasksSortOrder struct {
 	Order int
 }
 
+type GetTasksByProjectAndCommitOptions struct {
+	Project        string
+	CommitHash     string
+	StartingTaskId string
+	Status         string
+	VariantName    string
+	TaskName       string
+	Limit          int
+}
+
 type GetTasksByVersionOptions struct {
 	Statuses                       []string
 	BaseStatuses                   []string
