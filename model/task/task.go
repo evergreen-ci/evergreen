@@ -3897,6 +3897,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		// Add a field for the display status of each task
 		addDisplayStatus,
 	)
+	// Filter on the computed display status before continuing to add additional fields.
+	if len(opts.Statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
+			},
+		})
+	}
 	if opts.IncludeBaseTasks {
 		baseCommitMatch := []bson.M{
 			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
@@ -3952,13 +3960,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	}
-	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
 	}
 
 	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {
