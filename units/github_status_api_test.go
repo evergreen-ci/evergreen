@@ -166,7 +166,7 @@ func (s *githubStatusUpdateSuite) TestForDeleteFromCommitQueue() {
 
 func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(448,
-		"evergreen-ci/evergreen", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
+		"evergreen-ci/evergreen", "7c38f3f63c05675329518c148d3a176e1da6ec2d", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

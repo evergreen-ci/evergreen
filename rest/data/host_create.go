@@ -33,10 +33,10 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	env := evergreen.GetEnvironment()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
+		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "finding task '%s'", taskID).Error()}
 	}
 	if t == nil {
-		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: "no task found"}
+		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("task '%s' not found", taskID)}
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -56,7 +56,7 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 			if err != nil {
 				return nil, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
-					Message:    fmt.Sprintf("error getting parent for container '%s'", h.Id)}
+					Message:    fmt.Sprintf("getting parent for container '%s'", h.Id)}
 			}
 			if p != nil {
 				hosts[idx].Host = p.Host
@@ -66,14 +66,14 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 			if h.NeedsPortBindings() {
 				mgrOpts, err := cloud.GetManagerOptions(h.Distro)
 				if err != nil {
-					return nil, errors.Wrap(err, "error getting manager options for host.list")
+					return nil, errors.Wrapf(err, "getting cloud manager options for distro '%s'", h.Distro.Id)
 				}
 				mgr, err := cloud.GetManager(ctx, env, mgrOpts)
 				if err != nil {
-					return nil, errors.Wrap(err, "error getting cloud manager for host.list")
+					return nil, errors.Wrap(err, "getting cloud manager")
 				}
 				if err = mgr.SetPortMappings(ctx, &hosts[idx], p); err != nil {
-					return nil, errors.Wrapf(err, "error getting status for container '%s'", h.Id)
+					return nil, errors.Wrapf(err, "getting status for container '%s'", h.Id)
 				}
 			}
 		}
@@ -97,7 +97,7 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 
 	projectTask := proj.FindProjectTask(t.DisplayName)
 	if projectTask == nil {
-		return errors.Errorf("unable to find configuration for task %s", t.Id)
+		return errors.Errorf("project config for task '%s' not found", t.Id)
 	}
 
 	createHostCmds := []apimodels.CreateHost{}
@@ -135,7 +135,7 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 	for _, createHost := range createHostCmds {
 		err = createHost.Expand(expansions)
 		if err != nil {
-			catcher.Add(err)
+			catcher.Wrap(err, "handling expansions")
 			continue
 		}
 		err = createHost.Validate()
@@ -145,13 +145,13 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 		}
 		numHosts, err := strconv.Atoi(createHost.NumHosts)
 		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem parsing '%s' as int", createHost.NumHosts))
+			catcher.Wrapf(err, "parsing host.create number of hosts '%s' as int", createHost.NumHosts)
 			continue
 		}
 		for i := 0; i < numHosts; i++ {
 			intent, err := MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
-				return errors.Wrap(err, "error creating host document")
+				return errors.Wrap(err, "creating intent host")
 			}
 			hosts = append(hosts, *intent)
 		}
@@ -163,37 +163,37 @@ func CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) er
 func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expansions, error) {
 	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error finding version")
+		return nil, nil, errors.Wrapf(err, "finding version '%s'", t.Version)
 	}
 	if v == nil {
-		return nil, nil, errors.New("version doesn't exist")
+		return nil, nil, errors.Errorf("version '%s' not found", t.Version)
 	}
 	projectInfo, err := model.LoadProjectForVersion(v, v.Identifier, true)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error loading project")
+		return nil, nil, errors.Wrap(err, "loading project")
 	}
 	h, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error finding host")
+		return nil, nil, errors.Wrap(err, "finding host running task")
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting evergreen config")
+		return nil, nil, errors.Wrap(err, "getting admin settings")
 	}
 	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting oauth token")
+		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
 	}
 	expansions, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error populating expansions")
+		return nil, nil, errors.Wrap(err, "populating expansions")
 	}
 	if projectInfo.Project == nil {
 		projectInfo.Project = &model.Project{}
 	}
 	params := append(projectInfo.Project.GetParameters(), v.Parameters...)
 	if err = updateExpansions(&expansions, t.Project, params); err != nil {
-		return nil, nil, errors.Wrap(err, "error updating expansions")
+		return nil, nil, errors.Wrap(err, "updating expansions")
 	}
 
 	return projectInfo.Project, &expansions, nil
@@ -204,10 +204,10 @@ func makeProjectAndExpansionsFromTask(t *task.Task) (*model.Project, *util.Expan
 func updateExpansions(expansions *util.Expansions, projectId string, params []patch.Parameter) error {
 	projVars, err := model.FindMergedProjectVars(projectId)
 	if err != nil {
-		return errors.Wrap(err, "error finding project vars")
+		return errors.Wrap(err, "finding project variables")
 	}
 	if projVars == nil {
-		return errors.New("project vars not found")
+		return errors.New("project variables not found")
 	}
 
 	expansions.Update(projVars.Vars)
@@ -250,21 +250,21 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 
 	d, err = distro.FindOneId(createHost.Distro)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem finding distro '%s'", createHost.Distro)
+		return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
 	}
 	if d == nil {
 		return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 	}
 	if !cloud.IsDockerProvider(d.Provider) {
-		return nil, errors.Errorf("distro '%s' provider must be docker (provider is '%s')", d.Id, d.Provider)
+		return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
 	}
 
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = distro.BootstrapMethodNone
 
-	options, err := getAgentOptions(*d, taskID, userID, createHost)
+	options, err := getHostCreationOptions(*d, taskID, userID, createHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making host options for docker")
+		return nil, errors.Wrap(err, "making intent host options")
 	}
 
 	method := distro.DockerImageBuildTypeImport
@@ -294,7 +294,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 
 	config, err := evergreen.GetConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting config")
+		return nil, errors.Wrap(err, "getting admin settings")
 	}
 	containerPool := config.ContainerPools.GetContainerPool(d.ContainerPool)
 	if containerPool == nil {
@@ -302,16 +302,16 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	}
 	containerIntents, parentIntents, err := host.MakeContainersAndParents(*d, containerPool, 1, *options)
 	if err != nil {
-		return nil, errors.Wrap(err, "error generating host intent")
+		return nil, errors.Wrap(err, "generating container and parent intent hosts")
 	}
 	if len(containerIntents) != 1 {
-		return nil, errors.Errorf("Programmer error: should have created one new container, not %d", len(containerIntents))
+		return nil, errors.Errorf("programmatic error: should have created one new container, not %d", len(containerIntents))
 	}
 	if err = host.InsertMany(containerIntents); err != nil {
-		return nil, errors.Wrap(err, "unable to insert container intents")
+		return nil, errors.Wrap(err, "inserting container intents")
 	}
 	if err = host.InsertMany(parentIntents); err != nil {
-		return nil, errors.Wrap(err, "unable to insert parent intents")
+		return nil, errors.Wrap(err, "inserting parent intent hosts")
 	}
 	return &containerIntents[0], nil
 
@@ -334,7 +334,7 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		var dat distro.AliasLookupTable
 		dat, err = distro.NewDistroAliasesLookupTable()
 		if err != nil {
-			return nil, errors.Wrap(err, "could not get distro lookup table")
+			return nil, errors.Wrap(err, "getting distro lookup table")
 		}
 		distroIDs := dat.Expand([]string{distroID})
 		if len(distroIDs) == 0 {
@@ -342,13 +342,14 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		}
 		foundDistro, err := distro.FindOneId(distroIDs[0])
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem finding distro '%s'", distroID)
+			return nil, errors.Wrapf(err, "finding distro '%s'", distroID)
 		}
-		if foundDistro != nil {
-			d = *foundDistro
+		if foundDistro == nil {
+			return nil, errors.Errorf("distro '%s' not found", distroID)
 		}
+		d = *foundDistro
 		if err = ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
-			return nil, errors.Wrapf(err, "error getting ec2 provider from distro")
+			return nil, errors.Wrapf(err, "getting EC2 provider settings from distro '%s' in region '%s'", distroID, createHost.Region)
 		}
 	}
 
@@ -410,23 +411,23 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	// update local distro with modified settings
 	doc, err := ec2Settings.ToDocument()
 	if err != nil {
-		return nil, errors.Wrap(err, "error marshalling ec2 settings to document")
+		return nil, errors.Wrap(err, "marshalling EC2 settings to BSON document")
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getAgentOptions(d, taskID, userID, createHost)
+	options, err := getHostCreationOptions(d, taskID, userID, createHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making host options for EC2")
+		return nil, errors.Wrap(err, "making intent host options")
 	}
 	intent := host.NewIntent(*options)
 	if err = intent.Insert(); err != nil {
-		return nil, errors.Wrap(err, "unable to insert host intent")
+		return nil, errors.Wrap(err, "inserting intent host")
 	}
 
 	return intent, nil
 }
 
-func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+func getHostCreationOptions(d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
 	options := host.CreateOptions{
 		Distro: d,
 	}
@@ -443,10 +444,10 @@ func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodel
 		options.UserName = taskID
 		t, err := task.FindOneId(taskID)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not find task")
+			return nil, errors.Wrapf(err, "finding task '%s'", taskID)
 		}
 		if t == nil {
-			return nil, errors.New("no task returned")
+			return nil, errors.Errorf("task '%s' not found", taskID)
 		}
 		if createHost.Scope == "build" {
 			options.SpawnOptions.BuildID = t.BuildId
@@ -464,34 +465,32 @@ func getAgentOptions(d distro.Distro, taskID, userID string, createHost apimodel
 	return &options, nil
 }
 
-// GetDockerLogs is used by the /host/{host_id}/logs route to retrieve the logs for the given container.
+// GetDockerLogs retrieves the logs for the given container.
 func GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
 	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
 	c := cloud.GetDockerClient(settings)
 
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
-
-		return nil, errors.Wrap(err, "error initializing client")
+		return nil, errors.Wrap(err, "initializing Docker client")
 	}
 
 	logs, err := c.GetDockerLogs(ctx, containerId, parent, options)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
+		return nil, errors.Wrapf(err, "getting Docker logs for container '%s'", containerId)
 	}
 	return logs, nil
 }
 
-// GetDockerStatus returns the status of the given docker container
+// GetDockerStatus returns the status of the given Docker container.
 func GetDockerStatus(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings) (*cloud.ContainerStatus, error) {
 	c := cloud.GetDockerClient(settings)
 
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
-
-		return nil, errors.Wrap(err, "error initializing client")
+		return nil, errors.Wrap(err, "initializing Docker client")
 	}
 	status, err := c.GetDockerStatus(ctx, containerId, parent)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting status of container %s", containerId)
+		return nil, errors.Wrapf(err, "getting status of container '%s'", containerId)
 	}
 	return status, nil
 }

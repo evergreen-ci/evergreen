@@ -14,10 +14,10 @@ import (
 func GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, group amboy.QueueGroup) error {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return errors.Wrapf(err, "problem finding task %s", taskID)
+		return errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return errors.Errorf("could not find task %s", taskID)
+		return errors.Errorf("task '%s' not found", taskID)
 	}
 
 	// Don't continue if the generator has already run
@@ -26,7 +26,7 @@ func GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessa
 	}
 
 	if err = t.SetGeneratedJSON(jsonBytes); err != nil {
-		return errors.Wrapf(err, "problem setting generated json in task document for %s", t.Id)
+		return errors.Wrapf(err, "setting generated JSON for task '%s'", t.Id)
 	}
 
 	return nil
@@ -36,10 +36,10 @@ func GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessa
 func GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
+		return false, nil, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return false, nil, errors.Errorf("could not find task %s", taskID)
+		return false, nil, errors.Errorf("task '%s' not found", taskID)
 	}
 
 	var errs []string

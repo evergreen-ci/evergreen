@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sort"
 
@@ -30,7 +29,7 @@ func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOpt
 	for _, v := range versions {
 		apiVersion := restModel.APIVersion{}
 		if err = apiVersion.BuildFromService(&v); err != nil {
-			return nil, errors.Wrap(err, "error building API versions")
+			return nil, errors.Wrapf(err, "converting version '%s' to API model", v.Id)
 		}
 		res = append(res, apiVersion)
 	}
@@ -68,8 +67,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			model.FetchVersionsBuildsAndTasks(project, skip, numVersionElements, true)
 
 		if err != nil {
-			return nil, errors.Wrap(err,
-				"error fetching versions and builds")
+			return nil, errors.Wrap(err, "fetching versions and builds")
 		}
 
 		// if we've reached the beginning of all versions
@@ -114,7 +112,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				newVersion := restModel.APIVersion{}
 				err = newVersion.BuildFromService(&versionFromDB)
 				if err != nil {
-					return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
+					return nil, errors.Wrapf(err, "converting version '%s' to API model", versionFromDB.Id)
 				}
 				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
 
@@ -161,7 +159,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			activeVersion := restModel.APIVersion{}
 			err = activeVersion.BuildFromService(&versionFromDB)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
+				return nil, errors.Wrapf(err, "converting version '%s' to API model", versionFromDB.Id)
 			}
 
 			// add the builds to the "row"
@@ -170,7 +168,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				buildsForRow := restModel.APIBuild{}
 				err = buildsForRow.BuildFromService(b)
 				if err != nil {
-					return nil, errors.Wrapf(err, "error converting build %s from DB model", b.Id)
+					return nil, errors.Wrapf(err, "converting build '%s' to API model", b.Id)
 				}
 				buildsForRow.SetTaskCache(tasksByBuild[b.Id])
 
@@ -246,7 +244,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("error creating version: %s", err.Error()),
+			Message:    errors.Wrap(err, "creating version from config").Error(),
 		}
 	}
 
@@ -258,7 +256,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 		if catcher.HasErrors() {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("error activating builds: %s", catcher.Resolve().Error()),
+				Message:    errors.Wrap(catcher.Resolve(), "activating builds").Error(),
 			}
 		}
 	}
