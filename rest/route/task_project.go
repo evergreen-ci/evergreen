@@ -78,7 +78,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		Status:         tph.status,
 		VariantName:    tph.variant,
 		TaskName:       tph.taskName,
-		Limit:          tph.limit,
+		Limit:          tph.limit + 1,
 	}
 	tasks, err := data.FindTasksByProjectAndCommit(opts)
 	if err != nil {
