@@ -102,10 +102,19 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	shouldExit := false
-	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring
-		jobErr := errors.New(strings.Join(jobErrs, ", "))
-		shouldExit = db.IsDocumentLimit(jobErr) || strings.Contains(jobErr.Error(), model.DependencyCycleError.Error())
+	// Exit early if we know the error will keep recurring.
+	for _, errString := range jobErrs {
+		// If the parser project is already too big it's not going to get smaller.
+		if db.IsDocumentLimit(errors.New(errString)) {
+			shouldExit = true
+		}
+
+		// If new tasks create a dependency cycle it's going to persist across retries.
+		if strings.Contains(errString, model.DependencyCycleError.Error()) {
+			shouldExit = true
+		}
 	}
+
 	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
 		Finished:   finished,
 		ShouldExit: shouldExit,
