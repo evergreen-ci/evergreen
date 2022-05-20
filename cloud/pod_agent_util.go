@@ -45,7 +45,7 @@ func agentCommand(settings *evergreen.Settings, p *pod.Pod) []string {
 		fmt.Sprintf(".%s%s", pathSep, clientName(p)),
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
-		fmt.Sprintf("--mode=pod"),
+		"--mode=pod",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(p.TaskContainerCreationOpts.WorkingDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", p.TaskContainerCreationOpts.WorkingDir),
 	}

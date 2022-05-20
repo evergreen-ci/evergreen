@@ -567,43 +567,6 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Require().Empty(unprocessedIntents)
 }
 
-func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch) {
-	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
-	s.Require().Len(out, 2)
-
-	s.Require().NotNil(patchDoc)
-	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-		Owner:    patchDoc.GithubPatchData.BaseOwner,
-		Repo:     patchDoc.GithubPatchData.BaseRepo,
-		PRNumber: patchDoc.GithubPatchData.PRNumber,
-		Ref:      patchDoc.GithubPatchData.HeadHash,
-	})
-
-	foundPatch := false
-	foundBuild := false
-	for i := range out {
-		target, ok := out[i].Subscriber.Target.(*event.GithubPullRequestSubscriber)
-		s.Require().True(ok)
-
-		s.EqualValues(ghSub.Target, *target)
-		if out[i].ResourceType == event.ResourceTypePatch {
-			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
-			foundPatch = true
-
-		} else if out[i].ResourceType == event.ResourceTypeBuild {
-			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
-			foundBuild = true
-
-		} else {
-			s.T().Errorf("unexpected resource type %s", event.ResourceTypeBuild)
-		}
-	}
-
-	s.True(foundPatch)
-	s.True(foundBuild)
-}
-
 func (s *PatchIntentUnitsSuite) TestGetModulePatch() {
 	s.Require().NoError(db.ClearGridCollections(patch.GridFSPrefix))
 	patchString := `diff --git a/test.txt b/test.txt

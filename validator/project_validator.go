@@ -583,7 +583,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 	if project.BatchTime < 0 {
 		errs = append(errs,
 			ValidationError{
-				Message: fmt.Sprintf("'batchtime' must be non-negative"),
+				Message: "'batchtime' must be non-negative",
 			},
 		)
 	}

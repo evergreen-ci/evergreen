@@ -8,6 +8,11 @@ linters:
     - ineffassign
     - misspell
     - unconvert
+    - structcheck
+    - asciicheck
+    - unused
+    - gosimple
+    - deadcode
 
 linters-settings:
   govet:

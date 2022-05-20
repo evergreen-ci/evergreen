@@ -15,7 +15,6 @@ import (
 type VSphereSuite struct {
 	client   vsphereClient
 	manager  *vsphereManager
-	distro   distro.Distro
 	hostOpts host.CreateOptions
 	suite.Suite
 }

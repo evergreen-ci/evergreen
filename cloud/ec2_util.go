@@ -352,7 +352,7 @@ func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, cl
 
 // templateNameInvalidRegex matches any character that may not be included a launch template name.
 // Names may only contain word characters ([a-zA-Z0-9_]) and the following special characters: ( ) . / -
-var templateNameInvalidRegex = regexp.MustCompile("[^\\w()./-]+")
+var templateNameInvalidRegex = regexp.MustCompile(`[^\\w()./-]+`)
 
 func cleanLaunchTemplateName(name string) string {
 	return templateNameInvalidRegex.ReplaceAllString(name, "")
@@ -534,38 +534,6 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.Descri
 	return catcher.Resolve()
 }
 
-func validateEc2DescribeSubnetsOutput(describeSubnetsOutput *ec2aws.DescribeSubnetsOutput) error {
-	if describeSubnetsOutput == nil {
-		return errors.New("describe subnets response is nil")
-	}
-
-	if len(describeSubnetsOutput.Subnets) == 0 {
-		return errors.New("describe subnets response contains no subnets")
-	}
-
-	for _, subnet := range describeSubnetsOutput.Subnets {
-		if subnet.SubnetId == nil || *subnet.SubnetId == "" {
-			return errors.New("describe subnets response contains a subnet without an ID")
-		}
-	}
-
-	return nil
-}
-
-func validateEc2DescribeVpcsOutput(describeVpcsOutput *ec2aws.DescribeVpcsOutput) error {
-	if describeVpcsOutput == nil {
-		return errors.New("describe VPCs response is nil")
-	}
-	if len(describeVpcsOutput.Vpcs) == 0 {
-		return errors.New("describe VPCs response contains no VPCs")
-	}
-	if describeVpcsOutput.Vpcs[0].VpcId == nil || *describeVpcsOutput.Vpcs[0].VpcId == "" {
-		return errors.New("describe VPCs response contains a VPC with no VPC ID")
-	}
-
-	return nil
-}
-
 func IsEc2Provider(provider string) bool {
 	return provider == evergreen.ProviderNameEc2Auto ||
 		provider == evergreen.ProviderNameEc2OnDemand ||
@@ -612,7 +580,7 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 	if opts.InstanceType != "" && h.Status != evergreen.HostStopped {
 		return errors.New("host must be stopped to modify instance typed")
 	}
-	if h.ExpirationTime.Add(opts.AddHours).Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
+	if time.Until(h.ExpirationTime.Add(opts.AddHours)) > evergreen.MaxSpawnHostExpirationDurationHours {
 		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), evergreen.MaxSpawnHostExpirationDurationHours.String())
 	}
 

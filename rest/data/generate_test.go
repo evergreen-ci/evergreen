@@ -2,16 +2,12 @@ package data
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestGeneratePoll(t *testing.T) {
@@ -64,25 +60,4 @@ func TestGeneratePoll(t *testing.T) {
 	assert.True(t, finished)
 	assert.Equal(t, []string{"this is an error"}, generateErrs)
 	assert.NoError(t, err)
-}
-
-type mockJob struct {
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-}
-
-func newMockJob() *mockJob {
-	j := &mockJob{
-		Base: job.Base{
-			JobType: amboy.JobType{
-				Name:    "mock",
-				Version: 1,
-			},
-		},
-	}
-	return j
-}
-
-func (j *mockJob) Run(_ context.Context) {
-	time.Sleep(10 * time.Millisecond)
-	defer j.MarkComplete()
 }

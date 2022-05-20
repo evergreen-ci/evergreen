@@ -19,7 +19,6 @@ import (
 
 const (
 	convertHostToNewProvisioningJobName = "convert-host-to-new-provisioning"
-	maxProvisioningConversionAttempts   = 15
 )
 
 func init() {

@@ -18,7 +18,6 @@ import (
 const (
 	msPerNS     = 1000 * 1000
 	maxNoteSize = 16 * 1024 // 16KB
-	jiraSource  = "JIRA"
 )
 
 // saveNote reads a request containing a note's content along with the last seen

@@ -244,7 +244,7 @@ func ensureNoAliases(d *distro.Distro, distroAliases []string) ValidationErrors 
 func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	for _, e := range d.Expansions {
 		if e.Key == "" {
-			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank expansion key")}}
+			return ValidationErrors{{Error, "distro cannot be blank expansion key"}}
 		}
 	}
 	return nil
@@ -254,7 +254,7 @@ func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.S
 func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	for _, o := range d.SSHOptions {
 		if o == "" {
-			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
+			return ValidationErrors{{Error, "distro cannot be blank SSH option"}}
 		}
 	}
 	return nil
@@ -285,7 +285,7 @@ func ensureStaticHasAuthorizedKeysFile(ctx context.Context, d *distro.Distro, s 
 	if len(s.SSHKeyPairs) != 0 && d.Provider == evergreen.ProviderNameStatic && d.AuthorizedKeysFile == "" {
 		return ValidationErrors{
 			{
-				Message: fmt.Sprintf("authorized keys file was not specified"),
+				Message: "authorized keys file was not specified",
 				Level:   Error,
 			},
 		}
@@ -543,7 +543,7 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 	var errs ValidationErrors
 	if d.HomeVolumeSettings.FormatCommand == "" {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("missing format command"),
+			Message: "missing format command",
 			Level:   Error,
 		})
 	}

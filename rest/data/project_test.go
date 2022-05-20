@@ -20,7 +20,6 @@ import (
 // Tests for fetch patch by project route
 
 type ProjectConnectorGetSuite struct {
-	ctx      DBProjectConnector
 	setup    func() error
 	teardown func() error
 	suite.Suite

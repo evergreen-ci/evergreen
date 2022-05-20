@@ -24,11 +24,10 @@ import (
 )
 
 type githubStatusUpdateSuite struct {
-	env        *mock.Environment
-	patchDoc   *patch.Patch
-	buildDoc   *build.Build
-	cancel     context.CancelFunc
-	testConfig *evergreen.Settings
+	env      *mock.Environment
+	patchDoc *patch.Patch
+	buildDoc *build.Build
+	cancel   context.CancelFunc
 
 	suite.Suite
 }

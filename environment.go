@@ -229,7 +229,6 @@ type envState struct {
 	client                  *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
-	s3ClientBinaries        []ClientBinary
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
 	roleManager             gimlet.RoleManager
@@ -328,7 +327,6 @@ func (e *envState) SetShutdown() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.shutdownSequenceStarted = true
-	return
 }
 
 func (e *envState) ShutdownSequenceStarted() bool {

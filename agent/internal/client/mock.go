@@ -33,10 +33,6 @@ type Mock struct {
 	timeoutMax   time.Duration
 	serverURL    string
 
-	// these fields have setters
-	hostID     string
-	hostSecret string
-
 	// mock behavior
 	NextTaskShouldFail          bool
 	NextTaskShouldConflict      bool

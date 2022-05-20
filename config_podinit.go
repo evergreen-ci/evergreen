@@ -1,15 +1,12 @@
 package evergreen
 
 import (
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit")
 
 // PodInitConfig holds logging settings for the pod init process.
 type PodInitConfig struct {

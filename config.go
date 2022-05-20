@@ -210,7 +210,7 @@ func (c *Settings) ValidateAndDefault() error {
 
 	keys := map[string]bool{}
 	for _, mapping := range c.LDAPRoleMap {
-		if keys[mapping.LDAPGroup] == true {
+		if keys[mapping.LDAPGroup] {
 			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
 		}
 		keys[mapping.LDAPGroup] = true

@@ -17,7 +17,6 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -154,10 +153,6 @@ func (c *podCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientCon
 
 func (c *podCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
 	return nil, errors.New("TODO: implement")
-}
-
-func (c *podCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, []send.Sender, error) {
-	return nil, nil, errors.New("TODO: implement")
 }
 
 // SendLogMessages posts a group of log messages for a task.

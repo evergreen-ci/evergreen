@@ -374,19 +374,13 @@ func TestDepthFirstSearch(t *testing.T) {
 
 	t.Run("TraversalBlockedAtNode", func(t *testing.T) {
 		assert.False(t, g.DepthFirstSearch(tasks[0].toTaskNode(), tasks[2].toTaskNode(), func(edge DependencyEdge) bool {
-			if edge.To == tasks[1].toTaskNode() {
-				return false
-			}
-			return true
+			return edge.To != tasks[1].toTaskNode()
 		}))
 	})
 
 	t.Run("TraversalBlockedAtEdge", func(t *testing.T) {
 		assert.False(t, g.DepthFirstSearch(tasks[0].toTaskNode(), tasks[2].toTaskNode(), func(edge DependencyEdge) bool {
-			if edge.Status == evergreen.TaskSucceeded {
-				return true
-			}
-			return false
+			return edge.Status == evergreen.TaskSucceeded
 		}))
 	})
 

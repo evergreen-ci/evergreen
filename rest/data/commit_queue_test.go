@@ -22,7 +22,6 @@ import (
 )
 
 type CommitQueueSuite struct {
-	ctx      DBCommitQueueConnector
 	mockCtx  MockGitHubConnector
 	settings *evergreen.Settings
 	suite.Suite

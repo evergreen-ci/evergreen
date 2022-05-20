@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -28,7 +27,6 @@ type spawnhostStopJob struct {
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
 
 	host *host.Host
-	env  evergreen.Environment
 }
 
 func makeSpawnhostStopJob() *spawnhostStopJob {

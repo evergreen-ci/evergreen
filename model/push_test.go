@@ -5,12 +5,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
-
-var pushTestConfig = testutil.TestConfig()
 
 func TestFindPushLogAfter(t *testing.T) {
 

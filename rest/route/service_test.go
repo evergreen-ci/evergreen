@@ -1264,8 +1264,7 @@ func TestOptionsRequest(t *testing.T) {
 
 	tbh := &optionsHandler{}
 	resp := tbh.Run(ctx)
-	data, ok := resp.Data().(interface{})
-	assert.True(t, ok)
+	data := resp.Data()
 	assert.Equal(t, data, struct{}{})
 	assert.Equal(t, resp.Status(), http.StatusOK)
 

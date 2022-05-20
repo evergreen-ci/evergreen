@@ -301,12 +301,12 @@ func (id *ObjectId) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	if len(data) != 26 || data[0] != '"' || data[25] != '"' {
-		return errors.New(fmt.Sprintf("invalid ObjectId in JSON: %s", string(data)))
+		return fmt.Errorf("invalid ObjectId in JSON: %s", string(data))
 	}
 	var buf [12]byte
 	_, err := hex.Decode(buf[:], data[1:25])
 	if err != nil {
-		return errors.New(fmt.Sprintf("invalid ObjectId in JSON: %s (%s)", string(data), err))
+		return fmt.Errorf("invalid ObjectId in JSON: %s (%s)", string(data), err)
 	}
 	*id = ObjectId(string(buf[:]))
 	return nil
@@ -657,7 +657,7 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 		info := fieldInfo{Num: i}
 
 		tag := field.Tag.Get("bson")
-		if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
+		if tag == "" && !strings.Contains(string(field.Tag), ":") {
 			tag = string(field.Tag)
 		}
 		if tag == "-" {
