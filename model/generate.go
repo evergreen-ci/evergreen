@@ -155,11 +155,13 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 	if t == nil {
 		return errors.Errorf("task '%s' not found", g.Task.Id)
 	}
-	if t.GeneratedTasks {
+	g.Task = t
+
+	if g.Task.GeneratedTasks {
 		grip.Debug(message.Fields{
 			"message": "skipping attempting to update parser project because another generator marked the task complete",
-			"task":    t.Id,
-			"version": t.Version,
+			"task":    g.Task.Id,
+			"version": g.Task.Version,
 		})
 		return mongo.ErrNoDocuments
 	}
@@ -168,7 +170,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, pp *ParserProje
 		return errors.WithStack(err)
 	}
 
-	if err := g.saveNewBuildsAndTasks(ctx, v, p, t); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, v, p); err != nil {
 		return errors.Wrap(err, "saving new builds and tasks")
 	}
 	return nil
@@ -212,17 +214,17 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project, t *task.Task) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version, p *Project) error {
 	// inherit priority from the parent task
 	for i, projBv := range p.BuildVariants {
 		for j := range projBv.Tasks {
-			p.BuildVariants[i].Tasks[j].Priority = t.Priority
+			p.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
 		}
 	}
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester, t)
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester, g.Task)
 
-	newTVPairs := g.getNewTasks(v, p)
+	newTVPairs := g.getNewTasksWithDependencies(v, p)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
@@ -259,7 +261,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 		syncAtEndOpts = patchDoc.SyncAtEndOpts
 	}
-
 	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
@@ -281,7 +282,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	}
 
 	// only want to add dependencies to activated tasks
-	if err = addDependencies(t, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
+	if err = g.addDependencies(append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}
 
@@ -289,16 +290,17 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 }
 
 func (g *GeneratedProject) SimulateNewDependencyGraph(v *Version, p *Project, projectRef *ProjectRef) error {
-	dependencyGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
+	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
 	if err != nil {
 		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
-	if dependencyGraph, err = g.addNewTasksToGraph(dependencyGraph, v, p, projectRef); err != nil {
+	simulatedGraph, err := g.addNewTasksToGraph(existingTasksGraph, v, p, projectRef)
+	if err != nil {
 		return errors.Wrap(err, "simulating new tasks")
 	}
 
-	if cycles := dependencyGraph.Cycles(); len(cycles) > 0 {
+	if cycles := simulatedGraph.Cycles(); len(cycles) > 0 {
 		return errors.Wrapf(DependencyCycleError, "'%s'", cycles)
 	}
 
@@ -306,7 +308,7 @@ func (g *GeneratedProject) SimulateNewDependencyGraph(v *Version, p *Project, pr
 }
 
 func (g *GeneratedProject) addNewTasksToGraph(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
-	newTasks := g.getNewTasks(v, p)
+	newTasks := g.getNewTasksWithDependencies(v, p)
 
 	taskIDs, err := getTaskIdTables(v, p, newTasks, projectRef.Identifier)
 	if err != nil {
@@ -314,10 +316,10 @@ func (g *GeneratedProject) addNewTasksToGraph(graph task.DependencyGraph, v *Ver
 	}
 
 	graph = addTasksToGraph(newTasks.ExecTasks, graph, p, taskIDs)
-	return addDependencyEdgesToGraph(g.Task, newTasks.ExecTasks, graph, taskIDs)
+	return g.addDependencyEdgesToGraph(newTasks.ExecTasks, graph, taskIDs)
 }
 
-func (g *GeneratedProject) getNewTasks(v *Version, p *Project) TaskVariantPairs {
+func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) TaskVariantPairs {
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
@@ -343,28 +345,30 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 	}
 
 	for _, newTask := range tasks {
-		newTaskNode := task.TaskNode{
-			ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
-			Name:    newTask.TaskName,
-			Variant: newTask.Variant,
-		}
-
 		bvt := p.FindTaskForVariant(newTask.TaskName, newTask.Variant)
 		for _, dep := range bvt.DependsOn {
-			graph.AddEdge(newTaskNode, task.TaskNode{
-				ID:      taskIDs.ExecutionTasks.GetId(dep.Variant, dep.Name),
-				Name:    dep.Name,
-				Variant: dep.Variant,
-			}, dep.Status)
+			graph.AddEdge(
+				task.TaskNode{
+					ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+					Name:    newTask.TaskName,
+					Variant: newTask.Variant,
+				},
+				task.TaskNode{
+					ID:      taskIDs.ExecutionTasks.GetId(dep.Variant, dep.Name),
+					Name:    dep.Name,
+					Variant: dep.Variant,
+				},
+				dep.Status,
+			)
 		}
 	}
 
 	return graph
 }
 
-func addDependencyEdgesToGraph(generator *task.Task, newTasks TVPairSet, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
+func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
 	for _, newTask := range newTasks {
-		for _, edge := range graph.EdgesIntoTask(generator.ToTaskNode()) {
+		for _, edge := range graph.EdgesIntoTask(g.Task.ToTaskNode()) {
 			graph.AddEdge(edge.From, task.TaskNode{
 				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
 				Name:    newTask.TaskName,
@@ -459,11 +463,11 @@ func isStepbackTask(generatorTask *task.Task, variant, taskName string) bool {
 	return false
 }
 
-func addDependencies(t *task.Task, newTaskIds []string) error {
+func (g *GeneratedProject) addDependencies(newTaskIds []string) error {
 	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
-		if err := t.UpdateDependsOn(status, newTaskIds); err != nil {
-			return errors.Wrapf(err, "updating tasks depending on '%s'", t.Id)
+		if err := g.Task.UpdateDependsOn(status, newTaskIds); err != nil {
+			return errors.Wrapf(err, "updating tasks depending on '%s'", g.Task.Id)
 		}
 	}
 
