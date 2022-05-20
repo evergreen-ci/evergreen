@@ -179,6 +179,11 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
+
+	if err := g.SimulateNewDependencyGraph(v, p, pref); err != nil {
+		return errors.Wrap(err, "simulating adding dependencies on generated tasks")
+	}
+
 	start = time.Now()
 
 	// Don't use the job's context, because it's better to finish than to exit early after a
