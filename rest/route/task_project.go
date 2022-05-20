@@ -72,13 +72,13 @@ func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 
 func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	opts := task.GetTasksByProjectAndCommitOptions{
-		Project:      tph.project,
-		CommitHash:   tph.commitHash,
-		StartingTask: tph.key,
-		Status:       tph.status,
-		Variant:      tph.variant,
-		TaskName:     tph.taskName,
-		Limit:        tph.limit,
+		Project:        tph.project,
+		CommitHash:     tph.commitHash,
+		StartingTaskId: tph.key,
+		Status:         tph.status,
+		VariantName:    tph.variant,
+		TaskName:       tph.taskName,
+		Limit:          tph.limit,
 	}
 	tasks, err := data.FindTasksByProjectAndCommit(opts)
 	if err != nil {

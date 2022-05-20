@@ -3394,13 +3394,13 @@ type TasksSortOrder struct {
 }
 
 type GetTasksByProjectAndCommitOptions struct {
-	Project      string
-	CommitHash   string
-	StartingTask string
-	Status       string
-	Variant      string
-	TaskName     string
-	Limit        int
+	Project        string
+	CommitHash     string
+	StartingTaskId string
+	Status         string
+	VariantName    string
+	TaskName       string
+	Limit          int
 }
 
 type GetTasksByVersionOptions struct {

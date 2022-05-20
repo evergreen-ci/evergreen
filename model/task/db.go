@@ -790,13 +790,13 @@ func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []b
 	matchFilter := bson.M{
 		ProjectKey:  opts.Project,
 		RevisionKey: opts.CommitHash,
-		IdKey:       bson.M{"$gte": opts.StartingTask},
+		IdKey:       bson.M{"$gte": opts.StartingTaskId},
 	}
 	if opts.Status != "" {
 		matchFilter[StatusKey] = opts.Status
 	}
-	if opts.Variant != "" {
-		matchFilter[BuildVariantKey] = opts.Variant
+	if opts.VariantName != "" {
+		matchFilter[BuildVariantKey] = opts.VariantName
 	}
 	if opts.TaskName != "" {
 		matchFilter[DisplayNameKey] = opts.TaskName
