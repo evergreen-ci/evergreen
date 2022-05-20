@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -103,7 +104,7 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 	shouldExit := false
 	if len(jobErrs) > 0 { // exit early if we know the error will keep recurring
 		jobErr := errors.New(strings.Join(jobErrs, ", "))
-		shouldExit = db.IsDocumentLimit(jobErr)
+		shouldExit = db.IsDocumentLimit(jobErr) || strings.Contains(jobErr.Error(), model.DependencyCycleError.Error())
 	}
 	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
 		Finished:   finished,
