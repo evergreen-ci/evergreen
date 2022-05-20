@@ -3323,6 +3323,14 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
+func (t *Task) toTaskNode() TaskNode {
+	return TaskNode{
+		Name:    t.DisplayName,
+		Variant: t.BuildVariant,
+		ID:      t.Id,
+	}
+}
+
 func AnyActiveTasks(tasks []Task) bool {
 	for _, t := range tasks {
 		if t.Activated {
@@ -3710,9 +3718,10 @@ type HasMatchingTasksOptions struct {
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
 	options := GetTasksByVersionOptions{
-		TaskNames: opts.TaskNames,
-		Variants:  opts.Variants,
-		Statuses:  opts.Statuses,
+		TaskNames:                      opts.TaskNames,
+		Variants:                       opts.Variants,
+		Statuses:                       opts.Statuses,
+		IncludeBuildVariantDisplayName: true,
 	}
 	pipeline := getTasksByVersionPipeline(versionID, options)
 	pipeline = append(pipeline, bson.M{"$count": "count"})

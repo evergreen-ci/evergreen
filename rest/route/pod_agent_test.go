@@ -7,8 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -164,6 +170,15 @@ func TestPodAgentCedarConfig(t *testing.T) {
 }
 
 func TestPodAgentNextTask(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
+	}()
+	getPod := func() pod.Pod {
+		return pod.Pod{
+			ID:     utility.RandomString(),
+			Status: pod.StatusStarting,
+		}
+	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment){
 		"ParseSetsPodID": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			r, err := http.NewRequest(http.MethodGet, "/url", nil)
@@ -179,10 +194,37 @@ func TestPodAgentNextTask(t *testing.T) {
 			assert.Error(t, rh.Parse(ctx, r))
 			assert.Zero(t, rh.podID)
 		},
-		"RunEnqueuesTerminationJob": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
-			rh.podID = "some_pod_id"
+		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			const podID = "foo"
+			pd := dispatcher.NewPodDispatcher("group", []string{"task"}, []string{podID})
+			require.NoError(t, pd.Insert())
+			rh.podID = podID
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+		"RunFailsWithNonexistentDispatcher": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			p := getPod()
+			require.NoError(t, p.Insert())
+			rh.podID = p.ID
+
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+		"RunEnqueuesTerminationJobWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
+			p := getPod()
+			require.NoError(t, p.Insert())
+			rh.podID = p.ID
+
+			pd := dispatcher.NewPodDispatcher("group", []string{"task"}, []string{p.ID})
+			require.NoError(t, pd.Insert())
+
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
+
+			dbPod, err := pod.FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
 
 			stats := env.RemoteQueue().Stats(ctx)
 			assert.Equal(t, 1, stats.Total)
@@ -194,6 +236,8 @@ func TestPodAgentNextTask(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
+
+			require.NoError(t, db.ClearCollections(task.Collection, pod.Collection, dispatcher.Collection, event.AllLogCollection))
 
 			rh, ok := makePodAgentNextTask(env).(*podAgentNextTask)
 			require.True(t, ok)

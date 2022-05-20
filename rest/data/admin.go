@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 func GetBanner() (string, string, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return "", "", errors.Wrap(err, "error retrieving settings from DB")
+		return "", "", errors.Wrap(err, "retrieving admin settings from DB")
 	}
 	return settings.Banner, string(settings.BannerTheme), nil
 }
@@ -33,7 +32,7 @@ func SetEvergreenSettings(changes *restModel.APIAdminSettings,
 	settingsAPI := restModel.NewConfigModel()
 	err := settingsAPI.BuildFromService(oldSettings)
 	if err != nil {
-		return nil, errors.Wrap(err, "error converting existing settings")
+		return nil, errors.Wrap(err, "converting existing settings to API model")
 	}
 	changesReflect := reflect.ValueOf(*changes)
 	settingsReflect := reflect.ValueOf(settingsAPI)
@@ -52,7 +51,7 @@ func SetEvergreenSettings(changes *restModel.APIAdminSettings,
 
 	i, err := settingsAPI.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "error converting to DB model")
+		return nil, errors.Wrap(err, "converting settings to service model")
 	}
 	newSettings := i.(evergreen.Settings)
 	if persist {
@@ -60,11 +59,11 @@ func SetEvergreenSettings(changes *restModel.APIAdminSettings,
 		// evergreen.Settings internally calls ValidateAndDefault to set the
 		// default values.
 		if err = newSettings.Validate(); err != nil {
-			return nil, errors.Wrap(err, "validation failed")
+			return nil, errors.Wrap(err, "new admin settings are invalid")
 		}
 		err = evergreen.UpdateConfig(&newSettings)
 		if err != nil {
-			return nil, errors.Wrap(err, "error saving new settings")
+			return nil, errors.Wrap(err, "saving new admin settings")
 		}
 		newSettings.Id = evergreen.ConfigDocID
 		return &newSettings, LogConfigChanges(&newSettings, oldSettings, u)
@@ -105,7 +104,7 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 		// type assert to the ConfigSection interface
 		section, ok := propInterface.(evergreen.ConfigSection)
 		if !ok {
-			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			catcher.Errorf("converting config section '%s'", propName)
 			continue
 		}
 
@@ -120,18 +119,16 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 	}
 
 	// log the root config document
-	if err := event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()); err != nil {
-		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
-	}
+	catcher.Wrap(event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()), "logging admin event for modifying admin settings")
 
-	return errors.WithStack(catcher.Resolve())
+	return catcher.Resolve()
 }
 
 // SetBannerTheme sets the banner theme in the DB and event logs it
 func SetBannerTheme(themeString string, u *user.DBUser) error {
 	valid, theme := evergreen.IsValidBannerTheme(themeString)
 	if !valid {
-		return fmt.Errorf("%s is not a valid banner theme type", themeString)
+		return errors.Errorf("invalid banner theme '%s'", themeString)
 	}
 
 	return evergreen.SetBannerTheme(theme)
@@ -149,7 +146,7 @@ func RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restMode
 		}
 	} else {
 		if err = queue.Put(context.TODO(), units.NewTasksRestartJob(opts)); err != nil {
-			return nil, errors.Wrap(err, "error starting background job for task restart")
+			return nil, errors.Wrap(err, "enqueueing job for task restart")
 		}
 	}
 
@@ -165,7 +162,7 @@ func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.Res
 	totalNotRestarted := []string{}
 	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error finding projects with commit queue enabled")
+		return nil, errors.Wrap(err, "finding project refs with commit queue enabled")
 	}
 	for _, pRef := range pRefs {
 		restarted, notRestarted, err := model.RetryCommitQueueItems(pRef.Id, opts)
@@ -205,14 +202,4 @@ func GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error
 	}
 
 	return out, catcher.Resolve()
-}
-
-func MapLDAPGroupToRole(group, roleID string) error {
-	mapping := &evergreen.LDAPRoleMap{}
-	return errors.Wrapf(mapping.Add(group, roleID), "error mapping %s to %s", group, roleID)
-}
-
-func UnmapLDAPGroupToRole(group string) error {
-	mapping := &evergreen.LDAPRoleMap{}
-	return errors.Wrapf(mapping.Remove(group), "error unmapping %s", group)
 }

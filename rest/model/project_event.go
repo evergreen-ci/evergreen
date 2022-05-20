@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -64,17 +63,17 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 		e.Timestamp = ToTimePtr(v.Timestamp)
 		data, ok := v.Data.(*model.ProjectChangeEvent)
 		if !ok {
-			return errors.New("unable to convert event data to project change")
+			return errors.Errorf("programmatic error: expected project change event but got type %T", v.Data)
 		}
 
 		user := utility.ToStringPtr(data.User)
 		before, err := DbProjectSettingsToRestModel(data.Before)
 		if err != nil {
-			return errors.Wrap(err, "unable to convert 'before' changes")
+			return errors.Wrap(err, "converting 'before' project settings to API model")
 		}
 		after, err := DbProjectSettingsToRestModel(data.After)
 		if err != nil {
-			return errors.Wrap(err, "unable to convert 'after' changes")
+			return errors.Wrap(err, "converting 'after' project settings to API model")
 		}
 
 		e.User = user
@@ -93,7 +92,7 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 			Subscriptions:         after.Subscriptions,
 		}
 	default:
-		return fmt.Errorf("%T is not the correct event type", h)
+		return errors.Errorf("programmatic error: expected project change event entry but got type %T", h)
 	}
 
 	return nil
@@ -164,7 +163,7 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 		p.Vars = v.Vars
 		p.AdminOnlyVars = v.AdminOnlyVars
 	default:
-		return errors.New("Invalid type of the argument")
+		return errors.Errorf("programmatic error: expected project variables but got type %T", h)
 	}
 	return nil
 }
@@ -212,7 +211,7 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 		a.TaskTags = APITaskTags
 		a.ID = utility.ToStringPtr(v.ID.Hex())
 	default:
-		return errors.New("Invalid type of argument")
+		return errors.Errorf("programmatic error: expected project alias but got type %T", h)
 	}
 	return nil
 }

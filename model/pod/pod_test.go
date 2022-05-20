@@ -580,3 +580,47 @@ func TestSetRunningTask(t *testing.T) {
 		})
 	}
 }
+
+func TestSetAgentStartTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod){
+		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			require.NoError(t, p.Insert())
+			require.NoError(t, p.SetAgentStartTime())
+
+			dbPod, err := FindOneByID(p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbPod)
+			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
+			assert.Equal(t, p.TimeInfo.AgentStarted, dbPod.TimeInfo.AgentStarted)
+		},
+		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
+			assert.Error(t, p.SetAgentStartTime())
+
+			dbPod, err := FindOneByID(p.ID)
+			assert.NoError(t, err)
+			assert.Zero(t, dbPod)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+
+			p := Pod{
+				ID: "id",
+			}
+			tCase(tctx, t, env, p)
+		})
+	}
+}

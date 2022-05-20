@@ -46,8 +46,8 @@ require (
 	go.mongodb.org/mongo-driver v1.8.3
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
-	golang.org/x/tools v0.1.7
-	gonum.org/v1/gonum v0.9.3
+	golang.org/x/tools v0.1.9
+	gonum.org/v1/gonum v0.11.0
 	google.golang.org/api v0.60.0
 	google.golang.org/grpc v1.44.0
 	gopkg.in/yaml.v2 v2.4.0

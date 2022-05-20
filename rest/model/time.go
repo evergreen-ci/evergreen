@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -51,7 +50,7 @@ func UnmarshalAPIDuration(v interface{}) (APIDuration, error) {
 	case int:
 		return APIDuration(v), nil
 	default:
-		return APIDuration(0), fmt.Errorf("%T is not an APIDuration", v)
+		return APIDuration(0), errors.Errorf("programmatic error: expected an integer duration (in nanoseconds) but got type %T", v)
 	}
 }
 

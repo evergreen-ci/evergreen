@@ -512,6 +512,16 @@ const (
 	AdHocRequester              = "ad_hoc"
 )
 
+var AllRequesterTypes = []string{
+	PatchVersionRequester,
+	GithubPRRequester,
+	GitTagRequester,
+	RepotrackerVersionRequester,
+	TriggerRequester,
+	MergeTestRequester,
+	AdHocRequester,
+}
+
 // Constants related to requester types.
 var (
 	SystemVersionRequesterTypes = []string{

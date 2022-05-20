@@ -387,7 +387,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id)
+		newUILink = fmt.Sprintf("%s/task/%s", uis.Settings.Ui.UIv2Url, tId)
 	}
 
 	if uiTask.AbortInfo.TaskID != "" {

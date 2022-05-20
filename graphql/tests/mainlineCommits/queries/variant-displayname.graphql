@@ -1,0 +1,23 @@
+{
+  mainlineCommits(options: { projectID: "evergreen" }, buildVariantOptions: {variants: ["Ubuntu 16.04"]}) {
+    versions {
+      version {
+        id
+        author
+        buildVariants(options: { variants: ["Ubuntu 16.04"]}) {
+          variant
+          displayName
+          tasks {
+            id
+            displayName
+            status
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        activated
+      }
+    }
+  }
+}
