@@ -43,7 +43,7 @@ func (err *LastError) Error() string {
 	return err.Err
 }
 
-type queryError struct {
+type queryError struct { //nolint
 	//nolint
 	Err       string "$err"
 	ErrMsg    string

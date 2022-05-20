@@ -25,8 +25,6 @@ func init() {
 type spawnhostStopJob struct {
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	host *host.Host
 }
 
 func makeSpawnhostStopJob() *spawnhostStopJob {

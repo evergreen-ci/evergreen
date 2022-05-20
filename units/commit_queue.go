@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v34/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -157,8 +156,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"job_id":       j.ID(),
 			"item_id":      nextItem.Issue,
 			"project_id":   cq.ProjectID,
-			"time_waiting": time.Now().Sub(nextItem.EnqueueTime).Seconds(),
-			"time_elapsed": time.Now().Sub(nextItem.ProcessingStartTime).Seconds(),
+			"time_waiting": time.Since(nextItem.EnqueueTime).Seconds(),
+			"time_elapsed": time.Since(nextItem.ProcessingStartTime).Seconds(),
 			"queue_length": len(cq.Queue),
 			"message":      "started testing commit queue item",
 		})
@@ -296,26 +295,6 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	}
 
 	// patch is done
-	if !utility.IsZeroTime(patchDoc.FinishTime) {
-		j.dequeue(cq, nextItem)
-		status := evergreen.MergeTestSucceeded
-		if patchDoc.Status == evergreen.PatchFailed {
-			status = evergreen.MergeTestFailed
-		}
-		event.LogCommitQueueConcludeTest(nextItem.Version, status)
-		grip.Info(message.Fields{
-			"source":                "commit queue",
-			"patch status":          status,
-			"job_id":                j.ID(),
-			"item_id":               nextItem.Issue,
-			"project_id":            cq.ProjectID,
-			"time_since_enqueue":    time.Since(nextItem.EnqueueTime).Seconds(),
-			"time_since_patch_done": time.Since(patchDoc.FinishTime).Seconds(),
-			"message":               "patch done and dequeued",
-		})
-	}
-
-	return
 }
 
 func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {

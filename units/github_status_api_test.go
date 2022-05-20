@@ -252,9 +252,10 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.cancel = cancel
 
 	env := testutil.NewEnvironment(ctx, s.T())
+	settings := testutil.TestConfig()
 
-	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "TestWithGithub")
-	env.Settings().Credentials = s.testConfig.Credentials
+	testutil.ConfigureIntegrationTest(s.T(), settings, "TestWithGithub")
+	env.Settings().Credentials = settings.Credentials
 	env.Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"

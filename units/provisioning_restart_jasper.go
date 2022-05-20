@@ -19,7 +19,6 @@ import (
 
 const (
 	restartJasperJobName = "restart-jasper"
-	expirationCutoff     = 7 * 24 * time.Hour // 1 week
 
 	// maxHostReprovisioningJobTime is the maximum amount of time a
 	// reprovisioning job (i.e. a job that modifies how the host is provisioned

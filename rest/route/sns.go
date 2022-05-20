@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
@@ -18,8 +21,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	sns "github.com/robbiet480/go.sns"
-	"io/ioutil"
-	"net/http"
 )
 
 const (

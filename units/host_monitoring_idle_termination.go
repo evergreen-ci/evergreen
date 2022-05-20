@@ -46,8 +46,7 @@ type idleHostJob struct {
 	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
 	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
-	env  evergreen.Environment
-	host *host.Host
+	env evergreen.Environment
 }
 
 func makeIdleHostJob() *idleHostJob {
