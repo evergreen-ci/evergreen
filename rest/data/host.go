@@ -51,7 +51,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		keyVal = options.KeyName
 	}
 	if keyVal == "" {
-		return nil, errors.Errorf("the value for key name '%s' is empty", options.KeyName)
+		return nil, errors.Errorf("public key '%s' cannot have an empty value", options.KeyName)
 	}
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:              options.DistroID,
@@ -77,7 +77,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	}
 	intentHost, err := cloud.CreateSpawnHost(ctx, spawnOptions, settings)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating spawn host")
+		return nil, errors.Wrap(err, "creating spawn host")
 	}
 
 	if err := intentHost.Insert(); err != nil {
@@ -99,7 +99,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding host with ID '%s'", hostID).Error(),
+			Message:    errors.Wrapf(err, "finding host '%s'", hostID).Error(),
 		}
 	}
 	if h == nil {
@@ -141,13 +141,13 @@ func FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) 
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "error fetching host information",
+			Message:    "fetching host information",
 		}
 	}
 	if hostById == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host with id '%s' not found", hostID),
+			Message:    fmt.Sprintf("host '%s' not found", hostID),
 		}
 	}
 

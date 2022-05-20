@@ -241,10 +241,10 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider settings into BSON")
 		}
 		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into Docker provider settings")
 		}
 	}
 	return nil

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 // UpdateDistro updates the given distro.Distro.
@@ -16,16 +17,15 @@ func UpdateDistro(old, new *distro.Distro) error {
 	if old.Id != new.Id {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("programmer error updating distro %s [%s]", new.Id, old.Id),
+			Message:    fmt.Sprintf("old distro '%s' and new distro '%s' have mismatched IDs", new.Id, old.Id),
 		}
-
 	}
 
 	if old.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies && new.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 		if err := model.RemoveTaskQueues(new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("could not clear invalid task queues for %s", new.Id),
+				Message:    errors.Wrapf(err, "removing task queues for distro '%s'", new.Id).Error(),
 			}
 		}
 	}
@@ -33,7 +33,7 @@ func UpdateDistro(old, new *distro.Distro) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("distro with id '%s' was not updated", new.Id),
+			Message:    errors.Wrapf(err, "updating distro '%s'", new.Id).Error(),
 		}
 	}
 	return nil
@@ -45,31 +45,31 @@ func DeleteDistroById(distroId string) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("problem finding distro '%s'", distroId),
+			Message:    errors.Wrapf(err, "finding distro '%s'", distroId).Error(),
 		}
 	}
 	if d == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("distro '%s' doesn't exist", distroId),
+			Message:    fmt.Sprintf("distro '%s' not found", distroId),
 		}
 	}
 	if err = host.MarkInactiveStaticHosts([]string{}, d); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("hosts for distro with id '%s' were not terminated", distroId),
+			Message:    errors.Wrapf(err, "terminating inactive static hosts in distro '%s'", distroId).Error(),
 		}
 	}
 	if err = distro.Remove(distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
+			Message:    errors.Wrapf(err, "deleting distro '%s'", distroId).Error(),
 		}
 	}
 	if err = model.ClearTaskQueue(distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("failed to clear task queue for distro '%s'", distroId),
+			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
 		}
 	}
 	return nil

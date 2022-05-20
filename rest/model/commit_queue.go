@@ -39,14 +39,14 @@ type APICommitQueueItemAuthor struct {
 func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 	cqService, ok := h.(commitqueue.CommitQueue)
 	if !ok {
-		return errors.Errorf("incorrect type '%T' when converting commit queue", h)
+		return errors.Errorf("programmatic error: expected commit queue but got type %T", h)
 	}
 
 	cq.ProjectID = utility.ToStringPtr(cqService.ProjectID)
 	for _, item := range cqService.Queue {
 		cqItem := APICommitQueueItem{}
 		if err := cqItem.BuildFromService(item); err != nil {
-			return errors.Wrap(err, "can't build API commit queue item from db model")
+			return errors.Wrapf(err, "converting commit queue item for issue '%s' to API model", item.Issue)
 		}
 		cq.Queue = append(cq.Queue, cqItem)
 	}
@@ -61,7 +61,7 @@ func (cq *APICommitQueue) ToService() (interface{}, error) {
 func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 	cqItemService, ok := h.(commitqueue.CommitQueueItem)
 	if !ok {
-		return errors.Errorf("incorrect type '%T' when converting commit queue item", h)
+		return errors.Errorf("programmatic error: expected commit queue item but got type %T", h)
 	}
 	item.Issue = utility.ToStringPtr(cqItemService.Issue)
 	item.Version = utility.ToStringPtr(cqItemService.Version)
