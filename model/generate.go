@@ -20,6 +20,8 @@ const (
 	maxGeneratedTasks         = 25000
 )
 
+var DependencyCycleError = errors.New("adding dependencies creates a dependency cycle")
+
 // GeneratedProject is a subset of the Project type, and is generated from the
 // JSON from a `generate.tasks` command.
 type GeneratedProject struct {
@@ -297,7 +299,7 @@ func (g *GeneratedProject) SimulateNewDependencyGraph(v *Version, p *Project, pr
 	}
 
 	if cycles := dependencyGraph.Cycles(); len(cycles) > 0 {
-		return errors.Errorf("adding dependencies would create dependency cycles: '%s'", cycles)
+		return errors.Wrapf(DependencyCycleError, "'%s'", cycles)
 	}
 
 	return nil
@@ -363,10 +365,6 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 func addDependencyEdgesToGraph(generator *task.Task, newTasks TVPairSet, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
 	for _, newTask := range newTasks {
 		for _, edge := range graph.EdgesIntoTask(generator.ToTaskNode()) {
-			if newTask.Variant == edge.From.Variant && newTask.TaskName == edge.From.Name {
-				return graph, errors.New("new task depends on the generator")
-			}
-
 			graph.AddEdge(edge.From, task.TaskNode{
 				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
 				Name:    newTask.TaskName,

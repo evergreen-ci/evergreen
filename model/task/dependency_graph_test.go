@@ -300,7 +300,8 @@ func TestCycles(t *testing.T) {
 		g := NewDependencyGraph(false)
 		g.buildFromTasks(tasks)
 
-		assert.Empty(t, g.Cycles())
+		cycles := g.Cycles()
+		assert.Len(t, cycles, 1)
 	})
 
 	t.Run("TwoConnectedCycles", func(t *testing.T) {

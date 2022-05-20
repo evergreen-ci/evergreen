@@ -184,21 +184,23 @@ func (dc DependencyCycles) String() string {
 }
 
 // Cycles returns cycles in the graph, if any.
-// Self-loops are not included as cycles.
+// Self-loops are also considered cycles.
 func (g *DependencyGraph) Cycles() DependencyCycles {
 	var cycles DependencyCycles
 	stronglyConnectedComponents := topo.TarjanSCC(g.graph)
 	for _, scc := range stronglyConnectedComponents {
-		if len(scc) <= 1 {
-			continue
+		if len(scc) == 1 {
+			if g.graph.HasEdgeBetween(scc[0].ID(), scc[0].ID()) {
+				cycles = append(cycles, []TaskNode{g.nodesToTasks[scc[0]], g.nodesToTasks[scc[0]]})
+			}
+		} else {
+			var cycle []TaskNode
+			for _, node := range scc {
+				taskInCycle := g.nodesToTasks[node]
+				cycle = append(cycle, taskInCycle)
+			}
+			cycles = append(cycles, cycle)
 		}
-
-		var cycle []TaskNode
-		for _, node := range scc {
-			taskInCycle := g.nodesToTasks[node]
-			cycle = append(cycle, taskInCycle)
-		}
-		cycles = append(cycles, cycle)
 	}
 
 	return cycles
