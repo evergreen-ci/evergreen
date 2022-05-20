@@ -195,11 +195,6 @@ type PublicKeyInput struct {
 	Key  string `json:"key"`
 }
 
-type RepoEvents struct {
-	EventLogEntries []*model.APIProjectEvent `json:"eventLogEntries"`
-	Count           int                      `json:"count"`
-}
-
 type SortOrder struct {
 	Key       TaskSortCategory `json:"Key"`
 	Direction SortDirection    `json:"Direction"`

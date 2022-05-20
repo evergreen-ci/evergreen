@@ -1089,13 +1089,13 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, li
 	return res, err
 }
 
-func (r *queryResolver) RepoEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*RepoEvents, error) {
+func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetEventsById(identifier, timestamp, utility.FromIntPtr(limit))
-	res := &RepoEvents{
+	events, err := data.GetEventsById(id, timestamp, utility.FromIntPtr(limit))
+	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
 	}
