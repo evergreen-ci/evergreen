@@ -84,7 +84,7 @@ func (f *PrestoTestStatsFilter) Validate() error {
 	today := utility.GetUTCDay(time.Now())
 	f.AfterDate = utility.GetUTCDay(f.AfterDate)
 	f.BeforeDate = utility.GetUTCDay(f.BeforeDate)
-	catcher.NewWhen(f.AfterDate.After(f.BeforeDate), "before date must be greater than or equal to after date")
+	catcher.NewWhen(f.AfterDate.After(f.BeforeDate), "before date must be earlier or equal to after date")
 	catcher.NewWhen(today.Sub(f.AfterDate) > 180*24*time.Hour, "must specify an after date within 180 days from today")
 	if f.BeforeDate.After(today) {
 		f.BeforeDate = today

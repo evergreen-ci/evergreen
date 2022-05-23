@@ -17,10 +17,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// PrestoConfig represents configuration information for the application level
+// Presto DB connection.
 type PrestoConfig struct {
 	BaseURI           string            `bson:"base_uri" json:"base_uri" yaml:"base_uri"`
-	TLS               bool              `bson:"tls" json:"tls" yaml:"tls"`
 	Port              int               `bson:"port" json:"port" yaml:"port"`
+	TLS               bool              `bson:"tls" json:"tls" yaml:"tls"`
 	Username          string            `bson:"username" json:"username" yaml:"username"`
 	Password          string            `bson:"password" json:"password" yaml:"password"`
 	Source            string            `bson:"source" json:"source" yaml:"source"`
@@ -34,6 +36,7 @@ type PrestoConfig struct {
 var (
 	PrestoConfigBaseURIKey           = bsonutil.MustHaveTag(PrestoConfig{}, "BaseURI")
 	PrestoConfigPortKey              = bsonutil.MustHaveTag(PrestoConfig{}, "Port")
+	PrestoConfigTLSKey               = bsonutil.MustHaveTag(PrestoConfig{}, "TLS")
 	PrestoConfigUsernameKey          = bsonutil.MustHaveTag(PrestoConfig{}, "Username")
 	PrestoConfigPasswordKey          = bsonutil.MustHaveTag(PrestoConfig{}, "Password")
 	PrestoConfigSourceKey            = bsonutil.MustHaveTag(PrestoConfig{}, "Source")
