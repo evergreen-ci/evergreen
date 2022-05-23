@@ -71,9 +71,15 @@ func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 
 func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	cq.project = vars["project_id"]
 	cq.item = vars["item"]
-
+	requestedPatch, err := patch.FindOneId(cq.item)
+	if err != nil {
+		return errors.Wrapf(err, "finding commit queue item '%s'", cq.item)
+	}
+	if requestedPatch == nil {
+		return errors.New("commit queue item not found")
+	}
+	cq.project = requestedPatch.Project
 	return nil
 }
 
