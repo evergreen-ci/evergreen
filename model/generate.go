@@ -392,20 +392,10 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 
 	for _, newTask := range tasks {
 		bvt := p.FindTaskForVariant(newTask.TaskName, newTask.Variant)
-		for _, dep := range bvt.DependsOn {
-			graph.AddEdge(
-				task.TaskNode{
-					ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
-					Name:    newTask.TaskName,
-					Variant: newTask.Variant,
-				},
-				task.TaskNode{
-					ID:      taskIDs.ExecutionTasks.GetId(dep.Variant, dep.Name),
-					Name:    dep.Name,
-					Variant: dep.Variant,
-				},
-				dep.Status,
-			)
+		for _, dep := range dependenciesForTaskUnit([]BuildVariantTaskUnit{*bvt}) {
+			dep.From.ID = taskIDs.ExecutionTasks.GetId(dep.From.Variant, dep.From.Name)
+			dep.To.ID = taskIDs.ExecutionTasks.GetId(dep.To.Variant, dep.To.Name)
+			graph.AddEdge(dep.From, dep.To, dep.Status)
 		}
 	}
 
