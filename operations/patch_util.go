@@ -292,6 +292,9 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 func (p *patchParams) setLocalAliases(conf *ClientSettings) error {
 	for i := range conf.Projects {
 		if conf.Projects[i].Name == p.Project {
+			if errStrs := model.ValidateProjectAliases(conf.Projects[i].LocalAliases, "Local Aliases"); len(errStrs) != 0 {
+				return errors.Errorf("validating local aliases: '%s'", errStrs)
+			}
 			for _, alias := range conf.Projects[i].LocalAliases {
 				if alias.Alias == p.Alias {
 					p.addAliasToPatchParams(alias)
@@ -337,8 +340,7 @@ func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 	cwd, err = filepath.EvalSymlinks(cwd)
 	grip.Error(errors.Wrap(err, "unable to resolve symlinks"))
 
-	project := conf.FindDefaultProject(cwd, false)
-	if project == "" {
+	if conf.FindDefaultProject(cwd, false) == "" {
 		conf.SetDefaultProject(cwd, p.Project)
 		if err := conf.Write(""); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -346,8 +348,6 @@ func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 				"project": p.Project,
 			}))
 		}
-	} else {
-		p.Project = project
 	}
 }
 

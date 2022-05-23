@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -145,23 +144,6 @@ func Patch() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-			params.setDefaultProject(conf)
-
-			for _, project := range conf.Projects {
-				if errStrs := model.ValidateProjectAliases(project.LocalAliases, "Local Aliases"); errStrs != nil {
-					return errors.Errorf("validating local aliases: '%s'", errStrs)
-				}
-			}
-
-			if params.Alias != "" {
-				if err = params.setLocalAliases(conf); err != nil {
-					return errors.Wrap(err, "setting local aliases")
-				}
-			}
-
-			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
-				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
-			}
 
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			if !params.SkipConfirm {
@@ -192,6 +174,16 @@ func Patch() cli.Command {
 			}
 			params.Description = params.getDescription()
 
+			if params.Alias != "" {
+				if err = params.setLocalAliases(conf); err != nil {
+					return errors.Wrap(err, "setting local aliases")
+				}
+			}
+
+			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
+				return errors.Errorf("can't define tasks/variants when reusing previous patch's tasks and variants")
+			}
+
 			diffData, err := loadGitData(ref.Branch, params.Ref, "", params.PreserveCommits, args...)
 			if err != nil {
 				return err
@@ -207,6 +199,7 @@ func Patch() cli.Command {
 			if err = params.displayPatch(newPatch, conf.UIServerHost, false); err != nil {
 				grip.Error(err)
 			}
+			params.setDefaultProject(conf)
 			return nil
 		},
 	}
