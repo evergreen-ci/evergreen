@@ -159,13 +159,15 @@ func TestECSSNSHandleNotification(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	defer cocoaMock.ResetGlobalECSService()
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *ecsSNS){
 		"MarksRunningPodForTerminationWhenStopped": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
 					TaskARN:       "external_id",
-					LastStatus:    cocoaECS.TaskStatusStopped,
+					LastStatus:    string(cocoaECS.TaskStatusStopped),
 					StoppedReason: "reason",
 				},
 			}
@@ -176,37 +178,143 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			assert.Equal(t, model.PodStatusDecommissioned, p.Status)
 		},
 		"CleansUpUnrecognizedPodTryingToStart": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
-			// kim: TODO: reset fake global ECS state for setup/teardown.
-			// kim: TODO: unset service flag
+			originalFlags, err := evergreen.GetServiceFlags()
+			require.NoError(t, err)
+			defer func() {
+				require.NoError(t, originalFlags.Set())
+			}()
+
+			updatedFlags := *originalFlags
+			updatedFlags.UnrecognizedPodCleanupDisabled = false
+			require.NoError(t, updatedFlags.Set())
+
+			// Set up the fake ECS testing service and the route's ECS client so
+			// that it tests cleaning up the pod in the fake service rather than
+			// actually trying to perform cleanup in AWS.
 			const (
 				clusterID = "ecs-cluster"
 				taskID    = "nonexistent-ecs-task"
+				status    = string(cocoaECS.TaskStatusActivating)
 			)
 			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
 				taskID: cocoaMock.ECSTask{
 					ARN:        utility.ToStringPtr(taskID),
 					Cluster:    utility.ToStringPtr(clusterID),
 					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
-					Status:     utility.ToStringPtr(cocoaECS.TaskStatusActivating),
-					GoalStatus: utility.ToStringPtr(cocoaECS.TaskStatusRunning),
+					Status:     utility.ToStringPtr(status),
+					GoalStatus: utility.ToStringPtr(string(cocoaECS.TaskStatusRunning)),
+				},
+			}
+			c := cocoaMock.ECSClient{}
+			rh.makeECSClient = func(*evergreen.Settings) (cocoa.ECSClient, error) {
+				return &c, nil
+			}
+
+			notification := ecsEventBridgeNotification{
+				DetailType: ecsTaskStateChangeType,
+				Detail: ecsEventDetail{
+					TaskARN:    taskID,
+					ClusterARN: clusterID,
+					LastStatus: status,
+				},
+			}
+			assert.NoError(t, rh.handleNotification(ctx, notification))
+
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterID], 1)
+			if assert.NotZero(t, c.StopTaskInput, "SNS notification should have triggered an API call to stop the unrecognized pod") {
+				assert.Equal(t, taskID, utility.FromStringPtr(c.StopTaskInput.Task), "SNS notification should have triggered an API call to stop the unrecognized pod")
+			}
+			assert.EqualValues(t, cocoaECS.TaskStatusStopped, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "unrecognized cloud pod should have been stopped")
+		},
+		"NoopsWhenUnrecognizedPodIsDetectedButAlreadyShuttingDown": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
+			originalFlags, err := evergreen.GetServiceFlags()
+			require.NoError(t, err)
+			defer func() {
+				require.NoError(t, originalFlags.Set())
+			}()
+
+			updatedFlags := *originalFlags
+			updatedFlags.UnrecognizedPodCleanupDisabled = false
+			require.NoError(t, updatedFlags.Set())
+
+			// Set up the fake ECS testing service and the route's ECS client so
+			// that it tests cleaning up the pod in the fake service rather than
+			// actually trying to perform cleanup in AWS.
+			const (
+				clusterID = "ecs-cluster"
+				taskID    = "nonexistent-ecs-task"
+				status    = string(cocoaECS.TaskStatusDeprovisioning)
+			)
+			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
+				taskID: cocoaMock.ECSTask{
+					ARN:        utility.ToStringPtr(taskID),
+					Cluster:    utility.ToStringPtr(clusterID),
+					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
+					Status:     utility.ToStringPtr(status),
+					GoalStatus: utility.ToStringPtr(string(cocoaECS.TaskStatusStopped)),
+				},
+			}
+			c := cocoaMock.ECSClient{}
+			rh.makeECSClient = func(*evergreen.Settings) (cocoa.ECSClient, error) {
+				return &c, nil
+			}
+
+			notification := ecsEventBridgeNotification{
+				DetailType: ecsTaskStateChangeType,
+				Detail: ecsEventDetail{
+					TaskARN:    taskID,
+					ClusterARN: clusterID,
+					LastStatus: status,
+				},
+			}
+			assert.NoError(t, rh.handleNotification(ctx, notification))
+
+			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterID], 1)
+			assert.Zero(t, c.StopTaskInput, "SNS notification should not have triggered an API call to stop the pod because it is already stopping")
+		},
+		"NoopsWhenUnrecognizedPodIsDetectedButUnrecognizedPodCleanupIsDisabled": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
+			originalFlags, err := evergreen.GetServiceFlags()
+			require.NoError(t, err)
+			defer func() {
+				require.NoError(t, originalFlags.Set())
+			}()
+
+			updatedFlags := *originalFlags
+			updatedFlags.UnrecognizedPodCleanupDisabled = true
+			require.NoError(t, updatedFlags.Set())
+
+			const (
+				clusterID = "ecs-cluster"
+				taskID    = "nonexistent-ecs-task"
+				status    = string(cocoaECS.TaskStatusActivating)
+			)
+			cocoaMock.GlobalECSService.Clusters[clusterID] = cocoaMock.ECSCluster{
+				taskID: cocoaMock.ECSTask{
+					ARN:        utility.ToStringPtr(taskID),
+					Cluster:    utility.ToStringPtr(clusterID),
+					Created:    utility.ToTimePtr(time.Now().Add(-10 * time.Minute)),
+					Status:     utility.ToStringPtr(status),
+					GoalStatus: utility.ToStringPtr(string(cocoaECS.TaskStatusRunning)),
 				},
 			}
 
+			c := cocoaMock.ECSClient{}
 			rh.makeECSClient = func(*evergreen.Settings) (cocoa.ECSClient, error) {
-				return &cocoaMock.ECSClient{}, nil
+				return &c, nil
 			}
 			notification := ecsEventBridgeNotification{
 				DetailType: ecsTaskStateChangeType,
 				Detail: ecsEventDetail{
 					TaskARN:    taskID,
 					ClusterARN: clusterID,
-					LastStatus: cocoaECS.TaskStatusActivating,
+					LastStatus: status,
 				},
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
 			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterID], 1)
-			assert.Equal(t, cocoaECS.TaskStatusStopped, cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status, "cloud pod should have been cleaned up")
+			assert.EqualValues(t, status, utility.FromStringPtr(cocoaMock.GlobalECSService.Clusters[clusterID][taskID].Status), "cloud pod should not be cleaned up when the service flag flag is disabled")
+			assert.Zero(t, c.StopTaskInput, "SNS notification should not have triggered an API call to stop the pod because the service flag is disabled")
 		},
 		"FailsWithoutStatus": func(ctx context.Context, t *testing.T, rh *ecsSNS) {
 			notification := ecsEventBridgeNotification{
@@ -255,6 +363,8 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			require.NoError(t, err)
 			rh, ok := makeECSSNS(env, q).(*ecsSNS)
 			require.True(t, ok)
+
+			cocoaMock.ResetGlobalECSService()
 
 			tCase(ctx, t, rh)
 		})

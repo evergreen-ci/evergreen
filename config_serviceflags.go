@@ -104,7 +104,7 @@ func (c *ServiceFlags) Set() error {
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			containerConfigurationsDisabledKey: c.ContainerConfigurationsDisabled,
-			unrecognizedPodHandlingDisabledKey: c.UnrecognizedPodCleanupDisabled,
+			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 

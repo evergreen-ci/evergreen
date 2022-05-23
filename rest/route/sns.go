@@ -303,6 +303,7 @@ type ecsEventDetail struct {
 	TaskARN       string `json:"taskArn"`
 	ClusterARN    string `json:"clusterArn"`
 	LastStatus    string `json:"lastStatus"`
+	DesiredStatus string `json:"desiredStatus"`
 	StoppedReason string `json:"stoppedReason"`
 }
 
@@ -315,7 +316,8 @@ func makeECSSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandle
 
 func (sns *ecsSNS) Factory() gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS: makeBaseSNS(sns.env, sns.queue),
+		baseSNS:       makeBaseSNS(sns.env, sns.queue),
+		makeECSClient: sns.makeECSClient,
 	}
 }
 
@@ -363,30 +365,31 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 		}
 		if p == nil {
 			grip.Info(message.Fields{
-				"message":     "found unexpected ECS task that did not match any known pod in Evergreen",
-				"task_arn":    notification.Detail.TaskARN,
-				"cluster_arn": notification.Detail.ClusterARN,
-				"status":      notification.Detail.LastStatus,
-				"route":       "/hooks/aws/ecs",
+				"message":        "found unexpected ECS task that did not match any known pod in Evergreen",
+				"task":           notification.Detail.TaskARN,
+				"cluster":        notification.Detail.ClusterARN,
+				"last_status":    notification.Detail.LastStatus,
+				"desired_status": notification.Detail.DesiredStatus,
+				"route":          "/hooks/aws/ecs",
 			})
 			if err := sns.cleanupUnrecognizedPod(ctx, notification.Detail); err != nil {
-				return errors.Wrapf(err, "handling unrecognized pod '%s'", notification.Detail.TaskARN)
+				return errors.Wrapf(err, "cleaning up unrecognized pod '%s'", notification.Detail.TaskARN)
 			}
 
 			return nil
 		}
 
-		// kim: TODO: replace with ToCocoaStatus simplification.
-		switch notification.Detail.LastStatus {
-		case ecs.TaskStatusProvisioning, ecs.TaskStatusPending, ecs.TaskStatusActivating, ecs.TaskStatusRunning:
+		status := ecs.TaskStatus(notification.Detail.LastStatus).ToCocoaStatus()
+		switch status {
+		case cocoa.StatusStarting, cocoa.StatusRunning:
 			// No-op because the pod is not considered running until the agent
 			// contacts the app server.
 			return nil
-		case ecs.TaskStatusDeactivating, ecs.TaskStatusStopping, ecs.TaskStatusDeprovisioning:
+		case cocoa.StatusStopping:
 			// No-op because the pod is preparing to stop but is not yet
 			// stopped.
 			return nil
-		case ecs.TaskStatusStopped:
+		case cocoa.StatusStopped:
 			reason := notification.Detail.StoppedReason
 			if reason == "" {
 				reason = "stopped due to unknown reason"
@@ -440,8 +443,11 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 }
 
 func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventDetail) error {
-	// kim: TODO: if pod status is stopping/stopped, no-op since it'll shut down
-	// on its own.
+	status := ecs.TaskStatus(details.DesiredStatus).ToCocoaStatus()
+	if status == cocoa.StatusStopping || status == cocoa.StatusStopped {
+		// The unrecognized pod is already cleaning up, so no-op.
+		return nil
+	}
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -461,12 +467,11 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventD
 		SetCluster(details.ClusterARN).
 		SetTaskID(details.TaskARN)
 
-	// kim: TODO: get ECS status translation function from Cocoa.
-	status := cocoa.NewECSPodStatusInfo().SetStatus("kim: TODO")
+	statusInfo := cocoa.NewECSPodStatusInfo().SetStatus(status)
 
 	podOpts := ecs.NewBasicECSPodOptions().
 		SetClient(c).
-		SetStatusInfo(*status).
+		SetStatusInfo(*statusInfo).
 		SetResources(*resources)
 
 	p, err := ecs.NewBasicECSPod(podOpts)
@@ -477,6 +482,15 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventD
 	if err := p.Delete(ctx); err != nil {
 		return errors.Wrap(err, "cleaning up pod resources")
 	}
+
+	grip.Info(message.Fields{
+		"message":        "successfully cleaned up unrecognized pod",
+		"task":           details.TaskARN,
+		"cluster":        details.ClusterARN,
+		"last_status":    details.LastStatus,
+		"desired_status": details.DesiredStatus,
+		"route":          "/hooks/aws/ecs",
+	})
 
 	return nil
 }

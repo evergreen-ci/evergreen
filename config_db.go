@@ -93,7 +93,7 @@ var (
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
 	containerConfigurationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "ContainerConfigurationsDisabled")
-	unrecognizedPodHandlingDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodHandlingDisabled")
+	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
