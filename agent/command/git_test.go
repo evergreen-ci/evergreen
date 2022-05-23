@@ -432,23 +432,23 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		token:  projectGitHubToken,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := opts.buildHTTPCloneCommand()
+	cmds, err := opts.buildHTTPCloneCommand("--filter=tree:0 --single-branch")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.buildHTTPCloneCommand()
+	cmds, err = opts.buildHTTPCloneCommand("--filter=tree:0 --single-branch")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir'\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir'", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --filter=tree:0 --single-branch", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
@@ -456,20 +456,20 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// been forced to use https
 	opts.location = "http://github.com/deafgoat/mci_test.git"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.buildHTTPCloneCommand()
+	cmds, err = opts.buildHTTPCloneCommand("--filter=tree:0 --single-branch")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 
 	// ensure that we aren't sending the github oauth token to other
 	// servers
 	opts.location = "http://someothergithost.com/something/else.git"
-	cmds, err = opts.buildHTTPCloneCommand()
+	cmds, err = opts.buildHTTPCloneCommand("--filter=tree:0 --single-branch")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main'\"", cmds[1])
-	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main'", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main'\" --filter=tree:0 --single-branch", cmds[1])
+	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[2])
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
@@ -482,18 +482,18 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 		dir:    "dir",
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := opts.buildSSHCloneCommand()
+	cmds, err := opts.buildSSHCloneCommand("--filter=tree:0 --single-branch")
 	s.NoError(err)
 	s.Len(cmds, 2)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main'", cmds[0])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'main' --filter=tree:0 --single-branch", cmds[0])
 	s.Equal("cd dir", cmds[1])
 
 	// ssh clone command without branch
 	opts.branch = ""
-	cmds, err = opts.buildSSHCloneCommand()
+	cmds, err = opts.buildSSHCloneCommand("--filter=tree:0 --single-branch")
 	s.NoError(err)
 	s.Len(cmds, 2)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir'", cmds[0])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --filter=tree:0 --single-branch", cmds[0])
 	s.Equal("cd dir", cmds[1])
 }
 
