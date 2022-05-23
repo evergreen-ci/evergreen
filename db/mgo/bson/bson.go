@@ -39,7 +39,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -49,6 +48,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 //go:generate go run bson_corpus_spec_test_generator.go
@@ -301,12 +302,12 @@ func (id *ObjectId) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	if len(data) != 26 || data[0] != '"' || data[25] != '"' {
-		return fmt.Errorf("invalid ObjectId in JSON: %s", string(data))
+		return errors.Errorf("invalid ObjectId in JSON: %s", string(data))
 	}
 	var buf [12]byte
 	_, err := hex.Decode(buf[:], data[1:25])
 	if err != nil {
-		return fmt.Errorf("invalid ObjectId in JSON: %s (%s)", string(data), err)
+		return errors.Errorf("invalid ObjectId in JSON: %s (%s)", string(data), err)
 	}
 	*id = ObjectId(string(buf[:]))
 	return nil
@@ -324,12 +325,12 @@ func (id *ObjectId) UnmarshalText(data []byte) error {
 		return nil
 	}
 	if len(data) != 24 {
-		return fmt.Errorf("invalid ObjectId: %s", data)
+		return errors.Errorf("invalid ObjectId: %s", data)
 	}
 	var buf [12]byte
 	_, err := hex.Decode(buf[:], data[:])
 	if err != nil {
-		return fmt.Errorf("invalid ObjectId: %s (%s)", data, err)
+		return errors.Errorf("invalid ObjectId: %s (%s)", data, err)
 	}
 	*id = ObjectId(string(buf[:]))
 	return nil

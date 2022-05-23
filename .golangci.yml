@@ -2,17 +2,17 @@
 linters:
   disable-all: true
   enable:
-    - errcheck
-    - goimports
-    - govet
-    - ineffassign
-    - misspell
-    - unconvert
-    - structcheck
     - asciicheck
-    - unused
-    - gosimple
     - deadcode
+    - errcheck
+    - ineffassign
+    - goimports
+    - gosimple
+    - govet
+    - misspell
+    - structcheck
+    - unconvert
+    - unused
 
 linters-settings:
   govet:
