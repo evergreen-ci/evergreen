@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -1074,10 +1075,13 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 	t.Run("NoCycles", func(t *testing.T) {
 		project := &Project{
 			BuildVariants: []BuildVariant{
-				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
-					{Name: "generated"},
-					{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
-				}},
+				{
+					Name: "bv0",
+					Tasks: []BuildVariantTaskUnit{
+						{Name: "generated"},
+						{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					},
+				},
 			},
 			Tasks: []ProjectTask{
 				{Name: "generated"},
@@ -1097,6 +1101,164 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 		assert.NoError(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+	})
+
+	t.Run("InactiveBuild", func(t *testing.T) {
+		project := &Project{
+			BuildVariants: []BuildVariant{
+				{
+					Name: "bv0",
+					Tasks: []BuildVariantTaskUnit{
+						{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
+						{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					},
+				},
+			},
+			Tasks: []ProjectTask{
+				{Name: "generated"},
+				{Name: "dependedOn"},
+			},
+		}
+
+		g := GeneratedProject{
+			Task: &generatorTask,
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "generated"},
+					},
+					Activate: utility.FalsePtr(),
+				},
+			},
+		}
+		assert.NoError(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+	})
+}
+
+func TestFilterInactiveTasks(t *testing.T) {
+	v := &Version{Requester: evergreen.PatchVersionRequester}
+
+	t.Run("ActiveNonExistentBuild", func(t *testing.T) {
+		g := GeneratedProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "generated"},
+					},
+				},
+			},
+			Task: &task.Task{},
+		}
+
+		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		assert.NoError(t, err)
+		assert.Len(t, tasks, 1)
+	})
+
+	t.Run("InactiveNonExistentBuild", func(t *testing.T) {
+		g := GeneratedProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "generated"},
+					},
+					Activate: utility.FalsePtr(),
+				},
+			},
+			Task: &task.Task{},
+		}
+
+		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		assert.NoError(t, err)
+		assert.Empty(t, tasks)
+	})
+
+	t.Run("ActiveExistingBuild", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, db.Clear(build.Collection))
+		}()
+		assert.NoError(t, db.Clear(build.Collection))
+		assert.NoError(t, (&build.Build{DisplayName: "bv0"}).Insert())
+
+		g := GeneratedProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{
+							Name: "generated",
+						},
+					},
+				},
+			},
+			Task: &task.Task{},
+		}
+
+		p := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0"},
+			},
+		}
+
+		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
+		assert.NoError(t, err)
+		assert.Len(t, tasks, 1)
+	})
+
+	t.Run("InactiveExistingBuild", func(t *testing.T) {
+		defer func() {
+			assert.NoError(t, db.Clear(build.Collection))
+		}()
+		assert.NoError(t, db.Clear(build.Collection))
+		assert.NoError(t, (&build.Build{DisplayName: "bv0"}).Insert())
+
+		g := GeneratedProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{
+							Name: "generated",
+						},
+					},
+				},
+			},
+			Task: &task.Task{},
+		}
+
+		p := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0", Activate: utility.FalsePtr()},
+			},
+		}
+
+		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, p)
+		assert.NoError(t, err)
+		assert.Empty(t, tasks)
+	})
+
+	t.Run("InactiveTask", func(t *testing.T) {
+		g := GeneratedProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{
+							Name:     "generated",
+							Activate: utility.FalsePtr(),
+						},
+					},
+				},
+			},
+			Task: &task.Task{},
+		}
+
+		tasks, err := g.filterInactiveTasks(TVPairSet{{TaskName: "generated", Variant: "bv0"}}, v, &Project{})
+		assert.NoError(t, err)
+		assert.Empty(t, tasks)
 	})
 }
 
@@ -1182,7 +1344,8 @@ func TestAddDependencies(t *testing.T) {
 		assert.NoError(t, task.Insert())
 	}
 
-	assert.NoError(t, addDependencies(&task.Task{Id: "generator"}, []string{"t3"}))
+	g := GeneratedProject{Task: &task.Task{Id: "generator"}}
+	assert.NoError(t, g.addDependencies([]string{"t3"}))
 
 	t1, err := task.FindOneId("t1")
 	assert.NoError(t, err)

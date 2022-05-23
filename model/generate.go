@@ -222,7 +222,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 		}
 	}
 	// Only consider batchtime for mainline builds. We should always respect activate if it is set.
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester, g.Task)
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 
 	newTVPairs := g.getNewTasksWithDependencies(v, p)
 
@@ -316,7 +316,7 @@ func (g *GeneratedProject) addNewTasksToGraph(graph task.DependencyGraph, v *Ver
 	}
 
 	graph = addTasksToGraph(newTasks.ExecTasks, graph, p, taskIDs)
-	return g.addDependencyEdgesToGraph(newTasks.ExecTasks, graph, taskIDs)
+	return g.addDependencyEdgesToGraph(newTasks.ExecTasks, v, p, graph, taskIDs)
 }
 
 func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) TaskVariantPairs {
@@ -333,6 +333,52 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) T
 	}))
 
 	return newTVPairs
+}
+
+func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
+	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
+	existingBuilds, err := build.Find(build.ByVersion(v.Id))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding builds for version")
+	}
+	existingBuildMap := make(map[string]bool)
+	for _, b := range existingBuilds {
+		existingBuildMap[b.DisplayName] = true
+	}
+
+	buildSet := make(map[string][]string)
+	for _, t := range tasks {
+		buildSet[t.Variant] = append(buildSet[t.Variant], t.TaskName)
+	}
+
+	activatedTasks := make(TVPairSet, 0, len(tasks))
+	for bv, tasks := range buildSet {
+		if existingBuildMap[bv] {
+			// existing builds are activated when tasks are added as long as the build isn't specifically not activated
+			projectBV := p.FindBuildVariant(bv)
+			if projectBV == nil {
+				continue
+			}
+			if !utility.FromBoolTPtr(projectBV.Activate) {
+				continue
+			}
+		} else {
+			// New builds with specific activation are activated later by ActivateElapsedBuildsAndTasks.
+			// Because the builds and their tasks are not activated now we do not add dependencies for them so they won't be simulated.
+			if activationInfo.variantHasSpecificActivation(bv) {
+				continue
+			}
+		}
+
+		for _, t := range tasks {
+			// Tasks with specific activation are activated later by ActivateElapsedBuildsAndTasks and we do not add dependencies for them.
+			if !activationInfo.taskHasSpecificActivation(bv, t) {
+				activatedTasks = append(activatedTasks, TVPair{Variant: bv, TaskName: t})
+			}
+		}
+	}
+
+	return activatedTasks, nil
 }
 
 func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, taskIDs TaskIdConfig) task.DependencyGraph {
@@ -366,8 +412,13 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 	return graph
 }
 
-func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
-	for _, newTask := range newTasks {
+func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
+	activatedNewTasks, err := g.filterInactiveTasks(newTasks, v, p)
+	if err != nil {
+		return graph, errors.Wrap(err, "filtering inactive tasks")
+	}
+
+	for _, newTask := range activatedNewTasks {
 		for _, edge := range graph.EdgesIntoTask(g.Task.ToTaskNode()) {
 			graph.AddEdge(edge.From, task.TaskNode{
 				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
@@ -424,7 +475,7 @@ func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []stri
 	return tasksWithoutSpecificActivation
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string, generatorTask *task.Task) specificActivationInfo {
+func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range g.BuildVariants {
 		// only consider batchtime for certain requesters
@@ -436,7 +487,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		// regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
-			if isStepbackTask(generatorTask, bv.Name, bvt.Name) {
+			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], bvt.Name)
 				continue // don't consider batchtime/activation if we're stepping back this generated task
 			}
