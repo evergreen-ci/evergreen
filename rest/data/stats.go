@@ -42,7 +42,7 @@ func GetPrestoTestStats(ctx context.Context, filter stats.PrestoTestStatsFilter)
 	if filter.Project != "" {
 		projectID, err := model.GetIdForProject(filter.Project)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting project ID for '%s'", filter.Project)
+			return nil, errors.Wrapf(err, "getting project ID for project identifier '%s'", filter.Project)
 		}
 		filter.Project = projectID
 	}
@@ -57,7 +57,7 @@ func GetPrestoTestStats(ctx context.Context, filter stats.PrestoTestStatsFilter)
 		ats := restModel.APITestStats{}
 		err = ats.BuildFromService(&serviceStats)
 		if err != nil {
-			return nil, errors.Wrap(err, "model error")
+			return nil, errors.Wrap(err, "converting test stats to API model")
 		}
 		apiStatsResult[i] = ats
 	}

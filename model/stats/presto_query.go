@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	testStatsQueryTemplateString = `
+	// testStatsQuery returns aggregated statistics based on the daily test
+	// statistics stored in Presto.
+	testStatsQuery = `
 WITH matched_and_aggregated AS (
     SELECT  test_name,{{ if not .GroupByTest }}
             task_name,{{ end }}
@@ -45,7 +47,7 @@ FROM matched_and_aggregated
 	dateFormat = "2006-01-02"
 )
 
-var testStatsQueryTemplate = template.Must(template.New("test_stats_api").Parse(testStatsQueryTemplateString))
+var testStatsQueryTemplate = template.Must(template.New("test_stats_api").Parse(testStatsQuery))
 
 // PrestoTestStatsFilter represents search and aggregation parameters when
 // querying test statistics in Presto.
@@ -107,17 +109,19 @@ func (f *PrestoTestStatsFilter) Validate() error {
 // GenerateQuery creates a prepared SQL query and arguments slice based on the
 // filter. The returned query and arguments can be passed directly into many
 // `database/sql.DB` functions such as `Query` and `Exec`.
-func (f PrestoTestStatsFilter) GenerateQuery() (string, []interface{}, error) {
-	if err := f.Validate(); err != nil {
-		return "", nil, err
+func (f PrestoTestStatsFilter) GenerateQuery() (queryString string, args []interface{}, err error) {
+	if err = f.Validate(); err != nil {
+		return
 	}
 
 	var query bytes.Buffer
-	if err := testStatsQueryTemplate.Execute(&query, f); err != nil {
-		return "", nil, errors.Wrap(err, "executing test stats query template")
+	if err = testStatsQueryTemplate.Execute(&query, f); err != nil {
+		err = errors.Wrap(err, "executing test stats query template")
+		return
 	}
+	queryString = query.String()
 
-	args := []interface{}{f.Project, f.Variant}
+	args = []interface{}{f.Project, f.Variant}
 	if f.TaskName != "" {
 		args = append(args, f.TaskName)
 	}
@@ -135,7 +139,7 @@ func (f PrestoTestStatsFilter) GenerateQuery() (string, []interface{}, error) {
 		f.Limit,
 	)
 
-	return query.String(), args, nil
+	return
 }
 
 // GetPrestoTestStats queries the precomputed test statistics in Presto using
