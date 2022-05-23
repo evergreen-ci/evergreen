@@ -203,8 +203,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = handleGithubConflicts(mergedProjectRef, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
-
-		modified, err = UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		if err = validateFeaturesHaveAliases(mergedProjectRef, changes.Aliases); err != nil {
+			return nil, err
+		}
+		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
 		for i := range mergedProjectRef.PatchTriggerAliases {
@@ -214,7 +216,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid patch trigger aliases")
 		}
-		modified, err = UpdateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
 		if err = SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
