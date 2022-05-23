@@ -335,6 +335,46 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) T
 	return newTVPairs
 }
 
+func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, taskIDs TaskIdConfig) task.DependencyGraph {
+	for _, newTask := range tasks {
+		graph.AddTaskNode(task.TaskNode{
+			ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+			Name:    newTask.TaskName,
+			Variant: newTask.Variant,
+		})
+	}
+
+	for _, newTask := range tasks {
+		bvt := p.FindTaskForVariant(newTask.TaskName, newTask.Variant)
+		for _, dep := range dependenciesForTaskUnit([]BuildVariantTaskUnit{*bvt}) {
+			dep.From.ID = taskIDs.ExecutionTasks.GetId(dep.From.Variant, dep.From.Name)
+			dep.To.ID = taskIDs.ExecutionTasks.GetId(dep.To.Variant, dep.To.Name)
+			graph.AddEdge(dep.From, dep.To, dep.Status)
+		}
+	}
+
+	return graph
+}
+
+func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
+	activatedNewTasks, err := g.filterInactiveTasks(newTasks, v, p)
+	if err != nil {
+		return graph, errors.Wrap(err, "filtering inactive tasks")
+	}
+
+	for _, newTask := range activatedNewTasks {
+		for _, edge := range graph.EdgesIntoTask(g.Task.ToTaskNode()) {
+			graph.AddEdge(edge.From, task.TaskNode{
+				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+				Name:    newTask.TaskName,
+				Variant: newTask.Variant,
+			}, edge.Status)
+		}
+	}
+
+	return graph, nil
+}
+
 func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
@@ -379,46 +419,6 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 	}
 
 	return activatedTasks, nil
-}
-
-func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, taskIDs TaskIdConfig) task.DependencyGraph {
-	for _, newTask := range tasks {
-		graph.AddTaskNode(task.TaskNode{
-			ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
-			Name:    newTask.TaskName,
-			Variant: newTask.Variant,
-		})
-	}
-
-	for _, newTask := range tasks {
-		bvt := p.FindTaskForVariant(newTask.TaskName, newTask.Variant)
-		for _, dep := range dependenciesForTaskUnit([]BuildVariantTaskUnit{*bvt}) {
-			dep.From.ID = taskIDs.ExecutionTasks.GetId(dep.From.Variant, dep.From.Name)
-			dep.To.ID = taskIDs.ExecutionTasks.GetId(dep.To.Variant, dep.To.Name)
-			graph.AddEdge(dep.From, dep.To, dep.Status)
-		}
-	}
-
-	return graph
-}
-
-func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
-	activatedNewTasks, err := g.filterInactiveTasks(newTasks, v, p)
-	if err != nil {
-		return graph, errors.Wrap(err, "filtering inactive tasks")
-	}
-
-	for _, newTask := range activatedNewTasks {
-		for _, edge := range graph.EdgesIntoTask(g.Task.ToTaskNode()) {
-			graph.AddEdge(edge.From, task.TaskNode{
-				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
-				Name:    newTask.TaskName,
-				Variant: newTask.Variant,
-			}, edge.Status)
-		}
-	}
-
-	return graph, nil
 }
 
 type specificActivationInfo struct {
