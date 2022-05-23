@@ -343,7 +343,7 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 	}
 	existingBuildMap := make(map[string]bool)
 	for _, b := range existingBuilds {
-		existingBuildMap[b.DisplayName] = true
+		existingBuildMap[b.BuildVariant] = true
 	}
 
 	buildSet := make(map[string][]string)
@@ -364,7 +364,7 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 			}
 		} else {
 			// New builds with specific activation are activated later by ActivateElapsedBuildsAndTasks.
-			// Because the builds and their tasks are not activated now we do not add dependencies for them so they won't be simulated.
+			// Skip simulating their dependencies because the builds and their tasks are not activated now so will not be adding dependencies.
 			if activationInfo.variantHasSpecificActivation(bv) {
 				continue
 			}

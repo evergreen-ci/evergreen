@@ -1213,7 +1213,7 @@ func TestFilterInactiveTasks(t *testing.T) {
 			assert.NoError(t, db.Clear(build.Collection))
 		}()
 		assert.NoError(t, db.Clear(build.Collection))
-		assert.NoError(t, (&build.Build{DisplayName: "bv0"}).Insert())
+		assert.NoError(t, (&build.Build{BuildVariant: "bv0"}).Insert())
 
 		g := GeneratedProject{
 			BuildVariants: []parserBV{
