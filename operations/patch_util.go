@@ -221,6 +221,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default project: %v\n", err)
 	}
 
+	if err := p.setLocalAliases(conf); err != nil {
+		grip.Warningf("warning - setting local aliases")
+	}
+
 	if err := p.loadAlias(conf); err != nil {
 		grip.Warningf("warning - failed to set default alias: %v\n", err)
 	}
@@ -290,16 +294,18 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 }
 
 func (p *patchParams) setLocalAliases(conf *ClientSettings) error {
-	for i := range conf.Projects {
-		if conf.Projects[i].Name == p.Project {
-			if errStrs := model.ValidateProjectAliases(conf.Projects[i].LocalAliases, "Local Aliases"); len(errStrs) != 0 {
-				return errors.Errorf("validating local aliases: '%s'", errStrs)
-			}
-			for _, alias := range conf.Projects[i].LocalAliases {
-				if alias.Alias == p.Alias {
-					p.addAliasToPatchParams(alias)
-				} else {
-					return errors.Errorf("both variants and tasks not defined in the alias '%s'", alias.Alias)
+	if p.Alias != "" {
+		for i := range conf.Projects {
+			if conf.Projects[i].Name == p.Project {
+				if errStrs := model.ValidateProjectAliases(conf.Projects[i].LocalAliases, "Local Aliases"); len(errStrs) != 0 {
+					return errors.Errorf("validating local aliases: '%s'", errStrs)
+				}
+				for _, alias := range conf.Projects[i].LocalAliases {
+					if alias.Alias == p.Alias {
+						p.addAliasToPatchParams(alias)
+					} else {
+						return errors.Errorf("both variants and tasks not defined in the alias '%s'", alias.Alias)
+					}
 				}
 			}
 		}
