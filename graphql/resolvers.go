@@ -1053,6 +1053,10 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
+	if !projectRef.UseRepoSettings() {
+		// Default values so the UI understands what to do with nil values.
+		res.ProjectRef.DefaultUnsetBooleans()
+	}
 	return res, nil
 }
 
@@ -1072,6 +1076,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 
+	// Default values so the UI understands what to do with nil values.
 	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
 }
