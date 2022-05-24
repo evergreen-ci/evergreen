@@ -52,7 +52,7 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, loadU
 	}
 
 	env := evergreen.GetEnvironment()
-	if loadUserManager == true {
+	if loadUserManager {
 		um, info, err := auth.LoadUserManager(settings)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load user manager")

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/suite"
 )
@@ -28,8 +27,6 @@ func (s *SchedulerSuite) SetupTest() {
 	s.NoError(db.ClearCollections("distro"))
 	s.NoError(db.ClearCollections("tasks"))
 }
-
-var schedulerTestConf = testutil.TestConfig()
 
 func TestSpawnHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

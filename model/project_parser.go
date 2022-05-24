@@ -232,9 +232,6 @@ type taskSelector struct {
 	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant,omitempty"`
 }
 
-// TaskSelectors is a helper type for parsing arrays of TaskSelector.
-type taskSelectors []taskSelector
-
 // VariantSelector handles the selection of a variant, either by a id/tag selector
 // or by matching against matrix axis values.
 type variantSelector struct {
@@ -273,23 +270,6 @@ func (vs *variantSelector) MarshalYAML() (interface{}, error) {
 	// Note: Generate tasks will not work with matrix variant selectors,
 	// since this will only marshal the string part of a variant selector.
 	return vs.StringSelector, nil
-}
-
-// UnmarshalYAML reads YAML into an array of TaskSelector. It will
-// successfully unmarshal arrays of dependency selectors or a single selector.
-func (tss *taskSelectors) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// first, attempt to unmarshal a single selector
-	var single taskSelector
-	if err := unmarshal(&single); err == nil {
-		*tss = taskSelectors([]taskSelector{single})
-		return nil
-	}
-	var slice []taskSelector
-	if err := unmarshal(&slice); err != nil {
-		return err
-	}
-	*tss = taskSelectors(slice)
-	return nil
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
@@ -670,7 +650,6 @@ func (opts *GetProjectOpts) UpdateForFile(path string) {
 			opts.ReadFileFrom = ReadFromPatch
 		}
 	}
-	return
 }
 
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {

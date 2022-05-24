@@ -776,8 +776,8 @@ func (c *gitFetchProject) getApplyCommand(patchFile string) (string, error) {
 // need to be executed, except for apply. If the patch is empty it will not apply the patch.
 func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, moduleDir, patchPath string) []string {
 	patchCommands := []string{
-		fmt.Sprintf("set -o xtrace"),
-		fmt.Sprintf("set -o errexit"),
+		"set -o xtrace",
+		"set -o errexit",
 	}
 	if moduleDir != "" {
 		patchCommands = append(patchCommands, fmt.Sprintf("cd '%s'", moduleDir))

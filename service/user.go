@@ -34,7 +34,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if creds.Username == "" || creds.Password == "" {
-		http.Error(w, fmt.Sprintf("Username and password are required"), http.StatusBadRequest)
+		http.Error(w, "Username and password are required", http.StatusBadRequest)
 		return
 	}
 

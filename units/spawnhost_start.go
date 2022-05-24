@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -26,9 +25,6 @@ func init() {
 type spawnhostStartJob struct {
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	host *host.Host
-	env  evergreen.Environment
 }
 
 func makeSpawnhostStartJob() *spawnhostStartJob {

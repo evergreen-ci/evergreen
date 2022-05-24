@@ -13,7 +13,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
-	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
 )
 
@@ -140,15 +139,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		return resp, err
 	}
 	return resp, nil
-}
-
-func (c *communicatorImpl) getBackoff() *backoff.Backoff {
-	return &backoff.Backoff{
-		Min:    c.timeoutStart,
-		Max:    c.timeoutMax,
-		Factor: 2,
-		Jitter: true,
-	}
 }
 
 func (c *communicatorImpl) getPath(path string) string {

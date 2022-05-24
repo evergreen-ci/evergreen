@@ -39,8 +39,7 @@ type hostDrawdownJob struct {
 	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
 	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
 
-	env  evergreen.Environment
-	host *host.Host
+	env evergreen.Environment
 
 	DrawdownInfo DrawdownInfo `bson:"drawdowninfo" json:"drawdowninfo" yaml:"drawdowninfo"`
 }

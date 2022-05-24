@@ -28,10 +28,8 @@ func SpotHostWillTerminateSoon() bool {
 		return false
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
-		return true
-	}
-	return false
+
+	return resp.StatusCode == http.StatusOK
 }
 
 // GetEC2InstanceID returns the instance ID from the metadata endpoint if it's

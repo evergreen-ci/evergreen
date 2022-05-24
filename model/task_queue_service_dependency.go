@@ -423,7 +423,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		// (d) it never previously ran on another host.
 		// (e) all of its dependencies are satisfied.
 
-		if nextTaskQueueItem.IsDispatched == true {
+		if nextTaskQueueItem.IsDispatched {
 			continue
 		}
 

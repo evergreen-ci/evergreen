@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var (
-	testConfig = testutil.TestConfig()
-)
+func init() {
+	testutil.Setup()
+}
 
 type AdminEventSuite struct {
 	suite.Suite

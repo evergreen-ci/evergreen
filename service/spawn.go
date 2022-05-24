@@ -494,7 +494,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Problem modifying spawn host"))
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprint("Host tags successfully modified.")))
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host tags successfully modified."))
 		gimlet.WriteJSON(w, "Successfully updated host tags.")
 		return
 	case HostRename:
@@ -533,7 +533,6 @@ func (uis *UIServer) requestNewVolume(w http.ResponseWriter, r *http.Request) {
 	}
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Volume Created"))
 	gimlet.WriteJSON(w, "Volume successfully created")
-	return
 }
 
 func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {

@@ -66,7 +66,7 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 		switch {
 		case file.Visibility == None:
 			continue
-		case (file.Visibility == Private || file.Visibility == Signed) && hasUser == false:
+		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
 			if !file.ContainsSigningParams() {

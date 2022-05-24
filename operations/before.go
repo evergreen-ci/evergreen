@@ -157,36 +157,6 @@ func requireStringSliceValueChoices(name string, options []string) cli.BeforeFun
 	}
 }
 
-func requireStringValueChoices(name string, options []string) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		val := c.String(name)
-		if !utility.StringSliceContains(options, val) {
-			return errors.Errorf("flag '--%s' value of '%s' is not an acceptable value %s",
-				name, val, options)
-		}
-
-		return nil
-	}
-}
-
-// nolint: unused, deadcode
-func requireStringLengthIfSpecified(name string, length int) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		val := c.String(name)
-
-		if val == "" {
-			return nil
-		}
-
-		if len(val) != length {
-			return errors.Errorf("option '--%s' has length %d, not %d, which is required",
-				name, len(val), length)
-		}
-
-		return nil
-	}
-}
-
 func requireIntValueBetween(name string, min, max int) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		val := c.Int(name)

@@ -537,7 +537,7 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	// don't mess with already finalized requests
 	if p.Activated {
-		response := fmt.Sprintf("Can't delete module - path already finalized")
+		response := "Can't delete module - path already finalized"
 		gimlet.WriteJSONError(w, response)
 		return
 	}

@@ -110,12 +110,11 @@ func getTaskInfo(t *task.Task) TaskInfo {
 
 func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	var v *host.Host
-	switch h.(type) {
+	switch t := h.(type) {
 	case host.Host:
-		t := h.(host.Host)
 		v = &t
 	case *host.Host:
-		v = h.(*host.Host)
+		v = t
 	default:
 		return errors.Errorf("programmatic error: expected host but got type %T", h)
 	}
@@ -226,12 +225,11 @@ func (apiVolume *APIVolume) BuildFromService(volume interface{}) error {
 
 func (apiVolume *APIVolume) buildFromVolumeStruct(volume interface{}) error {
 	var v *host.Volume
-	switch volume.(type) {
+	switch t := volume.(type) {
 	case host.Volume:
-		t := volume.(host.Volume)
 		v = &t
 	case *host.Volume:
-		v = volume.(*host.Volume)
+		v = t
 	default:
 		return errors.Errorf("programmatic error: expected host volume but got type %T", volume)
 	}

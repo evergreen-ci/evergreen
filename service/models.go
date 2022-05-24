@@ -17,11 +17,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type timelineData struct {
-	TotalVersions int
-	Versions      []uiVersion
-}
-
 type hostsData struct {
 	Hosts []uiHost
 }

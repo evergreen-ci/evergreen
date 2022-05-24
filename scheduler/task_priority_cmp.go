@@ -13,11 +13,6 @@ type taskComparer interface {
 	name() string
 }
 
-// Comparator (-1 if second is more important, 1 if first is, 0 if equal)
-// takes in the task comparator because it may need access to additional info
-// beyond just what's in the tasks.
-type taskPriorityCmp func(task.Task, task.Task, *CmpBasedTaskComparator) (int, error)
-
 // Importance comparison functions for tasks.  Used to prioritize tasks by the
 // CmpBasedTaskComparator.
 

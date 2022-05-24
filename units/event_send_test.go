@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"testing"
 	"time"
@@ -92,7 +91,7 @@ func (s *eventNotificationSuite) SetupTest() {
 				Type:   event.JIRACommentSubscriberType,
 				Target: "EVG-2863",
 			},
-			Payload: fmt.Sprintf("eventNotificationSuite jira comment message"),
+			Payload: "eventNotificationSuite jira comment message",
 		},
 
 		{

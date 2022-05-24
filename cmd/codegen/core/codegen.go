@@ -267,7 +267,7 @@ func output(t *template.Template, data interface{}) (string, error) {
 	}
 	w := bytes.NewBuffer(nil)
 	err := t.Execute(w, data)
-	return string(w.Bytes()), err
+	return w.String(), err
 }
 
 // getFieldInfo is a utility function to translate the data structure used by the third-party
@@ -307,7 +307,7 @@ func gqlTypeToGoType(gqlType string, nullable bool) string {
 	case "Any":
 		return returntype + "interface{}"
 	default:
-		re := regexp.MustCompile("^\\[([0-z]+)\\]$")
+		re := regexp.MustCompile(`^\[([0-z]+)\]$`)
 		isArray := re.MatchString(gqlType)
 		if isArray {
 			matches := re.FindStringSubmatch(gqlType)
