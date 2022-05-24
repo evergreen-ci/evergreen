@@ -173,11 +173,6 @@ func LogManyTaskAbortRequests(taskIds []string, userId string) {
 		TaskEventData{UserId: userId})
 }
 
-func LogTaskScheduled(taskId string, execution int, scheduledTime time.Time) {
-	logTaskEvent(taskId, TaskScheduled,
-		TaskEventData{Execution: execution, Timestamp: scheduledTime})
-}
-
 func LogTaskContainerAllocated(taskId string, execution int, containerAllocatedTime time.Time) {
 	logTaskEvent(taskId, ContainerAllocated,
 		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})

@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // UnitCache stores an unordered collection of schedulable units. The
@@ -170,105 +172,71 @@ func (unit *Unit) ID() string {
 	return unit.id
 }
 
-// RankValue returns a point value for the tasks in the unit that can
-// be used to compare units with each other.
-//
-// Generally, higher point values are given to larger units and for
-// units that have been in the queue for longer, with longer expected
-// runtimes. The tasks priority act as a multiplying factor.
-func (unit *Unit) RankValue() int64 {
-	if unit.cachedValue > 0 {
-		return unit.cachedValue
-	}
+type unitInfo struct {
+	taskIDs          []string
+	settings         distro.PlannerSettings
+	expectedRuntime  time.Duration
+	timeInQueue      time.Duration
+	totalPriority    int64
+	numDeps          int64
+	inCommitQueue    bool
+	inPatch          bool
+	anyNonGroupTasks bool
+	generateTask     bool
+	stepbackTask     bool
+}
 
-	var (
-		expectedRuntime  time.Duration
-		timeInQueue      time.Duration
-		totalPriority    int64
-		numDeps          int64
-		inCommitQueue    bool
-		inPatch          bool
-		anyNonGroupTasks bool
-		generateTask     bool
-		stepbackTask     bool
-	)
+func (u *unitInfo) value() int64 {
+	var value int64
 
-	for _, t := range unit.tasks {
-		if t.Requester == evergreen.MergeTestRequester {
-			inCommitQueue = true
-		} else if evergreen.IsPatchRequester(t.Requester) {
-			inPatch = true
-		}
+	length := int64(len(u.taskIDs))
+	priority := 1 + (u.totalPriority / length)
 
-		if t.TaskGroup == "" {
-			anyNonGroupTasks = true
-		}
-		if t.GenerateTask {
-			generateTask = true
-		}
-		if t.ActivatedBy == evergreen.StepbackTaskActivator {
-			stepbackTask = true
-		}
-
-		if !t.ActivatedTime.IsZero() {
-			timeInQueue += time.Since(t.ActivatedTime)
-		} else if !t.IngestTime.IsZero() {
-			timeInQueue += time.Since(t.IngestTime)
-		}
-
-		totalPriority += t.Priority
-		expectedRuntime += t.FetchExpectedDuration().Average
-		numDeps += int64(t.NumDependents)
-	}
-
-	length := int64(len(unit.tasks))
-	priority := 1 + (totalPriority / length)
-
-	if !anyNonGroupTasks {
+	if !u.anyNonGroupTasks {
 		// if all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
 		priority += length
 	}
-	if generateTask {
+	if u.generateTask {
 		// give generators a boost so people don't have to wait twice.
-		priority = priority * unit.distro.GetGenerateTaskFactor()
+		priority = priority * u.settings.GetGenerateTaskFactor()
 	}
 
-	if inPatch {
+	if u.inPatch {
 		// give patches a bump, over non-patches.
-		unit.cachedValue += priority * unit.distro.GetPatchFactor()
+		value += priority * u.settings.GetPatchFactor()
 		// patches that have spent more time in the queue
 		// should get worked on first (because people are
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
-		unit.cachedValue += priority * unit.distro.GetPatchTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(length)))
-	} else if inCommitQueue {
+		value += priority * u.settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.timeInQueue.Minutes()/float64(length)))
+	} else if u.inCommitQueue {
 		// give commit queue patches a boost over everything else
 		priority += 200
-		unit.cachedValue += priority * unit.distro.GetCommitQueueFactor()
+		value += priority * u.settings.GetCommitQueueFactor()
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
-		avgLifeTime := timeInQueue / time.Duration(length)
+		avgLifeTime := u.timeInQueue / time.Duration(length)
 
 		var mainlinePriority int64
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			mainlinePriority += unit.distro.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+			mainlinePriority += u.settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
-		if stepbackTask {
-			mainlinePriority += unit.distro.GetStepbackTaskFactor()
+		if u.stepbackTask {
+			mainlinePriority += u.settings.GetStepbackTaskFactor()
 		}
 
-		unit.cachedValue += priority * mainlinePriority
+		value += priority * mainlinePriority
 	}
 
 	// Start with the number of tasks so that units with more
 	// tasks get sorted above one-offs, and then add the priority
 	// setting as a base.
-	unit.cachedValue += length
-	unit.cachedValue += priority
+	value += length
+	value += priority
 
 	// The remaining values are normalized per tasks, to avoid
 	// situations where larger units are always prioritized above
@@ -281,13 +249,74 @@ func (unit *Unit) RankValue() int64 {
 	// Increase the value for the number of dependencies, so that
 	// tasks (and units) which block other tasks run before tasks
 	// that don't block other tasks.
-	unit.cachedValue += priority * (numDeps / length)
+	value += priority * (u.numDeps / length)
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we
 	// don't want to have longer makespans if longer running tasks
 	// have to execute after shorter running tasks.
-	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(length)))
+	value += priority * u.settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.expectedRuntime.Minutes()/float64(length)))
+
+	return value
+}
+
+func (unit *Unit) info() unitInfo {
+	info := unitInfo{
+		settings: unit.distro.PlannerSettings,
+	}
+
+	for _, t := range unit.tasks {
+		if t.Requester == evergreen.MergeTestRequester {
+			info.inCommitQueue = true
+		} else if evergreen.IsPatchRequester(t.Requester) {
+			info.inPatch = true
+		}
+
+		if t.TaskGroup == "" {
+			info.anyNonGroupTasks = true
+		}
+		if t.GenerateTask {
+			info.generateTask = true
+		}
+		if t.ActivatedBy == evergreen.StepbackTaskActivator {
+			info.stepbackTask = true
+		}
+
+		if !t.ActivatedTime.IsZero() {
+			info.timeInQueue += time.Since(t.ActivatedTime)
+		} else if !t.IngestTime.IsZero() {
+			info.timeInQueue += time.Since(t.IngestTime)
+		}
+
+		info.totalPriority += t.Priority
+		info.expectedRuntime += t.FetchExpectedDuration().Average
+		info.numDeps += int64(t.NumDependents)
+		info.taskIDs = append(info.taskIDs, t.Id)
+	}
+
+	return info
+}
+
+// RankValue returns a point value for the tasks in the unit that can
+// be used to compare units with each other.
+//
+// Generally, higher point values are given to larger units and for
+// units that have been in the queue for longer, with longer expected
+// runtimes. The tasks' priority acts as a multiplying factor.
+func (unit *Unit) RankValue() int64 {
+	if unit.cachedValue > 0 {
+		return unit.cachedValue
+	}
+
+	info := unit.info()
+	unit.cachedValue = info.value()
+
+	grip.Info(message.Fields{
+		"message":   "prioritizated distro unit",
+		"distro":    unit.distro.Id,
+		"value":     unit.cachedValue,
+		"unit_info": info,
+	})
 
 	return unit.cachedValue
 }
@@ -368,8 +397,8 @@ func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan 
 		if t.TaskGroup != "" {
 			unit = cache.Create(t.GetTaskGroupString(), t)
 			cache.AddNew(t.Id, unit)
-			cache.AddWhen(distro.ShouldGroupVersions(), t.Version, t)
-		} else if distro.ShouldGroupVersions() {
+			cache.AddWhen(distro.PlannerSettings.ShouldGroupVersions(), t.Version, t)
+		} else if distro.PlannerSettings.ShouldGroupVersions() {
 			unit = cache.Create(t.Version, t)
 			cache.AddNew(t.Id, unit)
 		} else {

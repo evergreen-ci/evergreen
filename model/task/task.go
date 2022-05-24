@@ -1251,7 +1251,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
 	}
-	info, err := UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{
 				"$in": ids,
@@ -1270,11 +1270,6 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 		return err
 	}
 
-	if info.Updated > 0 {
-		for _, t := range tasks {
-			event.LogTaskScheduled(t.Id, t.Execution, scheduledTime)
-		}
-	}
 	return nil
 }
 
