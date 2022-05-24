@@ -106,7 +106,7 @@ func (c *PrestoConfig) setupDB(ctx context.Context) error {
 		return errors.Wrap(err, "opening Presto connection")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	return c.db.PingContext(ctx)
 }
