@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -1116,28 +1115,17 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 }
 
 func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, item string) error {
-	// TODO (EVG-16693): doing a DB query on the Evergreen client side seems
-	// wrong.
-	requestedPatch, err := patch.FindOneId(item)
-	if err != nil {
-		return errors.Wrapf(err, "finding commit queue item '%s'", item)
-	}
-	if requestedPatch == nil {
-		return errors.New("commit queue item not found")
-	}
-	projectID := requestedPatch.Project
 	info := requestInfo{
 		method: http.MethodDelete,
-		path:   fmt.Sprintf("/commit_queue/%s/%s", projectID, item),
+		path:   fmt.Sprintf("/commit_queue/%s", item),
 	}
-
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
-		return errors.Wrapf(err, "deleting item '%s' from commit queue for project '%s'", item, projectID)
+		return errors.Wrapf(err, "deleting item '%s' from commit queue", item)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return utility.RespErrorf(resp, "deleting item '%s' from commit queue for project '%s'", item, projectID)
+		return utility.RespErrorf(resp, "deleting item '%s' from commit queue", item)
 	}
 
 	return nil
