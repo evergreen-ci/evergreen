@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/cocoa"
@@ -454,6 +455,19 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventD
 		return errors.Wrap(err, "getting service flag for unrecognized pod cleanup")
 	}
 	if flags.UnrecognizedPodCleanupDisabled {
+		return nil
+	}
+
+	// Spot check that the notification is actually for a pod in an
+	// Evergreen-owned cluster.
+	var isInManagedCluster bool
+	for _, c := range sns.env.Settings().Providers.AWS.Pod.ECS.Clusters {
+		if strings.Contains(details.ClusterARN, c.Name) {
+			isInManagedCluster = true
+			break
+		}
+	}
+	if !isInManagedCluster {
 		return nil
 	}
 
