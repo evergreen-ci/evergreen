@@ -36,6 +36,7 @@ const (
 var (
 	validUpdateToStatuses = []string{
 		evergreen.HostRunning,
+		evergreen.HostStopped,
 		evergreen.HostQuarantined,
 		evergreen.HostDecommissioned,
 		evergreen.HostTerminated,
