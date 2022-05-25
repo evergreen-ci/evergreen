@@ -178,9 +178,9 @@ type unitInfo struct {
 	// Settings are the planner settings for the unit's distro.
 	Settings distro.PlannerSettings `json:"settings"`
 	// ExpectedRuntime is the sum of the durations the tasks in the unit are expected to take.
-	ExpectedRuntime time.Duration `json:"expected_runtime"`
+	ExpectedRuntime time.Duration `json:"expected_runtime_ns"`
 	// TimeInQueue is the sum of the durations the tasks in the unit have been waiting in the queue.
-	TimeInQueue time.Duration `json:"time_in_queue"`
+	TimeInQueue time.Duration `json:"time_in_queue_ns"`
 	// TotalPriority is the sum of the priority values of all the tasks in the unit.
 	TotalPriority int64 `json:"total_priority"`
 	// NumDeps is the total number of tasks depending on tasks in the unit.
