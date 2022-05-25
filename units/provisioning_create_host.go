@@ -116,17 +116,13 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 		if j.host == nil {
 			//host intent document has been removed by another evergreen process
-			notFoundError := errors.New("could not find host")
 			grip.Warning(message.Fields{
 				"host_id": j.HostID,
 				"task_id": j.TaskID,
 				"attempt": j.RetryInfo().CurrentAttempt,
 				"job":     j.ID(),
-				"message": notFoundError.Error(),
+				"message": "host intent has been removed",
 			})
-			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, notFoundError); err != nil {
-				j.AddError(errors.Wrapf(err, "adding host create error details"))
-			}
 			return
 		}
 	}
@@ -218,7 +214,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
+		if ((j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors()) || j.host == nil) && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
 			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
 				j.AddError(errors.Wrapf(err, "adding host create error details"))
 			}
