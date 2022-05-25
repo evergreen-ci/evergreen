@@ -181,9 +181,14 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	})
 
 	start = time.Now()
-	if err := g.SimulateNewDependencyGraph(v, p, pref); err != nil {
-		return errors.Wrap(err, "simulating adding dependencies on generated tasks")
+	cycles, err := g.CyclesForNewGraph(v, p, pref)
+	if err != nil {
+		return errors.Wrap(err, "checking new dependency graph for cycles")
 	}
+	if len(cycles) > 0 {
+		return errors.Wrapf(model.DependencyCycleError, "'%s'", cycles)
+	}
+
 	grip.Debug(message.Fields{
 		"message":       "generate.tasks timing",
 		"function":      "generate",

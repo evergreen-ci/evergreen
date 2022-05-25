@@ -1042,7 +1042,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.Error(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+		cycles, err := g.CyclesForNewGraph(v, project, &ProjectRef{Identifier: "mci"})
+		assert.NoError(t, err)
+		assert.Len(t, cycles, 1)
 	})
 
 	t.Run("CreatesLoop", func(t *testing.T) {
@@ -1069,7 +1071,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		assert.Error(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+		cycles, err := g.CyclesForNewGraph(v, project, &ProjectRef{Identifier: "mci"})
+		assert.NoError(t, err)
+		assert.Len(t, cycles, 1)
 	})
 
 	t.Run("NoCycles", func(t *testing.T) {
@@ -1100,7 +1104,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+		cycles, err := g.CyclesForNewGraph(v, project, &ProjectRef{Identifier: "mci"})
+		assert.NoError(t, err)
+		assert.Nil(t, cycles)
 	})
 
 	t.Run("InactiveBuild", func(t *testing.T) {
@@ -1132,7 +1138,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.SimulateNewDependencyGraph(v, project, &ProjectRef{Identifier: "mci"}))
+		cycles, err := g.CyclesForNewGraph(v, project, &ProjectRef{Identifier: "mci"})
+		assert.NoError(t, err)
+		assert.Len(t, cycles, 1)
 	})
 }
 

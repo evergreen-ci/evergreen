@@ -289,24 +289,25 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-func (g *GeneratedProject) SimulateNewDependencyGraph(v *Version, p *Project, projectRef *ProjectRef) error {
+// CyclesForNewGraph builds a dependency graph from the existing tasks in the version and simulates
+// adding the generated tasks, their dependencies, and dependencies on the generated tasks to the graph.
+// Any resulting dependency cycles are returned.
+func (g *GeneratedProject) CyclesForNewGraph(v *Version, p *Project, projectRef *ProjectRef) (task.DependencyCycles, error) {
 	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
 	if err != nil {
-		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
+		return nil, errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
 	simulatedGraph, err := g.addNewTasksToGraph(existingTasksGraph, v, p, projectRef)
 	if err != nil {
-		return errors.Wrap(err, "simulating new tasks")
+		return nil, errors.Wrap(err, "simulating new tasks")
 	}
 
-	if cycles := simulatedGraph.Cycles(); len(cycles) > 0 {
-		return errors.Wrapf(DependencyCycleError, "'%s'", cycles)
-	}
-
-	return nil
+	return simulatedGraph.Cycles(), nil
 }
 
+// addNewTasksToGraph adds the tasks we're planning to add to the version to the graph and
+// adds simulated edges from each task that depends on the generator to each of the generated tasks.
 func (g *GeneratedProject) addNewTasksToGraph(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
 	newTasks := g.getNewTasksWithDependencies(v, p)
 
@@ -319,6 +320,7 @@ func (g *GeneratedProject) addNewTasksToGraph(graph task.DependencyGraph, v *Ver
 	return g.addDependencyEdgesToGraph(newTasks.ExecTasks, v, p, graph, taskIDs)
 }
 
+// getNewTasksWithDependencies returns the generated tasks and their recursive dependencies.
 func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) TaskVariantPairs {
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -335,6 +337,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) T
 	return newTVPairs
 }
 
+// addTasksToGraph adds tasks to the graph and adds dependency edges from each task task to each of its dependencies.
 func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, taskIDs TaskIdConfig) task.DependencyGraph {
 	for _, newTask := range tasks {
 		graph.AddTaskNode(task.TaskNode{
@@ -359,6 +362,7 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 	return graph
 }
 
+// addDependencyEdgesToGraph adds edges from the tasks that depend on the generator to activated generated tasks.
 func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Version, p *Project, graph task.DependencyGraph, taskIDs TaskIdConfig) (task.DependencyGraph, error) {
 	activatedNewTasks, err := g.filterInactiveTasks(newTasks, v, p)
 	if err != nil {
@@ -378,6 +382,7 @@ func (g *GeneratedProject) addDependencyEdgesToGraph(newTasks TVPairSet, v *Vers
 	return graph, nil
 }
 
+// filterInactiveTasks returns a copy of tasks with the tasks that will not be activated by the generator removed.
 func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
 	activationInfo := g.findTasksAndVariantsWithSpecificActivations(v.Requester)
 	existingBuilds, err := build.Find(build.ByVersion(v.Id))
