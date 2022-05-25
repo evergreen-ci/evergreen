@@ -173,60 +173,71 @@ func (unit *Unit) ID() string {
 }
 
 type unitInfo struct {
-	taskIDs          []string
-	settings         distro.PlannerSettings
-	expectedRuntime  time.Duration
-	timeInQueue      time.Duration
-	totalPriority    int64
-	numDeps          int64
-	inCommitQueue    bool
-	inPatch          bool
-	anyNonGroupTasks bool
-	generateTask     bool
-	stepbackTask     bool
+	// TaskIDs are the ids for the tasks in the unit.
+	TaskIDs []string `json:"task_ids"`
+	// Settings are the planner settings for the unit's distro.
+	Settings distro.PlannerSettings `json:"settings"`
+	// ExpectedRuntime is the sum of the durations the tasks in the unit are expected to take.
+	ExpectedRuntime time.Duration `json:"expected_runtime"`
+	// TimeInQueue is the sum of the durations the tasks in the unit have been waiting in the queue.
+	TimeInQueue time.Duration `json:"time_in_queue"`
+	// TotalPriority is the sum of the priority values of all the tasks in the unit.
+	TotalPriority int64 `json:"total_priority"`
+	// NumDeps is the total number of tasks depending on tasks in the unit.
+	NumDeps int64 `json:"num_deps"`
+	// InCommitQueue indicates if the unit contains any tasks that are part of a commit queue version.
+	InCommitQueue bool `json:"in_commit_queue"`
+	// InPatch indicates if the unit contains any tasks that are part of a patch.
+	InPatch bool `json:"in_patch"`
+	// GenerateTask indicates if the unit contains any tasks that are not part of a task group.
+	AnyNonGroupTasks bool `json:"any_non_group_tasks"`
+	// GenerateTask indicates if the unit contains generator task.
+	GenerateTask bool `json:"generate_task"`
+	// StepbackTask indicates if the unit contains task activated by stepback.
+	StepbackTask bool `json:"stepback_task"`
 }
 
 func (u *unitInfo) value() int64 {
 	var value int64
 
-	length := int64(len(u.taskIDs))
-	priority := 1 + (u.totalPriority / length)
+	length := int64(len(u.TaskIDs))
+	priority := 1 + (u.TotalPriority / length)
 
-	if !u.anyNonGroupTasks {
+	if !u.AnyNonGroupTasks {
 		// if all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
 		priority += length
 	}
-	if u.generateTask {
+	if u.GenerateTask {
 		// give generators a boost so people don't have to wait twice.
-		priority = priority * u.settings.GetGenerateTaskFactor()
+		priority = priority * u.Settings.GetGenerateTaskFactor()
 	}
 
-	if u.inPatch {
+	if u.InPatch {
 		// give patches a bump, over non-patches.
-		value += priority * u.settings.GetPatchFactor()
+		value += priority * u.Settings.GetPatchFactor()
 		// patches that have spent more time in the queue
 		// should get worked on first (because people are
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
-		value += priority * u.settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.timeInQueue.Minutes()/float64(length)))
-	} else if u.inCommitQueue {
+		value += priority * u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length)))
+	} else if u.InCommitQueue {
 		// give commit queue patches a boost over everything else
 		priority += 200
-		value += priority * u.settings.GetCommitQueueFactor()
+		value += priority * u.Settings.GetCommitQueueFactor()
 	} else {
 		// for mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
-		avgLifeTime := u.timeInQueue / time.Duration(length)
+		avgLifeTime := u.TimeInQueue / time.Duration(length)
 
 		var mainlinePriority int64
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			mainlinePriority += u.settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+			mainlinePriority += u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
-		if u.stepbackTask {
-			mainlinePriority += u.settings.GetStepbackTaskFactor()
+		if u.StepbackTask {
+			mainlinePriority += u.Settings.GetStepbackTaskFactor()
 		}
 
 		value += priority * mainlinePriority
@@ -249,49 +260,49 @@ func (u *unitInfo) value() int64 {
 	// Increase the value for the number of dependencies, so that
 	// tasks (and units) which block other tasks run before tasks
 	// that don't block other tasks.
-	value += priority * (u.numDeps / length)
+	value += priority * (u.NumDeps / length)
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we
 	// don't want to have longer makespans if longer running tasks
 	// have to execute after shorter running tasks.
-	value += priority * u.settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.expectedRuntime.Minutes()/float64(length)))
+	value += priority * u.Settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.ExpectedRuntime.Minutes()/float64(length)))
 
 	return value
 }
 
 func (unit *Unit) info() unitInfo {
 	info := unitInfo{
-		settings: unit.distro.PlannerSettings,
+		Settings: unit.distro.PlannerSettings,
 	}
 
 	for _, t := range unit.tasks {
 		if t.Requester == evergreen.MergeTestRequester {
-			info.inCommitQueue = true
+			info.InCommitQueue = true
 		} else if evergreen.IsPatchRequester(t.Requester) {
-			info.inPatch = true
+			info.InPatch = true
 		}
 
 		if t.TaskGroup == "" {
-			info.anyNonGroupTasks = true
+			info.AnyNonGroupTasks = true
 		}
 		if t.GenerateTask {
-			info.generateTask = true
+			info.GenerateTask = true
 		}
 		if t.ActivatedBy == evergreen.StepbackTaskActivator {
-			info.stepbackTask = true
+			info.StepbackTask = true
 		}
 
 		if !t.ActivatedTime.IsZero() {
-			info.timeInQueue += time.Since(t.ActivatedTime)
+			info.TimeInQueue += time.Since(t.ActivatedTime)
 		} else if !t.IngestTime.IsZero() {
-			info.timeInQueue += time.Since(t.IngestTime)
+			info.TimeInQueue += time.Since(t.IngestTime)
 		}
 
-		info.totalPriority += t.Priority
-		info.expectedRuntime += t.FetchExpectedDuration().Average
-		info.numDeps += int64(t.NumDependents)
-		info.taskIDs = append(info.taskIDs, t.Id)
+		info.TotalPriority += t.Priority
+		info.ExpectedRuntime += t.FetchExpectedDuration().Average
+		info.NumDeps += int64(t.NumDependents)
+		info.TaskIDs = append(info.TaskIDs, t.Id)
 	}
 
 	return info
