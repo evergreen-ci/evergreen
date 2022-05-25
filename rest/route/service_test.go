@@ -305,13 +305,14 @@ func TestHostPaginator(t *testing.T) {
 
 func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 	numTasks := 300
-	projectName := "project_1"
+	projectId := "project_1"
+	projectName := "project_identifier"
 	commit := "commit_1"
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, serviceModel.ProjectRefCollection))
 		p := &serviceModel.ProjectRef{
-			Id:         "project_1",
-			Identifier: "project_1",
+			Id:         projectId,
+			Identifier: projectName,
 		}
 		assert.NoError(t, p.Insert())
 		Convey("and there are tasks to be found", func() {
@@ -324,7 +325,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				nextTask := task.Task{
 					Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 					Revision: commit,
-					Project:  projectName,
+					Project:  projectId,
 				}
 				cachedTasks = append(cachedTasks, nextTask)
 			}
@@ -345,7 +346,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -386,7 +387,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -427,7 +428,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
@@ -469,7 +470,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					serviceTask := &task.Task{
 						Id:       fmt.Sprintf("%dtask_%d", prefix, i),
 						Revision: commit,
-						Project:  projectName,
+						Project:  projectId,
 					}
 					nextModelTask := &model.APITask{}
 					err := nextModelTask.BuildFromArgs(serviceTask, &model.APITaskArgs{LogURL: "http://evergreen.example.net", IncludeProjectIdentifier: true})
