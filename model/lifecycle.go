@@ -746,15 +746,15 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time,
 	githubChecksAliases ProjectAliases) (task.Tasks, error) {
 
-	// the list of tasks we should create.  if tasks are passed in, then
-	// use those, else use the default set
+	// The list of tasks we should create.
+	// If tasks are passed in, then use those, otherwise use the default set.
 	tasksToCreate := []BuildVariantTaskUnit{}
 
 	createAll := false
 	if len(taskNames) == 0 && len(displayNames) == 0 {
 		createAll = true
 	}
-	// tables includes only new and existing tasks
+	// Tables includes only new and existing tasks.
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
 
@@ -764,7 +764,7 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	}
 
 	for _, task := range buildVariant.Tasks {
-		// sanity check that the config isn't malformed
+		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
 			if task.IsDisabled() || task.SkipOnRequester(b.Requester) {
 				continue
@@ -1678,8 +1678,8 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	activatedTasks := []task.Task{}
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
-		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.FindWithFields(task.ByBuildId(b.Id), task.DisplayNameKey, task.ActivatedKey)
+		// Find the set of task names that already exist for the given build, including display tasks.
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
 			return nil, err
 		}
@@ -1693,21 +1693,21 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 			b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
 		}
 
-		// build a list of tasks that haven't been created yet for the given variant, but have
+		// Build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
-		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if ok := existingTasksIndex[taskname]; ok {
+		for _, taskName := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
+			if ok := existingTasksIndex[taskName]; ok {
 				continue
 			}
-			tasksToAdd = append(tasksToAdd, taskname)
+			tasksToAdd = append(tasksToAdd, taskName)
 		}
 		displayTasksToAdd := []string{}
-		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if ok := existingTasksIndex[taskname]; ok {
+		for _, taskName := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
+			if ok := existingTasksIndex[taskName]; ok {
 				continue
 			}
-			displayTasksToAdd = append(displayTasksToAdd, taskname)
+			displayTasksToAdd = append(displayTasksToAdd, taskName)
 		}
 		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
