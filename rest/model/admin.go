@@ -2243,6 +2243,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.PodAllocatorDisabled = v.PodAllocatorDisabled
+		as.UnrecognizedPodCleanupDisabled = v.UnrecognizedPodCleanupDisabled
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
@@ -2282,6 +2283,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CommitQueueDisabled:             as.CommitQueueDisabled,
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,
 		PodAllocatorDisabled:            as.PodAllocatorDisabled,
+		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
 		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
