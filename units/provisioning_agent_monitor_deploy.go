@@ -136,7 +136,6 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 		}
-		return
 	}()
 
 	var alive bool

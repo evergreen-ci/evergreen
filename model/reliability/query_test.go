@@ -17,7 +17,6 @@ import (
 
 var day1 = time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC)
 var day2 = day1.Add(24 * time.Hour)
-var day8 = day1.Add(7 * 24 * time.Hour)
 
 const (
 	project    = "mongodb-mongo-master"
@@ -182,7 +181,7 @@ func handleNoFormat(format string, i int) string {
 
 func InsertManyDailyTaskStats(many int, prototype stats.DbTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
-	items := make([]interface{}, many, many)
+	items := make([]interface{}, many)
 	for i := 0; i < many; i++ {
 		item := prototype
 		item.Id.Project = handleNoFormat(projectFmt, i)

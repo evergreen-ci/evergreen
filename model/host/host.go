@@ -435,15 +435,12 @@ func (h *Host) NeedsPortBindings() bool {
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
 func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		if !usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
 			RequiredLevel: evergreen.HostsEdit.Value,
-		}) {
-			return false
-		}
-		return true
+		})
 	}
 	return true
 }
@@ -2698,9 +2695,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	defer cancel()
 
 	countPipeline := []bson.M{}
-	for _, stage := range runningHostsPipeline {
-		countPipeline = append(countPipeline, stage)
-	}
+	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
@@ -2774,9 +2769,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	if hasFilters {
 		countPipeline = []bson.M{}
-		for _, stage := range runningHostsPipeline {
-			countPipeline = append(countPipeline, stage)
-		}
+		countPipeline = append(countPipeline, runningHostsPipeline...)
 		countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 		tmp = []counter{}

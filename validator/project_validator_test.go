@@ -13,15 +13,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	_ "github.com/evergreen-ci/evergreen/plugin"
-	tu "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-var projectValidatorConf = tu.TestConfig()
 
 func TestValidateTaskDependencies(t *testing.T) {
 	Convey("When validating a project's dependencies", t, func() {

@@ -492,7 +492,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	if allDistros == nil {
 		return gimlet.NewJSONInternalErrorResponse(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("no distros found"),
+			Message:    "no distros found",
 		})
 	}
 	modifiedDistros := []distro.Distro{}
@@ -615,7 +615,7 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if distros == nil {
 		gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("no distros found"),
+			Message:    "no distros found",
 		})
 	}
 

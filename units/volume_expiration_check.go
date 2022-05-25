@@ -89,6 +89,4 @@ func (j *volumeExpirationCheckJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error extending expiration for volume '%s' using cloud manager", j.VolumeID))
 		return
 	}
-
-	return
 }

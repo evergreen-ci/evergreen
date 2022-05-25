@@ -17,15 +17,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// valid Github merge methods
-	githubMergeMethodMerge  = "merge"
-	githubMergeMethodSquash = "squash"
-	githubMergeMethodRebase = "rebase"
-
-	GithubContext = "evergreen/commitqueue"
-)
-
 type gitMergePr struct {
 	URL   string `mapstructure:"url"`
 	Token string `mapstructure:"token"`

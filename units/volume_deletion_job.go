@@ -87,6 +87,4 @@ func (j *volumeDeletionJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "can't delete volume '%s'", j.VolumeID))
 		return
 	}
-
-	return
 }

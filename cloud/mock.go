@@ -74,7 +74,6 @@ func (_ *MockProviderSettings) FromDistroSettings(_ distro.Distro, _ string) err
 
 type mockState struct {
 	instances map[string]MockInstance
-	volumes   map[string]MockVolume
 	mutex     sync.RWMutex
 }
 

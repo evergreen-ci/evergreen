@@ -53,6 +53,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 		}
 	}
 
+	opts.Project = projectId
 	pipeline := task.TasksByProjectAndCommitPipeline(opts)
 
 	res := []task.Task{}

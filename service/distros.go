@@ -384,7 +384,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error adding distro",
 		}))
-		errMsg := fmt.Sprintf("error adding distro")
+		errMsg := "error adding distro"
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(errMsg))
 		gimlet.WriteJSONInternalError(w, err)
 		return

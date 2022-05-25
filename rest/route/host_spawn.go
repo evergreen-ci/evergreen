@@ -717,7 +717,7 @@ func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("problem finding host with volume"),
+			Message:    "problem finding host with volume",
 		})
 	}
 	if attachedHost != nil {
@@ -840,7 +840,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 				Message:    "can't move expiration time earlier",
 			})
 		}
-		if h.opts.Expiration.Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
+		if time.Until(h.opts.Expiration) > evergreen.MaxSpawnHostExpirationDurationHours {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf("can't extend expiration past max duration '%s'", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)),

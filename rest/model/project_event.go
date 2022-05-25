@@ -77,20 +77,8 @@ func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 		}
 
 		e.User = user
-		e.Before = APIProjectEventSettings{
-			ProjectRef:            before.ProjectRef,
-			GithubWebhooksEnabled: before.GithubWebhooksEnabled,
-			Vars:                  before.Vars,
-			Aliases:               before.Aliases,
-			Subscriptions:         before.Subscriptions,
-		}
-		e.After = APIProjectEventSettings{
-			ProjectRef:            after.ProjectRef,
-			GithubWebhooksEnabled: after.GithubWebhooksEnabled,
-			Vars:                  after.Vars,
-			Aliases:               after.Aliases,
-			Subscriptions:         after.Subscriptions,
-		}
+		e.Before = APIProjectEventSettings(before)
+		e.After = APIProjectEventSettings(after)
 	default:
 		return errors.Errorf("programmatic error: expected project change event entry but got type %T", h)
 	}

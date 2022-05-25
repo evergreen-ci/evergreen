@@ -146,7 +146,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 	h.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
 	execution := vals.Get("execution")
 
-	if execution != "" && h.fetchAllExecutions == true {
+	if execution != "" && h.fetchAllExecutions {
 		return gimlet.ErrorResponse{
 			Message:    "fetchAllExecutions=true cannot be combined with execution={execution}",
 			StatusCode: http.StatusBadRequest,

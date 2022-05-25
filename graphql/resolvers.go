@@ -592,7 +592,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 			return false, InternalServerError.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
 		}
 		additionalOptions.Expiration = newExpiration
-	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration {
 		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
@@ -628,7 +628,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	}
 	var updateOptions restModel.VolumeModifyOptions
 	if updateVolumeInput.NoExpiration != nil {
-		if *updateVolumeInput.NoExpiration == true {
+		if *updateVolumeInput.NoExpiration {
 			// this value should only ever be true or nil
 			updateOptions.NoExpiration = true
 		} else {
@@ -730,7 +730,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
 	}
 	if spawnHost == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
+		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
 	}
 	apiHost := restModel.APIHost{}
 	if err := apiHost.BuildFromService(spawnHost); err != nil {
@@ -797,7 +797,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
 		}
 		if v.AvailabilityZone != h.Zone {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error mounting volume to spawn host, They must be in the same availability zone."))
+			return nil, InputValidationError.Send(ctx, "Error mounting volume to spawn host, They must be in the same availability zone.")
 		}
 		opts.AttachVolume = *editSpawnHostInput.Volume
 	}
@@ -903,31 +903,22 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		switch *sortBy {
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
-			break
 		case HostSortByDistro:
 			sorter = host.DistroKey
-			break
 		case HostSortByElapsed:
 			sorter = "task_full.start_time"
-			break
 		case HostSortByID:
 			sorter = host.IdKey
-			break
 		case HostSortByIDLeTime:
 			sorter = host.TotalIdleTimeKey
-			break
 		case HostSortByOwner:
 			sorter = host.StartedByKey
-			break
 		case HostSortByStatus:
 			sorter = host.StatusKey
-			break
 		case HostSortByUptime:
 			sorter = host.CreateTimeKey
-			break
 		default:
 			sorter = host.StatusKey
-			break
 		}
 
 	}
@@ -1053,6 +1044,10 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
+	if !projectRef.UseRepoSettings() {
+		// Default values so the UI understands what to do with nil values.
+		res.ProjectRef.DefaultUnsetBooleans()
+	}
 	return res, nil
 }
 
@@ -1072,6 +1067,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 
+	// Default values so the UI understands what to do with nil values.
 	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
 }
@@ -1247,7 +1243,7 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
 	}
 	if usr == nil {
-		return "", ResourceNotFound.Send(ctx, fmt.Sprint("Could not find user from user ID"))
+		return "", ResourceNotFound.Send(ctx, "Could not find user from user ID")
 	}
 	return usr.DisplayName(), nil
 }

@@ -44,7 +44,6 @@ import (
 var (
 	typeBinary         = reflect.TypeOf(Binary{})
 	typeObjectId       = reflect.TypeOf(ObjectId(""))
-	typeDBPointer      = reflect.TypeOf(DBPointer{"", ObjectId("")})
 	typeSymbol         = reflect.TypeOf(Symbol(""))
 	typeMongoTimestamp = reflect.TypeOf(MongoTimestamp(0))
 	typeOrderKey       = reflect.TypeOf(MinKey)

@@ -453,10 +453,6 @@ func (b *specificActivationInfo) getActivationTasks(variant string) []string {
 	return b.activationTasks[variant]
 }
 
-func (b *specificActivationInfo) getStepbackTasks(variant string) []string {
-	return b.stepbackTasks[variant]
-}
-
 func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
 }
@@ -467,12 +463,6 @@ func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
 
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
 	return utility.StringSliceContains(b.activationTasks[variant], task)
-}
-
-// given some list of tasks, returns the tasks that don't have batchtime
-func (b *specificActivationInfo) tasksWithoutSpecificActivation(taskNames []string, variant string) []string {
-	tasksWithoutSpecificActivation, _ := utility.StringSliceSymmetricDifference(taskNames, b.activationTasks[variant])
-	return tasksWithoutSpecificActivation
 }
 
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
