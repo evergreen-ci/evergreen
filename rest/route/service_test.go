@@ -365,7 +365,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					},
 				}
 				handler := &tasksByProjectHandler{
-					project:    projectName,
+					project:    projectId,
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
@@ -448,7 +448,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				}
 				prefix = int(math.Log10(float64(taskToStartAt)))
 				handler := &tasksByProjectHandler{
-					project:    projectName,
+					project:    projectId,
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
