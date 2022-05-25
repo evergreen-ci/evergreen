@@ -298,7 +298,7 @@ func (g *GeneratedProject) CyclesForNewGraph(v *Version, p *Project, projectRef 
 		return nil, errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
-	simulatedGraph, err := g.addNewTasksToGraph(existingTasksGraph, v, p, projectRef)
+	simulatedGraph, err := g.simulateNewTasks(existingTasksGraph, v, p, projectRef)
 	if err != nil {
 		return nil, errors.Wrap(err, "simulating new tasks")
 	}
@@ -306,9 +306,9 @@ func (g *GeneratedProject) CyclesForNewGraph(v *Version, p *Project, projectRef 
 	return simulatedGraph.Cycles(), nil
 }
 
-// addNewTasksToGraph adds the tasks we're planning to add to the version to the graph and
+// simulateNewTasks adds the tasks we're planning to add to the version to the graph and
 // adds simulated edges from each task that depends on the generator to each of the generated tasks.
-func (g *GeneratedProject) addNewTasksToGraph(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
+func (g *GeneratedProject) simulateNewTasks(graph task.DependencyGraph, v *Version, p *Project, projectRef *ProjectRef) (task.DependencyGraph, error) {
 	newTasks := g.getNewTasksWithDependencies(v, p)
 
 	taskIDs, err := getTaskIdTables(v, p, newTasks, projectRef.Identifier)
@@ -347,16 +347,18 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 		})
 	}
 
-	for _, newTask := range tasks {
-		bvt := p.FindTaskForVariant(newTask.TaskName, newTask.Variant)
-		if bvt == nil {
-			continue
+	bvts := make([]BuildVariantTaskUnit, 0, len(tasks))
+	for _, node := range graph.Nodes() {
+		bvt := p.FindTaskForVariant(node.Name, node.Variant)
+		if bvt != nil {
+			bvts = append(bvts, *bvt)
 		}
-		for _, dep := range dependenciesForTaskUnit([]BuildVariantTaskUnit{*bvt}) {
-			dep.From.ID = taskIDs.ExecutionTasks.GetId(dep.From.Variant, dep.From.Name)
-			dep.To.ID = taskIDs.ExecutionTasks.GetId(dep.To.Variant, dep.To.Name)
-			graph.AddEdge(dep.From, dep.To, dep.Status)
-		}
+	}
+
+	for _, dep := range dependenciesForTaskUnit(bvts) {
+		dep.From.ID = taskIDs.ExecutionTasks.GetId(dep.From.Variant, dep.From.Name)
+		dep.To.ID = taskIDs.ExecutionTasks.GetId(dep.To.Variant, dep.To.Name)
+		graph.AddEdge(dep.From, dep.To, dep.Status)
 	}
 
 	return graph

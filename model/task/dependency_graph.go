@@ -102,6 +102,16 @@ func (g *DependencyGraph) buildFromTasks(tasks []Task) {
 	}
 }
 
+// Nodes returns a slice of all the task nodes in the graph.
+func (g *DependencyGraph) Nodes() []TaskNode {
+	tNodes := make([]TaskNode, 0, len(g.tasksToNodes))
+	for tNode := range g.tasksToNodes {
+		tNodes = append(tNodes, tNode)
+	}
+
+	return tNodes
+}
+
 // AddTaskNode adds a node to the graph.
 func (g *DependencyGraph) AddTaskNode(tNode TaskNode) {
 	if _, ok := g.tasksToNodes[tNode]; ok {

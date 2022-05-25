@@ -1023,11 +1023,13 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
 					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
 					{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "generator"},
 				}},
 			},
 			Tasks: []ProjectTask{
 				{Name: "generated"},
 				{Name: "dependedOn"},
+				{Name: "generator"},
 			},
 		}
 
@@ -1052,10 +1054,12 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
 					{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "generator"},
 				}},
 			},
 			Tasks: []ProjectTask{
 				{Name: "generated"},
+				{Name: "generator"},
 			},
 		}
 
@@ -1084,12 +1088,14 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 					Tasks: []BuildVariantTaskUnit{
 						{Name: "generated"},
 						{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+						{Name: "generator"},
 					},
 				},
 			},
 			Tasks: []ProjectTask{
 				{Name: "generated"},
 				{Name: "dependedOn"},
+				{Name: "generator"},
 			},
 		}
 
@@ -1117,12 +1123,14 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 					Tasks: []BuildVariantTaskUnit{
 						{Name: "generated", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
 						{Name: "dependedOn", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+						{Name: "generator"},
 					},
 				},
 			},
 			Tasks: []ProjectTask{
 				{Name: "generated"},
 				{Name: "dependedOn"},
+				{Name: "generator"},
 			},
 		}
 
@@ -1140,7 +1148,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 		}
 		cycles, err := g.CyclesForNewGraph(v, project, &ProjectRef{Identifier: "mci"})
 		assert.NoError(t, err)
-		assert.Len(t, cycles, 1)
+		assert.Nil(t, cycles)
 	})
 }
 
