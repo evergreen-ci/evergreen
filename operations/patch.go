@@ -174,10 +174,8 @@ func Patch() cli.Command {
 			}
 			params.Description = params.getDescription()
 
-			if params.Alias != "" {
-				if err = params.setLocalAliases(conf); err != nil {
-					return errors.Wrap(err, "setting local aliases")
-				}
+			if err = params.setLocalAliases(conf); err != nil {
+				return errors.Wrap(err, "setting local aliases")
 			}
 
 			if (params.RepeatDefinition || params.RepeatFailed) && (len(params.Tasks) > 0 || len(params.Variants) > 0) {
