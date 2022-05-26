@@ -409,7 +409,7 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 	activatedTasks := make(TVPairSet, 0, len(tasks))
 	for bv, tasks := range buildSet {
 		if existingBuildMap[bv] {
-			// existing builds are activated when tasks are added as long as the build isn't specifically not activated
+			// Existing builds are activated when tasks are added as long as the build isn't specifically not activated.
 			projectBV := p.FindBuildVariant(bv)
 			if projectBV == nil {
 				continue
