@@ -111,10 +111,6 @@ func distroEventDataFactory() interface{} {
 	return &DistroEventData{}
 }
 
-func schedulerEventDataFactory() interface{} {
-	return &SchedulerEventData{}
-}
-
 func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }

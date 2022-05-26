@@ -190,18 +190,6 @@ func latestDistroEventsPipeline(id string, n int, amiOnly bool) []bson.M {
 	}
 }
 
-// Scheduler Events
-func SchedulerEventsForId(distroID string) db.Q {
-	filter := ResourceTypeKeyIs(ResourceTypeScheduler)
-	filter[ResourceIdKey] = distroID
-
-	return db.Query(filter)
-}
-
-func RecentSchedulerEvents(distroId string, n int) db.Q {
-	return SchedulerEventsForId(distroId).Sort([]string{"-" + TimestampKey}).Limit(n)
-}
-
 // Admin Events
 // RecentAdminEvents returns the N most recent admin events
 func RecentAdminEvents(n int) db.Q {

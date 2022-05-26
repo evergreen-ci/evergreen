@@ -714,7 +714,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = sanityCheckOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id, metadata.Revision.Revision); err != nil {
+	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id, metadata.Revision.Revision); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 
@@ -890,18 +890,16 @@ func makeVersionIdWithTag(project, tag, id string) string {
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
-func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
+func verifyOrderNum(revOrderNum int, projectId, revision string) error {
 	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "Error getting latest version")
 	}
 
-	// When there are no versions in the db yet, sanity check is moot
-	if latest != nil {
-		if revOrderNum <= latest.RevisionOrderNumber {
-			return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
-				revOrderNum, latest.RevisionOrderNumber)
-		}
+	// When there are no versions in the db yet, verification is moot.
+	if revOrderNum <= latest.RevisionOrderNumber {
+		return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+			revOrderNum, latest.RevisionOrderNumber)
 	}
 	return nil
 }
