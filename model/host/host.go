@@ -1864,7 +1864,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	if !h.HasContainers {
 		return false, nil
 	}
-	// sanity check so that hosts not immediately decommissioned
+	// Verify that hosts are not immediately decommissioned.
 	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}

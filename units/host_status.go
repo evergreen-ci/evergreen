@@ -279,7 +279,6 @@ func (j *cloudHostReadyJob) setDNSName(ctx context.Context, cloudMgr cloud.Manag
 		return errors.Wrapf(err, "error checking DNS name for host %s", h.Id)
 	}
 
-	// sanity check for the host DNS name
 	if hostDNS == "" {
 		// DNS name not required if IP address set
 		if h.IP != "" {
