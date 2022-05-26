@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/cocoa/ecs"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -288,6 +291,8 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 
 type ecsSNS struct {
 	baseSNS
+
+	makeECSClient func(*evergreen.Settings) (cocoa.ECSClient, error)
 }
 
 type ecsEventBridgeNotification struct {
@@ -297,19 +302,23 @@ type ecsEventBridgeNotification struct {
 
 type ecsEventDetail struct {
 	TaskARN       string `json:"taskArn"`
+	ClusterARN    string `json:"clusterArn"`
 	LastStatus    string `json:"lastStatus"`
+	DesiredStatus string `json:"desiredStatus"`
 	StoppedReason string `json:"stoppedReason"`
 }
 
 func makeECSSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS: makeBaseSNS(env, queue),
+		baseSNS:       makeBaseSNS(env, queue),
+		makeECSClient: cloud.MakeECSClient,
 	}
 }
 
 func (sns *ecsSNS) Factory() gimlet.RouteHandler {
 	return &ecsSNS{
-		baseSNS: makeBaseSNS(sns.env, sns.queue),
+		baseSNS:       makeBaseSNS(sns.env, sns.queue),
+		makeECSClient: sns.makeECSClient,
 	}
 }
 
@@ -357,23 +366,31 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 		}
 		if p == nil {
 			grip.Info(message.Fields{
-				"message":  "found unexpected ECS task that did not match any known pod",
-				"task_arn": notification.Detail.TaskARN,
-				"route":    "/hooks/aws/ecs",
+				"message":        "found unexpected ECS task that did not match any known pod in Evergreen",
+				"task":           notification.Detail.TaskARN,
+				"cluster":        notification.Detail.ClusterARN,
+				"last_status":    notification.Detail.LastStatus,
+				"desired_status": notification.Detail.DesiredStatus,
+				"route":          "/hooks/aws/ecs",
 			})
+			if err := sns.cleanupUnrecognizedPod(ctx, notification.Detail); err != nil {
+				return errors.Wrapf(err, "cleaning up unrecognized pod '%s'", notification.Detail.TaskARN)
+			}
+
 			return nil
 		}
 
-		switch notification.Detail.LastStatus {
-		case ecs.TaskStatusProvisioning, ecs.TaskStatusPending, ecs.TaskStatusActivating, ecs.TaskStatusRunning:
+		status := ecs.TaskStatus(notification.Detail.LastStatus).ToCocoaStatus()
+		switch status {
+		case cocoa.StatusStarting, cocoa.StatusRunning:
 			// No-op because the pod is not considered running until the agent
 			// contacts the app server.
 			return nil
-		case ecs.TaskStatusDeactivating, ecs.TaskStatusStopping, ecs.TaskStatusDeprovisioning:
+		case cocoa.StatusStopping:
 			// No-op because the pod is preparing to stop but is not yet
 			// stopped.
 			return nil
-		case ecs.TaskStatusStopped:
+		case cocoa.StatusStopped:
 			reason := notification.Detail.StoppedReason
 			if reason == "" {
 				reason = "stopped due to unknown reason"
@@ -422,6 +439,72 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *model.APIPod, reason
 			"route":      "/hooks/aws/ecs",
 		}))
 	}
+
+	return nil
+}
+
+func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, details ecsEventDetail) error {
+	status := ecs.TaskStatus(details.DesiredStatus).ToCocoaStatus()
+	if status == cocoa.StatusStopping || status == cocoa.StatusStopped {
+		// The unrecognized pod is already cleaning up, so no-op.
+		return nil
+	}
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return errors.Wrap(err, "getting service flag for unrecognized pod cleanup")
+	}
+	if flags.UnrecognizedPodCleanupDisabled {
+		return nil
+	}
+
+	// Spot check that the notification is actually for a pod in an
+	// Evergreen-owned cluster.
+	var isInManagedCluster bool
+	for _, c := range sns.env.Settings().Providers.AWS.Pod.ECS.Clusters {
+		if strings.Contains(details.ClusterARN, c.Name) {
+			isInManagedCluster = true
+			break
+		}
+	}
+	if !isInManagedCluster {
+		return nil
+	}
+
+	c, err := sns.makeECSClient(sns.env.Settings())
+	if err != nil {
+		return errors.Wrap(err, "getting ECS client")
+	}
+	defer c.Close(ctx)
+
+	resources := cocoa.NewECSPodResources().
+		SetCluster(details.ClusterARN).
+		SetTaskID(details.TaskARN)
+
+	statusInfo := cocoa.NewECSPodStatusInfo().SetStatus(status)
+
+	podOpts := ecs.NewBasicECSPodOptions().
+		SetClient(c).
+		SetStatusInfo(*statusInfo).
+		SetResources(*resources)
+
+	p, err := ecs.NewBasicECSPod(podOpts)
+	if err != nil {
+		return errors.Wrap(err, "getting pod")
+	}
+
+	if err := p.Delete(ctx); err != nil {
+		return errors.Wrap(err, "cleaning up pod resources")
+	}
+
+	grip.Info(message.Fields{
+		"message":        "successfully cleaned up unrecognized pod",
+		"task":           details.TaskARN,
+		"cluster":        details.ClusterARN,
+		"last_status":    details.LastStatus,
+		"desired_status": details.DesiredStatus,
+		"route":          "/hooks/aws/ecs",
+	})
 
 	return nil
 }
