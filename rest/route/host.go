@@ -97,10 +97,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 			err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
 		}
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
-			})
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 		host := &model.APIHost{}
