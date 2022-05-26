@@ -107,8 +107,6 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return resp
 }
 
-// kim: TODO: continue from here
-
 type legacyVersionsGetHandler struct {
 	project string
 	limit   int

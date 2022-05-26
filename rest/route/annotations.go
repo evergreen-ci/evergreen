@@ -143,7 +143,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 	execution := vals.Get("execution")
 
 	if execution != "" && h.fetchAllExecutions {
-		return errors.New("cannot both fetch all executions and also request a specific execution")
+		return errors.New("cannot both fetch all executions and request a specific execution")
 	}
 
 	if execution != "" {
@@ -227,10 +227,13 @@ func (h *bulkPatchAnnotationHandler) Parse(ctx context.Context, r *http.Request)
 			// check if the task exists
 			foundTask, err := task.FindOneIdAndExecution(t.TaskId, t.Execution)
 			if err != nil {
-				return errors.Wrapf(err, "finding task '%s' and execution %d", t.TaskId, t.Execution)
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrapf(err, "finding task '%s' with execution %d", t.TaskId, t.Execution).Error(),
+				}
 			}
 			if foundTask == nil {
-				return errors.Errorf("task '%s' execution %d does not exist", t.TaskId, t.Execution)
+				return errors.Errorf("task '%s' with execution %d not found", t.TaskId, t.Execution)
 			}
 			if !evergreen.IsFailedTaskStatus(foundTask.Status) {
 				return errors.Errorf("cannot create annotation when task status is '%s'", foundTask.Status)
@@ -272,7 +275,7 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&annotation)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "reading anotation from from JSON request body")
+		return "", nil, errors.Wrap(err, "reading annotation from JSON request body")
 	}
 
 	if taskExecutionsAsString != "" {
@@ -453,7 +456,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&h.ticket)
 	if err != nil {
-		return errors.Wrap(err, "unmarshalling JSON request body")
+		return errors.Wrap(err, "unmarshalling ticket from JSON request body")
 	}
 
 	if err = util.CheckURL(utility.FromStringPtr(h.ticket.URL)); err != nil {

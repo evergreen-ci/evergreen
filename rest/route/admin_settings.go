@@ -30,13 +30,13 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin config"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 	settingsModel := model.NewConfigModel()
 
 	err = settingsModel.BuildFromService(settings)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting Evergreen admin settings to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting admin settings to API model"))
 	}
 
 	return gimlet.NewJSONResponse(settingsModel)
@@ -59,7 +59,7 @@ func (h *uiV2URLGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin config"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 
 	return gimlet.NewJSONResponse(&model.APIUiV2URL{
@@ -87,7 +87,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	oldSettings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "gettign existing Evergreen admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting existing admin settings"))
 	}
 
 	// validate the changes
@@ -111,7 +111,7 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	err = h.model.BuildFromService(newSettings)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting new admin settings to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting new admin settings to API model"))
 	}
 
 	return gimlet.NewJSONResponse(h.model)

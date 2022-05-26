@@ -287,7 +287,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "getting Evergreen admin settings")
+		return errors.Wrap(err, "getting admin settings")
 	}
 	githubToken, err := settings.GetGithubOauthToken()
 	if err != nil {
@@ -507,7 +507,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		if gh.settings == nil {
 			gh.settings, err = evergreen.GetConfig()
 			if err != nil {
-				return nil, errors.Wrap(err, "getting Evergreen admin settings")
+				return nil, errors.Wrap(err, "getting admin settings")
 			}
 		}
 		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, token)
@@ -643,7 +643,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 func (gh *githubHookApi) requireSigned(ctx context.Context, userRepo data.UserRepoInfo, baseBranch string, pr *github.PullRequest, prNum int) error {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "getting Evergreen admin settings")
+		return errors.Wrap(err, "getting admin settings")
 	}
 
 	githubToken, err := settings.GetGithubOauthToken()

@@ -117,7 +117,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
@@ -137,13 +137,13 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if err = serviceModel.SetBuildPriority(b.buildId, priority, user.Username()); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting build priority"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting build priority"))
 		}
 	}
 
 	if b.Activated != nil {
 		if err = serviceModel.SetBuildActivation(b.buildId, *b.Activated, user.Username()); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting build activation"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting build activation"))
 		}
 	}
 
@@ -160,7 +160,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 
 	buildModel := &model.APIBuild{}
 	if err = buildModel.BuildFromService(*updatedBuild); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting build to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)
@@ -192,12 +192,12 @@ func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
 	if err := serviceModel.AbortBuild(b.buildId, usr.Id); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "aborting build '%s'", b.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting build '%s'", b.buildId))
 	}
 
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
@@ -209,7 +209,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	buildModel := &model.APIBuild{}
 
 	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting build to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)
@@ -242,12 +242,12 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
 	err := serviceModel.RestartAllBuildTasks(b.buildId, usr.Id)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
 	}
 
 	foundBuild, err := build.FindOneId(b.buildId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
 	if foundBuild == nil {
 		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
@@ -258,7 +258,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 
 	buildModel := &model.APIBuild{}
 	if err = buildModel.BuildFromService(*foundBuild); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "converting build to API model"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting build to API model"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)

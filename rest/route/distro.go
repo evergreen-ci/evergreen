@@ -190,7 +190,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
 	// Existing resource
 	if original != nil {
@@ -328,7 +328,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
 	d, respErr := validateDistro(ctx, apiDistro, h.distroID, settings, false)
 	if respErr != nil {
@@ -506,7 +506,7 @@ func (h *modifyDistrosSettingsHandler) Run(ctx context.Context) gimlet.Responder
 	modifiedAMIDistroIds := []string{}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, d := range allDistros {
@@ -900,7 +900,7 @@ func (rh *distroClientURLsGetHandler) Run(ctx context.Context) gimlet.Responder 
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 
 	var urls []string

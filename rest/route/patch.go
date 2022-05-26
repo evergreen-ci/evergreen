@@ -488,7 +488,7 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {

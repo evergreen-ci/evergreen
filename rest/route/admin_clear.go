@@ -36,7 +36,7 @@ func (h *clearTaskQueueHandler) Run(ctx context.Context) gimlet.Responder {
 	if tq == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("unable to find task queue for distro '%s'", h.distro),
+			Message:    fmt.Sprintf("task queue for distro '%s' not found", h.distro),
 		})
 	}
 

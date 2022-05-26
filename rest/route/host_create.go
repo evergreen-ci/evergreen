@@ -208,7 +208,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
 	options := types.ContainerLogsOptions{
 		Timestamps: true,
@@ -270,7 +270,7 @@ func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting Evergreen admin settings"))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting admin settings"))
 	}
 	status, err := data.GetDockerStatus(ctx, h.host.Id, parent, settings)
 	if err != nil {
