@@ -186,15 +186,15 @@ type unitInfo struct {
 	// NumDeps is the total number of tasks depending on tasks in the unit.
 	NumDeps int64 `json:"num_deps"`
 	// ContainsInCommitQueue indicates if the unit contains any tasks that are part of a commit queue version.
-	ContainsInCommitQueue bool `json:"in_commit_queue"`
+	ContainsInCommitQueue bool `json:"contains_in_commit_queue"`
 	// ContainsInPatch indicates if the unit contains any tasks that are part of a patch.
-	ContainsInPatch bool `json:"in_patch"`
+	ContainsInPatch bool `json:"contains_in_patch"`
 	// ContainsNonGroupTasks indicates if the unit contains any tasks that are not part of a task group.
-	ContainsNonGroupTasks bool `json:"any_non_group_tasks"`
+	ContainsNonGroupTasks bool `json:"contains_non_group_tasks"`
 	// ContainsGenerateTask indicates if the unit contains generator task.
-	ContainsGenerateTask bool `json:"generate_task"`
+	ContainsGenerateTask bool `json:"contains_generate_task"`
 	// ContainsStepbackTask indicates if the unit contains task activated by stepback.
-	ContainsStepbackTask bool `json:"stepback_task"`
+	ContainsStepbackTask bool `json:"contains_stepback_task"`
 }
 
 func (u *unitInfo) value() int64 {
