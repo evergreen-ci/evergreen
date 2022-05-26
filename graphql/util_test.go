@@ -121,3 +121,49 @@ func TestCanRestartTask(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, canRestart, true)
 }
+
+func TestCanScheduleTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	abortedTask := &restModel.APITask{
+		Id:      utility.ToStringPtr("t1"),
+		Status:  utility.ToStringPtr(evergreen.TaskUndispatched),
+		Aborted: true,
+	}
+	canSchedule, err := canScheduleTask(ctx, abortedTask)
+	require.NoError(t, err)
+	assert.Equal(t, canSchedule, false)
+
+	executionTask := &restModel.APITask{
+		Id:            utility.ToStringPtr("t2"),
+		ParentTaskId:  "a display task",
+		Status:        utility.ToStringPtr(evergreen.TaskUndispatched),
+		DisplayStatus: utility.ToStringPtr(evergreen.TaskUnscheduled),
+		Aborted:       false,
+	}
+	canSchedule, err = canScheduleTask(ctx, executionTask)
+	require.NoError(t, err)
+	assert.Equal(t, canSchedule, false)
+
+	finishedTask := &restModel.APITask{
+		Id:            utility.ToStringPtr("t4"),
+		Status:        utility.ToStringPtr(evergreen.TaskSucceeded),
+		DisplayStatus: utility.ToStringPtr(evergreen.TaskSucceeded),
+		Aborted:       false,
+	}
+	canSchedule, err = canScheduleTask(ctx, finishedTask)
+	require.NoError(t, err)
+	assert.Equal(t, canSchedule, false)
+
+	unscheduledTask := &restModel.APITask{
+		Id:            utility.ToStringPtr("t3"),
+		Status:        utility.ToStringPtr(evergreen.TaskUndispatched),
+		DisplayStatus: utility.ToStringPtr(evergreen.TaskUnscheduled),
+		Aborted:       false,
+	}
+	canSchedule, err = canScheduleTask(ctx, unscheduledTask)
+	require.NoError(t, err)
+	assert.Equal(t, canSchedule, true)
+
+}

@@ -459,7 +459,7 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (bool, error) {
 		return false, err
 	}
 	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && taskBlocked)
-	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
+	isExecTask, err := isExecutionTask(ctx, at) // Cannot restart execution tasks.
 	if err != nil {
 		return false, err
 	}
@@ -467,6 +467,18 @@ func canRestartTask(ctx context.Context, at *restModel.APITask) (bool, error) {
 		canRestart = false
 	}
 	return canRestart, nil
+}
+
+func canScheduleTask(ctx context.Context, at *restModel.APITask) (bool, error) {
+	canSchedule := utility.FromStringPtr(at.DisplayStatus) == evergreen.TaskUnscheduled && !at.Aborted
+	isExecTask, err := isExecutionTask(ctx, at) // Cannot schedule execution tasks.
+	if err != nil {
+		return false, err
+	}
+	if isExecTask {
+		canSchedule = false
+	}
+	return canSchedule, nil
 }
 
 func getAllTaskStatuses(tasks []task.Task) []string {

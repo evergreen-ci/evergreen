@@ -235,6 +235,15 @@
           },
           "no": {
             "canSchedule": false
+          },
+          "runningTask": {
+            "canSchedule": false
+          },
+          "abortedTask": {
+            "canSchedule": false
+          },
+          "executionTask": {
+            "canSchedule": false
           }
         }
       }
@@ -260,6 +269,9 @@
           },
           "runningTask": {
             "canRestart": false
+          },
+          "abortedTask": {
+            "canRestart": true
           }
         }
       }

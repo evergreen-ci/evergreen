@@ -1,5 +1,5 @@
 {
-  yes: task(taskId: "taskity_task") {
+  yes: task(taskId: "finished_task") {
     canRestart
   }
   no: task(taskId: "some_task") {
@@ -15,6 +15,9 @@
     canRestart
   }
   runningTask: task(taskId: "running_task"){
+    canRestart
+  }
+  abortedTask: task(taskId: "aborted_task"){
     canRestart
   }
 }
