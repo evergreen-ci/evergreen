@@ -59,6 +59,6 @@ func TestGeneratePoll(t *testing.T) {
 
 	finished, generateErrs, err = GeneratePoll(context.Background(), "task-3", q)
 	assert.True(t, finished)
-	assert.Equal(t, []string{"this is an error"}, generateErrs)
+	assert.Equal(t, "this is an error", generateErrs)
 	assert.NoError(t, err)
 }
