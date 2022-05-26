@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -77,4 +78,46 @@ func TestCollectiveStatusArray(t *testing.T) {
 	statusArray, err := getCollectiveStatusArray(*version)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.PatchAborted, statusArray[0])
+}
+
+func TestCanRestartTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blockedTask := &restModel.APITask{
+		Id: utility.ToStringPtr("t1"),
+		DependsOn: []restModel.APIDependency{
+			{TaskId: "testDepends1", Status: "*", Unattainable: true},
+			{TaskId: "testDepends2", Status: "*", Unattainable: false},
+		},
+		Status: utility.ToStringPtr(evergreen.TaskUndispatched),
+	}
+	canRestart, err := canRestartTask(ctx, blockedTask)
+	require.NoError(t, err)
+	assert.Equal(t, canRestart, false)
+
+	executionTask := &restModel.APITask{
+		Id:           utility.ToStringPtr("t2"),
+		ParentTaskId: "a display task",
+		Status:       utility.ToStringPtr(evergreen.TaskUndispatched),
+	}
+	canRestart, err = canRestartTask(ctx, executionTask)
+	require.NoError(t, err)
+	assert.Equal(t, canRestart, false)
+
+	runningTask := &restModel.APITask{
+		Id:     utility.ToStringPtr("t3"),
+		Status: utility.ToStringPtr(evergreen.TaskStarted),
+	}
+	canRestart, err = canRestartTask(ctx, runningTask)
+	require.NoError(t, err)
+	assert.Equal(t, canRestart, false)
+
+	finishedTask := &restModel.APITask{
+		Id:     utility.ToStringPtr("t4"),
+		Status: utility.ToStringPtr(evergreen.TaskSucceeded),
+	}
+	canRestart, err = canRestartTask(ctx, finishedTask)
+	require.NoError(t, err)
+	assert.Equal(t, canRestart, true)
 }

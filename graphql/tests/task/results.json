@@ -254,6 +254,12 @@
           },
           "displayTask": {
             "canRestart": true
+          },
+          "blockedDisplayTask": {
+            "canRestart": true
+          },
+          "runningTask": {
+            "canRestart": false
           }
         }
       }

@@ -427,46 +427,46 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	}
 }
 
-func isTaskBlocked(ctx context.Context, at *restModel.APITask) (*bool, error) {
-	t, err := task.FindOneIdNewOrOld(*at.Id)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task %s not found", *at.Id))
-	}
-	isBlocked := t.Blocked()
-	return &isBlocked, nil
-}
-
-func isExecutionTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+func isTaskBlocked(ctx context.Context, at *restModel.APITask) (bool, error) {
 	i, err := at.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *at.Id))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *at.Id))
 	}
 	t, ok := i.(*task.Task)
 	if !ok {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert APITask %s to Task", *at.Id))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *at.Id))
 	}
-	isExecutionTask := t.IsPartOfDisplay()
-
-	return &isExecutionTask, nil
+	isBlocked := t.Blocked()
+	return isBlocked, nil
 }
 
-func canRestartTask(ctx context.Context, at *restModel.APITask) (*bool, error) {
+func isExecutionTask(ctx context.Context, at *restModel.APITask) (bool, error) {
+	i, err := at.ToService()
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *at.Id))
+	}
+	t, ok := i.(*task.Task)
+	if !ok {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *at.Id))
+	}
+	isExecutionTask := t.IsPartOfDisplay()
+	return isExecutionTask, nil
+}
+
+func canRestartTask(ctx context.Context, at *restModel.APITask) (bool, error) {
 	taskBlocked, err := isTaskBlocked(ctx, at)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && *taskBlocked)
+	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && taskBlocked)
 	isExecTask, err := isExecutionTask(ctx, at) // Cant restart execution tasks.
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	if *isExecTask {
+	if isExecTask {
 		canRestart = false
 	}
-	return &canRestart, nil
+	return canRestart, nil
 }
 
 func getAllTaskStatuses(tasks []task.Task) []string {

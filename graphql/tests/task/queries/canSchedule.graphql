@@ -1,8 +1,8 @@
 {
-  yes: task(taskId: "some_task") {
+  yes: task(taskId: "taskity_task") {
     canSchedule
   }
-  no: task(taskId: "taskity_task") {
+  no: task(taskId: "some_task") {
     canSchedule
   }
 }

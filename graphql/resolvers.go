@@ -3213,7 +3213,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 	if err != nil {
 		return false, err
 	}
-	return *canRestart, nil
+	return canRestart, nil
 }
 
 func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3225,7 +3225,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, err
 	}
-	return !utility.FromBoolPtr(canRestart) && !obj.Aborted, nil
+	return canRestart && !obj.Aborted, nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {

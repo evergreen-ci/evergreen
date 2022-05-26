@@ -11,4 +11,10 @@
   displayTask: task(taskId: "display_task"){
     canRestart
   }
+  blockedDisplayTask: task(taskId: "blocked_display_task"){
+    canRestart
+  }
+  runningTask: task(taskId: "running_task"){
+    canRestart
+  }
 }

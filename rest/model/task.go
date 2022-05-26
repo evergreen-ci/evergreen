@@ -424,6 +424,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 			Id:     utility.FromStringPtr(ad.BaseTask.Id),
 			Status: utility.FromStringPtr(ad.BaseTask.Status),
 		},
+		DisplayTaskId: utility.ToStringPtr(ad.ParentTaskId),
 	}
 	catcher := grip.NewBasicCatcher()
 	serviceDetails, err := ad.Details.ToService()
@@ -470,6 +471,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 	for i, dep := range ad.DependsOn {
 		dependsOn[i].TaskId = dep.TaskId
 		dependsOn[i].Status = dep.Status
+		dependsOn[i].Unattainable = dep.Unattainable
 	}
 
 	st.DependsOn = dependsOn
@@ -522,13 +524,15 @@ type APISyncAtEndOptions struct {
 }
 
 type APIDependency struct {
-	TaskId string `bson:"_id" json:"id"`
-	Status string `bson:"status" json:"status"`
+	TaskId       string `bson:"_id" json:"id"`
+	Status       string `bson:"status" json:"status"`
+	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 }
 
 func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 	ad.TaskId = dep.TaskId
 	ad.Status = dep.Status
+	ad.Unattainable = dep.Unattainable
 }
 
 func (ad *APIDependency) ToService() (interface{}, error) {
