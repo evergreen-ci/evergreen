@@ -24,7 +24,7 @@ WITH matched_and_aggregated AS (
 	    SUM(num_pass) AS num_pass,
 	    SUM(num_fail) AS num_fail,
 	    SUM(total_pass_duration_ns) AS total_pass_duration_ns
-    FROM test_stats_daily_v
+    FROM v__results__daily_test_stats__v1
     WHERE project = ?
     AND   variant = ?{{ if .TaskName }}
     AND   task_name = ?{{ end }}{{ if .TestName }}
