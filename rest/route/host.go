@@ -90,20 +90,17 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
 		}
-		if status.Status == evergreen.HostTerminated {
-			if err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API")); err != nil {
-				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusInternalServerError,
-					Message:    err.Error(),
-				})
-			}
-		} else {
-			if err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id)); err != nil {
-				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-					StatusCode: http.StatusInternalServerError,
-					Message:    err.Error(),
-				})
-			}
+		switch status.Status {
+		case evergreen.HostTerminated:
+			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
+		default:
+			err = foundHost.SetStatus(status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
+		}
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			})
 		}
 
 		host := &model.APIHost{}

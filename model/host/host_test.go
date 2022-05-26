@@ -293,7 +293,7 @@ func TestSetStatusAndFields(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"FailsIfHostDoesNotExist": func(t *testing.T, h *Host) {
-			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, nil, nil, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, nil, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			assert.NoError(t, err)
@@ -304,7 +304,7 @@ func TestSetStatusAndFields(t *testing.T) {
 
 			currentStatus := h.Status
 			newDisplayName := "new-display-name"
-			require.NoError(t, h.setStatusAndFields(currentStatus, nil, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(currentStatus, nil, bson.M{DisplayNameKey: newDisplayName}, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestSetStatusAndFields(t *testing.T) {
 		"UpdatesOnlyStatus": func(t *testing.T, h *Host) {
 			require.NoError(t, h.Insert())
 			newStatus := evergreen.HostQuarantined
-			require.NoError(t, h.setStatusAndFields(newStatus, nil, nil, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(newStatus, nil, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -327,7 +327,7 @@ func TestSetStatusAndFields(t *testing.T) {
 
 			newStatus := evergreen.HostQuarantined
 			newDisplayName := "new-display-name"
-			require.NoError(t, h.setStatusAndFields(newStatus, nil, bson.M{DisplayNameKey: newDisplayName}, evergreen.User, ""))
+			require.NoError(t, h.setStatusAndFields(newStatus, nil, bson.M{DisplayNameKey: newDisplayName}, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -335,11 +335,26 @@ func TestSetStatusAndFields(t *testing.T) {
 			assert.Equal(t, newStatus, dbHost.Status)
 			assert.Equal(t, newDisplayName, dbHost.DisplayName)
 		},
+		"UpdatesStatusAndUnsetsFields": func(t *testing.T, h *Host) {
+			h.LastTask = "taskZero"
+			h.RunningTask = "taskHero"
+			assert.NoError(t, h.Insert())
+
+			newStatus := evergreen.HostQuarantined
+			assert.NoError(t, h.setStatusAndFields(newStatus, nil, nil, bson.M{LTCTaskKey: 1}, evergreen.User, ""))
+
+			dbHost, err := FindOneId(h.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.Equal(t, newStatus, dbHost.Status)
+			assert.Equal(t, "taskHero", dbHost.RunningTask)
+			assert.Empty(t, dbHost.LastTask)
+		},
 		"FailsForAlreadyTerminatedHost": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert())
 
-			assert.Error(t, h.setStatusAndFields(evergreen.HostRunning, nil, nil, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(evergreen.HostRunning, nil, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)
@@ -352,7 +367,7 @@ func TestSetStatusAndFields(t *testing.T) {
 			query := bson.M{
 				RunningTaskGroupKey: bson.M{"$eq": ""},
 			}
-			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, evergreen.User, ""))
+			assert.Error(t, h.setStatusAndFields(evergreen.HostDecommissioned, query, nil, nil, evergreen.User, ""))
 
 			dbHost, err := FindOneId(h.Id)
 			require.NoError(t, err)

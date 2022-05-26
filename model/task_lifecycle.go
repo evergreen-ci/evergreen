@@ -518,8 +518,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "marking task finished")
 	}
 
-	blockedIds, err := UpdateBlockedDependencies(t)
-	if err != nil {
+	if err = UpdateBlockedDependencies(t); err != nil {
 		return errors.Wrap(err, "updating blocked dependencies")
 	}
 
@@ -578,50 +577,41 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets each
 // parent dependency as unattainable in depending tasks.
-// Returns a list of modified task IDs.
-func UpdateBlockedDependencies(t *task.Task) ([]string, error) {
+func UpdateBlockedDependencies(t *task.Task) error {
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
+		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
-	depTaskIds := []string{}
 	for _, dependentTask := range dependentTasks {
 		if err = dependentTask.MarkUnattainableDependency(t.Id, true); err != nil {
-			return nil, errors.Wrap(err, "marking dependency unattainable")
+			return errors.Wrap(err, "marking dependency unattainable")
 		}
-		innerDepTaskIds, err := UpdateBlockedDependencies(&dependentTask)
-		if err != nil {
-			return nil, errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
+		if err = UpdateBlockedDependencies(&dependentTask); err != nil {
+			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
-		depTaskIds = append(depTaskIds, dependentTask.Id)
-		depTaskIds = append(depTaskIds, innerDepTaskIds...)
 	}
-	return depTaskIds, nil
+	return nil
 }
 
-// UpdateUnblockedDependencies recursively marks all unattainable dependencies as attainable, and
-// returns a list of modified tasks IDs.
-func UpdateUnblockedDependencies(t *task.Task) ([]string, error) {
+// UpdateUnblockedDependencies recursively marks all unattainable dependencies as attainable.
+func UpdateUnblockedDependencies(t *task.Task) error {
 	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
-		return nil, errors.Wrap(err, "getting dependencies marked unattainable")
+		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
-	blockedTaskIds := []string{}
 	for _, blockedTask := range blockedTasks {
 		if err = blockedTask.MarkUnattainableDependency(t.Id, false); err != nil {
-			return nil, errors.Wrap(err, "marking dependency attainable")
+			return errors.Wrap(err, "marking dependency attainable")
 		}
-		innerBlockedTaskIds, err := UpdateUnblockedDependencies(&blockedTask)
-		if err != nil {
-			return nil, errors.WithStack(err)
+
+		if err := UpdateUnblockedDependencies(&blockedTask); err != nil {
+			return errors.WithStack(err)
 		}
-		blockedTaskIds = append(blockedTaskIds, blockedTask.Id)
-		blockedTaskIds = append(blockedTaskIds, innerBlockedTaskIds...)
 	}
 
-	return blockedTaskIds, nil
+	return nil
 }
 
 func RestartItemsAfterVersion(cq *commitqueue.CommitQueue, project, version, caller string) error {
@@ -1265,7 +1255,7 @@ func MarkOneTaskReset(t *task.Task, logIDs bool) error {
 		return errors.Wrap(err, "resetting task in database")
 	}
 
-	if _, err := UpdateUnblockedDependencies(t); err != nil {
+	if err := UpdateUnblockedDependencies(t); err != nil {
 		return errors.Wrap(err, "clearing cached unattainable dependencies")
 	}
 
@@ -1294,8 +1284,7 @@ func MarkTasksReset(taskIds []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, t := range tasks {
-		_, err = UpdateUnblockedDependencies(&t)
-		catcher.Wrapf(err, "clearing cached unattainable dependencies for task '%s'", t.Id)
+		catcher.Wrapf(UpdateUnblockedDependencies(&t), "clearing cached unattainable dependencies for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
