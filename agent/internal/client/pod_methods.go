@@ -17,7 +17,6 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -85,10 +84,8 @@ func (c *podCommunicator) GetExpansions(ctx context.Context, taskData TaskData) 
 	return nil, errors.New("TODO: implement")
 }
 
-// Heartbeat sends a heartbeat to the API server. The server can respond with
-// an "abort" response. This function returns true if the agent should abort.
-func (c *podCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
-	return false, errors.New("TODO: implement")
+func (c *podCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
+	return "", errors.New("TODO: implement")
 }
 
 // FetchExpansionVars loads expansions for a communicator's task from the API server.
@@ -154,10 +151,6 @@ func (c *podCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientCon
 
 func (c *podCommunicator) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) (LoggerProducer, error) {
 	return nil, errors.New("TODO: implement")
-}
-
-func (c *podCommunicator) makeSender(ctx context.Context, td TaskData, opts []LogOpts, prefix string, logType string) (send.Sender, []send.Sender, error) {
-	return nil, nil, errors.New("TODO: implement")
 }
 
 // SendLogMessages posts a group of log messages for a task.

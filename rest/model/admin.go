@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -64,6 +63,7 @@ type APIAdminSettings struct {
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
+	DisabledGQLQueries  []string                          `json:"disabled_gql_queries"`
 	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
 	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
@@ -96,7 +96,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *evergreen.Settings:
 		if v == nil {
-			return errors.New("evergreen settings object is nil")
+			return errors.New("cannot convert nil admin settings to API model")
 		}
 		apiModelReflect := reflect.ValueOf(*as)
 		dbModelReflect := reflect.ValueOf(*v)
@@ -115,7 +115,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			}
 			// build the sub-model from the DB model. assumes that the 2 fields are named the same thing
 			if err := model.BuildFromService(dbModelReflect.FieldByName(propName).Interface()); err != nil {
-				return errors.Wrapf(err, "error converting model section %s", propName)
+				return errors.Wrapf(err, "converting admin model section '%s' to API model", propName)
 			}
 		}
 		as.ApiUrl = &v.ApiUrl
@@ -133,6 +133,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.Keys = v.Keys
 		as.GithubOrgs = v.GithubOrgs
+		as.DisabledGQLQueries = v.DisabledGQLQueries
 		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
 		for _, pair := range v.SSHKeyPairs {
@@ -145,30 +146,30 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
 		if err != nil {
-			return errors.Wrapf(err, "error building apiUiConfig %s", err)
+			return errors.Wrap(err, "converting UI config to API model")
 		}
 		as.Ui = &uiConfig
 		jiraConfig := APIJiraConfig{}
 		err = jiraConfig.BuildFromService(v.Jira)
 		if err != nil {
-			return errors.Wrapf(err, "error building apiJiraConfig %s", err)
+			return errors.Wrap(err, "converting Jira config to API model")
 		}
 		as.Jira = &jiraConfig
 		cloudProviders := APICloudProviders{}
 		err = cloudProviders.BuildFromService(v.Providers)
 		if err != nil {
-			return errors.Wrapf(err, "error building apiCloudProviders")
+			return errors.Wrap(err, "converting cloud provider config to API model")
 		}
 		as.Providers = &cloudProviders
 		as.ShutdownWaitSeconds = &v.ShutdownWaitSeconds
 		spawnHostConfig := APISpawnHostConfig{}
 		err = spawnHostConfig.BuildFromService(v.Spawnhost)
 		if err != nil {
-			return errors.Wrapf(err, "error building apiSpawnHostConfig")
+			return errors.Wrap(err, "converting spawn host config to API model")
 		}
 		as.Spawnhost = &spawnHostConfig
 	default:
-		return errors.Errorf("%T is not a supported admin settings type", h)
+		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}
 	return nil
 }
@@ -176,11 +177,12 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials: map[string]string{},
-		Expansions:  map[string]string{},
-		Keys:        map[string]string{},
-		Plugins:     evergreen.PluginConfig{},
-		GithubOrgs:  as.GithubOrgs,
+		Credentials:        map[string]string{},
+		Expansions:         map[string]string{},
+		Keys:               map[string]string{},
+		Plugins:            evergreen.PluginConfig{},
+		GithubOrgs:         as.GithubOrgs,
+		DisabledGQLQueries: as.DisabledGQLQueries,
 	}
 	if as.ApiUrl != nil {
 		settings.ApiUrl = *as.ApiUrl
@@ -227,7 +229,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		// set the corresponding DB model field. assumes that the 2 fields are named the same thing
 		i, err := model.ToService()
 		if err != nil {
-			return nil, errors.Wrapf(err, "error converting model section %s", propName)
+			return nil, errors.Wrapf(err, "converting admin model section '%s' to service model", propName)
 		}
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
@@ -274,7 +276,7 @@ func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 			return err
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected alerts config but got type %T", h)
 	}
 	return nil
 }
@@ -312,7 +314,7 @@ func (a *APISMTPConfig) BuildFromService(h interface{}) error {
 			a.AdminEmail = append(a.AdminEmail, utility.ToStringPtr(s))
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected SMTP config but got type %T", h)
 	}
 	return nil
 }
@@ -370,7 +372,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
 		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
-			return errors.Wrap(err, "building Amboy retry settings from service")
+			return errors.Wrap(err, "converting Amboy retry settings to API model")
 		}
 		for _, dbNamedQueue := range v.NamedQueues {
 			var apiNamedQueue APIAmboyNamedQueueConfig
@@ -378,7 +380,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 			a.NamedQueues = append(a.NamedQueues, apiNamedQueue)
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Amboy config but got type %T", h)
 	}
 	return nil
 }
@@ -386,11 +388,11 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	i, err := a.Retry.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting Amboy retry settings to service")
+		return nil, errors.Wrap(err, "converting Amboy retry settings to service model")
 	}
 	retry, ok := i.(evergreen.AmboyRetryConfig)
 	if !ok {
-		return nil, errors.Errorf("expecting AmboyRetryConfig but got %T", i)
+		return nil, errors.Errorf("programmatic error: expected Amboy retry config but got type %T", i)
 	}
 	var dbNamedQueues []evergreen.AmboyNamedQueueConfig
 	for _, apiNamedQueue := range a.NamedQueues {
@@ -435,7 +437,7 @@ func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
 		a.StaleRetryingMonitorIntervalSeconds = v.StaleRetryingMonitorIntervalSeconds
 		return nil
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Amboy retry config but got type %T", h)
 	}
 }
 
@@ -485,7 +487,7 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
 	return nil
 }
@@ -514,38 +516,38 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 		if v.LDAP != nil {
 			a.LDAP = &APILDAPConfig{}
 			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
-				return errors.Wrap(err, "could not build API LDAP auth settings from service")
+				return errors.Wrap(err, "converting LDAP auth settings to API model")
 			}
 		}
 		if v.Okta != nil {
 			a.Okta = &APIOktaConfig{}
 			if err := a.Okta.BuildFromService(v.Okta); err != nil {
-				return errors.Wrap(err, "could not build API Okta auth settings from service")
+				return errors.Wrap(err, "converting Okta auth settings to API model")
 			}
 		}
 		if v.Github != nil {
 			a.Github = &APIGithubAuthConfig{}
 			if err := a.Github.BuildFromService(v.Github); err != nil {
-				return errors.Wrap(err, "could not build API GitHub auth settings from service")
+				return errors.Wrap(err, "converting GitHub auth settings to API model")
 			}
 		}
 		if v.Naive != nil {
 			a.Naive = &APINaiveAuthConfig{}
 			if err := a.Naive.BuildFromService(v.Naive); err != nil {
-				return errors.Wrap(err, "could not build API naive auth settings from service")
+				return errors.Wrap(err, "converting naive auth settings to API model")
 			}
 		}
 		if v.Multi != nil {
 			a.Multi = &APIMultiAuthConfig{}
 			if err := a.Multi.BuildFromService(v.Multi); err != nil {
-				return errors.Wrap(err, "could not build API multi auth settings from service")
+				return errors.Wrap(err, "converting multi auth settings to API model")
 			}
 		}
 		a.PreferredType = utility.ToStringPtr(v.PreferredType)
 		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 		a.AllowServiceUsers = v.AllowServiceUsers
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected auth config but got type %T", h)
 	}
 	return nil
 }
@@ -559,56 +561,56 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var ok bool
 	i, err := a.LDAP.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert LDAP auth config to service")
+		return nil, errors.Wrap(err, "converting LDAP auth config to service model")
 	}
 	if i != nil {
 		ldap, ok = i.(*evergreen.LDAPConfig)
 		if !ok {
-			return nil, errors.Errorf("expecting LDAPConfig but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected LDAP auth config but got type %T", i)
 		}
 	}
 
 	i, err = a.Okta.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert Okta auth config to service")
+		return nil, errors.Wrap(err, "converting Okta auth config to service model")
 	}
 	if i != nil {
 		okta, ok = i.(*evergreen.OktaConfig)
 		if !ok {
-			return nil, errors.Errorf("expecting OktaConfig but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected Okta auth config but got type %T", i)
 		}
 	}
 
 	i, err = a.Naive.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could  not convert naive auth config to service")
+		return nil, errors.Wrap(err, "converting naive auth config to service model")
 	}
 	if i != nil {
 		naive, ok = i.(*evergreen.NaiveAuthConfig)
 		if !ok {
-			return nil, errors.Errorf("expecting NaiveAuthConfig but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected naive auth config but got type %T", i)
 		}
 	}
 
 	i, err = a.Github.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert GitHub auth config to service")
+		return nil, errors.Wrap(err, "converting GitHub auth config to service model")
 	}
 	if i != nil {
 		github, ok = i.(*evergreen.GithubAuthConfig)
 		if !ok {
-			return nil, errors.Errorf("expecting GithubAuthConfig but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected GitHub auth config but got type %T", i)
 		}
 	}
 
 	i, err = a.Multi.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could  not convert multi auth config to service")
+		return nil, errors.Wrap(err, "converting multi auth config to service model")
 	}
 	if i != nil {
 		multi, ok = i.(*evergreen.MultiAuthConfig)
 		if !ok {
-			return nil, errors.Errorf("expecting MultiAuthConfig but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected multi auth config but got type %T", i)
 		}
 	}
 
@@ -639,7 +641,7 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Cedar config but got type %T", h)
 	}
 	return nil
 }
@@ -679,7 +681,7 @@ func (a *APILDAPConfig) BuildFromService(h interface{}) error {
 		a.ExpireAfterMinutes = utility.ToStringPtr(v.ExpireAfterMinutes)
 		a.GroupOU = utility.ToStringPtr(v.GroupOU)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected LDAP config but got type %T", h)
 	}
 	return nil
 }
@@ -723,7 +725,7 @@ func (a *APIOktaConfig) BuildFromService(h interface{}) error {
 		a.ExpireAfterMinutes = v.ExpireAfterMinutes
 		return nil
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Okta config but got type %T", h)
 	}
 }
 
@@ -759,7 +761,7 @@ func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
 			a.Users = append(a.Users, apiUser)
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected naive auth config but got type %T", h)
 	}
 	return nil
 }
@@ -798,7 +800,7 @@ func (a *APIAuthUser) BuildFromService(h interface{}) error {
 		a.DisplayName = utility.ToStringPtr(v.DisplayName)
 		a.Email = utility.ToStringPtr(v.Email)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected naive auth user config but got type %T", h)
 	}
 	return nil
 }
@@ -835,7 +837,7 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 			a.Users = append(a.Users, utility.ToStringPtr(u))
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected GitHub auth config but got type %T", h)
 	}
 	return nil
 }
@@ -869,7 +871,7 @@ func (a *APIMultiAuthConfig) BuildFromService(h interface{}) error {
 		a.ReadWrite = v.ReadWrite
 		a.ReadOnly = v.ReadOnly
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected multi-auth config but got type %T", h)
 	}
 	return nil
 }
@@ -912,7 +914,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.MaxTotalDynamicHosts = v.MaxTotalDynamicHosts
 		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected host init config but got type %T", h)
 	}
 	return nil
 }
@@ -938,7 +940,7 @@ func (a *APIPodInitConfig) BuildFromService(h interface{}) error {
 		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected pod init config but got type %T", h)
 	}
 	return nil
 }
@@ -967,7 +969,7 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 		a.OAuth1Config = &APIJiraOAuth1{}
 		a.OAuth1Config.BuildFromService(v.OAuth1Config)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Jira config but got type %T", h)
 	}
 	return nil
 }
@@ -1058,9 +1060,11 @@ func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
 		m := make(APILDAPRoleMap, len(v))
 		for i := range v {
 			if err := m[i].BuildFromService(v[i]); err != nil {
-				return err
+				return errors.Wrapf(err, "converting LDAP role at index %d to API model", i)
 			}
 		}
+	default:
+		return errors.Errorf("programmatic error: expected LDAP role map but got type %T", h)
 	}
 
 	return nil
@@ -1071,9 +1075,13 @@ func (a *APILDAPRoleMap) ToService() (interface{}, error) {
 	for i := range *a {
 		v, err := (*a)[i].ToService()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "converting LDAP role mapping at index %d to service model", i)
 		}
-		serviceMap[i] = v.(evergreen.LDAPRoleMapping)
+		roleMapping, ok := v.(evergreen.LDAPRoleMapping)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected LDAP role mapping at index %d but got type %T", i, v)
+		}
+		serviceMap[i] = roleMapping
 	}
 
 	return serviceMap, nil
@@ -1099,7 +1107,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 			return err
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected task logging config but got type %T", h)
 	}
 	return nil
 }
@@ -1135,7 +1143,7 @@ func (a *APILogBuffering) BuildFromService(h interface{}) error {
 		a.Count = v.Count
 		a.IncomingBufferFactor = v.IncomingBufferFactor
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected logging buffer config but got type %T", h)
 	}
 	return nil
 }
@@ -1165,7 +1173,7 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
 		a.BufferIntervalSeconds = v.BufferIntervalSeconds
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected notify config but got type %T", h)
 	}
 	return nil
 }
@@ -1214,7 +1222,7 @@ func (a *APICloudProviders) BuildFromService(h interface{}) error {
 			return err
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected cloud provider config but got type %T", h)
 	}
 	return nil
 }
@@ -1266,7 +1274,7 @@ func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
 		return nil
 	}
 
-	return errors.Errorf("Received CommitQueueConfig of type %T", h)
+	return errors.Errorf("programmatic error: expected commit queue config but got type %T", h)
 }
 
 func (a *APICommitQueueConfig) ToService() (interface{}, error) {
@@ -1286,14 +1294,14 @@ func (a *APIContainerPoolsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ContainerPoolsConfig:
 		for _, pool := range v.Pools {
-			APIpool := APIContainerPool{}
-			if err := APIpool.BuildFromService(pool); err != nil {
+			apiPool := APIContainerPool{}
+			if err := apiPool.BuildFromService(pool); err != nil {
 				return err
 			}
-			a.Pools = append(a.Pools, APIpool)
+			a.Pools = append(a.Pools, apiPool)
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected container pools config but got type %T", h)
 	}
 	return nil
 }
@@ -1329,7 +1337,7 @@ func (a *APIContainerPool) BuildFromService(h interface{}) error {
 		a.MaxContainers = v.MaxContainers
 		a.Port = v.Port
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected container pool config but got type %T", h)
 	}
 	return nil
 }
@@ -1358,7 +1366,7 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 		a.Key = utility.ToStringPtr(v.Key)
 		a.Secret = utility.ToStringPtr(v.Secret)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected EC2 key config but got type %T", h)
 	}
 	return nil
 }
@@ -1383,7 +1391,7 @@ func (a *APISubnet) BuildFromService(h interface{}) error {
 		a.AZ = utility.ToStringPtr(v.AZ)
 		a.SubnetID = utility.ToStringPtr(v.SubnetID)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected subnet config but got type %T", h)
 	}
 	return nil
 }
@@ -1429,19 +1437,19 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 
 		s3Creds := &APIS3Credentials{}
 		if err := s3Creds.BuildFromService(v.S3); err != nil {
-			return errors.Wrap(err, "converting S3 credentials from service")
+			return errors.Wrap(err, "converting S3 credentials to API model")
 		}
 		a.S3 = s3Creds
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
-			return errors.Wrap(err, "converting S3 credentials from service")
+			return errors.Wrap(err, "converting S3 credentials to API model")
 		}
 		a.TaskSync = taskSync
 
 		taskSyncRead := &APIS3Credentials{}
 		if err := taskSyncRead.BuildFromService(v.TaskSyncRead); err != nil {
-			return errors.Wrap(err, "converting S3 credentials from service")
+			return errors.Wrap(err, "converting S3 credentials to API model")
 		}
 		a.TaskSyncRead = taskSyncRead
 
@@ -1454,7 +1462,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
 	return nil
 }
@@ -1474,39 +1482,39 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 
 	i, err = a.S3.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+		return nil, errors.Wrap(err, "converting S3 credentials to service model")
 	}
 	var s3 evergreen.S3Credentials
 	if i != nil {
 		s3, ok = i.(evergreen.S3Credentials)
 		if !ok {
-			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 		}
 	}
 	config.S3 = s3
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+		return nil, errors.Wrap(err, "converting S3 credentials to service model")
 	}
 	var taskSync evergreen.S3Credentials
 	if i != nil {
 		taskSync, ok = i.(evergreen.S3Credentials)
 		if !ok {
-			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+			return nil, errors.Errorf("expecting S3 credentials but got type %T", i)
 		}
 	}
 	config.TaskSync = taskSync
 
 	i, err = a.TaskSyncRead.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert S3 credentials to service")
+		return nil, errors.Wrap(err, "converting S3 credentials to service model")
 	}
 	var taskSyncRead evergreen.S3Credentials
 	if i != nil {
 		taskSyncRead, ok = i.(evergreen.S3Credentials)
 		if !ok {
-			return nil, errors.Errorf("expecting S3Credentials but got %T", i)
+			return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 		}
 	}
 	config.TaskSyncRead = taskSyncRead
@@ -1522,7 +1530,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 		key, ok := i.(evergreen.EC2Key)
 		if !ok {
-			return nil, errors.New("Unable to convert key to EC2Key")
+			return nil, errors.Errorf("programmatic error: expected EC2 key but got type %T", i)
 		}
 		config.EC2Keys = append(config.EC2Keys, key)
 	}
@@ -1534,7 +1542,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 		subnet, ok := i.(evergreen.Subnet)
 		if !ok {
-			return nil, errors.New("Unable to convert APISubnet to Subnet")
+			return nil, errors.Errorf("programmatic error: expected EC2 subnet but got type %T", i)
 		}
 		config.Subnets = append(config.Subnets, subnet)
 	}
@@ -1544,7 +1552,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 
 	pod, err := a.Pod.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not convert ECS configuration to service")
+		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
 	config.Pod = *pod
 
@@ -1565,7 +1573,7 @@ func (a *APIS3Credentials) BuildFromService(h interface{}) error {
 		a.Bucket = utility.ToStringPtr(v.Bucket)
 		return nil
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected S3 credentials but got type %T", h)
 	}
 }
 
@@ -1606,7 +1614,7 @@ func (a *APIAWSPodConfig) ToService() (*evergreen.AWSPodConfig, error) {
 
 	ecs, err := a.ECS.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "building ECS config")
+		return nil, errors.Wrap(err, "converting ECS config to service model")
 	}
 
 	sm := a.SecretsManager.ToService()
@@ -1651,7 +1659,7 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 	for _, apiCluster := range a.Clusters {
 		cluster, err := apiCluster.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "building ECS cluster config")
+			return nil, errors.Wrap(err, "converting ECS cluster config to service model")
 		}
 		clusters = append(clusters, *cluster)
 	}
@@ -1743,7 +1751,7 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 		a.APIVersion = utility.ToStringPtr(v.APIVersion)
 		a.DefaultDistro = utility.ToStringPtr(v.DefaultDistro)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Docker config but got type %T", h)
 	}
 	return nil
 }
@@ -1770,7 +1778,7 @@ func (a *APIGCEConfig) BuildFromService(h interface{}) error {
 		a.PrivateKeyID = utility.ToStringPtr(v.PrivateKeyID)
 		a.TokenURI = utility.ToStringPtr(v.TokenURI)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected GCE config but got type %T", h)
 	}
 	return nil
 }
@@ -1808,7 +1816,7 @@ func (a *APIOpenStackConfig) BuildFromService(h interface{}) error {
 		a.ProjectID = utility.ToStringPtr(v.ProjectID)
 		a.Region = utility.ToStringPtr(v.Region)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected OpenStack config but got type %T", h)
 	}
 	return nil
 }
@@ -1838,7 +1846,7 @@ func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
 		a.Username = utility.ToStringPtr(v.Username)
 		a.Password = utility.ToStringPtr(v.Password)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected VSphere config but got type %T", h)
 	}
 	return nil
 }
@@ -1864,7 +1872,7 @@ func (a *APIRepoTrackerConfig) BuildFromService(h interface{}) error {
 		a.MaxConcurrentRequests = v.MaxConcurrentRequests
 		a.MaxRepoRevisionsToSearch = v.MaxRepoRevisionsToSearch
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected repotracker config but got type %T", h)
 	}
 	return nil
 }
@@ -1919,7 +1927,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.GenerateTaskFactor = v.GenerateTaskFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
 	return nil
 }
@@ -2002,11 +2010,11 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
 			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: govet
-				return err
+				return errors.Wrap(err, "converting Slack options to API model")
 			}
 		}
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Slack config but got type %T", h)
 	}
 	return nil
 }
@@ -2049,7 +2057,7 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 		a.AllFields = v.AllFields
 		a.FieldsSet = v.FieldsSet
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Slack options but got type %T", h)
 	}
 	return nil
 }
@@ -2084,7 +2092,7 @@ func (a *APISplunkConnectionInfo) BuildFromService(h interface{}) error {
 		a.Token = utility.ToStringPtr(v.Token)
 		a.Channel = utility.ToStringPtr(v.Channel)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected Splunk connection info but got type %T", h)
 	}
 	return nil
 }
@@ -2126,7 +2134,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected UI config but got type %T", h)
 	}
 	return nil
 }
@@ -2165,7 +2173,7 @@ func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
 		a.LicenseKey = utility.ToStringPtr(v.LicenseKey)
 		a.ApplicationID = utility.ToStringPtr(v.ApplicationID)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected New Relic config but got type %T", h)
 	}
 	return nil
 }
@@ -2194,7 +2202,7 @@ func (ab *APIBanner) BuildFromService(h interface{}) error {
 		ab.Text = v.Text
 		ab.Theme = v.Theme
 	default:
-		return errors.Errorf("%T is not a supported admin banner type", h)
+		return errors.Errorf("programmatic error: expected banner config but got type %T", h)
 	}
 	return nil
 }
@@ -2239,7 +2247,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.ContainerConfigurationsDisabled = v.ContainerConfigurationsDisabled
 	default:
-		return errors.Errorf("%T is not a supported service flags type", h)
+		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
 	return nil
 }
@@ -2287,7 +2295,7 @@ func (rtr *RestartResponse) BuildFromService(h interface{}) error {
 		rtr.ItemsRestarted = v.ItemsRestarted
 		rtr.ItemsErrored = v.ItemsErrored
 	default:
-		return errors.Errorf("%T is the incorrect type for a restart task response", h)
+		return errors.Errorf("programmatic error: expected restart response but got type %T", h)
 	}
 	return nil
 }
@@ -2320,12 +2328,12 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 			propInterface := propVal.Interface()
 			apiModel, ok := propInterface.(Model)
 			if !ok {
-				return nil, fmt.Errorf("unable to convert section %s to a Model interface", id)
+				return nil, errors.Errorf("could not convert section '%s' to API model interface", id)
 			}
 			out = apiModel
 		}
 		if out == nil {
-			return nil, fmt.Errorf("section %s is not defined in the APIAdminSettings struct", id)
+			return nil, errors.Errorf("section '%s' is not defined in the API admin settings", id)
 		}
 		err := out.BuildFromService(reflect.Indirect(reflect.ValueOf(in)).Interface())
 		if err != nil {
@@ -2354,14 +2362,14 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 	case evergreen.JIRANotificationsConfig:
 		config = &v
 	default:
-		return errors.Errorf("expected *evergreen.JIRANotificationsConfig, but got %T instead", h)
+		return errors.Errorf("programmatic error: expected Jira notifications config but got type %T", h)
 	}
 
 	j.CustomFields = make(map[string]APIJIRANotificationsProject)
 	for _, project := range config.CustomFields {
 		apiProject := APIJIRANotificationsProject{}
 		if err := apiProject.BuildFromService(project); err != nil {
-			return errors.Wrapf(err, "can't build project '%s' from service", project.Project)
+			return errors.Wrapf(err, "converting project '%s' to API model", project.Project)
 		}
 
 		j.CustomFields[project.Project] = apiProject
@@ -2379,7 +2387,7 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	for projectName, fields := range j.CustomFields {
 		projectIface, err := fields.ToService()
 		if err != nil {
-			return nil, errors.Errorf("can't convert project '%s' to service", projectName)
+			return nil, errors.Errorf("converting project '%s' to service model", projectName)
 		}
 		project := projectIface.(evergreen.JIRANotificationsProject)
 
@@ -2393,7 +2401,7 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
 	serviceProject, ok := h.(evergreen.JIRANotificationsProject)
 	if !ok {
-		return errors.Errorf("Expecting JIRANotificationsProject but got %T", h)
+		return errors.Errorf("programmatic error: expected Jira project notifications config but got type %T", h)
 	}
 
 	apiFields := make(map[string]string)
@@ -2427,7 +2435,7 @@ func (c *APITriggerConfig) BuildFromService(h interface{}) error {
 	case evergreen.TriggerConfig:
 		c.GenerateTaskDistro = utility.ToStringPtr(v.GenerateTaskDistro)
 	default:
-		return errors.Errorf("%T is not a supported type", h)
+		return errors.Errorf("programmatic error: expected downstream task trigger config but got type %T", h)
 	}
 	return nil
 }
@@ -2454,7 +2462,7 @@ func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
 		c.URL = utility.ToStringPtr(v.URL)
 		c.Version = utility.ToStringPtr(v.Version)
 	default:
-		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
+		return errors.Errorf("programmatic error: expected host Jasper config but got type %T", h)
 	}
 	return nil
 }
@@ -2482,7 +2490,7 @@ func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
 		c.UnexpirableVolumesPerUser = &v.UnexpirableVolumesPerUser
 		c.SpawnHostsPerUser = &v.SpawnHostsPerUser
 	default:
-		return errors.Errorf("expected evergreen.SpawnHostConfig but got %T instead", h)
+		return errors.Errorf("programmatic error: expected spawn host config but got type %T", h)
 	}
 	return nil
 }

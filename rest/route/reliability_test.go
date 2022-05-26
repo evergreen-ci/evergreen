@@ -60,9 +60,9 @@ func getURL(projectID string, parameters map[string]interface{}) string {
 	url := fmt.Sprintf("https://example.net/api/rest/v2/projects/%s/logs/task_reliability", projectID)
 	params := []string{}
 	for key, value := range parameters {
-		switch value.(type) {
+		switch v := value.(type) {
 		case []string:
-			params = append(params, fmt.Sprintf("%s=%s", key, strings.Join(value.([]string), ",")))
+			params = append(params, fmt.Sprintf("%s=%s", key, strings.Join(v, ",")))
 		default:
 			params = append(params, fmt.Sprintf("%s=%v", key, value))
 		}
@@ -99,7 +99,7 @@ func TestParseParameters(t *testing.T) {
 					require.NoError(t, err)
 
 					values := url.Values{
-						"tasks": make([]string, reliabilityAPIMaxNumTasksLimit+1, reliabilityAPIMaxNumTasksLimit+1),
+						"tasks": make([]string, reliabilityAPIMaxNumTasksLimit+1),
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)

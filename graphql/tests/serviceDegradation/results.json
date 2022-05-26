@@ -1,0 +1,26 @@
+{
+   "tests":[
+      {
+         "query_file":"disabledQuery.graphql",
+         "result":{
+            "data":null,
+            "errors":[
+               {
+                  "message":"Query is disabled by admin",
+                  "extensions":{
+                     "code":"SERVICE_UNAVAILABLE"
+                  }
+               }
+            ]
+         }
+      },
+      {
+         "query_file":"enabledQuery.graphql",
+         "result":{
+            "data": {
+              "projects": []
+            }
+         }
+      }
+   ]
+}

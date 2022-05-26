@@ -440,9 +440,7 @@ func (rh *taskSetHasCedarResultsHandler) Run(ctx context.Context) gimlet.Respond
 
 // GET /task/sync_read_credentials
 
-type taskSyncReadCredentialsGetHandler struct {
-	taskID string
-}
+type taskSyncReadCredentialsGetHandler struct{}
 
 func makeTaskSyncReadCredentialsGetHandler() gimlet.RouteHandler {
 	return &taskSyncReadCredentialsGetHandler{}

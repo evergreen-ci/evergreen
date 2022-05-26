@@ -280,7 +280,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 	}
 }
 
-func TestChangeOwnerRepo(t *testing.T) {
+func TestAttachToNewRepo(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
@@ -289,8 +289,14 @@ func TestChangeOwnerRepo(t *testing.T) {
 		Id:        "myProject",
 		Owner:     "evergreen-ci",
 		Repo:      "evergreen",
+		Branch:    "main",
 		Admins:    []string{"me"},
 		RepoRefId: "myRepo",
+		Enabled:   utility.TruePtr(),
+		CommitQueue: CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+		PRTestingEnabled: utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert())
 	repoRef := RepoRef{ProjectRef{
@@ -317,6 +323,37 @@ func TestChangeOwnerRepo(t *testing.T) {
 	assert.Len(t, userFromDB.SystemRoles, 2)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
 	assert.Contains(t, userFromDB.SystemRoles, GetViewRepoRole(pRefFromDB.RepoRefId))
+
+	// Attaching a different project to this repo will result in Github conflicts being unset.
+	pRef = ProjectRef{
+		Id:        "mySecondProject",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Branch:    "main",
+		Admins:    []string{"me"},
+		RepoRefId: "myRepo",
+		CommitQueue: CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+		GithubChecksEnabled: utility.TruePtr(),
+	}
+	assert.NoError(t, pRef.Insert())
+	pRef.Owner = "newOwner"
+	pRef.Repo = "newRepo"
+	assert.NoError(t, pRef.AttachToNewRepo(u))
+	assert.True(t, pRef.UseRepoSettings())
+	assert.NotEmpty(t, pRef.RepoRefId)
+
+	pRefFromDB, err = FindBranchProjectRef(pRef.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, pRefFromDB)
+	assert.True(t, pRefFromDB.UseRepoSettings())
+	assert.NotEmpty(t, pRefFromDB.RepoRefId)
+	// Commit queue and PR testing should be set to false, since they would introduce project conflicts.
+	assert.False(t, pRefFromDB.CommitQueue.IsEnabled())
+	assert.False(t, pRefFromDB.IsPRTestingEnabled())
+	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
+
 }
 
 func TestAttachToRepo(t *testing.T) {
@@ -328,12 +365,19 @@ func TestAttachToRepo(t *testing.T) {
 		Id:     "myProject",
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
+		Branch: "main",
 		Admins: []string{"me"},
+		CommitQueue: CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+		GithubChecksEnabled: utility.TruePtr(),
+		Enabled:             utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert())
 
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
+	// No repo exists, but one should be created.
 	assert.NoError(t, pRef.AttachToRepo(u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
@@ -343,12 +387,42 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NotNil(t, pRefFromDB)
 	assert.True(t, pRefFromDB.UseRepoSettings())
 	assert.NotEmpty(t, pRefFromDB.RepoRefId)
+	assert.True(t, pRefFromDB.IsEnabled())
+	assert.True(t, pRefFromDB.CommitQueue.IsEnabled())
+	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
 
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
+
+	// Try attaching a new project ref, now that a repo does exist.
+	pRef = ProjectRef{
+		Id:     "mySecondProject",
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "main",
+		Admins: []string{"me"},
+		CommitQueue: CommitQueueParams{
+			Enabled: utility.TruePtr(),
+		},
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.AttachToRepo(u))
+	assert.True(t, pRef.UseRepoSettings())
+	assert.NotEmpty(t, pRef.RepoRefId)
+
+	pRefFromDB, err = FindBranchProjectRef(pRef.Id)
+	assert.NoError(t, err)
+	assert.NotNil(t, pRefFromDB)
+	assert.True(t, pRefFromDB.UseRepoSettings())
+	assert.NotEmpty(t, pRefFromDB.RepoRefId)
+	// Commit queue and github checks should be set to false, since they would introduce project conflicts.
+	assert.False(t, pRefFromDB.CommitQueue.IsEnabled())
+	assert.False(t, pRefFromDB.IsGithubChecksEnabled())
+	assert.True(t, pRefFromDB.IsPRTestingEnabled())
 }
 
 func TestDetachFromRepo(t *testing.T) {

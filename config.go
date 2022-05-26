@@ -33,10 +33,10 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2022-04-20"
+	ClientVersion = "2022-05-25"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-04-12a"
+	AgentVersion = "2022-05-24"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -76,6 +76,7 @@ type Settings struct {
 	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GithubOrgs          []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	DisabledGQLQueries  []string                  `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
 	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper          HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
 	Jira                JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
@@ -150,6 +151,7 @@ func (c *Settings) Set() error {
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			githubOrgsKey:         c.GithubOrgs,
+			disabledGQLQueriesKey: c.DisabledGQLQueries,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
 			ldapRoleMapKey:        c.LDAPRoleMap,
@@ -208,7 +210,7 @@ func (c *Settings) ValidateAndDefault() error {
 
 	keys := map[string]bool{}
 	for _, mapping := range c.LDAPRoleMap {
-		if keys[mapping.LDAPGroup] == true {
+		if keys[mapping.LDAPGroup] {
 			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
 		}
 		keys[mapping.LDAPGroup] = true

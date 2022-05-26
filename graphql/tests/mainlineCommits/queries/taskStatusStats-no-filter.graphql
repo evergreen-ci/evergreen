@@ -1,0 +1,26 @@
+{
+  mainlineCommits(options: { projectID: "evergreen" }) {
+    versions {
+      version {
+        id
+        taskStatusStats(options: {}) {
+          eta
+          counts {
+            status
+            count
+          }
+        }
+      }
+      rolledUpVersions {
+        id
+        taskStatusStats(options: {}) {
+          eta
+          counts {
+            status
+            count
+          }
+        }
+      }
+    }
+  }
+}

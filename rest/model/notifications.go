@@ -16,7 +16,7 @@ type APIEventStats struct {
 func (n *APIEventStats) BuildFromService(h interface{}) error {
 	stats, ok := h.(*notification.NotificationStats)
 	if !ok {
-		return errors.New("can't convert unknown type to APIEventStats")
+		return errors.Errorf("programmatic error: expected notification stats but got type %T", h)
 	}
 
 	return n.PendingNotificationsByType.BuildFromService(stats)
@@ -38,10 +38,7 @@ type apiNotificationStats struct {
 func (n *apiNotificationStats) BuildFromService(h interface{}) error {
 	data, ok := h.(*notification.NotificationStats)
 	if !ok {
-		return errors.New("can't convert unknown type to apiNotificationStats")
-	}
-	if data == nil {
-		return errors.New("can't convert nil to apiNotificationStats")
+		return errors.Errorf("programmatic error: expected notification stats but got type %T", h)
 	}
 
 	n.GithubPullRequest = data.GithubPullRequest

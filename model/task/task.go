@@ -107,14 +107,19 @@ type Task struct {
 	// container to run it. It only applies to tasks running in containers.
 	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
 
-	BuildId                 string       `bson:"build_id" json:"build_id"`
-	DistroId                string       `bson:"distro" json:"distro"`
-	Container               string       `bson:"container,omitempty" json:"container,omitempty"`
-	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
-	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
-	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents           int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
-	OverrideDependencies    bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	BuildId  string `bson:"build_id" json:"build_id"`
+	DistroId string `bson:"distro" json:"distro"`
+	// Container is the name of the container configuration for running a
+	// container task.
+	Container string `bson:"container,omitempty" json:"container,omitempty"`
+	// ContainerOpts contains the options to configure the container that will
+	// run the task.
+	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options,omitempty"`
+	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
+	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
+	NumDependents           int              `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies    bool             `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// DistroAliases refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
@@ -241,6 +246,23 @@ const (
 	// ExecutionPlatformContainer indicates that the task runs in a container.
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
+
+// ContainerOptions represent options to create the container to run a task.
+type ContainerOptions struct {
+	CPU            int
+	MemoryMB       int
+	WorkingDir     string
+	Image          string
+	OS             evergreen.ContainerOS
+	Arch           evergreen.ContainerArch
+	WindowsVersion evergreen.WindowsVersion
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (o ContainerOptions) IsZero() bool {
+	return o == ContainerOptions{}
+}
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
 func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
@@ -687,7 +709,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 				return false, errors.Wrap(err, "finding dependency")
 			}
 			if foundTask == nil {
-				return false, errors.Errorf("dependency '%s' not found", depTask.Id)
+				return false, errors.Errorf("dependency '%s' not found", dependency.TaskId)
 			}
 			depTask = *foundTask
 			depCaches[depTask.Id] = depTask
@@ -3301,6 +3323,14 @@ func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
 	return FindAll(query)
 }
 
+func (t *Task) toTaskNode() TaskNode {
+	return TaskNode{
+		Name:    t.DisplayName,
+		Variant: t.BuildVariant,
+		ID:      t.Id,
+	}
+}
+
 func AnyActiveTasks(tasks []Task) bool {
 	for _, t := range tasks {
 		if t.Activated {
@@ -3369,6 +3399,16 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 type TasksSortOrder struct {
 	Key   string
 	Order int
+}
+
+type GetTasksByProjectAndCommitOptions struct {
+	Project        string
+	CommitHash     string
+	StartingTaskId string
+	Status         string
+	VariantName    string
+	TaskName       string
+	Limit          int
 }
 
 type GetTasksByVersionOptions struct {
@@ -3497,9 +3537,44 @@ type StatusCount struct {
 	Count  int    `bson:"count"`
 }
 
-func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*StatusCount, error) {
-	StatusCount := []*StatusCount{}
+type TaskStats struct {
+	Counts []StatusCount `bson:"counts"`
+	ETA    *time.Time    `bson:"eta"`
+}
+
+func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
 	pipeline := getTasksByVersionPipeline(versionID, opts)
+	maxEtaPipeline := []bson.M{
+		{
+			"$match": bson.M{
+				ExpectedDurationKey: bson.M{"$exists": true},
+				StartTimeKey:        bson.M{"$exists": true},
+				DisplayStatusKey:    bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+			},
+		},
+		{
+			"$project": bson.M{
+				"eta": bson.M{
+					"$add": []interface{}{
+						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, time.Millisecond}},
+						"$" + StartTimeKey,
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":     nil,
+				"max_eta": bson.M{"$max": "$eta"},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":     0,
+				"max_eta": 1,
+			},
+		},
+	}
 	groupPipeline := []bson.M{
 		{"$group": bson.M{
 			"_id":   "$" + DisplayStatusKey,
@@ -3511,20 +3586,32 @@ func GetTaskStatsByVersion(versionID string, opts GetTasksByVersionOptions) ([]*
 			"count":  1,
 		}},
 	}
-	pipeline = append(pipeline, groupPipeline...)
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting task stats")
-	}
-	err = cursor.All(ctx, &StatusCount)
-	if err != nil {
-		return nil, errors.Wrap(err, "iterating and decoding task stats")
+	facet := bson.M{"$facet": bson.M{
+		"counts": groupPipeline,
+		"eta":    maxEtaPipeline,
+	}}
+	pipeline = append(pipeline, facet)
+
+	type maxETAForQuery struct {
+		MaxETA time.Time `bson:"max_eta"`
 	}
 
-	return StatusCount, nil
+	type taskStatsForQueryResult struct {
+		Counts []StatusCount    `bson:"counts"`
+		ETA    []maxETAForQuery `bson:"eta"`
+	}
+
+	taskStats := []taskStatsForQueryResult{}
+	if err := Aggregate(pipeline, &taskStats); err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	result := TaskStats{}
+	result.Counts = taskStats[0].Counts
+	if len(taskStats[0].ETA) > 0 {
+		result.ETA = &taskStats[0].ETA[0].MaxETA
+	}
+
+	return &result, nil
 }
 
 type GroupedTaskStatusCount struct {
@@ -3631,9 +3718,10 @@ type HasMatchingTasksOptions struct {
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(versionID string, opts HasMatchingTasksOptions) (bool, error) {
 	options := GetTasksByVersionOptions{
-		TaskNames: opts.TaskNames,
-		Variants:  opts.Variants,
-		Statuses:  opts.Statuses,
+		TaskNames:                      opts.TaskNames,
+		Variants:                       opts.Variants,
+		Statuses:                       opts.Statuses,
+		IncludeBuildVariantDisplayName: true,
 	}
 	pipeline := getTasksByVersionPipeline(versionID, options)
 	pipeline = append(pipeline, bson.M{"$count": "count"})
@@ -3809,6 +3897,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		// Add a field for the display status of each task
 		addDisplayStatus,
 	)
+	// Filter on the computed display status before continuing to add additional fields.
+	if len(opts.Statuses) > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				DisplayStatusKey: bson.M{"$in": opts.Statuses},
+			},
+		})
+	}
 	if opts.IncludeBaseTasks {
 		baseCommitMatch := []bson.M{
 			{"$eq": []string{"$" + BuildVariantKey, "$$" + BuildVariantKey}},
@@ -3864,13 +3960,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	// Add the build variant display name to the returned subset of results if it wasn't added earlier
 	if len(opts.Variants) == 0 && opts.IncludeBuildVariantDisplayName {
 		pipeline = append(pipeline, AddBuildVariantDisplayName...)
-	}
-	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
-			},
-		})
 	}
 
 	if opts.IncludeBaseTasks && len(opts.BaseStatuses) > 0 {

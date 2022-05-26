@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -26,9 +25,6 @@ func init() {
 type spawnhostStopJob struct {
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	host *host.Host
-	env  evergreen.Environment
 }
 
 func makeSpawnhostStopJob() *spawnhostStopJob {
@@ -59,11 +55,11 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 
 	stopCloudHost := func(mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.StopInstance(ctx, h, user); err != nil {
-			event.LogHostStopFinished(h.Id, false)
-			return errors.Wrapf(err, "stopping spawn host '%s'", h.Id)
+			event.LogHostStopError(h.Id, err.Error())
+			return errors.Wrap(err, "stopping spawn host")
 		}
 
-		event.LogHostStopFinished(h.Id, true)
+		event.LogHostStopSucceeded(h.Id)
 
 		return nil
 	}

@@ -71,23 +71,22 @@ func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 
 func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	cq.project = vars["project_id"]
-	cq.item = vars["item"]
-
+	cq.item = vars["patch_id"]
+	requestedPatch, err := patch.FindOneId(cq.item)
+	if err != nil {
+		return errors.Wrapf(err, "finding commit queue item '%s'", cq.item)
+	}
+	if requestedPatch == nil {
+		return errors.New("commit queue item not found")
+	}
+	cq.project = requestedPatch.Project
 	return nil
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
 	dc := data.DBCommitQueueConnector{}
-	projectRef, err := data.FindProjectById(cq.project, true, false)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project '%s'", cq.project))
-	}
-	if projectRef == nil {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", cq.project))
-	}
 
-	removed, err := data.CommitQueueRemoveItem(projectRef.Id, cq.item, gimlet.GetUser(ctx).DisplayName())
+	removed, err := data.CommitQueueRemoveItem(cq.project, cq.item, gimlet.GetUser(ctx).DisplayName())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting commit queue item '%s' from commit queue for project '%s'", cq.item, cq.project))
 	}
@@ -100,6 +99,13 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 
 	// Send GitHub status
 	if utility.FromStringPtr(removed.Source) == commitqueue.SourcePullRequest {
+		projectRef, err := data.FindProjectById(cq.project, true, false)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
+		}
+		if projectRef == nil {
+			return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' doesn't exist", cq.project))
+		}
 		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an integer", cq.item))

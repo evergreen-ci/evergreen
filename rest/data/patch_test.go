@@ -488,6 +488,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
 	s.Len(patches, 1)
 	s.Equal(s.time.Add(time.Second*6), *patches[0].CreateTime)
 }
+
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)

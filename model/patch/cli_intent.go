@@ -157,10 +157,6 @@ func (c *cliIntent) GetType() string {
 	return CliIntentType
 }
 
-func (c *cliIntent) getPath() string {
-	return c.Path
-}
-
 func (c *cliIntent) ID() string {
 	return c.DocumentID
 }

@@ -771,7 +771,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		if h.opts.Expiration.Before(volume.Expiration) {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot make expiration time earlier than current expiration %s", volume.Expiration.Format(time.RFC1123)))
 		}
-		if h.opts.Expiration.Sub(time.Now()) > evergreen.MaxSpawnHostExpirationDurationHours {
+		if time.Until(h.opts.Expiration) > evergreen.MaxSpawnHostExpirationDurationHours {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("cannot extend expiration past max expiration %s", time.Now().Add(evergreen.MaxSpawnHostExpirationDurationHours).Format(time.RFC1123)))
 		}
 

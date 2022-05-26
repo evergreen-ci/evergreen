@@ -22,7 +22,7 @@ func (a *APIHostCreateDetail) BuildFromService(t interface{}) error {
 		a.HostId = utility.ToStringPtr(v.HostId)
 		a.Error = utility.ToStringPtr(v.Error)
 	default:
-		return errors.New("Incorrect type when unmarshalling HostCreateDetail")
+		return errors.Errorf("programmatic error: expected host create detail but got %T", t)
 	}
 	return nil
 }

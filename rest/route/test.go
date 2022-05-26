@@ -31,6 +31,7 @@ type testGetHandler struct {
 	key           string
 	limit         int
 	sc            data.Connector
+	latest        bool
 }
 
 func makeFetchTestsForTask(sc data.Connector) gimlet.RouteHandler {
@@ -60,12 +61,21 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	vals := r.URL.Query()
 	execution := vals.Get("execution")
+	tgh.latest = vals.Get("latest") == "true"
 
 	if execution != "" {
+		if tgh.latest {
+			return gimlet.ErrorResponse{
+				Message:    "cannot specify both latest and execution",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
 		tgh.testExecution, err = strconv.Atoi(execution)
 		if err != nil {
 			return errors.Wrap(err, "invalid execution")
 		}
+	} else if tgh.latest {
+		tgh.testExecution = projCtx.Task.Execution
 	}
 
 	if status := vals.Get("status"); status != "" {

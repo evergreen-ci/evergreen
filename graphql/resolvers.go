@@ -592,7 +592,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 			return false, InternalServerError.Send(ctx, errors.Wrapf(err, errorTemplate, vol.ID).Error())
 		}
 		additionalOptions.Expiration = newExpiration
-	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration == true {
+	} else if spawnVolumeInput.NoExpiration != nil && *spawnVolumeInput.NoExpiration {
 		// this value should only ever be true or nil
 		additionalOptions.NoExpiration = true
 	}
@@ -628,7 +628,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	}
 	var updateOptions restModel.VolumeModifyOptions
 	if updateVolumeInput.NoExpiration != nil {
-		if *updateVolumeInput.NoExpiration == true {
+		if *updateVolumeInput.NoExpiration {
 			// this value should only ever be true or nil
 			updateOptions.NoExpiration = true
 		} else {
@@ -730,7 +730,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
 	}
 	if spawnHost == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("An error occurred Spawn host is nil"))
+		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
 	}
 	apiHost := restModel.APIHost{}
 	if err := apiHost.BuildFromService(spawnHost); err != nil {
@@ -797,7 +797,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, editSpawnHostInput
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
 		}
 		if v.AvailabilityZone != h.Zone {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error mounting volume to spawn host, They must be in the same availability zone."))
+			return nil, InputValidationError.Send(ctx, "Error mounting volume to spawn host, They must be in the same availability zone.")
 		}
 		opts.AttachVolume = *editSpawnHostInput.Volume
 	}
@@ -903,31 +903,22 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		switch *sortBy {
 		case HostSortByCurrentTask:
 			sorter = host.RunningTaskKey
-			break
 		case HostSortByDistro:
 			sorter = host.DistroKey
-			break
 		case HostSortByElapsed:
 			sorter = "task_full.start_time"
-			break
 		case HostSortByID:
 			sorter = host.IdKey
-			break
 		case HostSortByIDLeTime:
 			sorter = host.TotalIdleTimeKey
-			break
 		case HostSortByOwner:
 			sorter = host.StartedByKey
-			break
 		case HostSortByStatus:
 			sorter = host.StatusKey
-			break
 		case HostSortByUptime:
 			sorter = host.CreateTimeKey
-			break
 		default:
 			sorter = host.StatusKey
-			break
 		}
 
 	}
@@ -1053,6 +1044,10 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, identifier string) 
 	if err = res.ProjectRef.BuildFromService(projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
+	if !projectRef.UseRepoSettings() {
+		// Default values so the UI understands what to do with nil values.
+		res.ProjectRef.DefaultUnsetBooleans()
+	}
 	return res, nil
 }
 
@@ -1072,6 +1067,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, id string) (*restModel
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
 	}
 
+	// Default values so the UI understands what to do with nil values.
 	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
 }
@@ -1089,13 +1085,13 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier string, li
 	return res, err
 }
 
-func (r *queryResolver) RepoEvents(ctx context.Context, identifier string, limit *int, before *time.Time) (*RepoEvents, error) {
+func (r *queryResolver) RepoEvents(ctx context.Context, id string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetEventsById(identifier, timestamp, utility.FromIntPtr(limit))
-	res := &RepoEvents{
+	events, err := data.GetEventsById(id, timestamp, utility.FromIntPtr(limit))
+	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
 	}
@@ -1142,7 +1138,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, opts)
-	if err != nil {
+	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
 		if ok {
 			if apiErr.StatusCode == http.StatusBadRequest {
@@ -1153,6 +1149,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, opts data.CopyProjec
 		}
 		return nil, InternalServerError.Send(ctx, err.Error())
 
+	}
+	if err != nil {
+		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
+		// https://github.com/99designs/gqlgen/issues/1191
+		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 	return projectRef, nil
 }
@@ -1242,7 +1243,7 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
 	}
 	if usr == nil {
-		return "", ResourceNotFound.Send(ctx, fmt.Sprint("Could not find user from user ID"))
+		return "", ResourceNotFound.Send(ctx, "Could not find user from user ID")
 	}
 	return usr.DisplayName(), nil
 }
@@ -3729,6 +3730,29 @@ func (r *versionResolver) TaskStatusCounts(ctx context.Context, v *restModel.API
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting version task stats: %s", err.Error()))
 	}
+	result := []*task.StatusCount{}
+	for _, c := range stats.Counts {
+		count := c
+		result = append(result, &count)
+	}
+	return result, nil
+}
+
+func (r *versionResolver) TaskStatusStats(ctx context.Context, v *restModel.APIVersion, options *BuildVariantOptions) (*task.TaskStats, error) {
+	opts := task.GetTasksByVersionOptions{
+		IncludeBaseTasks:      false,
+		IncludeExecutionTasks: false,
+		TaskNames:             options.Tasks,
+		Variants:              options.Variants,
+		Statuses:              getValidTaskStatusesFilter(options.Statuses),
+	}
+	if len(options.Variants) != 0 {
+		opts.IncludeBuildVariantDisplayName = true // we only need the buildVariantDisplayName if we plan on filtering on it.
+	}
+	stats, err := task.GetTaskStatsByVersion(*v.Id, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
+	}
 
 	return stats, nil
 }
@@ -3909,41 +3933,28 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 }
 
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
-	status, err := evergreen.VersionStatusToPatchStatus(*obj.Status)
+	collectiveStatusArray, err := getCollectiveStatusArray(*obj)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("An error occurred when converting a version status: %s", err.Error()))
-	}
-	isAborted := utility.FromBoolPtr(obj.Aborted)
-	nonAbortedStatuses := []string{}
-	if !isAborted {
-		nonAbortedStatuses = append(nonAbortedStatuses, status)
-	}
-	if evergreen.IsPatchRequester(*obj.Requester) {
-		p, err := data.FindPatchById(*obj.Id)
-		if err != nil {
-			return status, InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch Patch %s: %s", *obj.Id, err.Error()))
-		}
-		if len(p.ChildPatches) > 0 {
-			for _, cp := range p.ChildPatches {
-				cpVersion, err := model.VersionFindOneId(*cp.Version)
-				if err != nil {
-					return "", InternalServerError.Send(ctx, fmt.Sprintf("Could not fetch version for patch: %s ", err.Error()))
-				}
-				if cpVersion.Aborted {
-					isAborted = true
-				} else {
-					nonAbortedStatuses = append(nonAbortedStatuses, *cp.Status)
-				}
-			}
-			status = patch.GetCollectiveStatus(nonAbortedStatuses)
-		}
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting collective status array: %s", err.Error()))
 	}
 
-	// If theres an aborted task we should set the patch status to aborted if there are no other failures
-	if isAborted && !utility.StringSliceContains(nonAbortedStatuses, evergreen.PatchFailed) {
-		status = evergreen.PatchAborted
-	}
+	status := patch.GetCollectiveStatus(collectiveStatusArray)
+
 	return status, nil
+}
+func (*versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
+	projectRef, err := model.FindMergedProjectRef(*obj.Project, *obj.Id, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, err.Error()))
+	}
+	if projectRef == nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *obj.Project, "Project not found"))
+	}
+	apiProjectRef := restModel.APIProjectRef{}
+	if err = apiProjectRef.BuildFromService(projectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
+	}
+	return &apiProjectRef, nil
 }
 
 func (*versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {

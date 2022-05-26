@@ -31,6 +31,9 @@ const (
 
 	// StatusTerminated indicates that the instance is deleted.
 	StatusTerminated
+
+	// StatusNonExistent indicates that the instance doesn't exist.
+	StatusNonExistent
 )
 
 func (stat CloudStatus) String() string {

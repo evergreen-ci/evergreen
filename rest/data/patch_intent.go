@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
@@ -21,7 +22,7 @@ func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "failed to fetch project_ref",
+			Message:    errors.Wrap(err, "finding project ref for patch").Error(),
 		}
 	}
 	if projectRef == nil {
@@ -42,22 +43,21 @@ func AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 	}
 
 	job := units.NewPatchIntentProcessor(mgobson.NewObjectId(), intent)
-	job.SetPriority(1)
 	if err := queue.Put(context.TODO(), job); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"source":    "github hook",
-			"message":   "Github pull request not queued for processing",
+			"source":    "GitHub hook",
+			"message":   "GitHub pull request not queued for processing",
 			"intent_id": intent.ID(),
 		}))
 
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "failed to queue patch intent for processing",
+			Message:    "enqueueing patch intent for processing",
 		}
 	}
 
 	grip.Info(message.Fields{
-		"message":     "Github pull request queued",
+		"message":     "GitHub pull request queued",
 		"intent_type": intent.GetType(),
 		"intent_id":   intent.ID(),
 	})

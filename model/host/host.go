@@ -241,10 +241,10 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider settings into BSON")
 		}
 		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into Docker provider settings")
 		}
 	}
 	return nil
@@ -435,15 +435,12 @@ func (h *Host) NeedsPortBindings() bool {
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
 func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		if !usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
 			RequiredLevel: evergreen.HostsEdit.Value,
-		}) {
-			return false
-		}
-		return true
+		})
 	}
 	return true
 }
@@ -1666,10 +1663,10 @@ func FindHostsToTerminate() ([]Host, error) {
 			{
 				// Either:
 				// - Host that does not provision with user data is taking too
-				//   long to provision
+				//   long to provision.
 				// - Host that provisions with user data is taking too long to
-				//   provision, but has already started running tasks and not
-				//   checked in recently.
+				//   provision. In addition, it is not currently running a task
+				//   and has not checked in recently.
 				"$and": []bson.M{
 					// Host is not yet done provisioning
 					{"$or": []bson.M{
@@ -1680,8 +1677,11 @@ func FindHostsToTerminate() ([]Host, error) {
 						{
 							// Host is a user data host and either has not run a
 							// task yet or has not started its agent monitor -
-							// both are indicators that the host failed to start
-							// the agent in a reasonable amount of time.
+							// both are indicators that the host's agent is not
+							// up. The host has either 1. failed to start the
+							// agent or 2. failed to prove the agent's
+							// liveliness by continuously pinging the app server
+							// with requests.
 							"$or": []bson.M{
 								{RunningTaskKey: bson.M{"$exists": false}},
 								{LTCTaskKey: ""},
@@ -1864,7 +1864,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	if !h.HasContainers {
 		return false, nil
 	}
-	// sanity check so that hosts not immediately decommissioned
+	// Verify that hosts are not immediately decommissioned.
 	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}
@@ -2695,9 +2695,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	defer cancel()
 
 	countPipeline := []bson.M{}
-	for _, stage := range runningHostsPipeline {
-		countPipeline = append(countPipeline, stage)
-	}
+	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
@@ -2771,9 +2769,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	if hasFilters {
 		countPipeline = []bson.M{}
-		for _, stage := range runningHostsPipeline {
-			countPipeline = append(countPipeline, stage)
-		}
+		countPipeline = append(countPipeline, runningHostsPipeline...)
 		countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 		tmp = []counter{}

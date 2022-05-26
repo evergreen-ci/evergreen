@@ -157,6 +157,9 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
 	}
+	if vars == nil {
+		vars = &ProjectVars{}
+	}
 	vars.Id = newProjectId
 	_, err = vars.Upsert()
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)

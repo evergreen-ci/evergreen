@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit")
+var podInitConfigKey = bsonutil.MustHaveTag(Settings{}, "PodInit") //nolint: deadcode, unused
 
 // PodInitConfig holds logging settings for the pod init process.
 type PodInitConfig struct {

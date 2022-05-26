@@ -129,9 +129,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // this is the route manager for /status/hosts/distros, which returns a count of up hosts grouped by distro
-type hostStatsByDistroHandler struct {
-	sc data.Connector
-}
+type hostStatsByDistroHandler struct{}
 
 func makeHostStatusByDistroRoute() gimlet.RouteHandler {
 	return &hostStatsByDistroHandler{}

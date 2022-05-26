@@ -117,13 +117,13 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	logger.Execution().Debug("Preparing script...")
 
 	var err error
-	var originalScript string
+	originalScript := c.Script
 	if err = c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
 	if originalScript != c.Script {
-		logger.Task().Info("`${SHELL_EXPANSION}` syntax will only work for Evergreen expansions. See Evergreen FAQ for details.")
+		logger.Task().Info("`${SHELL_EXPANSION}` syntax will only work for Evergreen expansions.")
 	}
 
 	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
@@ -231,8 +231,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	err = cmd.Run(ctx)
-
-	err = errors.Wrapf(err, "command encountered problem")
+	if !c.Background && err != nil {
+		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {
+			err = errors.Errorf("exit code %d", exitCode)
+		}
+	}
+	err = errors.Wrapf(err, "shell script encountered problem")
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())

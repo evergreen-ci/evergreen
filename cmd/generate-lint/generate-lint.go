@@ -17,13 +17,12 @@ import (
 )
 
 const (
-	lintPrefix        = "lint"
-	lintVariant       = "lint"
-	lintGroup         = "lint-group"
-	evergreenLintTask = "evergreen"
-	jsonFilename      = "bin/generate-lint.json"
-	scriptsDir        = "scripts"
-	packagePrefix     = "github.com/evergreen-ci/evergreen"
+	lintPrefix    = "lint"
+	lintVariant   = "lint"
+	lintGroup     = "lint-group"
+	jsonFilename  = "bin/generate-lint.json"
+	scriptsDir    = "scripts"
+	packagePrefix = "github.com/evergreen-ci/evergreen"
 )
 
 // whatChanged returns a list of files that have changed in the working

@@ -452,7 +452,7 @@ mciModule.controller(
           }
           $scope.projectVars = data.ProjectVars.vars || {};
           $scope.privateVars = data.ProjectVars.private_vars || {};
-          $scope.adminOnlyVars = data.ProjectVars.adminS_only_vars || {};
+          $scope.adminOnlyVars = data.ProjectVars.admin_only_vars || {};
           $scope.github_webhooks_enabled = data.github_webhooks_enabled;
           $scope.githubChecksConflicts =
             data.github_checks_conflicting_refs || [];
@@ -828,6 +828,7 @@ mciModule.controller(
     $scope.removeProjectVar = function (name) {
       delete $scope.settingsFormData.project_vars[name];
       delete $scope.settingsFormData.private_vars[name];
+      delete $scope.settingsFormData.admin_only_vars[name];
       $scope.isDirty = true;
     };
 
