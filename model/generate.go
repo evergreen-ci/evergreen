@@ -289,21 +289,25 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, v *Version
 	return nil
 }
 
-// CyclesForNewGraph builds a dependency graph from the existing tasks in the version and simulates
+// CheckForCycles builds a dependency graph from the existing tasks in the version and simulates
 // adding the generated tasks, their dependencies, and dependencies on the generated tasks to the graph.
-// Any resulting dependency cycles are returned.
-func (g *GeneratedProject) CyclesForNewGraph(v *Version, p *Project, projectRef *ProjectRef) (task.DependencyCycles, error) {
+// Returns a DependencyCycleError error if the resultant graph contains dependency cycles.
+func (g *GeneratedProject) CheckForCycles(v *Version, p *Project, projectRef *ProjectRef) error {
 	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
+		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}
 
 	simulatedGraph, err := g.simulateNewTasks(existingTasksGraph, v, p, projectRef)
 	if err != nil {
-		return nil, errors.Wrap(err, "simulating new tasks")
+		return errors.Wrap(err, "simulating new tasks")
 	}
 
-	return simulatedGraph.Cycles(), nil
+	if cycles := simulatedGraph.Cycles(); len(cycles) > 0 {
+		return errors.Wrapf(DependencyCycleError, "'%s'", cycles)
+	}
+
+	return nil
 }
 
 // simulateNewTasks adds the tasks we're planning to add to the version to the graph and
