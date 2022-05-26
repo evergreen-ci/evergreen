@@ -520,7 +520,8 @@ mciModule.controller(
             disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
             periodic_builds: data.ProjectRef.periodic_builds,
             container_sizes: data.ProjectRef.container_sizes || {},
-            use_repo_settings: !!$scope.projectRef.repo_ref_id,
+            container_credentials: data.ProjectRef.container_credentials || {},
+            use_repo_settings: false,
             build_baron_settings: data.ProjectRef.build_baron_settings || {},
             task_annotation_settings: data.ProjectRef.task_annotation_settings || {},
             perf_enabled: data.ProjectRef.perf_enabled || false,
@@ -653,6 +654,10 @@ mciModule.controller(
 
       if ($scope.container_size) {
         $scope.addContainerSize();
+      }
+
+      if ($scope.container_credential) {
+        $scope.addContainerCredential();
       }
 
       $scope.settingsFormData.subscriptions = _.filter(
@@ -812,6 +817,21 @@ mciModule.controller(
       $scope.invalidContainerSizeMessage = "";
     };
 
+    $scope.addContainerCredential = function () {
+      if (!$scope.validContainerCredential($scope.container_credential)) {
+          $scope.invalidContainerCredentialMessage =
+              "A valid container credential must have a valid username and password.";
+          return;
+      }
+      var item = Object.assign({}, $scope.container_credential);
+      $scope.settingsFormData.container_credentials[item.name] = {
+          "username": item.username,
+          "password": item.password,
+      }
+      delete $scope.container_credential;
+      $scope.invalidContainerCredentialMessage = "";
+    };
+
     $scope.addWorkstationCommand = function () {
       if (!$scope.settingsFormData.workstation_config) {
         $scope.settingsFormData.workstation_config = {};
@@ -885,6 +905,13 @@ mciModule.controller(
       $scope.removeContainerSize = function (name) {
           if ($scope.settingsFormData.container_sizes[name]) {
               delete $scope.settingsFormData.container_sizes[name]
+          }
+          $scope.isDirty = true;
+      };
+
+      $scope.removeContainerCredential = function (name) {
+          if ($scope.settingsFormData.container_credentials[name]) {
+              delete $scope.settingsFormData.container_credentials[name]
           }
           $scope.isDirty = true;
       };
@@ -1118,6 +1145,11 @@ mciModule.controller(
     $scope.validContainerSize = function (container_size) {
       return container_size && container_size.cpu && container_size.memory_mb
           && container_size.cpu > 0 && container_size.memory_mb > 0;
+    };
+
+    $scope.validContainerCredential = function (containter_credential) {
+      return containter_credential && containter_credential.username && containter_credential.password
+        && containter_credential.username !== "" && containter_credential.password !== "";
     };
 
     $scope.validWorkstationCommand = function (obj) {

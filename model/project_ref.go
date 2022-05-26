@@ -108,7 +108,8 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizes map[string]ContainerResources `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerSizes       map[string]ContainerResources  `bson:"container_sizes,omitempty" json:"container_sizes,omitempty" yaml:"container_sizes,omitempty"`
+	ContainerCredentials map[string]ContainerCredential `bson:"container_credentials,omitempty" json:"container_credentials,omitempty" yaml:"container_credentials,omitempty"`
 
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
@@ -154,6 +155,14 @@ type AlertConfig struct {
 type ContainerResources struct {
 	MemoryMB int `bson:"memory_mb,omitempty" json:"memory_mb" yaml:"memory_mb"`
 	CPU      int `bson:"cpu,omitempty" json:"cpu" yaml:"cpu"`
+}
+
+// ContainerCredential specifies the username and password required for authentication
+// on a private image repository. The credential is saved in AWS Secrets Manager upon
+// saving to the ProjectRef
+type ContainerCredential struct {
+	Username string `bson:"username,omitempty" json:"username" yaml:"username"`
+	Password string `bson:"password,omitempty" json:"password" yaml:"password"`
 }
 
 type TriggerDefinition struct {
@@ -2499,10 +2508,15 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 		if ok {
 			catcher.Add(size.Validate())
 		}
+		credential, ok := pRef.ContainerCredentials[container.Credential]
+		if ok {
+			catcher.Add(credential.Validate())
+		}
 		if container.Resources != nil {
 			catcher.Add(container.Resources.Validate())
 		}
 		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
+		catcher.ErrorfWhen(container.Credential != "" && !ok, "credential '%s' is not defined anywhere", container.Credential)
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
 		catcher.NewWhen(container.Image == "", "image must be defined")
@@ -2532,6 +2546,14 @@ func (c ContainerResources) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.CPU <= 0, "container resource CPU must be a positive integer")
 	catcher.NewWhen(c.MemoryMB <= 0, "container resource memory MB must be a positive integer")
+	return catcher.Resolve()
+}
+
+// Validate that essential ContainerCredential fields are properly defined.
+func (c ContainerCredential) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.NewWhen(c.Username == "", "container credential username must be a non empty string")
+	catcher.NewWhen(c.Password == "", "container credential password must be a non empty string")
 	return catcher.Resolve()
 }
 

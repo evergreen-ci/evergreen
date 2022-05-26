@@ -297,22 +297,23 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure    bool                                       `json:"notify_on_failure"`
-		ForceRepotrackerRun     bool                                       `json:"force_repotracker_run"`
-		DeactivateStepbackTasks bool                                       `json:"deactivate_stepback_tasks"`
-		Subscriptions           []restModel.APISubscription                `json:"subscriptions,omitempty"`
-		DeleteSubscriptions     []string                                   `json:"delete_subscriptions"`
-		Triggers                []model.TriggerDefinition                  `json:"triggers,omitempty"`
-		PatchTriggerAliases     []patch.PatchTriggerDefinition             `json:"patch_trigger_aliases,omitempty"`
-		GithubTriggerAliases    []string                                   `json:"github_trigger_aliases,omitempty"`
-		FilesIgnoredFromCache   []string                                   `json:"files_ignored_from_cache,omitempty"`
-		DisabledStatsCache      bool                                       `json:"disabled_stats_cache"`
-		PeriodicBuilds          []*model.PeriodicBuildDefinition           `json:"periodic_builds,omitempty"`
-		WorkstationConfig       restModel.APIWorkstationConfig             `json:"workstation_config"`
-		PerfEnabled             bool                                       `json:"perf_enabled"`
-		BuildBaronSettings      restModel.APIBuildBaronSettings            `json:"build_baron_settings"`
-		TaskAnnotationSettings  restModel.APITaskAnnotationSettings        `json:"task_annotation_settings"`
-		ContainerSizes          map[string]restModel.APIContainerResources `json:"container_sizes"`
+		NotifyOnBuildFailure    bool                                        `json:"notify_on_failure"`
+		ForceRepotrackerRun     bool                                        `json:"force_repotracker_run"`
+		DeactivateStepbackTasks bool                                        `json:"deactivate_stepback_tasks"`
+		Subscriptions           []restModel.APISubscription                 `json:"subscriptions,omitempty"`
+		DeleteSubscriptions     []string                                    `json:"delete_subscriptions"`
+		Triggers                []model.TriggerDefinition                   `json:"triggers,omitempty"`
+		PatchTriggerAliases     []patch.PatchTriggerDefinition              `json:"patch_trigger_aliases,omitempty"`
+		GithubTriggerAliases    []string                                    `json:"github_trigger_aliases,omitempty"`
+		FilesIgnoredFromCache   []string                                    `json:"files_ignored_from_cache,omitempty"`
+		DisabledStatsCache      bool                                        `json:"disabled_stats_cache"`
+		PeriodicBuilds          []*model.PeriodicBuildDefinition            `json:"periodic_builds,omitempty"`
+		WorkstationConfig       restModel.APIWorkstationConfig              `json:"workstation_config"`
+		PerfEnabled             bool                                        `json:"perf_enabled"`
+		BuildBaronSettings      restModel.APIBuildBaronSettings             `json:"build_baron_settings"`
+		TaskAnnotationSettings  restModel.APITaskAnnotationSettings         `json:"task_annotation_settings"`
+		ContainerSizes          map[string]restModel.APIContainerResources  `json:"container_sizes"`
+		ContainerCredentials    map[string]restModel.APIContainerCredential `json:"container_credentials"`
 	}{}
 
 	if err = utility.ReadJSON(utility.NewRequestReader(r), &responseRef); err != nil {
@@ -581,6 +582,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		containerSizes[key] = containerResource
 	}
 
+	containerCredentials := map[string]model.ContainerCredential{}
+	for key, apiContainerCredential := range responseRef.ContainerCredentials {
+		containerCredential := apiContainerCredential.ToService()
+		containerCredentials[key] = containerCredential
+	}
+
 	catcher := grip.NewSimpleCatcher()
 	for i := range responseRef.Triggers {
 		catcher.Add(responseRef.Triggers[i].Validate(id))
@@ -594,6 +601,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	for size, containerResource := range containerSizes {
 		catcher.Wrapf(containerResource.Validate(), "invalid container size '%s'", size)
+	}
+	for name, containerCredential := range containerCredentials {
+		catcher.Wrapf(containerCredential.Validate(), "invalid container credential '%s'", name)
 	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
@@ -641,6 +651,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
 	projectRef.PerfEnabled = &responseRef.PerfEnabled
 	projectRef.ContainerSizes = containerSizes
+	projectRef.ContainerCredentials = containerCredentials
 	if hook != nil {
 		projectRef.TracksPushEvents = utility.TruePtr()
 	}
@@ -656,6 +667,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectRef.WorkstationConfig = config
+
+	if containerCredentials != nil {
+		// TODO: store / update these credentials in Secrets Manager if applicable
+	}
 
 	if responseRef.ForceRepotrackerRun {
 		ts := utility.RoundPartOfHour(1).Format(units.TSFormat)

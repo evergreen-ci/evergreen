@@ -367,6 +367,23 @@ type APIWorkstationConfig struct {
 	GitClone      *bool                        `bson:"git_clone" json:"git_clone"`
 }
 
+type APIContainerCredential struct {
+	Username *string `bson:"username" json:"username"`
+	Password *string `bson:"password" json:"password"`
+}
+
+func (cr *APIContainerCredential) BuildFromService(h model.ContainerCredential) {
+	cr.Username = utility.ToStringPtr(h.Username)
+	cr.Password = utility.ToStringPtr(h.Password)
+}
+
+func (cr *APIContainerCredential) ToService() model.ContainerCredential {
+	return model.ContainerCredential{
+		Username: utility.FromStringPtr(cr.Username),
+		Password: utility.FromStringPtr(cr.Password),
+	}
+}
+
 type APIContainerResources struct {
 	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
 	CPU      *int `bson:"cpu" json:"cpu"`
