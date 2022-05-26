@@ -37,16 +37,13 @@ type LastError struct {
 	WTimeout        bool
 	UpdatedExisting bool        `bson:"updatedExisting"`
 	UpsertedId      interface{} `bson:"upserted"`
-
-	modified int
-	ecases   []BulkErrorCase
 }
 
 func (err *LastError) Error() string {
 	return err.Err
 }
 
-type queryError struct {
+type queryError struct { //nolint
 	//nolint
 	Err       string "$err"
 	ErrMsg    string

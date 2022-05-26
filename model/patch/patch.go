@@ -339,9 +339,7 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 }
 
 func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
-	for _, param := range parameters {
-		p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, param)
-	}
+	p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, parameters...)
 
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey)
 	return UpdateOne(

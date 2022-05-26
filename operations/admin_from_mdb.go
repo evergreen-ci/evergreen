@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -38,7 +37,7 @@ func toMdbForLocal() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  dbFlagName,
-				Usage: fmt.Sprintf("write to this database"),
+				Usage: "write to this database",
 				Value: evergreenLocalDBName,
 			},
 			cli.StringFlag{

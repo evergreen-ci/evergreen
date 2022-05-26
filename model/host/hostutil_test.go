@@ -402,8 +402,8 @@ func TestJasperCommands(t *testing.T) {
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 			assert.Contains(t, cmd, fmt.Sprintf("--user=%s", h.User))
-			assert.Contains(t, cmd, fmt.Sprintf("--env 'envKey0=envValue0'"))
-			assert.Contains(t, cmd, fmt.Sprintf("--env 'envKey1=envValue1'"))
+			assert.Contains(t, cmd, "--env 'envKey0=envValue0'")
+			assert.Contains(t, cmd, "--env 'envKey1=envValue1'")
 		},
 		"ForceReinstallJasperCommandWithSplunkLogging": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			settings.Splunk.ServerURL = "url"

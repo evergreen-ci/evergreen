@@ -16,7 +16,6 @@ import (
 type GCESuite struct {
 	client   gceClient
 	manager  *gceManager
-	distro   distro.Distro
 	hostOpts host.CreateOptions
 	suite.Suite
 }

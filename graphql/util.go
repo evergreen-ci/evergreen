@@ -52,7 +52,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		apiFile := restModel.APIFile{}
 		err := apiFile.BuildFromService(file)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error stripping hidden files"))
+			return nil, InternalServerError.Send(ctx, "error stripping hidden files")
 		}
 		apiFileList = append(apiFileList, &apiFile)
 	}
@@ -549,7 +549,7 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 
 func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 	if publicKey.Name == "" {
-		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key name cannot be empty."))
+		return InputValidationError.Send(ctx, "Provided public key name cannot be empty.")
 	}
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Key))
 	if err != nil {
@@ -630,7 +630,7 @@ func mustHaveUser(ctx context.Context) *user.DBUser {
 }
 
 func validateVolumeExpirationInput(ctx context.Context, expirationTime *time.Time, noExpiration *bool) error {
-	if expirationTime != nil && noExpiration != nil && *noExpiration == true {
+	if expirationTime != nil && noExpiration != nil && *noExpiration {
 		return InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
 	}
 	return nil

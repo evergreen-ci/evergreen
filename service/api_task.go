@@ -140,7 +140,6 @@ func agentRevisionIsOld(h *host.Host) bool {
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
-	const slowThreshold = 1 * time.Second
 	finishTime := time.Now()
 
 	t := MustHaveTask(r)
@@ -510,7 +509,7 @@ func (as *APIServer) prepareHostForAgentExit(ctx context.Context, params agentEx
 		//    There are some cases where the agent is still checking in for a
 		//    long time after the cloud provider says the instance is already
 		//    terminated. There's no bug on our side, so this log is harmless.
-		if time.Now().Sub(params.host.TerminationTime) > 10*time.Minute {
+		if time.Since(params.host.TerminationTime) > 10*time.Minute {
 			msg := message.Fields{
 				"message":    "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
 				"host_id":    params.host.Id,
@@ -593,7 +592,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 	grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 		"message":     "assignNextAvailableTask performance",
 		"step":        "distro.FindOne",
-		"duration_ns": time.Now().Sub(stepStart),
+		"duration_ns": time.Since(stepStart),
 		"run_id":      runId,
 	})
 	stepStart = time.Now()
@@ -644,7 +643,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "RefreshFindNextTask",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -673,7 +672,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "find task",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -724,7 +723,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "FindMergedProjectRef",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -795,7 +794,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "UpdateRunningTask",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		stepStart = time.Now()
@@ -858,7 +857,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "find task group",
-				"duration_ns": time.Now().Sub(stepStart),
+				"duration_ns": time.Since(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -875,7 +874,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "get host number",
-				"duration_ns": time.Now().Sub(stepStart),
+				"duration_ns": time.Since(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -911,7 +910,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 			grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 				"message":     "assignNextAvailableTask performance",
 				"step":        "ClearRunningTask",
-				"duration_ns": time.Now().Sub(stepStart),
+				"duration_ns": time.Since(stepStart),
 				"run_id":      runId,
 			})
 			stepStart = time.Now()
@@ -927,13 +926,13 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, di
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "DequeueTask",
-			"duration_ns": time.Now().Sub(stepStart),
+			"duration_ns": time.Since(stepStart),
 			"run_id":      runId,
 		})
 		grip.DebugWhen(currentHost.Distro.Id == distroToMonitor, message.Fields{
 			"message":     "assignNextAvailableTask performance",
 			"step":        "total",
-			"duration_ns": time.Now().Sub(funcStart),
+			"duration_ns": time.Since(funcStart),
 			"run_id":      runId,
 		})
 
@@ -1153,7 +1152,6 @@ func setAgentFirstContactTime(h *host.Host) {
 		"provisioning":              h.Distro.BootstrapSettings.Method,
 		"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
 	})
-	return
 }
 
 func getDetails(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (*apimodels.GetNextTaskDetails, bool) {
@@ -1329,7 +1327,6 @@ func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w ht
 		"task_id": t.Id,
 	})
 	gimlet.WriteJSON(w, response)
-	return
 }
 
 func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {

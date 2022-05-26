@@ -504,9 +504,8 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 ////////////////////////////////////////////////////////////////////////
 
 type hostChangeRDPPasswordHandlerSuite struct {
-	rm         gimlet.RouteHandler
-	env        evergreen.Environment
-	sshKeyName string
+	rm  gimlet.RouteHandler
+	env evergreen.Environment
 	suite.Suite
 }
 

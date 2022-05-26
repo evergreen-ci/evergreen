@@ -393,7 +393,7 @@ func shouldContainPair(actual interface{}, expected ...interface{}) string {
 	actualPairsList, ok := actual.([]TVPair)
 
 	if !ok {
-		return fmt.Sprintf("Assertion requires a list of TVPair objects")
+		return "Assertion requires a list of TVPair objects"
 	}
 
 	if len(expected) != 1 {
@@ -402,7 +402,7 @@ func shouldContainPair(actual interface{}, expected ...interface{}) string {
 
 	expectedPair, ok := expected[0].(TVPair)
 	if !ok {
-		return fmt.Sprintf("Assertion requires expected value to be an instance of TVPair")
+		return "Assertion requires expected value to be an instance of TVPair"
 	}
 
 	for _, ap := range actualPairsList {

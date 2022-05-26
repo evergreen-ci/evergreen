@@ -344,7 +344,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 
 		// selectively apply the patch to the config file
 		patchCommandStrings := []string{
-			fmt.Sprintf("set -o errexit"),
+			"set -o errexit",
 			fmt.Sprintf("git apply --whitespace=fix --include=%v < '%v'",
 				remoteConfigPath, patchFilePath),
 		}

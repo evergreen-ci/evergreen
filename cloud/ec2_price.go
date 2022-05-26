@@ -18,22 +18,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type timeRange struct {
-	start time.Time
-	end   time.Time
-}
-
 const spotPriceCacheTTL = 2 * time.Minute
 
 type cachingPriceFetcher struct {
 	ec2Prices  map[odInfo]float64
-	ebsPrices  map[string]float64
 	spotPrices map[string]cachedSpotRate
 	sync.RWMutex
 }
 
 type cachedSpotRate struct {
-	values      []spotRate
 	collectedAt time.Time
 }
 

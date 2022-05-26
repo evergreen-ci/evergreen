@@ -160,7 +160,7 @@ func (s *eventSuite) TestEventWithNilData() {
 }
 
 func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
-	for k, _ := range registry.types {
+	for k := range registry.types {
 		event := NewEventFromType(k)
 		s.NotNil(event)
 		found, rTypeTag := findResourceTypeIn(event)

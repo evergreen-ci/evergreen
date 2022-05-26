@@ -53,11 +53,11 @@ func (t *APITriggerDefinition) ToService() (interface{}, error) {
 
 func (t *APITriggerDefinition) BuildFromService(h interface{}) error {
 	var triggerDef model.TriggerDefinition
-	switch h.(type) {
+	switch v := h.(type) {
 	case model.TriggerDefinition:
-		triggerDef = h.(model.TriggerDefinition)
+		triggerDef = v
 	case *model.TriggerDefinition:
-		triggerDef = *h.(*model.TriggerDefinition)
+		triggerDef = *v
 	default:
 		return errors.Errorf("programmatic error: expected downstream trigger definition but got type %T", h)
 	}
@@ -85,11 +85,11 @@ type APIPatchTriggerDefinition struct {
 
 func (t *APIPatchTriggerDefinition) BuildFromService(h interface{}) error {
 	var def patch.PatchTriggerDefinition
-	switch h.(type) {
+	switch v := h.(type) {
 	case patch.PatchTriggerDefinition:
-		def = h.(patch.PatchTriggerDefinition)
+		def = v
 	case *patch.PatchTriggerDefinition:
-		def = *h.(*patch.PatchTriggerDefinition)
+		def = *v
 	default:
 		return errors.Errorf("programmatic error: expected patch trigger definition but got %T", h)
 	}
@@ -146,11 +146,11 @@ type APITaskSpecifier struct {
 
 func (ts *APITaskSpecifier) BuildFromService(h interface{}) error {
 	var def patch.TaskSpecifier
-	switch h.(type) {
+	switch v := h.(type) {
 	case patch.TaskSpecifier:
-		def = h.(patch.TaskSpecifier)
+		def = v
 	case *patch.TaskSpecifier:
-		def = *h.(*patch.TaskSpecifier)
+		def = *v
 	default:
 		return errors.Errorf("programmatic error: expected patch task specifier but got type %T", h)
 	}
@@ -198,11 +198,11 @@ func (bd *APIPeriodicBuildDefinition) ToService() (interface{}, error) {
 
 func (bd *APIPeriodicBuildDefinition) BuildFromService(h interface{}) error {
 	var params model.PeriodicBuildDefinition
-	switch h.(type) {
+	switch v := h.(type) {
 	case model.PeriodicBuildDefinition:
-		params = h.(model.PeriodicBuildDefinition)
+		params = v
 	case *model.PeriodicBuildDefinition:
-		params = *h.(*model.PeriodicBuildDefinition)
+		params = *v
 	default:
 		return errors.Errorf("programmatic error: expected periodic build definition but got type %T", h)
 	}
@@ -217,11 +217,11 @@ func (bd *APIPeriodicBuildDefinition) BuildFromService(h interface{}) error {
 
 func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 	var params model.CommitQueueParams
-	switch h.(type) {
+	switch v := h.(type) {
 	case model.CommitQueueParams:
-		params = h.(model.CommitQueueParams)
+		params = v
 	case *model.CommitQueueParams:
-		params = *h.(*model.CommitQueueParams)
+		params = *v
 	default:
 		return errors.Errorf("programmatic error: expected commit queue params but got type %T", h)
 	}
@@ -256,11 +256,11 @@ type APIBuildBaronSettings struct {
 
 func (bb *APIBuildBaronSettings) BuildFromService(h interface{}) error {
 	var def evergreen.BuildBaronSettings
-	switch h.(type) {
+	switch v := h.(type) {
 	case evergreen.BuildBaronSettings:
-		def = h.(evergreen.BuildBaronSettings)
+		def = v
 	case *evergreen.BuildBaronSettings:
-		def = *h.(*evergreen.BuildBaronSettings)
+		def = *v
 	default:
 		return errors.Errorf("programmatic error: expected build baron config but got type %T", h)
 	}
@@ -319,11 +319,11 @@ func (ta *APITaskAnnotationSettings) ToService() (interface{}, error) {
 
 func (ta *APITaskAnnotationSettings) BuildFromService(h interface{}) error {
 	var config evergreen.AnnotationsSettings
-	switch h.(type) {
+	switch v := h.(type) {
 	case evergreen.AnnotationsSettings:
-		config = h.(evergreen.AnnotationsSettings)
+		config = v
 	case *evergreen.AnnotationsSettings:
-		config = *h.(*evergreen.AnnotationsSettings)
+		config = *v
 	}
 
 	apiWebhook := APIWebHook{}
@@ -406,11 +406,11 @@ func (c *APIWorkstationConfig) ToService() (interface{}, error) {
 
 func (c *APIWorkstationConfig) BuildFromService(h interface{}) error {
 	var config model.WorkstationConfig
-	switch h.(type) {
+	switch v := h.(type) {
 	case model.WorkstationConfig:
-		config = h.(model.WorkstationConfig)
+		config = v
 	case *model.WorkstationConfig:
-		config = *h.(*model.WorkstationConfig)
+		config = *v
 	}
 
 	c.GitClone = utility.BoolPtrCopy(config.GitClone)
@@ -443,11 +443,11 @@ func (c *APIParameterInfo) ToService() (interface{}, error) {
 
 func (c *APIParameterInfo) BuildFromService(h interface{}) error {
 	var info model.ParameterInfo
-	switch h.(type) {
+	switch v := h.(type) {
 	case model.ParameterInfo:
-		info = h.(model.ParameterInfo)
+		info = v
 	case *model.ParameterInfo:
-		info = *h.(*model.ParameterInfo)
+		info = *v
 	}
 
 	c.Key = utility.ToStringPtr(info.Key)
@@ -649,14 +649,14 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 	return &projectRef, nil
 }
 
-func (p *APIProjectRef) BuildFromService(v interface{}) error {
+func (p *APIProjectRef) BuildFromService(h interface{}) error {
 	var projectRef model.ProjectRef
 
-	switch v.(type) {
+	switch v := h.(type) {
 	case model.ProjectRef:
-		projectRef = v.(model.ProjectRef)
+		projectRef = v
 	case *model.ProjectRef:
-		projectRef = *v.(*model.ProjectRef)
+		projectRef = *v
 	default:
 		return errors.Errorf("programmatic error: expected project ref but got type %T", v)
 	}

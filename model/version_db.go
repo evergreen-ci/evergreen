@@ -384,7 +384,7 @@ func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {
 	if err != nil {
 		return nil, err
 	}
-	if versions == nil || len(versions) == 0 {
+	if len(versions) == 0 {
 		return nil, nil
 	}
 

@@ -241,7 +241,7 @@ func evaluateAxisTags(ase *axisSelectorEvaluator, axis string, selectors []strin
 		}
 	}
 	out := []string{}
-	for id, _ := range all {
+	for id := range all {
 		out = append(out, id)
 	}
 	return out, errs

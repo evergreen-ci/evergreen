@@ -62,7 +62,7 @@ func NewConvertHostToNewProvisioningJob(env evergreen.Environment, h host.Host, 
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(15),
+		MaxAttempts: utility.ToIntPtr(maxProvisioningConversionAttempts),
 		WaitUntil:   utility.ToTimeDurationPtr(time.Minute),
 	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", convertHostToNewProvisioningJobName, j.HostID, id))

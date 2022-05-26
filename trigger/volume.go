@@ -66,11 +66,6 @@ func (t *volumeTriggers) Attributes() event.Attributes {
 	}
 }
 
-type volumeTemplateData struct {
-	ID             string
-	ExpirationTime time.Time
-}
-
 func makeVolumeTriggers() eventHandler {
 	t := &volumeTriggers{}
 	t.base.triggers = map[string]trigger{

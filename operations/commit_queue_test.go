@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -32,7 +31,6 @@ type CommitQueueSuite struct {
 	ctx    context.Context
 	server *service.TestServer
 	suite.Suite
-	env *mock.Environment
 }
 
 func TestCommitQueueSuite(t *testing.T) {
