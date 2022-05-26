@@ -281,8 +281,7 @@ func BlockTaskGroupTasks(taskID string) error {
 		catcher.AddWhen(!adb.ResultsNotFound(err), err) // it's not an error if the task already isn't on the queue
 		// this operation is recursive, maybe be refactorable
 		// to use some kind of cache.
-		_, err = UpdateBlockedDependencies(&taskToBlock)
-		catcher.Add(err)
+		catcher.Add(UpdateBlockedDependencies(&taskToBlock))
 	}
 	return catcher.Resolve()
 }
