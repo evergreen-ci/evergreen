@@ -91,7 +91,7 @@ func (h *podProvisioningScript) agentScript(p *pod.Pod, downloadFromS3 bool) str
 // agentCommand returns the arguments to start the agent in the pod's container.
 func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 	var pathSep string
-	if pod.OS(p.TaskContainerCreationOpts.OS) == pod.OSWindows {
+	if p.TaskContainerCreationOpts.OS == pod.OSWindows {
 		pathSep = "\\"
 	} else {
 		pathSep = "/"
