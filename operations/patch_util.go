@@ -221,6 +221,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default project: %v\n", err)
 	}
 
+	if err := p.setLocalAliases(conf); err != nil {
+		grip.Warningf("warning - setting local aliases")
+	}
+
 	if err := p.loadAlias(conf); err != nil {
 		grip.Warningf("warning - failed to set default alias: %v\n", err)
 	}
@@ -287,6 +291,49 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 	}
 
 	return nil
+}
+
+func (p *patchParams) setLocalAliases(conf *ClientSettings) error {
+	if p.Alias != "" {
+		for i := range conf.Projects {
+			if conf.Projects[i].Name == p.Project {
+				if errStrs := model.ValidateProjectAliases(conf.Projects[i].LocalAliases, "Local Aliases"); len(errStrs) != 0 {
+					return errors.Errorf("validating local aliases: '%s'", errStrs)
+				}
+				for _, alias := range conf.Projects[i].LocalAliases {
+					if alias.Alias == p.Alias {
+						p.addAliasToPatchParams(alias)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// addAliasToPatchParams add the matching local alias to patch params.
+func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
+	if alias.Variant != "" {
+		p.RegexVariants = append(p.RegexVariants, strings.Split(alias.Variant, ",")...)
+	}
+	if alias.VariantTags != nil {
+		var formattedTags []string
+		for _, tag := range alias.VariantTags {
+			formattedTags = append(formattedTags, fmt.Sprintf(".%s", tag))
+		}
+		p.Variants = append(p.Variants, formattedTags...)
+	}
+	if alias.Task != "" {
+		p.RegexTasks = append(p.RegexTasks, strings.Split(alias.Task, ",")...)
+	}
+	if alias.TaskTags != nil {
+		var formattedTags []string
+		for _, tag := range alias.TaskTags {
+			formattedTags = append(formattedTags, fmt.Sprintf(".%s", tag))
+		}
+		p.Tasks = append(p.Tasks, formattedTags...)
+	}
+	p.Alias = ""
 }
 
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
