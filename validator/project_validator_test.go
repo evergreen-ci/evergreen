@@ -2849,6 +2849,10 @@ func TestValidateVersionControl(t *testing.T) {
 }
 
 func TestValidateContainers(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := tu.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
 	require.NoError(t, db.Clear(model.ProjectRefCollection))
 	ref := &model.ProjectRef{
 		Identifier: "proj",
@@ -2856,6 +2860,12 @@ func TestValidateContainers(t *testing.T) {
 			"s1": model.ContainerResources{
 				MemoryMB: 100,
 				CPU:      1,
+			},
+		},
+		ContainerCredentials: map[string]model.ContainerCredential{
+			"c1": model.ContainerCredential{
+				Username: "foo",
+				Password: "bar",
 			},
 		},
 	}
@@ -2868,6 +2878,7 @@ func TestValidateContainers(t *testing.T) {
 				Image:      "demo/image:latest",
 				WorkingDir: "/root",
 				Size:       "s1",
+				Credential: "c1",
 			},
 		},
 	}
@@ -2899,6 +2910,10 @@ func TestValidateContainers(t *testing.T) {
 	verrs = validateContainers(p, ref, false)
 	require.Len(t, verrs, 1)
 	assert.Contains(t, verrs[0].Message, "size 's2' is not defined anywhere")
+	p.Containers[0].Credential = "c2"
+	verrs = validateContainers(p, ref, false)
+	require.Len(t, verrs, 1)
+	assert.Contains(t, verrs[0].Message, "credential 'c2' is not defined anywhere")
 	p.Containers[0].System = model.ContainerSystem{
 		OperatingSystem: "oops",
 		CPUArchitecture: "oops",

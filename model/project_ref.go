@@ -2504,18 +2504,18 @@ func ValidateContainers(pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, container := range containers {
 		catcher.Add(container.System.Validate())
+		if container.Resources != nil {
+			catcher.Add(container.Resources.Validate())
+		}
 		size, ok := pRef.ContainerSizes[container.Size]
 		if ok {
 			catcher.Add(size.Validate())
 		}
+		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		credential, ok := pRef.ContainerCredentials[container.Credential]
 		if ok {
 			catcher.Add(credential.Validate())
 		}
-		if container.Resources != nil {
-			catcher.Add(container.Resources.Validate())
-		}
-		catcher.ErrorfWhen(container.Size != "" && !ok, "size '%s' is not defined anywhere", container.Size)
 		catcher.ErrorfWhen(container.Credential != "" && !ok, "credential '%s' is not defined anywhere", container.Credential)
 		catcher.NewWhen(container.Size != "" && container.Resources != nil, "size and resources cannot both be defined")
 		catcher.NewWhen(container.Size == "" && container.Resources == nil, "either size or resources must be defined")
