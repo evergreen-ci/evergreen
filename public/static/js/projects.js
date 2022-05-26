@@ -1147,9 +1147,9 @@ mciModule.controller(
           && container_size.cpu > 0 && container_size.memory_mb > 0;
     };
 
-    $scope.validContainerCredential = function (containter_credential) {
-      return containter_credential && containter_credential.username && containter_credential.password
-        && containter_credential.username !== "" && containter_credential.password !== "";
+    $scope.validContainerCredential = function (container_credential) {
+      return container_credential && container_credential.username && container_credential.password
+        && container_credential.username !== "" && container_credential.password !== "";
     };
 
     $scope.validWorkstationCommand = function (obj) {
