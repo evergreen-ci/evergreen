@@ -341,7 +341,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(v *Version, p *Project) T
 	return newTVPairs
 }
 
-// addTasksToGraph adds tasks to the graph and adds dependency edges from each task task to each of its dependencies.
+// addTasksToGraph adds tasks to the graph and adds dependency edges from each task to each of its dependencies.
 func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, taskIDs TaskIdConfig) task.DependencyGraph {
 	for _, newTask := range tasks {
 		graph.AddTaskNode(task.TaskNode{
@@ -351,7 +351,8 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 		})
 	}
 
-	bvts := make([]BuildVariantTaskUnit, 0, len(tasks))
+	allNodes := graph.Nodes()
+	bvts := make([]BuildVariantTaskUnit, 0, len(allNodes))
 	for _, node := range graph.Nodes() {
 		bvt := p.FindTaskForVariant(node.Name, node.Variant)
 		if bvt != nil {
@@ -416,12 +417,10 @@ func (g *GeneratedProject) filterInactiveTasks(tasks TVPairSet, v *Version, p *P
 			if !utility.FromBoolTPtr(projectBV.Activate) {
 				continue
 			}
-		} else {
+		} else if activationInfo.variantHasSpecificActivation(bv) {
 			// New builds with specific activation are activated later by ActivateElapsedBuildsAndTasks.
 			// Skip simulating their dependencies because the builds and their tasks are not activated now so will not be adding dependencies.
-			if activationInfo.variantHasSpecificActivation(bv) {
-				continue
-			}
+			continue
 		}
 
 		for _, t := range tasks {
