@@ -185,16 +185,16 @@ type unitInfo struct {
 	TotalPriority int64 `json:"total_priority"`
 	// NumDeps is the total number of tasks depending on tasks in the unit.
 	NumDeps int64 `json:"num_deps"`
-	// InCommitQueue indicates if the unit contains any tasks that are part of a commit queue version.
-	InCommitQueue bool `json:"in_commit_queue"`
-	// InPatch indicates if the unit contains any tasks that are part of a patch.
-	InPatch bool `json:"in_patch"`
-	// GenerateTask indicates if the unit contains any tasks that are not part of a task group.
-	AnyNonGroupTasks bool `json:"any_non_group_tasks"`
-	// GenerateTask indicates if the unit contains generator task.
-	GenerateTask bool `json:"generate_task"`
-	// StepbackTask indicates if the unit contains task activated by stepback.
-	StepbackTask bool `json:"stepback_task"`
+	// ContainsInCommitQueue indicates if the unit contains any tasks that are part of a commit queue version.
+	ContainsInCommitQueue bool `json:"in_commit_queue"`
+	// ContainsInPatch indicates if the unit contains any tasks that are part of a patch.
+	ContainsInPatch bool `json:"in_patch"`
+	// ContainsNonGroupTasks indicates if the unit contains any tasks that are not part of a task group.
+	ContainsNonGroupTasks bool `json:"any_non_group_tasks"`
+	// ContainsGenerateTask indicates if the unit contains generator task.
+	ContainsGenerateTask bool `json:"generate_task"`
+	// ContainsStepbackTask indicates if the unit contains task activated by stepback.
+	ContainsStepbackTask bool `json:"stepback_task"`
 }
 
 func (u *unitInfo) value() int64 {
@@ -203,19 +203,19 @@ func (u *unitInfo) value() int64 {
 	length := int64(len(u.TaskIDs))
 	priority := 1 + (u.TotalPriority / length)
 
-	if !u.AnyNonGroupTasks {
+	if !u.ContainsNonGroupTasks {
 		// if all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
 		priority += length
 	}
-	if u.GenerateTask {
+	if u.ContainsGenerateTask {
 		// give generators a boost so people don't have to wait twice.
 		priority = priority * u.Settings.GetGenerateTaskFactor()
 	}
 
-	if u.InPatch {
+	if u.ContainsInPatch {
 		// give patches a bump, over non-patches.
 		value += priority * u.Settings.GetPatchFactor()
 		// patches that have spent more time in the queue
@@ -223,7 +223,7 @@ func (u *unitInfo) value() int64 {
 		// waiting on the results), and because FIFO feels
 		// fair in this context.
 		value += priority * u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length)))
-	} else if u.InCommitQueue {
+	} else if u.ContainsInCommitQueue {
 		// give commit queue patches a boost over everything else
 		priority += 200
 		value += priority * u.Settings.GetCommitQueueFactor()
@@ -236,7 +236,7 @@ func (u *unitInfo) value() int64 {
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
 			mainlinePriority += u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
-		if u.StepbackTask {
+		if u.ContainsStepbackTask {
 			mainlinePriority += u.Settings.GetStepbackTaskFactor()
 		}
 
@@ -278,20 +278,14 @@ func (unit *Unit) info() unitInfo {
 
 	for _, t := range unit.tasks {
 		if t.Requester == evergreen.MergeTestRequester {
-			info.InCommitQueue = true
+			info.ContainsInCommitQueue = true
 		} else if evergreen.IsPatchRequester(t.Requester) {
-			info.InPatch = true
+			info.ContainsInPatch = true
 		}
 
-		if t.TaskGroup == "" {
-			info.AnyNonGroupTasks = true
-		}
-		if t.GenerateTask {
-			info.GenerateTask = true
-		}
-		if t.ActivatedBy == evergreen.StepbackTaskActivator {
-			info.StepbackTask = true
-		}
+		info.ContainsNonGroupTasks = info.ContainsNonGroupTasks || t.TaskGroup == ""
+		info.ContainsGenerateTask = info.ContainsGenerateTask || t.GenerateTask
+		info.ContainsStepbackTask = info.ContainsStepbackTask || t.ActivatedBy == evergreen.StepbackTaskActivator
 
 		if !t.ActivatedTime.IsZero() {
 			info.TimeInQueue += time.Since(t.ActivatedTime)
@@ -323,7 +317,7 @@ func (unit *Unit) RankValue() int64 {
 	unit.cachedValue = info.value()
 
 	grip.Info(message.Fields{
-		"message":   "prioritizated distro unit",
+		"message":   "prioritized distro unit",
 		"distro":    unit.distro.Id,
 		"value":     unit.cachedValue,
 		"unit_info": info,
