@@ -37,6 +37,7 @@ type PatchIntentUnitsSuite struct {
 	prNumber        int
 	user            string
 	hash            string
+	baseHash        string
 	diffURL         string
 	desc            string
 	project         string
@@ -141,6 +142,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.prNumber = 5290
 	s.user = evergreen.GithubPatchUser
 	s.hash = "8b9b7ee42ef46d40e391910e3afd00e187a9dae8"
+	s.baseHash = "7c38f3f63c05675329518c148d3a176e1da6ec2d"
 	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/5290.diff"
 	s.githubPatchData = thirdparty.GithubPatch{
 		PRNumber:   448,
@@ -506,7 +508,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -537,7 +539,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
+	intent, err := patch.NewGithubIntent("1", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -563,43 +565,6 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
 	s.Require().NoError(err)
 	s.Require().Empty(unprocessedIntents)
-}
-
-func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch) {
-	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
-	s.Require().Len(out, 2)
-
-	s.Require().NotNil(patchDoc)
-	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-		Owner:    patchDoc.GithubPatchData.BaseOwner,
-		Repo:     patchDoc.GithubPatchData.BaseRepo,
-		PRNumber: patchDoc.GithubPatchData.PRNumber,
-		Ref:      patchDoc.GithubPatchData.HeadHash,
-	})
-
-	foundPatch := false
-	foundBuild := false
-	for i := range out {
-		target, ok := out[i].Subscriber.Target.(*event.GithubPullRequestSubscriber)
-		s.Require().True(ok)
-
-		s.EqualValues(ghSub.Target, *target)
-		if out[i].ResourceType == event.ResourceTypePatch {
-			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
-			foundPatch = true
-
-		} else if out[i].ResourceType == event.ResourceTypeBuild {
-			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
-			foundBuild = true
-
-		} else {
-			s.T().Errorf("unexpected resource type %s", event.ResourceTypeBuild)
-		}
-	}
-
-	s.True(foundPatch)
-	s.True(foundBuild)
 }
 
 func (s *PatchIntentUnitsSuite) TestGetModulePatch() {

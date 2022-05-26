@@ -26,9 +26,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	case event.ResourceTypeTask:
 		eventQuery := event.MostRecentTaskEvents(resourceID, 100)
 		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
-	case event.ResourceTypeScheduler:
-		eventQuery := event.RecentSchedulerEvents(resourceID, 500)
-		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

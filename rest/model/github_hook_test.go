@@ -27,31 +27,27 @@ func TestAPIGithubHook(t *testing.T) {
 	}, apiHook)
 
 	apiHook = APIGithubHook{}
-	err = apiHook.BuildFromService(&hook)
-	assert.Error(err)
-	assert.Equal("incorrect type when converting github hook", err.Error())
+	assert.Error(apiHook.BuildFromService(&hook))
 	assert.Zero(apiHook)
 
 	apiHook = APIGithubHook{}
 	hook.HookID = 0
-	err = apiHook.BuildFromService(hook)
-	assert.Error(err)
-	assert.Equal("HookID cannot be 0", err.Error())
+	hook.Owner = "owner"
+	hook.Repo = "repo"
+	assert.Error(apiHook.BuildFromService(hook))
 	assert.Zero(apiHook)
 
 	apiHook = APIGithubHook{}
 	hook.HookID = 1
+	hook.Owner = "owner"
 	hook.Repo = ""
-	err = apiHook.BuildFromService(hook)
-	assert.Error(err)
-	assert.Equal("Repo cannot be empty string", err.Error())
+	assert.Error(apiHook.BuildFromService(hook))
 	assert.Zero(apiHook)
 
 	apiHook = APIGithubHook{}
 	hook.HookID = 1
 	hook.Owner = ""
-	err = apiHook.BuildFromService(hook)
-	assert.Error(err)
-	assert.Equal("Owner cannot be empty string", err.Error())
+	hook.Repo = "repo"
+	assert.Error(apiHook.BuildFromService(hook))
 	assert.Zero(apiHook)
 }

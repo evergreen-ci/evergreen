@@ -299,14 +299,6 @@ func parametersFromMap(params map[string]string) []patch.Parameter {
 	return res
 }
 
-func parametersToMap(params []patch.Parameter) map[string]string {
-	res := map[string]string{}
-	for _, param := range params {
-		res[param.Key] = param.Value
-	}
-	return res
-}
-
 func (s *ClientSettings) FindDefaultTasks(project string) []string {
 	for _, p := range s.Projects {
 		if p.Name == project {

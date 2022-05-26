@@ -82,6 +82,4 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error extending expiration for spawn host '%s' using cloud manager", j.HostID))
 		return
 	}
-
-	return
 }

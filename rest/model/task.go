@@ -111,7 +111,7 @@ type ApiTaskEndDetail struct {
 func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
 	v, ok := t.(apimodels.TaskEndDetail)
 	if !ok {
-		return errors.Errorf("Incorrect type %T when unmarshalling TaskEndDetail", t)
+		return errors.Errorf("programmatic error: expected task end detail but got type %T", t)
 	}
 	at.Status = utility.ToStringPtr(v.Status)
 	at.Type = utility.ToStringPtr(v.Type)
@@ -121,7 +121,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t interface{}) error {
 
 	apiOomTracker := APIOomTrackerInfo{}
 	if err := apiOomTracker.BuildFromService(v.OOMTracker); err != nil {
-		return errors.Wrap(err, "can't build oom tracker from service")
+		return errors.Wrap(err, "converting OOM tracker info to API model")
 	}
 	at.OOMTracker = apiOomTracker
 
@@ -138,7 +138,7 @@ func (ad *ApiTaskEndDetail) ToService() (interface{}, error) {
 	}
 	oomTrackerIface, err := ad.OOMTracker.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "can't convert OOMTrackerInfo to service")
+		return nil, errors.Wrap(err, "converting OOM tracker info to service model")
 	}
 	detail.OOMTracker = oomTrackerIface.(*apimodels.OOMTrackerInfo)
 
@@ -153,7 +153,7 @@ type APIOomTrackerInfo struct {
 func (at *APIOomTrackerInfo) BuildFromService(t interface{}) error {
 	v, ok := t.(*apimodels.OOMTrackerInfo)
 	if !ok {
-		return errors.Errorf("Incorrect type %T when unmarshalling OOMTrackerInfo", t)
+		return errors.Errorf("programmatic error: expected OOM tracker info but got type %T", t)
 	}
 	if v != nil {
 		at.Detected = v.Detected
@@ -179,9 +179,8 @@ func (at *APITask) BuildPreviousExecutions(tasks []task.Task, url string) error 
 			IncludeArtifacts:         true,
 			LogURL:                   url,
 		}); err != nil {
-			return errors.Wrap(err, "error marshalling previous execution")
+			return errors.Wrapf(err, "converting previous task execution at index %d to API model", i)
 		}
-
 	}
 
 	return nil
@@ -280,7 +279,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 
 		if err := at.Details.BuildFromService(v.Details); err != nil {
-			return errors.Wrap(err, "can't build TaskEndDetail from service")
+			return errors.Wrap(err, "converting task end details to API model")
 		}
 
 		if len(v.ExecutionTasks) > 0 {
@@ -340,12 +339,12 @@ func (at *APITask) BuildFromArgs(t interface{}, args *APITaskArgs) error {
 	}
 	if args.IncludeAMI {
 		if err := at.GetAMI(); err != nil {
-			return err
+			return errors.Wrap(err, "getting AMI")
 		}
 	}
 	if args.IncludeArtifacts {
 		if err := at.GetArtifacts(); err != nil {
-			return err
+			return errors.Wrap(err, "getting artifacts")
 		}
 	}
 	if args.IncludeProjectIdentifier {
@@ -494,7 +493,7 @@ func (at *APITask) GetArtifacts() error {
 		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
-		return errors.Wrap(err, "error retrieving artifacts")
+		return errors.Wrap(err, "retrieving artifacts")
 	}
 	for _, entry := range entries {
 		var strippedFiles []artifact.File

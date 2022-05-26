@@ -42,7 +42,7 @@ type buildDetail struct {
 func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	v, ok := h.(*model.Version)
 	if !ok {
-		return errors.Errorf("incorrect type when fetching converting version type")
+		return errors.Errorf("programmatic error: expected version but got type %T", h)
 	}
 
 	apiVersion.Id = utility.ToStringPtr(v.Id)
@@ -74,7 +74,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	for _, bv := range v.Builds {
 		apiBuild := APIBuild{}
 		if err := apiBuild.BuildFromService(bv); err != nil {
-			return errors.Wrap(err, "error building build from service")
+			return errors.Wrap(err, "converting build to API model")
 		}
 		apiVersion.Builds = append(apiVersion.Builds, apiBuild)
 	}

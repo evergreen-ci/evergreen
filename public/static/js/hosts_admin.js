@@ -1,6 +1,6 @@
 mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestService', 'notificationService', function($scope, $filter, hostsRestService, notifier) {
   $scope.modalTitle = 'Modify Hosts';
-  $scope.validHostStatuses = ["running", "decommissioned", "quarantined", "terminated"];
+  $scope.validHostStatuses = ["running", "decommissioned", "quarantined", "terminated", "stopped"];
   $scope.newStatus = $scope.validHostStatuses[0];
   $scope.notes={};
 

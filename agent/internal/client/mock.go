@@ -33,10 +33,6 @@ type Mock struct {
 	timeoutMax   time.Duration
 	serverURL    string
 
-	// these fields have setters
-	hostID     string
-	hostSecret string
-
 	// mock behavior
 	NextTaskShouldFail          bool
 	NextTaskShouldConflict      bool
@@ -200,26 +196,25 @@ func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expan
 	return e, nil
 }
 
-// Heartbeat returns false, which indicates the heartbeat has succeeded.
-func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
+func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (string, error) {
 	if c.HeartbeatShouldAbort {
-		return true, nil
+		return evergreen.TaskFailed, nil
 	}
 	if c.HeartbeatShouldConflict {
-		return true, errors.Errorf("Unauthorized - wrong secret")
+		return evergreen.TaskConflict, errors.Errorf("Unauthorized - wrong secret")
 	}
 	if c.HeartbeatShouldSometimesErr {
 		if c.HeartbeatShouldErr {
 			c.HeartbeatShouldErr = false
-			return false, errors.New("mock heartbeat error")
+			return "", errors.New("mock heartbeat error")
 		}
 		c.HeartbeatShouldErr = true
-		return false, nil
+		return "", nil
 	}
 	if c.HeartbeatShouldErr {
-		return false, errors.New("mock heartbeat error")
+		return "", errors.New("mock heartbeat error")
 	}
-	return false, nil
+	return "", nil
 }
 
 // FetchExpansionVars returns a mock ExpansionVars.

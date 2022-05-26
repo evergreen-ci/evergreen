@@ -159,7 +159,6 @@ func (e *Environment) SetShutdown() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.shutdownSequenceStarted = true
-	return
 }
 
 func (e *Environment) ShutdownSequenceStarted() bool {

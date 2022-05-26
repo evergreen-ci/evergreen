@@ -15,7 +15,6 @@ type OpenStackSuite struct {
 	client   openStackClient
 	keyname  string
 	manager  *openStackManager
-	distro   distro.Distro
 	hostOpts host.CreateOptions
 	suite.Suite
 }

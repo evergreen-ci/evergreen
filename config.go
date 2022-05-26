@@ -36,7 +36,7 @@ var (
 	ClientVersion = "2022-05-26"
 
 	// Agent version to control agent rollover.
-	AgentVersion = "2022-05-09"
+	AgentVersion = "2022-05-24"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -210,7 +210,7 @@ func (c *Settings) ValidateAndDefault() error {
 
 	keys := map[string]bool{}
 	for _, mapping := range c.LDAPRoleMap {
-		if keys[mapping.LDAPGroup] == true {
+		if keys[mapping.LDAPGroup] {
 			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
 		}
 		keys[mapping.LDAPGroup] = true

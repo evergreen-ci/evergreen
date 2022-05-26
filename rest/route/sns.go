@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/cocoa/ecs"
@@ -231,22 +230,6 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 	})
 
 	return nil
-}
-
-// skipEarlyTermination decides if we should terminate the instance now or wait for AWS to do it.
-// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html#billing-for-interrupted-spot-instances
-func (sns *ec2SNS) skipEarlyTermination(h *host.Host) bool {
-	// Let AWS terminate if we're within the first hour
-	if utility.IsZeroTime(h.StartTime) || time.Now().Sub(h.StartTime) < time.Hour {
-		return true
-	}
-
-	// Let AWS terminate Windows hosts themselves.
-	if h.Distro.IsWindows() {
-		return true
-	}
-
-	return false
 }
 
 func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID string) error {

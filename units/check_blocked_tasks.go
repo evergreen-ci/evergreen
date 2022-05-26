@@ -29,7 +29,6 @@ func init() {
 type checkBlockedTasksJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	DistroId string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
-	env      evergreen.Environment
 }
 
 func makeCheckBlockedTasksJob() *checkBlockedTasksJob {

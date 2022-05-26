@@ -26,13 +26,16 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		select {
 		case <-ticker.C:
 			signalBeat, err = a.doHeartbeat(ctx, tc)
-			if signalBeat == evergreen.TaskFailed {
-				tc.logger.Task().Error("Heartbeat received signal to abort task")
+			if signalBeat == evergreen.TaskConflict {
+				tc.logger.Task().Error("Encountered task conflict while checking heartbeat, aborting task")
 				if err != nil {
 					tc.logger.Task().Error(err.Error())
 				}
-				heartbeat <- evergreen.TaskFailed
 				cancel()
+			}
+			if signalBeat == evergreen.TaskFailed {
+				tc.logger.Task().Error("Heartbeat received signal to abort task")
+				heartbeat <- signalBeat
 				return
 			}
 			if err != nil {
@@ -54,16 +57,11 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 }
 
 func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
-	abort, err := a.comm.Heartbeat(ctx, tc.task)
-	if abort {
-		grip.Info("Task aborted")
-		return evergreen.TaskFailed, err
+	resp, err := a.comm.Heartbeat(ctx, tc.task)
+	if resp == evergreen.TaskFailed || resp == evergreen.TaskConflict {
+		return resp, err
 	}
-	if err != nil {
-		return "", err
-	}
-	grip.Debug("Sent heartbeat")
-	return "", nil
+	return "", err
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {

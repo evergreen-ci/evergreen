@@ -1419,7 +1419,7 @@ Examples:
 			},
 			cli.BoolTFlag{
 				Name:  sanityChecksFlagName,
-				Usage: "perform basic sanity checks for common sources of error (ignored on dry runs) (default: true)",
+				Usage: "perform basic checks for common sources of error (ignored on dry runs) (default: true)",
 			},
 			cli.BoolFlag{
 				Name:  joinFlagNames(dryRunFlagName, "n"),
@@ -1467,7 +1467,7 @@ Examples:
 			}
 
 			if doSanityCheck && !dryRun {
-				ok := sanityCheckRsync(localPath, remotePath, pull)
+				ok := verifyRsync(localPath, remotePath, pull)
 				if !ok {
 					fmt.Println("Refusing to perform rsync, exiting")
 					return nil
@@ -1620,11 +1620,11 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 	return "", "", errors.Errorf("could not find host '%s' in user's spawn hosts", hostID)
 }
 
-// sanityCheckRsync performs some basic sanity checks for the common case in
+// verifyRsync performs some basic validation for the common case in
 // which you want to mirror two directories. The trailing slash means to
 // overwrite all of the contents of the destination directory, so we check that
 // they really want to do this.
-func sanityCheckRsync(localPath, remotePath string, pull bool) bool {
+func verifyRsync(localPath, remotePath string, pull bool) bool {
 	localPathIsDir := strings.HasSuffix(localPath, "/")
 	remotePathIsDir := strings.HasSuffix(remotePath, "/")
 

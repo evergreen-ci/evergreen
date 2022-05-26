@@ -671,7 +671,6 @@ func urlVarsToDistroScopes(r *http.Request) ([]string, int, error) {
 	resourceType := strings.ToUpper(util.CoalesceStrings(query["resource_type"], vars["resource_type"]))
 	if resourceType != "" {
 		switch resourceType {
-		case event.ResourceTypeScheduler:
 		case event.ResourceTypeDistro:
 			vars["distro_id"] = vars["resource_id"]
 		case event.ResourceTypeHost:
@@ -743,8 +742,6 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		opts.Permission = evergreen.PermissionProjectSettings
 		opts.RequiredLevel = evergreen.ProjectSettingsView.Value
 	case event.ResourceTypeDistro:
-		fallthrough
-	case event.ResourceTypeScheduler:
 		resources, status, err = urlVarsToDistroScopes(r)
 		opts.ResourceType = evergreen.DistroResourceType
 		opts.Permission = evergreen.PermissionHosts

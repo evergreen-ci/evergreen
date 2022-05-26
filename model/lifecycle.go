@@ -727,44 +727,13 @@ func CreateBuildFromVersionNoInsert(args BuildCreateArgs) (*build.Build, task.Ta
 }
 
 func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester string) []BuildVariantTaskUnit {
-	tasks := []BuildVariantTaskUnit{}
-	tg := proj.FindTaskGroup(in.Name)
-	if tg == nil {
-		return tasks
-	}
-
-	taskMap := map[string]ProjectTask{}
-	for _, projTask := range proj.Tasks {
-		taskMap[projTask.Name] = projTask
-	}
-
-	for _, t := range tg.Tasks {
-		bvt := BuildVariantTaskUnit{
-			Name: t,
-			// IsGroup is not persisted, and indicates here that the
-			// task is a member of a task group.
-			IsGroup:          true,
-			GroupName:        in.Name,
-			Patchable:        in.Patchable,
-			PatchOnly:        in.PatchOnly,
-			Disable:          in.Disable,
-			AllowForGitTag:   in.AllowForGitTag,
-			GitTagOnly:       in.GitTagOnly,
-			Priority:         in.Priority,
-			DependsOn:        in.DependsOn,
-			RunOn:            in.RunOn,
-			ExecTimeoutSecs:  in.ExecTimeoutSecs,
-			Stepback:         in.Stepback,
-			Activate:         in.Activate,
-			CommitQueueMerge: in.CommitQueueMerge,
-		}
-		// Default to project task settings when unspecified
-		bvt.Populate(taskMap[t])
+	var willRun []BuildVariantTaskUnit
+	for _, bvt := range proj.tasksFromGroup(in) {
 		if !bvt.IsDisabled() && !bvt.SkipOnRequester(requester) {
-			tasks = append(tasks, bvt)
+			willRun = append(willRun, bvt)
 		}
 	}
-	return tasks
+	return willRun
 }
 
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a
@@ -777,15 +746,15 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	tasksInBuild []task.Task, syncAtEndOpts patch.SyncAtEndOptions, distroAliases map[string][]string, createTime time.Time,
 	githubChecksAliases ProjectAliases) (task.Tasks, error) {
 
-	// the list of tasks we should create.  if tasks are passed in, then
-	// use those, else use the default set
+	// The list of tasks we should create.
+	// If tasks are passed in, then use those, otherwise use the default set.
 	tasksToCreate := []BuildVariantTaskUnit{}
 
 	createAll := false
 	if len(taskNames) == 0 && len(displayNames) == 0 {
 		createAll = true
 	}
-	// tables includes only new and existing tasks
+	// Tables includes only new and existing tasks.
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
 
@@ -795,7 +764,7 @@ func createTasksForBuild(project *Project, pRef *ProjectRef, buildVariant *Build
 	}
 
 	for _, task := range buildVariant.Tasks {
-		// sanity check that the config isn't malformed
+		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
 			if task.IsDisabled() || task.SkipOnRequester(b.Requester) {
 				continue
@@ -1706,49 +1675,39 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	}
 
 	activatedTaskIds := []string{}
+	activatedTasks := []task.Task{}
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
-		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.FindWithFields(task.ByBuildId(b.Id), task.DisplayNameKey, task.ActivatedKey)
+		// Find the set of task names that already exist for the given build, including display tasks.
+		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
 			return nil, err
 		}
-		// build an index to keep track of which tasks already exist, and their activation
-		type taskInfo struct {
-			id        string
-			activated bool
-		}
-		existingTasksIndex := map[string]taskInfo{}
+
+		existingTasksIndex := map[string]bool{}
 		for _, t := range tasksInBuild {
-			info := taskInfo{id: t.Id, activated: t.Activated}
-			existingTasksIndex[t.DisplayName] = info
+			existingTasksIndex[t.DisplayName] = true
 		}
 		projectBV := p.FindBuildVariant(b.BuildVariant)
 		if projectBV != nil {
 			b.Activated = utility.FromBoolTPtr(projectBV.Activate) // activate unless explicitly set otherwise
 		}
 
-		// build a list of tasks that haven't been created yet for the given variant, but have
+		// Build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
-		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if info, ok := existingTasksIndex[taskname]; ok {
-				// if activating build, update task activation for dependencies that already exist, regardless of batchtime
-				if b.Activated && !info.activated {
-					if err = SetActiveStateById(info.id, evergreen.User, true); err != nil {
-						return nil, errors.Wrapf(err, "updating active state for existing task '%s'", info.id)
-					}
-				}
+		for _, taskName := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
+			if ok := existingTasksIndex[taskName]; ok {
 				continue
 			}
-			tasksToAdd = append(tasksToAdd, taskname)
+			tasksToAdd = append(tasksToAdd, taskName)
 		}
 		displayTasksToAdd := []string{}
-		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
+		for _, taskName := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
+			if ok := existingTasksIndex[taskName]; ok {
 				continue
 			}
-			displayTasksToAdd = append(displayTasksToAdd, taskname)
+			displayTasksToAdd = append(displayTasksToAdd, taskName)
 		}
 		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
@@ -1763,6 +1722,7 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 		for _, t := range tasks {
 			if t.Activated {
 				activatedTaskIds = append(activatedTaskIds, t.Id)
+				activatedTasks = append(activatedTasks, *t)
 				b.Activated = true
 			}
 			if t.Activated && activationInfo.isStepbackTask(t.BuildVariant, t.DisplayName) {
@@ -1784,6 +1744,14 @@ func addNewTasks(ctx context.Context, activationInfo specificActivationInfo, v *
 	}
 	if err = v.SetActivated(); err != nil {
 		return nil, errors.Wrap(err, "setting version activation to true")
+	}
+
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(activatedTasks, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
+	}
+	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}
 
 	return activatedTaskIds, nil

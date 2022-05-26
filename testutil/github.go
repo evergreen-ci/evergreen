@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-github/v34/github"
 )
 
-func NewGithubPR(prNumber int, baseRepoName, headRepoName, headHash, user, title string) *github.PullRequest {
+func NewGithubPR(prNumber int, baseRepoName, baseHash, headRepoName, headHash, user, title string) *github.PullRequest {
 	return &github.PullRequest{
 		Title:  github.String(title),
 		Number: github.Int(prNumber),
@@ -19,6 +19,7 @@ func NewGithubPR(prNumber int, baseRepoName, headRepoName, headHash, user, title
 		},
 		Base: &github.PullRequestBranch{
 			Ref: github.String("main"),
+			SHA: github.String(baseHash),
 			Repo: &github.Repository{
 				FullName: github.String(baseRepoName),
 			},

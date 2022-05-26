@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -144,6 +145,15 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 				return nil, errors.Wrap(err, "updating parent display task")
 			}
 		}
+
+		grip.Info(message.Fields{
+			"message":                    "successfully dispatched task to pod",
+			"task":                       t.Id,
+			"pod":                        p.ID,
+			"secs_since_task_activation": time.Since(t.ActivatedTime).Seconds(),
+			"secs_since_pod_allocation":  time.Since(p.TimeInfo.Initializing).Seconds(),
+			"secs_since_pod_creation":    time.Since(p.TimeInfo.Starting).Seconds(),
+		})
 
 		return t, nil
 	}

@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -51,6 +53,7 @@ func (q *ContainerTaskQueue) Len() int {
 }
 
 func (q *ContainerTaskQueue) populate() error {
+	startAt := time.Now()
 	candidates, err := task.FindNeedsContainerAllocation()
 	if err != nil {
 		return errors.Wrap(err, "finding candidate container tasks for allocation")
@@ -60,6 +63,13 @@ func (q *ContainerTaskQueue) populate() error {
 	if err != nil {
 		return errors.Wrap(err, "filtering candidate container tasks for allocation by project ref settings")
 	}
+
+	grip.Info(message.Fields{
+		"message":    "generated container task queue",
+		"candidates": len(candidates),
+		"queue":      len(readyForAllocation),
+		"duration":   time.Since(startAt),
+	})
 
 	q.queue = readyForAllocation
 

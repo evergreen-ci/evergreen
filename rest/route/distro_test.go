@@ -414,8 +414,7 @@ func TestUpdateDistrosSettingsHandlerRun(t *testing.T) {
 // Tests for PUT /rest/v2/distros/{distro_id}
 
 type DistroPutSuite struct {
-	rm       gimlet.RouteHandler
-	settings *evergreen.Settings
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }
@@ -665,8 +664,7 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 // Tests for PATCH /rest/v2/distros/{distro_id}
 
 type DistroPatchByIDSuite struct {
-	rm       gimlet.RouteHandler
-	settings *evergreen.Settings
+	rm gimlet.RouteHandler
 
 	suite.Suite
 }

@@ -893,7 +893,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error adding project",
 		}))
-		errMsg := fmt.Sprintf("error adding project")
+		errMsg := "error adding project"
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New(errMsg))
 		return
 	}

@@ -82,12 +82,14 @@ type Query {
     identifier: String!
     limit: Int = 0
     before: Time
+    @requireProjectAccess(access: VIEW)
   ): ProjectEvents!
   repoEvents(
     id: String!
     limit: Int = 0
     before: Time
-  ): RepoEvents!
+    @requireProjectAccess(access: VIEW)
+  ): ProjectEvents!
   hasVersion(id: String!): Boolean!
 }
 
@@ -213,6 +215,7 @@ type Version {
   repo: String!
   project: String!
   projectIdentifier: String!
+  projectMetadata: Project
   branch: String!
   requester: String!
   activated: Boolean
@@ -1155,14 +1158,6 @@ type ProjectEventSettings{
   subscriptions: [ProjectSubscription!]
 }
 
-type RepoEventSettings{
-  githubWebhooksEnabled: Boolean!
-  projectRef: RepoRef
-  vars: ProjectVars
-  aliases: [ProjectAlias!]
-  subscriptions: [ProjectSubscription!]
-}
-
 type RepoSettings {
   githubWebhooksEnabled: Boolean!
   projectRef: RepoRef ## use the repo ref here in order to have stronger types
@@ -1171,6 +1166,9 @@ type RepoSettings {
   subscriptions: [ProjectSubscription!]
 }
 
+## ProjectEvents is used for any event that has the PROJECT type.
+## Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
+## for event logs because new fields could always be introduced that don't exist in the old event logs.
 type ProjectEvents {
   eventLogEntries: [ProjectEventLogEntry!]!
   count: Int!
@@ -1181,17 +1179,6 @@ type ProjectEventLogEntry {
   user: String!
   before: ProjectEventSettings
   after: ProjectEventSettings
-}
-
-type RepoEvents {
-  eventLogEntries: [RepoEventLogEntry!]!
-  count: Int!
-}
-type RepoEventLogEntry {
-  timestamp: Time!
-  user: String!
-  before: RepoEventSettings
-  after: RepoEventSettings
 }
 
 type ProjectVars {

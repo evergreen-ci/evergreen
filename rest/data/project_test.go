@@ -20,7 +20,6 @@ import (
 // Tests for fetch patch by project route
 
 type ProjectConnectorGetSuite struct {
-	ctx      DBProjectConnector
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -132,6 +131,8 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
 		after.GithubHooksEnabled = false
+		s.NotEmpty(before.Aliases[0].ID)
+		s.NotEmpty(after.Aliases[0].ID)
 
 		h :=
 			event.EventLogEntry{
@@ -173,6 +174,18 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
 	s.Equal(projEventCount, len(events))
+	for _, eventLog := range events {
+		s.Len(eventLog.Before.Aliases, 1)
+		s.Len(eventLog.After.Aliases, 1)
+		s.NotEmpty(eventLog.Before.Aliases[0].ID)
+		s.NotEmpty(eventLog.After.Aliases[0].ID)
+	}
+
+	// No error for empty events
+	events, err = GetProjectEventLog("projectA", time.Now(), 0)
+	s.NoError(err)
+	s.Equal(0, len(events))
+
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {

@@ -6,7 +6,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -14,11 +13,6 @@ import (
 // Function run before sorting all the tasks.  Used to fetch and store
 // information needed for prioritizing the tasks.
 type sortSetupFunc func(comparator *CmpBasedTaskComparator) error
-
-// project is a type for holding a subset of the model.Project type.
-type project struct {
-	TaskGroups []model.TaskGroup `yaml:"task_groups"`
-}
 
 // PopulateCaches runs setup functions and is used by the new/tunable
 // scheduler to reprocess tasks before running the new planner.

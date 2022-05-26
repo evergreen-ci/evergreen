@@ -120,7 +120,7 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	route.project = "not_here"
 	route.item = "2"
 	response = route.Run(ctx)
-	s.Equal(404, response.Status())
+	s.Equal(500, response.Status())
 }
 
 func (s *CommitQueueSuite) TestClearAll() {

@@ -17,15 +17,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	validUpdateToStatuses = []string{
-		evergreen.HostRunning,
-		evergreen.HostQuarantined,
-		evergreen.HostDecommissioned,
-		evergreen.HostTerminated,
-	}
-)
-
 const (
 	IncludeSpawnedHosts = "includeSpawnedHosts"
 )

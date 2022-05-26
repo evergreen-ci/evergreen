@@ -69,8 +69,6 @@ type spawnhostModifyJob struct {
 	ModifyOptions         host.HostModifyOptions `bson:"modify_options" json:"modify_options" yaml:"modify_options"`
 	CloudHostModification `bson:"cloud_host_modification" json:"cloud_host_modification" yaml:"cloud_host_modification"`
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
-
-	env evergreen.Environment
 }
 
 func makeSpawnhostModifyJob() *spawnhostModifyJob {

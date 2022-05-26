@@ -74,6 +74,17 @@ func FindOneByGroupID(groupID string) (*PodDispatcher, error) {
 	return FindOne(db.Query(ByGroupID(groupID)))
 }
 
+// FindOneByPodID finds the dispatcher that manages the given pod by ID.
+func FindOneByPodID(podID string) (*PodDispatcher, error) {
+	return FindOne(db.Query(byPodID(podID)))
+}
+
+func byPodID(podID string) bson.M {
+	return bson.M{
+		PodIDsKey: podID,
+	}
+}
+
 // Allocate sets up the given intent pod to the given task for dispatching.
 func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *pod.Pod) (*PodDispatcher, error) {
 	mongoClient := env.Client()

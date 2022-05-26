@@ -14,20 +14,20 @@ func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[st
 	}
 	tasks, err := task.Find(task.ByIds(taskIds))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error finding tasks")
+		return nil, nil, errors.Wrap(err, "finding tasks to compare")
 	}
 	if len(tasks) != len(taskIds) {
-		return nil, nil, errors.Errorf("%d tasks do not exist", len(taskIds)-len(tasks))
+		return nil, nil, errors.Errorf("%d/%d tasks do not exist", len(taskIds)-len(tasks), len(taskIds))
 	}
 	distroId := tasks[0].DistroId
 	for _, t := range tasks {
 		if t.DistroId != distroId {
-			return nil, nil, errors.New("all tasks must have the same distroId")
+			return nil, nil, errors.New("all tasks must have the same distro ID")
 		}
 	}
 	tasks, versions, err := scheduler.FilterTasksWithVersionCache(tasks)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to find versions for tasks")
+		return nil, nil, errors.Wrap(err, "finding versions for tasks")
 	}
 
 	cmp := scheduler.CmpBasedTaskPrioritizer{}
@@ -35,7 +35,7 @@ func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[st
 	if useLegacy {
 		tasks, logic, err = cmp.PrioritizeTasks(distroId, tasks, versions)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "unable to prioritize tasks")
+			return nil, nil, errors.Wrap(err, "prioritizing tasks")
 		}
 		prioritizedIds := []string{}
 		for _, t := range tasks {
@@ -44,10 +44,10 @@ func CompareTasks(taskIds []string, useLegacy bool) ([]string, map[string]map[st
 	} else { // this is temporary: logic should be added in EVG-13795
 		d, err := distro.FindOneId(distroId)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "unable to find distro")
+			return nil, nil, errors.Wrapf(err, "finding distro '%s'", distroId)
 		}
 		if d == nil {
-			return nil, nil, errors.New("distro doesn't exist")
+			return nil, nil, errors.Errorf("distro '%s' not found", distroId)
 		}
 		taskPlan := scheduler.PrepareTasksForPlanning(d, tasks)
 		tasks = taskPlan.Export()

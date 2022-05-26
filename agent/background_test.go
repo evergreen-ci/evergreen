@@ -114,7 +114,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	heartbeat := make(chan string)
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	select {
-	case _ = <-heartbeat:
+	case <-heartbeat:
 		s.FailNow("heartbeat should never receive signal when abort value remains false - timeout should have occurred.")
 	case <-ctx.Done():
 		beat := <-heartbeat
@@ -130,10 +130,11 @@ func (s *BackgroundSuite) TestHeartbeatFailsOnTaskConflict() {
 	heartbeat := make(chan string)
 	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	select {
-	case beat := <-heartbeat:
-		s.Equal(evergreen.TaskFailed, beat)
+	case <-heartbeat:
+		s.FailNow("heartbeat should never receive signal when task conflicts - context cancel should have occurred.")
 	case <-ctx.Done():
-		s.FailNow("heartbeat context errored before it could send a value back")
+		beat := <-heartbeat
+		s.Equal(evergreen.TaskFailed, beat)
 	}
 }
 

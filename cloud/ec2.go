@@ -233,8 +233,9 @@ const (
 )
 
 const (
-	checkSuccessAttempts   = 10
+	checkSuccessAttempts   = 12
 	checkSuccessInitPeriod = 2 * time.Second
+	checkSuccessMaxDelay   = 2 * time.Minute
 )
 
 const (
@@ -1221,6 +1222,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, user string
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
+			MaxDelay:    checkSuccessMaxDelay,
 		})
 	if err != nil {
 		return errors.Wrap(err, "checking if spawn host stopped")

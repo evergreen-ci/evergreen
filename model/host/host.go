@@ -241,10 +241,10 @@ func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
 	if len(d.ProviderSettingsList) != 0 {
 		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
 		if err != nil {
-			return errors.Wrap(err, "error marshalling provider setting into bson")
+			return errors.Wrap(err, "marshalling provider settings into BSON")
 		}
 		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "error unmarshalling bson into provider settings")
+			return errors.Wrap(err, "unmarshalling BSON into Docker provider settings")
 		}
 	}
 	return nil
@@ -435,15 +435,12 @@ func (h *Host) NeedsPortBindings() bool {
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
 func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		if !usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
 			RequiredLevel: evergreen.HostsEdit.Value,
-		}) {
-			return false
-		}
-		return true
+		})
 	}
 	return true
 }
@@ -1867,7 +1864,7 @@ func (h *Host) IsIdleParent() (bool, error) {
 	if !h.HasContainers {
 		return false, nil
 	}
-	// sanity check so that hosts not immediately decommissioned
+	// Verify that hosts are not immediately decommissioned.
 	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}
@@ -2698,9 +2695,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 	defer cancel()
 
 	countPipeline := []bson.M{}
-	for _, stage := range runningHostsPipeline {
-		countPipeline = append(countPipeline, stage)
-	}
+	countPipeline = append(countPipeline, runningHostsPipeline...)
 	countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 	tmp := []counter{}
@@ -2774,9 +2769,7 @@ func GetPaginatedRunningHosts(hostID, distroID, currentTaskID string, statuses [
 
 	if hasFilters {
 		countPipeline = []bson.M{}
-		for _, stage := range runningHostsPipeline {
-			countPipeline = append(countPipeline, stage)
-		}
+		countPipeline = append(countPipeline, runningHostsPipeline...)
 		countPipeline = append(countPipeline, bson.M{"$count": "count"})
 
 		tmp = []counter{}

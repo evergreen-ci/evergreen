@@ -81,27 +81,6 @@ func (*HostConnectorSuite) hosts() []host.Host {
 	}
 }
 
-func (*HostConnectorSuite) users() []user.DBUser {
-	return []user.DBUser{
-		{
-			Id: testUser,
-		},
-		{
-			Id: "user2",
-		},
-		{
-			Id: "user3",
-		},
-		{
-			Id: "user4",
-		},
-		{
-			Id:          "root",
-			SystemRoles: []string{"root"},
-		},
-	}
-}
-
 func TestHostConnectorSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

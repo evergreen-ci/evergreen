@@ -35,6 +35,7 @@ var (
 	TimeInfoInitializingKey     = bsonutil.MustHaveTag(TimeInfo{}, "Initializing")
 	TimeInfoStartingKey         = bsonutil.MustHaveTag(TimeInfo{}, "Starting")
 	TimeInfoLastCommunicatedKey = bsonutil.MustHaveTag(TimeInfo{}, "LastCommunicated")
+	TimeInfoAgentStartedKey     = bsonutil.MustHaveTag(TimeInfo{}, "AgentStarted")
 
 	ResourceInfoExternalIDKey   = bsonutil.MustHaveTag(ResourceInfo{}, "ExternalID")
 	ResourceInfoDefinitionIDKey = bsonutil.MustHaveTag(ResourceInfo{}, "DefinitionID")

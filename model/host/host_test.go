@@ -5127,27 +5127,6 @@ func (*FindHostsSuite) hosts() []Host {
 	}
 }
 
-func (*FindHostsSuite) users() []user.DBUser {
-	return []user.DBUser{
-		{
-			Id: testUser,
-		},
-		{
-			Id: "user2",
-		},
-		{
-			Id: "user3",
-		},
-		{
-			Id: "user4",
-		},
-		{
-			Id:          "root",
-			SystemRoles: []string{"root"},
-		},
-	}
-}
-
 func TestFindHostsSuite(t *testing.T) {
 	s := new(FindHostsSuite)
 

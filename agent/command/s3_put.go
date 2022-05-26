@@ -87,6 +87,12 @@ type s3put struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
+	// Patchable defaults to true. If set to false, this command will noop without error for patch tasks.
+	Patchable string `mapstructure:"patchable" plugin:"patchable"`
+
+	// PatchOnly defaults to false. If set to true, this command will noop without error for non-patch tasks.
+	PatchOnly string `mapstructure:"patch_only" plugin:"patch_only"`
+
 	// SkipExisting, when set to true, will not upload files if they already exist in s3.
 	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
 
@@ -95,6 +101,8 @@ type s3put struct {
 	workDir          string
 	skipMissing      bool
 	skipExistingBool bool
+	isPatchable      bool
+	isPatchOnly      bool
 
 	bucket pail.Bucket
 
@@ -186,29 +194,43 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		return errors.WithStack(err)
 	}
 
+	s3pc.workDir = conf.WorkDir
 	if filepath.IsAbs(s3pc.LocalFile) {
 		s3pc.workDir = ""
-	} else {
-		s3pc.workDir = conf.WorkDir
 	}
 
+	s3pc.skipMissing = false
 	if s3pc.Optional != "" {
 		s3pc.skipMissing, err = strconv.ParseBool(s3pc.Optional)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	} else {
-		s3pc.skipMissing = false
 	}
 
+	s3pc.skipExistingBool = false
 	if s3pc.SkipExisting != "" {
 		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	} else {
-		s3pc.skipExistingBool = false
 	}
+
+	s3pc.isPatchOnly = false
+	if s3pc.PatchOnly != "" {
+		s3pc.isPatchOnly, err = strconv.ParseBool(s3pc.PatchOnly)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	s3pc.isPatchable = true
+	if s3pc.Patchable != "" {
+		s3pc.isPatchable, err = strconv.ParseBool(s3pc.Patchable)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	return nil
 }
 
@@ -240,6 +262,14 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	// re-validate command here, in case an expansion is not defined
 	if err := s3pc.validate(); err != nil {
 		return errors.WithStack(err)
+	}
+	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
+		logger.Task().Info("Skipping s3 put because the command is not patchable")
+		return nil
+	}
+	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
+		logger.Task().Info("Skipping s3 put because the command is patch only")
+		return nil
 	}
 
 	// create pail bucket
