@@ -116,5 +116,6 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 		Finished:   finished,
 		ShouldExit: shouldExit,
 		Errors:     errors,
+		Error:      jobErr,
 	})
 }
