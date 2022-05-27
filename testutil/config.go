@@ -345,6 +345,7 @@ func MockConfig() *evergreen.Settings {
 			GithubStatusAPIDisabled:         true,
 			BackgroundReauthDisabled:        true,
 			PodAllocatorDisabled:            true,
+			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			ContainerConfigurationsDisabled: true,
 		},
