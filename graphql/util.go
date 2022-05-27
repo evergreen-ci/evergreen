@@ -429,29 +429,23 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 
 func canRestartTask(t *task.Task) bool {
 	// Cannot restart execution tasks.
-	isExecTask := t.IsPartOfDisplay()
-	if isExecTask {
+	if t.IsPartOfDisplay() {
 		return false
+	}
+	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
+	// earlier tasks in the display task, in which case restarting the entire display task may unblock them.
+	if t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly {
+		return true
 	}
 	if !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status) {
 		return true
 	}
-	if t.Aborted {
-		return true
-	}
-	if t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly {
-		return true
-	}
-	return false
+	return t.Aborted
 }
 
 func canScheduleTask(t *task.Task) bool {
-	// Cannot schedule execution tasks.
-	isExecTask := t.IsPartOfDisplay()
-	if isExecTask {
-		return false
-	}
-	if t.Aborted {
+	// Cannot schedule execution tasks or aborted tasks.
+	if t.IsPartOfDisplay() || t.Aborted {
 		return false
 	}
 	if t.DisplayStatus != evergreen.TaskUnscheduled {
