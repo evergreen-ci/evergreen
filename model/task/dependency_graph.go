@@ -69,47 +69,21 @@ func (t TaskNode) String() string {
 	return fmt.Sprintf("%s/%s", t.Variant, t.Name)
 }
 
-// VersionDependencyGraph finds all the tasks from the version given by versionID and constructs a DependencyGraph from them.
-func VersionDependencyGraph(versionID string, transposed bool) (DependencyGraph, error) {
-	tasks, err := FindWithFields(ByVersion(versionID), DependsOnKey, BuildVariantKey, DisplayNameKey)
-	if err != nil {
-		return DependencyGraph{}, errors.Wrapf(err, "getting tasks for version '%s'", versionID)
-	}
-
-	return taskDependencyGraph(tasks, transposed), nil
-}
-
-func taskDependencyGraph(tasks []Task, transposed bool) DependencyGraph {
-	g := NewDependencyGraph(transposed)
-	g.buildFromTasks(tasks)
-	return g
-}
-
 func (g *DependencyGraph) buildFromTasks(tasks []Task) {
 	taskIDToNode := make(map[string]TaskNode)
 	for _, task := range tasks {
-		tNode := task.ToTaskNode()
+		tNode := task.toTaskNode()
 		g.AddTaskNode(tNode)
 		taskIDToNode[task.Id] = tNode
 	}
 
 	for _, task := range tasks {
-		dependentTaskNode := task.ToTaskNode()
+		dependentTaskNode := task.toTaskNode()
 		for _, dep := range task.DependsOn {
 			dependedOnTaskNode := taskIDToNode[dep.TaskId]
 			g.AddEdge(dependentTaskNode, dependedOnTaskNode, dep.Status)
 		}
 	}
-}
-
-// Nodes returns a slice of all the task nodes in the graph.
-func (g *DependencyGraph) Nodes() []TaskNode {
-	tNodes := make([]TaskNode, 0, len(g.tasksToNodes))
-	for tNode := range g.tasksToNodes {
-		tNodes = append(tNodes, tNode)
-	}
-
-	return tNodes
 }
 
 // AddTaskNode adds a node to the graph.
@@ -147,10 +121,10 @@ func (g *DependencyGraph) addEdgeToGraph(edge DependencyEdge) {
 	g.edgesToDependencies[edgeKey{from: edge.From, to: edge.To}] = edge
 }
 
-// EdgesIntoTask returns all the edges that point to t.
+// edgesIntoTask returns all the edges that point to t.
 // For a regular graph these edges are tasks that directly depend on t.
 // If the graph is transposed these edges are tasks t directly depends on.
-func (g *DependencyGraph) EdgesIntoTask(t TaskNode) []DependencyEdge {
+func (g *DependencyGraph) edgesIntoTask(t TaskNode) []DependencyEdge {
 	node := g.tasksToNodes[t]
 	if node == nil {
 		return nil
@@ -194,23 +168,21 @@ func (dc DependencyCycles) String() string {
 }
 
 // Cycles returns cycles in the graph, if any.
-// Self-loops are also considered cycles.
+// Self-loops are not included as cycles.
 func (g *DependencyGraph) Cycles() DependencyCycles {
 	var cycles DependencyCycles
 	stronglyConnectedComponents := topo.TarjanSCC(g.graph)
 	for _, scc := range stronglyConnectedComponents {
-		if len(scc) == 1 {
-			if g.graph.HasEdgeBetween(scc[0].ID(), scc[0].ID()) {
-				cycles = append(cycles, []TaskNode{g.nodesToTasks[scc[0]], g.nodesToTasks[scc[0]]})
-			}
-		} else {
-			var cycle []TaskNode
-			for _, node := range scc {
-				taskInCycle := g.nodesToTasks[node]
-				cycle = append(cycle, taskInCycle)
-			}
-			cycles = append(cycles, cycle)
+		if len(scc) <= 1 {
+			continue
 		}
+
+		var cycle []TaskNode
+		for _, node := range scc {
+			taskInCycle := g.nodesToTasks[node]
+			cycle = append(cycle, taskInCycle)
+		}
+		cycles = append(cycles, cycle)
 	}
 
 	return cycles
