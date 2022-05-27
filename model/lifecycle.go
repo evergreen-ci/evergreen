@@ -55,6 +55,22 @@ type VersionToRestart struct {
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool, caller string) error {
+	version, err := VersionFindOneId(versionId)
+	if err != nil {
+		return errors.Wrapf(err, "getting version '%s'", versionId)
+	}
+	if active {
+		if err = version.SetActivated(); err != nil {
+			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+		}
+		if err = version.UpdateStatus(evergreen.VersionCreated); err != nil {
+			return errors.Wrapf(err, "setting status for version '%s'", versionId)
+		}
+	} else {
+		if err = version.SetNotActivated(); err != nil {
+			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
+		}
+	}
 	builds, err := build.Find(
 		build.ByVersion(versionId).WithFields(build.IdKey),
 	)
@@ -135,11 +151,6 @@ func setTaskActivationForBuilds(buildIds []string, active, withDependencies bool
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
-
-	if err := UpdateVersionAndPatchStatusForBuilds(buildIds); err != nil {
-		return errors.Wrapf(err, "updating status for builds '%s'", buildIds)
-	}
-
 	return nil
 }
 
