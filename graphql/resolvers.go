@@ -3213,7 +3213,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 	if !ok {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
 	}
-	return canRestartTask(ctx, t), nil
+	return canRestartTask(t), nil
 }
 
 func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
@@ -3229,7 +3229,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if !ok {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *obj.Id))
 	}
-	return canScheduleTask(ctx, t), nil
+	return canScheduleTask(t), nil
 }
 
 func (r *taskResolver) CanUnschedule(ctx context.Context, obj *restModel.APITask) (bool, error) {

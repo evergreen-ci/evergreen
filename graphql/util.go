@@ -427,7 +427,7 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	}
 }
 
-func canRestartTask(ctx context.Context, t *task.Task) bool {
+func canRestartTask(t *task.Task) bool {
 	// Cannot restart execution tasks.
 	isExecTask := t.IsPartOfDisplay()
 	if isExecTask {
@@ -445,7 +445,7 @@ func canRestartTask(ctx context.Context, t *task.Task) bool {
 	return false
 }
 
-func canScheduleTask(ctx context.Context, t *task.Task) bool {
+func canScheduleTask(t *task.Task) bool {
 	// Cannot schedule execution tasks.
 	isExecTask := t.IsPartOfDisplay()
 	if isExecTask {
