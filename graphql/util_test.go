@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -84,41 +85,51 @@ func TestCanRestartTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	blockedTask := &restModel.APITask{
-		Id: utility.ToStringPtr("t1"),
-		DependsOn: []restModel.APIDependency{
+	blockedTask := &task.Task{
+		Id: "t1",
+		DependsOn: []task.Dependency{
 			{TaskId: "testDepends1", Status: "*", Unattainable: true},
 			{TaskId: "testDepends2", Status: "*", Unattainable: false},
 		},
-		Status: utility.ToStringPtr(evergreen.TaskUndispatched),
+		Status:        evergreen.TaskUndispatched,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart, err := canRestartTask(ctx, blockedTask)
-	require.NoError(t, err)
+	canRestart := canRestartTask(ctx, blockedTask)
 	assert.Equal(t, canRestart, false)
 
-	executionTask := &restModel.APITask{
-		Id:           utility.ToStringPtr("t2"),
-		ParentTaskId: "a display task",
-		Status:       utility.ToStringPtr(evergreen.TaskUndispatched),
+	executionTask := &task.Task{
+		Id:            "t2",
+		Status:        evergreen.TaskUndispatched,
+		DisplayTaskId: utility.ToStringPtr("a display task"),
 	}
-	canRestart, err = canRestartTask(ctx, executionTask)
-	require.NoError(t, err)
+	canRestart = canRestartTask(ctx, executionTask)
 	assert.Equal(t, canRestart, false)
 
-	runningTask := &restModel.APITask{
-		Id:     utility.ToStringPtr("t3"),
-		Status: utility.ToStringPtr(evergreen.TaskStarted),
+	runningTask := &task.Task{
+		Id:            "t3",
+		Status:        evergreen.TaskStarted,
+		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart, err = canRestartTask(ctx, runningTask)
-	require.NoError(t, err)
+	canRestart = canRestartTask(ctx, runningTask)
 	assert.Equal(t, canRestart, false)
 
-	finishedTask := &restModel.APITask{
-		Id:     utility.ToStringPtr("t4"),
-		Status: utility.ToStringPtr(evergreen.TaskSucceeded),
+	blockedDisplayTask := &task.Task{
+		Id:             "t4",
+		Status:         evergreen.TaskUndispatched,
+		DisplayStatus:  evergreen.TaskStatusBlocked,
+		DisplayTaskId:  utility.ToStringPtr(""),
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"exec1", "exec2"},
 	}
-	canRestart, err = canRestartTask(ctx, finishedTask)
-	require.NoError(t, err)
+	canRestart = canRestartTask(ctx, blockedDisplayTask)
+	assert.Equal(t, canRestart, true)
+
+	finishedTask := &task.Task{
+		Id:            "t5",
+		Status:        evergreen.TaskSucceeded,
+		DisplayTaskId: utility.ToStringPtr(""),
+	}
+	canRestart = canRestartTask(ctx, finishedTask)
 	assert.Equal(t, canRestart, true)
 }
 
@@ -126,44 +137,43 @@ func TestCanScheduleTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	abortedTask := &restModel.APITask{
-		Id:      utility.ToStringPtr("t1"),
-		Status:  utility.ToStringPtr(evergreen.TaskUndispatched),
-		Aborted: true,
+	abortedTask := &task.Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		DisplayTaskId: utility.ToStringPtr(""),
+		Aborted:       true,
 	}
-	canSchedule, err := canScheduleTask(ctx, abortedTask)
-	require.NoError(t, err)
+	canSchedule := canScheduleTask(ctx, abortedTask)
 	assert.Equal(t, canSchedule, false)
 
-	executionTask := &restModel.APITask{
-		Id:            utility.ToStringPtr("t2"),
-		ParentTaskId:  "a display task",
-		Status:        utility.ToStringPtr(evergreen.TaskUndispatched),
-		DisplayStatus: utility.ToStringPtr(evergreen.TaskUnscheduled),
+	executionTask := &task.Task{
+		Id:            "t2",
+		Status:        evergreen.TaskUndispatched,
+		DisplayStatus: evergreen.TaskUnscheduled,
+		DisplayTaskId: utility.ToStringPtr("a display task"),
 		Aborted:       false,
 	}
-	canSchedule, err = canScheduleTask(ctx, executionTask)
-	require.NoError(t, err)
+	canSchedule = canScheduleTask(ctx, executionTask)
 	assert.Equal(t, canSchedule, false)
 
-	finishedTask := &restModel.APITask{
-		Id:            utility.ToStringPtr("t4"),
-		Status:        utility.ToStringPtr(evergreen.TaskSucceeded),
-		DisplayStatus: utility.ToStringPtr(evergreen.TaskSucceeded),
+	finishedTask := &task.Task{
+		Id:            "t4",
+		Status:        evergreen.TaskSucceeded,
+		DisplayStatus: evergreen.TaskSucceeded,
+		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       false,
 	}
-	canSchedule, err = canScheduleTask(ctx, finishedTask)
-	require.NoError(t, err)
+	canSchedule = canScheduleTask(ctx, finishedTask)
 	assert.Equal(t, canSchedule, false)
 
-	unscheduledTask := &restModel.APITask{
-		Id:            utility.ToStringPtr("t3"),
-		Status:        utility.ToStringPtr(evergreen.TaskUndispatched),
-		DisplayStatus: utility.ToStringPtr(evergreen.TaskUnscheduled),
+	unscheduledTask := &task.Task{
+		Id:            "t3",
+		Status:        evergreen.TaskUndispatched,
+		DisplayStatus: evergreen.TaskUnscheduled,
+		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       false,
 	}
-	canSchedule, err = canScheduleTask(ctx, unscheduledTask)
-	require.NoError(t, err)
+	canSchedule = canScheduleTask(ctx, unscheduledTask)
 	assert.Equal(t, canSchedule, true)
 
 }

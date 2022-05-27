@@ -46,8 +46,8 @@ func TestTaskBuildFromService(t *testing.T) {
 					DistroId:               utility.ToStringPtr("testDistroId"),
 					BuildVariant:           utility.ToStringPtr("testBuildVariant"),
 					DependsOn: []APIDependency{
-						{TaskId: "testDepends1", Status: "*", Unattainable: false},
-						{TaskId: "testDepends2", Status: "*", Unattainable: true},
+						{TaskId: "testDepends1", Status: "*"},
+						{TaskId: "testDepends2", Status: "*"},
 					},
 					DisplayName: utility.ToStringPtr("testDisplayName"),
 					Logs: LogLinks{
@@ -78,12 +78,10 @@ func TestTaskBuildFromService(t *testing.T) {
 					BuildVariant:           "testBuildVariant",
 					DependsOn: []task.Dependency{
 						{
-							TaskId:       "testDepends1",
-							Unattainable: false,
+							TaskId: "testDepends1",
 						},
 						{
-							TaskId:       "testDepends2",
-							Unattainable: true,
+							TaskId: "testDepends2",
 						},
 					},
 					DisplayName: "testDisplayName",
@@ -106,23 +104,9 @@ func TestTaskBuildFromService(t *testing.T) {
 					StartTime:              &time.Time{},
 					FinishTime:             &time.Time{},
 					IngestTime:             &time.Time{},
-					DependsOn: []APIDependency{
-						{TaskId: "testDepends1", Status: "*", Unattainable: false},
-						{TaskId: "testDepends2", Status: "*", Unattainable: true},
-					},
 				},
 				st: task.Task{
 					Requester: evergreen.RepotrackerVersionRequester,
-					DependsOn: []task.Dependency{
-						{
-							TaskId:       "testDepends1",
-							Unattainable: false,
-						},
-						{
-							TaskId:       "testDepends2",
-							Unattainable: true,
-						},
-					},
 				},
 			},
 		}
@@ -132,7 +116,6 @@ func TestTaskBuildFromService(t *testing.T) {
 				err := apiTask.BuildFromService(&tc.st)
 				So(err, ShouldBeNil)
 				So(true, ShouldEqual, apiTask.Mainline)
-				So(apiTask.Blocked, ShouldBeTrue)
 
 				tc.st.Requester = evergreen.PatchVersionRequester
 				apiTask = &APITask{}
@@ -157,6 +140,15 @@ func TestTaskBuildFromService(t *testing.T) {
 				err = apiTask.BuildFromService(&tc.st)
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.DependsOn = []task.Dependency{
+					{Unattainable: false},
+					{Unattainable: true},
+				}
+				apiTask = &APITask{}
+				err = apiTask.BuildFromService(&tc.st)
+				So(err, ShouldBeNil)
+				So(apiTask.Blocked, ShouldBeTrue)
 			}
 		})
 		Convey("running BuildFromArgs(), should produce an equivalent model", func() {
@@ -165,7 +157,6 @@ func TestTaskBuildFromService(t *testing.T) {
 				err := apiTask.BuildFromArgs(&tc.st, nil)
 				So(err, ShouldBeNil)
 				So(true, ShouldEqual, apiTask.Mainline)
-				So(apiTask.Blocked, ShouldBeTrue)
 
 				tc.st.Requester = evergreen.PatchVersionRequester
 				apiTask = &APITask{}
@@ -191,6 +182,15 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(false, ShouldEqual, apiTask.Mainline)
 
+				tc.st.DependsOn = []task.Dependency{
+					{Unattainable: false},
+					{Unattainable: true},
+				}
+				apiTask = &APITask{}
+				err = apiTask.BuildFromArgs(&tc.st, nil)
+				So(err, ShouldBeNil)
+				So(apiTask.Blocked, ShouldBeTrue)
+
 				err = apiTask.BuildFromArgs(&tc.st, &APITaskArgs{LogURL: "url"})
 				So(err, ShouldBeNil)
 				So(utility.FromStringPtr(apiTask.Id), ShouldEqual, utility.FromStringPtr(tc.at.Id))
@@ -198,6 +198,7 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiTask.Logs.AgentLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.AgentLogLink))
 				So(utility.FromStringPtr(apiTask.Logs.SystemLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.SystemLogLink))
 				So(utility.FromStringPtr(apiTask.Logs.TaskLogLink), ShouldEqual, utility.FromStringPtr(tc.at.Logs.TaskLogLink))
+
 			}
 		})
 	})

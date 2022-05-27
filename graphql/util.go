@@ -427,58 +427,37 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	}
 }
 
-func isTaskBlocked(ctx context.Context, at *restModel.APITask) (bool, error) {
-	i, err := at.ToService()
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *at.Id))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *at.Id))
-	}
-	isBlocked := t.Blocked()
-	return isBlocked, nil
-}
-
-func isExecutionTask(ctx context.Context, at *restModel.APITask) (bool, error) {
-	i, err := at.ToService()
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *at.Id))
-	}
-	t, ok := i.(*task.Task)
-	if !ok {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to Task", *at.Id))
-	}
-	isExecutionTask := t.IsPartOfDisplay()
-	return isExecutionTask, nil
-}
-
-func canRestartTask(ctx context.Context, at *restModel.APITask) (bool, error) {
-	taskBlocked, err := isTaskBlocked(ctx, at)
-	if err != nil {
-		return false, err
-	}
-	canRestart := !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, *at.Status) || at.Aborted || (at.DisplayOnly && taskBlocked)
-	isExecTask, err := isExecutionTask(ctx, at) // Cannot restart execution tasks.
-	if err != nil {
-		return false, err
-	}
+func canRestartTask(ctx context.Context, t *task.Task) bool {
+	// Cannot restart execution tasks.
+	isExecTask := t.IsPartOfDisplay()
 	if isExecTask {
-		canRestart = false
+		return false
 	}
-	return canRestart, nil
+	if !utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status) {
+		return true
+	}
+	if t.Aborted {
+		return true
+	}
+	if t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly {
+		return true
+	}
+	return false
 }
 
-func canScheduleTask(ctx context.Context, at *restModel.APITask) (bool, error) {
-	canSchedule := utility.FromStringPtr(at.DisplayStatus) == evergreen.TaskUnscheduled && !at.Aborted
-	isExecTask, err := isExecutionTask(ctx, at) // Cannot schedule execution tasks.
-	if err != nil {
-		return false, err
-	}
+func canScheduleTask(ctx context.Context, t *task.Task) bool {
+	// Cannot schedule execution tasks.
+	isExecTask := t.IsPartOfDisplay()
 	if isExecTask {
-		canSchedule = false
+		return false
 	}
-	return canSchedule, nil
+	if t.Aborted {
+		return false
+	}
+	if t.DisplayStatus != evergreen.TaskUnscheduled {
+		return false
+	}
+	return true
 }
 
 func getAllTaskStatuses(tasks []task.Task) []string {
