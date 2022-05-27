@@ -33,14 +33,18 @@ func GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessa
 }
 
 // GeneratePoll checks to see if a `generate.tasks` job has finished.
-func GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, string, error) {
+func GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return false, "", errors.Wrapf(err, "finding task '%s'", taskID)
+		return false, nil, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return false, "", errors.Errorf("task '%s' not found", taskID)
+		return false, nil, errors.Errorf("task '%s' not found", taskID)
 	}
 
-	return t.GeneratedTasks, t.GenerateTasksError, nil
+	var errs []string
+	if t.GenerateTasksError != "" {
+		errs = []string{t.GenerateTasksError}
+	}
+	return t.GeneratedTasks, errs, nil
 }
