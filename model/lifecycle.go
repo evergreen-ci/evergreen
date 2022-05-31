@@ -59,6 +59,9 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting version '%s'", versionId)
 	}
+	if version == nil {
+		return errors.Wrapf(err, "version '%s' not found", versionId)
+	}
 	if active {
 		if err = version.SetActivated(); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
